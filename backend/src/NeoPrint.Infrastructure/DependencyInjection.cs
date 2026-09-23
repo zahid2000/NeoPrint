@@ -17,16 +17,24 @@ using MongoDB.Driver;
 using Microsoft.AspNetCore.Identity;
 
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Admin;
 using NeoPrint.Application.Auth;
+using NeoPrint.Application.Devices;
+using NeoPrint.Application.Features;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Crypto;
 using NeoPrint.Infrastructure.Auth;
+using NeoPrint.Infrastructure.Admin;
 using NeoPrint.Infrastructure.Crypto;
+using NeoPrint.Infrastructure.Devices;
+using NeoPrint.Infrastructure.Features;
 using NeoPrint.Infrastructure.Email;
 using NeoPrint.Infrastructure.HealthChecks;
 using NeoPrint.Infrastructure.Persistence;
 using NeoPrint.Infrastructure.SecretStore;
+using NeoPrint.Infrastructure.Settings;
 
+using NeoPrint.Domain.Admin;
 using NeoPrint.Domain.Users;
 
 using StackExchange.Redis;
@@ -79,6 +87,30 @@ public static class DependencyInjection
         services.AddScoped<ILegalDocumentRepository, LegalDocumentRepository>();
         services.AddScoped<IAuthSessionFactory, AuthSessionFactory>();
         services.AddScoped<IEmailSender, MailKitEmailSender>();
+
+        // Devices (plan section 7.11)
+        services.AddSingleton<IDeviceSignatureVerifier, DeviceSignatureVerifier>();
+        services.AddScoped<IDeviceChallengeStore, RedisDeviceChallengeStore>();
+        services.AddScoped<IKioskTokenBlocklist, RedisKioskTokenBlocklist>();
+        services.AddScoped<IKioskDeviceRepository, KioskDeviceRepository>();
+        services.AddScoped<IEnrollmentTokenRepository, EnrollmentTokenRepository>();
+        services.AddScoped<IKioskRepository, KioskRepository>();
+
+        // Administration and RBAC (plan section 8A.2)
+        services.AddSingleton<IPasswordHasher<AdminUser>, PasswordHasher<AdminUser>>();
+        services.AddScoped<IAdminUserRepository, AdminUserRepository>();
+        services.AddScoped<IAdminRoleRepository, AdminRoleRepository>();
+        services.AddScoped<IPermissionResolver, CachedPermissionResolver>();
+        services.AddScoped<IAdminSessionFactory, AdminSessionFactory>();
+
+        services.AddScoped<IAuditWriter, MongoAuditWriter>();
+        services.AddScoped<ISettingsReader, CachedSettingsReader>();
+        services.AddScoped<CachedSettingsReader>();
+
+        // Feature flags (plan section 2.16)
+        services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
+        services.AddScoped<IFeatureFlagEvaluator, CachedFeatureFlagEvaluator>();
+        services.AddScoped<CachedFeatureFlagEvaluator>();
     }
 
     private static void AddMongo(IServiceCollection services, IConfiguration configuration)

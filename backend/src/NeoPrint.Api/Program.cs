@@ -11,6 +11,10 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
+using Microsoft.AspNetCore.Authorization;
+
+using NeoPrint.Api;
+using NeoPrint.Api.Hubs;
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Infrastructure.Auth;
@@ -108,9 +112,34 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options => options.AddNeoPrintPolicies());
 
-builder.Services.AddControllers()
+// Permissions are resolved into policies on demand, so the catalogue does not
+// have to be registered policy by policy (plan section 8A.2).
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
+// SignalR with the Redis backplane, so several API instances can serve the
+// same hub groups (plan section 6).
+var signalR = builder.Services.AddSignalR(options => options.EnableDetailedErrors = builder.Environment.IsDevelopment());
+var redisConnection = builder.Configuration["NEOPRINT_REDIS"];
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    signalR.AddStackExchangeRedis(redisConnection, options => options.Configuration.ChannelPrefix =
+        StackExchange.Redis.RedisChannel.Literal("neoprint-signalr"));
+}
+
+builder.Services.AddScoped<IDeviceNotifier, SignalRDeviceNotifier>();
+builder.Services.AddScoped<IAdminNotifier, SignalRAdminNotifier>();
+
+builder.Services.AddScoped<RequireFeatureFilter>();
+
+builder.Services.AddControllers(options =>
+    {
+        // Applied globally; it only acts on endpoints carrying
+        // [RequireFeature] (plan section 2.16).
+        options.Filters.Add<RequireFeatureFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -131,26 +160,44 @@ builder.Services.AddProblemDetails(options =>
 
 builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
 
-// Rate limits from plan section 6: 10 per minute per IP on auth endpoints,
-// 120 per minute per user elsewhere.
+// Rate limits from plan section 6, tunable through configuration.
+var rateLimits = RateLimitSettings.FromConfiguration(builder.Configuration);
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+    options.AddPolicy("auth", context => rateLimits.Disabled
+        ? RateLimitPartition.GetNoLimiter("all")
+        : RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimits.AuthPerMinute,
+                Window = TimeSpan.FromMinutes(1),
+            }));
 
-    options.AddPolicy("device-register", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+    options.AddPolicy("device-register", context => rateLimits.Disabled
+        ? RateLimitPartition.GetNoLimiter("all")
         // Device registration is anonymous, so it is limited per IP per hour
         // (plan section 7.11).
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
+        : RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimits.DeviceRegisterPerHour,
+                Window = TimeSpan.FromHours(1),
+            }));
 
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        RateLimitPartition.GetFixedWindowLimiter(
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => rateLimits.Disabled
+        ? RateLimitPartition.GetNoLimiter("all")
+        : RateLimitPartition.GetFixedWindowLimiter(
             context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimits.GlobalPerMinute,
+                Window = TimeSpan.FromMinutes(1),
+            }));
 });
 
 if (builder.Environment.IsDevelopment())
@@ -204,6 +251,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<ProvisioningHub>("/hubs/provisioning");
+app.MapHub<AdminHub>("/hubs/admin");
 
 // Liveness: the process is up. Used by the container health check, and must not
 // depend on anything external, or a brief database blip would restart the API.

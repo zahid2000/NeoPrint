@@ -1,0 +1,182 @@
+using MediatR;
+
+using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Common;
+using NeoPrint.Domain.Admin;
+
+namespace NeoPrint.Application.Admin;
+
+// ---------------------------------------------------------------------------
+// Repositories
+// ---------------------------------------------------------------------------
+
+/// <summary>Persistence for administrator accounts.</summary>
+public interface IAdminUserRepository
+{
+    Task<AdminUser?> FindByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<AdminUser?> FindByEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<AdminUser>> ListAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// How many active accounts hold a role.
+    /// </summary>
+    /// <remarks>
+    /// Used to keep at least one active SuperAdmin, and to refuse deleting a
+    /// role that is still in use (plan section 8A.2).
+    /// </remarks>
+    Task<long> CountActiveWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default);
+
+    Task AddAsync(AdminUser admin, CancellationToken cancellationToken = default);
+
+    Task UpdateAsync(AdminUser admin, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Persistence for roles.</summary>
+public interface IAdminRoleRepository
+{
+    Task<AdminRole?> FindByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<AdminRole?> FindByNameAsync(string name, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<AdminRole>> ListAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<AdminRole>> FindByIdsAsync(
+        IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
+
+    Task AddAsync(AdminRole role, CancellationToken cancellationToken = default);
+
+    Task UpdateAsync(AdminRole role, CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// The effective permissions of an administrator, cached.
+/// </summary>
+/// <remarks>
+/// Resolving permissions means reading the account and each of its roles, on
+/// every request. Plan section 8A.2 caches that for five minutes in Redis and
+/// clears the entry when a role or an assignment changes, so a revoked
+/// permission stops working without waiting for the cache to expire.
+/// </remarks>
+public interface IPermissionResolver
+{
+    Task<EffectivePermissions> ResolveAsync(Guid adminUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>Drops the cached permissions of one administrator.</summary>
+    Task InvalidateAsync(Guid adminUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>Drops the cached permissions of everyone holding a role.</summary>
+    Task InvalidateRoleAsync(Guid roleId, CancellationToken cancellationToken = default);
+}
+
+/// <param name="Permissions">The union of the permissions of every role held.</param>
+/// <param name="AllKiosks">Whether the account may act on every kiosk.</param>
+/// <param name="KioskIds">The kiosks in scope when <paramref name="AllKiosks"/> is false.</param>
+public sealed record EffectivePermissions(
+    IReadOnlyCollection<string> Permissions,
+    bool AllKiosks,
+    IReadOnlyCollection<Guid> KioskIds)
+{
+    public bool Has(string permission) => Permissions.Contains(permission);
+
+    public bool CanSee(Guid kioskId) => AllKiosks || KioskIds.Contains(kioskId);
+}
+
+// ---------------------------------------------------------------------------
+// Commands
+// ---------------------------------------------------------------------------
+
+/// <summary>What the admin panel gets back after signing in.</summary>
+public sealed record AdminAuthResult(
+    string AccessToken,
+    DateTime AccessTokenExpiresAt,
+    string RefreshToken,
+    DateTime RefreshTokenExpiresAt,
+    AdminSummary Admin);
+
+public sealed record AdminSummary(
+    Guid Id,
+    string Email,
+    string FullName,
+    IReadOnlyCollection<string> Roles,
+    IReadOnlyCollection<string> Permissions,
+    bool AllKiosks,
+    IReadOnlyCollection<Guid> KioskIds,
+    bool MustChangePassword);
+
+/// <summary>Signs an administrator in (plan section 2.8).</summary>
+public sealed record AdminLoginCommand(string Email, string Password, string? Ip) : IRequest<AdminAuthResult>;
+
+/// <summary>Exchanges an admin refresh token for a new pair.</summary>
+public sealed record AdminRefreshCommand(string RefreshToken, string? Ip) : IRequest<AdminAuthResult>;
+
+/// <summary>Revokes an admin refresh token.</summary>
+public sealed record AdminLogoutCommand(string RefreshToken) : IRequest<Unit>;
+
+/// <summary>
+/// Changes an administrator's own password.
+/// </summary>
+/// <remarks>
+/// Mandatory at first sign-in for the seeded SuperAdmin, whose password came
+/// from a configuration value (plan section 2.8).
+/// </remarks>
+public sealed record ChangeAdminPasswordCommand(
+    Guid AdminUserId, string CurrentPassword, string NewPassword, string? Ip)
+    : IRequest<Unit>, Behaviors.ITransactionalRequest;
+
+// ---------------------------------------------------------------------------
+// Validators
+// ---------------------------------------------------------------------------
+
+public sealed class AdminLoginCommandValidator : IValidator<AdminLoginCommand>
+{
+    public IEnumerable<ValidationError> Validate(AdminLoginCommand request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            yield return new ValidationError("email", "Email tələb olunur.");
+        }
+
+        if (string.IsNullOrEmpty(request.Password))
+        {
+            yield return new ValidationError("password", "Şifrə tələb olunur.");
+        }
+    }
+}
+
+public sealed class ChangeAdminPasswordCommandValidator : IValidator<ChangeAdminPasswordCommand>
+{
+    /// <summary>
+    /// Longer than the user minimum: an admin account can refund money and
+    /// reconfigure kiosks.
+    /// </summary>
+    public const int MinimumLength = 12;
+
+    public IEnumerable<ValidationError> Validate(ChangeAdminPasswordCommand request)
+    {
+        if (string.IsNullOrEmpty(request.CurrentPassword))
+        {
+            yield return new ValidationError("currentPassword", "Cari şifrə tələb olunur.");
+        }
+
+        if (string.IsNullOrEmpty(request.NewPassword) || request.NewPassword.Length < MinimumLength)
+        {
+            yield return new ValidationError(
+                "newPassword", $"Yeni şifrə ən azı {MinimumLength} simvol olmalıdır.");
+            yield break;
+        }
+
+        if (request.NewPassword.Length > 128)
+        {
+            yield return new ValidationError("newPassword", "Şifrə 128 simvoldan uzun ola bilməz.");
+        }
+
+        if (string.Equals(request.CurrentPassword, request.NewPassword, StringComparison.Ordinal))
+        {
+            yield return new ValidationError("newPassword", "Yeni şifrə cari şifrədən fərqli olmalıdır.");
+        }
+    }
+}
