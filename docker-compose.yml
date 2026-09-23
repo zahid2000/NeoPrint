@@ -249,8 +249,11 @@ services:
       - "5080:8080"
     volumes:
       # Written by openbao-init; mounted read-only, like a Docker secret.
-      - ./.openbao/neoprint-api.role_id:/run/secrets/neoprint-api.role_id:ro
-      - ./.openbao/neoprint-api.secret_id:/run/secrets/neoprint-api.secret_id:ro
+      # The directory is mounted rather than the two files: openbao-init
+      # replaces them on every run, and a single-file bind mount would then
+      # point at a deleted inode. Only creds/ is mounted, so the container
+      # never sees the unseal key and root token in .openbao/init.json.
+      - ./.openbao/creds:/run/secrets:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/live || exit 1"]
       interval: 10s

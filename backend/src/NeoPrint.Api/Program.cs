@@ -8,10 +8,16 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+
 using NeoPrint.Api.Infrastructure;
+using NeoPrint.Application.Abstractions;
+using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Infrastructure;
 using NeoPrint.Infrastructure.Persistence;
+using NeoPrint.Infrastructure.Seeding;
 using NeoPrint.Infrastructure.SecretStore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -55,6 +61,7 @@ builder.Services.AddSingleton<ISecretStore>(provider =>
 });
 
 builder.Services.AddNeoPrintInfrastructure(builder.Configuration);
+builder.Services.AddNeoPrintSeeding(builder.Environment.IsDevelopment());
 
 builder.Services.AddMediatR(configuration =>
 {
@@ -69,12 +76,50 @@ builder.Services.AddMediatR(configuration =>
 
 builder.Services.AddValidatorsFrom(typeof(ValidationBehavior<,>).Assembly);
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+
+// ---------------------------------------------------------------------------
+// Authentication
+//
+// One scheme for all four kinds of principal (user, admin, kiosk, device
+// awaiting activation). They are told apart by the token type claim, which the
+// authorisation policies check (plan section 2.8).
+// ---------------------------------------------------------------------------
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = JwtTokenService.Issuer,
+            ValidateAudience = true,
+            ValidAudience = JwtTokenService.Audience,
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = true,
+            // The signing key is read per validation, so a rotated key applies
+            // without a restart.
+            IssuerSigningKeyResolver = (_, _, _, _) =>
+                [JwtTokenService.ReadSigningKey(builder.Configuration)],
+            // Tokens live 15 minutes; the default five minute grace would be a
+            // third of that.
+            ClockSkew = TimeSpan.FromSeconds(30),
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.DefaultIgnoreCondition =
             System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+        // Enums travel as names, not ordinals: a client reads "Privacy", and
+        // reordering an enum cannot silently change what a stored value means.
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 
 builder.Services.AddProblemDetails(options =>
@@ -125,6 +170,15 @@ await using (var scope = app.Services.CreateAsyncScope())
 {
     var mongo = scope.ServiceProvider.GetRequiredService<MongoContext>();
     await mongo.EnsureIndexesAsync();
+
+    // Idempotent: creates only what is missing, so it is safe on every start
+    // and picks up settings and flags added by a later release.
+    await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
+
+    if (app.Environment.IsDevelopment())
+    {
+        await scope.ServiceProvider.GetRequiredService<DevelopmentSeeder>().SeedAsync();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +199,9 @@ else
 }
 
 app.UseRateLimiter();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

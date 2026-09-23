@@ -27,7 +27,16 @@ POLICY_DIR="${POLICY_DIR:-/openbao-policies}"
 SEED_FILE="${SEED_FILE:-/openbao-seed/.env.openbao-seed}"
 KV_MOUNT="${BAO_KV_MOUNT:-neoprint}"
 
+# The unprivileged user the API container runs as; it must be able to read the
+# AppRole credential files written below.
+API_UID="${NEOPRINT_API_UID:-2000}"
+API_GID="${NEOPRINT_API_GID:-2000}"
+
 INIT_FILE="$OUT_DIR/init.json"
+
+# AppRole credentials live in their own directory: the API container mounts it,
+# and must not also get sight of the unseal key and root token in init.json.
+CREDS_DIR="$OUT_DIR/creds"
 
 log() { printf '[openbao-init] %s\n' "$*"; }
 die() { printf '[openbao-init] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -55,7 +64,7 @@ is_sealed() {
 # ---------------------------------------------------------------------------
 # 2. Initialise (once) and unseal (every start).
 # ---------------------------------------------------------------------------
-mkdir -p "$OUT_DIR"
+mkdir -p "$OUT_DIR" "$CREDS_DIR"
 
 if is_initialized; then
     log "already initialised"
@@ -140,11 +149,32 @@ for role in neoprint-api neoprint-worker; do
     role_id=$(bao read -field=role_id "auth/approle/role/$role/role-id")
     secret_id=$(bao write -f -field=secret_id "auth/approle/role/$role/secret-id")
 
-    printf '%s' "$role_id" >"$OUT_DIR/$role.role_id"
-    printf '%s' "$secret_id" >"$OUT_DIR/$role.secret_id"
-    chmod 600 "$OUT_DIR/$role.role_id" "$OUT_DIR/$role.secret_id"
+    # Remove first: a previous run may have left these read-only, and a bind
+    # mount from a Windows or macOS host refuses to overwrite such a file even
+    # for root.
+    rm -f "$CREDS_DIR/$role.role_id" "$CREDS_DIR/$role.secret_id"
+
+    printf '%s' "$role_id" >"$CREDS_DIR/$role.role_id"
+    printf '%s' "$secret_id" >"$CREDS_DIR/$role.secret_id"
+
+    # The API container runs as an unprivileged user (uid 2000), so it has to be
+    # able to read these. Hand them over where the filesystem allows it; on a
+    # bind mount from a Windows or macOS host chown does not stick, and the
+    # files are made readable instead.
+    #
+    # This relaxation is DEVELOPMENT ONLY. In production the secret_id arrives
+    # as a Docker secret, which the runtime mounts with the right ownership,
+    # and this container is not deployed at all (docs/OPENBAO.md).
+    for file in "$CREDS_DIR/$role.role_id" "$CREDS_DIR/$role.secret_id"; do
+        chmod 600 "$file"
+        if chown "$API_UID:$API_GID" "$file" 2>/dev/null; then
+            chmod 640 "$file"
+        else
+            chmod 444 "$file"
+        fi
+    done
 done
-log "role_id and secret_id files written to .openbao/"
+log "role_id and secret_id files written to .openbao/creds/"
 
 # ---------------------------------------------------------------------------
 # 5. Seed the development secrets.

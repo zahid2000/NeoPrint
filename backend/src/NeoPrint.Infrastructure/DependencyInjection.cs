@@ -14,13 +14,20 @@ using Microsoft.Extensions.Logging;
 
 using MongoDB.Driver;
 
+using Microsoft.AspNetCore.Identity;
+
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Auth;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Crypto;
+using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Infrastructure.Crypto;
+using NeoPrint.Infrastructure.Email;
 using NeoPrint.Infrastructure.HealthChecks;
 using NeoPrint.Infrastructure.Persistence;
 using NeoPrint.Infrastructure.SecretStore;
+
+using NeoPrint.Domain.Users;
 
 using StackExchange.Redis;
 
@@ -55,8 +62,23 @@ public static class DependencyInjection
         AddMessaging(services, configuration);
         AddBackgroundJobs(services, configuration);
         AddHealthChecks(services, configuration);
+        AddAuth(services);
 
         return services;
+    }
+
+    private static void AddAuth(IServiceCollection services)
+    {
+        services.AddSingleton<ITokenService, JwtTokenService>();
+        services.AddSingleton<ISecretHasher, SecretHasher>();
+        services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IEmailConfirmationRepository, EmailConfirmationRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<ILegalDocumentRepository, LegalDocumentRepository>();
+        services.AddScoped<IAuthSessionFactory, AuthSessionFactory>();
+        services.AddScoped<IEmailSender, MailKitEmailSender>();
     }
 
     private static void AddMongo(IServiceCollection services, IConfiguration configuration)

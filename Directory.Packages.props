@@ -38,6 +38,8 @@
     <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="8.0.31" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
     <PackageVersion Include="System.Management" Version="8.0.0" />
+    <!-- Matches the version Microsoft.AspNetCore.Authentication.JwtBearer 8.0.31 resolves. -->
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="7.7.3" />
   </ItemGroup>
 
   <ItemGroup Label="Backend infrastructure">
