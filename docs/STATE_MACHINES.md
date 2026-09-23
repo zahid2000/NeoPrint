@@ -1,0 +1,137 @@
+# NeoPrint — State Machines
+
+> **Qeyd:** bu sənəd `NeoPrint-PLAN.md` ilə uzlaşdırılıb. Status adları plandakı adlarla eynidir; ziddiyyət görünərsə plan üstündür.
+
+Bu sənəd biznes state-lərinin explicit və idarə olunan keçidlərini müəyyən edir.
+
+## PrintJob
+
+Əsas axın:
+
+`Draft → PendingPayment → Paid → Queued → Printing → Completed`
+
+Ödəniş vaxtı keçir:
+
+`PendingPayment → Expired`
+
+Ləğv:
+
+`Queued → Cancelled`, `PendingPayment → Cancelled`
+
+Printer/kiosk problemi:
+
+`Printing → Interrupted`
+`Interrupted → Queued` (təhlükəsiz olduqda təkrar növbəyə)
+`Interrupted → Cancelled`
+
+Refund:
+
+- Job `Cancelled` (və ya hissəvi çapla `Completed`) olduqda **ayrıca `Refund` entity** yaradılır.
+- Job özündə `RefundPending` / `Refunded` statusu **saxlanılmır**; refund vəziyyəti `refunds` kolleksiyasındadır (Plan Bölmə 2.5).
+- Job-un maliyyə nəticəsi `payments.Status` (`Refunded` / `PartiallyRefunded` / `RefundFailed`) ilə əks olunur.
+
+## Refund
+
+`Pending → Processing → Succeeded`
+
+Failure:
+
+`Processing → Failed`
+
+`Failed → Processing` (admin təkrar cəhd və ya istiqamət dəyişikliyi ilə)
+
+Qaydalar:
+- Bir ödənişə bir neçə refund ola bilər, cəmi ödəniş məbləğini keçə bilməz.
+- Eyni səbəb + eyni job üçün ikinci avtomatik refund yaradıla bilməz (idempotency).
+
+## Payment
+
+`Pending → Succeeded`
+
+Failure:
+
+`Pending → Failed`
+
+Timeout:
+
+`Pending → Expired`
+
+Refund nəticəsi:
+
+`Succeeded → PartiallyRefunded | Refunded | RefundFailed`
+
+## Kiosk Device
+
+`Pending → Active`
+
+`Active → Revoked`
+
+`Pending → Expired` (aktivləşdirilmədən vaxtı keçir)
+
+`Revoked` device yenidən aktivləşdirilməməlidir; yeni cihaz qeydiyyatı (yeni açar) tələb olunur.
+
+## Kiosk (biznes entity)
+
+`NotActivated → NotConfigured → Online`
+
+`Online ↔ Paused`, `Online ↔ Offline`, `Online → Maintenance`, `* → Disabled`
+
+Cihaz ayrıldıqda: `* → NotActivated`.
+
+## Update (kiosk versiyası)
+
+`Idle → Downloading → Ready → Applying → HealthCheck → Succeeded`
+
+Failure:
+
+`Downloading | Ready | Applying | HealthCheck → Failed`
+
+Rollback:
+
+`HealthCheck | Failed → RolledBack`
+
+## ScheduledPrint
+
+`Scheduled → AwaitingUser → Sent`
+
+`Scheduled | AwaitingUser → Cancelled`
+
+`AwaitingUser → Expired` (auto-cancel + refund)
+
+## Qaydalar
+
+- İcazəsiz state transition mümkün olmamalıdır.
+- Hər transition üçün actor və timestamp saxlanmalıdır.
+- Transition idempotent olmalıdır; eyni transition event ikinci dəfə gəldikdə duplicate side effect olmamalıdır.
+- `Completed` job yenidən `Printing` vəziyyətinə keçirilə bilməz.
+- Tam refund olunmuş ödəniş üçün yeni refund yaradıla bilməz.
+- State transition DB-də atomik şəkildə qorunmalıdır (Mongo transaction / optimistic version).
+
+## Transition metadata
+
+Hər keçiddə (`StatusHistory[]` və ya `state_transitions`) saxlanmalıdır:
+
+- FromStatus
+- ToStatus
+- ActorType (User / Kiosk / Admin / System)
+- ActorId
+- DeviceId
+- Reason
+- CorrelationId
+- CreatedAt
+
+## Implementation
+
+State dəyişikliklərini sərbəst property assignment ilə etmə:
+
+```csharp
+job.Status = PrintJobStatus.Completed;   // YANLIŞ
+```
+
+Domain səviyyəsində explicit transition istifadə et:
+
+```csharp
+job.Complete(printedSides, printedSheets, actor, correlationId);   // DÜZGÜN
+```
+
+İcazəsiz keçid `DomainException` ilə dayandırılmalıdır.

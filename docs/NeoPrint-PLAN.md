@@ -10,6 +10,8 @@
 > - Real bank, fiskal (e-kassa) API-ləri **yoxdur**: bütün xarici provayderlər interface + Mock implementasiya ilə yazılır.
 > - Backend-in bütün gizli açarları (secret) **OpenBao-dan** oxunur (Bölmə 2.13). Environment variable-da yalnız OpenBao-ya qoşulma məlumatı olur. Kiosk tətbiqi **universal build**-dir — heç bir kiosk üçün ayrıca build, env və ya secret yoxdur (Bölmə 7.11). Repo-ya heç bir real secret yazılmır.
 > - Kod dili: İngilis (class, method, dəyişən, commit). UI mətnləri: lokalizasiya faylları ilə (az — default, en, ru).
+> - Bu sənədlə birlikdə `docs/` qovluğundakı qayda sənədləri də məcburidir (prioritet: `docs/README.md`): `ARCHITECTURE_RULES.md`, `STATE_MACHINES.md`, `IDEMPOTENCY.md`, `PAYMENT_FLOWS.md`, `FAILURE_RECOVERY.md`, `OFFLINE_BEHAVIOR.md`, `SECURITY_THREAT_MODEL.md`, `DOMAIN_RULES.md`, `DATA_RETENTION.md`, `OBSERVABILITY.md`, `CLAUDE_CODE_EXECUTION_RULES.md`. Ziddiyyət olarsa **bu plan üstündür**; uyğunsuzluğu `docs/DECISIONS.md`-ə yaz.
+> - Arxitektura səviyyəli qərarlar üçün `docs/adr/TEMPLATE.md` formatında ADR yaz.
 > - Bölmə 14-dəki hüquqi məsələlər istifadəçinin hüquqşünasla həll edəcəyi işlərdir; Claude onları konfiqurasiya edilə bilən parametrlər kimi qurur, dayanmır.
 
 ---
@@ -244,7 +246,8 @@ base       = sides * pricePerSide(color) * paperMultiplier(paper)
 tier       = ən böyük VolumeTier where sides >= MinSides
 price      = max(MinOrder, base * (1 - tier.DiscountPercent/100))
 ```
-- Qiymət job yaradılanda **snapshot** kimi saxlanılır (`PriceBreakdown`); sonrakı profil dəyişiklikləri mövcud job-lara təsir etmir. Planlanmış çaplar planlama anındakı qiymətlə qalır.
+- Pul üçün `Money` value object (`Amount`, `Currency=AZN`) istifadə olunur; yuvarlaqlaşdırma yalnız mərkəzi `Money` tipində (bank rounding, 2 onluq).
+- Qiymət job yaradılanda **snapshot** kimi saxlanılır (`PriceBreakdown`: pages, sides, sheets, copies, color, paper, basePrice, volumeDiscount, promoDiscount, bonusPages, minimumApplied, finalPrice, currency); sonrakı profil dəyişiklikləri mövcud job-lara təsir etmir. Planlanmış çaplar planlama anındakı qiymətlə qalır.
 - Mobil tətbiqdə kiosk detalında həmin kioskun qiymətləri göstərilir.
 
 ### 2.4 Tənzimləmələr (`AdminSettings`, default dəyərlər — hamısı admin paneldən dəyişdirilir)
@@ -290,6 +293,8 @@ price      = max(MinOrder, base * (1 - tier.DiscountPercent/100))
 | `Update.HealthTimeoutMinutes` | 5 | Yeniləmədən sonra UI bu müddətdə sağlam olmasa rollback |
 | `Update.KeepVersions` | 3 | Kioskda saxlanılan versiya sayı (rollback üçün) |
 | `Enrollment.TokenTtlHours` | 72 | Qeydiyyat (enrollment) token-inin etibarlılıq müddəti |
+| `Kiosk.ConfigCacheTtlHours` | 24 | Kioskun lokal konfiqurasiya keşinin etibarlılığı; bu müddətdən köhnədirsə kiosk `Degraded` rejimə keçir və yeni sifariş qəbul etmir |
+| `Payment.ReconcileAfterMinutes` | 10 | `Expired` / naməlum ödənişlərin provider statusu ilə uzlaşdırılması |
 | `Kiosk.CrashLoopThreshold` | 3 | 10 dəqiqədə bu qədər UI çöküşü → təhlükəsiz rejim + Critical incident |
 
 ### 2.5 Refund qaydaları
@@ -509,6 +514,7 @@ Azərbaycanda nağdsız ödəniş qəbul edən terminal adətən onlayn kassa / 
 - Sənəd layihələri: `docs/legal/PRIVACY_POLICY.az.md`, `docs/legal/TERMS.az.md` (qaralama, "hüquqşünas təsdiqi tələb olunur" qeydi ilə) — tətbiqlərdə və kioskda göstərilir.
 
 ### 2.14 Balans (Wallet) qaydaları
+- **Ledger prinsipi:** həqiqət mənbəyi `wallet_transactions` (ledger) sətirləridir; `wallets.Balance` yalnız hesablanmış (materialized) dəyərdir və hər əməliyyatda ledger ilə birlikdə, eyni transaction daxilində yenilənir. `Balance += x` tipli birbaşa dəyişiklik qadağandır; uzlaşdırma job-u fərq tapsa incident yaradır.
 - Wallet balansı **əvvəlcədən ödənilmiş xidmət krediti (avans)** kimi işləyir və **heç bir halda geri qaytarılmır / nağdlaşdırılmır / karta çıxarılmır** — nə istifadəçi, nə admin tərəfindən.
 - Wallet-ə düşən refund-lar da balansın bir hissəsi olur və eyni qaydaya tabedir.
 - Bu qayda İstifadə şərtlərində açıq yazılır və balans artırma ekranında göstərilir ("Balansa yüklənən məbləğ geri qaytarılmır").
@@ -636,7 +642,11 @@ NeoPrint/
 ├── tools/
 │   └── license-check/        # Lisenziya yoxlama skripti
 ├── docs/
-│   ├── DECISIONS.md  THIRD_PARTY.md  OPENBAO.md  API.md  KIOSK_SETUP.md  KIOSK_PROVISIONING.md  ADMIN_GUIDE.md  OPERATOR_GUIDE.md  PILOT.md
+│   ├── README.md (prioritet)  NeoPrint-PLAN.md  DECISIONS.md  THIRD_PARTY.md  OPENBAO.md  API.md
+│   ├── KIOSK_SETUP.md  KIOSK_PROVISIONING.md  ADMIN_GUIDE.md  OPERATOR_GUIDE.md  PILOT.md
+│   ├── ARCHITECTURE_RULES.md  STATE_MACHINES.md  IDEMPOTENCY.md  PAYMENT_FLOWS.md  FAILURE_RECOVERY.md
+│   ├── OFFLINE_BEHAVIOR.md  SECURITY_THREAT_MODEL.md  DOMAIN_RULES.md  DATA_RETENTION.md  OBSERVABILITY.md
+│   ├── CLAUDE_CODE_EXECUTION_RULES.md  adr/TEMPLATE.md  adr/ADR-XXXX-*.md
 │   └── legal/PRIVACY_POLICY.az.md  legal/TERMS.az.md
 ├── .env.openbao-seed.example   # Development OpenBao seed dəyərləri (saxta)
 ├── openbao/                    # openbao-init skripti, policy-lər (HCL), server konfiqi
@@ -694,6 +704,10 @@ Backend secret-ləri OpenBao-dan; `api` konteyneri yalnız `BAO_ADDR`, role_id v
 | `print_jobs` | `Id`, `JobCode (6 rəqəm)`, `KioskId`, `UserId?`, `FileId?` / `LocalFileName`, `Options`, `PriceBreakdown {ProfileId, Base, VolumeDiscount, BonusPagesUsed, PromoDiscount, Total}`, `RequiredSheets`, `Source (Flash/MobileSession/UserQr/Scheduled)`, `Status`, `PaymentId`, `PrintedSides`, `PrintedSheets`, `ErrorReason?`, `QueuePosition`, `StatusHistory[]` |
 | `payments` | `Id`, `JobId`, `UserId?`, `Method (BankQr/MobileApp/Wallet/Card/Bonus/Mixed)`, `Amount`, `BonusPagesUsed`, `PromoCodeId?`, `Discount`, `Status (Pending/Succeeded/Failed/Expired/Refunded/PartiallyRefunded/RefundFailed)`, `Channel (Kiosk/Mobile)`, `KioskId?`, `ProviderRef`, `RefundedAmount`, `FiscalReceiptId?`, `Timeline[] {At, Event, Details}`, `IdempotencyKey`, `ExpiresAt` |
 | `refunds` | Bölmə 2.5 |
+| `idempotency_keys` | `Key`, `ActorId`, `Operation`, `RequestHash`, `Status`, `ResponseSnapshot`, `CreatedAt`, `ExpiresAt` (24 saat) — eyni key + fərqli body → 409 |
+| `provider_events` | `Provider`, `ProviderEventId`, `Type`, `PayloadHash`, `ProcessedAt` — `(Provider, ProviderEventId)` unikal indeks (webhook dublikatları) |
+| `print_attempts` | `Id`, `JobId`, `AttemptNo`, `KioskId`, `PrinterName`, `StartedAt`, `FinishedAt`, `SpoolerJobId`, `PrinterCounterBefore`, `PrinterCounterAfter`, `ReportedSides`, `ReportedSheets`, `Status`, `ErrorCode` — "çap olubmu?" sualı bu qeydlər və printer sayğacı ilə cavablandırılır |
+| `state_transitions` | `EntityType`, `EntityId`, `FromStatus`, `ToStatus`, `ActorType`, `ActorId`, `DeviceId?`, `Reason`, `CorrelationId`, `CreatedAt` (böyük entity-lərdə `StatusHistory[]` əvəzinə ayrıca kolleksiya) |
 | `fiscal_receipts` | Bölmə 2.12 |
 | `receipts` | `Id`, `Number (NP-2026-000001)`, `PaymentId`, `UserId?`, `FiscalReceiptId?`, `PdfStorageKey`, `EmailedTo[]` |
 | `scheduled_prints` | `Id`, `UserId`, `KioskId`, `FileId`, `Options`, `PriceBreakdown`, `ScheduledAt`, `PaymentId`, `Status (Scheduled/AwaitingUser/Sent/Cancelled/Expired)` |
@@ -731,7 +745,7 @@ Draft ─► PendingPayment ─► Paid ─► Queued ─► Printing ─► Com
                                       ▼          ▼
                                   Refunded ◄── Cancelled
 ```
-Keçidlər yalnız `PrintJob.TransitionTo()` domen metodu ilə, icazəsiz keçid `DomainException` atır. Hər keçid `StatusHistory`-yə yazılır və domain event yaradır (MassTransit outbox vasitəsilə yayılır).
+Tam state maşınları (PrintJob, Payment, Refund, Device, Kiosk, Update, Schedule) `docs/STATE_MACHINES.md`-dədir. Keçidlər yalnız explicit domen metodları ilə (`job.Complete(...)`, `job.Interrupt(...)`), icazəsiz keçid `DomainException` atır; raw property assignment qadağandır. Hər keçid `StatusHistory`-yə yazılır və domain event yaradır (MassTransit outbox vasitəsilə yayılır).
 
 ---
 
@@ -817,6 +831,9 @@ Keçidlər yalnız `PrintJob.TransitionTo()` domen metodu ilə, icazəsiz keçid
 | `RefundConsumer` | event | Refund-u istiqamətinə görə icra edir: provider refund (retry ilə), wallet, bonus, voucher fallback; qaytarma fiskal çekini tələb edir |
 | `AutoRefundOnKioskErrorConsumer` | `PrintJobInterrupted` / `KioskIncidentRaised` | Kioskda bank ilə ödənilmiş anonim job-lar üçün dərhal karta refund |
 | `RefundStatusPollingJob` | 5 dəq | `Processing` provider refund-larının statusu |
+| `PaymentReconciliationJob` | 5 dəq | `Expired` / naməlum ödənişlərin provider statusu ilə uzlaşdırılması (gec gələn callback-lər üçün) |
+| `WalletLedgerReconciliationJob` | gündəlik | Ledger cəmi ilə `wallets.Balance` fərqi → incident |
+| `IdempotencyCleanupJob` | 1 saat | Vaxtı keçmiş idempotency açarları |
 | `IncidentNotificationConsumer` | event | Admin/Operator paneli + Email + Telegram |
 | `AffectedUsersNotificationConsumer` | event | Kiosk dayananda qeydiyyatlı job sahiblərinə refund təklifi |
 | `ReferralRewardConsumer` | `PrintJobCompleted` | İlk ödənişli çapda bonus |
@@ -881,7 +898,8 @@ Keçidlər yalnız `PrintJob.TransitionTo()` domen metodu ilə, icazəsiz keçid
 | 12 | RefundInfo | Xəta ilə dayanmış bank ödənişli job üçün: qaytarılan məbləğ, "1–3 iş günü" qeydi, refund status QR-ı, email daxil etmə |
 | 13 | OutOfService | "Kiosk müvəqqəti dayanmışdır", səbəb (ümumi mətn), refund məlumatı |
 | 14 | NotConfigured | "Kiosk quraşdırılır" (printer seçilməyib) |
-| 15 | Offline | İnternet yoxdur, yeni sifariş qəbul olunmur |
+| 15 | Degraded | Backend əlçatmazdır, lakin lokal konfiqurasiya keşi hələ etibarlıdır (`Kiosk.ConfigCacheTtlHours`): ekran açıqdır, ödənilmiş queue işlənir, **yeni ödəniş qəbul edilmir** ("Onlayn ödəniş müvəqqəti əlçatmazdır") |
+| 16 | Offline | İnternet yoxdur və ya keş köhnəlib — yeni sifariş qəbul olunmur |
 
 ### 7.4 Çap icrası
 - Kiosk `QueueUpdated` alır, növbəti `Queued` job-u özü götürür (lokal ardıcıl çap, eyni vaxtda 1 job).
@@ -1020,6 +1038,8 @@ Mənbələr:
 - Admin paneldə "Cihazlar → Enrollment token yarat": mövcud (`NotActivated`) kiosk qeydini seç və ya yeni kiosk parametrlərini əvvəlcədən doldur → birdəfəlik token (`Enrollment.TokenTtlHours`) + hazır əmr: `provision.ps1 -ApiUrl ... -EnrollmentToken ...` / `sudo ./provision.sh --api-url ... --enrollment-token ...`.
 - Provisioning skripti token-i `ProgramData` / `/var/lib/neoprint` altında qorunan fayla yazır → tətbiq ilk qeydiyyatda göndərir → cihaz dərhal həmin kioska `Active` olur, heç kimin ekrandakı kodu oxumasına ehtiyac yoxdur. Token istifadə olunan kimi silinir.
 - Token yoxdursa və ya vaxtı keçibsə cihaz adi pairing kodu axınına düşür.
+
+**Kiosk UI vəziyyətləri:** `Starting`, `Online`, `Degraded` (backend yoxdur, keş etibarlıdır), `Offline`, `PaymentUnavailable`, `PrinterUnavailable`, `Recovering`, `OutOfService`, `NotConfigured`, `SafeMode`. Heç bir halda backend/provider təsdiqləməmiş ödəniş "uğurlu" göstərilmir və eyni job iki dəfə çap edilmir.
 
 **Kiosk tətbiqində vəziyyətlər:** `Unregistered → Pending (Activation ekranı) → Active (NotConfigured / Online / Paused / Offline)`; `Revoked → Unregistered`. Cihaz kimliyi tətbiq qovluğundan kənarda saxlanılır, ona görə **yeniləmə, restart və ya tətbiqin yenidən quraşdırılması yenidən qeydiyyat tələb etmir**.
 
@@ -1329,6 +1349,9 @@ Mənbələr:
 - Bütün admin əməliyyatları `audit_logs`-a yazılır.
 - Konvertasiya ayrıca prosesdə, vaxt limiti ilə (tam izolyasiya və virus yoxlaması — Addım 8).
 - HTTPS məcburi (Production), HSTS, təhlükəsizlik header-ləri (CSP admin üçün).
+- **Idempotency ilk gündən:** pul, job, fiskal, voucher, referral, aktivləşdirmə və bütün consumer-lər üçün (`docs/IDEMPOTENCY.md`) — Addım 7-yə saxlanılmır.
+- **CorrelationId** hər sorğuda yaradılır / qəbul edilir və API → Application → RabbitMQ → Worker → Kiosk → Printer → Payment/Refund/Fiscal zənciri boyunca ötürülür; structured JSON log-larda `docs/OBSERVABILITY.md`-dəki sahələr olur (token, secret, fayl məzmunu və artıq PII log-a yazılmır). Tam OpenTelemetry / Grafana / GlitchTip yığımı Addım 8-dədir.
+- Konvertasiya prosesi şəbəkəsiz işləyir (Linux: ayrıca network namespace / `--no-network` wrapper; Windows: firewall qaydası ilə icazəsiz proses), temp qovluq hər çağırışdan sonra təmizlənir.
 
 ---
 
@@ -1338,6 +1361,7 @@ Mənbələr:
 - OpenBao: Testcontainers ilə OpenBao (dev rejimi) — AppRole login, KV v2 oxuma, token renew, çatışmayan açarda başlamama, rotasiya olunan secret-in restart-sız yenilənməsi.
 - Crypto: envelope encryption round-trip, chunk sırasının dəyişdirilməsinin aşkarlanması, KEK rotasiyası, səhv açarla oxuma xətası.
 - Application: əsas handler-lər (create job, pay, cancel, refund, fiskal, schedule, referral reward, account deletion).
+- **Recovery/idempotency ssenariləri (məcburi):** ödənişdən sonra proses çöküşü, `Printing` zamanı reboot, Redis itkisi, RabbitMQ müvəqqəti itkisi, printer offline, dublikat ödəniş callback-i, dublikat refund event-i, uğursuz yeniləmə + rollback, eyni `Idempotency-Key` ilə təkrar sorğu, eyni `ProviderEventId` ilə ikinci webhook.
 - Integration: 9.0–9.10 axınları API səviyyəsində; permission policy-ləri (icazəsiz rol 403, rol dəyişikliyi dərhal tətbiq, kiosk əhatəsi filtri, son SuperAdmin qorunması); MassTransit outbox → consumer çatdırılması, Hangfire job-larının icrası.
 - Fayllar: `tests/fixtures/formats/` hər format qrupu üçün konvertasiya + səhifə sayı, magic bytes, effektiv limit (default + kiosk override).
 - Storage: migrasiya (restart-dan checkpoint davamı daxil), mirror, reconciliation, bütün provayderlərdən silinmə.
@@ -1365,7 +1389,8 @@ Mənbələr:
 - `docker-compose.yml` (Bölmə 4) + backend `Dockerfile` (LibreOffice, Ghostscript, fontlar, PDFium)
 - `tools/license-check` + CI workflow (build, test, lisenziya)
 - Backend solution, layer-lər, MediatR 12 (pipeline behavior-lar: validasiya, logging, transaction), validator-lar, ProblemDetails, health checks, Swagger (yalnız Development), OpenBao-dan secret yükləmə və validasiya
-- Shared: `NeoPrint.Crypto` (envelope encryption, KEK rotasiya modeli) + testlər
+- Shared: `NeoPrint.Crypto` (envelope encryption, KEK rotasiya modeli) + testlər; `Money` value object + mərkəzi yuvarlaqlaşdırma
+- **Kross-kəsən infrastruktur (ilk gündən):** `Idempotency-Key` middleware + `idempotency_keys`, `provider_events` unikal indeksi, CorrelationId middleware + structured JSON logging, explicit state transition bazası (`state_transitions`, domain transition metodları, icazəsiz keçiddə `DomainException`), rate limiting
 - Mongo konfiqurasiya, indekslər, Domain entity-ləri; MassTransit 8 (RabbitMQ, Mongo outbox/inbox); Hangfire (Mongo storage, dashboard)
 - Seed: SuperAdmin + rol şablonları, default qiymət profili, `admin_settings`, supply alert qaydaları, feature flag-lar, hüquqi sənəd qaralamaları; Development-də 2 test kiosk qeydi + hər biri üçün enrollment token (log-a yazılır; lokal kiosk tətbiqi `--enrollment-token` ilə dərhal aktivləşir)
 - Auth: istifadəçi (register, confirm email, login, refresh), razılıqlar (`legal_documents`, `consents`), cihaz qeydiyyatı və aktivləşdirmə (`kiosk_devices`, device challenge, Provisioning/Kiosk token-ləri, `/hubs/provisioning`, Bölmə 7.11); admin auth (cookie refresh, ilk girişdə şifrə dəyişmə); dinamik RBAC (`admin_roles`, icazə kataloqu, `HasPermission`, kiosk əhatəsi); audit log middleware
@@ -1402,7 +1427,7 @@ Mənbələr:
 - PrintJob domeni + status maşını, PrintJobs API, queue (Redis sorted set `queue:{kioskId}`), `KioskHub` + Redis backplane
 - Kiosk: USB aşkarlama, FlashBrowser, FilePreview, FileEditor (PDF səhifələri, şəkil, TXT), PrintOptions (profil qiyməti, kağız yoxlaması), `IPrinterFormatSupport`, native və ya PDF çap qaydası, "USB" badge + info, şifrəli spool, çap icrası, queue paneli, idle reset, CancelJob, NotConfigured / Offline ekranları
 - Kiosk lockdown: provisioning skriptlərinin tam versiyası (Bölmə 7.12 — Windows: Shell Launcher, Keyboard Filter, bildiriş/yeniləmə siyasətləri; Linux: cage, logind, polkit, unattended-upgrades), `IKioskLockdown`, gizli admin çıxışı, `docs/KIOSK_SETUP.md`, `docs/KIOSK_PROVISIONING.md`
-- Agent: servis, watchdog (crash loop → təhlükəsiz rejim), job jurnalı və restart-dan bərpa axını, spool açarının qorunması
+- Agent: servis, watchdog (crash loop → təhlükəsiz rejim), job jurnalı və restart-dan bərpa axını, spool açarının qorunması, `print_attempts` (printer sayğacı ilə "çap olubmu?" yoxlaması), `Degraded` / `Offline` rejimləri və konfiqurasiya keşinin TTL-i
 - Kağız sayğacı: `PrintedSheets` hesabatı, sayğac azalması, `Paper.BlockWhenInsufficient` yoxlaması, admin paneldən doldurma (Operator paneli Addım 7-də)
 - Kiosk analitika hadisələri (Bölmə 2.17) toplama və göndərmə
 - Admin web: Kiosk detalı — Printerlər (siyahı, yenilə, default et, override, test çap), Queue (canlı, ləğv), Job tarixçəsi, Sərf (sayğac, əl ilə doldurma); Print job-lar səhifəsi; Dashboard (kiosk statusları, NotConfigured)
@@ -1418,8 +1443,8 @@ Mənbələr:
 
 #### Addım 4 — Ödəniş, refund, wallet, fiskal çek, qəbz, promokod
 **İşlər**
-- Payment domeni, intent-lər, `IBankQrProvider` + `ICardPaymentProvider` mock-ları (`RefundAsync` daxil, uğursuzluq simulyasiyası), callback, dev endpoint-ləri, `PaymentExpirationJob` (`Payment.TimeoutMinutes`)
-- `refunds` modeli, istiqamət matrisi, `RefundConsumer`, `AutoRefundOnKioskErrorConsumer`, `RefundStatusPollingJob`, voucher fallback, ödəniş timeline-ı
+- Payment domeni (ledger, `Money`, snapshot), intent-lər, `IBankQrProvider` + `ICardPaymentProvider` mock-ları (`RefundAsync` daxil, uğursuzluq simulyasiyası), callback, dev endpoint-ləri, `PaymentExpirationJob` (`Payment.TimeoutMinutes`)
+- `refunds` modeli (`docs/STATE_MACHINES.md` üzrə), istiqamət matrisi, webhook imza + `ProviderEventId` dublikat qorunması, `PaymentReconciliationJob`, `RefundConsumer`, `AutoRefundOnKioskErrorConsumer`, `RefundStatusPollingJob`, voucher fallback, ödəniş timeline-ı
 - Wallet (balans, bonus, top-up, geri qaytarılmama qaydası), admin adjust
 - `IFiscalProvider` + `MockFiscalProvider`, `fiscal_receipts`, `FiscalizationConsumer`, satış / qaytarma / top-up çekləri, kiosk və onlayn terminal ID-ləri
 - Qəbz: QuestPDF şablonu (fiskal məlumat + QR), nömrələmə, şifrəli storage, email (MailKit), fiskal çek gecikəndə qəbz yenilənməsi
@@ -1475,7 +1500,7 @@ Mənbələr:
 - Admin web: Kiosk detalı — Cari vəziyyət (canlı + qrafiklər), Sərf (proqnoz, qaydalar), Servis tapşırıqları, Incident-lər, Əmrlər; Printer detalı; Printerlər (ümumi); Xəbərdarlıq qaydaları; Servis tapşırıqları; Anbar; Incident-lər (səs + brauzer bildirişi); Audit log; Pilot hesabatı (`AnalyticsRollupJob`)
 - **Yeniləmə sistemi:** paket imzalama (CI), `releases`, rollout-lar, Agent updater (endir, yoxla, boş anı gözlə, keçid, sağlamlıq yoxlaması, rollback), Agent özünü yeniləmə, provisioning yeniləməsi; uzaqdan `UpdateNow`, `RollbackVersion`, `UploadLogs`, `ReapplyProvisioning`, `RestartAgent`; enrollment token-lər; golden image skriptləri
 - Admin web: Buraxılışlar, Cihazlar → Enrollment token-lər, kiosk detalında versiya / yeniləmə statusu, log yükləmə
-- Rate limiting, idempotency middleware, `FileCleanupJob`, DLQ monitorinqi
+- `FileCleanupJob`, DLQ monitorinqi, wallet ledger uzlaşdırması, ödəniş reconciliation-ı
 - Integration testlər (Bölmə 11), CI-də hamısı
 - Buraxılış: backend Docker image, desktop (UI + Agent) `dotnet publish -r win-x64 --self-contained` və `-r linux-x64 --self-contained` → imzalı buraxılış paketləri + provisioning skriptləri, Flutter `apk` / `appbundle` və iOS build, admin web Docker image (nginx), `docs/API.md`, `docs/ADMIN_GUIDE.md`, `docs/OPERATOR_GUIDE.md`, `docs/PILOT.md`, `docs/legal/*` qaralamaları, README
 

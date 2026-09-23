@@ -1,0 +1,81 @@
+# NeoPrint --- Security Threat Model
+
+## Trust boundaries
+
+### User
+
+Untrusted.
+
+### Uploaded files
+
+Untrusted.
+
+### Kiosk
+
+Untrusted edge device.
+
+### Backend
+
+Trusted application boundary.
+
+### External providers
+
+Partially trusted; responses must be validated.
+
+### Admin
+
+Privileged but auditable.
+
+## Threats
+
+### Malicious file
+
+Risk: - converter exploit - resource exhaustion - malicious document
+
+Controls: - isolated converter - no network access - timeout -
+CPU/memory limits - restricted filesystem - temporary directory -
+antivirus/malware scanning where planned
+
+### Stolen kiosk credentials
+
+Controls: - device keypair - private key never leaves device - revoke
+support - short-lived auth tokens - activation expiry - rate limiting
+
+### Token leakage
+
+Controls: - HttpOnly/Secure where applicable - secure storage - no token
+logging - no secrets in telemetry
+
+### Replay
+
+Controls: - idempotency - unique provider event IDs - request
+timestamps/nonces where applicable - device authentication
+
+### Admin abuse
+
+Controls: - RBAC - immutable audit - reason for sensitive actions -
+least privilege
+
+### File privacy
+
+Controls: - application-level encryption - no presigned public URLs -
+admin cannot casually inspect user files - retention/auto-delete -
+account export/delete rules
+
+### Secret leakage
+
+Never commit: - OpenBao credentials - production API keys - payment
+secrets - SMTP passwords - private device keys
+
+## Logging
+
+Never log: - access tokens - refresh tokens - passwords - encryption
+keys - private keys - complete file content - payment secrets
+
+PII should be minimized and masked where practical.
+
+## Security changes
+
+Security-sensitive changes require tests.
+
+Do not weaken security controls just to make development easier.
