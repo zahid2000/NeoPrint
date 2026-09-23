@@ -51,6 +51,7 @@ yarn-error.log*
 pnpm-debug.log*
 .angular/
 dist/
+out-tsc/
 .eslintcache
 
 # ---------------------------------------------------------------------------

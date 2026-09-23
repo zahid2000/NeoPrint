@@ -1,0 +1,150 @@
+<div class="flags">
+  <div class="flags__header">
+    <h1>{{ 'nav.features' | translate }}</h1>
+
+    <button mat-stroked-button type="button" (click)="reload()">
+      <mat-icon>refresh</mat-icon>
+      {{ 'common.refresh' | translate }}
+    </button>
+  </div>
+
+  <p class="flags__hint">{{ 'features.hint' | translate }}</p>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  @if (errorMessage()) {
+    <div class="flags__error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage()! | translate }}</span>
+    </div>
+  }
+
+  <mat-accordion multi>
+    @for (flag of flags(); track flag.key) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <code>{{ flag.key }}</code>
+            @if (isDirty(flag)) {
+              <mat-icon
+                class="flags__dirty"
+                [matTooltip]="'features.unsaved' | translate"
+                >edit</mat-icon
+              >
+            }
+          </mat-panel-title>
+          <mat-panel-description>
+            @if (draft(flag.key).defaultEnabled) {
+              {{ 'features.on' | translate }}
+            } @else {
+              {{ 'features.off' | translate }}
+            }
+            @if (draft(flag.key).rolloutPercent > 0 && draft(flag.key).rolloutPercent < 100) {
+              · {{ draft(flag.key).rolloutPercent }}%
+            }
+            @if (overriddenKioskIds(flag.key).length > 0) {
+              · {{ 'features.overrideCount' | translate: { count: overriddenKioskIds(flag.key).length } }}
+            }
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        @if (flag.description) {
+          <p class="flags__description">{{ flag.description }}</p>
+        }
+
+        <mat-slide-toggle
+          [checked]="draft(flag.key).defaultEnabled"
+          (change)="setDefault(flag.key, $event.checked)"
+        >
+          {{ 'features.defaultEnabled' | translate }}
+        </mat-slide-toggle>
+
+        <div class="flags__rollout">
+          <label [attr.for]="'rollout-' + flag.key">
+            {{ 'features.rollout' | translate }}: {{ draft(flag.key).rolloutPercent }}%
+          </label>
+          <mat-slider min="0" max="100" step="5" discrete>
+            <input
+              matSliderThumb
+              [id]="'rollout-' + flag.key"
+              [value]="draft(flag.key).rolloutPercent"
+              (valueChange)="setRollout(flag.key, $event)"
+            />
+          </mat-slider>
+          <p class="flags__note">{{ 'features.rolloutNote' | translate }}</p>
+        </div>
+
+        @if (flag.platforms.length > 0) {
+          <p class="flags__note">
+            {{ 'features.platforms' | translate }}:
+            @for (platform of flag.platforms; track platform) {
+              <mat-chip>{{ platform }}</mat-chip>
+            }
+          </p>
+        }
+
+        <h3 class="flags__subtitle">{{ 'features.kioskOverrides' | translate }}</h3>
+
+        @if (kiosks().length === 0) {
+          <p class="flags__note">{{ 'features.noKiosks' | translate }}</p>
+        } @else {
+          <div class="flags__kiosks">
+            @for (kiosk of kiosks(); track kiosk.id) {
+              <button
+                type="button"
+                class="flags__kiosk"
+                [class.flags__kiosk--on]="overrideState(flag.key, kiosk.id) === 'on'"
+                [class.flags__kiosk--off]="overrideState(flag.key, kiosk.id) === 'off'"
+                [matTooltip]="'features.cycleHint' | translate"
+                (click)="cycleOverride(flag.key, kiosk.id)"
+              >
+                <span>{{ kiosk.code }}</span>
+                <span class="flags__kiosk-state">
+                  @switch (overrideState(flag.key, kiosk.id)) {
+                    @case ('on') {
+                      {{ 'features.on' | translate }}
+                    }
+                    @case ('off') {
+                      {{ 'features.off' | translate }}
+                    }
+                    @default {
+                      {{ 'features.followsDefault' | translate }}
+                    }
+                  }
+                </span>
+              </button>
+            }
+          </div>
+        }
+
+        @if (flag.userAllowlist.length > 0) {
+          <p class="flags__note">
+            {{ 'features.allowlist' | translate: { count: flag.userAllowlist.length } }}
+          </p>
+        }
+
+        <div class="flags__actions">
+          <button
+            mat-button
+            type="button"
+            [disabled]="!isDirty(flag) || savingKey() === flag.key"
+            (click)="revert(flag)"
+          >
+            {{ 'common.revert' | translate }}
+          </button>
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            [disabled]="!isDirty(flag) || savingKey() === flag.key"
+            (click)="save(flag)"
+          >
+            {{ 'common.save' | translate }}
+          </button>
+        </div>
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+</div>

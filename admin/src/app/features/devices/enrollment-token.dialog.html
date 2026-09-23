@@ -1,0 +1,113 @@
+<h2 mat-dialog-title>{{ 'tokens.create' | translate }}</h2>
+
+<mat-dialog-content class="activate">
+  @if (errorMessage()) {
+    <div class="activate__error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage()! | translate }}</span>
+    </div>
+  }
+
+  @if (created(); as token) {
+    <p class="activate__hint">{{ 'tokens.onceOnly' | translate }}</p>
+
+    <div class="token">
+      <code class="token__value">{{ token.token }}</code>
+      <button
+        mat-icon-button
+        type="button"
+        [attr.aria-label]="'common.copy' | translate"
+        (click)="copy(token.token)"
+      >
+        <mat-icon>content_copy</mat-icon>
+      </button>
+    </div>
+
+    <p class="activate__hint">{{ 'tokens.commandHint' | translate }}</p>
+
+    <mat-tab-group>
+      <mat-tab label="Windows">
+        <div class="token">
+          <code class="token__command">{{ token.windowsCommand }}</code>
+          <button
+            mat-icon-button
+            type="button"
+            [attr.aria-label]="'common.copy' | translate"
+            (click)="copy(token.windowsCommand)"
+          >
+            <mat-icon>content_copy</mat-icon>
+          </button>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Linux">
+        <div class="token">
+          <code class="token__command">{{ token.linuxCommand }}</code>
+          <button
+            mat-icon-button
+            type="button"
+            [attr.aria-label]="'common.copy' | translate"
+            (click)="copy(token.linuxCommand)"
+          >
+            <mat-icon>content_copy</mat-icon>
+          </button>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  } @else {
+    <form [formGroup]="form" class="activate__form">
+      <mat-radio-group formControlName="mode" class="activate__modes">
+        <mat-radio-button value="new">
+          {{ 'tokens.forNewKiosk' | translate }}
+        </mat-radio-button>
+        <mat-radio-button value="existing" [disabled]="bindableKiosks().length === 0">
+          {{ 'tokens.forExistingKiosk' | translate }}
+        </mat-radio-button>
+      </mat-radio-group>
+
+      @if (!isNewKiosk) {
+        <mat-form-field appearance="fill" class="activate__field activate__field--wide">
+          <mat-label>{{ 'activate.kiosk' | translate }}</mat-label>
+          <mat-select formControlName="kioskId">
+            @for (kiosk of bindableKiosks(); track kiosk.id) {
+              <mat-option [value]="kiosk.id">
+                {{ kiosk.code }} — {{ kiosk.name }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+
+      <mat-form-field appearance="fill" class="activate__field">
+        <mat-label>{{ 'tokens.ttlHours' | translate }}</mat-label>
+        <input matInput type="number" min="1" max="720" formControlName="ttlHours" required />
+        <mat-hint>{{ 'tokens.ttlHint' | translate }}</mat-hint>
+      </mat-form-field>
+    </form>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  @if (created()) {
+    <button mat-flat-button color="primary" type="button" (click)="close()">
+      {{ 'common.done' | translate }}
+    </button>
+  } @else {
+    <button mat-button type="button" (click)="close()">
+      {{ 'common.cancel' | translate }}
+    </button>
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      [disabled]="form.invalid || busy()"
+      (click)="submit()"
+    >
+      @if (busy()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        {{ 'tokens.generate' | translate }}
+      }
+    </button>
+  }
+</mat-dialog-actions>

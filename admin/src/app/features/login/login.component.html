@@ -1,0 +1,74 @@
+<div class="login">
+  <mat-card class="login__card">
+    <mat-card-content>
+      <div class="login__brand">
+        <mat-icon>print</mat-icon>
+        <span>NeoPrint</span>
+      </div>
+
+      <h1 class="login__title">{{ 'login.title' | translate }}</h1>
+
+      @if (errorMessage()) {
+        <div class="login__error" role="alert">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ errorMessage()! | translate }}</span>
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <mat-form-field appearance="fill" class="login__field">
+          <mat-label>{{ 'login.email' | translate }}</mat-label>
+          <input
+            matInput
+            type="email"
+            formControlName="email"
+            autocomplete="username"
+            required
+          />
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <mat-error>{{ 'login.emailRequired' | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="login__field">
+          <mat-label>{{ 'login.password' | translate }}</mat-label>
+          <input
+            matInput
+            [type]="showPassword() ? 'text' : 'password'"
+            formControlName="password"
+            autocomplete="current-password"
+            required
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="togglePassword()"
+            [attr.aria-label]="'login.password' | translate"
+          >
+            <mat-icon>
+              {{ showPassword() ? 'visibility_off' : 'visibility' }}
+            </mat-icon>
+          </button>
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <mat-error>{{ 'login.passwordRequired' | translate }}</mat-error>
+          }
+        </mat-form-field>
+
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          class="login__submit"
+          [disabled]="busy()"
+        >
+          @if (busy()) {
+            <mat-spinner diameter="20" />
+          } @else {
+            {{ 'login.submit' | translate }}
+          }
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

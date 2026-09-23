@@ -1,0 +1,89 @@
+<mat-sidenav-container class="shell">
+  <mat-sidenav
+    class="shell__sidenav"
+    mode="side"
+    [opened]="sidenavOpen()"
+  >
+    <div class="shell__brand">
+      <mat-icon>print</mat-icon>
+      <span>NeoPrint</span>
+    </div>
+
+    <mat-divider />
+
+    <mat-nav-list>
+      @for (item of navItems(); track item.path) {
+        <a
+          mat-list-item
+          [routerLink]="item.path"
+          routerLinkActive
+          #link="routerLinkActive"
+          [routerLinkActiveOptions]="{ exact: item.path === '/' }"
+          [activated]="link.isActive"
+        >
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.labelKey | translate }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar class="shell__toolbar">
+      <button
+        mat-icon-button
+        type="button"
+        (click)="toggleSidenav()"
+        [attr.aria-label]="'nav.dashboard' | translate"
+      >
+        <mat-icon>menu</mat-icon>
+      </button>
+
+      <span class="shell__title">{{ 'app.title' | translate }}</span>
+
+      <span class="shell__spacer"></span>
+
+      <button mat-button type="button" [matMenuTriggerFor]="languageMenu">
+        <mat-icon>language</mat-icon>
+        {{ currentLanguage().toUpperCase() }}
+      </button>
+
+      <mat-menu #languageMenu>
+        @for (language of languages; track language.code) {
+          <button
+            mat-menu-item
+            type="button"
+            (click)="selectLanguage(language.code)"
+          >
+            {{ language.name }}
+          </button>
+        }
+      </mat-menu>
+
+      <button mat-button type="button" [matMenuTriggerFor]="accountMenu">
+        <span class="shell__avatar">{{ initial() }}</span>
+        {{ admin()?.fullName || admin()?.email }}
+      </button>
+
+      <mat-menu #accountMenu>
+        <div class="shell__account">
+          <div class="shell__account-email">{{ admin()?.email }}</div>
+          <div class="shell__account-roles">
+            {{ admin()?.roles?.join(', ') }}
+          </div>
+        </div>
+
+        <mat-divider />
+
+        <button mat-menu-item type="button" (click)="signOut()">
+          <mat-icon>logout</mat-icon>
+          {{ 'common.signOut' | translate }}
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <main class="shell__content">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

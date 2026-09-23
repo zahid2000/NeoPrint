@@ -1,0 +1,160 @@
+<div class="roles">
+  <div class="roles__header">
+    <h1>{{ 'nav.roles' | translate }}</h1>
+
+    <button mat-flat-button color="primary" type="button" (click)="startNew()">
+      <mat-icon>add</mat-icon>
+      {{ 'roles.new' | translate }}
+    </button>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  @if (errorMessage()) {
+    <div class="roles__error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage()! | translate }}</span>
+    </div>
+  }
+
+  <div class="roles__layout">
+    <mat-card class="roles__list">
+      <mat-nav-list>
+        @for (role of roles(); track role.id) {
+          <button
+            mat-list-item
+            type="button"
+            class="roles__item"
+            [class.roles__item--active]="role.id === selectedId()"
+            (click)="select(role.id)"
+          >
+            <span matListItemTitle>
+              {{ role.name }}
+              @if (role.isSystem) {
+                <mat-icon
+                  class="roles__system"
+                  [matTooltip]="'roles.system' | translate"
+                  >shield</mat-icon
+                >
+              }
+            </span>
+            <span matListItemLine>
+              {{ 'roles.permissionCount' | translate: { count: role.permissions.length } }}
+              ·
+              {{ 'roles.userCount' | translate: { count: role.userCount } }}
+            </span>
+          </button>
+        }
+      </mat-nav-list>
+    </mat-card>
+
+    <mat-card class="roles__editor">
+      <mat-card-content>
+        <form [formGroup]="form" class="roles__form">
+          <mat-form-field appearance="fill" class="roles__field">
+            <mat-label>{{ 'roles.name' | translate }}</mat-label>
+            <input matInput formControlName="name" [readonly]="isReadOnly()" required />
+          </mat-form-field>
+
+          <mat-form-field appearance="fill" class="roles__field">
+            <mat-label>{{ 'roles.description' | translate }}</mat-label>
+            <input matInput formControlName="description" [readonly]="isReadOnly()" />
+          </mat-form-field>
+        </form>
+
+        @if (isReadOnly()) {
+          <p class="roles__hint">{{ 'roles.systemHint' | translate }}</p>
+        }
+
+        <p class="roles__count">
+          {{ 'roles.selectedCount' | translate: { count: draftCount() } }}
+        </p>
+
+        <mat-accordion multi>
+          @for (group of groups(); track group.key) {
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  {{ 'permissionGroup.' + group.key | translate }}
+                </mat-panel-title>
+                <mat-panel-description>
+                  @switch (groupState(group)) {
+                    @case ('all') {
+                      {{ 'roles.groupAll' | translate }}
+                    }
+                    @case ('some') {
+                      {{ 'roles.groupSome' | translate }}
+                    }
+                    @default {
+                      {{ 'roles.groupNone' | translate }}
+                    }
+                  }
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              <mat-checkbox
+                class="roles__group-toggle"
+                [disabled]="isReadOnly()"
+                [checked]="groupState(group) === 'all'"
+                [indeterminate]="groupState(group) === 'some'"
+                (change)="toggleGroup(group, $event.checked)"
+              >
+                {{ 'roles.toggleGroup' | translate }}
+              </mat-checkbox>
+
+              <div class="roles__permissions">
+                @for (permission of group.permissions; track permission) {
+                  <mat-checkbox
+                    [disabled]="isReadOnly()"
+                    [checked]="has(permission)"
+                    (change)="toggle(permission, $event.checked)"
+                  >
+                    <code>{{ permission }}</code>
+                  </mat-checkbox>
+                }
+              </div>
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+      </mat-card-content>
+
+      <mat-card-actions align="end">
+        @if (selected(); as role) {
+          <button
+            mat-button
+            type="button"
+            [disabled]="saving()"
+            (click)="clone(role)"
+          >
+            <mat-icon>content_copy</mat-icon>
+            {{ 'roles.clone' | translate }}
+          </button>
+
+          <button
+            mat-button
+            color="warn"
+            type="button"
+            [disabled]="saving() || role.isSystem"
+            [matTooltip]="role.isSystem ? ('roles.systemHint' | translate) : ''"
+            (click)="remove(role)"
+          >
+            <mat-icon>delete</mat-icon>
+            {{ 'common.delete' | translate }}
+          </button>
+        }
+
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          [disabled]="form.invalid || saving() || isReadOnly()"
+          (click)="save()"
+        >
+          {{ 'common.save' | translate }}
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>

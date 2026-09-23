@@ -1,0 +1,52 @@
+<h1 class="page__title">{{ 'dashboard.title' | translate }}</h1>
+
+<p class="page__subtitle">
+  {{ 'dashboard.welcome' | translate: { name: admin()?.fullName || admin()?.email } }}
+</p>
+
+<div class="dashboard__grid">
+  <mat-card *appHasPermission="permissions.devicesView" class="dashboard__tile">
+    <mat-card-content>
+      <div class="dashboard__tile-head">
+        <mat-icon>devices</mat-icon>
+        <span>{{ 'dashboard.pendingDevices' | translate }}</span>
+      </div>
+
+      <div class="dashboard__metric">
+        {{ pendingDeviceCount() ?? '—' }}
+      </div>
+
+      <a mat-button routerLink="/devices">
+        {{ 'devices.title' | translate }}
+      </a>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="dashboard__tile">
+    <mat-card-content>
+      <div class="dashboard__tile-head">
+        <mat-icon>vpn_key</mat-icon>
+        <span>{{ 'dashboard.kioskScope' | translate }}</span>
+      </div>
+
+      <div class="dashboard__scope">
+        {{ kioskScopeLabel() | translate: { count: kioskScopeCount() } }}
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<mat-card class="dashboard__permissions">
+  <mat-card-content>
+    <div class="dashboard__tile-head">
+      <mat-icon>verified_user</mat-icon>
+      <span>{{ 'dashboard.yourPermissions' | translate }}</span>
+    </div>
+
+    <mat-chip-set>
+      @for (permission of admin()?.permissions ?? []; track permission) {
+        <mat-chip>{{ permission }}</mat-chip>
+      }
+    </mat-chip-set>
+  </mat-card-content>
+</mat-card>

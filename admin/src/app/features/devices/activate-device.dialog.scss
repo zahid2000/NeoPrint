@@ -1,0 +1,110 @@
+.activate {
+  &__error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+
+  &__facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.35rem 1rem;
+    margin: 0 0 1rem;
+
+    dt {
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    dd {
+      margin: 0;
+    }
+  }
+
+  &__hint {
+    margin: 0 0 1rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 1rem;
+  }
+
+  &__modes {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  &__field {
+    width: 100%;
+
+    &--wide {
+      grid-column: 1 / -1;
+    }
+  }
+
+  &__printers {
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding: 0.35rem 0;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+      color: var(--mat-sys-on-surface-variant);
+
+      strong {
+        color: var(--mat-sys-on-surface);
+      }
+    }
+  }
+
+  &__step-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .activate__form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// The enrollment-token dialog shares these styles: the raw token is shown once
+// and has to be easy to copy without selecting it by hand.
+.token {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-surface-container);
+
+  &__value,
+  &__command {
+    flex: 1 1 auto;
+    overflow-wrap: anywhere;
+    font-family: 'Roboto Mono', 'Cascadia Mono', monospace;
+    font-size: 0.85rem;
+  }
+
+  &__value {
+    letter-spacing: 0.05em;
+  }
+}

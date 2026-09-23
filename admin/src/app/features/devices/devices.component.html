@@ -1,0 +1,319 @@
+<div class="devices">
+  <div class="devices__header">
+    <h1>{{ 'nav.devices' | translate }}</h1>
+
+    <div class="devices__actions">
+      <button mat-stroked-button type="button" (click)="reload()">
+        <mat-icon>refresh</mat-icon>
+        {{ 'common.refresh' | translate }}
+      </button>
+
+      <button
+        *appHasPermission="permissions.devicesEnroll"
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="createToken()"
+      >
+        <mat-icon>vpn_key</mat-icon>
+        {{ 'tokens.create' | translate }}
+      </button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  @if (errorMessage()) {
+    <div class="devices__error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage()! | translate }}</span>
+    </div>
+  }
+
+  <mat-card *appHasPermission="permissions.kiosksActivate" class="devices__lookup">
+    <mat-card-content>
+      <p class="devices__lookup-hint">{{ 'devices.lookupHint' | translate }}</p>
+
+      <form [formGroup]="lookupForm" (ngSubmit)="lookup()" class="devices__lookup-form">
+        <mat-form-field appearance="fill">
+          <mat-label>{{ 'devices.pairingCode' | translate }}</mat-label>
+          <input
+            matInput
+            formControlName="code"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="ABCD-2345"
+          />
+        </mat-form-field>
+
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          [disabled]="lookupForm.invalid || lookupBusy()"
+        >
+          <mat-icon>search</mat-icon>
+          {{ 'devices.lookup' | translate }}
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-tab-group class="devices__tabs" [mat-stretch-tabs]="false">
+    <!-- Waiting to be activated -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        {{ 'devices.pending' | translate }} ({{ pending().length }})
+      </ng-template>
+
+      @if (pending().length === 0) {
+        <p class="devices__empty">{{ 'devices.noPending' | translate }}</p>
+      } @else {
+        <table mat-table [dataSource]="pending()" class="devices__table">
+          <ng-container matColumnDef="hostname">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.hostname' | translate }}</th>
+            <td mat-cell *matCellDef="let device">
+              {{ device.hostname ?? '—' }}
+              @if (device.hasValidPairingCode) {
+                <mat-icon
+                  class="devices__code-icon"
+                  [matTooltip]="'devices.codeValid' | translate"
+                  >verified</mat-icon
+                >
+              } @else {
+                <mat-icon
+                  class="devices__code-icon devices__code-icon--stale"
+                  [matTooltip]="'devices.codeExpired' | translate"
+                  >timer_off</mat-icon
+                >
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="platform">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.platform' | translate }}</th>
+            <td mat-cell *matCellDef="let device">{{ device.platform }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="version">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.version' | translate }}</th>
+            <td mat-cell *matCellDef="let device">{{ device.appVersion ?? '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="lastSeen">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.lastSeen' | translate }}</th>
+            <td mat-cell *matCellDef="let device">
+              {{ device.lastSeenAt | date: 'short' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="printers">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.printers' | translate }}</th>
+            <td mat-cell *matCellDef="let device">
+              {{ device.reportedPrinters.length }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let device">
+              <button
+                *appHasPermission="permissions.kiosksActivate"
+                mat-flat-button
+                color="primary"
+                type="button"
+                [disabled]="!device.hasValidPairingCode"
+                [matTooltip]="
+                  device.hasValidPairingCode ? '' : ('devices.codeExpired' | translate)
+                "
+                (click)="activate(device)"
+              >
+                {{ 'devices.activate' | translate }}
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="deviceColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: deviceColumns"></tr>
+        </table>
+      }
+    </mat-tab>
+
+    <!-- Active -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        {{ 'devices.active' | translate }} ({{ active().length }})
+      </ng-template>
+
+      @if (active().length === 0) {
+        <p class="devices__empty">{{ 'devices.noActive' | translate }}</p>
+      } @else {
+        <table mat-table [dataSource]="active()" class="devices__table">
+          <ng-container matColumnDef="kiosk">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.kiosk' | translate }}</th>
+            <td mat-cell *matCellDef="let device">
+              <mat-chip>{{ device.kioskCode ?? '—' }}</mat-chip>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="hostname">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.hostname' | translate }}</th>
+            <td mat-cell *matCellDef="let device">{{ device.hostname ?? '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="platform">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.platform' | translate }}</th>
+            <td mat-cell *matCellDef="let device">{{ device.platform }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="version">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.version' | translate }}</th>
+            <td mat-cell *matCellDef="let device">{{ device.appVersion ?? '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="lastSeen">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.lastSeen' | translate }}</th>
+            <td mat-cell *matCellDef="let device">
+              {{ device.lastSeenAt | date: 'short' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let device">
+              <button
+                *appHasPermission="permissions.devicesRevoke"
+                mat-stroked-button
+                color="warn"
+                type="button"
+                (click)="revoke(device)"
+              >
+                <mat-icon>link_off</mat-icon>
+                {{ 'devices.revoke' | translate }}
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="activeColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: activeColumns"></tr>
+        </table>
+      }
+    </mat-tab>
+
+    <!-- Enrollment tokens -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        {{ 'tokens.title' | translate }} ({{ tokens().length }})
+      </ng-template>
+
+      <p class="devices__hint">{{ 'tokens.hint' | translate }}</p>
+
+      @if (tokens().length === 0) {
+        <p class="devices__empty">{{ 'tokens.none' | translate }}</p>
+      } @else {
+        <table mat-table [dataSource]="tokens()" class="devices__table">
+          <ng-container matColumnDef="target">
+            <th mat-header-cell *matHeaderCellDef>{{ 'tokens.target' | translate }}</th>
+            <td mat-cell *matCellDef="let token">
+              @if (token.kioskCode) {
+                <mat-chip>{{ token.kioskCode }}</mat-chip>
+              } @else {
+                {{ token.newKioskName ?? ('tokens.newKiosk' | translate) }}
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="createdAt">
+            <th mat-header-cell *matHeaderCellDef>{{ 'tokens.createdAt' | translate }}</th>
+            <td mat-cell *matCellDef="let token">
+              {{ token.createdAt | date: 'short' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="expiresAt">
+            <th mat-header-cell *matHeaderCellDef>{{ 'tokens.expiresAt' | translate }}</th>
+            <td mat-cell *matCellDef="let token">
+              {{ token.expiresAt | date: 'short' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>{{ 'tokens.status' | translate }}</th>
+            <td mat-cell *matCellDef="let token">
+              {{ tokenStatusKey(token) | translate }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let token">
+              @if (token.isUsable) {
+                <button
+                  mat-stroked-button
+                  color="warn"
+                  type="button"
+                  (click)="revokeToken(token)"
+                >
+                  {{ 'tokens.revoke' | translate }}
+                </button>
+              }
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="tokenColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: tokenColumns"></tr>
+        </table>
+      }
+    </mat-tab>
+
+    <!-- Revoked -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        {{ 'devices.revoked' | translate }} ({{ revoked().length }})
+      </ng-template>
+
+      @if (revoked().length === 0) {
+        <p class="devices__empty">{{ 'devices.noRevoked' | translate }}</p>
+      } @else {
+        <table mat-table [dataSource]="revoked()" class="devices__table">
+          <ng-container matColumnDef="kiosk">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.kiosk' | translate }}</th>
+            <td mat-cell *matCellDef="let device">{{ device.kioskCode ?? '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="hostname">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.hostname' | translate }}</th>
+            <td mat-cell *matCellDef="let device">{{ device.hostname ?? '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="platform">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.platform' | translate }}</th>
+            <td mat-cell *matCellDef="let device">{{ device.platform }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="version">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.version' | translate }}</th>
+            <td mat-cell *matCellDef="let device">{{ device.appVersion ?? '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="lastSeen">
+            <th mat-header-cell *matHeaderCellDef>{{ 'devices.lastSeen' | translate }}</th>
+            <td mat-cell *matCellDef="let device">
+              {{ device.lastSeenAt | date: 'short' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let device">—</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="activeColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: activeColumns"></tr>
+        </table>
+      }
+    </mat-tab>
+  </mat-tab-group>
+</div>

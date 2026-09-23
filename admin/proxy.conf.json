@@ -1,0 +1,14 @@
+{
+  "comment": "ng serve runs the panel on its own port; the API and the hubs are proxied so the panel shares an origin with them, exactly as the nginx image does in production. Without this the admin refresh cookie (SameSite=Strict, Path=/api/auth/admin) would never be sent.",
+  "/api": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "changeOrigin": false
+  },
+  "/hubs": {
+    "target": "http://localhost:8080",
+    "secure": false,
+    "ws": true,
+    "changeOrigin": false
+  }
+}

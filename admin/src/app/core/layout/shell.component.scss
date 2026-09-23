@@ -1,0 +1,73 @@
+.shell {
+  height: 100vh;
+
+  &__sidenav {
+    width: 260px;
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 20px 16px;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  &__toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  &__title {
+    margin-left: 8px;
+    font-size: 18px;
+  }
+
+  &__spacer {
+    flex: 1 1 auto;
+  }
+
+  &__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+    font-weight: 600;
+  }
+
+  &__account {
+    padding: 12px 16px;
+
+    &-email {
+      font-weight: 500;
+    }
+
+    &-roles {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+  }
+
+  &__content {
+    padding: 24px;
+  }
+}
+
+// A phone or an operator's tablet: the sidebar would leave no room for the
+// content, so it collapses to the menu button (plan section 8A.1).
+@media (max-width: 900px) {
+  .shell__sidenav {
+    width: 220px;
+  }
+
+  .shell__content {
+    padding: 16px;
+  }
+}

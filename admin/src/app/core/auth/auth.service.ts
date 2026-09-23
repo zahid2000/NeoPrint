@@ -1,0 +1,148 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { Observable, firstValueFrom } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+import { AdminLoginResponse, AdminSummary } from './auth.models';
+
+/**
+ * Sign-in state for the admin panel (plan sections 2.8, 8A.1).
+ *
+ * The access token is held in a signal and never written to storage: it lives
+ * fifteen minutes, and anything in `localStorage` is readable by any script on
+ * the page. The refresh token is an HttpOnly cookie the panel cannot see at
+ * all, which is what makes a stolen script harmless here.
+ */
+@Injectable({ providedIn: 'root' })
+export class AuthService {
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+
+  private readonly accessToken = signal<string | null>(null);
+  private readonly currentAdmin = signal<AdminSummary | null>(null);
+  private readonly restoring = signal(true);
+
+  /** The signed-in administrator, or null. */
+  readonly admin = this.currentAdmin.asReadonly();
+
+  /** True while the session is being restored from the refresh cookie. */
+  readonly isRestoring = this.restoring.asReadonly();
+
+  readonly isSignedIn = computed(() => this.currentAdmin() !== null);
+
+  /**
+   * Whether a password change is outstanding. The router blocks everything
+   * else until it clears (plan section 2.8).
+   */
+  readonly mustChangePassword = computed(
+    () => this.currentAdmin()?.mustChangePassword ?? false,
+  );
+
+  /** The current access token, for the interceptor. */
+  get token(): string | null {
+    return this.accessToken();
+  }
+
+  /**
+   * Whether the signed-in administrator holds a permission.
+   *
+   * This drives the menu and the buttons only. Every admin endpoint is
+   * enforced on the server; hiding a control the user cannot use is courtesy,
+   * not protection (plan section 8A.2).
+   */
+  can(permission: string): boolean {
+    return this.currentAdmin()?.permissions.includes(permission) ?? false;
+  }
+
+  /** Whether any of these permissions is held. */
+  canAny(permissions: readonly string[]): boolean {
+    return permissions.some((permission) => this.can(permission));
+  }
+
+  /** Whether a kiosk is inside the administrator's scope. */
+  canSeeKiosk(kioskId: string): boolean {
+    const admin = this.currentAdmin();
+    if (!admin) {
+      return false;
+    }
+
+    return admin.allKiosks || admin.kioskIds.includes(kioskId);
+  }
+
+  signIn(email: string, password: string): Observable<AdminLoginResponse> {
+    return this.http
+      .post<AdminLoginResponse>('/api/auth/admin/login', { email, password })
+      .pipe(tap((response) => this.apply(response)));
+  }
+
+  /**
+   * Exchanges the refresh cookie for a new access token.
+   *
+   * Used both at startup and by the interceptor on a 401. The cookie is sent
+   * automatically because the panel and the API share an origin behind nginx
+   * (plan section 8A.1).
+   */
+  refresh(): Observable<AdminLoginResponse> {
+    return this.http
+      .post<AdminLoginResponse>('/api/auth/admin/refresh', {})
+      .pipe(tap((response) => this.apply(response)));
+  }
+
+  /** Restores a session at startup. Silent: no session is the normal state. */
+  async restore(): Promise<void> {
+    try {
+      await firstValueFrom(this.refresh());
+    } catch {
+      this.clear();
+    } finally {
+      this.restoring.set(false);
+    }
+  }
+
+  /**
+   * Re-reads the administrator's own permissions.
+   *
+   * Called when the server announces a role change over SignalR, so the menu
+   * reflects it without signing in again (plan section 8A.2).
+   */
+  async reloadPermissions(): Promise<void> {
+    try {
+      const admin = await firstValueFrom(
+        this.http.get<AdminSummary>('/api/admin/me'),
+      );
+
+      this.currentAdmin.set(admin);
+    } catch {
+      // A failed reload leaves the previous permissions in place. The server
+      // is the one that enforces them, so a stale menu is cosmetic.
+    }
+  }
+
+  async signOut(): Promise<void> {
+    try {
+      await firstValueFrom(this.http.post('/api/auth/admin/logout', {}));
+    } catch {
+      // Signing out locally must work even with no connection.
+    }
+
+    this.clear();
+    await this.router.navigate(['/login']);
+  }
+
+  /** Called by the interceptor when the session cannot be recovered. */
+  onSessionExpired(): void {
+    this.clear();
+    void this.router.navigate(['/login']);
+  }
+
+  private apply(response: AdminLoginResponse): void {
+    this.accessToken.set(response.accessToken);
+    this.currentAdmin.set(response.admin);
+  }
+
+  private clear(): void {
+    this.accessToken.set(null);
+    this.currentAdmin.set(null);
+  }
+}

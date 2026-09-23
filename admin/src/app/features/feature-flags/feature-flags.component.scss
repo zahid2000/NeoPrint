@@ -1,0 +1,101 @@
+.flags {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+  }
+
+  &__hint,
+  &__note,
+  &__description {
+    margin: 0 0 0.75rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+
+  &__dirty {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    color: var(--mat-sys-primary);
+  }
+
+  &__rollout {
+    margin: 1rem 0;
+
+    mat-slider {
+      width: min(100%, 24rem);
+    }
+  }
+
+  &__subtitle {
+    margin: 1rem 0 0.5rem;
+    font-size: 1rem;
+  }
+
+  &__kiosks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__kiosk {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--mat-sys-outline-variant);
+    border-radius: 8px;
+    background: var(--mat-sys-surface-container);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+
+    &--on {
+      border-color: var(--mat-sys-primary);
+      background: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+    }
+
+    &--off {
+      border-color: var(--mat-sys-error);
+      background: var(--mat-sys-error-container);
+      color: var(--mat-sys-on-error-container);
+    }
+  }
+
+  &__kiosk-state {
+    font-size: 0.75rem;
+    opacity: 0.8;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-top: 1rem;
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "neoprint-admin",
+  "version": "0.1.0",
+  "description": "NeoPrint admin panel and operator panel.",
+  "private": true,
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "lint": "ng lint"
+  },
+  "packageManager": "npm@10.9.2",
+  "comment": "Only packages from the approved list in plan section 2.0, all pinned exactly. Angular is pinned to 21.2.23 rather than 21.2.0: the earlier patch carries XSS and denial-of-service advisories. Every package is recorded in docs/THIRD_PARTY.md.",
+  "dependencies": {
+    "@angular/common": "21.2.23",
+    "@angular/compiler": "21.2.23",
+    "@angular/core": "21.2.23",
+    "@angular/forms": "21.2.23",
+    "@angular/platform-browser": "21.2.23",
+    "@angular/router": "21.2.23",
+    "@angular/cdk": "21.2.14",
+    "@angular/material": "21.2.14",
+    "@angular/service-worker": "21.2.23",
+    "@microsoft/signalr": "9.0.6",
+    "@ngx-translate/core": "17.0.0",
+    "chart.js": "4.5.0",
+    "leaflet": "1.9.4",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1"
+  },
+  "devDependencies": {
+    "@angular/build": "21.2.24",
+    "@angular/cli": "21.2.24",
+    "@angular/compiler-cli": "21.2.23",
+    "@types/leaflet": "1.9.20",
+    "angular-eslint": "21.1.0",
+    "eslint": "9.39.0",
+    "jsdom": "28.0.0",
+    "prettier": "3.8.1",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.46.0",
+    "vitest": "4.0.8"
+  }
+}
