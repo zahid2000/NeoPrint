@@ -33,6 +33,14 @@
     "QuestPDF": {
       "license": "Community",
       "reason": "QuestPDF Community licence: free for companies with annual revenue below 1M USD. The condition is recorded in docs/THIRD_PARTY.md and must be re-checked as the business grows. Plan section 2.0."
+    },
+    "caniuse-lite": {
+      "license": "CC-BY-4.0",
+      "reason": "Browser support data read by browserslist while the admin panel is built. It is a dataset, not code, none of it is copied into the build output, and CC-BY only asks for attribution - given in docs/THIRD_PARTY.md. Transitive dev dependency of @angular/build."
+    },
+    "spdx-exceptions": {
+      "license": "CC-BY-3.0",
+      "reason": "The official list of SPDX licence exception identifiers, as data. Used only by the lint toolchain at development time and never shipped; CC-BY attribution is given in docs/THIRD_PARTY.md."
     }
   },
 

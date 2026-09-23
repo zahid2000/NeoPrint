@@ -97,3 +97,14 @@ Bölmə 2.0 qaydası 1-ə görə aşağıdakılar üçün paket **əlavə edilmi
 | Ghostscript (+ GhostPCL, GhostXPS) | AGPL-3.0 | PS / EPS / PCL / PRN / XPS → PDF (ayrıca proses, dəyişdirilmədən) |
 | CUPS | Apache-2.0 | Linux çap |
 | Mailpit | MIT | Development-də email |
+
+---
+
+## CC-BY ilə lisenziyalı məlumat dəstləri (atribusiya)
+
+Hər ikisi yalnız build / lint zamanı oxunur, brauzer bundle-ına düşmür.
+
+| Paket | Lisenziya | Müəllif / mənbə | İstifadə |
+|---|---|---|---|
+| `caniuse-lite` | CC-BY-4.0 | "caniuse.com" — Alexis Deveria və töhfə verənlər | `browserslist` üçün brauzer dəstək məlumatı (Angular build) |
+| `spdx-exceptions` | CC-BY-3.0 | Linux Foundation (SPDX Workgroup) | SPDX lisenziya istisna identifikatorlarının rəsmi siyahısı (lint alətləri) |
