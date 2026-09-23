@@ -1,0 +1,78 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "NeoPrint",
+
+  "navHome": "Home",
+  "navKiosks": "Kiosks",
+  "navFiles": "My files",
+  "navScheduled": "Scheduled",
+  "navProfile": "Profile",
+
+  "authSignIn": "Sign in",
+  "authSignUp": "Create an account",
+  "authEmail": "Email",
+  "authPassword": "Password",
+  "authFullName": "Full name",
+  "authReferralCode": "Referral code (optional)",
+  "authForgotPassword": "Forgotten your password?",
+  "authNoAccount": "No account yet?",
+  "authHaveAccount": "Already have an account?",
+  "authSigningIn": "Signing in…",
+  "authRegistering": "Creating your account…",
+
+  "authEmailRequired": "An email address is required.",
+  "authEmailInvalid": "That email address is not valid.",
+  "authPasswordRequired": "A password is required.",
+  "authPasswordTooShort": "The password must be at least {min} characters.",
+  "@authPasswordTooShort": {
+    "placeholders": {
+      "min": { "type": "int" }
+    }
+  },
+
+  "confirmEmailTitle": "Confirm your email address",
+  "confirmEmailBody": "We sent a six-digit code to {email}.",
+  "@confirmEmailBody": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "confirmEmailCode": "Confirmation code",
+  "confirmEmailSubmit": "Confirm",
+  "confirmEmailResend": "Send the code again",
+  "confirmEmailCodeInvalid": "The code must be six digits.",
+
+  "consentsTitle": "Accept the terms",
+  "consentsBody": "To continue, please accept the privacy policy and the terms of use.",
+  "consentsPrivacy": "Privacy policy",
+  "consentsTerms": "Terms of use",
+  "consentsAcceptPrivacy": "I accept the privacy policy",
+  "consentsAcceptTerms": "I accept the terms of use",
+  "consentsWalletWarning": "Please note: money added to your balance is not refundable.",
+  "consentsContinue": "Continue",
+  "consentsRead": "Read",
+
+  "homeBalance": "Balance",
+  "homeBonusPages": "Bonus pages",
+  "homeScanQr": "Scan a QR code",
+  "homeActiveJobs": "Active print jobs",
+  "homeNoActiveJobs": "No active print jobs",
+  "homeRecentReceipts": "Recent receipts",
+
+  "profileLanguage": "Language",
+  "profileLegal": "Legal documents",
+  "profileSignOut": "Sign out",
+  "profilePublicId": "User code",
+  "profileCopied": "Copied",
+
+  "commonRetry": "Try again",
+  "commonCancel": "Cancel",
+  "commonClose": "Close",
+  "commonLoading": "Loading…",
+  "commonComingSoon": "This section arrives in a later step.",
+
+  "errorNetwork": "Network error. Please check your connection.",
+  "errorServer": "Something went wrong on the server. Please try again shortly.",
+  "errorSessionExpired": "Your session has expired. Please sign in again."
+}

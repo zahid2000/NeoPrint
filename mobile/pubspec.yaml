@@ -1,0 +1,44 @@
+name: neoprint
+description: NeoPrint — çoxfunksiyalı terminal (kiosk) printer platformasının mobil tətbiqi.
+publish_to: none
+
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.0
+
+# Only packages from the approved list in plan section 2.0, all pinned.
+# Every one is recorded in docs/THIRD_PARTY.md.
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management (MIT).
+  flutter_riverpod: 2.6.1
+
+  # Navigation, including the deep links from plan section 8.3 (BSD-3, Flutter team).
+  go_router: 14.6.2
+
+  # HTTP, with the token interceptor and refresh (MIT).
+  dio: 5.7.0
+
+  # Our own SignalR client rides on this rather than taking a SignalR package
+  # (plan section 2.0).
+  web_socket_channel: 3.0.1
+
+  # Dates, numbers and money formatting (BSD-3, Dart team).
+  intl: 0.20.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 5.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Localization is generated from lib/l10n; az is the template and the
+  # default (plan section 2.1).
+  generate: true

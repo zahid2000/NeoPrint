@@ -1,0 +1,78 @@
+{
+  "@@locale": "az",
+
+  "appTitle": "NeoPrint",
+
+  "navHome": "Ana səhifə",
+  "navKiosks": "Kiosklar",
+  "navFiles": "Fayllarım",
+  "navScheduled": "Planlanmışlar",
+  "navProfile": "Profil",
+
+  "authSignIn": "Daxil ol",
+  "authSignUp": "Qeydiyyatdan keç",
+  "authEmail": "Email",
+  "authPassword": "Şifrə",
+  "authFullName": "Ad, soyad",
+  "authReferralCode": "Dəvət kodu (istəyə görə)",
+  "authForgotPassword": "Şifrəni unutmusunuz?",
+  "authNoAccount": "Hesabınız yoxdur?",
+  "authHaveAccount": "Hesabınız var?",
+  "authSigningIn": "Daxil olunur…",
+  "authRegistering": "Qeydiyyat aparılır…",
+
+  "authEmailRequired": "Email ünvanı tələb olunur.",
+  "authEmailInvalid": "Email ünvanı düzgün deyil.",
+  "authPasswordRequired": "Şifrə tələb olunur.",
+  "authPasswordTooShort": "Şifrə ən azı {min} simvol olmalıdır.",
+  "@authPasswordTooShort": {
+    "placeholders": {
+      "min": { "type": "int" }
+    }
+  },
+
+  "confirmEmailTitle": "Email ünvanınızı təsdiqləyin",
+  "confirmEmailBody": "{email} ünvanına 6 rəqəmli kod göndərdik.",
+  "@confirmEmailBody": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "confirmEmailCode": "Təsdiq kodu",
+  "confirmEmailSubmit": "Təsdiqlə",
+  "confirmEmailResend": "Kodu yenidən göndər",
+  "confirmEmailCodeInvalid": "Kod 6 rəqəmdən ibarət olmalıdır.",
+
+  "consentsTitle": "Şərtləri qəbul edin",
+  "consentsBody": "Davam etmək üçün məxfilik siyasətini və istifadə şərtlərini qəbul etməlisiniz.",
+  "consentsPrivacy": "Məxfilik siyasəti",
+  "consentsTerms": "İstifadə şərtləri",
+  "consentsAcceptPrivacy": "Məxfilik siyasətini qəbul edirəm",
+  "consentsAcceptTerms": "İstifadə şərtlərini qəbul edirəm",
+  "consentsWalletWarning": "Diqqət: balansa yüklənən məbləğ geri qaytarılmır.",
+  "consentsContinue": "Davam et",
+  "consentsRead": "Oxu",
+
+  "homeBalance": "Balans",
+  "homeBonusPages": "Bonus səhifə",
+  "homeScanQr": "QR oxut",
+  "homeActiveJobs": "Aktiv çaplar",
+  "homeNoActiveJobs": "Aktiv çap yoxdur",
+  "homeRecentReceipts": "Son qəbzlər",
+
+  "profileLanguage": "Dil",
+  "profileLegal": "Hüquqi sənədlər",
+  "profileSignOut": "Çıxış",
+  "profilePublicId": "İstifadəçi kodu",
+  "profileCopied": "Kopyalandı",
+
+  "commonRetry": "Yenidən cəhd et",
+  "commonCancel": "Ləğv et",
+  "commonClose": "Bağla",
+  "commonLoading": "Yüklənir…",
+  "commonComingSoon": "Bu bölmə növbəti addımlarda əlavə olunacaq.",
+
+  "errorNetwork": "Şəbəkə xətası. Bağlantınızı yoxlayın.",
+  "errorServer": "Serverdə xəta baş verdi. Bir az sonra yenidən cəhd edin.",
+  "errorSessionExpired": "Sessiya bitib. Yenidən daxil olun."
+}

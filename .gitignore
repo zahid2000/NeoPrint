@@ -62,6 +62,8 @@ dist/
 .packages
 .pub-cache/
 .pub/
+# Generated from lib/l10n/*.arb by flutter gen-l10n; regenerated on build.
+mobile/lib/l10n/app_localizations*.dart
 build/
 *.iml
 **/ios/Flutter/.last_build_id

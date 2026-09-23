@@ -1,0 +1,6 @@
+# Localization generation (plan section 2.1: az is the default).
+arb-dir: lib/l10n
+template-arb-file: app_az.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false

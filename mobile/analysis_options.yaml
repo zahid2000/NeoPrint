@@ -1,0 +1,27 @@
+# Analysis options for the NeoPrint mobile application.
+#
+# Code, identifiers and comments are English; UI text lives in lib/l10n
+# (CLAUDE.md).
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  # Generated localizations are not hand-written code.
+  exclude:
+    - lib/l10n/app_localizations*.dart
+    - build/**
+    - android/**
+    - ios/**
+
+  errors:
+    # The auth classes take public constructor parameters (api, storage,
+    # tokens) and assign them to private fields, which an initializing formal
+    # cannot express. The public parameter names are part of the call sites and
+    # worth keeping.
+    prefer_initializing_formals: ignore
+
+linter:
+  rules:
+    - avoid_print
+    - prefer_single_quotes
+    - require_trailing_commas

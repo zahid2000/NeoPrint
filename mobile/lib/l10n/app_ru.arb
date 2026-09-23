@@ -1,0 +1,78 @@
+{
+  "@@locale": "ru",
+
+  "appTitle": "NeoPrint",
+
+  "navHome": "Главная",
+  "navKiosks": "Киоски",
+  "navFiles": "Мои файлы",
+  "navScheduled": "Запланированные",
+  "navProfile": "Профиль",
+
+  "authSignIn": "Войти",
+  "authSignUp": "Создать аккаунт",
+  "authEmail": "Эл. почта",
+  "authPassword": "Пароль",
+  "authFullName": "Имя и фамилия",
+  "authReferralCode": "Код приглашения (необязательно)",
+  "authForgotPassword": "Забыли пароль?",
+  "authNoAccount": "Нет аккаунта?",
+  "authHaveAccount": "Уже есть аккаунт?",
+  "authSigningIn": "Выполняется вход…",
+  "authRegistering": "Создаём аккаунт…",
+
+  "authEmailRequired": "Укажите адрес эл. почты.",
+  "authEmailInvalid": "Адрес эл. почты некорректен.",
+  "authPasswordRequired": "Укажите пароль.",
+  "authPasswordTooShort": "Пароль должен содержать не менее {min} символов.",
+  "@authPasswordTooShort": {
+    "placeholders": {
+      "min": { "type": "int" }
+    }
+  },
+
+  "confirmEmailTitle": "Подтвердите адрес эл. почты",
+  "confirmEmailBody": "Мы отправили шестизначный код на {email}.",
+  "@confirmEmailBody": {
+    "placeholders": {
+      "email": { "type": "String" }
+    }
+  },
+  "confirmEmailCode": "Код подтверждения",
+  "confirmEmailSubmit": "Подтвердить",
+  "confirmEmailResend": "Отправить код снова",
+  "confirmEmailCodeInvalid": "Код должен состоять из шести цифр.",
+
+  "consentsTitle": "Примите условия",
+  "consentsBody": "Чтобы продолжить, примите политику конфиденциальности и условия использования.",
+  "consentsPrivacy": "Политика конфиденциальности",
+  "consentsTerms": "Условия использования",
+  "consentsAcceptPrivacy": "Я принимаю политику конфиденциальности",
+  "consentsAcceptTerms": "Я принимаю условия использования",
+  "consentsWalletWarning": "Внимание: средства, внесённые на баланс, не возвращаются.",
+  "consentsContinue": "Продолжить",
+  "consentsRead": "Читать",
+
+  "homeBalance": "Баланс",
+  "homeBonusPages": "Бонусные страницы",
+  "homeScanQr": "Сканировать QR-код",
+  "homeActiveJobs": "Активные задания",
+  "homeNoActiveJobs": "Активных заданий нет",
+  "homeRecentReceipts": "Последние чеки",
+
+  "profileLanguage": "Язык",
+  "profileLegal": "Юридические документы",
+  "profileSignOut": "Выйти",
+  "profilePublicId": "Код пользователя",
+  "profileCopied": "Скопировано",
+
+  "commonRetry": "Повторить",
+  "commonCancel": "Отмена",
+  "commonClose": "Закрыть",
+  "commonLoading": "Загрузка…",
+  "commonComingSoon": "Этот раздел появится на следующих шагах.",
+
+  "errorNetwork": "Ошибка сети. Проверьте подключение.",
+  "errorServer": "На сервере произошла ошибка. Попробуйте чуть позже.",
+  "errorSessionExpired": "Сессия истекла. Войдите снова."
+}
