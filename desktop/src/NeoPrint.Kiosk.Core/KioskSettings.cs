@@ -1,0 +1,44 @@
+namespace NeoPrint.Kiosk.Core;
+
+/// <summary>
+/// The kiosk's local configuration file.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Plan section 7.11: the kiosk build is universal. This file is part of the
+/// build and is <b>identical on every kiosk</b> - it holds no identity, no
+/// secret and no per-kiosk parameter. Everything about a particular kiosk
+/// arrives from the backend after activation.
+/// </para>
+/// <para>
+/// <see cref="ApiBaseUrl"/> identifies the environment, not the kiosk, and the
+/// install script may override it for a test rig. It is not a secret.
+/// </para>
+/// </remarks>
+public sealed class KioskSettings
+{
+    /// <summary>Backend address for this environment.</summary>
+    public string ApiBaseUrl { get; set; } = "https://api.neoprint.az";
+
+    /// <summary>
+    /// Prints to a folder instead of a printer, so the whole flow can be
+    /// exercised on a machine with no printer and in CI. Always false in a
+    /// release build (plan section 7.6).
+    /// </summary>
+    public bool UseFakePrinter { get; set; }
+
+    /// <summary>LibreOffice binary; empty means the platform default.</summary>
+    public string LibreOfficePath { get; set; } = string.Empty;
+
+    /// <summary>How often the kiosk reports that it is alive.</summary>
+    public int HeartbeatSeconds { get; set; } = 15;
+
+    /// <summary>
+    /// How often an unactivated kiosk re-checks whether it has been activated,
+    /// as a fallback when the SignalR notification does not arrive.
+    /// </summary>
+    public int ActivationPollSeconds { get; set; } = 10;
+
+    /// <summary>Interface language before the backend says otherwise.</summary>
+    public string DefaultLanguage { get; set; } = "az";
+}

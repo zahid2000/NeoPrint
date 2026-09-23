@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Rendering, editing and conversion, none of it platform-specific
+    (plan section 7.6). Filled in from step 3; the packages arrive with the
+    implementation.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Kiosk.Printing</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Abstractions\NeoPrint.Kiosk.Platform.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\backend\shared\NeoPrint.Layout\NeoPrint.Layout.csproj" />
+  </ItemGroup>
+
+</Project>

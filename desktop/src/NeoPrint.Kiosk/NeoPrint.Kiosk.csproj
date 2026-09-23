@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The kiosk UI (plan section 7). One build per operating system
+    (win-x64, linux-x64) runs on every kiosk: no per-kiosk build, no per-kiosk
+    configuration file, no credentials in the package (plan section 7.11).
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!--
+      net8.0-windows on Windows, plain net8.0 on Linux. A net8.0 assembly
+      cannot reference a net8.0-windows one, so the framework follows the
+      platform the package is for; the shared projects stay net8.0
+      (plan section 7.6).
+    -->
+    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' != 'linux-x64'">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(TargetFramework)' == ''">net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Kiosk</RootNamespace>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <!--
+    Which platform assembly this package carries, decided by the runtime
+    identifier so a Linux package never contains the Windows-only assembly and
+    vice versa (plan section 7.6). Program.cs switches on the same symbols, and
+    DI then picks the implementation at runtime.
+  -->
+  <PropertyGroup>
+    <NeoPrintTargetsWindows Condition="'$(RuntimeIdentifier)' == 'win-x64'">true</NeoPrintTargetsWindows>
+    <NeoPrintTargetsWindows Condition="'$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">true</NeoPrintTargetsWindows>
+    <NeoPrintTargetsLinux Condition="'$(RuntimeIdentifier)' == 'linux-x64'">true</NeoPrintTargetsLinux>
+    <NeoPrintTargetsLinux Condition="'$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Linux'))">true</NeoPrintTargetsLinux>
+
+    <DefineConstants Condition="'$(NeoPrintTargetsWindows)' == 'true'">$(DefineConstants);WINDOWS</DefineConstants>
+    <DefineConstants Condition="'$(NeoPrintTargetsLinux)' == 'true'">$(DefineConstants);LINUX</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <PackageReference Include="Avalonia.Diagnostics" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NeoPrint.Kiosk.Core\NeoPrint.Kiosk.Core.csproj" />
+    <ProjectReference Include="..\NeoPrint.Kiosk.Printing\NeoPrint.Kiosk.Printing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(NeoPrintTargetsWindows)' == 'true'">
+    <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Windows\NeoPrint.Kiosk.Platform.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(NeoPrintTargetsLinux)' == 'true'">
+    <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Linux\NeoPrint.Kiosk.Platform.Linux.csproj" />
+  </ItemGroup>
+
+</Project>

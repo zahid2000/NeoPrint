@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Everything the kiosk does that is not UI and not platform-specific: the
+    backend client, device enrollment, settings, telemetry and the real-time
+    connection. Stays net8.0 and touches no platform API directly
+    (plan section 7.6).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Kiosk.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="QRCoder" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Abstractions\NeoPrint.Kiosk.Platform.Abstractions.csproj" />
+    <!-- The kiosk shares the contracts and the pricing rules with the backend
+         (plan section 4): one renderer, one price, no drift. -->
+    <ProjectReference Include="..\..\..\backend\src\NeoPrint.Contracts\NeoPrint.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\backend\shared\NeoPrint.Pricing\NeoPrint.Pricing.csproj" />
+    <ProjectReference Include="..\..\..\backend\shared\NeoPrint.Crypto\NeoPrint.Crypto.csproj" />
+  </ItemGroup>
+
+</Project>

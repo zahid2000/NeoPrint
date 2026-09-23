@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+             x:Class="NeoPrint.Kiosk.Views.StartingView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <!-- Shown for the moment between the process starting and the kiosk
+         knowing what it is (plan section 7.12, recovery flow). -->
+
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24">
+        <TextBlock Text="NeoPrint" FontSize="56" FontWeight="Bold"
+                   Foreground="#F8FAFC" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding StartingText}" FontSize="20"
+                   Foreground="#94A3B8" HorizontalAlignment="Center" />
+    </StackPanel>
+</UserControl>

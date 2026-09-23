@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Linux implementations: CUPS, /proc, udisks2 mount points, systemd
+    (plan section 7.6). Targets plain net8.0 and is included in the linux-x64
+    publish only.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Kiosk.Platform.Linux</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Abstractions\NeoPrint.Kiosk.Platform.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

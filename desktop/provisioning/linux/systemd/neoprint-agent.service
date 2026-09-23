@@ -1,0 +1,29 @@
+# NeoPrint kiosk agent (plan section 7.12).
+#
+# Starts before the UI and stays up: it watches the UI, applies updates and
+# carries out remote commands. Runs as the neoprint account with a narrow
+# sudoers rule rather than as root.
+
+[Unit]
+Description=NeoPrint kiosk agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=neoprint
+Group=neoprint
+WorkingDirectory=/opt/neoprint/current
+ExecStart=/opt/neoprint/current/NeoPrint.Kiosk.Agent
+Restart=always
+RestartSec=5
+
+# The agent has no business anywhere but its own data.
+NoNewPrivileges=false
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/neoprint /var/log/neoprint
+
+[Install]
+WantedBy=multi-user.target

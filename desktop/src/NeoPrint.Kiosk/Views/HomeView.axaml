@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+             x:Class="NeoPrint.Kiosk.Views.HomeView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <!--
+        Screen 1 (plan section 7.3). The actions themselves land with the print
+        flow in step 3; what is settled here is the layout and the touch target
+        size - this is a finger on a kiosk, not a mouse.
+    -->
+
+    <StackPanel VerticalAlignment="Center" Spacing="28" MaxWidth="820">
+        <TextBlock Text="{Binding HomeTitle}" FontSize="44" FontWeight="Bold"
+                   Foreground="#F8FAFC" />
+
+        <Button Content="{Binding PrintFromUsbText}"
+                MinHeight="96" FontSize="24" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Left" Padding="28,0"
+                IsEnabled="False" />
+
+        <Button Content="{Binding ScanMyQrText}"
+                MinHeight="96" FontSize="24" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Left" Padding="28,0"
+                IsEnabled="False" />
+
+        <Button Content="{Binding CancelByCodeText}"
+                MinHeight="96" FontSize="24" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Left" Padding="28,0"
+                IsEnabled="False" />
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,30 @@
+// NeoPrint kiosk: removable media (plan sections 2.1, 7.12).
+//
+// Only the kiosk account may mount a stick, and only its own filesystems.
+// Nothing else on the machine can act on removable media, and the kiosk
+// account cannot unlock encrypted volumes or modify partition tables.
+
+polkit.addRule(function (action, subject) {
+    if (subject.user !== "kiosk") {
+        return polkit.Result.NOT_HANDLED;
+    }
+
+    var allowed = [
+        "org.freedesktop.udisks2.filesystem-mount",
+        "org.freedesktop.udisks2.filesystem-unmount-others",
+        "org.freedesktop.udisks2.eject-media",
+    ];
+
+    if (allowed.indexOf(action.id) >= 0) {
+        return polkit.Result.YES;
+    }
+
+    // Everything else about a block device is refused, including
+    // filesystem-mount-system-internal: a customer's stick must never let
+    // anyone at the system volumes.
+    if (action.id.indexOf("org.freedesktop.udisks2.") === 0) {
+        return polkit.Result.NO;
+    }
+
+    return polkit.Result.NOT_HANDLED;
+});

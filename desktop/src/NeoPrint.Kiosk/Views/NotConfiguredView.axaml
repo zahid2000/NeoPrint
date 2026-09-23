@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+             x:Class="NeoPrint.Kiosk.Views.NotConfiguredView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <!-- Screen 14 (plan section 7.3): activated, but no printer has been
+         selected from the admin panel yet, so no order can be taken. -->
+
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16" MaxWidth="620">
+        <TextBlock Text="{Binding NotConfiguredTitle}" FontSize="40" FontWeight="Bold"
+                   Foreground="#F8FAFC" HorizontalAlignment="Center" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding NotConfiguredBody}" FontSize="19"
+                   Foreground="#94A3B8" HorizontalAlignment="Center"
+                   TextAlignment="Center" TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

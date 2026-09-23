@@ -1,0 +1,162 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+        xmlns:views="using:NeoPrint.Kiosk.Views"
+        mc:Ignorable="d"
+        d:DesignWidth="1920" d:DesignHeight="1080"
+        x:Class="NeoPrint.Kiosk.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="NeoPrint"
+        WindowState="FullScreen"
+        SystemDecorations="None"
+        Topmost="True"
+        Background="#0F172A">
+
+    <!--
+        The shell from plan section 7.2. Header, footer and queue panel live
+        here, and only the central area changes, so the kiosk QR and code stay
+        visible on every screen and a dialog cannot cover the footer.
+    -->
+
+    <Grid RowDefinitions="88,*,72" ColumnDefinitions="*,280">
+
+        <!-- HEADER: logo, kiosk name, language, clock -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2"
+                Background="#111C33" BorderBrush="#1E2A44" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="32,0">
+                <TextBlock Grid.Column="0"
+                           Text="NeoPrint"
+                           FontSize="30" FontWeight="Bold"
+                           Foreground="#F8FAFC"
+                           VerticalAlignment="Center" />
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding KioskName}"
+                           FontSize="20"
+                           Foreground="#94A3B8"
+                           Margin="24,0,0,0"
+                           VerticalAlignment="Center" />
+
+                <!-- Language picker: large targets, this is a touch screen. -->
+                <ItemsControl Grid.Column="2" ItemsSource="{Binding Languages}" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MainWindowViewModel+LanguageOption">
+                            <Button Content="{Binding Name}"
+                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectLanguageCommand}"
+                                    CommandParameter="{Binding Code}"
+                                    MinWidth="120" MinHeight="48"
+                                    FontSize="16" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Grid.Column="3"
+                           Text="{Binding ClockText}"
+                           FontSize="26" FontWeight="SemiBold"
+                           Foreground="#F8FAFC"
+                           Margin="32,0,0,0"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <!-- CENTRAL AREA: the only part that changes between screens -->
+        <Panel Grid.Row="1" Grid.Column="0" Margin="32">
+            <!-- Each screen sits inside a host whose visibility is bound to the
+                 shell. The activation screen has its own view model, so the
+                 wrapper keeps that DataContext change from also reaching the
+                 IsVisible binding. -->
+            <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsActivation}}">
+                <views:ActivationView DataContext="{Binding Activation}" />
+            </Panel>
+
+            <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsStarting}}">
+                <views:StartingView />
+            </Panel>
+
+            <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsNotConfigured}}">
+                <views:NotConfiguredView />
+            </Panel>
+
+            <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsOffline}}">
+                <views:OfflineView />
+            </Panel>
+
+            <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsHome}}">
+                <views:HomeView />
+            </Panel>
+        </Panel>
+
+        <!-- QUEUE PANEL: 280px on the right, present on every screen -->
+        <Border Grid.Row="1" Grid.Column="1"
+                Background="#111C33" BorderBrush="#1E2A44" BorderThickness="1,0,0,0">
+            <StackPanel Margin="20">
+                <TextBlock Text="{Binding QueueTitle}"
+                           FontSize="20" FontWeight="SemiBold"
+                           Foreground="#F8FAFC"
+                           Margin="0,0,0,16" />
+
+                <TextBlock Text="{Binding QueueEmptyText}"
+                           FontSize="15"
+                           Foreground="#64748B"
+                           IsVisible="{Binding !Queue.Count}" />
+
+                <ItemsControl ItemsSource="{Binding Queue}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:QueueEntry">
+                            <Border Background="#0F172A" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Position, StringFormat='#{0}'}"
+                                               FontSize="15" FontWeight="Bold"
+                                               Foreground="#38BDF8"
+                                               VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                        <TextBlock Text="{Binding JobCode}"
+                                                   FontSize="16" FontWeight="SemiBold"
+                                                   Foreground="#F8FAFC" />
+                                        <TextBlock Text="{Binding Pages, StringFormat='{}{0} səh.'}"
+                                                   FontSize="13"
+                                                   Foreground="#64748B" />
+                                    </StackPanel>
+                                    <Ellipse Grid.Column="2" Width="10" Height="10"
+                                             VerticalAlignment="Center"
+                                             Fill="{Binding IsPrinting, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- FOOTER: kiosk QR on the left with the code beneath it, help on the right -->
+        <Border Grid.Row="2" Grid.ColumnSpan="2"
+                Background="#111C33" BorderBrush="#1E2A44" BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="32,0">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding ShowKioskQr}">
+                    <Image Source="{Binding KioskQr, Converter={x:Static vm:ScreenConverters.QrImage}}"
+                           Width="52" Height="52" />
+                    <TextBlock Text="{Binding KioskCode}"
+                               FontSize="18" FontWeight="SemiBold"
+                               Foreground="#F8FAFC"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <TextBlock Grid.Column="2"
+                           Text="{Binding Hotline}"
+                           FontSize="15"
+                           Foreground="#94A3B8"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
