@@ -17,9 +17,18 @@
   ],
 
   "packageExceptions": {
+    "$comment": "Hangfire is multi-licensed (LGPL-3.0 or a paid commercial licence). We take the free LGPL-3.0 option and use the packages unmodified, without private forks, so no commercial subscription is required. Hangfire Pro is not used. Plan section 2.0.",
     "Hangfire.Core": {
       "license": "LGPL-3.0",
       "reason": "Free edition, used unmodified as a NuGet package (no linking changes). Hangfire Pro is not used. Plan section 2.0."
+    },
+    "Hangfire.AspNetCore": {
+      "license": "LGPL-3.0",
+      "reason": "Same Hangfire multi-licence as Hangfire.Core; used unmodified as a package for the ASP.NET Core integration and the dashboard."
+    },
+    "Hangfire.NetCore": {
+      "license": "LGPL-3.0",
+      "reason": "Transitive dependency of Hangfire.AspNetCore, covered by the same Hangfire multi-licence and used unmodified."
     },
     "QuestPDF": {
       "license": "Community",
@@ -28,8 +37,11 @@
   },
 
   "packageLicenses": {
-    "$comment": "Resolved licence for packages whose metadata ships a licence file instead of an SPDX expression. Each entry must be verified against the package's own LICENSE before being added.",
-    "Lextm.SharpSnmpLib": "MIT"
+    "$comment": "Resolved licence for packages whose metadata declares none in a machine-readable form. Each entry below was verified against the package's own LICENSE file or its project repository.",
+    "Lextm.SharpSnmpLib": "MIT",
+    "Hangfire.Mongo": "MIT",
+    "System.Memory": "MIT",
+    "xunit.abstractions": "Apache-2.0"
   },
 
   "pinnedMajors": {

@@ -39,7 +39,11 @@ export class Policy {
      * @returns {{ok: true} | {ok: false, code: string, message: string}}
      */
     check(dependency) {
-        const { name, version, license } = dependency;
+        const { name, version } = dependency;
+        // A manually verified licence always wins over what the metadata says
+        // (or fails to say). The scanners apply this too; repeating it here
+        // keeps the verdict the same whoever resolved the dependency.
+        const license = this.packageLicenses[name] ?? dependency.license;
 
         const banned = this.bannedPackages[name];
         if (banned !== undefined) {

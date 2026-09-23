@@ -1,0 +1,36 @@
+# Keep the build context small and make sure no local secret or local build
+# output is ever sent to the Docker daemon.
+
+.git
+.github
+.openbao
+.env
+.env.*
+!.env.*.example
+
+**/bin
+**/obj
+**/out
+**/publish
+**/artifacts
+**/TestResults
+**/.vs
+**/.idea
+
+node_modules
+**/node_modules
+**/.angular
+**/dist
+
+mobile
+desktop
+admin/node_modules
+
+docs
+tools/license-check/node_modules
+
+**/*.user
+**/*.suo
+Dockerfile
+docker-compose*.yml
+README.md

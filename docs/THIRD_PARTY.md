@@ -27,9 +27,8 @@ mənbə və səbəblə burada qeyd olunur.
 | `MailKit` | 4.18.0 | MIT | Jeffrey Stedfast | SMTP; daxili `SmtpClient` köhnəlmiş hesab olunur |
 | `MediatR` | **12.5.0** | Apache-2.0 | Jimmy Bogard | CQRS / mediator. **v13+ kommersiyadır — yüksəldilmir** |
 | `MassTransit`, `MassTransit.RabbitMQ`, `MassTransit.MongoDb` | **8.5.10** | Apache-2.0 | MassTransit | Mesajlaşma, transactional outbox / inbox. **v9+ kommersiyadır — yüksəldilmir** |
-| `Hangfire.Core` | 1.8.25 | **LGPL-3.0** | Hangfire | Background / planlanmış işlər. Dəyişdirilmədən, paket kimi istifadə olunur — `allowlist.json`-da adla istisna |
-| `Hangfire.AspNetCore` | 1.8.25 | MIT | Hangfire | Hangfire dashboard və ASP.NET Core inteqrasiyası |
-| `Hangfire.Mongo` | 1.16.3 | MIT | sergeyzwezdin | Hangfire üçün Mongo storage |
+| `Hangfire.Core`, `Hangfire.AspNetCore`, `Hangfire.NetCore` | 1.8.25 | **LGPL-3.0** | Hangfire OÜ | Background / planlanmış işlər, dashboard. Hangfire **çoxlisenziyalıdır**: LGPL-3.0 (pulsuz) və ya pullu kommersiya lisenziyası. Biz pulsuz LGPL-3.0 variantını seçirik və paketləri **dəyişdirmədən**, şəxsi fork olmadan istifadə edirik — bu halda abunə tələb olunmur. Hangfire Pro paketləri istifadə edilmir. `allowlist.json`-da adla istisna |
+| `Hangfire.Mongo` | 1.16.3 | MIT | sergeyzwezdin | Hangfire üçün Mongo storage. Paketin nuspec-ində lisenziya elan olunmur; MIT layihə deposundakı `LICENSE` faylı ilə təsdiqləndi və `allowlist.json` → `packageLicenses`-ə yazıldı |
 | `QuestPDF` | 2026.9.0 | **Community** | QuestPDF | Qəbz və hesabat PDF-ləri. **Şərt:** illik gəliri 1M USD-dən az olan şirkətlər üçün pulsuzdur. Bu şərt pozulduqda kommersiya lisenziyası alınmalıdır — `allowlist.json`-da adla istisna |
 | `PDFsharp` | 6.2.4 | MIT | empira (rəsmi) | PDF səhifə əməliyyatları, tərtibat PDF-i |
 | `SkiaSharp`, `SkiaSharp.NativeAssets.Linux` | 2.88.9 | MIT | Microsoft | Şəkil emalı, şəkil → PDF, preview. Avalonia 11.3 ilə eyni versiya |

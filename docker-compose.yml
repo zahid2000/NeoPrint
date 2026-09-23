@@ -1,0 +1,280 @@
+# ---------------------------------------------------------------------------
+# NeoPrint — development environment (plan section 4).
+#
+#   cp .env.openbao-seed.example .env.openbao-seed
+#   docker compose up
+#
+# Every image tag is pinned. No secret is written into this file: the
+# infrastructure containers take their development credentials from
+# .env.openbao-seed, and the api container receives only its OpenBao
+# connection details (plan section 2.13).
+# ---------------------------------------------------------------------------
+
+name: neoprint
+
+services:
+
+  # -------------------------------------------------------------------------
+  # Secret store
+  # -------------------------------------------------------------------------
+  openbao:
+    image: openbao/openbao:2.6.2
+    container_name: neoprint-openbao
+    # The image's entrypoint already points at /openbao/config; naming the file
+    # again would load the same configuration twice.
+    command: ["server"]
+    cap_add:
+      - IPC_LOCK
+    environment:
+      # The bao CLI defaults to HTTPS. TLS is disabled on this development
+      # listener, so the in-container CLI (the health check below) is told to
+      # use plain HTTP.
+      BAO_ADDR: http://127.0.0.1:8200
+    ports:
+      - "8200:8200"
+    volumes:
+      - ./openbao/config:/openbao/config:ro
+      - openbao-file:/openbao/file
+      - openbao-logs:/openbao/logs
+    healthcheck:
+      # `bao status` exits non-zero while OpenBao is uninitialised or sealed,
+      # which are both normal states before openbao-init has run. Printing the
+      # status at all is enough to prove the server answers.
+      test: ["CMD-SHELL", "bao status 2>&1 | grep -q 'Initialized' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  # Initialises, unseals and seeds OpenBao, then exits. See openbao/init/init.sh.
+  openbao-init:
+    image: openbao/openbao:2.6.2
+    container_name: neoprint-openbao-init
+    depends_on:
+      openbao:
+        condition: service_healthy
+    environment:
+      BAO_ADDR: http://openbao:8200
+      BAO_KV_MOUNT: neoprint
+    entrypoint: ["/bin/sh", "/openbao-init/init.sh"]
+    volumes:
+      - ./openbao/init:/openbao-init:ro
+      - ./openbao/policies:/openbao-policies:ro
+      - ./.env.openbao-seed:/openbao-seed/.env.openbao-seed:ro
+      - ./.openbao:/openbao-out
+      - openbao-logs:/openbao/logs
+    restart: "no"
+
+  # -------------------------------------------------------------------------
+  # Data stores
+  # -------------------------------------------------------------------------
+  mongo:
+    image: mongo:7.0.43
+    container_name: neoprint-mongo
+    # Single-node replica set: transactions are mandatory for the MassTransit
+    # outbox and the wallet updates (plan section 4).
+    entrypoint: ["/bin/bash", "/docker/entrypoint.sh"]
+    command:
+      - "mongod"
+      - "--replSet"
+      - "rs0"
+      - "--bind_ip_all"
+      - "--keyFile"
+      - "/data/configdb/replica.key"
+    env_file:
+      - .env.openbao-seed
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./docker/mongo/entrypoint.sh:/docker/entrypoint.sh:ro
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })' >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+    restart: unless-stopped
+
+  mongo-init:
+    image: mongo:7.0.43
+    container_name: neoprint-mongo-init
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file:
+      - .env.openbao-seed
+    environment:
+      MONGO_HOST: mongo:27017
+      MONGO_REPLICA_SET: rs0
+    entrypoint: ["/bin/bash", "/docker/init-replica.sh"]
+    volumes:
+      - ./docker/mongo/init-replica.sh:/docker/init-replica.sh:ro
+    restart: "no"
+
+  redis:
+    # 7.2 is the last BSD-licensed line (plan section 2.0).
+    image: redis:7.2.16-alpine
+    container_name: neoprint-redis
+    # $$ escapes compose interpolation so the container shell expands it.
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes --save 60 1"]
+    env_file:
+      - .env.openbao-seed
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: neoprint-rabbitmq
+    env_file:
+      - .env.openbao-seed
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Object storage — MinIO is the primary provider, Scality the migration and
+  # mirror target (plan section 2.10).
+  # -------------------------------------------------------------------------
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: neoprint-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    env_file:
+      - .env.openbao-seed
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    container_name: neoprint-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    env_file:
+      - .env.openbao-seed
+    entrypoint: ["/bin/sh", "/docker/init-buckets.sh"]
+    volumes:
+      - ./docker/minio/init-buckets.sh:/docker/init-buckets.sh:ro
+    restart: "no"
+
+  scality:
+    image: zenko/cloudserver:latest-7.70.10
+    container_name: neoprint-scality
+    environment:
+      S3BACKEND: mem
+      ENDPOINT: scality
+      REMOTE_MANAGEMENT_DISABLE: "1"
+    env_file:
+      - .env.openbao-seed
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Mail catcher
+  # -------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    container_name: neoprint-mailpit
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Application
+  # -------------------------------------------------------------------------
+  api:
+    build:
+      # The repository root: the build needs global.json and the central
+      # MSBuild property files as well as backend/.
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: neoprint-api
+    depends_on:
+      openbao-init:
+        condition: service_completed_successfully
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    # Bootstrap only. Every secret comes from OpenBao (plan section 2.13):
+    # nothing below is a secret, and no NEOPRINT_* variable is set here.
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      BAO_ADDR: http://openbao:8200
+      BAO_KV_MOUNT: neoprint
+      BAO_ROLE_ID_FILE: /run/secrets/neoprint-api.role_id
+      BAO_SECRET_ID_FILE: /run/secrets/neoprint-api.secret_id
+    ports:
+      - "5080:8080"
+    volumes:
+      # Written by openbao-init; mounted read-only, like a Docker secret.
+      - ./.openbao/neoprint-api.role_id:/run/secrets/neoprint-api.role_id:ro
+      - ./.openbao/neoprint-api.secret_id:/run/secrets/neoprint-api.secret_id:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: neoprint-admin
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  openbao-file:
+  openbao-logs:
+  mongo-data:
+  mongo-config:
+  redis-data:
+  rabbitmq-data:
+  minio-data:

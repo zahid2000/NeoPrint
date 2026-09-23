@@ -80,6 +80,16 @@ describe('Policy.check — named exceptions', () => {
         assert.equal(other.ok, false);
     });
 
+    it('covers the whole Hangfire family, including the transitive Hangfire.NetCore', () => {
+        for (const name of ['Hangfire.Core', 'Hangfire.AspNetCore', 'Hangfire.NetCore']) {
+            assert.deepEqual(
+                policy.check(dependency({ name, version: '1.8.25', license: 'LGPL-3.0' })),
+                { ok: true },
+                name,
+            );
+        }
+    });
+
     it('allows QuestPDF under its Community licence', () => {
         assert.deepEqual(
             policy.check(dependency({ name: 'QuestPDF', version: '2026.9.0', license: null })),
@@ -145,6 +155,23 @@ describe('Policy.check — banned packages', () => {
     });
 });
 
+describe('Policy.check — manually verified licences', () => {
+    const policy = realPolicy();
+
+    it('accepts packages whose licence had to be looked up by hand', () => {
+        // These declare no machine-readable licence; each was verified against
+        // the project's own LICENSE file before being recorded.
+        for (const [name, license] of [
+            ['Hangfire.Mongo', 'MIT'],
+            ['System.Memory', 'MIT'],
+            ['xunit.abstractions', 'Apache-2.0'],
+        ]) {
+            assert.deepEqual(policy.check(dependency({ name, license: null })), { ok: true }, name);
+            assert.deepEqual(policy.check(dependency({ name, license })), { ok: true }, name);
+        }
+    });
+});
+
 describe('Policy — our own projects', () => {
     const policy = realPolicy();
 
@@ -159,6 +186,9 @@ describe('allowlist.json', () => {
     it('is valid JSON and grants no exception without a stated reason', () => {
         const raw = JSON.parse(readFileSync(path.join(toolDir, 'allowlist.json'), 'utf8'));
         for (const [name, entry] of Object.entries(raw.packageExceptions)) {
+            if (name === '$comment') {
+                continue;
+            }
             assert.ok(entry.license, `${name} must state the licence it is allowlisted for`);
             assert.ok(entry.reason && entry.reason.length > 20, `${name} must state why`);
         }
