@@ -1,0 +1,116 @@
+<Project>
+
+  <!--
+    Central package management for every .NET project in the repository.
+    Rules (plan section 2.0):
+      - Only packages from the approved list may be added here.
+      - Every version is pinned exactly; no floating versions.
+      - MediatR 12.x, MassTransit 8.x and FluentAssertions 7.x are the last
+        freely licensed major versions and must never be raised.
+      - Every entry is documented in docs/THIRD_PARTY.md.
+      - tools/license-check enforces both the licence allowlist and the pins.
+  -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+
+    <!-- Pinned major lines — raising these changes the licence. Read by tools/license-check. -->
+    <NeoPrintPinnedMediatRMajor>12</NeoPrintPinnedMediatRMajor>
+    <NeoPrintPinnedMassTransitMajor>8</NeoPrintPinnedMassTransitMajor>
+    <NeoPrintPinnedFluentAssertionsMajor>7</NeoPrintPinnedFluentAssertionsMajor>
+  </PropertyGroup>
+
+  <ItemGroup Label="ASP.NET Core / Microsoft extensions (MIT)">
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.31" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="8.0.31" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.31" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="8.0.31" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.31" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.31" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="8.0.31" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <PackageVersion Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Backend infrastructure">
+    <!-- Apache-2.0, MongoDB Inc. (official driver, no MIT alternative) -->
+    <PackageVersion Include="MongoDB.Driver" Version="3.12.0" />
+    <!-- MIT -->
+    <PackageVersion Include="StackExchange.Redis" Version="2.13.17" />
+    <!-- Apache-2.0, Amazon (official; S3 SigV4 signing for MinIO / Scality) -->
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.103.3" />
+    <!-- MIT -->
+    <PackageVersion Include="MailKit" Version="4.18.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="CQRS and messaging — PINNED MAJORS, never raise">
+    <!-- Apache-2.0. MediatR v13+ is commercially licensed. -->
+    <PackageVersion Include="MediatR" Version="12.5.0" />
+    <!-- Apache-2.0. MassTransit v9+ is commercially licensed. -->
+    <PackageVersion Include="MassTransit" Version="8.5.10" />
+    <PackageVersion Include="MassTransit.RabbitMQ" Version="8.5.10" />
+    <PackageVersion Include="MassTransit.MongoDb" Version="8.5.10" />
+  </ItemGroup>
+
+  <ItemGroup Label="Background jobs">
+    <!-- LGPL-3.0 (free edition, used unmodified as a package); allowlisted by name. -->
+    <PackageVersion Include="Hangfire.Core" Version="1.8.25" />
+    <!-- MIT -->
+    <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.25" />
+    <PackageVersion Include="Hangfire.Mongo" Version="1.16.3" />
+  </ItemGroup>
+
+  <ItemGroup Label="Documents and imaging (backend + kiosk)">
+    <!-- QuestPDF Community licence — free below 1M USD annual revenue; allowlisted by name. -->
+    <PackageVersion Include="QuestPDF" Version="2026.9.0" />
+    <!-- MIT, empira (official) -->
+    <PackageVersion Include="PDFsharp" Version="6.2.4" />
+    <!-- MIT, Microsoft. Kept at 2.88.x to match Avalonia 11.3's own SkiaSharp dependency. -->
+    <PackageVersion Include="SkiaSharp" Version="2.88.9" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="2.88.9" />
+    <!-- MIT -->
+    <PackageVersion Include="QRCoder" Version="1.8.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Development only">
+    <!-- MIT. Swagger UI is registered only in the Development environment. -->
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.3.2" />
+  </ItemGroup>
+
+  <ItemGroup Label="Kiosk (Avalonia)">
+    <!-- MIT -->
+    <PackageVersion Include="Avalonia" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Desktop" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Headless.XUnit" Version="11.3.22" />
+    <!-- MIT, Microsoft -->
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <!-- MIT — SNMP for network printers -->
+    <PackageVersion Include="Lextm.SharpSnmpLib" Version="12.5.7" />
+  </ItemGroup>
+
+  <ItemGroup Label="Tests">
+    <!-- Apache-2.0 -->
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <!-- Apache-2.0. FluentAssertions v8+ is commercially licensed. -->
+    <PackageVersion Include="FluentAssertions" Version="7.2.2" />
+    <!-- MIT -->
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Testcontainers" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers.MongoDb" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers.Redis" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers.RabbitMq" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers.Minio" Version="4.15.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.31" />
+  </ItemGroup>
+
+</Project>

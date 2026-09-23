@@ -1,0 +1,107 @@
+# ---------------------------------------------------------------------------
+# Secrets — never commit (CLAUDE.md, plan section 2.13)
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.*.example
+.openbao/
+*.pem
+*.pfx
+*.p12
+*.key
+!**/testdata/**/*.pem
+
+# ---------------------------------------------------------------------------
+# .NET
+# ---------------------------------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Rr]elease/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+publish/
+*.user
+*.suo
+*.userprefs
+*.cache
+*.dbmdl
+*.binlog
+project.lock.json
+project.fragment.lock.json
+msbuild.log
+msbuild.err
+msbuild.wrn
+.vs/
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+*.opencover.xml
+BenchmarkDotNet.Artifacts/
+
+# ---------------------------------------------------------------------------
+# Node / Angular (admin/)
+# ---------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.angular/
+dist/
+.eslintcache
+
+# ---------------------------------------------------------------------------
+# Flutter / Dart (mobile/)
+# ---------------------------------------------------------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.iml
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Pods/
+**/ios/.symlinks/
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+**/android/app/google-services.json
+**/ios/Runner/GoogleService-Info.plist
+*.jks
+*.keystore
+
+# ---------------------------------------------------------------------------
+# Kiosk runtime data (must never be committed — device identity, spool)
+# ---------------------------------------------------------------------------
+desktop/**/device/
+spool/
+*.provision.log
+
+# ---------------------------------------------------------------------------
+# IDE / OS
+# ---------------------------------------------------------------------------
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+
+# ---------------------------------------------------------------------------
+# Local tooling output
+# ---------------------------------------------------------------------------
+tools/license-check/.cache/
+*.tmp
