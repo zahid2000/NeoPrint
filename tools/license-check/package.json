@@ -1,0 +1,16 @@
+{
+  "name": "neoprint-license-check",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Licence policy check for NeoPrint across NuGet, npm and pub. No runtime dependencies by design (plan section 2.0).",
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "check": "node index.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "license": "UNLICENSED"
+}

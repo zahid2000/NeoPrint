@@ -1,0 +1,88 @@
+{
+  "$comment": "Licence policy for NeoPrint (plan section 2.0). Changing this file is a deliberate policy decision and must be recorded in docs/DECISIONS.md and docs/THIRD_PARTY.md.",
+
+  "allowedLicenses": [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "MPL-2.0",
+    "ISC",
+    "0BSD",
+    "CC0-1.0",
+    "Unlicense",
+    "Python-2.0",
+    "BlueOak-1.0.0"
+  ],
+
+  "packageExceptions": {
+    "Hangfire.Core": {
+      "license": "LGPL-3.0",
+      "reason": "Free edition, used unmodified as a NuGet package (no linking changes). Hangfire Pro is not used. Plan section 2.0."
+    },
+    "QuestPDF": {
+      "license": "Community",
+      "reason": "QuestPDF Community licence: free for companies with annual revenue below 1M USD. The condition is recorded in docs/THIRD_PARTY.md and must be re-checked as the business grows. Plan section 2.0."
+    }
+  },
+
+  "packageLicenses": {
+    "$comment": "Resolved licence for packages whose metadata ships a licence file instead of an SPDX expression. Each entry must be verified against the package's own LICENSE before being added.",
+    "Lextm.SharpSnmpLib": "MIT"
+  },
+
+  "pinnedMajors": {
+    "$comment": "These are the last freely licensed major versions. Raising a major version changes the licence to a commercial one, so the check fails on anything outside the pinned major.",
+    "MediatR": {
+      "major": 12,
+      "reason": "MediatR v13 and later require a commercial licence."
+    },
+    "MediatR.Contracts": {
+      "major": 2,
+      "reason": "Companion package of MediatR 12.x."
+    },
+    "MassTransit": {
+      "major": 8,
+      "reason": "MassTransit v9 and later require a commercial licence."
+    },
+    "MassTransit.RabbitMQ": {
+      "major": 8,
+      "reason": "MassTransit v9 and later require a commercial licence."
+    },
+    "MassTransit.MongoDb": {
+      "major": 8,
+      "reason": "MassTransit v9 and later require a commercial licence."
+    },
+    "MassTransit.Abstractions": {
+      "major": 8,
+      "reason": "MassTransit v9 and later require a commercial licence."
+    },
+    "FluentAssertions": {
+      "major": 7,
+      "reason": "FluentAssertions v8 and later require a commercial licence."
+    }
+  },
+
+  "bannedPackages": {
+    "$comment": "Packages explicitly ruled out in plan section 2.0 ('Lisenziyaya gore istifade edilmeyenler'). Listed by name so an accidental transitive pull is reported rather than silently accepted.",
+    "Magick.NET-Q16-AnyCPU": "Not needed: SkiaSharp covers image processing.",
+    "Serilog": "Not needed: Microsoft.Extensions.Logging is sufficient.",
+    "Serilog.AspNetCore": "Not needed: Microsoft.Extensions.Logging is sufficient.",
+    "FluentValidation": "Not needed: DataAnnotations plus our own validators.",
+    "Mapster": "Not needed: mapping is written by hand.",
+    "AutoMapper": "Not needed: mapping is written by hand.",
+    "Refit": "Not needed: HttpClient is used directly.",
+    "CliWrap": "Not needed: System.Diagnostics.Process is used directly.",
+    "PDFtoImage": "Replaced by our own NeoPrint.Pdfium P/Invoke wrapper.",
+    "PdfSharpCore": "Replaced by the official PDFsharp package.",
+    "FirebaseAdmin": "Replaced by our own FCM HTTP v1 client.",
+    "Moq": "Plan section 11: no mocking library, fakes are written by hand.",
+    "NSubstitute": "Plan section 11: no mocking library, fakes are written by hand.",
+    "FakeItEasy": "Plan section 11: no mocking library, fakes are written by hand."
+  },
+
+  "ignoredPackagePrefixes": [
+    "NeoPrint."
+  ]
+}
