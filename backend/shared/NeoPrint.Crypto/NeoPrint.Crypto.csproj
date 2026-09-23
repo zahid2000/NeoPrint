@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Envelope encryption for every stored object (plan section 2.13):
+    AES-256-GCM in 1 MB chunks under a per-object data key, which is itself
+    wrapped with the active key encryption key.
+
+    Uses only the BCL (System.Security.Cryptography.AesGcm) - no package.
+    Shared with the kiosk, which encrypts its local spool the same way.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Crypto</RootNamespace>
+  </PropertyGroup>
+
+</Project>

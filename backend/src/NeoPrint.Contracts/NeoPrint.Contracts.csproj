@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    DTOs and message contracts shared between the backend and the kiosk
+    application (plan section 4). The kiosk references this project directly,
+    so it must stay free of packages and of server-only types.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Contracts</RootNamespace>
+  </PropertyGroup>
+
+</Project>

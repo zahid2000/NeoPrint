@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Price calculation (plan section 2.3): pricing profile, volume discount,
+    bonus pages and promo code, in that order. Shared so that the kiosk shows
+    exactly the price the backend charges.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Pricing</RootNamespace>
+  </PropertyGroup>
+
+</Project>

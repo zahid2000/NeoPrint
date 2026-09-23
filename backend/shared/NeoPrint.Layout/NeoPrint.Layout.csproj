@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Page layout renderer (plan section 2.11): turns a layout project into a PDF
+    at true physical size. The same renderer runs in the backend (for mobile)
+    and locally on the kiosk.
+
+    Implemented in step 2; the packages are added with the implementation.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Layout</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NeoPrint.Pdfium\NeoPrint.Pdfium.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Entities, value objects, enums and domain events.
+
+    Deliberately has no dependencies at all - not even on the persistence
+    driver. State transitions such as PrintJob.TransitionTo() live here and are
+    covered by unit tests without any infrastructure (plan sections 5 and 11).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Domain</RootNamespace>
+  </PropertyGroup>
+
+</Project>

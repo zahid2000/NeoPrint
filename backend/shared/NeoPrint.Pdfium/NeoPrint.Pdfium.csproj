@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Our own P/Invoke wrapper around the PDFium native library (plan section
+    2.0): page count and page rendering for previews. The native binary comes
+    from bblanchon/pdfium-binaries; no managed package is used.
+
+    Implemented in step 2.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Pdfium</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>

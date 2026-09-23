@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Hangfire recurring jobs and MassTransit consumers (plan section 6). Hosted
+    inside the API process in development; deployable on its own later.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Workers</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="MassTransit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NeoPrint.Infrastructure\NeoPrint.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

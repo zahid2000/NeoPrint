@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    CQRS layer: MediatR commands, queries, handlers, pipeline behaviours and
+    the interfaces the infrastructure implements. Knows the domain, never the
+    database or the transport.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pinned to 12.x: v13 and later are commercially licensed. -->
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NeoPrint.Domain\NeoPrint.Domain.csproj" />
+    <ProjectReference Include="..\NeoPrint.Contracts\NeoPrint.Contracts.csproj" />
+    <ProjectReference Include="..\..\shared\NeoPrint.Pricing\NeoPrint.Pricing.csproj" />
+  </ItemGroup>
+
+</Project>

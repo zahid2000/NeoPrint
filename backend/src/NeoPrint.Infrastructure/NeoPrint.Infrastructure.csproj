@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Everything that talks to the outside world: MongoDB, Redis, RabbitMQ via
+    MassTransit, Hangfire, SMTP, the OpenBao secret store and the mock payment
+    and fiscal providers.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup Label="Data stores">
+    <PackageReference Include="MongoDB.Driver" />
+    <PackageReference Include="StackExchange.Redis" />
+  </ItemGroup>
+
+  <ItemGroup Label="Messaging and jobs">
+    <!-- Pinned to 8.x: v9 and later are commercially licensed. -->
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+    <PackageReference Include="MassTransit.MongoDb" />
+    <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Hangfire.Mongo" />
+  </ItemGroup>
+
+  <ItemGroup Label="Providers">
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="QRCoder" />
+  </ItemGroup>
+
+  <ItemGroup Label="Hosting">
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NeoPrint.Application\NeoPrint.Application.csproj" />
+    <ProjectReference Include="..\..\shared\NeoPrint.Crypto\NeoPrint.Crypto.csproj" />
+  </ItemGroup>
+
+</Project>
