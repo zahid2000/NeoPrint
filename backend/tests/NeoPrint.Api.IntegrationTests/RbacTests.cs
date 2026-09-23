@@ -424,12 +424,59 @@ public sealed class RbacTests
         foreach (var path in new[]
                  {
                      "/api/admin/me", "/api/admin/roles", "/api/admin/devices",
-                     "/api/admin/features", "/api/admin/enrollment-tokens",
+                     "/api/admin/features", "/api/admin/enrollment-tokens", "/api/admin/kiosks",
                  })
         {
             (await client.GetAsync(path)).StatusCode.Should().Be(
                 HttpStatusCode.Unauthorized, $"{path} must not be readable anonymously");
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Kiosk scope
+    // -----------------------------------------------------------------------
+
+    [DockerFact]
+    public async Task A_scoped_account_sees_only_the_kiosks_in_its_scope()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SuperAdminAsync();
+
+        var all = await admin.GetFromJsonAsync<JsonElement>("/api/admin/kiosks");
+        var everyKiosk = all.EnumerateArray().Select(kiosk => kiosk.GetProperty("id").GetGuid()).ToList();
+
+        everyKiosk.Should().HaveCountGreaterThan(
+            1, "the development seed creates more than one kiosk");
+
+        var roleId = await CreateRoleAsync(
+            admin, $"One kiosk {Guid.NewGuid():N}", Permissions.KiosksView);
+
+        var (client, _) = await CreateAdminWithRoleAsync(
+            admin, roleId, KioskScope.Only(everyKiosk[0]));
+        using var scoped = client;
+
+        var visible = await scoped.GetFromJsonAsync<JsonElement>("/api/admin/kiosks");
+
+        visible.EnumerateArray()
+            .Select(kiosk => kiosk.GetProperty("id").GetGuid())
+            .Should().Equal(everyKiosk[0]);
+    }
+
+    [DockerFact]
+    public async Task Reading_kiosks_without_the_permission_is_refused()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SuperAdminAsync();
+
+        var roleId = await CreateRoleAsync(
+            admin, $"No kiosks {Guid.NewGuid():N}", Permissions.DevicesView);
+
+        var (client, _) = await CreateAdminWithRoleAsync(admin, roleId);
+        using var scoped = client;
+
+        (await scoped.GetAsync("/api/admin/kiosks")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     // -----------------------------------------------------------------------
@@ -446,7 +493,7 @@ public sealed class RbacTests
     /// way the seeder does - and then signs in through the real endpoint.
     /// </remarks>
     private async Task<(HttpClient Client, Guid AdminUserId)> CreateAdminWithRoleAsync(
-        HttpClient superAdmin, Guid roleId)
+        HttpClient superAdmin, Guid roleId, KioskScope? kioskScope = null)
     {
         const string password = "ScopedAdminPassword!2026";
         var email = $"scoped.{Guid.NewGuid():N}@neoprint.test";
@@ -462,7 +509,7 @@ public sealed class RbacTests
             Email = email,
             FullName = "Scoped Admin",
             RoleIds = [roleId],
-            KioskScope = KioskScope.Everything(),
+            KioskScope = kioskScope ?? KioskScope.Everything(),
             IsActive = true,
         };
 
