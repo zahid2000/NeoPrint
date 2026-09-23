@@ -22,6 +22,7 @@
     <PackageReference Include="MassTransit.RabbitMQ" />
     <PackageReference Include="MassTransit.MongoDb" />
     <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Hangfire.AspNetCore" />
     <PackageReference Include="Hangfire.Mongo" />
   </ItemGroup>
 

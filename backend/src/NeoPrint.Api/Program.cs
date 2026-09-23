@@ -1,22 +1,191 @@
-// Composition root for the NeoPrint API.
-//
-// This is the skeleton established with the solution layout. Configuration
-// (OpenBao), persistence, messaging, authentication and the hubs are wired in
-// as the rest of step 1 lands.
+using System.Reflection;
+using System.Text.Json;
+using System.Threading.RateLimiting;
+
+using MediatR;
+
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+using NeoPrint.Api.Infrastructure;
+using NeoPrint.Application.Behaviors;
+using NeoPrint.Infrastructure;
+using NeoPrint.Infrastructure.Persistence;
+using NeoPrint.Infrastructure.SecretStore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
-builder.Services.AddProblemDetails();
+// ---------------------------------------------------------------------------
+// Configuration
+//
+// Every secret comes from OpenBao (plan section 2.13). The environment supplies
+// only the address and the AppRole credentials; in production the application
+// does not start if the store is unreachable or a mandatory key is missing.
+// ---------------------------------------------------------------------------
+var isProduction = builder.Environment.IsProduction();
+
+builder.Configuration.AddOpenBao(
+    options => options.Optional = !isProduction,
+    isProduction,
+    log: (message, exception) =>
+    {
+        // Runs before the logging pipeline exists, so this writes to the
+        // console directly. It never prints a secret value.
+        if (exception is null)
+        {
+            Console.WriteLine($"[openbao] {message}");
+        }
+        else
+        {
+            Console.Error.WriteLine($"[openbao] {message}: {exception.Message}");
+        }
+    });
+
+// ---------------------------------------------------------------------------
+// Services
+// ---------------------------------------------------------------------------
+builder.Services.AddSingleton(OpenBaoOptions.FromEnvironment());
+builder.Services.AddSingleton<ISecretStore>(provider =>
+{
+    var options = provider.GetRequiredService<OpenBaoOptions>();
+    var http = provider.GetRequiredService<IHttpClientFactory>().CreateClient("openbao");
+    http.BaseAddress = new Uri(options.Address.TrimEnd('/') + "/");
+    return new OpenBaoClient(http, options);
+});
+
+builder.Services.AddNeoPrintInfrastructure(builder.Configuration);
+
+builder.Services.AddMediatR(configuration =>
+{
+    configuration.RegisterServicesFromAssembly(typeof(ValidationBehavior<,>).Assembly);
+
+    // Order matters: log the attempt, validate it, then open a transaction only
+    // for the requests that need one.
+    configuration.AddOpenBehavior(typeof(LoggingBehavior<,>));
+    configuration.AddOpenBehavior(typeof(ValidationBehavior<,>));
+    configuration.AddOpenBehavior(typeof(TransactionBehavior<,>));
+});
+
+builder.Services.AddValidatorsFrom(typeof(ValidationBehavior<,>).Assembly);
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.DefaultIgnoreCondition =
+            System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
+
+builder.Services.AddProblemDetails(options =>
+    options.CustomizeProblemDetails = context =>
+    {
+        context.ProblemDetails.Instance = context.HttpContext.Request.Path;
+        context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+    });
+
+builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
+
+// Rate limits from plan section 6: 10 per minute per IP on auth endpoints,
+// 120 per minute per user elsewhere.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+
+    options.AddPolicy("device-register", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        // Device registration is anonymous, so it is limited per IP per hour
+        // (plan section 7.11).
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
+
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+});
+
+if (builder.Environment.IsDevelopment())
+{
+    // Swagger is a development aid only. Every administrative capability is
+    // reachable from the admin panel (plan section 1).
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+}
 
 var app = builder.Build();
 
+// ---------------------------------------------------------------------------
+// Startup work
+// ---------------------------------------------------------------------------
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var mongo = scope.ServiceProvider.GetRequiredService<MongoContext>();
+    await mongo.EnsureIndexesAsync();
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline
+// ---------------------------------------------------------------------------
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+else
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+app.UseRateLimiter();
+
 app.MapControllers();
 
-app.Run();
+// Liveness: the process is up. Used by the container health check, and must not
+// depend on anything external, or a brief database blip would restart the API.
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+
+// Readiness: everything this instance needs in order to serve traffic.
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = WriteHealthResponse,
+});
+
+app.MapHealthChecks("/health", new HealthCheckOptions { ResponseWriter = WriteHealthResponse });
+
+await app.RunAsync();
+
+return;
+
+/// <summary>
+/// Writes the health report as JSON: which check, what state, and a short
+/// description. Never the exception, which can carry a connection string.
+/// </summary>
+static Task WriteHealthResponse(HttpContext context, HealthReport report)
+{
+    context.Response.ContentType = "application/json";
+
+    return context.Response.WriteAsJsonAsync(new
+    {
+        status = report.Status.ToString(),
+        durationMs = report.TotalDuration.TotalMilliseconds,
+        checks = report.Entries.Select(entry => new
+        {
+            name = entry.Key,
+            status = entry.Value.Status.ToString(),
+            description = entry.Value.Description,
+            durationMs = entry.Value.Duration.TotalMilliseconds,
+        }),
+    });
+}
 
 /// <summary>
 /// Exposed so that <c>WebApplicationFactory</c> in the integration tests can
