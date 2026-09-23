@@ -122,13 +122,62 @@ public sealed class LegalDocumentRepository : ILegalDocumentRepository
             .SortByDescending(document => document.PublishedAt)
             .FirstOrDefaultAsync(cancellationToken)!;
 
-    public Task AddConsentsAsync(IEnumerable<Consent> consents, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Records acceptances, once each.
+    /// </summary>
+    /// <remarks>
+    /// Idempotent: accepting the same document version again keeps the first
+    /// acceptance, with its original timestamp, IP and device. A second row
+    /// would make it impossible to say when the user actually accepted, and a
+    /// retried request must not rewrite consent history
+    /// (docs/DATA_RETENTION.md, docs/IDEMPOTENCY.md).
+    /// </remarks>
+    public async Task AddConsentsAsync(
+        IEnumerable<Consent> consents, CancellationToken cancellationToken = default)
     {
         var batch = consents.ToList();
 
-        return batch.Count == 0
-            ? Task.CompletedTask
-            : _context.Consents.InsertManyAsync(batch, cancellationToken: cancellationToken);
+        if (batch.Count == 0)
+        {
+            return;
+        }
+
+        var writes = batch
+            .Select(consent => new UpdateOneModel<Consent>(
+                Builders<Consent>.Filter.Where(existing =>
+                    existing.UserId == consent.UserId &&
+                    existing.DocType == consent.DocType &&
+                    existing.Version == consent.Version),
+                // SetOnInsert throughout: an existing acceptance is left
+                // exactly as it was.
+                Builders<Consent>.Update
+                    .SetOnInsert(existing => existing.Id, consent.Id)
+                    .SetOnInsert(existing => existing.UserId, consent.UserId)
+                    .SetOnInsert(existing => existing.DocType, consent.DocType)
+                    .SetOnInsert(existing => existing.Version, consent.Version)
+                    .SetOnInsert(existing => existing.AcceptedAt, consent.AcceptedAt)
+                    .SetOnInsert(existing => existing.Ip, consent.Ip)
+                    .SetOnInsert(existing => existing.DeviceId, consent.DeviceId)
+                    .SetOnInsert(existing => existing.CreatedAt, consent.CreatedAt))
+            {
+                IsUpsert = true,
+            })
+            .Cast<WriteModel<Consent>>()
+            .ToList();
+
+        try
+        {
+            await _context.Consents
+                .BulkWriteAsync(writes, new BulkWriteOptions { IsOrdered = false }, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (MongoBulkWriteException<Consent> exception)
+            when (exception.WriteErrors.All(error => error.Category == ServerErrorCategory.DuplicateKey))
+        {
+            // Two requests upserting the same acceptance at the same moment:
+            // one wins, and the loser's duplicate key error means the row it
+            // wanted is already there. Nothing to report.
+        }
     }
 
     public async Task<IReadOnlyDictionary<LegalDocumentType, string>> GetAcceptedVersionsAsync(

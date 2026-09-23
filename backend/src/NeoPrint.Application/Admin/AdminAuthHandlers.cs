@@ -273,7 +273,7 @@ public sealed class ChangeAdminPasswordHandler : IRequestHandler<ChangeAdminPass
     public async Task<Unit> Handle(ChangeAdminPasswordCommand request, CancellationToken cancellationToken)
     {
         var admin = await _admins.FindByIdAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("AdminUser", request.AdminUserId);
+            ?? throw new NotFoundException("AdminUser");
 
         var verification = _passwordHasher.VerifyHashedPassword(
             admin, admin.PasswordHash, request.CurrentPassword);

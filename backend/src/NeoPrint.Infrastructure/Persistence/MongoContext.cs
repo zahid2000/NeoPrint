@@ -124,7 +124,14 @@ public sealed class MongoContext
 
         await CreateAsync(Consents,
             (Builders<Consent>.IndexKeys.Ascending(c => c.UserId).Ascending(c => c.DocType),
-                Named("ix_consents_user_doctype")));
+                Named("ix_consents_user_doctype")),
+            // One acceptance per document version. Accepting twice - a retried
+            // request, a double tap - must not leave two rows with different
+            // timestamps, which would make it impossible to say when the user
+            // actually accepted (docs/DATA_RETENTION.md).
+            (Builders<Consent>.IndexKeys
+                    .Ascending(c => c.UserId).Ascending(c => c.DocType).Ascending(c => c.Version),
+                Unique("ux_consents_user_doctype_version")));
 
         await CreateAsync(LegalDocuments,
             (Builders<LegalDocument>.IndexKeys

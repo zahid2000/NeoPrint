@@ -159,7 +159,7 @@ public sealed class UpdateFeatureFlagHandler : IRequestHandler<UpdateFeatureFlag
         UpdateFeatureFlagCommand request, CancellationToken cancellationToken)
     {
         var flag = await _flags.FindByKeyAsync(request.Key, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("FeatureFlag", request.Key);
+            ?? throw new NotFoundException("FeatureFlag");
 
         var before = System.Text.Json.JsonSerializer.Serialize(new
         {

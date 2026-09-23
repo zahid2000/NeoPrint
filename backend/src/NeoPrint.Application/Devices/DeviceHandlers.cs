@@ -318,7 +318,7 @@ public sealed class CreateDeviceChallengeHandler
         CreateDeviceChallengeCommand request, CancellationToken cancellationToken)
     {
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("Device", request.DeviceId);
+            ?? throw new NotFoundException("Device");
 
         if (device.Status == DeviceStatus.Revoked)
         {
@@ -424,7 +424,7 @@ public sealed class RenewPairingCodeHandler : IRequestHandler<RenewPairingCodeCo
     public async Task<PairingCodeResult> Handle(RenewPairingCodeCommand request, CancellationToken cancellationToken)
     {
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("Device", request.DeviceId);
+            ?? throw new NotFoundException("Device");
 
         if (device.Status != DeviceStatus.Pending)
         {
@@ -457,7 +457,7 @@ public sealed class ReportDevicePrintersHandler : IRequestHandler<ReportDevicePr
     public async Task<Unit> Handle(ReportDevicePrintersCommand request, CancellationToken cancellationToken)
     {
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("Device", request.DeviceId);
+            ?? throw new NotFoundException("Device");
 
         device.ReportedPrinters = [.. request.Printers.Select(RegisterDeviceHandler.Map)];
         device.LastSeenAt = _clock.UtcNow;

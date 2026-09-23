@@ -8,6 +8,7 @@ using MimeKit;
 using MimeKit.Text;
 
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Common;
 
 namespace NeoPrint.Infrastructure.Email;
 
@@ -40,7 +41,9 @@ public sealed class MailKitEmailSender : IEmailSender
             // Not fatal: the rest of the flow works and the operator sees this
             // in the log. Registration would otherwise be impossible to test
             // without a mail server.
-            _logger.LogWarning("NEOPRINT_SMTP_HOST is not configured; the message to {Recipient} was not sent.", to);
+            _logger.LogWarning(
+                "NEOPRINT_SMTP_HOST is not configured; the message to {Recipient} was not sent.",
+                LogMasking.Email(to));
             return;
         }
 
@@ -79,13 +82,15 @@ public sealed class MailKitEmailSender : IEmailSender
             await client.SendAsync(message, cancellationToken).ConfigureAwait(false);
             await client.DisconnectAsync(true, cancellationToken).ConfigureAwait(false);
 
-            // The recipient is logged; the body is not. It carries confirmation
-            // codes and receipt details (plan section 2.13).
-            _logger.LogInformation("Sent '{Subject}' to {Recipient}.", subject, to);
+            // The recipient is logged masked, and the body not at all: it
+            // carries confirmation codes and receipt details (plan section
+            // 2.13, docs/OBSERVABILITY.md).
+            _logger.LogInformation("Sent '{Subject}' to {Recipient}.", subject, LogMasking.Email(to));
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Sending '{Subject}' to {Recipient} failed.", subject, to);
+            _logger.LogError(
+                exception, "Sending '{Subject}' to {Recipient} failed.", subject, LogMasking.Email(to));
             throw;
         }
     }

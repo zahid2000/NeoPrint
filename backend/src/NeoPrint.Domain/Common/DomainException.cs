@@ -22,10 +22,17 @@ public class DomainException : Exception
 }
 
 /// <summary>The requested entity does not exist, or is not visible to the caller.</summary>
+/// <remarks>
+/// The message reaches the caller as the problem detail, so it names the kind
+/// of thing that was not found and never the value that was looked up. Some of
+/// those values are short-lived secrets - a device pairing code, an enrollment
+/// token - and echoing one back would put it in response bodies and proxy logs
+/// (docs/SECURITY_THREAT_MODEL.md).
+/// </remarks>
 public sealed class NotFoundException : DomainException
 {
-    public NotFoundException(string entity, object id)
-        : base($"{entity} '{id}' was not found.")
+    public NotFoundException(string entity)
+        : base($"{entity} was not found.")
     {
     }
 }

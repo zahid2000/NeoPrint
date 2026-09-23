@@ -65,7 +65,7 @@ public sealed class LookupDeviceHandler : IRequestHandler<LookupDeviceCommand, D
         {
             // Failed lookups are audited (plan section 7.11).
             _logger.LogWarning("A device lookup failed for the supplied activation code.");
-            throw new NotFoundException("Device", request.CodeOrQr);
+            throw new NotFoundException("Device");
         }
 
         Kiosk? kiosk = null;
@@ -142,11 +142,11 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
         var now = _clock.UtcNow;
 
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("Device", request.DeviceId);
+            ?? throw new NotFoundException("Device");
 
         var kiosk = request.KioskId is not null
             ? await _kiosks.FindByIdAsync(request.KioskId.Value, cancellationToken).ConfigureAwait(false)
-              ?? throw new NotFoundException("Kiosk", request.KioskId.Value)
+              ?? throw new NotFoundException("Kiosk")
             : await CreateKioskAsync(request.NewKiosk!, now, cancellationToken).ConfigureAwait(false);
 
         // Binding to a kiosk that already has a device is how hardware is
@@ -288,7 +288,7 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
         var now = _clock.UtcNow;
 
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("Device", request.DeviceId);
+            ?? throw new NotFoundException("Device");
 
         var kioskId = device.KioskId;
 
@@ -370,7 +370,7 @@ public sealed class CreateEnrollmentTokenHandler
         if (request.KioskId is not null)
         {
             kiosk = await _kiosks.FindByIdAsync(request.KioskId.Value, cancellationToken).ConfigureAwait(false)
-                ?? throw new NotFoundException("Kiosk", request.KioskId.Value);
+                ?? throw new NotFoundException("Kiosk");
         }
         else
         {
@@ -445,7 +445,7 @@ public sealed class RevokeEnrollmentTokenHandler : IRequestHandler<RevokeEnrollm
     {
         var tokens = await _tokens.ListAsync(cancellationToken).ConfigureAwait(false);
         var token = tokens.FirstOrDefault(candidate => candidate.Id == request.Id)
-            ?? throw new NotFoundException("EnrollmentToken", request.Id);
+            ?? throw new NotFoundException("EnrollmentToken");
 
         if (token.RevokedAt is null)
         {

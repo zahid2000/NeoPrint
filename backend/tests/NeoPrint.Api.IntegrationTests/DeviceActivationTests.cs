@@ -556,6 +556,27 @@ public sealed class DeviceActivationTests
         admin.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [DockerFact]
+    public async Task A_failed_lookup_does_not_echo_the_code_back()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SignedInSuperAdminAsync();
+
+        const string guessed = "ZZZZ-9999";
+
+        var lookup = await admin.PostAsJsonAsync("/api/admin/devices/lookup", new { codeOrQr = guessed });
+
+        lookup.StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // A pairing code authorises an activation, so it is a short-lived
+        // secret: it must not come back in the response body, where it would
+        // land in proxy and client logs (docs/SECURITY_THREAT_MODEL.md).
+        var body = await lookup.Content.ReadAsStringAsync();
+
+        body.Should().NotContain(guessed);
+        body.Should().NotContain("ZZZZ");
+    }
 
     // -----------------------------------------------------------------------
     // Revocation takes effect at once (plan section 7.11)
