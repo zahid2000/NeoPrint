@@ -119,6 +119,10 @@ builder.Services.AddAuthorization(options => options.AddNeoPrintPolicies());
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
+// Confirms a device token against the device's current state on every request,
+// so detaching a device takes effect at once (plan section 7.11).
+builder.Services.AddScoped<IAuthorizationHandler, DeviceAuthorizationHandler>();
+
 // SignalR with the Redis backplane, so several API instances can serve the
 // same hub groups (plan section 6).
 var signalR = builder.Services.AddSignalR(options => options.EnableDetailedErrors = builder.Environment.IsDevelopment());

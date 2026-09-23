@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 
+using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 
 namespace NeoPrint.Api;
@@ -45,16 +46,22 @@ public static class AuthorizationPolicies
             .RequireAuthenticatedUser()
             .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.Admin));
 
+        // The three device policies also confirm the device's current state, so
+        // detaching one takes effect on its next request rather than when its
+        // token expires an hour later (plan section 7.11).
         options.AddPolicy(Kiosk, policy => policy
             .RequireAuthenticatedUser()
-            .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.Kiosk));
+            .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.Kiosk)
+            .AddRequirements(new DeviceIsActiveRequirement()));
 
         options.AddPolicy(Provisioning, policy => policy
             .RequireAuthenticatedUser()
-            .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.Provisioning));
+            .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.Provisioning)
+            .AddRequirements(new DeviceIsActiveRequirement()));
 
         options.AddPolicy(Device, policy => policy
             .RequireAuthenticatedUser()
-            .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.Provisioning, TokenTypes.Kiosk));
+            .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.Provisioning, TokenTypes.Kiosk)
+            .AddRequirements(new DeviceIsActiveRequirement()));
     }
 }

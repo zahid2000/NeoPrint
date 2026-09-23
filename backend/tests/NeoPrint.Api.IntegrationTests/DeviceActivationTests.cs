@@ -5,6 +5,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
+using Microsoft.Extensions.DependencyInjection;
+
+using StackExchange.Redis;
+
 namespace NeoPrint.Api.IntegrationTests;
 
 /// <summary>
@@ -552,6 +556,150 @@ public sealed class DeviceActivationTests
         admin.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+
+    // -----------------------------------------------------------------------
+    // Revocation takes effect at once (plan section 7.11)
+    // -----------------------------------------------------------------------
+
+    [DockerFact]
+    public async Task A_token_issued_before_a_revoke_stops_working_at_once()
+    {
+        if (Skip) { return; }
+
+        using var client = _fixture.CreateApiClient();
+        using var device = new FakeKioskDevice();
+
+        var (deviceId, _, _) = await RegisterAsync(client, device, "kiosk-live-revoke");
+
+        using var admin = await SignedInSuperAdminAsync();
+        var activate = await admin.PostAsJsonAsync($"/api/admin/devices/{deviceId}/activate", new
+        {
+            newKiosk = NewKiosk("Live revoke", "Bakı"),
+        });
+
+        activate.StatusCode.Should().Be(HttpStatusCode.OK, await activate.Content.ReadAsStringAsync());
+
+        // The device holds a kiosk token from before the revoke. It lives an
+        // hour, so nothing about its expiry helps here.
+        var issued = await GetTokenAsync(client, device, deviceId);
+        var kioskToken = issued.GetProperty("accessToken").GetString();
+
+        using var kiosk = _fixture.CreateApiClient();
+        kiosk.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", kioskToken);
+
+        var before = await kiosk.PutAsJsonAsync("/api/devices/me/printers", new
+        {
+            printers = new[] { ReportedPrinter("Before revoke") },
+        });
+
+        before.StatusCode.Should().Be(HttpStatusCode.NoContent, "the token works while the device is active");
+
+        var revoke = await admin.PostAsJsonAsync(
+            $"/api/admin/devices/{deviceId}/revoke", new { reason = "Avadanlıq dəyişdirildi" });
+
+        revoke.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // The same token, immediately afterwards. The plan says a detached
+        // device becomes invalid at once, not when its token expires.
+        var after = await kiosk.PutAsJsonAsync("/api/devices/me/printers", new
+        {
+            printers = new[] { ReportedPrinter("After revoke") },
+        });
+
+        after.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [DockerFact]
+    public async Task A_revoked_device_is_refused_even_if_the_blocklist_was_lost()
+    {
+        if (Skip) { return; }
+
+        using var client = _fixture.CreateApiClient();
+        using var device = new FakeKioskDevice();
+
+        var (deviceId, _, _) = await RegisterAsync(client, device, "kiosk-redis-loss");
+
+        using var admin = await SignedInSuperAdminAsync();
+        await admin.PostAsJsonAsync($"/api/admin/devices/{deviceId}/activate", new
+        {
+            newKiosk = NewKiosk("Blocklist loss", "Bakı"),
+        });
+
+        var issued = await GetTokenAsync(client, device, deviceId);
+
+        using var kiosk = _fixture.CreateApiClient();
+        kiosk.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", issued.GetProperty("accessToken").GetString());
+
+        await admin.PostAsJsonAsync($"/api/admin/devices/{deviceId}/revoke", new { reason = "Test" });
+
+        // Simulate Redis being flushed or restarted: the blocklist entry is
+        // gone. MongoDB is the source of truth, so the answer must not change
+        // (docs/ARCHITECTURE_RULES.md section 2).
+        await DropBlocklistEntryAsync(deviceId);
+
+        var after = await kiosk.PutAsJsonAsync("/api/devices/me/printers", new
+        {
+            printers = new[] { ReportedPrinter("After redis loss") },
+        });
+
+        after.StatusCode.Should().Be(
+            HttpStatusCode.Forbidden, "the device status in MongoDB decides, not the Redis blocklist");
+    }
+
+    [DockerFact]
+    public async Task A_provisioning_token_stops_working_once_the_device_is_revoked()
+    {
+        if (Skip) { return; }
+
+        using var client = _fixture.CreateApiClient();
+        using var device = new FakeKioskDevice();
+
+        var (deviceId, _, _) = await RegisterAsync(client, device, "kiosk-provisioning-revoke");
+
+        // A device awaiting activation gets a provisioning token, which it uses
+        // to renew the code on its screen.
+        var issued = await GetTokenAsync(client, device, deviceId);
+        issued.GetProperty("tokenType").GetString().Should().Be("provisioning");
+
+        using var pending = _fixture.CreateApiClient();
+        pending.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", issued.GetProperty("accessToken").GetString());
+
+        var before = await pending.PostAsync("/api/devices/me/pairing-code", content: null);
+        before.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var admin = await SignedInSuperAdminAsync();
+        var revoke = await admin.PostAsJsonAsync(
+            $"/api/admin/devices/{deviceId}/revoke", new { reason = "Cihaz itdi" });
+
+        revoke.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var after = await pending.PostAsync("/api/devices/me/pairing-code", content: null);
+        after.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    private static object ReportedPrinter(string name) => new
+    {
+        name,
+        driverName = "Test driver",
+        isOnline = true,
+        color = false,
+        duplex = false,
+        a3 = false,
+    };
+
+    /// <summary>
+    /// Removes the Redis blocklist entry, to prove the database check stands on
+    /// its own.
+    /// </summary>
+    private async Task DropBlocklistEntryAsync(Guid deviceId)
+    {
+        using var scope = _fixture.Services.CreateScope();
+        var redis = scope.ServiceProvider.GetRequiredService<IConnectionMultiplexer>();
+
+        await redis.GetDatabase().KeyDeleteAsync($"device:blocked:{deviceId}");
+    }
     private static object NewKiosk(string name, string address, string adminPin = "135790") => new
     {
         name,
