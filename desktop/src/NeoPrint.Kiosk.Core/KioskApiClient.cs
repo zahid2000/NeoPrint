@@ -37,6 +37,54 @@ public sealed record DeviceTokenResponse(
 public sealed record PairingCodeResponse(string PairingCode, DateTime ExpiresAt);
 
 /// <summary>
+/// The kiosk's own configuration, as the backend sends it
+/// (plan sections 7.11, 2.2).
+/// </summary>
+/// <remarks>
+/// Cached locally so the kiosk can keep working while the backend is
+/// unreachable, for as long as <see cref="CacheTtlHours"/> allows
+/// (plan section 7.3). No backend secret is in it - the admin PIN arrives as a
+/// PBKDF2 hash the kiosk compares against.
+/// </remarks>
+public sealed record KioskConfiguration(
+    Guid KioskId,
+    string Code,
+    string Name,
+    string Status,
+    string DefaultLanguage,
+    string? SelectedPrinter,
+    PrinterCapabilityFlags EffectiveCapabilities,
+    IReadOnlyCollection<ConfiguredPrinter> AvailablePrinters,
+    string? AdminPinHash,
+    int QueueDisplayLimit,
+    int MaxFileSizeMb,
+    int MaxPages,
+    Guid? PricingProfileId,
+    IReadOnlyDictionary<string, PaperStockLevel> PaperStock,
+    IReadOnlyDictionary<string, bool> Features,
+    int HeartbeatSeconds,
+    int CacheTtlHours,
+    DateTime ServerTime);
+
+public sealed record PrinterCapabilityFlags(bool Color, bool Duplex, bool A3);
+
+public sealed record ConfiguredPrinter(
+    string Name, string? DriverName, bool IsOnline, PrinterCapabilityFlags DetectedCapabilities);
+
+public sealed record PaperStockLevel(int Capacity, int Current);
+
+/// <summary>What the backend says back to a heartbeat (plan section 7.9).</summary>
+/// <param name="ConfigurationChangedAt">
+/// When the configuration last changed. The kiosk refetches when this moves
+/// past what it last saw, rather than polling the whole document.
+/// </param>
+public sealed record KioskHeartbeatResponse(
+    string Status,
+    int NextInSeconds,
+    DateTime ConfigurationChangedAt,
+    DateTime ServerTime);
+
+/// <summary>
 /// Raised when the backend refuses the device outright, which in practice means
 /// it was revoked (plan section 7.11).
 /// </summary>
@@ -269,6 +317,57 @@ public sealed class KioskApiClient
         using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>
+    /// Fetches this kiosk's own configuration (plan section 7.11).
+    /// </summary>
+    /// <remarks>
+    /// Everything that makes this installation a particular kiosk comes from
+    /// here: the build itself is universal and carries none of it.
+    /// </remarks>
+    public async Task<KioskConfiguration> GetConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateAuthenticatedRequestAsync(
+            HttpMethod.Get, "api/kiosks/me/config", cancellationToken).ConfigureAwait(false);
+
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content
+                   .ReadFromJsonAsync<KioskConfiguration>(JsonOptions, cancellationToken)
+                   .ConfigureAwait(false)
+               ?? throw new InvalidOperationException("The configuration response was empty.");
+    }
+
+    /// <summary>
+    /// Reports that this kiosk is alive (plan section 7.9).
+    /// </summary>
+    /// <returns>
+    /// What the backend says back, including when to send the next one and
+    /// whether the configuration has changed since it was fetched.
+    /// </returns>
+    public async Task<KioskHeartbeatResponse> SendHeartbeatAsync(
+        string? appVersion,
+        string? agentVersion,
+        bool printerOnline,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateAuthenticatedRequestAsync(
+            HttpMethod.Post, "api/kiosks/heartbeat", cancellationToken).ConfigureAwait(false);
+
+        request.Content = JsonContent.Create(
+            new { appVersion, agentVersion, printerOnline }, options: JsonOptions);
+
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content
+                   .ReadFromJsonAsync<KioskHeartbeatResponse>(JsonOptions, cancellationToken)
+                   .ConfigureAwait(false)
+               ?? throw new InvalidOperationException("The heartbeat response was empty.");
     }
 
     /// <summary>Forgets the cached token, so the next call signs a new challenge.</summary>

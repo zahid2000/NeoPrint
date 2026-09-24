@@ -67,6 +67,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private int _queueDisplayLimit = 5;
 
+    /// <summary>
+    /// The active printer, as the configuration named it.
+    /// </summary>
+    /// <remarks>
+    /// Kept so that coming back online returns to the right screen: a kiosk
+    /// with no printer chosen belongs on screen 14, not the home screen.
+    /// </remarks>
+    [ObservableProperty]
+    private string? _selectedPrinterName;
+
     [ObservableProperty]
     private string? _hotline;
 
@@ -157,6 +167,60 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         {
             KioskCode = state.KioskCode;
         }
+    }
+
+    /// <summary>
+    /// Applies the configuration the backend sent (plan section 7.11).
+    /// </summary>
+    /// <remarks>
+    /// Everything the shell shows about this kiosk comes from here, because the
+    /// build itself carries none of it.
+    /// </remarks>
+    public void ApplyConfiguration(KioskConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        KioskName = configuration.Name;
+        KioskCode = configuration.Code;
+        QueueDisplayLimit = configuration.QueueDisplayLimit;
+        SelectedPrinterName = configuration.SelectedPrinter;
+
+        // A kiosk with no printer chosen yet waits on screen 14 rather than
+        // offering to print (plan section 7.3).
+        Screen = configuration.SelectedPrinter is null
+            ? KioskScreen.NotConfigured
+            : KioskScreen.Home;
+    }
+
+    /// <summary>
+    /// Shows what the kiosk may actually do (plan section 7.3).
+    /// </summary>
+    /// <param name="hasConfiguration">
+    /// Whether a configuration has been fetched at all. Without one there is
+    /// nothing to work from, whatever the link is doing.
+    /// </param>
+    public void ApplyAvailability(KioskAvailability availability, bool hasConfiguration)
+    {
+        if (!hasConfiguration)
+        {
+            Screen = KioskScreen.Offline;
+            return;
+        }
+
+        Screen = availability switch
+        {
+            KioskAvailability.Degraded => KioskScreen.Degraded,
+            KioskAvailability.Offline => KioskScreen.Offline,
+
+            // Back online: the home screen unless a printer still has to be
+            // chosen.
+            _ when Screen is KioskScreen.Degraded or KioskScreen.Offline =>
+                SelectedPrinterName is null ? KioskScreen.NotConfigured : KioskScreen.Home,
+
+            // Online and already on a working screen: leave it where it is, so
+            // a heartbeat does not interrupt somebody mid-order.
+            _ => Screen,
+        };
     }
 
     /// <summary>Replaces the queue, trimmed to the display limit.</summary>

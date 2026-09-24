@@ -75,7 +75,9 @@ internal static class Program
 
         RegisterPlatform(services, configuration);
 
+        services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<DeviceEnrollmentService>();
+        services.AddSingleton<KioskRuntime>();
 
         services.AddHttpClient<KioskApiClient>((provider, client) =>
             {
