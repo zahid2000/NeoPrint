@@ -328,6 +328,145 @@ Qaydalar:
 
 ---
 
+## Admin hesabları
+
+Hamısı `admins.manage` tələb edir.
+
+| Metod | Yol | Nəticə |
+|---|---|---|
+| `GET` | `/api/admin/admins` | `AdminUserResponse[]` |
+| `GET` | `/api/admin/admins/{id}` | `AdminUserResponse` / `404` |
+| `POST` | `/api/admin/admins` | `AdminUserResponse` (idempotent) |
+| `PUT` | `/api/admin/admins/{id}` | `AdminUserResponse` / `404` |
+| `POST` | `/api/admin/admins/{id}/active` | `204` / `404` |
+| `POST` | `/api/admin/admins/{id}/reset-password` | `204` / `404` |
+
+`AdminUserResponse`: `{ "id", "email", "fullName", "roleIds", "roleNames",
+"allKiosks", "kioskIds", "isActive", "mustChangePassword", "isLockedOut",
+"lastLoginAt", "createdAt" }`
+
+**Şifrə hash-i və uğursuz giriş sayğacı cavabda yoxdur** — panelin onlara
+ehtiyacı yoxdur (`docs/SECURITY_THREAT_MODEL.md`).
+
+Gövdə (create): `{ "email", "fullName", "password", "roleIds": [], "allKiosks", "kioskIds": [] }`
+Gövdə (update): `{ "fullName", "roleIds": [], "allKiosks", "kioskIds": [] }` — **email dəyişmir**, hesabı o müəyyən edir.
+Gövdə (active): `{ "isActive", "reason" }` — səbəb audit log-a yazılır.
+Gövdə (reset-password): `{ "newPassword" }`
+
+Qaydalar:
+- Email unikaldır → `409`.
+- Ən azı bir rol məcburidir; mövcud olmayan rol → `400`.
+- Əhatəsi məhdud hesab (`allKiosks: false`) ən azı bir kiosk saxlamalıdır.
+- Şifrə ən azı **12** simvol (`change-password` ilə eyni qayda).
+- Yeni hesab və şifrə sıfırlanması `mustChangePassword: true` qoyur.
+- **Son aktiv SuperAdmin** deaktiv edilə və ya rolundan çıxarıla bilməz →
+  `409`. Panelə heç kimin girə bilməməsi bərpa olunmayan vəziyyətdir.
+- Deaktivləşdirmə və şifrə sıfırlanması hesabın **bütün refresh token-lərini
+  ləğv edir** və icazə keşini təmizləyir: deaktiv hesabın açıq access token-i
+  ilk sorğuda `403` alır (`Admin` policy-də `AdminIsActiveRequirement`).
+
+---
+
+## Tənzimləmələr
+
+### `GET /api/admin/settings`
+
+`settings.manage`. Bütün parametrlər, hər biri sənədləşdirilmiş default dəyəri
+ilə.
+
+→ `[ { "key", "value", "defaultValue", "valueType", "description", "isDefault",
+      "updatedAt", "updatedBy" } ]`
+
+`valueType`: `String` | `Integer` | `Decimal` | `Boolean` | `Json`
+
+### `PUT /api/admin/settings`
+
+`settings.manage`. `{ "values": { "Queue.DisplayLimit": "5" } }` → yenilənmiş
+bütün siyahı.
+
+Bir sorğuda bir necə parametr, çünki panel sahə deyil **səhifə** yadda saxlayır;
+yarım tətbiq olunmuş səhifə heç nədən pisdir, ona görə bir tranzaksiyada gedir.
+Kataloqda olmayan açar və ya tipi uyğun gəlməyən dəyər **heç nə yazılmadan**
+rədd edilir → `400`.
+
+Saxlama müddətləri də buradan idarə olunur: `Retention.StateTransitionDays`
+(default `365`) və `Retention.ProviderEventDays` (default `180`). Dəyişiklik
+API-nin növbəti başlanğıcında Mongo TTL indeksinə tətbiq olunur
+(`docs/DATA_RETENTION.md`).
+
+---
+
+## Hüquqi sənədlərin idarəsi
+
+### `GET /api/admin/legal-documents`
+
+`legal.manage`. Bütün dərc olunmuş versiyalar, yenisi əvvəldə.
+
+→ `[ { "id", "docType", "version", "language", "content", "publishedAt",
+      "publishedBy", "isCurrent", "acceptances" } ]`
+
+### `POST /api/admin/legal-documents`
+
+`legal.manage`, idempotent. `{ "docType", "version", "language", "content" }` →
+`LegalDocumentResponse`.
+
+Sənəd **redaktə edilmir, yeni versiya dərc olunur**: razılıq qeydi istifadəçinin
+həqiqətən gördüyü versiyaya istinad edir (Bölmə 2.13). Eyni tip, dil və versiya
+təkrarlana bilməz → `409`. Köhnə versiyalar saxlanılır
+(`docs/DATA_RETENTION.md`).
+
+Yeni versiya dərc olunan kimi `GET /api/consents/pending` onu qaytarır —
+istifadəçilər yenidən razılıq verməlidir.
+
+---
+
+## Kiosk (kiosk token-i ilə)
+
+Kiosk tətbiqi **universal build-dir**: onu bu kiosk edən hər şey backend-dən
+gəlir (Bölmə 7.11). Hər iki endpoint kiosk token-i tələb edir və hər sorğuda
+cihazın hələ aktiv olduğunu yoxlayır — ləğv edilmiş cihaz `403` alır və
+Activation ekranına qayıdır.
+
+### `GET /api/kiosks/me/config`
+
+```json
+{
+  "kioskId", "code", "name", "status", "defaultLanguage",
+  "selectedPrinter", "effectiveCapabilities": { "color", "duplex", "a3" },
+  "availablePrinters": [ { "name", "driverName", "isOnline", "detectedCapabilities" } ],
+  "adminPinHash",
+  "queueDisplayLimit", "maxFileSizeMb", "maxPages", "pricingProfileId",
+  "paperStock": { "A4": { "capacity", "current" } },
+  "features": { "scan.enabled": true },
+  "heartbeatSeconds", "cacheTtlHours", "serverTime"
+}
+```
+
+**Backend secret-i yoxdur** — admin PIN-i kiosk üçün yalnız PBKDF2 hash kimi
+gedir, cihaz onunla tutuşdurur (Bölmə 2.13, 7.11).
+
+`cacheTtlHours` — backend əlçatmaz olanda bu konfiqurasiya nə qədər müddət
+etibarlıdır. Müddət keçəndən sonra kiosk sifariş qəbul etmir
+(`docs/OFFLINE_BEHAVIOR.md`). `serverTime` cihazın saatı sürüşəndə istinad
+nöqtəsidir.
+
+Cihaz heç bir kioska bağlı deyilsə → `403`.
+
+### `POST /api/kiosks/heartbeat`
+
+`{ "appVersion", "agentVersion", "printerOnline" }` →
+`{ "status", "nextInSeconds", "configurationChangedAt", "serverTime" }`
+
+Kiosk bununla **geri qayıdır** da: heartbeat-i dayandığı üçün `Offline`
+işarələnmiş kiosk növbəti heartbeat-də xidmətə qayıdır, operator müdaxiləsi
+olmadan (Bölmə 7.9).
+
+`nextInSeconds` — növbəti heartbeat nə vaxt; interval panelden dəyişdirilir,
+kiosk yenidən yayımlanmır. `configurationChangedAt` irəli gedibsə kiosk
+konfiqurasiyanı yenidən çəkir — bütün konfiqurasiyanı poll etmək lazım deyil.
+
+---
+
 ## Kiosklar
 
 ### `GET /api/admin/kiosks`
@@ -495,5 +634,4 @@ Production-da OpenBao-da məcburi açar olmasa API **başlamır**.
 Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: fayllar və
 konvertasiya (Addım 2), print job-lar və queue (Addım 3), ödəniş / refund /
 wallet / fiskal (Addım 4), skan və paylaşım (Addım 6), telemetriya və operator
-paneli (Addım 7). Admin istifadəçiləri, tənzimləmələr və hüquqi sənədlərin
-idarəsi Addım 1-in qalan işidir.
+paneli (Addım 7). Kiosk CRUD-u və qiymət profilləri Addım 2-dədir.

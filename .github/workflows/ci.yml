@@ -1,0 +1,290 @@
+# NeoPrint CI (plan section 12, step 1).
+#
+# Five jobs, one per thing that can break on its own: the backend, the kiosk on
+# both of its platforms, the mobile app, the admin panel, and the licence
+# policy. They are independent, so a red backend still tells us whether the
+# panel builds.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push to the same branch makes the previous run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: 'true'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  # --------------------------------------------------------------------
+  # Backend
+  # --------------------------------------------------------------------
+  backend:
+    name: backend (build + test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The SDK version comes from global.json, so CI and a developer machine
+      # cannot drift apart.
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-backend-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'backend/**/*.csproj') }}
+          restore-keys: nuget-backend-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore backend/NeoPrint.sln
+
+      - name: Build
+        run: dotnet build backend/NeoPrint.sln --configuration Release --no-restore
+
+      # The runner has a Docker daemon, so the container-backed integration
+      # tests (Mongo, Redis) really run here rather than skipping as they may
+      # on a developer machine.
+      - name: Test
+        run: >-
+          dotnet test backend/NeoPrint.sln
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=backend.trx"
+          --results-directory artifacts/test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: artifacts/test-results
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------
+  # Kiosk (desktop)
+  # --------------------------------------------------------------------
+  #
+  # One build per platform the kiosk ships on. The build is universal - nothing
+  # kiosk-specific is baked in (plan section 7.11) - but the platform
+  # implementations differ, so both legs have to compile and both have to pass
+  # the tests.
+  desktop:
+    name: desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-desktop-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'desktop/**/*.csproj') }}
+          restore-keys: nuget-desktop-${{ runner.os }}-
+
+      # The Windows platform project targets net8.0-windows. Compiling that TFM
+      # on Linux needs the reference assemblies, which this property pulls in;
+      # it changes nothing on the Windows leg.
+      - name: Restore
+        run: dotnet restore desktop/NeoPrint.Kiosk.sln -p:EnableWindowsTargeting=true
+
+      - name: Build
+        run: >-
+          dotnet build desktop/NeoPrint.Kiosk.sln
+          --configuration Release
+          --no-restore
+          -p:EnableWindowsTargeting=true
+
+      - name: Test
+        run: >-
+          dotnet test desktop/NeoPrint.Kiosk.sln
+          --configuration Release
+          --no-build
+          -p:EnableWindowsTargeting=true
+          --logger "trx;LogFileName=desktop.trx"
+          --results-directory artifacts/test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-test-results-${{ matrix.os }}
+          path: artifacts/test-results
+          if-no-files-found: ignore
+
+  # --------------------------------------------------------------------
+  # Mobile
+  # --------------------------------------------------------------------
+  mobile:
+    name: mobile (analyze + test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cloned from the official repository rather than through a third-party
+      # action, so CI adds no dependency that would need justifying under the
+      # plan's library policy. The version is printed into the log so a failure
+      # can be tied to an SDK release.
+      - name: Install the Flutter SDK
+        run: |
+          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$RUNNER_TOOL_CACHE/flutter"
+          echo "$RUNNER_TOOL_CACHE/flutter/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TOOL_CACHE/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+      - name: Record the SDK version
+        run: flutter --version
+
+      - name: Cache the pub cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('mobile/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Resolve packages
+        run: flutter pub get
+        working-directory: mobile
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
+        working-directory: mobile
+
+      # analysis_options.yaml treats the analyser's findings as errors, so this
+      # is the mobile equivalent of the lint step.
+      - name: Analyze
+        run: flutter analyze
+        working-directory: mobile
+
+      - name: Test
+        run: flutter test
+        working-directory: mobile
+
+  # --------------------------------------------------------------------
+  # Admin panel
+  # --------------------------------------------------------------------
+  admin:
+    name: admin (lint + test + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      # npm ci, not npm install: the lock file is what was reviewed.
+      - name: Install dependencies
+        run: npm ci
+        working-directory: admin
+
+      - name: Lint
+        run: npm run lint
+        working-directory: admin
+
+      # The tests run in jsdom, so no browser is needed on the runner.
+      - name: Test
+        run: npx ng test --watch=false
+        working-directory: admin
+
+      - name: Build
+        run: npx ng build --configuration production
+        working-directory: admin
+
+  # --------------------------------------------------------------------
+  # Licence policy
+  # --------------------------------------------------------------------
+  #
+  # Every ecosystem is restored first and the check runs with --strict, so an
+  # ecosystem that could not be scanned fails the job instead of passing
+  # quietly on an empty dependency list.
+  license-check:
+    name: licence policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - name: Install the Flutter SDK
+        run: |
+          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$RUNNER_TOOL_CACHE/flutter"
+          echo "$RUNNER_TOOL_CACHE/flutter/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TOOL_CACHE/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+      - name: Cache the pub cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('mobile/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Restore the .NET solutions
+        run: |
+          dotnet restore backend/NeoPrint.sln
+          dotnet restore desktop/NeoPrint.Kiosk.sln -p:EnableWindowsTargeting=true
+
+      - name: Restore the admin panel
+        run: npm ci
+        working-directory: admin
+
+      - name: Resolve the mobile packages
+        run: flutter pub get
+        working-directory: mobile
+
+      # The checker has no dependencies of its own, so its own tests are just
+      # node --test.
+      - name: Test the checker
+        run: npm test
+        working-directory: tools/license-check
+
+      - name: Check licences
+        run: node tools/license-check --strict
