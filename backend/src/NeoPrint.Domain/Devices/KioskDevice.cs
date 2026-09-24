@@ -96,7 +96,12 @@ public sealed class KioskDevice : Entity
 
     public string? AppVersion { get; set; }
 
-    public DeviceStatus Status { get; set; } = DeviceStatus.Pending;
+    /// <summary>
+    /// Where the device is in its lifecycle. Changed only through the
+    /// transition methods below, never assigned from outside
+    /// (<c>docs/STATE_MACHINES.md</c>).
+    /// </summary>
+    public DeviceStatus Status { get; private set; } = DeviceStatus.Pending;
 
     /// <summary>Hashed: the screen shows the code, the database never stores it.</summary>
     public string? PairingCodeHash { get; set; }
@@ -155,11 +160,29 @@ public sealed class KioskDevice : Entity
         => code.Replace("-", string.Empty, StringComparison.Ordinal).Trim().ToUpperInvariant();
 
     /// <summary>
+    /// The transitions a device may make (<c>docs/STATE_MACHINES.md</c>).
+    /// </summary>
+    /// <remarks>
+    /// Revoked is a sink on purpose: a revoked device must never be accepted
+    /// again, and reinstalling generates a new key, which registers as a new
+    /// device. Expired can go back to Pending, because a device that simply sat
+    /// too long without anyone activating it has done nothing wrong - it just
+    /// needs a fresh code.
+    /// </remarks>
+    public static readonly StateMachine<DeviceStatus> Transitions =
+        new StateMachine<DeviceStatus>(nameof(KioskDevice))
+            .Allow(DeviceStatus.Pending, DeviceStatus.Active, DeviceStatus.Expired, DeviceStatus.Revoked)
+            .Allow(DeviceStatus.Active, DeviceStatus.Revoked)
+            .Allow(DeviceStatus.Expired, DeviceStatus.Pending, DeviceStatus.Revoked);
+
+    /// <summary>
     /// Activates the device against a kiosk.
     /// </summary>
     /// <exception cref="DomainException">The device is not in a state that can be activated.</exception>
-    public void Activate(Guid kioskId, Guid? activatedBy, DateTime utcNow)
+    public void Activate(Guid kioskId, ActorContext actor, DateTime utcNow)
     {
+        ArgumentNullException.ThrowIfNull(actor);
+
         if (Status == DeviceStatus.Revoked)
         {
             throw new DomainException("This device has been revoked and cannot be activated again. " +
@@ -173,9 +196,11 @@ public sealed class KioskDevice : Entity
             return;
         }
 
+        Record(Transitions.Transition(Id, Status, DeviceStatus.Active, actor, utcNow));
+
         Status = DeviceStatus.Active;
         KioskId = kioskId;
-        ActivatedBy = activatedBy;
+        ActivatedBy = actor.ActorId;
         ActivatedAt = utcNow;
 
         // The code is single-use.
@@ -184,13 +209,69 @@ public sealed class KioskDevice : Entity
     }
 
     /// <summary>Revokes the device. Its next request is rejected.</summary>
-    public void Revoke(Guid? revokedBy, string? reason, DateTime utcNow)
+    /// <remarks>
+    /// Revoking an already revoked device is a no-op: the panel may send the
+    /// command twice, and the device is no less revoked for it.
+    /// </remarks>
+    public void Revoke(ActorContext actor, DateTime utcNow)
     {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        if (Status == DeviceStatus.Revoked)
+        {
+            return;
+        }
+
+        Record(Transitions.Transition(Id, Status, DeviceStatus.Revoked, actor, utcNow));
+
         Status = DeviceStatus.Revoked;
-        RevokedBy = revokedBy;
+        RevokedBy = actor.ActorId;
         RevokedAt = utcNow;
-        RevokeReason = reason;
+        RevokeReason = actor.Reason;
         KioskId = null;
+        PairingCodeHash = null;
+        PairingCodeExpiresAt = null;
+    }
+
+    /// <summary>
+    /// Puts the device back on the activation screen with a fresh pairing code.
+    /// </summary>
+    /// <remarks>
+    /// What happens when a device registers again: either it has never been
+    /// activated, or nobody activated it in time and it expired. A revoked
+    /// device does not come through here - the caller refuses it outright.
+    /// </remarks>
+    /// <exception cref="DomainException">The device is revoked or already active.</exception>
+    public void AwaitActivation(string pairingCodeHash, DateTime expiresAt, ActorContext actor, DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        Record(Transitions.Transition(Id, Status, DeviceStatus.Pending, actor, utcNow));
+
+        Status = DeviceStatus.Pending;
+        PairingCodeHash = pairingCodeHash;
+        PairingCodeExpiresAt = expiresAt;
+    }
+
+    /// <summary>
+    /// Expires a device nobody activated within the pending window.
+    /// </summary>
+    /// <remarks>
+    /// The code it is showing is worthless once this happens, so it is cleared
+    /// rather than left to look valid.
+    /// </remarks>
+    public void Expire(ActorContext actor, DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        if (Status == DeviceStatus.Expired)
+        {
+            return;
+        }
+
+        Record(Transitions.Transition(Id, Status, DeviceStatus.Expired, actor, utcNow));
+
+        Status = DeviceStatus.Expired;
         PairingCodeHash = null;
         PairingCodeExpiresAt = null;
     }

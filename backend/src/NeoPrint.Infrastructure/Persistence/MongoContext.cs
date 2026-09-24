@@ -6,6 +6,7 @@ using MongoDB.Driver;
 
 using NeoPrint.Domain.Admin;
 using NeoPrint.Domain.Audit;
+using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Devices;
 using NeoPrint.Domain.Features;
 using NeoPrint.Domain.Kiosks;
@@ -62,6 +63,13 @@ public sealed class MongoContext
         => _database.GetCollection<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
     public IMongoCollection<AuditLog> AuditLogs => _database.GetCollection<AuditLog>("audit_logs");
+
+    /// <summary>
+    /// Every business state change, in its own collection rather than as an
+    /// array inside the aggregate (<c>docs/STATE_MACHINES.md</c>).
+    /// </summary>
+    public IMongoCollection<StateTransition> StateTransitions
+        => _database.GetCollection<StateTransition>("state_transitions");
 
     /// <summary>
     /// Registers the serialization conventions. Must run before the first
@@ -183,6 +191,16 @@ public sealed class MongoContext
             // is how an incident is traced (docs/OBSERVABILITY.md).
             (Builders<AuditLog>.IndexKeys.Ascending(a => a.CorrelationId),
                 Named("ix_audit_logs_correlation")));
+
+        await CreateAsync(StateTransitions,
+            // The history of one aggregate, newest first.
+            (Builders<StateTransition>.IndexKeys
+                    .Ascending(t => t.EntityType).Ascending(t => t.EntityId).Descending(t => t.CreatedAt),
+                Named("ix_state_transitions_entity")),
+            (Builders<StateTransition>.IndexKeys.Ascending(t => t.CorrelationId),
+                Named("ix_state_transitions_correlation")),
+            (Builders<StateTransition>.IndexKeys.Descending(t => t.CreatedAt),
+                Named("ix_state_transitions_created")));
 
         return;
 

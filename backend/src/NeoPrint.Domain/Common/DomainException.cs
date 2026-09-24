@@ -36,3 +36,27 @@ public sealed class NotFoundException : DomainException
     {
     }
 }
+
+/// <summary>
+/// The document changed underneath us: somebody else saved it first
+/// (<c>docs/IDEMPOTENCY.md</c>, concurrency).
+/// </summary>
+/// <remarks>
+/// Not a rule violation but a race, so the operation can be retried against
+/// what is actually stored. It surfaces as a 409, which is the same code a
+/// caller would get for a rule violation, and that is the right answer here
+/// too: try again.
+/// </remarks>
+public sealed class ConcurrencyException : DomainException
+{
+    public ConcurrencyException(string entityType, Guid id)
+        : base($"{entityType} was changed by somebody else. Reload it and try again.")
+    {
+        EntityType = entityType;
+        EntityId = id;
+    }
+
+    public string EntityType { get; }
+
+    public Guid EntityId { get; }
+}

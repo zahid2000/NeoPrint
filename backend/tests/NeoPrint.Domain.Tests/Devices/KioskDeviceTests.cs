@@ -11,7 +11,6 @@ public sealed class KioskDeviceTests
     private static KioskDevice Pending() => new()
     {
         PublicKey = "spki-base64",
-        Status = DeviceStatus.Pending,
         PairingCodeHash = "hash",
         PairingCodeExpiresAt = Now.AddMinutes(30),
     };
@@ -23,7 +22,7 @@ public sealed class KioskDeviceTests
         var kioskId = Guid.NewGuid();
         var admin = Guid.NewGuid();
 
-        device.Activate(kioskId, admin, Now);
+        device.Activate(kioskId, ActorContext.Admin(admin), Now);
 
         device.Status.Should().Be(DeviceStatus.Active);
         device.KioskId.Should().Be(kioskId);
@@ -38,10 +37,10 @@ public sealed class KioskDeviceTests
     {
         var device = Pending();
         var kioskId = Guid.NewGuid();
-        device.Activate(kioskId, Guid.NewGuid(), Now);
+        device.Activate(kioskId, ActorContext.Admin(Guid.NewGuid()), Now);
         var activatedAt = device.ActivatedAt;
 
-        var act = () => device.Activate(kioskId, Guid.NewGuid(), Now.AddMinutes(5));
+        var act = () => device.Activate(kioskId, ActorContext.Admin(Guid.NewGuid()), Now.AddMinutes(5));
 
         act.Should().NotThrow("an admin may well press the button twice");
         device.ActivatedAt.Should().Be(activatedAt);
@@ -51,9 +50,9 @@ public sealed class KioskDeviceTests
     public void A_revoked_device_cannot_be_activated_again()
     {
         var device = Pending();
-        device.Revoke(Guid.NewGuid(), "hardware replaced", Now);
+        device.Revoke(ActorContext.Admin(Guid.NewGuid(), "hardware replaced"), Now);
 
-        var act = () => device.Activate(Guid.NewGuid(), Guid.NewGuid(), Now);
+        var act = () => device.Activate(Guid.NewGuid(), ActorContext.Admin(Guid.NewGuid()), Now);
 
         act.Should().Throw<DomainException>().WithMessage("*revoked*");
     }
@@ -62,10 +61,10 @@ public sealed class KioskDeviceTests
     public void Revoking_detaches_the_device_and_records_why()
     {
         var device = Pending();
-        device.Activate(Guid.NewGuid(), Guid.NewGuid(), Now);
+        device.Activate(Guid.NewGuid(), ActorContext.Admin(Guid.NewGuid()), Now);
         var admin = Guid.NewGuid();
 
-        device.Revoke(admin, "kiosk decommissioned", Now.AddDays(1));
+        device.Revoke(ActorContext.Admin(admin, "kiosk decommissioned"), Now.AddDays(1));
 
         device.Status.Should().Be(DeviceStatus.Revoked);
         device.KioskId.Should().BeNull();
@@ -80,7 +79,7 @@ public sealed class KioskDeviceTests
         var device = Pending();
         device.CanIssueKioskToken.Should().BeFalse("a pending device gets a provisioning token only");
 
-        device.Activate(Guid.NewGuid(), null, Now);
+        device.Activate(Guid.NewGuid(), ActorContext.System(), Now);
         device.CanIssueKioskToken.Should().BeTrue();
     }
 
@@ -205,12 +204,16 @@ public sealed class EnrollmentTokenTests
 
 public sealed class KioskTests
 {
+    private static readonly DateTime Now = new(2026, 9, 23, 10, 0, 0, DateTimeKind.Utc);
+
+    private static readonly ActorContext Admin = ActorContext.Admin(Guid.NewGuid());
+
     [Fact]
     public void Binding_a_device_leaves_the_kiosk_unconfigured_until_a_printer_is_chosen()
     {
-        var kiosk = new Kiosk { Code = "KSK-0001", Status = KioskStatus.NotActivated };
+        var kiosk = new Kiosk { Code = "KSK-0001" };
 
-        kiosk.BindDevice(Guid.NewGuid(), KioskPlatform.Linux, "0.1.0");
+        kiosk.BindDevice(Guid.NewGuid(), KioskPlatform.Linux, "0.1.0", Admin, Now);
 
         kiosk.Status.Should().Be(KioskStatus.NotConfigured);
         kiosk.Platform.Should().Be(KioskPlatform.Linux);
@@ -225,7 +228,7 @@ public sealed class KioskTests
             SelectedPrinter = new SelectedPrinter { Name = "HP LaserJet" },
         };
 
-        kiosk.BindDevice(Guid.NewGuid(), KioskPlatform.Windows, "0.1.0");
+        kiosk.BindDevice(Guid.NewGuid(), KioskPlatform.Windows, "0.1.0", Admin, Now);
 
         kiosk.Status.Should().Be(KioskStatus.Online,
             "replacing broken hardware must not require reconfiguring the kiosk");
@@ -234,9 +237,10 @@ public sealed class KioskTests
     [Fact]
     public void A_disabled_kiosk_refuses_a_device()
     {
-        var kiosk = new Kiosk { Code = "KSK-0001", Status = KioskStatus.Disabled };
+        var kiosk = new Kiosk { Code = "KSK-0001" };
+        kiosk.MoveTo(KioskStatus.Disabled, Admin, Now);
 
-        var act = () => kiosk.BindDevice(Guid.NewGuid(), KioskPlatform.Linux, "0.1.0");
+        var act = () => kiosk.BindDevice(Guid.NewGuid(), KioskPlatform.Linux, "0.1.0", Admin, Now);
 
         act.Should().Throw<DomainException>().WithMessage("*disabled*");
     }
@@ -250,9 +254,9 @@ public sealed class KioskTests
             SelectedPrinter = new SelectedPrinter { Name = "HP LaserJet" },
             PaperStock = { ["A4"] = new PaperStock { Capacity = 500, Current = 320 } },
         };
-        kiosk.BindDevice(Guid.NewGuid(), KioskPlatform.Linux, "0.1.0");
+        kiosk.BindDevice(Guid.NewGuid(), KioskPlatform.Linux, "0.1.0", Admin, Now);
 
-        kiosk.UnbindDevice();
+        kiosk.UnbindDevice(Admin, Now);
 
         kiosk.Status.Should().Be(KioskStatus.NotActivated);
         kiosk.ActiveDeviceId.Should().BeNull();

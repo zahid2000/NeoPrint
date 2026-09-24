@@ -114,7 +114,11 @@ public sealed class Kiosk : Entity
 
     public KioskLocation Location { get; set; } = new();
 
-    public KioskStatus Status { get; set; } = KioskStatus.NotActivated;
+    /// <summary>
+    /// Where the kiosk is in its lifecycle. Changed only through the transition
+    /// methods below (<c>docs/STATE_MACHINES.md</c>).
+    /// </summary>
+    public KioskStatus Status { get; private set; } = KioskStatus.NotActivated;
 
     /// <summary>The device currently allowed to act as this kiosk.</summary>
     public Guid? ActiveDeviceId { get; set; }
@@ -181,29 +185,95 @@ public sealed class Kiosk : Entity
     public static string NextCode(int sequence) => $"KSK-{sequence:D4}";
 
     /// <summary>
+    /// The transitions a kiosk may make (<c>docs/STATE_MACHINES.md</c>).
+    /// </summary>
+    /// <remarks>
+    /// Losing its device returns a kiosk to NotActivated from wherever it was,
+    /// so every status leads back there. Disabled is reachable from anywhere -
+    /// an administrator can always take a kiosk out of service - and a disabled
+    /// kiosk comes back to NotActivated, because whatever device it had is gone
+    /// by then.
+    /// </remarks>
+    public static readonly StateMachine<KioskStatus> Transitions =
+        new StateMachine<KioskStatus>(nameof(Kiosk))
+            .Allow(KioskStatus.NotActivated, KioskStatus.NotConfigured, KioskStatus.Online)
+            .Allow(KioskStatus.NotConfigured, KioskStatus.Online, KioskStatus.NotActivated, KioskStatus.Offline)
+            .Allow(
+                KioskStatus.Online,
+                KioskStatus.Paused,
+                KioskStatus.Offline,
+                KioskStatus.Maintenance,
+                KioskStatus.NotConfigured,
+                KioskStatus.NotActivated)
+            .Allow(KioskStatus.Paused, KioskStatus.Online, KioskStatus.Offline, KioskStatus.NotActivated)
+            .Allow(KioskStatus.Offline, KioskStatus.Online, KioskStatus.Paused, KioskStatus.NotActivated)
+            .Allow(KioskStatus.Maintenance, KioskStatus.Online, KioskStatus.NotActivated)
+            .Allow(KioskStatus.Disabled, KioskStatus.NotActivated)
+            .AllowFromAny(KioskStatus.Disabled);
+
+    /// <summary>
     /// Binds a device and moves the kiosk out of <see cref="KioskStatus.NotActivated"/>.
     /// </summary>
     /// <exception cref="DomainException">The kiosk is disabled.</exception>
-    public void BindDevice(Guid deviceId, KioskPlatform platform, string? appVersion)
+    public void BindDevice(
+        Guid deviceId, KioskPlatform platform, string? appVersion, ActorContext actor, DateTime utcNow)
     {
+        ArgumentNullException.ThrowIfNull(actor);
+
         if (Status == KioskStatus.Disabled)
         {
             throw new DomainException($"Kiosk {Code} is disabled and cannot have a device activated on it.");
         }
 
+        // A printer still has to be chosen before the kiosk can take orders
+        // (plan section 7.7).
+        var bound = SelectedPrinter is null ? KioskStatus.NotConfigured : KioskStatus.Online;
+
+        Record(Transitions.Transition(Id, Status, bound, actor, utcNow));
+
         ActiveDeviceId = deviceId;
         Platform = platform;
         AppVersion = appVersion;
-
-        // A printer still has to be chosen before the kiosk can take orders
-        // (plan section 7.7).
-        Status = SelectedPrinter is null ? KioskStatus.NotConfigured : KioskStatus.Online;
+        Status = bound;
     }
 
     /// <summary>Unbinds the current device; the kiosk keeps everything else.</summary>
-    public void UnbindDevice()
+    /// <remarks>
+    /// The kiosk's identity, code, history and counters survive a machine being
+    /// replaced - that is the whole point of keeping kiosk and device apart
+    /// (<c>docs/DOMAIN_RULES.md</c>).
+    /// </remarks>
+    public void UnbindDevice(ActorContext actor, DateTime utcNow)
     {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        if (Status == KioskStatus.NotActivated && ActiveDeviceId is null)
+        {
+            return;
+        }
+
+        Record(Transitions.Transition(Id, Status, KioskStatus.NotActivated, actor, utcNow));
+
         ActiveDeviceId = null;
         Status = KioskStatus.NotActivated;
+    }
+
+    /// <summary>
+    /// Moves the kiosk to a status an operator or a heartbeat decided on.
+    /// </summary>
+    /// <remarks>
+    /// The one way to change a kiosk's status outside binding a device, so the
+    /// transition table governs all of it. Pausing, resuming, going offline
+    /// when the heartbeat stops and being taken out of service all come
+    /// through here.
+    /// </remarks>
+    /// <exception cref="IllegalStateTransitionException">The move is not allowed.</exception>
+    public void MoveTo(KioskStatus status, ActorContext actor, DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        Record(Transitions.Transition(Id, Status, status, actor, utcNow));
+
+        Status = status;
     }
 }

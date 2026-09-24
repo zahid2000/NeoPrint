@@ -29,6 +29,7 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
     private readonly IEnrollmentTokenRepository _enrollmentTokens;
     private readonly IKioskRepository _kiosks;
     private readonly ISecretHasher _secrets;
+    private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly ILogger<RegisterDeviceHandler> _logger;
 
@@ -37,6 +38,7 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
         IEnrollmentTokenRepository enrollmentTokens,
         IKioskRepository kiosks,
         ISecretHasher secrets,
+        ICorrelationContext correlation,
         IClock clock,
         ILogger<RegisterDeviceHandler> logger)
     {
@@ -44,6 +46,7 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
         _enrollmentTokens = enrollmentTokens;
         _kiosks = kiosks;
         _secrets = secrets;
+        _correlation = correlation;
         _clock = clock;
         _logger = logger;
     }
@@ -65,10 +68,11 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
                     "Aktivləşdirmə gözləyən cihazların sayı həddi keçib. Admin paneldən köhnə cihazları təmizləyin.");
             }
 
+            // A new device starts Pending, which is the status it is born with;
+            // there is no transition to record because nothing changed.
             device = new KioskDevice
             {
                 PublicKey = request.PublicKey,
-                Status = DeviceStatus.Pending,
                 CreatedAt = now,
             };
         }
@@ -132,9 +136,13 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
         }
 
         var pairingCode = KioskDevice.NewPairingCode();
-        device.Status = DeviceStatus.Pending;
-        device.PairingCodeHash = _secrets.HashSecret(KioskDevice.NormalizePairingCode(pairingCode));
-        device.PairingCodeExpiresAt = now + KioskDevice.PairingCodeLifetime;
+
+        // The device itself is the actor: it registered and asked for a code.
+        device.AwaitActivation(
+            _secrets.HashSecret(KioskDevice.NormalizePairingCode(pairingCode)),
+            now + KioskDevice.PairingCodeLifetime,
+            ActorContext.Kiosk(device.Id, correlationId: _correlation.CorrelationId),
+            now);
 
         await SaveAsync(device, cancellationToken).ConfigureAwait(false);
 
@@ -182,10 +190,16 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
             return null;
         }
 
-        device.Activate(kiosk.Id, token.CreatedBy, now);
+        // The administrator who issued the token is the actor: they decided
+        // this device belongs to this kiosk, even though they are not here now.
+        var actor = token.CreatedBy is { } issuedBy
+            ? ActorContext.Admin(issuedBy, "Enrollment token", _correlation.CorrelationId)
+            : ActorContext.System("Enrollment token", _correlation.CorrelationId);
+
+        device.Activate(kiosk.Id, actor, now);
         device.EnrollmentTokenId = token.Id;
 
-        kiosk.BindDevice(device.Id, device.Platform, device.AppVersion);
+        kiosk.BindDevice(device.Id, device.Platform, device.AppVersion, actor, now);
         await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
 
         token.UsedByDeviceId = device.Id;
@@ -205,7 +219,10 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
             return;
         }
 
-        previous.Revoke(null, "Kiosk üçün yeni cihaz aktivləşdirildi.", now);
+        previous.Revoke(
+            ActorContext.System(
+                "Kiosk üçün yeni cihaz aktivləşdirildi.", _correlation.CorrelationId),
+            now);
         await _devices.UpdateAsync(previous, cancellationToken).ConfigureAwait(false);
     }
 
@@ -225,7 +242,6 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
             Code = code,
             Name = template.Name,
             Location = template.Location,
-            Status = KioskStatus.NotActivated,
             PricingProfileId = template.PricingProfileId,
             MaxFileSizeMb = template.MaxFileSizeMb,
             MaxPages = template.MaxPages,

@@ -60,7 +60,6 @@ public sealed class DevelopmentSeeder
                     Code = code,
                     Name = name,
                     Location = new KioskLocation { Address = address, Lat = lat, Lng = lng },
-                    Status = KioskStatus.NotActivated,
                     AdminPinHash = Hashing.HashSecret(TestAdminPin),
                     PaperStock =
                     {

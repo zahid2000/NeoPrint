@@ -115,6 +115,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
     private readonly ISecretHasher _secrets;
     private readonly IAuditWriter _audit;
     private readonly IDeviceNotifier _notifier;
+    private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly ILogger<ActivateDeviceHandler> _logger;
 
@@ -124,6 +125,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
         ISecretHasher secrets,
         IAuditWriter audit,
         IDeviceNotifier notifier,
+        ICorrelationContext correlation,
         IClock clock,
         ILogger<ActivateDeviceHandler> logger)
     {
@@ -132,6 +134,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
         _secrets = secrets;
         _audit = audit;
         _notifier = notifier;
+        _correlation = correlation;
         _clock = clock;
         _logger = logger;
     }
@@ -140,6 +143,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
         ActivateDeviceCommand request, CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
+        var actor = ActorContext.Admin(request.ActivatedBy, correlationId: _correlation.CorrelationId);
 
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
             ?? throw new NotFoundException("Device");
@@ -156,7 +160,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
             var previous = await _devices.FindByIdAsync(previousId, cancellationToken).ConfigureAwait(false);
             if (previous is not null)
             {
-                previous.Revoke(request.ActivatedBy, "Kiosk üçün yeni cihaz aktivləşdirildi.", now);
+                previous.Revoke(actor.Because("Kiosk üçün yeni cihaz aktivləşdirildi."), now);
                 await _devices.UpdateAsync(previous, cancellationToken).ConfigureAwait(false);
                 await _notifier.DeviceRevokedAsync(previous.Id, cancellationToken).ConfigureAwait(false);
 
@@ -166,7 +170,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
             }
         }
 
-        device.Activate(kiosk.Id, request.ActivatedBy, now);
+        device.Activate(kiosk.Id, actor, now);
         await _devices.UpdateAsync(device, cancellationToken).ConfigureAwait(false);
 
         if (!string.IsNullOrWhiteSpace(request.SelectedPrinterName))
@@ -182,7 +186,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
             };
         }
 
-        kiosk.BindDevice(device.Id, device.Platform, device.AppVersion);
+        kiosk.BindDevice(device.Id, device.Platform, device.AppVersion, actor, now);
         await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(
@@ -230,7 +234,6 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
                 Lng = parameters.Lng,
                 Address = parameters.Address,
             },
-            Status = KioskStatus.NotActivated,
             PricingProfileId = parameters.PricingProfileId,
             MaxFileSizeMb = parameters.MaxFileSizeMb,
             MaxPages = parameters.MaxPages,
@@ -265,6 +268,7 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
     private readonly IAuditWriter _audit;
     private readonly IDeviceNotifier _notifier;
     private readonly IKioskTokenBlocklist _blocklist;
+    private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
 
     public RevokeDeviceHandler(
@@ -273,6 +277,7 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
         IAuditWriter audit,
         IDeviceNotifier notifier,
         IKioskTokenBlocklist blocklist,
+        ICorrelationContext correlation,
         IClock clock)
     {
         _devices = devices;
@@ -280,6 +285,7 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
         _audit = audit;
         _notifier = notifier;
         _blocklist = blocklist;
+        _correlation = correlation;
         _clock = clock;
     }
 
@@ -292,7 +298,11 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
 
         var kioskId = device.KioskId;
 
-        device.Revoke(request.RevokedBy, request.Reason, now);
+        var actor = ActorContext
+            .Admin(request.RevokedBy, correlationId: _correlation.CorrelationId)
+            .Because(request.Reason);
+
+        device.Revoke(actor, now);
         await _devices.UpdateAsync(device, cancellationToken).ConfigureAwait(false);
 
         if (kioskId is not null)
@@ -300,7 +310,7 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
             var kiosk = await _kiosks.FindByIdAsync(kioskId.Value, cancellationToken).ConfigureAwait(false);
             if (kiosk is not null && kiosk.ActiveDeviceId == device.Id)
             {
-                kiosk.UnbindDevice();
+                kiosk.UnbindDevice(actor, now);
                 await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
             }
         }

@@ -47,11 +47,10 @@ public sealed class KioskDeviceRepository : IKioskDeviceRepository
             device => device.Status == DeviceStatus.Pending, cancellationToken: cancellationToken);
 
     public Task AddAsync(KioskDevice device, CancellationToken cancellationToken = default)
-        => _context.KioskDevices.InsertOneAsync(device, cancellationToken: cancellationToken);
+        => AggregateWriter.InsertAsync(_context, _context.KioskDevices, device, cancellationToken);
 
     public Task UpdateAsync(KioskDevice device, CancellationToken cancellationToken = default)
-        => _context.KioskDevices.ReplaceOneAsync(
-            existing => existing.Id == device.Id, device, cancellationToken: cancellationToken);
+        => AggregateWriter.ReplaceAsync(_context, _context.KioskDevices, device, cancellationToken);
 }
 
 /// <inheritdoc cref="IEnrollmentTokenRepository" />
@@ -127,11 +126,10 @@ public sealed class KioskRepository : IKioskRepository
     }
 
     public Task AddAsync(Kiosk kiosk, CancellationToken cancellationToken = default)
-        => _context.Kiosks.InsertOneAsync(kiosk, cancellationToken: cancellationToken);
+        => AggregateWriter.InsertAsync(_context, _context.Kiosks, kiosk, cancellationToken);
 
     public Task UpdateAsync(Kiosk kiosk, CancellationToken cancellationToken = default)
-        => _context.Kiosks.ReplaceOneAsync(
-            existing => existing.Id == kiosk.Id, kiosk, cancellationToken: cancellationToken);
+        => AggregateWriter.ReplaceAsync(_context, _context.Kiosks, kiosk, cancellationToken);
 }
 
 /// <inheritdoc cref="IAuditWriter" />
