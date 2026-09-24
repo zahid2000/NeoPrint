@@ -9,6 +9,7 @@ using NeoPrint.Domain.Audit;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Devices;
 using NeoPrint.Domain.Features;
+using NeoPrint.Domain.Idempotency;
 using NeoPrint.Domain.Kiosks;
 using NeoPrint.Domain.Pricing;
 using NeoPrint.Domain.Settings;
@@ -70,6 +71,17 @@ public sealed class MongoContext
     /// </summary>
     public IMongoCollection<StateTransition> StateTransitions
         => _database.GetCollection<StateTransition>("state_transitions");
+
+    /// <summary>
+    /// Requests that carried an <c>Idempotency-Key</c>
+    /// (<c>docs/IDEMPOTENCY.md</c>).
+    /// </summary>
+    public IMongoCollection<IdempotencyKey> IdempotencyKeys
+        => _database.GetCollection<IdempotencyKey>("idempotency_keys");
+
+    /// <summary>Callbacks an external provider has already sent us.</summary>
+    public IMongoCollection<ProviderEvent> ProviderEvents
+        => _database.GetCollection<ProviderEvent>("provider_events");
 
     /// <summary>
     /// Registers the serialization conventions. Must run before the first
@@ -201,6 +213,29 @@ public sealed class MongoContext
                 Named("ix_state_transitions_correlation")),
             (Builders<StateTransition>.IndexKeys.Descending(t => t.CreatedAt),
                 Named("ix_state_transitions_created")));
+
+        await CreateAsync(IdempotencyKeys,
+            // The claim is an insert against this index, which is what makes it
+            // atomic: two requests with the same key cannot both be the first.
+            // Scoped by actor and operation, so one caller's key can never
+            // replay another caller's response (docs/IDEMPOTENCY.md).
+            (Builders<IdempotencyKey>.IndexKeys
+                    .Ascending(k => k.Key).Ascending(k => k.ActorKey).Ascending(k => k.Operation),
+                Unique("ux_idempotency_keys")),
+            // Records are kept 24 hours; the TTL index does the clearing up, so
+            // no background job has to (plan section 5).
+            (Builders<IdempotencyKey>.IndexKeys.Ascending(k => k.ExpiresAt),
+                Expiring("ttl_idempotency_keys", TimeSpan.Zero)));
+
+        await CreateAsync(ProviderEvents,
+            // Providers resend a webhook until they get a 2xx, and sometimes
+            // afterwards. The database refuses the duplicate, so no code has to
+            // remember to check (docs/IDEMPOTENCY.md).
+            (Builders<ProviderEvent>.IndexKeys
+                    .Ascending(e => e.Provider).Ascending(e => e.ProviderEventId),
+                Unique("ux_provider_events")),
+            (Builders<ProviderEvent>.IndexKeys.Descending(e => e.ProcessedAt),
+                Named("ix_provider_events_processed")));
 
         return;
 

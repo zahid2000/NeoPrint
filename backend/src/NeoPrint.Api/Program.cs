@@ -174,6 +174,10 @@ builder.Services.AddScoped<IAdminNotifier, SignalRAdminNotifier>();
 
 builder.Services.AddScoped<RequireFeatureFilter>();
 
+// Claims the caller's Idempotency-Key on the endpoints that opt in
+// (docs/IDEMPOTENCY.md).
+builder.Services.AddScoped<IdempotencyFilter>();
+
 builder.Services.AddControllers(options =>
     {
         // Applied globally; it only acts on endpoints carrying

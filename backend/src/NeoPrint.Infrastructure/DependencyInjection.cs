@@ -69,6 +69,11 @@ public static class DependencyInjection
         // (docs/OBSERVABILITY.md).
         services.AddScoped<ICorrelationContext, CorrelationContext>();
 
+        // Idempotency, from the first business operation rather than from
+        // step 7 (docs/IDEMPOTENCY.md).
+        services.AddScoped<IIdempotencyStore, MongoIdempotencyStore>();
+        services.AddScoped<IProviderEventStore, MongoProviderEventStore>();
+
         AddMongo(services, configuration);
         AddRedis(services, configuration);
         AddCrypto(services);

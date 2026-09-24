@@ -82,6 +82,7 @@ public sealed class AdminDevicesController : ControllerBase
     /// </summary>
     [HttpPost("{id:guid}/activate")]
     [HasPermission(Permissions.KiosksActivate)]
+    [Idempotent]
     public async Task<ActionResult<ActivateDeviceResult>> Activate(
         Guid id, [FromBody] ActivateRequest request, CancellationToken cancellationToken)
     {
@@ -115,6 +116,7 @@ public sealed class AdminDevicesController : ControllerBase
     /// <summary>Detaches a device. The kiosk keeps its code and configuration.</summary>
     [HttpPost("{id:guid}/revoke")]
     [HasPermission(Permissions.DevicesRevoke)]
+    [Idempotent]
     public async Task<IActionResult> Revoke(
         Guid id, [FromBody] RevokeRequest request, CancellationToken cancellationToken)
     {
@@ -144,6 +146,7 @@ public sealed class AdminDevicesController : ControllerBase
     /// <summary>Creates a single-use enrollment token for zero-touch activation.</summary>
     [HttpPost("/api/admin/enrollment-tokens")]
     [HasPermission(Permissions.DevicesEnroll)]
+    [Idempotent]
     public async Task<ActionResult<EnrollmentTokenResult>> CreateEnrollmentToken(
         [FromBody] CreateEnrollmentTokenRequest request, CancellationToken cancellationToken)
     {

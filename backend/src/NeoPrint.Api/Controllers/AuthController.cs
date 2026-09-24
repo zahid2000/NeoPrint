@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
+using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Auth;
 using NeoPrint.Domain.Users;
@@ -188,6 +189,7 @@ public sealed class LegalController : ControllerBase
 
     /// <summary>Records the user's acceptance of the current versions.</summary>
     [HttpPost("consents")]
+    [Idempotent]
     [Authorize]
     public async Task<IActionResult> Accept(
         [FromBody] AcceptConsentsRequest request, CancellationToken cancellationToken)

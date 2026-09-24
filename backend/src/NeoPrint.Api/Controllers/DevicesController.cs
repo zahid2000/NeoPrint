@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
+using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Devices;
 using NeoPrint.Domain.Kiosks;
@@ -38,6 +39,7 @@ public sealed class DevicesController : ControllerBase
     /// device activates immediately; otherwise it gets a pairing code to show.
     /// </summary>
     [HttpPost("register")]
+    [Idempotent]
     [AllowAnonymous]
     [EnableRateLimiting("device-register")]
     [ProducesResponseType(typeof(RegisterDeviceResult), StatusCodes.Status200OK)]
