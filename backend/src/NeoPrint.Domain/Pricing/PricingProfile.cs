@@ -8,7 +8,7 @@ public sealed class VolumeTier
     /// <summary>Sides from which this tier applies.</summary>
     public int MinSides { get; set; }
 
-    /// <summary>Discount in percent.</summary>
+    /// <summary>Discount in percent. A percentage, not an amount.</summary>
     public decimal DiscountPercent { get; set; }
 }
 
@@ -29,21 +29,26 @@ public sealed class PricingProfile : Entity
 
     public bool IsDefault { get; set; }
 
-    /// <summary>Price of one black and white side, in AZN.</summary>
-    public decimal BwPricePerSide { get; set; } = 0.10m;
+    /// <summary>Price of one black and white side.</summary>
+    public Money BwPricePerSide { get; set; } = Money.FromAzn(0.10m);
 
-    /// <summary>Price of one colour side, in AZN.</summary>
-    public decimal ColorPricePerSide { get; set; } = 0.30m;
+    /// <summary>Price of one colour side.</summary>
+    public Money ColorPricePerSide { get; set; } = Money.FromAzn(0.30m);
 
-    /// <summary>Multiplier per paper size, for example A4 = 1, A3 = 2.</summary>
+    /// <summary>
+    /// Multiplier per paper size, for example A4 = 1, A3 = 2.
+    /// </summary>
+    /// <remarks>
+    /// A factor, not an amount, so it stays a decimal.
+    /// </remarks>
     public Dictionary<string, decimal> PaperMultipliers { get; set; } = new(StringComparer.Ordinal)
     {
         ["A4"] = 1m,
         ["A3"] = 2m,
     };
 
-    /// <summary>Minimum charge for an order, in AZN.</summary>
-    public decimal MinOrder { get; set; } = 0.20m;
+    /// <summary>Minimum charge for an order.</summary>
+    public Money MinOrder { get; set; } = Money.FromAzn(0.20m);
 
     public List<VolumeTier> VolumeTiers { get; set; } =
     [

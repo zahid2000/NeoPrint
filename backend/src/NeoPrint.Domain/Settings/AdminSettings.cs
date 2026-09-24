@@ -69,6 +69,19 @@ public static class SettingKeys
     public const string KioskOfflineAfterSeconds = "Kiosk.OfflineAfterSeconds";
     public const string KioskTelemetrySeconds = "Kiosk.TelemetrySeconds";
     public const string KioskTelemetryRetentionDays = "Kiosk.TelemetryRetentionDays";
+
+    /// <summary>
+    /// How long a kiosk may act on its cached configuration once the backend is
+    /// unreachable. Past this it goes Degraded and stops taking orders
+    /// (plan sections 2.4, 7.3).
+    /// </summary>
+    public const string KioskConfigCacheTtlHours = "Kiosk.ConfigCacheTtlHours";
+
+    /// <summary>
+    /// How long after a payment expires its real state is reconciled with the
+    /// provider, for a callback that arrives late (plan sections 2.4, 2.5).
+    /// </summary>
+    public const string PaymentReconcileAfterMinutes = "Payment.ReconcileAfterMinutes";
     public const string FilesDefaultMaxSizeMb = "Files.DefaultMaxSizeMb";
     public const string FilesDefaultMaxPages = "Files.DefaultMaxPages";
     public const string FilesUserQuotaGb = "Files.UserQuotaGb";
@@ -122,6 +135,10 @@ public static class SettingKeys
         new(KioskOfflineAfterSeconds, "60", SettingValueType.Integer, "Heartbeat gəlməzsə offline sayılır"),
         new(KioskTelemetrySeconds, "30", SettingValueType.Integer, "Telemetriya göndərmə intervalı"),
         new(KioskTelemetryRetentionDays, "30", SettingValueType.Integer, "Telemetriya tarixçəsinin saxlanma müddəti"),
+        new(KioskConfigCacheTtlHours, "24", SettingValueType.Integer,
+            "Kioskun lokal konfiqurasiya keşinin etibarlılığı; köhnədirsə kiosk Degraded rejimə keçir"),
+        new(PaymentReconcileAfterMinutes, "10", SettingValueType.Integer,
+            "Expired / naməlum ödənişlərin provayder statusu ilə uzlaşdırılması"),
         new(FilesDefaultMaxSizeMb, "50", SettingValueType.Integer, "Default maksimum fayl ölçüsü (MB)"),
         new(FilesDefaultMaxPages, "200", SettingValueType.Integer, "Default maksimum səhifə sayı"),
         new(FilesUserQuotaGb, "1", SettingValueType.Integer, "İstifadəçi başına saxlama kvotası (GB)"),

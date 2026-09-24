@@ -107,8 +107,13 @@ public sealed class MongoContext
 
         ConventionRegistry.Register("neoprint", pack, _ => true);
 
-        // Money is decimal with two places (plan section 2.1); Decimal128 keeps
-        // it exact, unlike the double a decimal would otherwise become.
+        // Money keeps its currency with it (plan section 2.3).
+        BsonSerializer.RegisterSerializer(new MoneySerializer());
+        BsonSerializer.RegisterSerializer(
+            new NullableSerializer<Money>(new MoneySerializer()));
+
+        // Decimals that are not money - multipliers, percentages - as
+        // Decimal128 (plan section 2.1); a double would not keep them exact.
         BsonSerializer.RegisterSerializer(new DecimalSerializer(BsonType.Decimal128));
         BsonSerializer.RegisterSerializer(
             new NullableSerializer<decimal>(new DecimalSerializer(BsonType.Decimal128)));

@@ -1,0 +1,60 @@
+.shell {
+  height: 100vh;
+}
+.shell__sidenav {
+  width: 260px;
+}
+.shell__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  font-size: 20px;
+  font-weight: 600;
+}
+.shell__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.shell__title {
+  margin-left: 8px;
+  font-size: 18px;
+}
+.shell__spacer {
+  flex: 1 1 auto;
+}
+.shell__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font-weight: 600;
+}
+.shell__account {
+  padding: 12px 16px;
+}
+.shell__account-email {
+  font-weight: 500;
+}
+.shell__account-roles {
+  font-size: 12px;
+  opacity: 0.7;
+}
+.shell__content {
+  padding: 24px;
+}
+
+@media (max-width: 900px) {
+  .shell__sidenav {
+    width: 220px;
+  }
+  .shell__content {
+    padding: 16px;
+  }
+}/*# sourceMappingURL=shell.component.css.map */
