@@ -103,5 +103,13 @@ public sealed class CachedSettingsReader : ISettingsReader
     public Task InvalidateAsync(string key, CancellationToken cancellationToken = default)
         => _cache.RemoveAsync(CacheKey(key), cancellationToken);
 
-    private static string CacheKey(string key) => $"settings:{key}";
+    /// <summary>
+    /// The cache key for a setting.
+    /// </summary>
+    /// <remarks>
+    /// Internal rather than private so the settings store clears the same
+    /// entry this reader fills; two spellings of the key would mean a saved
+    /// value that readers keep missing.
+    /// </remarks>
+    internal static string CacheKey(string key) => $"settings:{key}";
 }

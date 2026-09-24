@@ -160,6 +160,9 @@ builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler
 // so detaching a device takes effect at once (plan section 7.11).
 builder.Services.AddScoped<IAuthorizationHandler, DeviceAuthorizationHandler>();
 
+// Same for an admin token: a deactivated account is refused at once.
+builder.Services.AddScoped<IAuthorizationHandler, AdminAuthorizationHandler>();
+
 // SignalR with the Redis backplane, so several API instances can serve the
 // same hub groups (plan section 6).
 var signalR = builder.Services.AddSignalR(options => options.EnableDetailedErrors = builder.Environment.IsDevelopment());

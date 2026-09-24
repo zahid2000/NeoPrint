@@ -142,4 +142,18 @@ public sealed class AdminUser : Entity
         LockedUntil = null;
         LastLoginAt = utcNow;
     }
+
+    /// <summary>
+    /// Clears a lockout without recording a sign-in.
+    /// </summary>
+    /// <remarks>
+    /// What a password reset does: the point of the reset is to let somebody
+    /// back in, so leaving them locked out would defeat it. The sign-in
+    /// timestamp is untouched, because nobody has signed in yet.
+    /// </remarks>
+    public void ClearLockout()
+    {
+        FailedLoginCount = 0;
+        LockedUntil = null;
+    }
 }

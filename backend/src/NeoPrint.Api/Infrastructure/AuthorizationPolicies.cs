@@ -42,9 +42,13 @@ public static class AuthorizationPolicies
             .RequireAuthenticatedUser()
             .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.User));
 
+        // Also confirms the account is still active, so a deactivated one is
+        // refused even on the endpoints that need no particular permission -
+        // reading one's own profile, for instance (plan section 8A.2).
         options.AddPolicy(Admin, policy => policy
             .RequireAuthenticatedUser()
-            .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.Admin));
+            .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.Admin)
+            .AddRequirements(new AdminIsActiveRequirement()));
 
         // The three device policies also confirm the device's current state, so
         // detaching one takes effect on its next request rather than when its

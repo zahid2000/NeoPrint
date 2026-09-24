@@ -123,7 +123,7 @@ public sealed class CachedPermissionResolver : IPermissionResolver
         // it was disabled cannot be used to do anything.
         if (admin is null || !admin.IsActive)
         {
-            return new EffectivePermissions([], AllKiosks: false, []);
+            return new EffectivePermissions([], AllKiosks: false, [], IsActive: false);
         }
 
         var roles = await _context.AdminRoles
@@ -138,7 +138,8 @@ public sealed class CachedPermissionResolver : IPermissionResolver
         return new EffectivePermissions(
             permissions,
             admin.KioskScope.All,
-            admin.KioskScope.KioskIds);
+            admin.KioskScope.KioskIds,
+            IsActive: true);
     }
 
     private static string CacheKey(Guid adminUserId) => $"admin:permissions:{adminUserId}";

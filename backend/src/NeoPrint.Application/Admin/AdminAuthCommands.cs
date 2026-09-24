@@ -75,10 +75,17 @@ public interface IPermissionResolver
 /// <param name="Permissions">The union of the permissions of every role held.</param>
 /// <param name="AllKiosks">Whether the account may act on every kiosk.</param>
 /// <param name="KioskIds">The kiosks in scope when <paramref name="AllKiosks"/> is false.</param>
+/// <param name="IsActive">
+/// Whether the account may act at all. False for an account that has been
+/// deactivated or deleted, which is not the same as one whose role happens to
+/// grant nothing: the first must be refused outright, the second sees an empty
+/// menu (plan section 8A.2).
+/// </param>
 public sealed record EffectivePermissions(
     IReadOnlyCollection<string> Permissions,
     bool AllKiosks,
-    IReadOnlyCollection<Guid> KioskIds)
+    IReadOnlyCollection<Guid> KioskIds,
+    bool IsActive = true)
 {
     public bool Has(string permission) => Permissions.Contains(permission);
 

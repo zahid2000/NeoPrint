@@ -72,6 +72,7 @@ public static class DependencyInjection
         // Idempotency, from the first business operation rather than from
         // step 7 (docs/IDEMPOTENCY.md).
         services.AddScoped<IIdempotencyStore, MongoIdempotencyStore>();
+        services.AddScoped<ISettingsStore, MongoSettingsStore>();
         services.AddScoped<IProviderEventStore, MongoProviderEventStore>();
 
         AddMongo(services, configuration);

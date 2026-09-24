@@ -162,6 +162,16 @@ public sealed class Kiosk : Entity
     public DateTime? LastHeartbeatAt { get; set; }
 
     /// <summary>
+    /// When the kiosk's configuration last changed.
+    /// </summary>
+    /// <remarks>
+    /// Returned with every heartbeat, so a kiosk knows to fetch its
+    /// configuration again without polling the whole document. Not touched by
+    /// the heartbeat itself - a heartbeat is not a configuration change.
+    /// </remarks>
+    public DateTime ConfigurationChangedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
     /// What the kiosk may actually offer: the detected capabilities of the
     /// selected printer, with any admin override applied.
     /// </summary>

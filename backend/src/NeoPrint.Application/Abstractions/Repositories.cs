@@ -74,4 +74,21 @@ public interface ILegalDocumentRepository
     /// <summary>The version of each document type this user has accepted.</summary>
     Task<IReadOnlyDictionary<LegalDocumentType, string>> GetAcceptedVersionsAsync(
         Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Every published version, newest first.
+    /// </summary>
+    /// <remarks>
+    /// The admin panel lists the history: a published version has to stay
+    /// identifiable, because consents point at it
+    /// (<c>docs/DATA_RETENTION.md</c>).
+    /// </remarks>
+    Task<IReadOnlyList<LegalDocument>> ListAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Publishes a new version.</summary>
+    Task AddAsync(LegalDocument document, CancellationToken cancellationToken = default);
+
+    /// <summary>How many users have accepted one version of a document.</summary>
+    Task<long> CountAcceptancesAsync(
+        LegalDocumentType docType, string version, CancellationToken cancellationToken = default);
 }

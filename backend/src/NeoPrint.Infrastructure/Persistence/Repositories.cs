@@ -115,6 +115,25 @@ public sealed class LegalDocumentRepository : ILegalDocumentRepository
             .ToDictionary(group => group.Key, group => group.First());
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<LegalDocument>> ListAsync(CancellationToken cancellationToken = default)
+        => await _context.LegalDocuments
+            .Find(FilterDefinition<LegalDocument>.Empty)
+            .SortByDescending(document => document.PublishedAt)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    /// <inheritdoc />
+    public Task AddAsync(LegalDocument document, CancellationToken cancellationToken = default)
+        => _context.LegalDocuments.InsertOneAsync(document, cancellationToken: cancellationToken);
+
+    /// <inheritdoc />
+    public Task<long> CountAcceptancesAsync(
+        LegalDocumentType docType, string version, CancellationToken cancellationToken = default)
+        => _context.Consents.CountDocumentsAsync(
+            consent => consent.DocType == docType && consent.Version == version,
+            cancellationToken: cancellationToken);
+
     public Task<LegalDocument?> GetCurrentAsync(
         LegalDocumentType docType, string language, CancellationToken cancellationToken = default)
         => _context.LegalDocuments
