@@ -146,6 +146,8 @@ public sealed class WindowsDeviceKeyStore : IDeviceKeyStore
 
         // Prefer the TPM. A machine without one still gets a key that cannot be
         // exported, which is the property that matters.
+        var refusals = new List<Exception>();
+
         foreach (var provider in new[] { PlatformProvider, SoftwareProvider })
         {
             try
@@ -161,14 +163,22 @@ public sealed class WindowsDeviceKeyStore : IDeviceKeyStore
                         KeyUsage = CngKeyUsages.Signing,
                     });
             }
-            catch (CryptographicException)
+            catch (CryptographicException exception)
             {
-                // No TPM, or the provider refused; try the next one.
+                // No TPM, or the provider refused; try the next one. What each
+                // one said is kept: the usual reason is that the process is not
+                // elevated, and the key is machine-wide, which nobody can guess
+                // from "could not create the device key".
+                refusals.Add(exception);
             }
         }
 
         throw new InvalidOperationException(
-            "Could not create the device key. Neither the platform nor the software key storage provider accepted it.");
+            "Could not create the device key. Neither the platform nor the software key storage provider " +
+            "accepted it. The key is machine-wide, so the usual cause is a process that is not elevated " +
+            "(plan section 7.11). " +
+            string.Join(" ", refusals.Select(refusal => $"[{refusal.Message.TrimEnd('.')}]")),
+            refusals.Count > 0 ? refusals[^1] : null);
     }
 
     private static bool TryOpen(out CngKey key)

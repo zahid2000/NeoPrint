@@ -110,6 +110,18 @@ public sealed class DeviceRevokedException : Exception
 /// </remarks>
 public sealed class KioskApiClient
 {
+    /// <summary>
+    /// Name of the configured <see cref="HttpClient"/> this client is built on.
+    /// </summary>
+    /// <remarks>
+    /// The client itself is registered as a singleton, because it holds this
+    /// installation's identity and its kiosk token, so it cannot be a typed
+    /// client: <c>AddHttpClient&lt;T&gt;</c> registers T as transient, and the
+    /// enrollment service and the runtime would each get one of their own -
+    /// the one that never registered could not authenticate.
+    /// </remarks>
+    public const string HttpClientName = "neoprint-kiosk";
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter() },

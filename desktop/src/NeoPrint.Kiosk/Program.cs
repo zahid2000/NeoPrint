@@ -49,7 +49,8 @@ internal static class Program
         .WithInterFont()
         .LogToTrace();
 
-    private static IServiceProvider BuildServices(string[] args)
+    /// <summary>Composition root, also built by the composition test.</summary>
+    internal static IServiceProvider BuildServices(string[] args)
     {
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
@@ -79,7 +80,7 @@ internal static class Program
         services.AddSingleton<DeviceEnrollmentService>();
         services.AddSingleton<KioskRuntime>();
 
-        services.AddHttpClient<KioskApiClient>((provider, client) =>
+        services.AddHttpClient(KioskApiClient.HttpClientName, (provider, client) =>
             {
                 var settings = provider
                     .GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value;
@@ -91,6 +92,17 @@ internal static class Program
             // what the backend logged can be read together
             // (docs/OBSERVABILITY.md).
             .AddHttpMessageHandler(() => new CorrelationIdHandler());
+
+        // One client, not a typed one: it holds this installation's device id
+        // and its kiosk token, and AddHttpClient<T> registers T as transient.
+        // With a transient client the enrollment service and the runtime would
+        // each hold their own, and the runtime's - which never registered -
+        // could not authenticate, so an activated kiosk would never load its
+        // configuration (plan section 7.11).
+        services.AddSingleton(provider => new KioskApiClient(
+            provider.GetRequiredService<IHttpClientFactory>().CreateClient(KioskApiClient.HttpClientName),
+            provider.GetRequiredService<IDeviceKeyStore>(),
+            provider.GetRequiredService<ILogger<KioskApiClient>>()));
 
         return services.BuildServiceProvider();
     }
@@ -128,10 +140,19 @@ internal static class Program
             useFakePrinter = true;
         }
 
-        if (useFakePrinter)
+        // Prints into a folder, so the whole flow works on a machine with no
+        // printer and in CI (plan section 7.6).
+        //
+        // Registered even when it was not asked for, as long as nothing else
+        // provides IPrinterService: the real printer service arrives with the
+        // printing work in step 3, and until then the application could not be
+        // composed at all on a machine with Kiosk:UseFakePrinter left at its
+        // default - a kiosk that will not start cannot be activated either.
+        var hasPrinterService = services
+            .Any(registration => registration.ServiceType == typeof(IPrinterService));
+
+        if (useFakePrinter || !hasPrinterService)
         {
-            // Prints into a folder, so the whole flow works on a machine with
-            // no printer and in CI (plan section 7.6).
             services.AddSingleton<IPrinterService>(_ => new FakePrinterService());
         }
     }

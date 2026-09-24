@@ -56,6 +56,17 @@
     <ProjectReference Include="..\NeoPrint.Kiosk.Printing\NeoPrint.Kiosk.Printing.csproj" />
   </ItemGroup>
 
+  <!--
+    So the composition root itself can be tested: which services are shared and
+    which are not is behaviour, not a detail (the API client holds the device
+    identity, so there has to be exactly one).
+  -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>NeoPrint.Kiosk.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <ItemGroup Condition="'$(NeoPrintTargetsWindows)' == 'true'">
     <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Windows\NeoPrint.Kiosk.Platform.Windows.csproj" />
   </ItemGroup>
