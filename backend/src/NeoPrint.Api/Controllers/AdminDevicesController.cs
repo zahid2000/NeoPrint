@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
-using NeoPrint.Application.Admin;
 using NeoPrint.Application.Devices;
 using NeoPrint.Domain.Admin;
 using NeoPrint.Domain.Devices;
@@ -15,24 +14,22 @@ namespace NeoPrint.Api.Controllers;
 /// Device activation from the admin and operator panels
 /// (plan sections 6, 7.11, 8A.3).
 /// </summary>
+/// <remarks>
+/// Transport only: what a device may become, which kiosks an account may act
+/// on and what activation does all live in the application layer
+/// (<c>docs/ARCHITECTURE_RULES.md</c> section 1). The controller turns the
+/// answers into status codes.
+/// </remarks>
 [ApiController]
 [Route("api/admin/devices")]
 public sealed class AdminDevicesController : ControllerBase
 {
     private readonly ISender _sender;
-    private readonly IKioskDeviceRepository _devices;
-    private readonly IKioskRepository _kiosks;
     private readonly ICurrentUser _currentUser;
 
-    public AdminDevicesController(
-        ISender sender,
-        IKioskDeviceRepository devices,
-        IKioskRepository kiosks,
-        ICurrentUser currentUser)
+    public AdminDevicesController(ISender sender, ICurrentUser currentUser)
     {
         _sender = sender;
-        _devices = devices;
-        _kiosks = kiosks;
         _currentUser = currentUser;
     }
 
@@ -41,31 +38,7 @@ public sealed class AdminDevicesController : ControllerBase
     [HasPermission(Permissions.DevicesView)]
     public async Task<ActionResult<IReadOnlyList<DeviceListItem>>> List(
         [FromQuery] DeviceStatus? status, CancellationToken cancellationToken)
-    {
-        var devices = await _devices.ListAsync(status, cancellationToken);
-        var kiosks = (await _kiosks.ListAsync(cancellationToken)).ToDictionary(kiosk => kiosk.Id);
-
-        return Ok(devices.Select(device => new DeviceListItem(
-            device.Id,
-            device.Status,
-            device.Platform,
-            device.AppVersion,
-            device.AgentVersion,
-            device.Fingerprint.Hostname,
-            device.Fingerprint.Os,
-            device.LastIp,
-            device.CreatedAt,
-            device.LastSeenAt,
-            device.KioskId,
-            device.KioskId is not null && kiosks.TryGetValue(device.KioskId.Value, out var kiosk)
-                ? kiosk.Code
-                : null,
-            // The code itself is only ever hashed; the panel shows whether one
-            // is still valid, and the operator reads the code off the kiosk.
-            device.IsPairingCodeValid(DateTime.UtcNow),
-            device.PairingCodeExpiresAt,
-            [.. device.ReportedPrinters.Select(printer => printer.Name)])).ToList());
-    }
+        => Ok(await _sender.Send(new ListDevicesQuery(status), cancellationToken));
 
     /// <summary>
     /// Finds a device from a pairing code an admin typed, or from the QR an
@@ -95,7 +68,7 @@ public sealed class AdminDevicesController : ControllerBase
         // Binding to an existing kiosk must respect the caller's kiosk scope,
         // or a scoped operator could take over a kiosk that is not theirs.
         if (request.KioskId is not null &&
-            !await IsInScopeAsync(request.KioskId.Value, cancellationToken))
+            !await IsInScopeAsync(adminId.Value, request.KioskId.Value, cancellationToken))
         {
             return Forbid();
         }
@@ -126,13 +99,14 @@ public sealed class AdminDevicesController : ControllerBase
             return Forbid();
         }
 
-        var device = await _devices.FindByIdAsync(id, cancellationToken);
+        var device = await _sender.Send(new FindDeviceQuery(id), cancellationToken);
         if (device is null)
         {
             return NotFound();
         }
 
-        if (device.KioskId is not null && !await IsInScopeAsync(device.KioskId.Value, cancellationToken))
+        if (device.KioskId is not null &&
+            !await IsInScopeAsync(adminId.Value, device.KioskId.Value, cancellationToken))
         {
             return Forbid();
         }
@@ -156,7 +130,8 @@ public sealed class AdminDevicesController : ControllerBase
             return Forbid();
         }
 
-        if (request.KioskId is not null && !await IsInScopeAsync(request.KioskId.Value, cancellationToken))
+        if (request.KioskId is not null &&
+            !await IsInScopeAsync(adminId.Value, request.KioskId.Value, cancellationToken))
         {
             return Forbid();
         }
@@ -173,24 +148,10 @@ public sealed class AdminDevicesController : ControllerBase
     [HttpGet("/api/admin/enrollment-tokens")]
     [HasPermission(Permissions.DevicesEnroll)]
     public async Task<ActionResult<IReadOnlyList<EnrollmentTokenListItem>>> ListEnrollmentTokens(
-        [FromServices] IEnrollmentTokenRepository tokens, CancellationToken cancellationToken)
-    {
-        var all = await tokens.ListAsync(cancellationToken);
-        var kiosks = (await _kiosks.ListAsync(cancellationToken)).ToDictionary(kiosk => kiosk.Id);
+        CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new ListEnrollmentTokensQuery(), cancellationToken));
 
-        return Ok(all.Select(token => new EnrollmentTokenListItem(
-            token.Id,
-            token.KioskId,
-            token.KioskId is not null && kiosks.TryGetValue(token.KioskId.Value, out var kiosk) ? kiosk.Code : null,
-            token.NewKioskTemplate?.Name,
-            token.CreatedAt,
-            token.ExpiresAt,
-            token.UsedByDeviceId,
-            token.RevokedAt,
-            token.IsUsable(DateTime.UtcNow))).ToList());
-    }
-
-    /// <summary>Revokes an unused enrollment token.</summary>
+    /// <summary>Revokes an enrollment token that has not been used.</summary>
     [HttpDelete("/api/admin/enrollment-tokens/{id:guid}")]
     [HasPermission(Permissions.DevicesEnroll)]
     public async Task<IActionResult> RevokeEnrollmentToken(Guid id, CancellationToken cancellationToken)
@@ -207,38 +168,14 @@ public sealed class AdminDevicesController : ControllerBase
     }
 
     /// <summary>
-    /// Whether the caller's kiosk scope covers a kiosk (plan section 8A.2).
+    /// Asks whether the caller's scope covers a kiosk.
     /// </summary>
-    private async Task<bool> IsInScopeAsync(Guid kioskId, CancellationToken cancellationToken)
-    {
-        var adminId = _currentUser.AdminUserId;
-        if (adminId is null)
-        {
-            return false;
-        }
-
-        var resolver = HttpContext.RequestServices.GetRequiredService<IPermissionResolver>();
-        var effective = await resolver.ResolveAsync(adminId.Value, cancellationToken);
-
-        return effective.CanSee(kioskId);
-    }
-
-    public sealed record DeviceListItem(
-        Guid Id,
-        DeviceStatus Status,
-        Domain.Kiosks.KioskPlatform Platform,
-        string? AppVersion,
-        string? AgentVersion,
-        string? Hostname,
-        string? Os,
-        string? LastIp,
-        DateTime RegisteredAt,
-        DateTime LastSeenAt,
-        Guid? KioskId,
-        string? KioskCode,
-        bool HasValidPairingCode,
-        DateTime? PairingCodeExpiresAt,
-        IReadOnlyCollection<string> ReportedPrinters);
+    /// <remarks>
+    /// What "in scope" means is decided in the application layer; the answer is
+    /// turned into a status code here, which is the controller's job.
+    /// </remarks>
+    private Task<bool> IsInScopeAsync(Guid adminId, Guid kioskId, CancellationToken cancellationToken)
+        => _sender.Send(new IsKioskInScopeQuery(adminId, kioskId), cancellationToken);
 
     public sealed record LookupRequest(string CodeOrQr);
 
@@ -249,15 +186,4 @@ public sealed class AdminDevicesController : ControllerBase
 
     public sealed record CreateEnrollmentTokenRequest(
         Guid? KioskId, NewKioskParameters? NewKiosk, int? TtlHours);
-
-    public sealed record EnrollmentTokenListItem(
-        Guid Id,
-        Guid? KioskId,
-        string? KioskCode,
-        string? NewKioskName,
-        DateTime CreatedAt,
-        DateTime ExpiresAt,
-        Guid? UsedByDeviceId,
-        DateTime? RevokedAt,
-        bool IsUsable);
 }

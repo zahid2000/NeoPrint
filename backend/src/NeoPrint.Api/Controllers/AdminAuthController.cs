@@ -113,11 +113,7 @@ public sealed class AdminAuthController : ControllerBase
     /// <summary>The signed-in administrator, with their effective permissions and kiosk scope.</summary>
     [HttpGet("/api/admin/me")]
     [Authorize(Policy = AuthorizationPolicies.Admin)]
-    public async Task<ActionResult<AdminSummary>> Me(
-        [FromServices] IAdminUserRepository admins,
-        [FromServices] IAdminRoleRepository roles,
-        [FromServices] IPermissionResolver permissions,
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<AdminSummary>> Me(CancellationToken cancellationToken)
     {
         var adminId = _currentUser.AdminUserId;
         if (adminId is null)
@@ -125,27 +121,10 @@ public sealed class AdminAuthController : ControllerBase
             return Forbid();
         }
 
-        var admin = await admins.FindByIdAsync(adminId.Value, cancellationToken);
-        if (admin is null)
-        {
-            return Forbid();
-        }
+        var admin = await _sender.Send(new GetSignedInAdminQuery(adminId.Value), cancellationToken);
 
-        var held = await roles.FindByIdsAsync(admin.RoleIds, cancellationToken);
-
-        // Resolved rather than read from the token, so the panel sees a
-        // permission change without signing in again (plan section 8A.2).
-        var effective = await permissions.ResolveAsync(admin.Id, cancellationToken);
-
-        return Ok(new AdminSummary(
-            admin.Id,
-            admin.Email,
-            admin.FullName,
-            [.. held.Select(role => role.Name)],
-            effective.Permissions,
-            effective.AllKiosks,
-            effective.KioskIds,
-            admin.MustChangePassword));
+        // A token for an account that no longer exists is not an identity.
+        return admin is null ? Forbid() : Ok(admin);
     }
 
     /// <summary>The permission catalogue, grouped as the role editor shows it.</summary>

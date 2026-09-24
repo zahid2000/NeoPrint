@@ -1,10 +1,11 @@
+using MediatR;
+
 using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
-using NeoPrint.Application.Admin;
+using NeoPrint.Application.Devices;
 using NeoPrint.Domain.Admin;
-using NeoPrint.Domain.Kiosks;
 
 namespace NeoPrint.Api.Controllers;
 
@@ -20,17 +21,12 @@ namespace NeoPrint.Api.Controllers;
 [Route("api/admin/kiosks")]
 public sealed class AdminKiosksController : ControllerBase
 {
-    private readonly IKioskRepository _kiosks;
-    private readonly IPermissionResolver _permissions;
+    private readonly ISender _sender;
     private readonly ICurrentUser _currentUser;
 
-    public AdminKiosksController(
-        IKioskRepository kiosks,
-        IPermissionResolver permissions,
-        ICurrentUser currentUser)
+    public AdminKiosksController(ISender sender, ICurrentUser currentUser)
     {
-        _kiosks = kiosks;
-        _permissions = permissions;
+        _sender = sender;
         _currentUser = currentUser;
     }
 
@@ -41,44 +37,12 @@ public sealed class AdminKiosksController : ControllerBase
         CancellationToken cancellationToken)
     {
         var adminId = _currentUser.AdminUserId;
+
         if (adminId is null)
         {
             return Forbid();
         }
 
-        var effective = await _permissions.ResolveAsync(adminId.Value, cancellationToken);
-        var kiosks = await _kiosks.ListAsync(cancellationToken);
-
-        // A scoped operator sees only their own kiosks, so they cannot bind a
-        // device to someone else's kiosk by picking it out of a list.
-        return Ok(kiosks
-            .Where(kiosk => effective.CanSee(kiosk.Id))
-            .OrderBy(kiosk => kiosk.Code, StringComparer.Ordinal)
-            .Select(kiosk => new KioskListItem(
-                kiosk.Id,
-                kiosk.Code,
-                kiosk.Name,
-                kiosk.Status,
-                kiosk.Platform,
-                kiosk.Location.Address,
-                kiosk.DefaultLanguage,
-                kiosk.ActiveDeviceId,
-                kiosk.AppVersion,
-                kiosk.SelectedPrinter?.Name,
-                kiosk.LastHeartbeatAt))
-            .ToList());
+        return Ok(await _sender.Send(new ListKiosksQuery(adminId.Value), cancellationToken));
     }
-
-    public sealed record KioskListItem(
-        Guid Id,
-        string Code,
-        string Name,
-        KioskStatus Status,
-        KioskPlatform Platform,
-        string Address,
-        string DefaultLanguage,
-        Guid? ActiveDeviceId,
-        string? AppVersion,
-        string? SelectedPrinter,
-        DateTime? LastHeartbeatAt);
 }
