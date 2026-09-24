@@ -37,6 +37,16 @@ public interface IEmailConfirmationRepository
     /// <summary>The most recent unconfirmed code for a user.</summary>
     Task<EmailConfirmation?> FindLatestPendingAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The most recent code for a user, confirmed or not.
+    /// </summary>
+    /// <remarks>
+    /// Used to answer a confirmation that arrives twice: the address is already
+    /// confirmed, so there is no pending code, but the caller still has to
+    /// present the right one (<c>docs/IDEMPOTENCY.md</c>).
+    /// </remarks>
+    Task<EmailConfirmation?> FindLatestAsync(Guid userId, CancellationToken cancellationToken = default);
+
     Task UpdateAsync(EmailConfirmation confirmation, CancellationToken cancellationToken = default);
 }
 

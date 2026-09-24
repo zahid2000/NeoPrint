@@ -56,6 +56,12 @@ public sealed class EmailConfirmationRepository : IEmailConfirmationRepository
             .SortByDescending(confirmation => confirmation.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken)!;
 
+    public Task<EmailConfirmation?> FindLatestAsync(Guid userId, CancellationToken cancellationToken = default)
+        => _context.EmailConfirmations
+            .Find(confirmation => confirmation.UserId == userId)
+            .SortByDescending(confirmation => confirmation.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken)!;
+
     public Task UpdateAsync(EmailConfirmation confirmation, CancellationToken cancellationToken = default)
         => _context.EmailConfirmations.ReplaceOneAsync(
             existing => existing.Id == confirmation.Id, confirmation, cancellationToken: cancellationToken);

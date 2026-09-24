@@ -7,9 +7,13 @@ using DotNet.Testcontainers.Containers;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
+using NeoPrint.Application.Abstractions;
 
 using Testcontainers.MongoDb;
 using Testcontainers.RabbitMq;
@@ -230,7 +234,22 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
             // Warnings and above: the seeding and Hangfire chatter would bury
             // the test output otherwise.
             .SetMinimumLevel(LogLevel.Warning));
+
+        builder.ConfigureTestServices(services =>
+        {
+            // Keeps what would have been emailed, so a test can read a
+            // confirmation code the way the person receiving it does. There is
+            // no SMTP server in the test environment; Mailpit is the
+            // development one (plan section 4).
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<CapturedEmails>();
+            services.AddSingleton<IEmailSender>(
+                provider => provider.GetRequiredService<CapturedEmails>());
+        });
     }
+
+    /// <summary>The emails the API tried to send during a test.</summary>
+    public CapturedEmails Emails => Services.GetRequiredService<CapturedEmails>();
 
     /// <summary>A client that does not follow redirects, so status codes are visible.</summary>
     public HttpClient CreateApiClient() => CreateClient(new WebApplicationFactoryClientOptions

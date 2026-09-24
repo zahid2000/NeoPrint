@@ -250,6 +250,21 @@ public sealed class ConfirmEmailHandler : IRequestHandler<ConfirmEmailCommand, A
 
         if (user.EmailConfirmed)
         {
+            // Confirming twice is not an error: a client whose response was
+            // lost has to be able to send the same request again and get the
+            // same answer (docs/IDEMPOTENCY.md). The code is still checked,
+            // though - handing out a session because the address happens to be
+            // confirmed would mean knowing a registered address is enough to
+            // sign in as its owner, with no password anywhere in sight.
+            var used = await _confirmations.FindLatestAsync(user.Id, cancellationToken).ConfigureAwait(false);
+
+            if (used?.ConfirmedAt is null
+                || used.ExpiresAt <= _clock.UtcNow
+                || !_secrets.VerifySecret(request.Code.Trim(), used.CodeHash))
+            {
+                throw invalid;
+            }
+
             return await _sessions.CreateAsync(user, request.DeviceId, cancellationToken).ConfigureAwait(false);
         }
 
