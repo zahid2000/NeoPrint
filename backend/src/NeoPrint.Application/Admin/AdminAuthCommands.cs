@@ -23,10 +23,21 @@ public interface IAdminUserRepository
     /// How many active accounts hold a role.
     /// </summary>
     /// <remarks>
-    /// Used to keep at least one active SuperAdmin, and to refuse deleting a
-    /// role that is still in use (plan section 8A.2).
+    /// Used to keep at least one active SuperAdmin, and as the holder count the
+    /// panel shows beside a role (plan section 8A.2).
     /// </remarks>
     Task<long> CountActiveWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// How many accounts hold a role, whether they are active or not.
+    /// </summary>
+    /// <remarks>
+    /// What deletion is refused on: a deactivated account keeps its roles, and
+    /// deleting one out from under it would leave it pointing at a role that no
+    /// longer exists - which only surfaces when someone activates the account
+    /// again (plan section 8A.2).
+    /// </remarks>
+    Task<long> CountWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default);
 
     Task AddAsync(AdminUser admin, CancellationToken cancellationToken = default);
 

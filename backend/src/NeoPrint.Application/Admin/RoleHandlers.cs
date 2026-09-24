@@ -261,8 +261,12 @@ public sealed class DeleteRoleHandler : IRequestHandler<DeleteRoleCommand, Delet
             throw new DomainException($"'{role.Name}' sistem roludur və silinə bilməz.");
         }
 
+        // Every holder, not only the active ones: a deactivated account keeps
+        // its roles, and deleting one out from under it would leave it pointing
+        // at a role that no longer exists - which nobody notices until someone
+        // activates the account again (plan section 8A.2).
         var holders = await _admins
-            .CountActiveWithRoleAsync(role.Id, cancellationToken)
+            .CountWithRoleAsync(role.Id, cancellationToken)
             .ConfigureAwait(false);
 
         if (holders > 0)

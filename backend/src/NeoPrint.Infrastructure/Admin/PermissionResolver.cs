@@ -171,6 +171,11 @@ public sealed class AdminUserRepository : IAdminUserRepository
             admin => admin.IsActive && admin.RoleIds.Contains(roleId),
             cancellationToken: cancellationToken);
 
+    public Task<long> CountWithRoleAsync(Guid roleId, CancellationToken cancellationToken = default)
+        => _context.AdminUsers.CountDocumentsAsync(
+            admin => admin.RoleIds.Contains(roleId),
+            cancellationToken: cancellationToken);
+
     public Task AddAsync(AdminUser admin, CancellationToken cancellationToken = default)
         => _context.AdminUsers.InsertOneAsync(admin, cancellationToken: cancellationToken);
 

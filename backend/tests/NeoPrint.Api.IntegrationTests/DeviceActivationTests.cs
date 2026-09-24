@@ -508,6 +508,64 @@ public sealed class DeviceActivationTests
     }
 
     [DockerFact]
+    public async Task Moving_a_device_to_another_kiosk_releases_the_one_it_left()
+    {
+        if (Skip) { return; }
+
+        using var client = _fixture.CreateApiClient();
+        using var admin = await SignedInSuperAdminAsync();
+
+        using var device = new FakeKioskDevice();
+
+        var (deviceId, _, _) = await RegisterAsync(client, device, "kiosk-moving");
+
+        var first = await admin.PostAsJsonAsync($"/api/admin/devices/{deviceId}/activate", new
+        {
+            newKiosk = NewKiosk("Leaving", "Bakı, birinci"),
+            selectedPrinterName = "HP LaserJet",
+        });
+
+        first.StatusCode.Should().Be(HttpStatusCode.OK, await first.Content.ReadAsStringAsync());
+
+        var leaving = await first.Content.ReadFromJsonAsync<JsonElement>();
+        var leavingKioskId = leaving.GetProperty("kioskId").GetGuid();
+
+        // The same machine is then activated onto a second kiosk, which is how
+        // an administrator moves hardware.
+        var second = await admin.PostAsJsonAsync($"/api/admin/devices/{deviceId}/activate", new
+        {
+            newKiosk = NewKiosk("Arriving", "Bakı, ikinci"),
+            selectedPrinterName = "HP LaserJet",
+        });
+
+        second.StatusCode.Should().Be(HttpStatusCode.OK, await second.Content.ReadAsStringAsync());
+
+        var arriving = await second.Content.ReadFromJsonAsync<JsonElement>();
+
+        arriving.GetProperty("kioskId").GetGuid().Should().NotBe(leavingKioskId);
+
+        // The kiosk it left keeps its code and its history, but it no longer
+        // claims the device: otherwise two kiosks would list the same active
+        // device, and this one would look occupied to anyone activating a
+        // replacement on it.
+        var kiosks = await admin.GetFromJsonAsync<JsonElement>("/api/admin/kiosks");
+
+        var left = kiosks.EnumerateArray()
+            .Single(kiosk => kiosk.GetProperty("id").GetGuid() == leavingKioskId);
+
+        left.TryGetProperty("activeDeviceId", out var stillBound)
+            .Should().BeFalse($"the kiosk should have been released, but it still reports {stillBound}");
+
+        left.GetProperty("status").GetString().Should().Be("NotActivated");
+
+        // And the device serves only the kiosk it moved to.
+        var token = await GetTokenAsync(client, device, deviceId);
+
+        token.GetProperty("kioskId").GetGuid()
+            .Should().Be(arriving.GetProperty("kioskId").GetGuid());
+    }
+
+    [DockerFact]
     public async Task Activating_without_naming_a_kiosk_is_refused()
     {
         if (Skip) { return; }

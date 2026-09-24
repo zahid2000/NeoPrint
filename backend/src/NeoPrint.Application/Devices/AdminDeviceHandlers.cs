@@ -170,6 +170,26 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
             }
         }
 
+        // The device may already be serving another kiosk - an administrator
+        // moving a machine from one kiosk to another. That kiosk is released
+        // first, or it would be left claiming a device that no longer answers
+        // for it: two kiosks would list the same active device, and the one
+        // left behind would look occupied to whoever tried to activate a
+        // replacement on it (docs/DOMAIN_RULES.md).
+        if (device.KioskId is { } formerKioskId && formerKioskId != kiosk.Id)
+        {
+            var former = await _kiosks.FindByIdAsync(formerKioskId, cancellationToken).ConfigureAwait(false);
+            if (former is not null)
+            {
+                former.UnbindDevice(actor.Because("Cihaz başqa kioska keçirildi."), now);
+                await _kiosks.UpdateAsync(former, cancellationToken).ConfigureAwait(false);
+
+                _logger.LogInformation(
+                    "Kiosk {FormerKioskCode} was released because device {DeviceId} moved to {KioskCode}.",
+                    former.Code, device.Id, kiosk.Code);
+            }
+        }
+
         device.Activate(kiosk.Id, actor, now);
         await _devices.UpdateAsync(device, cancellationToken).ConfigureAwait(false);
 

@@ -319,6 +319,31 @@ public sealed class RbacTests
     }
 
     [DockerFact]
+    public async Task A_role_held_only_by_a_deactivated_account_cannot_be_deleted()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SuperAdminAsync();
+
+        var roleId = await CreateRoleAsync(
+            admin, $"Held by a disabled account {Guid.NewGuid():N}", Permissions.DevicesView);
+
+        var (client, adminUserId) = await CreateAdminWithRoleAsync(admin, roleId);
+        client.Dispose();
+
+        await DeactivateAsync(adminUserId);
+
+        // A deactivated account keeps its roles, so the role is still in use:
+        // deleting it would leave that account pointing at a role that no
+        // longer exists, which nobody would notice until it was activated
+        // again.
+        var response = await admin.DeleteAsync($"/api/admin/roles/{roleId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("silinə bilməz");
+    }
+
+    [DockerFact]
     public async Task An_unassigned_role_can_be_deleted()
     {
         if (Skip) { return; }
