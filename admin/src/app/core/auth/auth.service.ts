@@ -105,8 +105,21 @@ export class AuthService {
    *
    * Called when the server announces a role change over SignalR, so the menu
    * reflects it without signing in again (plan section 8A.2).
+   *
+   * The token is exchanged first, not only the profile: a permission the
+   * account has just been given is not among the claims of the token it is
+   * holding, and the API confirms the claim as well as the resolver. Reading
+   * /api/admin/me alone would open the menu item while every request behind it
+   * was still refused.
    */
   async reloadPermissions(): Promise<void> {
+    try {
+      await firstValueFrom(this.refresh());
+    } catch {
+      // No new token: the interceptor will exchange it on the next 401, and
+      // the profile below still shows what the account may do.
+    }
+
     try {
       const admin = await firstValueFrom(
         this.http.get<AdminSummary>('/api/admin/me'),

@@ -32,6 +32,11 @@ function loginResponse(summary = admin()): AdminLoginResponse {
   };
 }
 
+/** Lets the pending promise chain run: the profile request follows the token exchange. */
+async function settle(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('AuthService', () => {
   let service: AuthService;
   let http: HttpTestingController;
@@ -169,6 +174,9 @@ describe('AuthService', () => {
 
     const reloaded = service.reloadPermissions();
 
+    http.expectOne('/api/auth/admin/refresh').flush(loginResponse());
+    await settle();
+
     http
       .expectOne('/api/admin/me')
       .flush('', { status: 500, statusText: 'Server Error' });
@@ -187,6 +195,9 @@ describe('AuthService', () => {
 
     const reloaded = service.reloadPermissions();
 
+    http.expectOne('/api/auth/admin/refresh').flush(loginResponse());
+    await settle();
+
     http
       .expectOne('/api/admin/me')
       .flush(admin({ permissions: ['devices.view', 'roles.manage'] }));
@@ -194,6 +205,62 @@ describe('AuthService', () => {
     await reloaded;
 
     expect(service.can('roles.manage')).toBe(true);
+  });
+
+  it('exchanges the token before reading the new permissions', async () => {
+    const signedIn = service.signIn('admin@neoprint.test', 'password').toPromise();
+    http.expectOne('/api/auth/admin/login').flush(loginResponse());
+    await signedIn;
+
+    const reloaded = service.reloadPermissions();
+
+    // The API confirms the permission claim in the token as well as the
+    // resolver, so a permission just granted needs a new token. Reading the
+    // profile alone would open a menu item whose requests are still refused.
+    const refresh = http.expectOne('/api/auth/admin/refresh');
+
+    expect(refresh.request.method).toBe('POST');
+
+    refresh.flush({
+      ...loginResponse(),
+      accessToken: 'token-with-the-new-permission',
+    });
+
+    await settle();
+
+    http
+      .expectOne('/api/admin/me')
+      .flush(admin({ permissions: ['devices.view', 'settings.manage'] }));
+
+    await reloaded;
+
+    expect(service.token).toBe('token-with-the-new-permission');
+    expect(service.can('settings.manage')).toBe(true);
+  });
+
+  it('still shows the new permissions when the token exchange fails', async () => {
+    const signedIn = service.signIn('admin@neoprint.test', 'password').toPromise();
+    http.expectOne('/api/auth/admin/login').flush(loginResponse());
+    await signedIn;
+
+    const reloaded = service.reloadPermissions();
+
+    http
+      .expectOne('/api/auth/admin/refresh')
+      .flush('', { status: 500, statusText: 'Server Error' });
+
+    await settle();
+
+    // The interceptor exchanges the token on the next 401; the menu should not
+    // be left behind in the meantime.
+    http
+      .expectOne('/api/admin/me')
+      .flush(admin({ permissions: ['devices.view', 'settings.manage'] }));
+
+    await reloaded;
+
+    expect(service.can('settings.manage')).toBe(true);
+    expect(service.isSignedIn()).toBe(true);
   });
 
   it('clears the session locally even when the logout call fails', async () => {

@@ -99,6 +99,20 @@ docker compose up
 `openbao-init` **idempotentdir**: təkrar işə salınanda yalnız çatışmayanı düzəldir və
 **mövcud secret dəyərini heç vaxt üstələmir**.
 
+> **Konteynerlər restart olunandan sonra.** OpenBao yenidən qalxanda **sealed**
+> vəziyyətdə olur, `openbao-init` isə birdəfəlik servisdir — sadə
+> `docker restart` onu yenidən işə salmır. Buna görə maşın (və ya Docker)
+> yenidən başlayandan sonra API AppRole login-də `503` alıb dövrə vurur.
+> Həlli bir əmrdir:
+>
+> ```bash
+> docker compose up openbao-init    # init → unseal, mövcud secret-lərə toxunmur
+> ```
+>
+> `docker compose up` bunu özü edir; yalnız `docker compose restart` və ya
+> host reboot-dan sonra əl ilə lazım olur. Log-da əlaməti budur:
+> `OpenBao rejected the AppRole login with 503`.
+
 ### Nə harada saxlanılır
 
 | Fayl | Məzmun | Qeyd |

@@ -9,8 +9,20 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { describe, beforeEach, afterEach, expect, it, vi } from 'vitest';
 
 import { RoleResponse } from '../../core/api/admin-api.service';
-import { PermissionGroup } from '../../core/auth/auth.models';
+import { AdminSummary, PermissionGroup } from '../../core/auth/auth.models';
 import { RolesComponent } from './roles.component';
+
+/** The account doing the editing, as /api/admin/me reports it back. */
+const signedInAdmin: AdminSummary = {
+  id: '8f5d4f7e-0000-0000-0000-000000000001',
+  email: 'admin@neoprint.test',
+  fullName: 'Seeded Admin',
+  roles: ['SuperAdmin'],
+  permissions: ['kiosks.view', 'kiosks.activate', 'devices.view', 'roles.manage'],
+  allKiosks: true,
+  kioskIds: [],
+  mustChangePassword: false,
+};
 
 const groups: PermissionGroup[] = [
   {
@@ -175,7 +187,17 @@ describe('RolesComponent', () => {
 
     await flushMicrotasks();
 
-    backend.expectOne('/api/admin/me').flush(roles[0]);
+    // The account's own permissions are re-read after a new token: a
+    // permission it has just granted itself is not in the one it holds.
+    backend.expectOne('/api/auth/admin/refresh').flush({
+      accessToken: 'refreshed',
+      accessTokenExpiresAt: new Date(Date.now() + 900_000).toISOString(),
+      admin: signedInAdmin,
+    });
+
+    await flushMicrotasks();
+
+    backend.expectOne('/api/admin/me').flush(signedInAdmin);
 
     await saved;
   });
@@ -200,7 +222,17 @@ describe('RolesComponent', () => {
 
     await flushMicrotasks();
 
-    backend.expectOne('/api/admin/me').flush(roles[0]);
+    // The account's own permissions are re-read after a new token: a
+    // permission it has just granted itself is not in the one it holds.
+    backend.expectOne('/api/auth/admin/refresh').flush({
+      accessToken: 'refreshed',
+      accessTokenExpiresAt: new Date(Date.now() + 900_000).toISOString(),
+      admin: signedInAdmin,
+    });
+
+    await flushMicrotasks();
+
+    backend.expectOne('/api/admin/me').flush(signedInAdmin);
 
     await saved;
   });

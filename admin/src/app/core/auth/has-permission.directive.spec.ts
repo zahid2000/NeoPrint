@@ -106,6 +106,12 @@ describe('HasPermissionDirective', () => {
     // What the server announces over SignalR on a role change
     // (plan section 8A.2).
     const reloaded = auth.reloadPermissions();
+
+    // The token is exchanged first, because a permission just granted is not
+    // among the claims of the one being held.
+    backend.expectOne('/api/auth/admin/refresh').flush(session(['devices.view', 'devices.revoke']));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     backend.expectOne('/api/admin/me').flush({
       ...session(['devices.view', 'devices.revoke']).admin,
     });
@@ -123,6 +129,10 @@ describe('HasPermissionDirective', () => {
     expect(rendered('revoke')).toBe(true);
 
     const reloaded = auth.reloadPermissions();
+
+    backend.expectOne('/api/auth/admin/refresh').flush(session([]));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     backend.expectOne('/api/admin/me').flush({ ...session([]).admin });
     await reloaded;
 
