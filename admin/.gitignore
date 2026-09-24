@@ -47,3 +47,9 @@ Thumbs.db
 # .vscode/mcp.json in particular would start an MCP server for anyone who
 # opens the folder, which is a per-developer choice, not a project setting.
 /.vscode
+
+# Compiled output from a SCSS watcher. The .scss files are the source; Angular
+# compiles them during the build, so a checked-in .css would go stale and be
+# used instead.
+src/**/*.css
+src/**/*.css.map
