@@ -82,6 +82,28 @@ public static class SettingKeys
     /// provider, for a callback that arrives late (plan sections 2.4, 2.5).
     /// </summary>
     public const string PaymentReconcileAfterMinutes = "Payment.ReconcileAfterMinutes";
+
+    /// <summary>
+    /// How long a recorded state transition is kept
+    /// (<c>docs/DATA_RETENTION.md</c>).
+    /// </summary>
+    /// <remarks>
+    /// A year: long enough to answer "what happened to this kiosk last
+    /// season", short enough that the collection does not grow without bound.
+    /// Not financial data, so it is not covered by the rules that keep
+    /// payments (plan section 14).
+    /// </remarks>
+    public const string RetentionStateTransitionDays = "Retention.StateTransitionDays";
+
+    /// <summary>
+    /// How long a processed provider callback is kept.
+    /// </summary>
+    /// <remarks>
+    /// Six months. The record exists to refuse a duplicate delivery, and no
+    /// provider resends a webhook that long after the event; the payment
+    /// itself is kept under its own rules.
+    /// </remarks>
+    public const string RetentionProviderEventDays = "Retention.ProviderEventDays";
     public const string FilesDefaultMaxSizeMb = "Files.DefaultMaxSizeMb";
     public const string FilesDefaultMaxPages = "Files.DefaultMaxPages";
     public const string FilesUserQuotaGb = "Files.UserQuotaGb";
@@ -139,6 +161,10 @@ public static class SettingKeys
             "Kioskun lokal konfiqurasiya keşinin etibarlılığı; köhnədirsə kiosk Degraded rejimə keçir"),
         new(PaymentReconcileAfterMinutes, "10", SettingValueType.Integer,
             "Expired / naməlum ödənişlərin provayder statusu ilə uzlaşdırılması"),
+        new(RetentionStateTransitionDays, "365", SettingValueType.Integer,
+            "State keçid tarixçəsinin saxlanma müddəti (gün)"),
+        new(RetentionProviderEventDays, "180", SettingValueType.Integer,
+            "İşlənmiş provayder callback qeydlərinin saxlanma müddəti (gün)"),
         new(FilesDefaultMaxSizeMb, "50", SettingValueType.Integer, "Default maksimum fayl ölçüsü (MB)"),
         new(FilesDefaultMaxPages, "200", SettingValueType.Integer, "Default maksimum səhifə sayı"),
         new(FilesUserQuotaGb, "1", SettingValueType.Integer, "İstifadəçi başına saxlama kvotası (GB)"),

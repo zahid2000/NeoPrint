@@ -262,4 +262,94 @@ public sealed class MongoContext
             await collection.Indexes.CreateManyAsync(models, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Applies the retention windows an administrator can change
+    /// (<c>docs/DATA_RETENTION.md</c>).
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="EnsureIndexesAsync"/> and run after seeding,
+    /// because the durations come from settings that do not exist yet on a
+    /// first start.
+    ///
+    /// A TTL index carries its duration, so changing the setting means changing
+    /// the index. That is done with collMod rather than by dropping and
+    /// recreating: dropping would leave a window with no index at all, and on a
+    /// large collection recreating is not instant.
+    /// </remarks>
+    public async Task ApplyRetentionAsync(
+        TimeSpan stateTransitions, TimeSpan providerEvents, CancellationToken cancellationToken = default)
+    {
+        await EnsureTtlAsync(
+                "state_transitions", nameof(StateTransition.CreatedAt),
+                "ttl_state_transitions", stateTransitions, cancellationToken)
+            .ConfigureAwait(false);
+
+        await EnsureTtlAsync(
+                "provider_events", nameof(ProviderEvent.ProcessedAt),
+                "ttl_provider_events", providerEvents, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>Creates a TTL index, or adjusts the duration of the one that is there.</summary>
+    private async Task EnsureTtlAsync(
+        string collectionName,
+        string field,
+        string indexName,
+        TimeSpan expireAfter,
+        CancellationToken cancellationToken)
+    {
+        // A non-positive window would mean "delete everything immediately",
+        // which is never what somebody means by a retention setting.
+        if (expireAfter <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        var seconds = (long)expireAfter.TotalSeconds;
+        var collection = _database.GetCollection<BsonDocument>(collectionName);
+
+        var existing = await collection.Indexes
+            .List(cancellationToken)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var current = existing.FirstOrDefault(index => index["name"].AsString == indexName);
+
+        if (current is null)
+        {
+            await collection.Indexes
+                .CreateOneAsync(
+                    new CreateIndexModel<BsonDocument>(
+                        Builders<BsonDocument>.IndexKeys.Ascending(field),
+                        new CreateIndexOptions { Name = indexName, ExpireAfter = expireAfter }),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return;
+        }
+
+        var currentSeconds = current.TryGetValue("expireAfterSeconds", out var value)
+            ? value.ToInt64()
+            : -1;
+
+        if (currentSeconds == seconds)
+        {
+            return;
+        }
+
+        await _database
+            .RunCommandAsync<BsonDocument>(
+                new BsonDocument
+                {
+                    ["collMod"] = collectionName,
+                    ["index"] = new BsonDocument
+                    {
+                        ["name"] = indexName,
+                        ["expireAfterSeconds"] = seconds,
+                    },
+                },
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
 }

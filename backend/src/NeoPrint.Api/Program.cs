@@ -21,6 +21,7 @@ using NeoPrint.Application.Abstractions;
 using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Infrastructure;
+using NeoPrint.Domain.Settings;
 using NeoPrint.Infrastructure.Persistence;
 using NeoPrint.Infrastructure.Seeding;
 using NeoPrint.Infrastructure.SecretStore;
@@ -265,6 +266,14 @@ await using (var scope = app.Services.CreateAsyncScope())
     // Idempotent: creates only what is missing, so it is safe on every start
     // and picks up settings and flags added by a later release.
     await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
+
+    // After seeding, because the retention windows come from settings that do
+    // not exist yet on a first start (docs/DATA_RETENTION.md).
+    var settings = scope.ServiceProvider.GetRequiredService<ISettingsReader>();
+
+    await mongo.ApplyRetentionAsync(
+        TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.RetentionStateTransitionDays, 365)),
+        TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.RetentionProviderEventDays, 180)));
 
     if (app.Environment.IsDevelopment())
     {
