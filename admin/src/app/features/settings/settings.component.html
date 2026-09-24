@@ -1,0 +1,139 @@
+<div class="settings">
+  <div class="settings__header">
+    <h1>{{ 'nav.settings' | translate }}</h1>
+
+    <div class="settings__actions">
+      <button
+        mat-button
+        type="button"
+        [disabled]="!hasChanges() || saving()"
+        (click)="revertAll()"
+      >
+        {{ 'common.revert' | translate }}
+      </button>
+
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        [disabled]="!hasChanges() || saving()"
+        (click)="save()"
+      >
+        {{ 'common.save' | translate }}
+        @if (hasChanges()) {
+          ({{ changed().length }})
+        }
+      </button>
+    </div>
+  </div>
+
+  <p class="settings__hint">{{ 'settings.hint' | translate }}</p>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  @if (errorMessage()) {
+    <div class="settings__error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage()! | translate }}</span>
+    </div>
+  }
+
+  <mat-accordion multi>
+    @for (group of groups(); track group.name) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            {{ group.name }}
+            @if (groupHasChanges(group)) {
+              <mat-icon
+                class="settings__dirty"
+                [matTooltip]="'settings.unsaved' | translate"
+                >edit</mat-icon
+              >
+            }
+          </mat-panel-title>
+          <mat-panel-description>
+            {{ 'settings.count' | translate: { count: group.settings.length } }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <div class="settings__list">
+          @for (setting of group.settings; track setting.key) {
+            <div class="settings__row" [class.settings__row--dirty]="isChanged(setting)">
+              <div class="settings__meta">
+                <code class="settings__key">{{ setting.key }}</code>
+                <span class="settings__description">{{ setting.description }}</span>
+                <span class="settings__default">
+                  {{ 'settings.defaultIs' | translate }}
+                  <code>{{ setting.defaultValue || '—' }}</code>
+                </span>
+              </div>
+
+              <div class="settings__control">
+                @switch (setting.valueType) {
+                  @case ('Boolean') {
+                    <mat-slide-toggle
+                      [checked]="boolValue(setting)"
+                      (change)="setBool(setting, $event.checked)"
+                    >
+                      {{ (boolValue(setting) ? 'features.on' : 'features.off') | translate }}
+                    </mat-slide-toggle>
+                  }
+
+                  @case ('Integer') {
+                    <mat-form-field appearance="fill" class="settings__input">
+                      <input
+                        matInput
+                        type="number"
+                        [ngModel]="value(setting)"
+                        (ngModelChange)="set(setting, $event)"
+                        [name]="setting.key"
+                      />
+                    </mat-form-field>
+                  }
+
+                  @case ('Decimal') {
+                    <mat-form-field appearance="fill" class="settings__input">
+                      <input
+                        matInput
+                        type="number"
+                        step="0.01"
+                        [ngModel]="value(setting)"
+                        (ngModelChange)="set(setting, $event)"
+                        [name]="setting.key"
+                      />
+                    </mat-form-field>
+                  }
+
+                  @default {
+                    <mat-form-field appearance="fill" class="settings__input settings__input--wide">
+                      <input
+                        matInput
+                        [ngModel]="value(setting)"
+                        (ngModelChange)="set(setting, $event)"
+                        [name]="setting.key"
+                      />
+                    </mat-form-field>
+                  }
+                }
+
+                <button
+                  mat-icon-button
+                  type="button"
+                  [disabled]="value(setting) === setting.defaultValue"
+                  [attr.aria-label]="'settings.reset' | translate"
+                  [matTooltip]="'settings.reset' | translate"
+                  (click)="resetToDefault(setting)"
+                >
+                  <mat-icon>restart_alt</mat-icon>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+</div>

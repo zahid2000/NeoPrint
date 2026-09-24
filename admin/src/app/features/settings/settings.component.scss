@@ -1,0 +1,118 @@
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+
+    h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  &__hint {
+    margin: 0;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+
+  &__dirty {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    color: var(--mat-sys-primary);
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: start;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &--dirty {
+      // A changed row is marked rather than coloured throughout, so the page
+      // stays readable when several are edited at once.
+      border-left: 3px solid var(--mat-sys-primary);
+      padding-left: 0.75rem;
+    }
+  }
+
+  &__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  &__key {
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+  }
+
+  &__description {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__default {
+    font-size: 0.8rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__control {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  &__input {
+    width: 10rem;
+
+    &--wide {
+      width: 20rem;
+    }
+  }
+}
+
+@media (max-width: 700px) {
+  .settings__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings__input,
+  .settings__input--wide {
+    width: 100%;
+  }
+}

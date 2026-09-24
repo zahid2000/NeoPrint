@@ -1,0 +1,235 @@
+<div class="admins">
+  <div class="admins__header">
+    <h1>{{ 'nav.admins' | translate }}</h1>
+
+    <div class="admins__actions">
+      <button mat-stroked-button type="button" (click)="reload()">
+        <mat-icon>refresh</mat-icon>
+        {{ 'common.refresh' | translate }}
+      </button>
+
+      <button mat-flat-button color="primary" type="button" (click)="startNew()">
+        <mat-icon>person_add</mat-icon>
+        {{ 'admins.new' | translate }}
+      </button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  @if (errorMessage()) {
+    <div class="admins__error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage()! | translate }}</span>
+    </div>
+  }
+
+  @if (showForm()) {
+    <mat-card class="admins__form-card">
+      <mat-card-content>
+        <h2>{{ (isEditing() ? 'admins.edit' : 'admins.new') | translate }}</h2>
+
+        <form [formGroup]="form" (ngSubmit)="save()" class="admins__form">
+          <mat-form-field appearance="fill" class="admins__field">
+            <mat-label>{{ 'admins.email' | translate }}</mat-label>
+            <input matInput formControlName="email" autocomplete="off" required />
+            @if (isEditing()) {
+              <mat-hint>{{ 'admins.emailFixed' | translate }}</mat-hint>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="fill" class="admins__field">
+            <mat-label>{{ 'admins.fullName' | translate }}</mat-label>
+            <input matInput formControlName="fullName" required />
+          </mat-form-field>
+
+          @if (!isEditing()) {
+            <mat-form-field appearance="fill" class="admins__field">
+              <mat-label>{{ 'admins.password' | translate }}</mat-label>
+              <input matInput type="password" formControlName="password" autocomplete="new-password" required />
+              <mat-hint>
+                {{ 'admins.passwordHint' | translate: { min: minimumPasswordLength } }}
+              </mat-hint>
+            </mat-form-field>
+          }
+
+          <mat-form-field appearance="fill" class="admins__field">
+            <mat-label>{{ 'admins.roles' | translate }}</mat-label>
+            <mat-select formControlName="roleIds" multiple required>
+              @for (role of roles(); track role.id) {
+                <mat-option [value]="role.id">{{ role.name }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>{{ 'admins.rolesHint' | translate }}</mat-hint>
+          </mat-form-field>
+
+          <mat-checkbox formControlName="allKiosks" class="admins__field admins__field--wide">
+            {{ 'admins.allKiosks' | translate }}
+          </mat-checkbox>
+
+          @if (!form.controls.allKiosks.value) {
+            <mat-form-field appearance="fill" class="admins__field admins__field--wide">
+              <mat-label>{{ 'admins.kiosks' | translate }}</mat-label>
+              <mat-select formControlName="kioskIds" multiple>
+                @for (kiosk of kiosks(); track kiosk.id) {
+                  <mat-option [value]="kiosk.id">
+                    {{ kiosk.code }} — {{ kiosk.name }}
+                  </mat-option>
+                }
+              </mat-select>
+              <mat-hint>{{ 'admins.kiosksHint' | translate }}</mat-hint>
+            </mat-form-field>
+          }
+        </form>
+      </mat-card-content>
+
+      <mat-card-actions align="end">
+        <button mat-button type="button" (click)="cancel()">
+          {{ 'common.cancel' | translate }}
+        </button>
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          [disabled]="form.invalid || saving()"
+          (click)="save()"
+        >
+          {{ 'common.save' | translate }}
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  }
+
+  <mat-card>
+    @if (admins().length === 0) {
+      <p class="admins__empty">{{ 'admins.none' | translate }}</p>
+    } @else {
+      <table mat-table [dataSource]="admins()" class="admins__table">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>{{ 'admins.fullName' | translate }}</th>
+          <td mat-cell *matCellDef="let admin">
+            <div class="admins__name">{{ admin.fullName }}</div>
+            <div class="admins__email">{{ admin.email }}</div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="roles">
+          <th mat-header-cell *matHeaderCellDef>{{ 'admins.roles' | translate }}</th>
+          <td mat-cell *matCellDef="let admin">
+            @for (role of admin.roleNames; track role) {
+              <mat-chip>{{ role }}</mat-chip>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="scope">
+          <th mat-header-cell *matHeaderCellDef>{{ 'dashboard.kioskScope' | translate }}</th>
+          <td mat-cell *matCellDef="let admin">
+            @if (admin.allKiosks) {
+              {{ 'dashboard.allKiosks' | translate }}
+            } @else {
+              @for (kioskId of admin.kioskIds; track kioskId) {
+                <mat-chip>{{ kioskLabel(kioskId) }}</mat-chip>
+              }
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>{{ 'tokens.status' | translate }}</th>
+          <td mat-cell *matCellDef="let admin">
+            @if (!admin.isActive) {
+              <span class="admins__status admins__status--off">
+                {{ 'admins.inactive' | translate }}
+              </span>
+            } @else if (admin.isLockedOut) {
+              <span
+                class="admins__status admins__status--locked"
+                [matTooltip]="'admins.lockedHint' | translate"
+              >
+                {{ 'admins.locked' | translate }}
+              </span>
+            } @else {
+              <span class="admins__status admins__status--on">
+                {{ 'admins.active' | translate }}
+              </span>
+            }
+
+            @if (admin.mustChangePassword) {
+              <mat-icon
+                class="admins__flag"
+                [matTooltip]="'admins.mustChangePassword' | translate"
+                >key</mat-icon
+              >
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="lastLogin">
+          <th mat-header-cell *matHeaderCellDef>{{ 'admins.lastLogin' | translate }}</th>
+          <td mat-cell *matCellDef="let admin">
+            {{ admin.lastLoginAt ? (admin.lastLoginAt | date: 'short') : '—' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let admin">
+            <button
+              mat-icon-button
+              type="button"
+              [attr.aria-label]="'admins.edit' | translate"
+              [matTooltip]="'admins.edit' | translate"
+              (click)="startEdit(admin)"
+            >
+              <mat-icon>edit</mat-icon>
+            </button>
+
+            <button
+              mat-icon-button
+              type="button"
+              [attr.aria-label]="'admins.resetPassword' | translate"
+              [matTooltip]="'admins.resetPassword' | translate"
+              (click)="resetPassword(admin)"
+            >
+              <mat-icon>lock_reset</mat-icon>
+            </button>
+
+            @if (admin.isActive) {
+              <button
+                mat-icon-button
+                color="warn"
+                type="button"
+                [disabled]="admin.id === ownId()"
+                [attr.aria-label]="'admins.deactivate' | translate"
+                [matTooltip]="
+                  admin.id === ownId()
+                    ? ('admins.cannotDisableSelf' | translate)
+                    : ('admins.deactivate' | translate)
+                "
+                (click)="setActive(admin, false)"
+              >
+                <mat-icon>person_off</mat-icon>
+              </button>
+            } @else {
+              <button
+                mat-icon-button
+                type="button"
+                [attr.aria-label]="'admins.activate' | translate"
+                [matTooltip]="'admins.activate' | translate"
+                (click)="setActive(admin, true)"
+              >
+                <mat-icon>person_check</mat-icon>
+              </button>
+            }
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+    }
+  </mat-card>
+</div>

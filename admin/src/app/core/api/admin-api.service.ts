@@ -35,6 +35,59 @@ export interface KioskListItem {
   readonly lastHeartbeatAt: string | null;
 }
 
+/** An administrator account as the panel lists it (plan section 8A.3). */
+export interface AdminUser {
+  readonly id: string;
+  readonly email: string;
+  readonly fullName: string;
+  readonly roleIds: readonly string[];
+  readonly roleNames: readonly string[];
+  readonly allKiosks: boolean;
+  readonly kioskIds: readonly string[];
+  readonly isActive: boolean;
+  readonly mustChangePassword: boolean;
+  readonly isLockedOut: boolean;
+  readonly lastLoginAt: string | null;
+  readonly createdAt: string;
+}
+
+/** How a setting is typed, which decides the input the panel shows. */
+export type SettingValueType =
+  | 'String'
+  | 'Integer'
+  | 'Decimal'
+  | 'Boolean'
+  | 'StringList'
+  | 'Cron'
+  | 'TimeRange';
+
+/** One platform setting, with its documented default alongside. */
+export interface PlatformSetting {
+  readonly key: string;
+  readonly value: string;
+  readonly defaultValue: string;
+  readonly valueType: SettingValueType;
+  readonly description: string;
+  readonly isDefault: boolean;
+  readonly updatedAt: string | null;
+  readonly updatedBy: string | null;
+}
+
+export type LegalDocumentType = 'Privacy' | 'Terms';
+
+/** A published version of a legal document (plan section 2.13). */
+export interface LegalDocument {
+  readonly id: string;
+  readonly docType: LegalDocumentType;
+  readonly version: string;
+  readonly language: string;
+  readonly content: string;
+  readonly publishedAt: string;
+  readonly publishedBy: string | null;
+  readonly isCurrent: boolean;
+  readonly acceptances: number;
+}
+
 /** A device row, as the Devices page lists it (plan section 8A.3). */
 export interface DeviceListItem {
   readonly id: string;
@@ -311,6 +364,82 @@ export class AdminApiService {
       `/api/admin/features/${key}`,
       body,
     );
+  }
+
+// ---------------------------------------------------------------------
+  // Administrator accounts
+  // ---------------------------------------------------------------------
+
+  listAdmins(): Observable<AdminUser[]> {
+    return this.http.get<AdminUser[]>('/api/admin/admins');
+  }
+
+  createAdmin(body: {
+    email: string;
+    fullName: string;
+    password: string;
+    roleIds: readonly string[];
+    allKiosks: boolean;
+    kioskIds: readonly string[];
+  }): Observable<AdminUser> {
+    return this.http.post<AdminUser>('/api/admin/admins', body);
+  }
+
+  updateAdmin(
+    id: string,
+    body: {
+      fullName: string;
+      roleIds: readonly string[];
+      allKiosks: boolean;
+      kioskIds: readonly string[];
+    },
+  ): Observable<AdminUser> {
+    return this.http.put<AdminUser>(`/api/admin/admins/${id}`, body);
+  }
+
+  /** Deactivating rather than deleting keeps the audit trail meaningful. */
+  setAdminActive(id: string, isActive: boolean, reason: string | null): Observable<void> {
+    return this.http.post<void>(`/api/admin/admins/${id}/active`, {
+      isActive,
+      reason,
+    });
+  }
+
+  resetAdminPassword(id: string, newPassword: string): Observable<void> {
+    return this.http.post<void>(`/api/admin/admins/${id}/reset-password`, {
+      newPassword,
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Settings
+  // ---------------------------------------------------------------------
+
+  listSettings(): Observable<PlatformSetting[]> {
+    return this.http.get<PlatformSetting[]>('/api/admin/settings');
+  }
+
+  /** Saves a page of settings at once; a half-applied page is worse than none. */
+  updateSettings(values: Record<string, string>): Observable<PlatformSetting[]> {
+    return this.http.put<PlatformSetting[]>('/api/admin/settings', { values });
+  }
+
+  // ---------------------------------------------------------------------
+  // Legal documents
+  // ---------------------------------------------------------------------
+
+  listLegalDocuments(): Observable<LegalDocument[]> {
+    return this.http.get<LegalDocument[]>('/api/admin/legal-documents');
+  }
+
+  /** Publishes a new version; existing versions are never edited. */
+  publishLegalDocument(body: {
+    docType: LegalDocumentType;
+    version: string;
+    language: string;
+    content: string;
+  }): Observable<LegalDocument> {
+    return this.http.post<LegalDocument>('/api/admin/legal-documents', body);
   }
 
   // ---------------------------------------------------------------------
