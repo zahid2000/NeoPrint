@@ -1,3 +1,5 @@
+using NeoPrint.Domain.Common;
+
 namespace NeoPrint.Application.Abstractions;
 
 /// <summary>
@@ -23,6 +25,16 @@ public interface IAuditWriter
 /// Mandatory for refunds, wallet adjustments and incident resolution
 /// (plan section 8A.1).
 /// </param>
+/// <param name="ActorType">
+/// Which kind of actor did it. Defaults to <see cref="ActorType.Admin"/>,
+/// which is what almost every audited action is; a background job or a kiosk
+/// says so explicitly (<c>docs/STATE_MACHINES.md</c>).
+/// </param>
+/// <remarks>
+/// The correlation id is not a parameter: the writer reads it from the ambient
+/// context, so no caller can forget to pass it along
+/// (<c>docs/OBSERVABILITY.md</c>).
+/// </remarks>
 public sealed record AuditEntry(
     Guid? AdminUserId,
     string Action,
@@ -31,4 +43,5 @@ public sealed record AuditEntry(
     string? Before,
     string? After,
     string? Ip,
-    string? Reason);
+    string? Reason,
+    ActorType ActorType = ActorType.Admin);

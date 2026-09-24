@@ -78,13 +78,17 @@ internal static class Program
         services.AddSingleton<DeviceEnrollmentService>();
 
         services.AddHttpClient<KioskApiClient>((provider, client) =>
-        {
-            var settings = provider
-                .GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value;
+            {
+                var settings = provider
+                    .GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value;
 
-            client.BaseAddress = new Uri(settings.ApiBaseUrl.TrimEnd('/') + "/");
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
+                client.BaseAddress = new Uri(settings.ApiBaseUrl.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            })
+            // Every request carries a correlation id, so what the kiosk did and
+            // what the backend logged can be read together
+            // (docs/OBSERVABILITY.md).
+            .AddHttpMessageHandler(() => new CorrelationIdHandler());
 
         return services.BuildServiceProvider();
     }

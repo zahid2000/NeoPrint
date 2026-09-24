@@ -30,6 +30,7 @@ using NeoPrint.Infrastructure.Devices;
 using NeoPrint.Infrastructure.Features;
 using NeoPrint.Infrastructure.Email;
 using NeoPrint.Infrastructure.HealthChecks;
+using NeoPrint.Infrastructure.Observability;
 using NeoPrint.Infrastructure.Persistence;
 using NeoPrint.Infrastructure.SecretStore;
 using NeoPrint.Infrastructure.Settings;
@@ -63,6 +64,10 @@ public static class DependencyInjection
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddHttpClient();
+
+        // Scoped: one id per request, consumed message or job run
+        // (docs/OBSERVABILITY.md).
+        services.AddScoped<ICorrelationContext, CorrelationContext>();
 
         AddMongo(services, configuration);
         AddRedis(services, configuration);

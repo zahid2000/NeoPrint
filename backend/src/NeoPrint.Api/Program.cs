@@ -7,6 +7,7 @@ using MediatR;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -25,6 +26,41 @@ using NeoPrint.Infrastructure.Seeding;
 using NeoPrint.Infrastructure.SecretStore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ---------------------------------------------------------------------------
+// Logging
+//
+// Structured JSON, so a log line can be queried by CorrelationId, KioskId or
+// JobId rather than grepped (docs/OBSERVABILITY.md). Scopes are included:
+// that is how the correlation id set by the middleware reaches every line the
+// request produces. Development keeps the plain console, which is readable
+// while working; the full OpenTelemetry pipeline lands in step 8.
+// ---------------------------------------------------------------------------
+builder.Logging.ClearProviders();
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Logging.AddSimpleConsole(options =>
+    {
+        options.IncludeScopes = true;
+        options.SingleLine = true;
+        options.TimestampFormat = "HH:mm:ss ";
+    });
+}
+else
+{
+    builder.Logging.AddJsonConsole(options =>
+    {
+        options.IncludeScopes = true;
+        options.UseUtcTimestamp = true;
+        options.JsonWriterOptions = new JsonWriterOptions { Indented = false };
+    });
+}
+
+// Service and environment on every line, so logs from several services can be
+// read together (docs/OBSERVABILITY.md).
+builder.Logging.Configure(options =>
+    options.ActivityTrackingOptions = ActivityTrackingOptions.TraceId | ActivityTrackingOptions.SpanId);
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -235,6 +271,11 @@ await using (var scope = app.Services.CreateAsyncScope())
 // ---------------------------------------------------------------------------
 // Pipeline
 // ---------------------------------------------------------------------------
+
+// First, so every line a request produces carries the correlation id -
+// including the ones the exception handler writes (docs/OBSERVABILITY.md).
+app.UseNeoPrintCorrelationId();
+
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
+using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
 using NeoPrint.Crypto;
 using NeoPrint.Domain.Common;
@@ -31,17 +32,36 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(httpContext);
+
         var problem = Map(exception);
+        var operation = $"{httpContext.Request.Method} {httpContext.Request.Path}";
+
+        // The handler itself is a singleton, so the correlation id - which is
+        // scoped to one request - is resolved from the request's own services
+        // rather than taken in the constructor.
+        // The caller gets it too, so a report of "it failed" can be traced to
+        // the exact request (docs/OBSERVABILITY.md).
+        problem.Extensions["correlationId"] = httpContext.RequestServices
+            .GetRequiredService<ICorrelationContext>()
+            .CorrelationId;
 
         if (problem.Status >= StatusCodes.Status500InternalServerError)
         {
-            _logger.LogError(exception, "Unhandled exception on {Method} {Path}.",
-                httpContext.Request.Method, httpContext.Request.Path);
+            _logger.LogError(
+                exception,
+                "{Operation} {Status} with {ErrorCode}.",
+                operation,
+                problem.Status,
+                exception.GetType().Name);
         }
         else
         {
-            _logger.LogInformation("{ExceptionType} on {Method} {Path} -> {Status}.",
-                exception.GetType().Name, httpContext.Request.Method, httpContext.Request.Path, problem.Status);
+            _logger.LogInformation(
+                "{Operation} {Status} with {ErrorCode}.",
+                operation,
+                problem.Status,
+                exception.GetType().Name);
         }
 
         httpContext.Response.StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError;

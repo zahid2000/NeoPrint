@@ -135,22 +135,35 @@ public sealed class KioskRepository : IKioskRepository
 }
 
 /// <inheritdoc cref="IAuditWriter" />
+/// <remarks>
+/// The correlation id is taken from the ambient context rather than from the
+/// entry, so an audited action is tied to the request that caused it without
+/// every call site having to remember to pass it
+/// (<c>docs/OBSERVABILITY.md</c>).
+/// </remarks>
 public sealed class MongoAuditWriter : IAuditWriter
 {
     private readonly MongoContext _context;
+    private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
 
-    public MongoAuditWriter(MongoContext context, IClock clock)
+    public MongoAuditWriter(MongoContext context, ICorrelationContext correlation, IClock clock)
     {
         _context = context;
+        _correlation = correlation;
         _clock = clock;
     }
 
     public Task WriteAsync(AuditEntry entry, CancellationToken cancellationToken = default)
-        => _context.AuditLogs.InsertOneAsync(
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        return _context.AuditLogs.InsertOneAsync(
             new AuditLog
             {
                 AdminUserId = entry.AdminUserId,
+                ActorType = entry.ActorType,
+                CorrelationId = _correlation.CorrelationId,
                 Action = entry.Action,
                 EntityType = entry.EntityType,
                 EntityId = entry.EntityId,
@@ -161,4 +174,5 @@ public sealed class MongoAuditWriter : IAuditWriter
                 CreatedAt = _clock.UtcNow,
             },
             cancellationToken: cancellationToken);
+    }
 }

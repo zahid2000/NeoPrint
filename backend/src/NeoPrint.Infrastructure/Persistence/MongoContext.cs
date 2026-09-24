@@ -178,7 +178,11 @@ public sealed class MongoContext
             (Builders<AuditLog>.IndexKeys.Ascending(a => a.AdminUserId).Descending(a => a.CreatedAt),
                 Named("ix_audit_logs_admin")),
             (Builders<AuditLog>.IndexKeys.Ascending(a => a.EntityType).Ascending(a => a.EntityId),
-                Named("ix_audit_logs_entity")));
+                Named("ix_audit_logs_entity")),
+            // Answers "what else happened in the request that did this?", which
+            // is how an incident is traced (docs/OBSERVABILITY.md).
+            (Builders<AuditLog>.IndexKeys.Ascending(a => a.CorrelationId),
+                Named("ix_audit_logs_correlation")));
 
         return;
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 
 import '../storage/secure_storage.dart';
+import 'correlation_id.dart';
 
 /// What the API returned when a request failed.
 ///
@@ -117,6 +118,12 @@ final class ApiClient {
     if (_tokens.hasToken && options.extra['skipAuth'] != true) {
       options.headers['Authorization'] = 'Bearer ${_tokens.token}';
     }
+
+    // A correlation id on every request, so a failure the user reports can be
+    // found on the server side (docs/OBSERVABILITY.md). One per attempt, and
+    // never overwritten: a caller that set one is tying this request to work
+    // that started earlier.
+    options.headers.putIfAbsent(correlationIdHeader, newCorrelationId);
 
     handler.next(options);
   }

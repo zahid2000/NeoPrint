@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:neoprint/core/auth/auth_models.dart';
 import 'package:neoprint/core/auth/auth_repository.dart';
 import 'package:neoprint/core/network/api_client.dart';
+import 'package:neoprint/core/network/correlation_id.dart';
 import 'package:neoprint/core/storage/secure_storage.dart';
 
 /// A scripted transport, so the flows are exercised without a backend.
@@ -13,6 +14,9 @@ final class ScriptedAdapter implements HttpClientAdapter {
 
   /// Every request that was made, in order.
   final List<String> requests = [];
+
+  /// The headers each of those requests carried, in the same order.
+  final List<Map<String, dynamic>> sentHeaders = [];
 
   void respond(
     String path,
@@ -32,6 +36,7 @@ final class ScriptedAdapter implements HttpClientAdapter {
   ) async {
     final path = options.uri.path;
     requests.add('${options.method} $path');
+    sentHeaders.add(Map<String, dynamic>.from(options.headers));
 
     final queue = _responses[path];
 
@@ -365,6 +370,32 @@ void main() {
         () => LegalDocumentType.fromWire('Invented'),
         throwsA(isA<ArgumentError>()),
       );
+    });
+  });
+
+  group('correlation id', () {
+    test('every request carries one', () async {
+      adapter.respond('/api/auth/login', 200, body: sessionBody());
+
+      await repository.signIn(
+        email: 'user@example.com',
+        password: 'Password123',
+      );
+
+      // So a failure the user reports can be found on the server side
+      // (docs/OBSERVABILITY.md).
+      final sent = adapter.sentHeaders.single[correlationIdHeader] as String?;
+
+      expect(sent, isNotNull);
+      expect(RegExp(r'^[0-9a-f]{32}$').hasMatch(sent!), isTrue);
+    });
+
+    test('each request gets its own', () {
+      final ids = {for (var i = 0; i < 50; i++) newCorrelationId()};
+
+      // One per attempt: correlating a whole session into one id would defeat
+      // the purpose.
+      expect(ids.length, 50);
     });
   });
 }

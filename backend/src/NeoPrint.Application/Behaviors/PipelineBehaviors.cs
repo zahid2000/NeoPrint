@@ -38,44 +38,103 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
 }
 
 /// <summary>
-/// Logs each request, how long it took, and whether it failed.
+/// Logs each request with the fields <c>docs/OBSERVABILITY.md</c> asks for:
+/// who, on what, how long, and how it ended.
 /// </summary>
 /// <remarks>
-/// Only the request type name and the outcome are logged. Request contents are
-/// not: they carry email addresses, file names and payment details, and plan
-/// section 2.13 keeps personal data out of the log.
+/// The request type name and the outcome are logged; the request contents are
+/// not. They carry email addresses, file names and payment details, and plan
+/// section 2.13 keeps personal data out of the log. Identifiers - the actor,
+/// the kiosk, the device - are safe and are what makes a transaction
+/// traceable, so those are logged as a scope that covers the handler and
+/// everything it calls.
 /// </remarks>
 public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
     private readonly ILogger<LoggingBehavior<TRequest, TResponse>> _logger;
+    private readonly ICorrelationContext _correlation;
+    private readonly ICurrentUser _currentUser;
 
-    public LoggingBehavior(ILogger<LoggingBehavior<TRequest, TResponse>> logger) => _logger = logger;
+    public LoggingBehavior(
+        ILogger<LoggingBehavior<TRequest, TResponse>> logger,
+        ICorrelationContext correlation,
+        ICurrentUser currentUser)
+    {
+        _logger = logger;
+        _correlation = correlation;
+        _currentUser = currentUser;
+    }
 
     public async Task<TResponse> Handle(
         TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
-        var name = typeof(TRequest).Name;
+        var operation = typeof(TRequest).Name;
         var stopwatch = Stopwatch.StartNew();
+
+        using var scope = _logger.BeginScope(Fields(operation));
 
         try
         {
             var response = await next().ConfigureAwait(false);
-            _logger.LogInformation("{Request} handled in {Elapsed} ms.", name, stopwatch.ElapsedMilliseconds);
+
+            _logger.LogInformation(
+                "{Operation} {Status} in {DurationMs} ms.", operation, "Succeeded", stopwatch.ElapsedMilliseconds);
+
             return response;
         }
         catch (ValidationException)
         {
-            // Expected outcome, not a fault: logged at a lower level and
-            // without the errors, which name user input.
-            _logger.LogInformation("{Request} was rejected by validation after {Elapsed} ms.",
-                name, stopwatch.ElapsedMilliseconds);
+            // Expected outcome, not a fault: logged at a lower level, and
+            // without the errors themselves, which quote user input.
+            _logger.LogInformation(
+                "{Operation} {Status} in {DurationMs} ms.", operation, "Rejected", stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation(
+                "{Operation} {Status} in {DurationMs} ms.", operation, "Cancelled", stopwatch.ElapsedMilliseconds);
             throw;
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "{Request} failed after {Elapsed} ms.", name, stopwatch.ElapsedMilliseconds);
+            _logger.LogError(
+                exception,
+                "{Operation} {Status} in {DurationMs} ms with {ErrorCode}.",
+                operation,
+                "Failed",
+                stopwatch.ElapsedMilliseconds,
+                exception.GetType().Name);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// The identifying fields, omitting the ones that do not apply: an
+    /// anonymous kiosk session has no user, and an admin request has no device.
+    /// </summary>
+    private Dictionary<string, object> Fields(string operation)
+    {
+        var fields = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            ["CorrelationId"] = _correlation.CorrelationId,
+            ["Operation"] = operation,
+        };
+
+        Add(fields, "UserId", _currentUser.UserId);
+        Add(fields, "ActorId", _currentUser.AdminUserId);
+        Add(fields, "KioskId", _currentUser.KioskId);
+        Add(fields, "DeviceId", _currentUser.DeviceId);
+
+        return fields;
+    }
+
+    private static void Add(Dictionary<string, object> fields, string name, Guid? value)
+    {
+        if (value is not null)
+        {
+            fields[name] = value.Value;
         }
     }
 }
