@@ -23,8 +23,14 @@ public enum KioskScreen
     /// <summary>Screen 14: activated, but no printer selected.</summary>
     NotConfigured = 3,
 
-    /// <summary>Screen 15.</summary>
-    Offline = 4,
+    /// <summary>
+    /// Screen 15: the backend cannot be reached but the cached configuration is
+    /// still fresh. Paid work keeps printing; no new payment is taken.
+    /// </summary>
+    Degraded = 4,
+
+    /// <summary>Screen 16: no connection, or the cache has gone stale.</summary>
+    Offline = 5,
 }
 
 /// <summary>One line in the queue panel (plan section 7.2).</summary>
@@ -103,6 +109,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public string NotConfiguredTitle => T("notConfigured.title");
 
     public string NotConfiguredBody => T("notConfigured.body");
+
+    public string DegradedTitle => T("degraded.title");
+
+    public string DegradedBody => T("degraded.body");
 
     public string OfflineTitle => T("offline.title");
 

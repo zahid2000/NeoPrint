@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+             x:Class="NeoPrint.Kiosk.Views.DegradedView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <!-- Screen 15 (plan section 7.3): the backend cannot be reached but the
+         cached configuration is still fresh. Work already paid for keeps
+         printing, so the queue panel stays as it is; what stops is taking a
+         new payment, because a payment the backend has not confirmed must
+         never be shown as successful (docs/OFFLINE_BEHAVIOR.md). -->
+
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16" MaxWidth="620">
+        <TextBlock Text="{Binding DegradedTitle}" FontSize="40" FontWeight="Bold"
+                   Foreground="#F8FAFC" HorizontalAlignment="Center" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding DegradedBody}" FontSize="19"
+                   Foreground="#94A3B8" HorizontalAlignment="Center"
+                   TextAlignment="Center" TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

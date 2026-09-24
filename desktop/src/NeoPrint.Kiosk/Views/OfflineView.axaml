@@ -4,7 +4,8 @@
              x:Class="NeoPrint.Kiosk.Views.OfflineView"
              x:DataType="vm:MainWindowViewModel">
 
-    <!-- Screen 15 (plan section 7.3): no connection, so no new order can be
+    <!-- Screen 16 (plan section 7.3): no connection, or the cached configuration
+         has gone stale, so no new order can be
          taken. The kiosk resumes on its own when the link returns. -->
 
     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16" MaxWidth="620">

@@ -25,6 +25,8 @@ public static class ScreenConverters
 
     public static readonly IValueConverter IsNotConfigured = Is(KioskScreen.NotConfigured);
 
+    public static readonly IValueConverter IsDegraded = Is(KioskScreen.Degraded);
+
     public static readonly IValueConverter IsOffline = Is(KioskScreen.Offline);
 
     /// <summary>Green while a job is printing, grey while it waits.</summary>

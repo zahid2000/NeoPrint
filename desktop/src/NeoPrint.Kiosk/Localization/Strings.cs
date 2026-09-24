@@ -57,6 +57,9 @@ public static class Strings
                 ["notConfigured.title"] = "Kiosk quraşdırılır",
                 ["notConfigured.body"] = "Printer hələ seçilməyib. Bir az sonra yenidən cəhd edin.",
 
+                ["degraded.title"] = "Onlayn ödəniş müvəqqəti əlçatmazdır",
+                ["degraded.body"] =
+                    "Növbədəki ödənilmiş işlər çap olunmağa davam edir. Yeni sifariş bir azdan qəbul edilə biləcək.",
                 ["offline.title"] = "İnternet bağlantısı yoxdur",
                 ["offline.body"] = "Yeni sifariş qəbul edilmir. Bağlantı bərpa olunanda kiosk özü işə qayıdır.",
 
@@ -94,6 +97,9 @@ public static class Strings
                 ["notConfigured.title"] = "The kiosk is being set up",
                 ["notConfigured.body"] = "No printer has been selected yet. Please try again shortly.",
 
+                ["degraded.title"] = "Online payment is temporarily unavailable",
+                ["degraded.body"] =
+                    "Paid jobs already in the queue are still printing. New orders can be placed again shortly.",
                 ["offline.title"] = "No internet connection",
                 ["offline.body"] = "New orders cannot be taken. The kiosk resumes on its own once the connection is back.",
 
@@ -131,6 +137,9 @@ public static class Strings
                 ["notConfigured.title"] = "Киоск настраивается",
                 ["notConfigured.body"] = "Принтер ещё не выбран. Попробуйте чуть позже.",
 
+                ["degraded.title"] = "Онлайн-оплата временно недоступна",
+                ["degraded.body"] =
+                    "Оплаченные задания в очереди продолжают печататься. Новые заказы можно будет оформить чуть позже.",
                 ["offline.title"] = "Нет подключения к интернету",
                 ["offline.body"] = "Новые заказы не принимаются. Киоск возобновит работу сам.",
 

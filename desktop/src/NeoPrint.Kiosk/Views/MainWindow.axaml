@@ -84,6 +84,10 @@
                 <views:NotConfiguredView />
             </Panel>
 
+            <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsDegraded}}">
+                <views:DegradedView />
+            </Panel>
+
             <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsOffline}}">
                 <views:OfflineView />
             </Panel>
