@@ -51,6 +51,17 @@
     <PackageReference Include="Avalonia.Diagnostics" />
   </ItemGroup>
 
+  <!--
+    The settings files have to sit next to the executable: a console or desktop
+    project does not copy them the way the Web SDK does, so without this the
+    application starts with its compiled-in defaults and its own appsettings.json
+    is never read.
+  -->
+  <ItemGroup>
+    <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\NeoPrint.Kiosk.Core\NeoPrint.Kiosk.Core.csproj" />
     <ProjectReference Include="..\NeoPrint.Kiosk.Printing\NeoPrint.Kiosk.Printing.csproj" />

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using NeoPrint.Kiosk.Core;
 using NeoPrint.Kiosk.Platform.Abstractions;
@@ -58,6 +59,40 @@ public sealed class CompositionTests
         services.GetRequiredService<IRemovableDriveWatcher>().Should().NotBeNull();
         services.GetRequiredService<IKioskLockdown>().Should().NotBeNull();
         services.GetRequiredService<IClock>().Should().NotBeNull();
+    }
+
+    [Fact]
+    public void The_settings_file_sits_next_to_the_application()
+    {
+        // A desktop project does not copy it the way the Web SDK does. Without
+        // it the kiosk runs on compiled-in defaults, and its own settings -
+        // the API address among them - are never read.
+        File.Exists(Path.Combine(AppContext.BaseDirectory, "appsettings.json"))
+            .Should().BeTrue("the application reads it from beside the executable");
+    }
+
+    [Fact]
+    public void The_api_address_comes_from_the_settings_file_when_nothing_overrides_it()
+    {
+        using var services = (ServiceProvider)Program.BuildServices([]);
+
+        var settings = services.GetRequiredService<IOptions<KioskSettings>>().Value;
+
+        // The value in appsettings.json, not the compiled-in default of the
+        // property - which is how you can tell the file was loaded at all.
+        settings.ApiBaseUrl.Should().Be("https://api.neoprint.az");
+        settings.HeartbeatSeconds.Should().Be(15);
+    }
+
+    [Fact]
+    public void The_command_line_overrides_the_settings_file()
+    {
+        // --api-url is what the install script passes (plan section 7.11).
+        using var services = (ServiceProvider)Program.BuildServices(
+            ["--api-url", "http://localhost:5080"]);
+
+        services.GetRequiredService<IOptions<KioskSettings>>().Value
+            .ApiBaseUrl.Should().Be("http://localhost:5080");
     }
 
     /// <summary>

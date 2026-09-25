@@ -52,9 +52,18 @@ internal static class Program
     /// <summary>Composition root, also built by the composition test.</summary>
     internal static IServiceProvider BuildServices(string[] args)
     {
+        // Production unless told otherwise: a kiosk in the field must never
+        // pick up developer settings because a variable was missing.
+        var environment =
+            Environment.GetEnvironmentVariable("NEOPRINT_KIOSK_ENVIRONMENT") ?? "Production";
+
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: true)
+            // appsettings.Development.json existed but nothing loaded it, so on
+            // a developer machine the API address and the fake printer had to be
+            // passed by hand every time.
+            .AddJsonFile($"appsettings.{environment}.json", optional: true)
             .AddEnvironmentVariables("NEOPRINT_KIOSK_")
             // --api-url and --enrollment-token, as the install script passes
             // them (plan section 7.11).
