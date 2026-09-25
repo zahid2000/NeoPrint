@@ -12,6 +12,7 @@ analyzer:
     - build/**
     - android/**
     - ios/**
+    - web/**
 
   errors:
     # The auth classes take public constructor parameters (api, storage,

@@ -1,18 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../network/api_base_url.dart';
 import '../network/api_client.dart';
 import '../storage/secure_storage.dart';
 import 'auth_models.dart';
 import 'auth_repository.dart';
 
-/// The backend address for this build.
-///
-/// Overridden at build time with `--dart-define=NEOPRINT_API_URL=...`, which is
-/// how the staging and production builds differ. It is not a secret.
-const apiBaseUrl = String.fromEnvironment(
-  'NEOPRINT_API_URL',
-  defaultValue: 'https://api.neoprint.az',
-);
+/// The backend address for this build. See `api_base_url.dart`.
+final apiBaseUrl = resolveApiBaseUrl();
 
 final secureStorageProvider = Provider<SecureStorage>(
   (ref) => const PlatformSecureStorage(),
@@ -31,7 +26,8 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
   // A refresh token the server refuses cannot be recovered from, so the app
   // returns to the sign-in screen rather than looping on 401s.
-  client.onSessionExpired = () => ref.read(authControllerProvider.notifier).onSessionExpired();
+  client.onSessionExpired = () =>
+      ref.read(authControllerProvider.notifier).onSessionExpired();
 
   return client;
 });
@@ -123,7 +119,9 @@ final class AuthController extends Notifier<AuthState> {
     state = state.copyWith(isBusy: true, clearError: true);
 
     try {
-      state = _fromSession(await _repository.confirmEmail(email: email, code: code));
+      state = _fromSession(
+        await _repository.confirmEmail(email: email, code: code),
+      );
     } on ApiException catch (error) {
       state = state.copyWith(isBusy: false, errorMessage: error.message);
     }
@@ -148,7 +146,9 @@ final class AuthController extends Notifier<AuthState> {
     state = state.copyWith(isBusy: true, clearError: true);
 
     try {
-      state = _fromSession(await _repository.signIn(email: email, password: password));
+      state = _fromSession(
+        await _repository.signIn(email: email, password: password),
+      );
     } on ApiException catch (error) {
       state = AuthState.signedOut(errorMessage: error.message);
     }

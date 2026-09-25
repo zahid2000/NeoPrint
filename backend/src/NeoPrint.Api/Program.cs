@@ -254,6 +254,17 @@ if (builder.Environment.IsDevelopment())
     // reachable from the admin panel (plan section 1).
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
+
+    // Cross-origin access for the Flutter app running in a browser. Registered
+    // here and nowhere else, so it cannot be turned on outside Development
+    // (see DevelopmentCors).
+    builder.Services.AddCors(options => options.AddPolicy(
+        DevelopmentCors.PolicyName,
+        policy => policy
+            .SetIsOriginAllowed(DevelopmentCors.IsLoopbackOrigin)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()));
 }
 
 var app = builder.Build();
@@ -299,6 +310,11 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    // Before the rate limiter and authentication: a preflight carries neither
+    // credentials nor a body, and answering it must not spend a request from
+    // the sign-in limit.
+    app.UseCors(DevelopmentCors.PolicyName);
 }
 else
 {
