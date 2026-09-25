@@ -108,7 +108,11 @@ public sealed class PersistenceRulesTests
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
 
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "CLAUDE.md")))
+        // Directory.Build.props, not a documentation file: it sits at the
+        // repository root by definition, and its name is the same on a
+        // case-sensitive file system, which CI runs on.
+        while (directory is not null
+               && !File.Exists(Path.Combine(directory.FullName, "Directory.Build.props")))
         {
             directory = directory.Parent;
         }
