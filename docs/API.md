@@ -231,6 +231,28 @@ Anonim. `{ "deviceId", "nonce", "signature" }` (IEEE P1363 imza).
 
 Cihaz aktivdirsə `kiosk`, deyilsə `provisioning` token-i verilir.
 
+### `GET /api/devices/me`
+
+Cihaz token-i (provisioning və ya kiosk). Cihazın öz vəziyyəti.
+
+→ `{ "deviceId", "status", "kioskId", "kioskCode", "hasValidPairingCode",
+     "pairingCodeExpiresAt" }`
+
+`status`: `Pending` | `Active` | `Revoked` | `Expired`
+
+Activation ekranı **bunu poll edir**: aktivləşmə baş verib-vermədiyini
+yoxlamağın ucuz yolu. `challenge` + `token` ilə yoxlamaq hər dövrdə iki sorğu
+deməkdir və onlar giriş endpoint-ləri ilə birlikdə **10 sorğu/dəqiqə** limitini
+paylaşır — bu endpoint isə ümumi limitdədir (120/dəqiqə), ona görə 5 saniyəlik
+poll rahat keçir.
+
+**Pairing kodunun özü qaytarılmır** — bazada yalnız hash saxlanılır və kod
+ekranda artıq mövcuddur. `hasValidPairingCode: false` olanda kiosk
+`POST /api/devices/me/pairing-code` ilə yenisini alır.
+
+Ləğv edilmiş cihaz `403` alır (hər sorğuda cihazın aktivliyi yoxlanılır) və
+Activation ekranına qayıdır.
+
 ### `POST /api/devices/me/pairing-code`
 
 Provisioning token. Ekrandaki kodu yeniləyir → `{ "pairingCode", "expiresAt" }`

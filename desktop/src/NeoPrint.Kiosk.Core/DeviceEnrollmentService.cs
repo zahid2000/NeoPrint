@@ -66,6 +66,11 @@ public sealed class DeviceEnrollmentService
     private readonly KioskSettings _settings;
     private readonly ILogger<DeviceEnrollmentService> _logger;
 
+    // The code on screen. Held here because the backend only ever returns it
+    // once - it stores a hash - so a poll cannot read it back.
+    private string? _pairingCode;
+    private DateTime? _pairingCodeExpiresAt;
+
     public DeviceEnrollmentService(
         KioskApiClient api,
         IDeviceKeyStore keys,
@@ -96,9 +101,11 @@ public sealed class DeviceEnrollmentService
     /// Registers if needed, authenticates, and reports where the device stands.
     /// </summary>
     /// <remarks>
-    /// Called on every start and then periodically while waiting. Registering
-    /// again is harmless: the backend recognises the key and keeps the same
-    /// device, which is why a restart or an update never needs re-activating.
+    /// Called on every start and then periodically while waiting. The first
+    /// call registers - which the backend answers with the same device as last
+    /// time, because it recognises the key, so a restart or an update never
+    /// needs re-activating - and the ones after it only ask whether an
+    /// administrator has activated the kiosk yet.
     /// </remarks>
     public async Task<EnrollmentState> AdvanceAsync(CancellationToken cancellationToken = default)
     {
@@ -108,52 +115,14 @@ public sealed class DeviceEnrollmentService
 
         try
         {
-            var registration = await _api.RegisterAsync(
-                    _fingerprint.Collect(),
-                    CurrentPlatform,
-                    AppVersion,
-                    ReadEnrollmentToken(),
-                    printers,
-                    cancellationToken)
-                .ConfigureAwait(false);
-
-            var token = await _api.AuthenticateAsync(cancellationToken).ConfigureAwait(false);
-
-            if (_api.IsActivated)
-            {
-                // The token that activated this device is spent; remove it so a
-                // later reinstall cannot reuse it.
-                ConsumeEnrollmentToken();
-
-                _logger.LogInformation(
-                    "This device is activated as kiosk {KioskCode}.", _api.KioskCode);
-
-                return new EnrollmentState(
-                    KioskLifecycle.Active, null, null, null, _api.DeviceId, _api.KioskCode, printers);
-            }
-
-            // Still waiting: report printers so the administrator can pick one
-            // while activating (plan section 9.0).
-            await SafeReportPrintersAsync(printers, cancellationToken).ConfigureAwait(false);
-
-            var code = registration.PairingCode;
-            var expiresAt = registration.PairingCodeExpiresAt;
-
-            if (code is null || expiresAt <= DateTime.UtcNow)
-            {
-                var renewed = await _api.RenewPairingCodeAsync(cancellationToken).ConfigureAwait(false);
-                code = renewed.PairingCode;
-                expiresAt = renewed.ExpiresAt;
-            }
-
-            return new EnrollmentState(
-                KioskLifecycle.Pending,
-                code,
-                expiresAt,
-                BuildActivationQr(_api.DeviceId!.Value, code),
-                _api.DeviceId,
-                null,
-                printers);
+            // Registering is a first-start thing. Called on every poll it burns
+            // the ten-per-hour registration limit, and taking a fresh token
+            // each time burns the ten-per-minute limit that the challenge and
+            // the token share with sign-in - after which the screen never got
+            // far enough to show a code at all (plan section 7.11).
+            return _api.DeviceId is null
+                ? await EnrollAsync(printers, cancellationToken).ConfigureAwait(false)
+                : await CheckAsync(printers, cancellationToken).ConfigureAwait(false);
         }
         catch (DeviceRevokedException exception)
         {
@@ -165,6 +134,108 @@ public sealed class DeviceEnrollmentService
                 KioskLifecycle.Revoked, null, null, null, null, null, printers);
         }
     }
+
+    /// <summary>First start: register, authenticate, report what we can print with.</summary>
+    private async Task<EnrollmentState> EnrollAsync(
+        IReadOnlyCollection<DetectedPrinter> printers, CancellationToken cancellationToken)
+    {
+        var registration = await _api.RegisterAsync(
+                _fingerprint.Collect(),
+                CurrentPlatform,
+                AppVersion,
+                ReadEnrollmentToken(),
+                printers,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        await _api.AuthenticateAsync(cancellationToken).ConfigureAwait(false);
+
+        if (_api.IsActivated)
+        {
+            return Activated(printers);
+        }
+
+        // Reported once, while waiting, so the administrator can pick a printer
+        // as part of activating (plan section 9.0).
+        await SafeReportPrintersAsync(printers, cancellationToken).ConfigureAwait(false);
+
+        _pairingCode = registration.PairingCode;
+        _pairingCodeExpiresAt = registration.PairingCodeExpiresAt;
+
+        if (_pairingCode is null)
+        {
+            await RenewPairingCodeAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return Waiting(printers);
+    }
+
+    /// <summary>
+    /// Already registered: ask whether an administrator has activated this
+    /// kiosk yet, and keep the code on screen valid.
+    /// </summary>
+    private async Task<EnrollmentState> CheckAsync(
+        IReadOnlyCollection<DetectedPrinter> printers, CancellationToken cancellationToken)
+    {
+        var state = await _api.GetOwnStateAsync(cancellationToken).ConfigureAwait(false);
+
+        if (string.Equals(state.Status, "Revoked", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DeviceRevokedException("Bu cihaz ləğv edilib. Yeni cihaz açarı yaradılacaq.");
+        }
+
+        if (string.Equals(state.Status, "Active", StringComparison.OrdinalIgnoreCase))
+        {
+            // Activated since the last look: exchange the provisioning token
+            // for a kiosk one, which is what reads the configuration.
+            if (!_api.IsActivated)
+            {
+                await _api.AuthenticateAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            return Activated(printers);
+        }
+
+        if (!state.HasValidPairingCode || _pairingCode is null)
+        {
+            await RenewPairingCodeAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return Waiting(printers);
+    }
+
+    private async Task RenewPairingCodeAsync(CancellationToken cancellationToken)
+    {
+        var renewed = await _api.RenewPairingCodeAsync(cancellationToken).ConfigureAwait(false);
+
+        _pairingCode = renewed.PairingCode;
+        _pairingCodeExpiresAt = renewed.ExpiresAt;
+    }
+
+    private EnrollmentState Activated(IReadOnlyCollection<DetectedPrinter> printers)
+    {
+        // The token that activated this device is spent; remove it so a later
+        // reinstall cannot reuse it.
+        ConsumeEnrollmentToken();
+
+        _pairingCode = null;
+        _pairingCodeExpiresAt = null;
+
+        _logger.LogInformation("This device is activated as kiosk {KioskCode}.", _api.KioskCode);
+
+        return new EnrollmentState(
+            KioskLifecycle.Active, null, null, null, _api.DeviceId, _api.KioskCode, printers);
+    }
+
+    private EnrollmentState Waiting(IReadOnlyCollection<DetectedPrinter> printers)
+        => new(
+            KioskLifecycle.Pending,
+            _pairingCode,
+            _pairingCodeExpiresAt,
+            BuildActivationQr(_api.DeviceId!.Value, _pairingCode),
+            _api.DeviceId,
+            null,
+            printers);
 
     /// <summary>
     /// Discards the local identity after a revocation, so the next start

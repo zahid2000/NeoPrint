@@ -37,6 +37,22 @@ public sealed record DeviceTokenResponse(
 public sealed record PairingCodeResponse(string PairingCode, DateTime ExpiresAt);
 
 /// <summary>
+/// What <c>GET api/devices/me</c> answers: where this device stands.
+/// </summary>
+/// <param name="HasValidPairingCode">
+/// Whether the code the screen is showing is still the one the backend accepts.
+/// The code itself is not returned - only its hash is stored - so the screen
+/// keeps the one it was given and asks for a new one when this goes false.
+/// </param>
+public sealed record DeviceStateResponse(
+    Guid DeviceId,
+    string Status,
+    Guid? KioskId,
+    string? KioskCode,
+    bool HasValidPairingCode,
+    DateTime? PairingCodeExpiresAt);
+
+/// <summary>
 /// The kiosk's own configuration, as the backend sends it
 /// (plan sections 7.11, 2.2).
 /// </summary>
@@ -286,6 +302,43 @@ public sealed class KioskApiClient
             "The backend issued a {TokenType} token, valid until {ExpiresAt:u}.", token.TokenType, token.ExpiresAt);
 
         return token;
+    }
+
+    /// <summary>
+    /// Asks the backend what this device's state is.
+    /// </summary>
+    /// <remarks>
+    /// What the activation screen polls while it waits. A plain read, so it
+    /// does not cost a challenge and a token every few seconds: those two share
+    /// a ten-per-minute limit with sign-in, and spending it is what stopped the
+    /// screen ever showing a pairing code (plan section 7.11).
+    /// </remarks>
+    public async Task<DeviceStateResponse> GetOwnStateAsync(CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateAuthenticatedRequestAsync(
+            HttpMethod.Get, "api/devices/me", cancellationToken).ConfigureAwait(false);
+
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+        {
+            // The device policy checks on every request that the device is
+            // still active, so this is how a revocation arrives here.
+            throw new DeviceRevokedException(
+                "Bu cihaz ləğv edilib. Yeni cihaz açarı yaradılacaq.");
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var state = await response.Content
+                        .ReadFromJsonAsync<DeviceStateResponse>(JsonOptions, cancellationToken)
+                        .ConfigureAwait(false)
+                    ?? throw new InvalidOperationException("The device state response was empty.");
+
+        KioskId = state.KioskId;
+        KioskCode = state.KioskCode;
+
+        return state;
     }
 
     /// <summary>Asks for a fresh pairing code for the activation screen.</summary>

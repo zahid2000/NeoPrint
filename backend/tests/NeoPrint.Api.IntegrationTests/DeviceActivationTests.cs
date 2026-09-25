@@ -515,6 +515,95 @@ public sealed class DeviceActivationTests
     }
 
     [DockerFact]
+    public async Task A_waiting_device_can_ask_about_itself_without_spending_the_auth_limit()
+    {
+        if (Skip) { return; }
+
+        using var client = _fixture.CreateApiClient();
+        using var admin = await SignedInSuperAdminAsync();
+        using var device = new FakeKioskDevice();
+
+        var (deviceId, pairingCode, _) = await RegisterAsync(client, device, "kiosk-polling");
+
+        pairingCode.Should().NotBeNull();
+
+        var token = await GetTokenAsync(client, device, deviceId);
+
+        using var polling = _fixture.CreateApiClient();
+        polling.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", token.GetProperty("accessToken").GetString());
+
+        // The activation screen polls this every few seconds. Twenty times over
+        // is well past the ten a minute that the challenge and the token share
+        // with sign-in, and it has to keep answering.
+        for (var poll = 0; poll < 20; poll++)
+        {
+            var response = await polling.GetAsync("/api/devices/me");
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+
+            var state = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+            state.GetProperty("status").GetString().Should().Be("Pending");
+            state.GetProperty("hasValidPairingCode").GetBoolean().Should().BeTrue();
+
+            // The code itself is never handed back: only its hash is stored,
+            // and the screen already has the one it was given.
+            state.TryGetProperty("pairingCode", out _).Should().BeFalse();
+        }
+
+        // Once an administrator activates it, the same poll says so - which is
+        // how the screen moves on without a SignalR message.
+        var activated = await admin.PostAsJsonAsync($"/api/admin/devices/{deviceId}/activate", new
+        {
+            newKiosk = NewKiosk("Polling", "Bakı, poll"),
+            selectedPrinterName = "HP LaserJet",
+        });
+
+        activated.StatusCode.Should().Be(HttpStatusCode.OK, await activated.Content.ReadAsStringAsync());
+
+        var after = await polling.GetFromJsonAsync<JsonElement>("/api/devices/me");
+
+        after.GetProperty("status").GetString().Should().Be("Active");
+        after.GetProperty("kioskCode").GetString().Should().NotBeNullOrWhiteSpace();
+        after.GetProperty("hasValidPairingCode").GetBoolean().Should().BeFalse();
+    }
+
+    [DockerFact]
+    public async Task Asking_about_a_device_needs_that_device_s_token()
+    {
+        if (Skip) { return; }
+
+        using var anonymous = _fixture.CreateApiClient();
+
+        (await anonymous.GetAsync("/api/devices/me")).StatusCode
+            .Should().Be(HttpStatusCode.Unauthorized);
+
+        // And a revoked device is refused, which is what returns the screen to
+        // Activation (plan section 7.11).
+        using var client = _fixture.CreateApiClient();
+        using var admin = await SignedInSuperAdminAsync();
+        using var device = new FakeKioskDevice();
+
+        var (deviceId, _, _) = await RegisterAsync(client, device, "kiosk-revoked-poll");
+        var token = await GetTokenAsync(client, device, deviceId);
+
+        using var polling = _fixture.CreateApiClient();
+        polling.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", token.GetProperty("accessToken").GetString());
+
+        (await polling.GetAsync("/api/devices/me")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var revoked = await admin.PostAsJsonAsync(
+            $"/api/admin/devices/{deviceId}/revoke", new { reason = "Polling test." });
+
+        revoked.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        (await polling.GetAsync("/api/devices/me")).StatusCode
+            .Should().Be(HttpStatusCode.Forbidden, "the token outlives the device by design, so the check is per request");
+    }
+
+    [DockerFact]
     public async Task A_failed_activation_writes_neither_the_device_nor_the_kiosk()
     {
         if (Skip) { return; }

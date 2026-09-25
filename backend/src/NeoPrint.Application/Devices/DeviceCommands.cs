@@ -85,6 +85,32 @@ public sealed record RenewPairingCodeCommand(Guid DeviceId) : IRequest<PairingCo
 
 public sealed record PairingCodeResult(string PairingCode, DateTime ExpiresAt);
 
+/// <summary>
+/// What a device asks about itself while it waits to be activated
+/// (plan sections 7.11, 9.0).
+/// </summary>
+/// <remarks>
+/// The activation screen has to notice that an administrator activated the
+/// kiosk. Asking by taking a fresh token means a challenge and a token request
+/// every few seconds, which runs into the ten-per-minute limit those two share
+/// with sign-in - so the device asks this instead, which is a plain read.
+/// </remarks>
+public sealed record GetDeviceStateQuery(Guid DeviceId) : IRequest<DeviceStateResult?>;
+
+/// <param name="Status">Where the device stands (<c>Pending</c>, <c>Active</c>, <c>Revoked</c>).</param>
+/// <param name="HasValidPairingCode">
+/// Whether the code the screen is showing is still the one the backend accepts.
+/// The code itself is not returned: only its hash is stored, and the device
+/// already has the one it was given.
+/// </param>
+public sealed record DeviceStateResult(
+    Guid DeviceId,
+    DeviceStatus Status,
+    Guid? KioskId,
+    string? KioskCode,
+    bool HasValidPairingCode,
+    DateTime? PairingCodeExpiresAt);
+
 /// <summary>Reports the printers a device can see, before it is activated.</summary>
 public sealed record ReportDevicePrintersCommand(Guid DeviceId, IReadOnlyCollection<ReportedPrinterDto> Printers)
     : IRequest<Unit>;

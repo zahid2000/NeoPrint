@@ -80,6 +80,31 @@ public sealed class DevicesController : ControllerBase
                 request.DeviceId, request.Nonce, request.Signature, _currentUser.Ip),
             cancellationToken));
 
+    /// <summary>
+    /// What this device's own state is: activated or still waiting.
+    /// </summary>
+    /// <remarks>
+    /// Polled by the activation screen. Deliberately outside the <c>auth</c>
+    /// rate limit, which allows ten requests a minute: asking by taking a fresh
+    /// token costs a challenge and a token every few seconds, and the screen
+    /// then never gets far enough to show a code (plan section 7.11).
+    /// </remarks>
+    [HttpGet("me")]
+    [Authorize(Policy = AuthorizationPolicies.Device)]
+    [ProducesResponseType(typeof(DeviceStateResult), StatusCodes.Status200OK)]
+    public async Task<ActionResult<DeviceStateResult>> State(CancellationToken cancellationToken)
+    {
+        var deviceId = _currentUser.DeviceId;
+        if (deviceId is null)
+        {
+            return Forbid();
+        }
+
+        var state = await _sender.Send(new GetDeviceStateQuery(deviceId.Value), cancellationToken);
+
+        return state is null ? NotFound() : Ok(state);
+    }
+
     /// <summary>Renews the pairing code shown on the activation screen.</summary>
     [HttpPost("me/pairing-code")]
     [Authorize(Policy = AuthorizationPolicies.Provisioning)]

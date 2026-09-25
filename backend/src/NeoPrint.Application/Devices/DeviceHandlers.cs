@@ -458,6 +458,53 @@ public sealed class RenewPairingCodeHandler : IRequestHandler<RenewPairingCodeCo
     }
 }
 
+/// <inheritdoc cref="GetDeviceStateQuery" />
+/// <remarks>
+/// A read, and deliberately a cheap one: it is what the activation screen polls
+/// while it waits, so it must not cost a token exchange.
+/// </remarks>
+public sealed class GetDeviceStateHandler : IRequestHandler<GetDeviceStateQuery, DeviceStateResult?>
+{
+    private readonly IKioskDeviceRepository _devices;
+    private readonly IKioskRepository _kiosks;
+    private readonly IClock _clock;
+
+    public GetDeviceStateHandler(
+        IKioskDeviceRepository devices, IKioskRepository kiosks, IClock clock)
+    {
+        _devices = devices;
+        _kiosks = kiosks;
+        _clock = clock;
+    }
+
+    public async Task<DeviceStateResult?> Handle(
+        GetDeviceStateQuery request, CancellationToken cancellationToken)
+    {
+        var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false);
+
+        if (device is null)
+        {
+            return null;
+        }
+
+        // The kiosk code is what the footer shows once the device is activated,
+        // so it is resolved here rather than making the device ask again.
+        var kiosk = device.KioskId is { } kioskId
+            ? await _kiosks.FindByIdAsync(kioskId, cancellationToken).ConfigureAwait(false)
+            : null;
+
+        return new DeviceStateResult(
+            device.Id,
+            device.Status,
+            device.KioskId,
+            kiosk?.Code,
+            device.PairingCodeHash is not null
+                && device.PairingCodeExpiresAt is { } expiresAt
+                && expiresAt > _clock.UtcNow,
+            device.PairingCodeExpiresAt);
+    }
+}
+
 /// <summary>Records the printers a device reports before activation.</summary>
 public sealed class ReportDevicePrintersHandler : IRequestHandler<ReportDevicePrintersCommand, Unit>
 {

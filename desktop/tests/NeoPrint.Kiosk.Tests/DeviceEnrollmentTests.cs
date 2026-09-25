@@ -108,6 +108,18 @@ public sealed class DeviceEnrollmentTests : IDisposable
             kioskCode = activated ? "KSK-0042" : null,
         });
 
+    /// <summary>What <c>GET /api/devices/me</c> answers while the kiosk waits.</summary>
+    private static string StateJson(Guid deviceId, string status, string? kioskCode = null) =>
+        JsonSerializer.Serialize(new
+        {
+            deviceId,
+            status,
+            kioskId = kioskCode is null ? (Guid?)null : Guid.NewGuid(),
+            kioskCode,
+            hasValidPairingCode = kioskCode is null,
+            pairingCodeExpiresAt = kioskCode is null ? DateTime.UtcNow.AddMinutes(25) : (DateTime?)null,
+        });
+
     private static string TokenJson(string tokenType, string? kioskCode = null) =>
         JsonSerializer.Serialize(new
         {
@@ -145,6 +157,78 @@ public sealed class DeviceEnrollmentTests : IDisposable
         state.ActivationQr.Should().Be($"neoprint://activate/{deviceId}?code=K7QM-4XPT");
 
         keys.Exists.Should().BeTrue("the kiosk generates its own key on first start");
+    }
+
+    [Fact]
+    public async Task Waiting_for_activation_asks_the_backend_only_what_it_has_to()
+    {
+        var (service, handler, _) = Build();
+        var deviceId = Guid.NewGuid();
+
+        // First start: register, authenticate, report the printers.
+        handler
+            .Respond("/api/devices/register", HttpStatusCode.OK, RegistrationJson(deviceId, false, "K7QM-4XPT"))
+            .Respond("/api/devices/challenge", HttpStatusCode.OK,
+                JsonSerializer.Serialize(new { nonce = "nonce-1", expiresAt = DateTime.UtcNow.AddMinutes(5) }))
+            .Respond("/api/devices/token", HttpStatusCode.OK, TokenJson("provisioning"))
+            .RespondStatus("/api/devices/me/printers", HttpStatusCode.NoContent);
+
+        (await service.AdvanceAsync()).PairingCode.Should().Be("K7QM-4XPT");
+
+        handler.Requests.Clear();
+
+        // Then it waits, asking every few seconds whether an administrator has
+        // activated it. Only the state endpoint answers here: any other request
+        // has no scripted response and would throw.
+        for (var poll = 0; poll < 6; poll++)
+        {
+            handler.Respond("/api/devices/me", HttpStatusCode.OK, StateJson(deviceId, "Pending"));
+
+            var state = await service.AdvanceAsync();
+
+            state.Lifecycle.Should().Be(KioskLifecycle.Pending);
+            state.PairingCode.Should().Be("K7QM-4XPT", "the code on screen must not change while it is valid");
+        }
+
+        // Registering again would burn the ten-per-hour registration limit, and
+        // a fresh token every few seconds burns the ten-per-minute auth limit -
+        // which is what stopped the Activation screen ever showing a code.
+        handler.Requests.Should().NotContain("POST /api/devices/register");
+        handler.Requests.Should().NotContain("POST /api/devices/challenge");
+        handler.Requests.Should().NotContain("POST /api/devices/token");
+        handler.Requests.Should().OnlyContain(request => request == "GET /api/devices/me");
+    }
+
+    [Fact]
+    public async Task An_activation_that_happens_while_waiting_is_picked_up()
+    {
+        var (service, handler, _) = Build();
+        var deviceId = Guid.NewGuid();
+
+        handler
+            .Respond("/api/devices/register", HttpStatusCode.OK, RegistrationJson(deviceId, false, "K7QM-4XPT"))
+            .Respond("/api/devices/challenge", HttpStatusCode.OK,
+                JsonSerializer.Serialize(new { nonce = "nonce-1", expiresAt = DateTime.UtcNow.AddMinutes(5) }))
+            .Respond("/api/devices/token", HttpStatusCode.OK, TokenJson("provisioning"))
+            .RespondStatus("/api/devices/me/printers", HttpStatusCode.NoContent);
+
+        await service.AdvanceAsync();
+
+        handler.Requests.Clear();
+
+        // The administrator activates it; the next poll sees the new state and
+        // exchanges the provisioning token for a kiosk one.
+        handler
+            .Respond("/api/devices/me", HttpStatusCode.OK, StateJson(deviceId, "Active", "KSK-0042"))
+            .Respond("/api/devices/challenge", HttpStatusCode.OK,
+                JsonSerializer.Serialize(new { nonce = "nonce-2", expiresAt = DateTime.UtcNow.AddMinutes(5) }))
+            .Respond("/api/devices/token", HttpStatusCode.OK, TokenJson("kiosk", "KSK-0042"));
+
+        var state = await service.AdvanceAsync();
+
+        state.Lifecycle.Should().Be(KioskLifecycle.Active);
+        state.KioskCode.Should().Be("KSK-0042");
+        state.PairingCode.Should().BeNull("an activated kiosk has nothing to pair");
     }
 
     [Fact]
@@ -231,14 +315,31 @@ public sealed class DeviceEnrollmentTests : IDisposable
         await service.AdvanceAsync();
         keys.Exists.Should().BeTrue();
 
-        // The admin detaches the device; the backend now refuses the key.
-        handler.RespondStatus("/api/devices/register", HttpStatusCode.Conflict);
+        // The admin detaches the device while it is sitting on the activation
+        // screen. The device policy checks on every request that the device is
+        // still active, so the next poll is refused.
+        handler.RespondStatus("/api/devices/me", HttpStatusCode.Forbidden);
 
         var state = await service.AdvanceAsync();
 
         state.Lifecycle.Should().Be(KioskLifecycle.Revoked);
         keys.Exists.Should().BeFalse(
             "plan section 7.11: a revoked device clears its identity and returns to the activation screen");
+    }
+
+    [Fact]
+    public async Task A_key_the_backend_has_revoked_is_discarded_on_the_next_start()
+    {
+        var (service, handler, keys) = Build();
+
+        // A fresh process with a key from before the revocation: the identity
+        // is not in memory, so this registers - and the backend refuses.
+        handler.RespondStatus("/api/devices/register", HttpStatusCode.Conflict);
+
+        var state = await service.AdvanceAsync();
+
+        state.Lifecycle.Should().Be(KioskLifecycle.Revoked);
+        keys.Exists.Should().BeFalse("the local identity is worthless once the backend refuses it");
     }
 
     [Fact]
