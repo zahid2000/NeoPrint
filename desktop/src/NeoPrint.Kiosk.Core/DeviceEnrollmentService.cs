@@ -243,7 +243,7 @@ public sealed class DeviceEnrollmentService
     /// </summary>
     public void HandleRevocation()
     {
-        _api.ClearToken();
+        _api.ClearIdentity();
         _keys.Delete();
         ClearCachedConfiguration();
     }

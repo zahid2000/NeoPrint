@@ -320,15 +320,7 @@ public sealed class KioskApiClient
 
         using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
-        {
-            // The device policy checks on every request that the device is
-            // still active, so this is how a revocation arrives here.
-            throw new DeviceRevokedException(
-                "Bu cihaz ləğv edilib. Yeni cihaz açarı yaradılacaq.");
-        }
-
-        response.EnsureSuccessStatusCode();
+        ThrowIfRefused(response);
 
         var state = await response.Content
                         .ReadFromJsonAsync<DeviceStateResponse>(JsonOptions, cancellationToken)
@@ -398,7 +390,7 @@ public sealed class KioskApiClient
 
         using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-        response.EnsureSuccessStatusCode();
+        ThrowIfRefused(response);
 
         return await response.Content
                    .ReadFromJsonAsync<KioskConfiguration>(JsonOptions, cancellationToken)
@@ -427,7 +419,7 @@ public sealed class KioskApiClient
 
         using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-        response.EnsureSuccessStatusCode();
+        ThrowIfRefused(response);
 
         return await response.Content
                    .ReadFromJsonAsync<KioskHeartbeatResponse>(JsonOptions, cancellationToken)
@@ -435,12 +427,24 @@ public sealed class KioskApiClient
                ?? throw new InvalidOperationException("The heartbeat response was empty.");
     }
 
-    /// <summary>Forgets the cached token, so the next call signs a new challenge.</summary>
-    public void ClearToken()
+    /// <summary>
+    /// Forgets everything that identifies this installation: its token, its
+    /// device id and the kiosk it was bound to.
+    /// </summary>
+    public void ClearIdentity()
     {
         _accessToken = null;
         _tokenExpiresAt = default;
         IsActivated = false;
+
+        // The device id goes too, not just the token. It is what tells the
+        // enrollment service that this installation is already known: left
+        // behind after a revocation, the next pass asks about a device the
+        // backend has thrown away, gets refused, and asks again for ever -
+        // the screen says Activation and never shows a code (plan section 7.11).
+        DeviceId = null;
+        KioskId = null;
+        KioskCode = null;
     }
 
     /// <summary>
@@ -457,6 +461,34 @@ public sealed class KioskApiClient
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         return request;
+    }
+
+    /// <summary>
+    /// Turns a refusal into <see cref="DeviceRevokedException"/>, and anything
+    /// else that went wrong into the usual exception.
+    /// </summary>
+    /// <remarks>
+    /// The device policy checks on every request that the device is still
+    /// active, so a 403 is how "Detach device" reaches the kiosk; a kiosk
+    /// endpoint answers 403 as well when the device is not bound to a kiosk at
+    /// all. Either way there is nothing left to serve and the screen belongs
+    /// back at Activation.
+    ///
+    /// Told apart from an unreachable backend deliberately: treated as a lost
+    /// link, a detached kiosk sits on the Degraded screen with the old kiosk
+    /// code still in its footer and never returns to Activation
+    /// (plan section 7.11).
+    /// </remarks>
+    /// <exception cref="DeviceRevokedException">The backend refused the device.</exception>
+    private static void ThrowIfRefused(HttpResponseMessage response)
+    {
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+        {
+            throw new DeviceRevokedException(
+                "Bu cihaz ləğv edilib. Yeni cihaz açarı yaradılacaq.");
+        }
+
+        response.EnsureSuccessStatusCode();
     }
 
     private async Task EnsureTokenAsync(CancellationToken cancellationToken)

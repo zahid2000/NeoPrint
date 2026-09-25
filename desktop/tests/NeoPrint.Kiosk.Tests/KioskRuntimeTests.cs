@@ -212,6 +212,39 @@ public sealed class KioskRuntimeTests
     }
 
     [Fact]
+    public async Task A_detached_device_is_reported_as_revoked_not_as_a_lost_link()
+    {
+        var (runtime, handler, _) = await CreateAsync();
+        handler.OnConfig(_ => ScriptedHandler.Json(Configuration(cacheTtlHours: 24)));
+        await runtime.LoadConfigurationAsync();
+
+        // "Detach device" in the panel. The device policy checks on every
+        // request that the device is still active, so the heartbeat is refused.
+        handler.OnHeartbeat(_ => new HttpResponseMessage(HttpStatusCode.Forbidden));
+
+        // Told apart from an unreachable backend on purpose: treated as a lost
+        // link, the kiosk sits on the Degraded screen with the old kiosk code
+        // in its footer and never returns to Activation, which is what plan
+        // section 7.11 requires of it.
+        await Assert.ThrowsAsync<DeviceRevokedException>(
+            () => runtime.BeatAsync(printerOnline: true));
+
+        runtime.Availability.Should().NotBe(
+            KioskAvailability.Degraded,
+            "a revoked device has no kiosk to be degraded about");
+    }
+
+    [Fact]
+    public async Task A_configuration_refused_for_a_detached_device_is_revoked_too()
+    {
+        var (runtime, handler, _) = await CreateAsync();
+
+        handler.OnConfig(_ => new HttpResponseMessage(HttpStatusCode.Forbidden));
+
+        await Assert.ThrowsAsync<DeviceRevokedException>(() => runtime.LoadConfigurationAsync());
+    }
+
+    [Fact]
     public async Task Losing_the_link_with_a_fresh_cache_is_degraded()
     {
         var (runtime, handler, clock) = await CreateAsync();

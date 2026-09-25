@@ -156,6 +156,19 @@ public sealed partial class App : Application
         {
             return;
         }
+        catch (DeviceRevokedException)
+        {
+            // Detached while this kiosk was starting up. Handled here as well
+            // as in the loop below, so the screen does not wait a whole
+            // heartbeat interval to say so.
+            logger.LogWarning("This device was detached; returning to activation.");
+
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+                () => model.Screen = KioskScreen.Activation);
+
+            _ = RunEnrollmentLoopAsync(model, cancellationToken);
+            return;
+        }
         catch (Exception exception)
         {
             // Activated but unable to fetch the configuration: the loop below

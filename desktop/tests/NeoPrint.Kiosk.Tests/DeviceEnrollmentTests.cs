@@ -325,6 +325,27 @@ public sealed class DeviceEnrollmentTests : IDisposable
         state.Lifecycle.Should().Be(KioskLifecycle.Revoked);
         keys.Exists.Should().BeFalse(
             "plan section 7.11: a revoked device clears its identity and returns to the activation screen");
+
+        // And the loop carries on: the very next pass registers as a brand new
+        // device and shows a code. Without clearing the device id along with
+        // the key, this asks about the revoked device for ever - the screen
+        // says Activation and never shows anything to type in.
+        var newDeviceId = Guid.NewGuid();
+
+        handler
+            .Respond("/api/devices/register", HttpStatusCode.OK,
+                RegistrationJson(newDeviceId, false, "CCCC-DDDD"))
+            .Respond("/api/devices/challenge", HttpStatusCode.OK,
+                JsonSerializer.Serialize(new { nonce = "n2", expiresAt = DateTime.UtcNow.AddMinutes(5) }))
+            .Respond("/api/devices/token", HttpStatusCode.OK, TokenJson("provisioning"))
+            .RespondStatus("/api/devices/me/printers", HttpStatusCode.NoContent);
+
+        var afterwards = await service.AdvanceAsync();
+
+        afterwards.Lifecycle.Should().Be(KioskLifecycle.Pending);
+        afterwards.DeviceId.Should().Be(newDeviceId);
+        afterwards.PairingCode.Should().Be("CCCC-DDDD");
+        keys.Exists.Should().BeTrue("a new key is generated for the new identity");
     }
 
     [Fact]
