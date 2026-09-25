@@ -7,6 +7,13 @@ using System.Text.Json;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using MongoDB.Driver;
+
+using NeoPrint.Domain.Common;
+using NeoPrint.Domain.Devices;
+using NeoPrint.Domain.Kiosks;
+using NeoPrint.Infrastructure.Persistence;
+
 using StackExchange.Redis;
 
 namespace NeoPrint.Api.IntegrationTests;
@@ -505,6 +512,82 @@ public sealed class DeviceActivationTests
 
         firstToken.GetProperty("kioskId").GetGuid()
             .Should().NotBe(secondToken.GetProperty("kioskId").GetGuid());
+    }
+
+    [DockerFact]
+    public async Task A_failed_activation_writes_neither_the_device_nor_the_kiosk()
+    {
+        if (Skip) { return; }
+
+        using var client = _fixture.CreateApiClient();
+        using var admin = await SignedInSuperAdminAsync();
+
+        using var first = new FakeKioskDevice();
+        using var second = new FakeKioskDevice();
+
+        var (firstId, _, _) = await RegisterAsync(client, first, "kiosk-atomic-one");
+        var (secondId, _, _) = await RegisterAsync(client, second, "kiosk-atomic-two");
+
+        var created = await admin.PostAsJsonAsync($"/api/admin/devices/{firstId}/activate", new
+        {
+            newKiosk = NewKiosk("Atomic", "Bakı, atomik"),
+            selectedPrinterName = "HP LaserJet",
+        });
+
+        created.StatusCode.Should().Be(HttpStatusCode.OK, await created.Content.ReadAsStringAsync());
+
+        var kioskId = (await created.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("kioskId").GetGuid();
+
+        // Makes the kiosk unwritable in a way the handler cannot see coming: a
+        // document with no row version can never satisfy the concurrency
+        // filter, so saving the kiosk fails after the device has already been
+        // written. That is the shape of every partial failure - the last write
+        // of a command going wrong - without having to stop the process.
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+
+            await context.Kiosks.UpdateOneAsync(
+                Builders<Kiosk>.Filter.Eq(kiosk => kiosk.Id, kioskId),
+                Builders<Kiosk>.Update.Unset(nameof(Entity.RowVersion)));
+        }
+
+        var refused = await admin.PostAsJsonAsync($"/api/admin/devices/{secondId}/activate", new
+        {
+            kioskId,
+            selectedPrinterName = "HP LaserJet",
+        });
+
+        refused.StatusCode.Should().Be(
+            HttpStatusCode.Conflict, await refused.Content.ReadAsStringAsync());
+
+        using var check = _fixture.Services.CreateScope();
+        var db = check.ServiceProvider.GetRequiredService<MongoContext>();
+
+        var arriving = await db.KioskDevices
+            .Find(device => device.Id == secondId)
+            .FirstAsync();
+
+        var leaving = await db.KioskDevices
+            .Find(device => device.Id == firstId)
+            .FirstAsync();
+
+        // The command is marked transactional, so a failure half way through
+        // has to leave nothing behind. Without that, the device would be bound
+        // to a kiosk that never heard about it, and the kiosk's previous device
+        // would have been revoked for nothing.
+        arriving.Status.Should().Be(
+            DeviceStatus.Pending,
+            "the activation failed, so this device was never activated");
+
+        arriving.KioskId.Should().BeNull();
+
+        leaving.Status.Should().Be(
+            DeviceStatus.Active,
+            "the device already on the kiosk was revoked as part of an activation that then failed");
+
+        leaving.KioskId.Should().Be(kioskId);
     }
 
     [DockerFact]

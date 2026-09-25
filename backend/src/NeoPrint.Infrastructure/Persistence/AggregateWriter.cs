@@ -28,7 +28,7 @@ public static class AggregateWriter
     /// <exception cref="ConcurrencyException">Somebody else wrote it first.</exception>
     public static async Task ReplaceAsync<TEntity>(
         MongoContext context,
-        IMongoCollection<TEntity> collection,
+        MongoSet<TEntity> collection,
         TEntity entity,
         CancellationToken cancellationToken)
         where TEntity : Entity
@@ -62,7 +62,7 @@ public static class AggregateWriter
     /// <summary>Inserts a new document and writes any transitions it recorded.</summary>
     public static async Task InsertAsync<TEntity>(
         MongoContext context,
-        IMongoCollection<TEntity> collection,
+        MongoSet<TEntity> collection,
         TEntity entity,
         CancellationToken cancellationToken)
         where TEntity : Entity

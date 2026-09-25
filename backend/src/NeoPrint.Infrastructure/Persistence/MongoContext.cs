@@ -43,45 +43,93 @@ public sealed class MongoContext
 
     public IMongoDatabase Database => _database;
 
+    /// <summary>
+    /// The session of the transaction the current request is running in, if it
+    /// is running in one.
+    /// </summary>
+    /// <remarks>
+    /// Held in an <see cref="AsyncLocal{T}"/> rather than passed from handler to
+    /// repository: the alternative is a session parameter on every repository
+    /// method, which would be forgotten exactly once and then silently write
+    /// outside the transaction. <see cref="MongoSet{TDocument}"/> reads it, so
+    /// no caller has to know it exists
+    /// (<c>docs/adr/0004-ambient-mongo-session.md</c>).
+    ///
+    /// Static, because the context may be resolved more than once in a request
+    /// while the transaction is one thing.
+    /// </remarks>
+    public IClientSessionHandle? Session => AmbientSession.Value;
+
+    private static readonly AsyncLocal<IClientSessionHandle?> AmbientSession = new();
+
+    /// <summary>
+    /// Makes every collection operation in this asynchronous flow part of
+    /// <paramref name="session"/> until the returned scope is disposed.
+    /// </summary>
+    /// <remarks>
+    /// Called by <see cref="MongoTransactionRunner"/>. Nesting is refused: two
+    /// transactions in one flow would mean the inner one silently joining the
+    /// outer, and a handler that thinks it committed when it did not.
+    /// </remarks>
+    public IDisposable Enlist(IClientSessionHandle session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (AmbientSession.Value is not null)
+        {
+            throw new InvalidOperationException(
+                "A transaction is already running in this flow. Nesting them would make the inner " +
+                "commit meaningless (docs/adr/0004-ambient-mongo-session.md).");
+        }
+
+        AmbientSession.Value = session;
+
+        return new Enlistment();
+    }
+
+    private sealed class Enlistment : IDisposable
+    {
+        public void Dispose() => AmbientSession.Value = null;
+    }
+
+    private MongoSet<TDocument> Set<TDocument>(string name)
+        => new(this, _database.GetCollection<TDocument>(name));
+
     // Collection names are the snake_case names used throughout the plan.
-    public IMongoCollection<User> Users => _database.GetCollection<User>("users");
-    public IMongoCollection<EmailConfirmation> EmailConfirmations => _database.GetCollection<EmailConfirmation>("email_confirmations");
-    public IMongoCollection<RefreshToken> RefreshTokens => _database.GetCollection<RefreshToken>("refresh_tokens");
-    public IMongoCollection<Consent> Consents => _database.GetCollection<Consent>("consents");
-    public IMongoCollection<LegalDocument> LegalDocuments => _database.GetCollection<LegalDocument>("legal_documents");
+    public MongoSet<User> Users => Set<User>("users");
+    public MongoSet<EmailConfirmation> EmailConfirmations => Set<EmailConfirmation>("email_confirmations");
+    public MongoSet<RefreshToken> RefreshTokens => Set<RefreshToken>("refresh_tokens");
+    public MongoSet<Consent> Consents => Set<Consent>("consents");
+    public MongoSet<LegalDocument> LegalDocuments => Set<LegalDocument>("legal_documents");
 
-    public IMongoCollection<AdminUser> AdminUsers => _database.GetCollection<AdminUser>("admin_users");
-    public IMongoCollection<AdminRole> AdminRoles => _database.GetCollection<AdminRole>("admin_roles");
+    public MongoSet<AdminUser> AdminUsers => Set<AdminUser>("admin_users");
+    public MongoSet<AdminRole> AdminRoles => Set<AdminRole>("admin_roles");
 
-    public IMongoCollection<Kiosk> Kiosks => _database.GetCollection<Kiosk>("kiosks");
-    public IMongoCollection<KioskDevice> KioskDevices => _database.GetCollection<KioskDevice>("kiosk_devices");
-    public IMongoCollection<EnrollmentToken> EnrollmentTokens => _database.GetCollection<EnrollmentToken>("enrollment_tokens");
+    public MongoSet<Kiosk> Kiosks => Set<Kiosk>("kiosks");
+    public MongoSet<KioskDevice> KioskDevices => Set<KioskDevice>("kiosk_devices");
+    public MongoSet<EnrollmentToken> EnrollmentTokens => Set<EnrollmentToken>("enrollment_tokens");
 
-    public IMongoCollection<AdminSetting> AdminSettings => _database.GetCollection<AdminSetting>("admin_settings");
-    public IMongoCollection<PricingProfile> PricingProfiles => _database.GetCollection<PricingProfile>("pricing_profiles");
-    public IMongoCollection<FeatureFlag> FeatureFlags => _database.GetCollection<FeatureFlag>("feature_flags");
-    public IMongoCollection<Domain.Supplies.SupplyAlertRule> SupplyAlertRules
-        => _database.GetCollection<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
+    public MongoSet<AdminSetting> AdminSettings => Set<AdminSetting>("admin_settings");
+    public MongoSet<PricingProfile> PricingProfiles => Set<PricingProfile>("pricing_profiles");
+    public MongoSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>("feature_flags");
+    public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
-    public IMongoCollection<AuditLog> AuditLogs => _database.GetCollection<AuditLog>("audit_logs");
+    public MongoSet<AuditLog> AuditLogs => Set<AuditLog>("audit_logs");
 
     /// <summary>
     /// Every business state change, in its own collection rather than as an
     /// array inside the aggregate (<c>docs/STATE_MACHINES.md</c>).
     /// </summary>
-    public IMongoCollection<StateTransition> StateTransitions
-        => _database.GetCollection<StateTransition>("state_transitions");
+    public MongoSet<StateTransition> StateTransitions => Set<StateTransition>("state_transitions");
 
     /// <summary>
     /// Requests that carried an <c>Idempotency-Key</c>
     /// (<c>docs/IDEMPOTENCY.md</c>).
     /// </summary>
-    public IMongoCollection<IdempotencyKey> IdempotencyKeys
-        => _database.GetCollection<IdempotencyKey>("idempotency_keys");
+    public MongoSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>("idempotency_keys");
 
     /// <summary>Callbacks an external provider has already sent us.</summary>
-    public IMongoCollection<ProviderEvent> ProviderEvents
-        => _database.GetCollection<ProviderEvent>("provider_events");
+    public MongoSet<ProviderEvent> ProviderEvents => Set<ProviderEvent>("provider_events");
 
     /// <summary>
     /// Registers the serialization conventions. Must run before the first
@@ -251,15 +299,20 @@ public sealed class MongoContext
         static CreateIndexOptions Expiring(string name, TimeSpan after)
             => new() { Name = name, ExpireAfter = after };
 
+        // Index commands are not allowed inside a transaction, and this runs at
+        // startup where there is none, so it deliberately goes round the
+        // session (see MongoSet<T>.WithoutSession).
         async Task CreateAsync<T>(
-            IMongoCollection<T> collection,
+            MongoSet<T> collection,
             params (IndexKeysDefinition<T> Keys, CreateIndexOptions Options)[] indexes)
         {
             var models = indexes
                 .Select(index => new CreateIndexModel<T>(index.Keys, index.Options))
                 .ToList();
 
-            await collection.Indexes.CreateManyAsync(models, cancellationToken).ConfigureAwait(false);
+            await collection.WithoutSession.Indexes
+                .CreateManyAsync(models, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 

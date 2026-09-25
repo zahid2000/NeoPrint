@@ -39,6 +39,13 @@ public sealed class MongoTransactionRunner : ITransactionRunner
 
             session.StartTransaction();
 
+            // Everything the operation touches now goes through this session,
+            // which is what makes the commit and the abort mean anything: the
+            // driver only enlists an operation when the session is passed to
+            // it, and nothing passes it by hand
+            // (docs/adr/0004-ambient-mongo-session.md).
+            using var enlistment = _context.Enlist(session);
+
             try
             {
                 var result = await operation().ConfigureAwait(false);
