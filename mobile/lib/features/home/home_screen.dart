@@ -48,10 +48,7 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                       Expanded(
-                        child: _Metric(
-                          label: l10n.homeBonusPages,
-                          value: '—',
-                        ),
+                        child: _Metric(label: l10n.homeBonusPages, value: '—'),
                       ),
                     ],
                   ),

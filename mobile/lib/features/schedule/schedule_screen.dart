@@ -9,7 +9,7 @@ class ScheduleScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PlaceholderScreen(
-        title: AppLocalizations.of(context).navScheduled,
-        icon: Icons.schedule_outlined,
-      );
+    title: AppLocalizations.of(context).navScheduled,
+    icon: Icons.schedule_outlined,
+  );
 }

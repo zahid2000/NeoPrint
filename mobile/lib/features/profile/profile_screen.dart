@@ -71,9 +71,9 @@ class ProfileScreen extends ConsumerWidget {
                 await Clipboard.setData(ClipboardData(text: user.publicId));
 
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.profileCopied)),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(l10n.profileCopied)));
                 }
               },
             ),

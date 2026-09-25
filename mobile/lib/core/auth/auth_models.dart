@@ -64,10 +64,9 @@ final class UserProfile {
     fullName: json['fullName'] as String?,
     language: (json['language'] as String?) ?? 'az',
     emailConfirmed: (json['emailConfirmed'] as bool?) ?? false,
-    pendingConsents:
-        ((json['pendingConsents'] as List<dynamic>?) ?? const [])
-            .map((item) => PendingConsent.fromJson(item as Map<String, dynamic>))
-            .toList(),
+    pendingConsents: ((json['pendingConsents'] as List<dynamic>?) ?? const [])
+        .map((item) => PendingConsent.fromJson(item as Map<String, dynamic>))
+        .toList(),
   );
 }
 
@@ -87,9 +86,8 @@ final class AuthSession {
 
   factory AuthSession.fromJson(Map<String, dynamic> json) => AuthSession(
     accessToken: json['accessToken'] as String,
-    accessTokenExpiresAt: DateTime.parse(
-      json['accessTokenExpiresAt'] as String,
-    ).toUtc(),
+    accessTokenExpiresAt: DateTime.parse(json['accessTokenExpiresAt'] as String)
+        .toUtc(),
     refreshToken: json['refreshToken'] as String,
     user: UserProfile.fromJson(json['user'] as Map<String, dynamic>),
   );

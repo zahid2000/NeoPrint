@@ -22,13 +22,15 @@ class _ConsentsScreenState extends ConsumerState<ConsentsScreen> {
   final Set<LegalDocumentType> _accepted = {};
 
   bool get _allAccepted {
-    final pending = ref.read(authControllerProvider).user?.pendingConsents ?? [];
+    final pending =
+        ref.read(authControllerProvider).user?.pendingConsents ?? [];
 
     return pending.every((consent) => _accepted.contains(consent.docType));
   }
 
   Future<void> _submit() async {
-    final pending = ref.read(authControllerProvider).user?.pendingConsents ?? [];
+    final pending =
+        ref.read(authControllerProvider).user?.pendingConsents ?? [];
 
     // Sends the versions the user was actually shown, not the latest the
     // server holds: the consent record has to match what they read.
@@ -100,8 +102,7 @@ class _ConsentsScreenState extends ConsumerState<ConsentsScreen> {
                               // The version is shown, so it is clear this is a
                               // new one rather than a repeat prompt.
                               subtitle: Text('v${consent.version}'),
-                              controlAffinity:
-                                  ListTileControlAffinity.leading,
+                              controlAffinity: ListTileControlAffinity.leading,
                             ),
                             if (consent.docType == LegalDocumentType.terms)
                               Padding(
@@ -137,9 +138,7 @@ class _ConsentsScreenState extends ConsumerState<ConsentsScreen> {
                   const SizedBox(height: 8),
 
                   FilledButton(
-                    onPressed: (state.isBusy || !_allAccepted)
-                        ? null
-                        : _submit,
+                    onPressed: (state.isBusy || !_allAccepted) ? null : _submit,
                     child: state.isBusy
                         ? const SizedBox.square(
                             dimension: 20,

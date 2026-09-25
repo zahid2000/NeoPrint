@@ -10,7 +10,7 @@ class FilesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PlaceholderScreen(
-        title: AppLocalizations.of(context).navFiles,
-        icon: Icons.folder_outlined,
-      );
+    title: AppLocalizations.of(context).navFiles,
+    icon: Icons.folder_outlined,
+  );
 }

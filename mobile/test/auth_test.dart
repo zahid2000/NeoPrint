@@ -18,11 +18,7 @@ final class ScriptedAdapter implements HttpClientAdapter {
   /// The headers each of those requests carried, in the same order.
   final List<Map<String, dynamic>> sentHeaders = [];
 
-  void respond(
-    String path,
-    int statusCode, {
-    Map<String, dynamic>? body,
-  }) {
+  void respond(String path, int statusCode, {Map<String, dynamic>? body}) {
     _responses
         .putIfAbsent(path, () => [])
         .add(_ScriptedResponse(statusCode, body));
@@ -115,10 +111,7 @@ void main() {
     tokens = AccessTokenHolder();
 
     final dio = Dio(
-      BaseOptions(
-        baseUrl: 'http://backend.test/',
-        validateStatus: (_) => true,
-      ),
+      BaseOptions(baseUrl: 'http://backend.test/', validateStatus: (_) => true),
     )..httpClientAdapter = adapter;
 
     final api = ApiClient(
@@ -133,11 +126,15 @@ void main() {
 
   group('registration', () {
     test('does not sign anyone in', () async {
-      adapter.respond('/api/auth/register', 200, body: {
-        'userId': 'a1b2c3',
-        'email': 'user@example.com',
-        'confirmationRequired': true,
-      });
+      adapter.respond(
+        '/api/auth/register',
+        200,
+        body: {
+          'userId': 'a1b2c3',
+          'email': 'user@example.com',
+          'confirmationRequired': true,
+        },
+      );
 
       final email = await repository.register(
         email: 'user@example.com',
@@ -206,12 +203,16 @@ void main() {
     });
 
     test('a rejected code leaves no session behind', () async {
-      adapter.respond('/api/auth/confirm-email', 400, body: {
-        'title': 'Validation failed',
-        'errors': {
-          'code': ['Kod yanlışdır və ya vaxtı keçib.'],
+      adapter.respond(
+        '/api/auth/confirm-email',
+        400,
+        body: {
+          'title': 'Validation failed',
+          'errors': {
+            'code': ['Kod yanlışdır və ya vaxtı keçib.'],
+          },
         },
-      });
+      );
 
       await expectLater(
         repository.confirmEmail(email: 'user@example.com', code: '000000'),
@@ -231,11 +232,15 @@ void main() {
 
   group('signing in', () {
     test('reports pending consents so the router can gate on them', () async {
-      adapter.respond('/api/auth/login', 200, body: sessionBody(
-        pendingConsents: [
-          {'docType': 'Terms', 'version': '0.2'},
-        ],
-      ));
+      adapter.respond(
+        '/api/auth/login',
+        200,
+        body: sessionBody(
+          pendingConsents: [
+            {'docType': 'Terms', 'version': '0.2'},
+          ],
+        ),
+      );
 
       final session = await repository.signIn(
         email: 'user@example.com',
@@ -245,18 +250,24 @@ void main() {
       // Plan section 2.8: a new version of a document is accepted again at the
       // next sign-in.
       expect(session.user.hasPendingConsents, isTrue);
-      expect(session.user.pendingConsents.single.docType,
-          LegalDocumentType.terms);
+      expect(
+        session.user.pendingConsents.single.docType,
+        LegalDocumentType.terms,
+      );
       expect(session.user.pendingConsents.single.version, '0.2');
     });
 
     test('surfaces the server message rather than inventing one', () async {
-      adapter.respond('/api/auth/login', 400, body: {
-        'title': 'Validation failed',
-        'errors': {
-          '': ['Email və ya şifrə yanlışdır.'],
+      adapter.respond(
+        '/api/auth/login',
+        400,
+        body: {
+          'title': 'Validation failed',
+          'errors': {
+            '': ['Email və ya şifrə yanlışdır.'],
+          },
         },
-      });
+      );
 
       await expectLater(
         repository.signIn(email: 'user@example.com', password: 'wrong'),
@@ -282,8 +293,11 @@ void main() {
     test('exchanges a stored token and rotates it', () async {
       await storage.write(SecureStorageKeys.refreshToken, 'old-refresh');
 
-      adapter.respond('/api/auth/refresh', 200,
-          body: sessionBody(refreshToken: 'new-refresh'));
+      adapter.respond(
+        '/api/auth/refresh',
+        200,
+        body: sessionBody(refreshToken: 'new-refresh'),
+      );
 
       final session = await repository.restore();
 
@@ -297,12 +311,16 @@ void main() {
     test('discards a token the server refuses', () async {
       await storage.write(SecureStorageKeys.refreshToken, 'stale');
 
-      adapter.respond('/api/auth/refresh', 400, body: {
-        'title': 'Validation failed',
-        'errors': {
-          'refreshToken': ['Sessiya bitib. Yenidən daxil olun.'],
+      adapter.respond(
+        '/api/auth/refresh',
+        400,
+        body: {
+          'title': 'Validation failed',
+          'errors': {
+            'refreshToken': ['Sessiya bitib. Yenidən daxil olun.'],
+          },
         },
-      });
+      );
 
       expect(await repository.restore(), isNull);
 
@@ -323,8 +341,11 @@ void main() {
         dio: failing,
       );
 
-      final offline =
-          AuthRepository(api: api, storage: storage, tokens: tokens);
+      final offline = AuthRepository(
+        api: api,
+        storage: storage,
+        tokens: tokens,
+      );
 
       expect(await offline.restore(), isNull);
 
@@ -336,7 +357,10 @@ void main() {
   group('signing out', () {
     test('clears the stored token even if the server is unreachable', () async {
       await storage.write(SecureStorageKeys.refreshToken, 'refresh-1');
-      tokens.set('access', DateTime.now().toUtc().add(const Duration(minutes: 5)));
+      tokens.set(
+        'access',
+        DateTime.now().toUtc().add(const Duration(minutes: 5)),
+      );
 
       final failing = Dio(BaseOptions(baseUrl: 'http://unreachable.invalid/'))
         ..httpClientAdapter = _FailingAdapter();
@@ -348,8 +372,11 @@ void main() {
         dio: failing,
       );
 
-      await AuthRepository(api: api, storage: storage, tokens: tokens)
-          .signOut();
+      await AuthRepository(
+        api: api,
+        storage: storage,
+        tokens: tokens,
+      ).signOut();
 
       expect(tokens.hasToken, isFalse);
       expect(storage.values[SecureStorageKeys.refreshToken], isNull);

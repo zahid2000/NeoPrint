@@ -51,24 +51,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    await ref.read(authControllerProvider.notifier).register(
-      email: _email.text,
-      password: _password.text,
-      fullName: _fullName.text.trim().isEmpty ? null : _fullName.text,
-      referralCode: _referralCode.text.trim().isEmpty
-          ? null
-          : _referralCode.text,
-      consents: const [
-        PendingConsent(
-          docType: LegalDocumentType.privacy,
-          version: _documentVersion,
-        ),
-        PendingConsent(
-          docType: LegalDocumentType.terms,
-          version: _documentVersion,
-        ),
-      ],
-    );
+    await ref
+        .read(authControllerProvider.notifier)
+        .register(
+          email: _email.text,
+          password: _password.text,
+          fullName: _fullName.text.trim().isEmpty ? null : _fullName.text,
+          referralCode: _referralCode.text.trim().isEmpty
+              ? null
+              : _referralCode.text,
+          consents: const [
+            PendingConsent(
+              docType: LegalDocumentType.privacy,
+              version: _documentVersion,
+            ),
+            PendingConsent(
+              docType: LegalDocumentType.terms,
+              version: _documentVersion,
+            ),
+          ],
+        );
   }
 
   @override

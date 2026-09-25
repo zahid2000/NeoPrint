@@ -14,8 +14,7 @@ class ConfirmEmailScreen extends ConsumerStatefulWidget {
   const ConfirmEmailScreen({super.key});
 
   @override
-  ConsumerState<ConfirmEmailScreen> createState() =>
-      _ConfirmEmailScreenState();
+  ConsumerState<ConfirmEmailScreen> createState() => _ConfirmEmailScreenState();
 }
 
 class _ConfirmEmailScreenState extends ConsumerState<ConfirmEmailScreen> {

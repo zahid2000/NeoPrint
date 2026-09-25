@@ -149,10 +149,7 @@ final class ApiClient {
       path,
       data: body,
       queryParameters: query,
-      options: Options(
-        method: method,
-        extra: {'skipAuth': !authenticated},
-      ),
+      options: Options(method: method, extra: {'skipAuth': !authenticated}),
     );
 
     Response<dynamic> response;

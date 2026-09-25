@@ -10,7 +10,7 @@ class KioskSearchScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PlaceholderScreen(
-        title: AppLocalizations.of(context).navKiosks,
-        icon: Icons.place_outlined,
-      );
+    title: AppLocalizations.of(context).navKiosks,
+    icon: Icons.place_outlined,
+  );
 }

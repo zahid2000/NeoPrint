@@ -82,12 +82,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: Routes.splash, builder: (_, __) => const SplashScreen()),
       GoRoute(path: Routes.signIn, builder: (_, __) => const SignInScreen()),
-      GoRoute(path: Routes.register, builder: (_, __) => const RegisterScreen()),
+      GoRoute(
+        path: Routes.register,
+        builder: (_, __) => const RegisterScreen(),
+      ),
       GoRoute(
         path: Routes.confirmEmail,
         builder: (_, __) => const ConfirmEmailScreen(),
       ),
-      GoRoute(path: Routes.consents, builder: (_, __) => const ConsentsScreen()),
+      GoRoute(
+        path: Routes.consents,
+        builder: (_, __) => const ConsentsScreen(),
+      ),
 
       // The five bottom-nav destinations from plan section 8.1, in a shell so
       // the bar keeps its state as the tabs change.
@@ -96,7 +102,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         branches: [
           StatefulShellBranch(
             routes: [
-              GoRoute(path: Routes.home, builder: (_, __) => const HomeScreen()),
+              GoRoute(
+                path: Routes.home,
+                builder: (_, __) => const HomeScreen(),
+              ),
             ],
           ),
           StatefulShellBranch(

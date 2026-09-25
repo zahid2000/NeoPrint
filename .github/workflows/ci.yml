@@ -178,11 +178,15 @@ jobs:
         working-directory: mobile
 
       # analysis_options.yaml carries the lint rules, so this is the mobile
-      # equivalent of the lint step. No formatting gate: the plan asks for
-      # analyze and test, and the existing code predates dart format being run
-      # over it (docs/DECISIONS.md).
+      # equivalent of the lint step.
       - name: Analyze
         run: flutter analyze
+        working-directory: mobile
+
+      # The whole tree is dart format clean as of the step 1 follow-up, so
+      # unformatted code is a build failure rather than a growing backlog.
+      - name: Check formatting
+        run: dart format --set-exit-if-changed .
         working-directory: mobile
 
       - name: Test

@@ -209,10 +209,7 @@ final class AuthRepository {
 
     // Plan section 2.8: the refresh token goes to the Keystore or the Keychain,
     // never anywhere else.
-    await _storage.write(
-      SecureStorageKeys.refreshToken,
-      session.refreshToken,
-    );
+    await _storage.write(SecureStorageKeys.refreshToken, session.refreshToken);
   }
 
   /// A stable per-install identifier.

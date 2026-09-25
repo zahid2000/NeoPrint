@@ -22,10 +22,8 @@ class BottomNavShell extends StatelessWidget {
         selectedIndex: shell.currentIndex,
         // goBranch with initialLocation restores a tab to its root when it is
         // tapped again, which is what people expect from a tab bar.
-        onDestinationSelected: (index) => shell.goBranch(
-          index,
-          initialLocation: index == shell.currentIndex,
-        ),
+        onDestinationSelected: (index) =>
+            shell.goBranch(index, initialLocation: index == shell.currentIndex),
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.home_outlined),
