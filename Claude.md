@@ -18,6 +18,7 @@ Hər sessiyanın əvvəlində oxu: plandakı təlimat bölməsi, Bölmə 2.0 (ki
 - Addımı kiçik hissələrə böl; hər hissə: repo analizi → qısa dəyişiklik planı → kod → test → build → `git diff` yoxlaması → commit.
 - Conventional Commits: `feat(backend|kiosk|mobile|admin|operator): ...`, `fix:`, `test:`, `docs:`, `chore:`.
 - Kod və commit İngilis dilində; UI mətnləri lokalizasiya fayllarında (az default, en, ru).
+- **Ünsiyyət dili Azərbaycan dilidir:** bütün hesabatlar, suallar, izahlar, DoD cədvəlləri, tapılan baqların təsviri və risk xəbərdarlıqları Azərbaycan dilində yazılır. Yalnız kod, identifikatorlar, kod şərhləri, commit mesajları və sənəd fayllarının texniki adları (`docs/API.md`, `docs/DECISIONS.md`) İngilis dilində qalır. `docs/` altındaki sənədlərin məzmunu da Azərbaycan dilindədir.
 - Task üçün lazım olmayan faylı dəyişmə, böyük refactor etmə.
 
 ## Arxitektura
