@@ -30,6 +30,8 @@
   <ItemGroup Label="Providers">
     <PackageReference Include="MailKit" />
     <PackageReference Include="QRCoder" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
   </ItemGroup>
 
   <ItemGroup Label="Hosting">
@@ -45,6 +47,7 @@
   <ItemGroup>
     <ProjectReference Include="..\NeoPrint.Application\NeoPrint.Application.csproj" />
     <ProjectReference Include="..\..\shared\NeoPrint.Crypto\NeoPrint.Crypto.csproj" />
+    <ProjectReference Include="..\..\shared\NeoPrint.Pdfium\NeoPrint.Pdfium.csproj" />
   </ItemGroup>
 
 </Project>

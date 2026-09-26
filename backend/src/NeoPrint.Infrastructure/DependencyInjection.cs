@@ -25,6 +25,7 @@ using NeoPrint.Application.Behaviors;
 using NeoPrint.Crypto;
 using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Infrastructure.Admin;
+using NeoPrint.Infrastructure.Conversion;
 using NeoPrint.Infrastructure.Crypto;
 using NeoPrint.Infrastructure.Storage;
 using NeoPrint.Infrastructure.Devices;
@@ -186,6 +187,16 @@ public static class DependencyInjection
         services.AddScoped<StorageProviderSeeder>();
         services.AddScoped<IFileStorage, S3FileStorage>();
         services.AddScoped<NeoPrint.Application.Files.IFileRepository, FileRepository>();
+
+        // Conversion. The converters are singletons - they hold no per-request
+        // state - and the service is scoped because it writes through the
+        // request's repositories.
+        services.AddSingleton<SandboxedProcess>();
+        services.AddSingleton<IDocumentConverter, LibreOfficeConverter>();
+        services.AddSingleton<IDocumentConverter, GhostscriptConverter>();
+        services.AddSingleton<IDocumentConverter, ImageConverter>();
+        services.AddScoped<DocumentConversionService>();
+        services.AddScoped<IEventPublisher, Messaging.MassTransitEventPublisher>();
     }
 
     private static void AddMessaging(IServiceCollection services, IConfiguration configuration)
@@ -207,6 +218,8 @@ public static class DependencyInjection
                 outbox.QueryDelay = TimeSpan.FromSeconds(1);
                 outbox.UseBusOutbox();
             });
+
+            bus.AddConsumer<DocumentConversionConsumer>();
 
             bus.SetKebabCaseEndpointNameFormatter();
 

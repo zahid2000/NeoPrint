@@ -54,6 +54,20 @@ jobs:
           key: nuget-backend-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'backend/**/*.csproj') }}
           restore-keys: nuget-backend-${{ runner.os }}-
 
+      # The same release backend/Dockerfile copies into the image. Without it
+      # the conversion tests skip, and the page count and preview rendering -
+      # which every price depends on - would go unexercised until production.
+      - name: Install the PDFium native library
+        run: |
+          release=chromium/8066
+          curl -fsSL -o /tmp/pdfium.tgz \
+            "https://github.com/bblanchon/pdfium-binaries/releases/download/${release}/pdfium-linux-x64.tgz"
+          sudo mkdir -p /usr/local/lib
+          sudo tar -xzf /tmp/pdfium.tgz -C /tmp
+          sudo cp /tmp/lib/libpdfium.so /usr/local/lib/libpdfium.so
+          sudo ldconfig
+          test -f /usr/local/lib/libpdfium.so
+
       - name: Restore
         run: dotnet restore backend/NeoPrint.sln
 

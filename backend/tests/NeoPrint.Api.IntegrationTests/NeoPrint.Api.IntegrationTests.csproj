@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\NeoPrint.Api\NeoPrint.Api.csproj" />
+    <ProjectReference Include="..\..\shared\NeoPrint.Pdfium\NeoPrint.Pdfium.csproj" />
   </ItemGroup>
 
   <ItemGroup>

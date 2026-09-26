@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
+using NeoPrint.Contracts;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
 using NeoPrint.Domain.Kiosks;
@@ -30,6 +31,8 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
     private readonly IKioskRepository _kiosks;
     private readonly ISettingsReader _settings;
     private readonly IClock _clock;
+    private readonly IEventPublisher _events;
+    private readonly ICorrelationContext _correlation;
     private readonly ILogger<UploadFileHandler> _logger;
 
     public UploadFileHandler(
@@ -38,6 +41,8 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         IKioskRepository kiosks,
         ISettingsReader settings,
         IClock clock,
+        IEventPublisher events,
+        ICorrelationContext correlation,
         ILogger<UploadFileHandler> logger)
     {
         _files = files;
@@ -45,6 +50,8 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         _kiosks = kiosks;
         _settings = settings;
         _clock = clock;
+        _events = events;
+        _correlation = correlation;
         _logger = logger;
     }
 
@@ -126,6 +133,13 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
             format.Extension,
             file.Id,
             stored.PlaintextLength);
+
+        // After the document exists, so a consumer that picks it up
+        // immediately finds something to read. Conversion runs off the
+        // request: it can take a minute, and the upload is finished once the
+        // bytes are safe (plan section 2.2).
+        await _events.PublishAsync(new FileUploaded(file.Id, _correlation.CorrelationId), cancellationToken)
+            .ConfigureAwait(false);
 
         return Map(file);
     }
