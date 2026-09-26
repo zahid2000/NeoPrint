@@ -19,7 +19,6 @@ using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 
-using Testcontainers.Minio;
 using Testcontainers.MongoDb;
 using Testcontainers.RabbitMq;
 using Testcontainers.Redis;
@@ -47,7 +46,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
     private const string RootToken = "neoprint-integration-root";
 
     private MongoDbContainer? _mongo;
-    private MinioContainer? _minio;
+    private IContainer? _storage;
     private RedisContainer? _redis;
     private RabbitMqContainer? _rabbit;
     private IContainer? _openBao;
@@ -74,10 +73,26 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
 
         // Object storage, so the encryption is exercised against a real S3
         // server rather than a stub: what "the stored object is unreadable"
-        // means is what MinIO hands back, not what a fake decides to return.
-        _minio = new MinioBuilder("quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z")
-            .WithUsername(MinioAccessKey)
-            .WithPassword(MinioSecretKey)
+        // means is what the server hands back, not what a fake decides to
+        // return.
+        //
+        // Zenko CloudServer rather than MinIO: MinIO's images stopped being
+        // anonymously pullable, and Zenko is the other provider the plan
+        // supports (section 2.10). Both are reached through the same
+        // S3StorageProvider, so the code under test is identical
+        // (docs/DECISIONS.md).
+        _storage = new ContainerBuilder("zenko/cloudserver:latest-7.70.10")
+            .WithEnvironment("S3BACKEND", "mem")
+            .WithEnvironment("REMOTE_MANAGEMENT_DISABLE", "1")
+            .WithEnvironment("SCALITY_ACCESS_KEY_ID", StorageAccessKey)
+            .WithEnvironment("SCALITY_SECRET_ACCESS_KEY", StorageSecretKey)
+            .WithPortBinding(8000, assignRandomHostPort: true)
+            // Ready when it answers HTTP at all. CloudServer restricts its
+            // health route to allowed addresses and replies 403 from
+            // anywhere else, so "succeeded" is the wrong test - an answer of
+            // any kind is what says the S3 API is up.
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request =>
+                request.ForPort(8000).ForPath("/").ForStatusCodeMatching(_ => true)))
             .Build();
 
         _openBao = new ContainerBuilder("openbao/openbao:2.6.2")
@@ -93,7 +108,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
             _mongo.StartAsync(),
             _redis.StartAsync(),
             _rabbit.StartAsync(),
-            _minio.StartAsync(),
+            _storage.StartAsync(),
             _openBao.StartAsync());
 
         await CreateBucketsAsync();
@@ -120,7 +135,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
             _mongo?.DisposeAsync().AsTask() ?? Task.CompletedTask,
             _redis?.DisposeAsync().AsTask() ?? Task.CompletedTask,
             _rabbit?.DisposeAsync().AsTask() ?? Task.CompletedTask,
-            _minio?.DisposeAsync().AsTask() ?? Task.CompletedTask,
+            _storage?.DisposeAsync().AsTask() ?? Task.CompletedTask,
             _openBao?.DisposeAsync().AsTask() ?? Task.CompletedTask);
     }
 
@@ -199,13 +214,13 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
             // The application seeds its first storage provider from these, as
             // it does in production, rather than the test inserting a
             // document the application never validated.
-            ["NEOPRINT_STORAGE_SEED_TYPE"] = "MinIO",
-            ["NEOPRINT_STORAGE_SEED_NAME"] = "Test MinIO",
-            ["NEOPRINT_STORAGE_SEED_ENDPOINT"] = MinioEndpoint,
+            ["NEOPRINT_STORAGE_SEED_TYPE"] = "Scality",
+            ["NEOPRINT_STORAGE_SEED_NAME"] = "Test object store",
+            ["NEOPRINT_STORAGE_SEED_ENDPOINT"] = StorageEndpoint,
             ["NEOPRINT_STORAGE_SEED_REGION"] = "us-east-1",
             ["NEOPRINT_STORAGE_SEED_USE_SSL"] = "false",
-            ["NEOPRINT_STORAGE_SEED_ACCESS_KEY"] = MinioAccessKey,
-            ["NEOPRINT_STORAGE_SEED_SECRET_KEY"] = MinioSecretKey,
+            ["NEOPRINT_STORAGE_SEED_ACCESS_KEY"] = StorageAccessKey,
+            ["NEOPRINT_STORAGE_SEED_SECRET_KEY"] = StorageSecretKey,
             ["NEOPRINT_STORAGE_SEED_BUCKET_FILES"] = FilesBucket,
             ["NEOPRINT_STORAGE_SEED_BUCKET_RECEIPTS"] = ReceiptsBucket,
             ["NEOPRINT_STORAGE_SEED_BUCKET_TEMP"] = TempBucket,
@@ -239,9 +254,9 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
     // Object storage
     // -----------------------------------------------------------------------
 
-    public const string MinioAccessKey = "neoprinttest";
+    public const string StorageAccessKey = "neoprinttest";
 
-    public const string MinioSecretKey = "neoprinttestsecret";
+    public const string StorageSecretKey = "neoprinttestsecret";
 
     public const string FilesBucket = "neoprint-files";
 
@@ -249,12 +264,12 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
 
     public const string TempBucket = "neoprint-temp";
 
-    /// <summary>Where MinIO is listening, from the test process.</summary>
-    public string MinioEndpoint =>
-        $"http://{_minio!.Hostname}:{_minio.GetMappedPublicPort(9000)}";
+    /// <summary>Where the object store is listening, from the test process.</summary>
+    public string StorageEndpoint =>
+        $"http://{_storage!.Hostname}:{_storage.GetMappedPublicPort(8000)}";
 
     /// <summary>
-    /// A client straight to MinIO, bypassing the application.
+    /// A client straight to the object store, bypassing the application.
     /// </summary>
     /// <remarks>
     /// This is what proves the encryption is real: a test reads the object the
@@ -262,10 +277,10 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
     /// ciphertext.
     /// </remarks>
     public IAmazonS3 CreateDirectStorageClient() => new AmazonS3Client(
-        new BasicAWSCredentials(MinioAccessKey, MinioSecretKey),
+        new BasicAWSCredentials(StorageAccessKey, StorageSecretKey),
         new AmazonS3Config
         {
-            ServiceURL = MinioEndpoint,
+            ServiceURL = StorageEndpoint,
             ForcePathStyle = true,
             AuthenticationRegion = "us-east-1",
             UseHttp = true,
@@ -274,7 +289,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         });
 
     /// <summary>
-    /// Creates the three buckets, as docker/minio/init-buckets.sh does for the
+    /// Creates the three buckets, as the init container does for the
     /// development environment.
     /// </summary>
     private async Task CreateBucketsAsync()

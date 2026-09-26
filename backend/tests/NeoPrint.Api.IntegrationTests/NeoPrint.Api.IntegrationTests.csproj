@@ -38,7 +38,6 @@
     <PackageReference Include="Testcontainers.MongoDb" />
     <PackageReference Include="Testcontainers.Redis" />
     <PackageReference Include="Testcontainers.RabbitMq" />
-    <PackageReference Include="Testcontainers.Minio" />
   </ItemGroup>
 
 </Project>

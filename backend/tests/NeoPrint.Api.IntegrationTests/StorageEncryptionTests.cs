@@ -210,14 +210,14 @@ public sealed class StorageEncryptionTests
 
         foreach (var provider in providers)
         {
-            provider.AccessKeyCiphertext.Should().NotContain(NeoPrintApiFixture.MinioAccessKey);
-            provider.SecretKeyCiphertext.Should().NotContain(NeoPrintApiFixture.MinioSecretKey);
+            provider.AccessKeyCiphertext.Should().NotContain(NeoPrintApiFixture.StorageAccessKey);
+            provider.SecretKeyCiphertext.Should().NotContain(NeoPrintApiFixture.StorageSecretKey);
 
             // And they open again, so the encryption is not one-way by accident.
             var protector = scope.ServiceProvider.GetRequiredService<StorageSecretProtector>();
 
             protector.Unprotect(provider.AccessKeyCiphertext, provider.Id)
-                .Should().Be(NeoPrintApiFixture.MinioAccessKey);
+                .Should().Be(NeoPrintApiFixture.StorageAccessKey);
         }
     }
 
