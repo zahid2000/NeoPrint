@@ -265,6 +265,8 @@ price      = max(MinOrder, base * (1 - tier.DiscountPercent/100))
 | `Referral.MaxBonusPagesPerJob` | 5 | Bir çapda istifadə oluna bilən maksimum bonus səhifə |
 | `Refund.VoucherValidDays` | 90 | Anonim refund voucher-in etibarlılığı (yalnız bank refund-u mümkün olmadıqda) |
 | `Refund.ProviderMaxAttempts` | 3 | Bank/kart refund-unun avtomatik təkrar cəhd sayı |
+| `Job.SuspectedAfterMinutes` | 15 | `Printing` / `Queued` job üçün kioskdan bu müddətdə status və ya heartbeat gəlməzsə job `Suspected` olur (Bölmə 2.5, ssenari B). Avtomatik refund **edilmir** |
+| `Job.SuspectedAutoResolveHours` | 72 | `Suspected` job bu müddətdə həll olunmazsa adminə xatırlatma bildirişi gedir. Avtomatik heç nə edilmir — qərar adminindir |
 | `Kiosk.HeartbeatSeconds` | 15 | Kiosk heartbeat intervalı |
 | `Kiosk.OfflineAfterSeconds` | 60 | Heartbeat gəlməzsə offline sayılır |
 | `Kiosk.TelemetrySeconds` | 30 | Kiosk telemetriya göndərmə intervalı |
@@ -299,10 +301,44 @@ price      = max(MinOrder, base * (1 - tier.DiscountPercent/100))
 
 ### 2.5 Refund qaydaları
 
-**Qaytarılma istiqaməti (default)**
+**İki ayrı ssenari — avtomatik refund yalnız birində olur**
+
+Fərq bir sualdadır: **sistem nə baş verdiyini bilirmi?**
+
+| | **A — Printer xətası, kiosk serverlə əlaqədədir** | **B — Kiosk ilə server arasında əlaqə itib** |
+|---|---|---|
+| Nümunə | Printer offline, kağız qurtarıb, sıxışma, çap yarımçıq qalıb, toner bitib | Elektrik kəsilib, şəbəkə itib, kompüter sıradan çıxıb, tətbiq çökmüş və qalxmayıb |
+| Sistem nəyi bilir | Kiosk nəyin baş verdiyini **bildirib**: `print_attempts`, printer sayğacı, xəta kodu var | **Heç nə** — sonuncu məlum vəziyyət `Printing` və ya `Queued`-dir, nəticə naməlumdur |
+| Job | `Interrupted` | **`Suspected`** (təsdiq gözləyir) |
+| Ödəniş | Ləğv olunur / qaytarılır | **`Succeeded` qalır** |
+| Refund | **Avtomatik** — anonim bank ödənişi dərhal karta, qeydiyyatlıya aşağıdakı matris üzrə | **Avtomatik refund yoxdur.** Yalnız adminin müraciət əsasında verdiyi qərarla |
+
+**Səbəb:** B ssenarisində çapın olub-olmadığı bilinmir. Avtomatik qaytarmaq
+çap olunmuş işi pulsuz verməkdir; avtomatik qaytarmamaq isə çap olmayıbsa
+müştərinin pulunu udmaqdır. Hər iki səhv pul itkisidir, ona görə qərar
+məlumatı olan adama — adminə — verilir. Kiosk sonradan qalxıb nəticəni
+göndərsə, qərar artıq lazım deyil: sistem özü həll edir (aşağıda).
+
+**B ssenarisinin axını**
+
+1. `StuckJobWatchdogJob` (hər dəqiqə) `Job.SuspectedAfterMinutes` (default 15)
+   müddətində kioskdan status və ya heartbeat gəlməyən `Printing` / `Queued`
+   job-u **`Suspected`** edir. **Avtomatik ləğv yoxdur, avtomatik refund yoxdur.**
+2. Incident (High) yaranır və job admin panelində **"Baxış gözləyən job-lar"**
+   siyahısına düşür (Bölmə 8A.3).
+3. **Kiosk sonradan qalxıb nəticə göndərsə job avtomatik həll olunur:**
+   - çap tamamlanıbsa → `Completed`, refund yoxdur;
+   - çap olmayıbsa və ya yarımçıqdırsa → **A ssenarisinə keçir** və avtomatik
+     refund işə düşür.
+4. `Job.SuspectedAutoResolveHours` (default 72) keçsə də kiosk qayıtmazsa:
+   yalnız **xatırlatma bildirişi**. Avtomatik heç nə edilmir — admin qərarı
+   tələb olunur.
+
+**Qaytarılma istiqaməti (default) — A ssenarisi və istifadəçi ləğvi üçün**
 | Ödəniş necə edilib | Refund səbəbi | Default istiqamət |
 |---|---|---|
-| Kioskda **bank QR / bank kartı** (anonim) | Sistem xətası (printer, kiosk, çap yarımçıq) | **Avtomatik, dərhal karta / bank hesabına** (`IBankQrProvider.RefundAsync`) |
+| Kioskda **bank QR / bank kartı** (anonim) | **A** — printer xətası (kiosk əlaqədədir, çap yarımçıq) | **Avtomatik, dərhal karta / bank hesabına** (`IBankQrProvider.RefundAsync`) |
+| İstənilən metod | **B** — kiosk ilə əlaqə itib, nəticə naməlum | **Avtomatik refund yoxdur.** Job `Suspected`, ödəniş `Succeeded` qalır; yalnız admin qərarı ilə |
 | Kioskda **bank QR / bank kartı** (anonim) | İstifadəçi job kodu ilə ləğv edir | Karta / bank hesabına |
 | Mobil tətbiq — Wallet | İstənilən | Wallet |
 | Mobil tətbiq — Kart | İstifadəçi ləğvi, planlanmış çap ləğvi | Wallet (istifadəçi ləğv zamanı "Karta qaytar" seçə bilər) |
@@ -319,6 +355,19 @@ price      = max(MinOrder, base * (1 - tier.DiscountPercent/100))
 - Promokod endirimi refund-da geri qaytarılmır, promokod istifadəsi ləğv olunur.
 - Hər refund fiskal **qaytarma çeki** ilə müşayiət olunur (Bölmə 2.12).
 
+**Müştəri müraciəti (B ssenarisi üçün)**
+
+Avtomatik refund olmadığına görə müraciət kanalı axının bir hissəsidir, əlavə
+deyil:
+
+- **Anonim ödəniş:** qəbzdəki və ekrandakı **refund status QR-ı**
+  (`neoprint.az/refund/{id}`) job kodunu müəyyənləşdirir. Müştəri həmin
+  səhifədən müraciət yaradır və ya qaynar xəttə job kodunu deyir.
+- **Qeydiyyatlı istifadəçi:** mobil tətbiqdə job detalında **"Problem barədə
+  bildir"** düyməsi — job seçilir, qısa mətn yazılır. Müraciət admin panelində
+  həmin job-un araşdırma kartına bağlanır.
+- Hər müraciət `audit_logs`-a düşür; cavab müddəti `docs/legal/REFUND_POLICY.az.md`-dədir.
+
 **Refund modeli** (`refunds` kolleksiyası)
 `Id`, `PaymentId`, `JobId`, `UserId?`, `Amount`, `BonusPages`, `Destination (OriginalMethod/Wallet/Voucher/Bonus)`, `Reason (SystemError/UserCancel/ScheduleCancel/AdminManual/PartialPrint)`, `InitiatedBy (System/User/Admin + id)`, `Status (Pending/Processing/Succeeded/Failed)`, `ProviderRefundRef`, `FiscalRefundReceiptId?`, `Attempts`, `LastError`, `Note`, `CreatedAt`, `CompletedAt`. Bir ödənişə bir neçə refund ola bilər; cəmi ödəniş məbləğini keçə bilməz.
 
@@ -329,6 +378,18 @@ price      = max(MinOrder, base * (1 - tier.DiscountPercent/100))
   - **Account yoxdursa** (anonim): "Bank kartına / hesabına"; bank refund-u mümkün deyilsə "Voucher".
   - Ödəniş Wallet-dən edilibsə yalnız Wallet.
 - İcra `refunds`-a yazılır, statusu real-time yenilənir, `audit_logs`-a düşür, istifadəçiyə (varsa) push + email.
+
+**`Suspected` job üzrə admin qərarı (B ssenarisi)**
+
+Araşdırma ekranı Bölmə 8A.3-dədir. Mümkün qərarlar — hər biri üçün səbəb və
+qeyd **məcburidir**, hamısı `audit_logs`-a düşür:
+
+| Qərar | Nəticə |
+|---|---|
+| **Tam qaytar** | Job `Cancelled`, tam məbləğ Bölmə 2.5 istiqamət matrisi üzrə qaytarılır |
+| **Hissəvi qaytar** | Admin məbləği daxil edir (məsələn yalnız çap olunmamış səhifələr); job `Completed` (hissəvi) |
+| **Qaytarma yoxdur (çap olunub)** | Job `Completed`, refund yoxdur |
+| **Yenidən çapa göndər** | Job yeni `Queued` job kimi növbəyə qayıdır, əlavə ödəniş alınmır |
 
 ### 2.6 Referral qaydası
 - Hər istifadəçinin unikal referral kodu var (`NP` + 6 simvol). Paylaşım: kod, link (`https://neoprint.az/r/{code}`), QR.
@@ -738,13 +799,21 @@ Backend secret-ləri OpenBao-dan; `api` konteyneri yalnız `BAO_ADDR`, role_id v
 ### PrintJob status maşını
 ```
 Draft ─► PendingPayment ─► Paid ─► Queued ─► Printing ─► Completed
-             │                        │          │
-             ▼                        ▼          ▼
+             │                        │          │          ▲
+             ▼                        ▼          ▼          │
           Expired                 Cancelled   Interrupted ─► Queued (retry)
                                       │          │
                                       ▼          ▼
                                   Refunded ◄── Cancelled
+
+                    Queued / Printing ─► Suspected ─┬─► Completed
+                    (kioskdan xəbər yoxdur)         ├─► Interrupted (A ssenarisi)
+                                                    └─► Cancelled + refund
 ```
+`Suspected` — **nəticəsi naməlum** job (Bölmə 2.5, ssenari B): kiosk ilə əlaqə
+itib, çapın olub-olmadığı bilinmir. Ödəniş `Succeeded` qalır və **avtomatik
+refund edilmir**. Buradan çıxış ya kioskun göndərdiyi nəticə ilə (avtomatik),
+ya da adminin araşdırma qərarı ilə olur.
 Tam state maşınları (PrintJob, Payment, Refund, Device, Kiosk, Update, Schedule) `docs/STATE_MACHINES.md`-dədir. Keçidlər yalnız explicit domen metodları ilə (`job.Complete(...)`, `job.Interrupt(...)`), icazəsiz keçid `DomainException` atır; raw property assignment qadağandır. Hər keçid `StatusHistory`-yə yazılır və domain event yaradır (MassTransit outbox vasitəsilə yayılır).
 
 ---
@@ -829,7 +898,9 @@ Tam state maşınları (PrintJob, Payment, Refund, Device, Kiosk, Update, Schedu
 | `ReceiptConsumer` | event | QuestPDF ilə qəbz (fiskal məlumatla), storage, email |
 | `FiscalizationConsumer` | event | Satış / qaytarma / top-up fiskal çeki, retry, incident |
 | `RefundConsumer` | event | Refund-u istiqamətinə görə icra edir: provider refund (retry ilə), wallet, bonus, voucher fallback; qaytarma fiskal çekini tələb edir |
-| `AutoRefundOnKioskErrorConsumer` | `PrintJobInterrupted` / `KioskIncidentRaised` | Kioskda bank ilə ödənilmiş anonim job-lar üçün dərhal karta refund |
+| `AutoRefundOnKioskErrorConsumer` | `PrintJobInterrupted` / `KioskIncidentRaised` | Kioskda bank ilə ödənilmiş anonim job-lar üçün dərhal karta refund. **Yalnız A ssenarisi** (Bölmə 2.5): `Suspected` job-a toxunmur |
+| `StuckJobWatchdogJob` | 1 dəq | `Job.SuspectedAfterMinutes` müddətində kioskdan status/heartbeat gəlməyən `Printing` / `Queued` job → **`Suspected`** + incident (High) + "Baxış gözləyən job-lar" siyahısı. **Avtomatik ləğv və refund etmir** (Bölmə 2.5, ssenari B). `Job.SuspectedAutoResolveHours` keçəndə yalnız xatırlatma bildirişi göndərir |
+| `SuspectedJobResolutionConsumer` | kioskun bərpadan sonra göndərdiyi jurnal | Kiosk nəticəni bildirəndə `Suspected` job-u avtomatik həll edir: çap tamamlanıbsa `Completed`, olmayıbsa `Interrupted` → A ssenarisi (avtomatik refund) |
 | `RefundStatusPollingJob` | 5 dəq | `Processing` provider refund-larının statusu |
 | `PaymentReconciliationJob` | 5 dəq | `Expired` / naməlum ödənişlərin provider statusu ilə uzlaşdırılması (gec gələn callback-lər üçün) |
 | `WalletLedgerReconciliationJob` | gündəlik | Ledger cəmi ilə `wallets.Balance` fərqi → incident |
@@ -1139,6 +1210,7 @@ Mənbələr:
 | schedule | Planlama (kiosk + fayl + parametr + tarix/saat, min. 15 dəq sonra), siyahı, vaxtı dəyiş, ləğv (balansa refund). `ScheduleDue` push → "Çapa ver" / "Vaxtı dəyiş" dialoqu |
 | wallet | Balans, bonus səhifələr, kartla artırma (mock; "geri qaytarılmır" xəbərdarlığı), tarixçə, voucher aktivləşdirmə |
 | receipts | Qəbz siyahısı, PDF baxış (fiskal məlumatla), email göndər, paylaş (öz platform channel) |
+| support | Job detalında **"Problem barədə bildir"** düyməsi (Bölmə 2.5, ssenari B): job seçilir, qısa mətn yazılır, müraciət göndərilir. Müraciətlərin siyahısı və statusu; admin cavab verəndə push. `Suspected` job-da düymə ekranın üst hissəsində görünür |
 | referral | Kod, link, QR (backend PNG), paylaş, dəvət statistikası, qazanılan bonus |
 | share | Fayl paylaş (PublicId daxil et və ya QR scan), göndərilənlər/alınanlar tarixçəsi, alınan faylı "Fayllarıma saxla"; həssas fayl paylaşılanda xəbərdarlıq |
 | scanner | Sənəd skanı (öz platform channel), filtrlər, sənəd tipi / real ölçü preset-ləri, sonradan ölçü dəyişmə, ilk istifadədə məlumat/razılıq (Bölmə 2.11) |
@@ -1215,6 +1287,7 @@ Mənbələr:
 | Servis tapşırıqları | Siyahı (status, prioritet, kiosk, operator), yarat, təyin et, tarixçə, SLA göstəricisi |
 | Anbar | Məhsullar, qalıqlar, min qalıq, hərəkətlər (alış, operatora verilmə, istifadə, silinmə), düzəliş |
 | Print job-lar | Filtrli siyahı, detal (status tarixçəsi, fayl metadata, ödəniş, qəbz), ləğv |
+| **Baxış gözləyən job-lar** | `Suspected` job-ların araşdırma siyahısı (Bölmə 2.5, ssenari B). Sıralama: ən köhnə yuxarıda; `Job.SuspectedAutoResolveHours` keçənlər ayrıca işarələnir. **Araşdırma kartında göstərilir:** job (kod, fayl, səhifə/vərəq sayı, parametrlər), ödəniş (məbləğ, metod, provider istinadı, fiskal çek), kiosk, vaxtlar, müştəri məlumatı (varsa); kioskun **sonuncu heartbeat vaxtı və telemetriyası**; `print_attempts` qeydləri, **printer sayğacının əvvəl/sonra dəyəri**; kioskun bərpadan sonra göndərdiyi jurnal (gəlibsə); **eyni vaxtda həmin kioskda baş vermiş digər hadisələr** (incident-lər, digər job-lar, sərf hadisələri). **Əməliyyatlar:** "Tam qaytar", "Hissəvi qaytar", "Qaytarma yoxdur (çap olunub)", "Yenidən çapa göndər" — səbəb və qeyd məcburi, hamısı `audit_logs`-a düşür. Bağlı müştəri müraciətləri də burada görünür |
 | Ödənişlər | Siyahı (filtrlər: status, metod, kanal, kiosk, "xəta olub", "refund gözləyir", "refund uğursuz"); **ödəniş detalı**: məbləğ bölgüsü (kart / wallet / bonus / promokod / həcm endirimi), bağlı **job(lar)** və status tarixçəsi, kiosk, istifadəçi, qəbz, **fiskal çek**, provider istinadı, tam **timeline**, xəta səbəbi, **refund-lar**; əməliyyatlar: "Job-u ləğv et və qaytar", "Qaytar" (tam / hissəvi, səbəb məcburi, istiqamət: account varsa **Wallet** və ya **bank kartı**, anonimdə bank kartı / fallback voucher), uğursuz refund-u "Təkrarla" / "İstiqaməti dəyiş" |
 | Refund-lar | Bütün refund-lar, status və səbəb filtri, uğursuzlar ayrıca tab-da |
 | Fiskal çeklər | Siyahı, status filtri, uğursuzları təkrarla, fiskal parametrlər (onlayn terminal ID, top-up rejimi) |
@@ -1299,12 +1372,27 @@ Mənbələr:
 5. Ləğv və ya `AutoCancelHours` → balansa refund (+ qaytarma fiskal çeki)
 
 ### 9.6 Kiosk nasazlığı
-1. Printer xətası və ya heartbeat itkisi → incident (Critical) → Admin/Operator panel real-time + email + Telegram; lazımi hallarda servis tapşırığı
+
+İki ayrı axın var və fərq budur: **kiosk nə baş verdiyini deyə bilirmi?**
+(Bölmə 2.5)
+
+**A — printer xətası, kiosk serverlə əlaqədədir**
+
+1. Printer xətası → incident (Critical) → Admin/Operator panel real-time + email + Telegram; lazımi hallarda servis tapşırığı
 2. Kiosk `Paused/Offline` → OutOfService ekranı, yeni sifariş bloklanır, mobil axtarışda "Dayanıb" statusu
 3. `Printing` job → `Interrupted`
 4. Kioskda bank QR / kartla ödənilmiş anonim job-lar (`Interrupted` və `Queued`) → avtomatik `Cancelled` + karta refund; ekranda refund məlumatı
 5. Qeydiyyatlı istifadəçilərin job-ları → push: "Gözləyin və ya ləğv edib məbləği qaytarın" → ləğv edərsə Bölmə 2.5 qaydası ilə refund; ləğv etməzsə kiosk bərpa olunanda çap davam edir
 6. Admin paneldə incident detalında təsirlənən ödənişlər və refund statusları görünür
+
+**B — kiosk ilə əlaqə itib (elektrik, şəbəkə, avadanlıq)**
+
+1. Heartbeat gəlmir → `KioskHeartbeatMonitor` kiosku `Offline` edir, incident (Critical)
+2. `Job.SuspectedAfterMinutes` (15) keçir → `StuckJobWatchdogJob` `Printing` / `Queued` job-ları **`Suspected`** edir. **Avtomatik ləğv və refund yoxdur**; ödəniş `Succeeded` qalır
+3. Job admin panelində "Baxış gözləyən job-lar" siyahısına düşür, incident (High)
+4. Qeydiyyatlı istifadəçiyə bildiriş: "Çapınızın nəticəsi dəqiqləşdirilir" + "Problem barədə bildir" düyməsi. Anonim müştəri qəbzdəki refund status QR-ı ilə müraciət edə bilər
+5. **Kiosk qalxıb nəticə göndərsə** → `SuspectedJobResolutionConsumer` avtomatik həll edir: çap tamamlanıb → `Completed`; olmayıb → A ssenarisi, avtomatik refund
+6. Kiosk qayıtmazsa → admin araşdırma kartından qərar verir (tam / hissəvi qaytarma, qaytarma yoxdur, yenidən çap). `Job.SuspectedAutoResolveHours` (72) keçəndə yalnız xatırlatma gedir
 
 ### 9.7 Skan → tərtibat → çap
 1. Mobil: Skan → vəsiqə ön və arxa → preset "Şəxsiyyət vəsiqəsi (ID-1)" (həssas, avtomatik silinmə "Çapdan sonra")
@@ -1593,6 +1681,7 @@ git push origin main --tags
 | Bonus səhifələrin fiskal əksi | 0 AZN, çekə düşmür | Təsdiq |
 | Fərdi məlumatlar (şəxsi sənəd skanları) | Şifrələmə, razılıq, avtomatik silinmə, hesab silmə, export, admin çıxışının olmaması | Operator qeydiyyatı, məxfilik siyasətinin son mətni, saxlama müddətləri |
 | Maliyyə qeydlərinin saxlanma müddəti | Anonimləşdirilmiş saxlama | Müddət |
+| **Qaytarma (refund) siyasəti** | `docs/legal/REFUND_POLICY.az.md` qaralaması: printer xətasında avtomatik qaytarma və müddəti; texniki fasilə / elektrik kəsilməsində müraciət əsasında araşdırma və cavab müddəti; müraciət kanalları (QR, mobil tətbiq, qaynar xətt); balansın geri qaytarılmaması; anonim ödənişlərdə voucher halı. Texniki tərəf: Bölmə 2.5 (A/B ssenariləri), `Job.SuspectedAfterMinutes`, `Job.SuspectedAutoResolveHours` | Mətnin son formulası; **istehlakçı hüquqları qanunvericiliyinin tələb etdiyi maksimum cavab və qaytarma müddətləri** (sənəddəki 3 iş günü / 10 iş günü yalnız təklifdir); nəticəsi naməlum çap üçün sübut yükünün kimdə olması; voucher-in qanuni pul əvəzedicisi sayılıb-sayılmaması |
 
 ---
 

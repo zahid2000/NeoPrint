@@ -18,11 +18,31 @@ Ləğv:
 
 `Queued → Cancelled`, `PendingPayment → Cancelled`
 
-Printer/kiosk problemi:
+Printer/kiosk problemi — **nəticə məlumdur** (kiosk serverlə əlaqədədir):
 
 `Printing → Interrupted`
 `Interrupted → Queued` (təhlükəsiz olduqda təkrar növbəyə)
 `Interrupted → Cancelled`
+
+Kiosk ilə əlaqə itib — **nəticə naməlumdur** (Plan Bölmə 2.5, ssenari B):
+
+`Queued → Suspected`
+`Printing → Suspected`
+
+`Suspected`-dən çıxış yalnız **yeni məlumatla** olur — vaxt keçməsi ilə yox:
+
+`Suspected → Completed` (kiosk çapın tamamlandığını bildirir, və ya admin
+"Qaytarma yoxdur" seçir)
+`Suspected → Interrupted` (kiosk çapın olmadığını bildirir → A ssenarisi,
+avtomatik refund)
+`Suspected → Cancelled` (admin "Tam qaytar" seçir)
+`Suspected → Queued` (admin "Yenidən çapa göndər" seçir)
+
+`Suspected` job üçün **avtomatik refund yoxdur** və ödəniş `Succeeded` qalır.
+`Job.SuspectedAutoResolveHours` keçməsi heç bir keçid yaratmır — yalnız
+xatırlatma bildirişi göndərir. Səbəb `docs/FAILURE_RECOVERY.md`-dədir:
+naməlum nəticədə hər iki avtomatik qərar pul itkisidir, ona görə sistem
+təxmin etmir.
 
 Refund:
 

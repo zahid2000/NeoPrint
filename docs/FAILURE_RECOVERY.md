@@ -64,6 +64,39 @@ cavablandırmamalıdır.
 
 Mümkün printer counter/status/evidence istifadə edilməlidir.
 
+## Nəticəsi naməlum job (`Suspected`)
+
+Bu sənədin qalan hissəsi sistemin **nə baş verdiyini bildiyi** halları
+təsvir edir. Ayrıca bir hal da var: kiosk ilə server arasında əlaqə itir və
+sistem çapın olub-olmadığını **bilmir** (plan Bölmə 2.5, ssenari B).
+
+Qayda:
+
+1.  `Job.SuspectedAfterMinutes` (default 15) müddətində kioskdan status və ya
+    heartbeat gəlməyən `Printing` / `Queued` job → **`Suspected`**.
+2.  **Avtomatik refund edilmir.** Ödəniş `Succeeded` qalır, job ləğv olunmur.
+3.  Incident (High) + admin panelində "Baxış gözləyən job-lar".
+
+Səbəb: naməlum nəticədə avtomatik qaytarmaq çap olunmuş işi pulsuz verməkdir,
+avtomatik qaytarmamaq isə çap olmayıbsa müştərinin pulunu udmaqdır. Hər ikisi
+pul itkisidir. Sistem təxmin etmir — qərar məlumatı olan adama verilir.
+
+**Bərpadan sonra avtomatik həll.** Kiosk qalxanda lokal jurnalı və
+`print_attempts` qeydlərini (printer sayğacının əvvəl/sonra dəyəri daxil)
+göndərir. `SuspectedJobResolutionConsumer`:
+
+-   çap tamamlanıb → `Completed`, refund yoxdur;
+-   çap olmayıb və ya yarımçıqdır → `Interrupted` → **A ssenarisi**, avtomatik
+    refund işə düşür.
+
+Yəni admin qərarı yalnız kiosk **heç vaxt qayıtmayanda** lazım olur.
+`Job.SuspectedAutoResolveHours` (default 72) keçəndə sistem yalnız
+**xatırlatma** göndərir; avtomatik heç nə etmir.
+
+Bu, "Power loss" bölməsindəki bərpa axınının davamıdır: orada kiosk özü
+bərpa olunur, burada isə **backend** kiosk susduğu müddətdə nə edəcəyini
+bilir.
+
 ## Converter failure
 
 Converter: - timeout ilə dayandırılmalıdır; - resource limit tətbiq
