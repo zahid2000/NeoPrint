@@ -762,6 +762,8 @@ Provayder gövdəsi:
 }
 ```
 
+`type`: `RustFS` | `Scality` | `MinIO` (böyük-kiçik hərf fərqi yoxdur). Tip yalnız sağlamlıq yoxlamasının readiness endpoint-ini seçir (RustFS `/health/ready`, MinIO `/minio/health/ready`, Scality — yalnız imzalı S3 yoxlaması); bütün oxuma və yazılar eyni S3 API ilə gedir.
+
 ### Sinxronizasiya
 
 | Metod | Yol | Məna |

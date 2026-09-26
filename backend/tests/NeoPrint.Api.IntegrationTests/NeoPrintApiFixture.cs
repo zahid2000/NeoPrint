@@ -77,11 +77,10 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         // means is what the server hands back, not what a fake decides to
         // return.
         //
-        // Zenko CloudServer, configured exactly as docker-compose.yml runs it
-        // (the file backend, not the in-memory one), so a difference between
-        // the two cannot hide here. MinIO's images stopped being anonymously
-        // pullable in September 2026 (docs/DECISIONS.md).
-        _storage = CloudServer();
+        // RustFS, the image docker-compose.yml pins, so a difference between
+        // the development store and the tested one cannot hide here
+        // (docs/DECISIONS.md: why RustFS rather than MinIO or Zenko).
+        _storage = RustFs();
 
         _openBao = new ContainerBuilder("openbao/openbao:2.6.2")
             .WithEnvironment("BAO_DEV_ROOT_TOKEN_ID", RootToken)
@@ -202,7 +201,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
             // The application seeds its first storage provider from these, as
             // it does in production, rather than the test inserting a
             // document the application never validated.
-            ["NEOPRINT_STORAGE_SEED_TYPE"] = "Scality",
+            ["NEOPRINT_STORAGE_SEED_TYPE"] = "RustFS",
             ["NEOPRINT_STORAGE_SEED_NAME"] = "Test object store",
             ["NEOPRINT_STORAGE_SEED_ENDPOINT"] = StorageEndpoint,
             ["NEOPRINT_STORAGE_SEED_REGION"] = "us-east-1",
@@ -259,24 +258,28 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
     public string MongoConnectionString => _mongo!.GetConnectionString();
 
     /// <summary>The image docker-compose.yml pins; the two must not drift apart.</summary>
-    public const string CloudServerImage =
-        "ghcr.io/scality/cloudserver:9.1.4@sha256:41e4753c25ecaddb34967ea0c888d9966214bd06cf5fbe9d53139e370c6c38a7";
+    public const string RustFsImage =
+        "rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff";
+
+    /// <summary>The S3 port inside the container.</summary>
+    public const int StoragePort = 9000;
 
     /// <summary>
-    /// A CloudServer container, as the development environment runs it.
+    /// A RustFS container, as the development environment runs it.
     /// </summary>
     /// <remarks>
     /// Ready means a signed ListBuckets succeeds - the question every test
-    /// actually asks - rather than that the port is open or /live answers.
-    /// The S3 server accepts connections before its metadata and data daemons
-    /// are up, and /live reports the process, not the API behind it.
+    /// actually asks - rather than that the port is open: credentials and
+    /// the S3 API are what the tests depend on, not the process being up.
     /// </remarks>
-    public static IContainer CloudServer() =>
-        new ContainerBuilder(CloudServerImage)
-            .WithEnvironment("SCALITY_ACCESS_KEY_ID", StorageAccessKey)
-            .WithEnvironment("SCALITY_SECRET_ACCESS_KEY", StorageSecretKey)
-            .WithEnvironment("REMOTE_MANAGEMENT_DISABLE", "1")
-            .WithPortBinding(8000, assignRandomHostPort: true)
+    public static IContainer RustFs() =>
+        new ContainerBuilder(RustFsImage)
+            .WithEnvironment("RUSTFS_ACCESS_KEY", StorageAccessKey)
+            .WithEnvironment("RUSTFS_SECRET_KEY", StorageSecretKey)
+            // No web console, and logs to stdout rather than a directory.
+            .WithEnvironment("RUSTFS_CONSOLE_ENABLE", "false")
+            .WithEnvironment("RUSTFS_OBS_LOG_DIRECTORY", string.Empty)
+            .WithPortBinding(StoragePort, assignRandomHostPort: true)
             .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new S3ApiReady()))
             .Build();
 
@@ -289,7 +292,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
                 new BasicAWSCredentials(StorageAccessKey, StorageSecretKey),
                 new AmazonS3Config
                 {
-                    ServiceURL = $"http://{container.Hostname}:{container.GetMappedPublicPort(8000)}",
+                    ServiceURL = $"http://{container.Hostname}:{container.GetMappedPublicPort(StoragePort)}",
                     ForcePathStyle = true,
                     AuthenticationRegion = "us-east-1",
                     UseHttp = true,
@@ -312,7 +315,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
 
     /// <summary>Where the object store is listening, from the test process.</summary>
     public string StorageEndpoint =>
-        $"http://{_storage!.Hostname}:{_storage.GetMappedPublicPort(8000)}";
+        $"http://{_storage!.Hostname}:{_storage.GetMappedPublicPort(StoragePort)}";
 
     /// <summary>
     /// A client straight to the object store, bypassing the application.

@@ -11,7 +11,7 @@ yarandıqca bu fayl yenilənir.
 > yazılır (`docs/OPENBAO.md`).
 
 > **Layihədə PostgreSQL yoxdur.** Source of truth MongoDB-dir, Redis keş/queue/lock,
-> RabbitMQ mesaj brokeri, Zenko CloudServer obyekt saxlamasıdır (plan Bölmə 4).
+> RabbitMQ mesaj brokeri, RustFS obyekt saxlamasıdır (plan Bölmə 4).
 
 ---
 
@@ -31,7 +31,7 @@ curl http://localhost:5080/health
 
 `docker compose up` ardıcıllığı: `openbao` → `openbao-init` (init + unseal + KV v2
 mount + AppRole + policy + audit + 29 secret) → `mongo` → `mongo-init` (replica
-set `rs0`) → `redis`, `rabbitmq`, `zenko` + `zenko-secondary` → `zenko-init` (hər ikisində bucket-lər) → `api` →
+set `rs0`) → `redis`, `rabbitmq`, `rustfs` + `rustfs-secondary` → `rustfs-init` (hər ikisində bucket-lər) → `api` →
 `admin`.
 
 **Backend kodu dəyişəndən sonra** konteyner köhnə image ilə işləməyə davam edir,
@@ -46,7 +46,7 @@ docker compose up -d --build api
 ```bash
 docker compose stop            # datanı saxlayır
 docker compose down            # konteynerləri silir, volume-lar qalır
-docker compose down -v         # HƏR ŞEYİ silir (Mongo, OpenBao, Zenko datası)
+docker compose down -v         # HƏR ŞEYİ silir (Mongo, OpenBao, RustFS datası)
 ```
 
 ### OpenBao restart-dan sonra möhürlənir (sealed)
@@ -75,8 +75,9 @@ docker compose restart api
 | **Redis** | `localhost:6379` | |
 | **RabbitMQ (AMQP)** | `localhost:5672` | |
 | **RabbitMQ management** | http://localhost:15672 | |
-| **Zenko CloudServer — primary** | http://localhost:8000 | S3 API. Veb konsolu yoxdur |
-| **Zenko CloudServer — secondary** | http://localhost:8001 | migrasiya / mirror hədəfi (plan 9.8) |
+| **RustFS — primary** | http://localhost:9000 | S3 API |
+| **RustFS — veb konsolu** | http://localhost:9001/rustfs/console/ | `neoprintrustfs` / `devRustfsPassword` |
+| **RustFS — secondary** | http://localhost:9010 | migrasiya / mirror hədəfi (plan 9.8) |
 | **Mailpit (SMTP tutucu)** | http://localhost:8025 | bütün email-lər buraya gəlir; SMTP: `localhost:1025` |
 | **Hangfire dashboard** | http://localhost:5080/hangfire | yalnız Development |
 
@@ -134,62 +135,81 @@ docker exec -it neoprint-redis redis-cli -a devRedisPassword
 amqp://neoprint:devRabbitPassword@localhost:5672/
 ```
 
-### Obyekt saxlaması — Zenko CloudServer
+### Obyekt saxlaması — RustFS
 
-Hər iki instansiya (`zenko`, `zenko-secondary`) eyni açarlarla işləyir.
+Hər iki instansiya (`rustfs`, `rustfs-secondary`) eyni açarlarla işləyir.
 
 | | |
 |---|---|
-| Access key | `neoprintzenko` |
-| Secret key | `devZenkoPassword` |
-| Primary endpoint | http://localhost:8000 (konteyner daxilindən `http://zenko:8000`) |
-| Secondary endpoint | http://localhost:8001 (konteyner daxilindən `http://zenko-secondary:8000`) |
+| Access key | `neoprintrustfs` |
+| Secret key | `devRustfsPassword` |
+| Primary endpoint | http://localhost:9000 (konteyner daxilindən `http://rustfs:9000`) |
+| Primary veb konsolu | http://localhost:9001/rustfs/console/ (yuxarıdakı açarlarla daxil olun) |
+| Secondary endpoint | http://localhost:9010 (konteyner daxilindən `http://rustfs-secondary:9000`) — konsolu yoxdur |
 | Region | `us-east-1` |
-| Bucket-lər | `neoprint-files`, `neoprint-receipts`, `neoprint-temp` (hər ikisində) |
-| Image | `ghcr.io/scality/cloudserver:9.1.4` (digest ilə pinlənib) |
+| Bucket-lər | `neoprint-files`, `neoprint-receipts`, `neoprint-temp` (hər ikisində, `rustfs-init` yaradır) |
+| Health | http://localhost:9000/health/ready (açarsız) |
+| Image | `rustfs/rustfs:1.0.0` (digest ilə pinlənib) |
 
-Veb konsolu yoxdur. Obyektlərə baxmaq üçün istənilən S3 klienti — məsələn
-AWS CLI:
+Konsoldan və ya istənilən S3 klienti ilə baxmaq olar — məsələn AWS CLI:
 
 ```bash
-aws --endpoint-url http://localhost:8000 s3 ls s3://neoprint-files --recursive
-# (AWS_ACCESS_KEY_ID=neoprintzenko AWS_SECRET_ACCESS_KEY=devZenkoPassword)
+aws --endpoint-url http://localhost:9000 s3 ls s3://neoprint-files --recursive
+# (AWS_ACCESS_KEY_ID=neoprintrustfs AWS_SECRET_ACCESS_KEY=devRustfsPassword)
 ```
 
 Oradakı obyektlər **şifrəlidir** — endirsəniz açılmaz, bu gözlənilən haldır.
 
 Admin panelində ikinci provayderi (migrasiya / mirror üçün) əlavə edərkən:
-endpoint `http://zenko-secondary:8000`, tip **Scality**, yuxarıdakı açarlar.
+endpoint `http://rustfs-secondary:9000`, tip **RustFS**, yuxarıdakı açarlar.
 
-#### MinIO-dan Zenko-ya keçid (mövcud lokal mühit üçün)
-
-Əvvəlki mühitdə MinIO var idi. `openbao-init` artıq dəyəri olan secret-ə
-**toxunmur**, ona görə sizin OpenBao-da hələ MinIO seed dəyərləri qalıb. İki yol:
-
-**A. Sıfırdan (ən sadə, bütün lokal data silinir):**
+**Konteyner non-root işləyir (UID/GID 10001).** Compose data üçün named volume
+(`rustfs-data`, `rustfs-secondary-data`) istifadə edir — Docker onları image-dəki
+sahiblə yaradır, heç nə etmək lazım deyil. Named volume əvəzinə host qovluğu
+bind-mount etsəniz (məs. pilot Linux serverində), əvvəl sahibini dəyişin, yoxsa
+RustFS `Permission denied` ilə başlamır:
 
 ```bash
-cp .env.openbao-seed.example .env.openbao-seed   # MinIO dəyərləri Zenko ilə əvəzlənir
-docker compose down -v
+sudo mkdir -p /srv/neoprint/rustfs && sudo chown -R 10001:10001 /srv/neoprint/rustfs
+```
+
+Log-lar `docker compose logs rustfs` ilə görünür (stdout-a yazılır).
+
+#### Köhnə storage-dan (MinIO / Zenko) RustFS-ə keçid (mövcud lokal mühit üçün)
+
+Sizin lokal `.env.openbao-seed` faylınız hələ köhnə (MinIO) dəyərlərdədir və
+`openbao-init` artıq dəyəri olan secret-ə **toxunmur**. Köhnə konteynerlər
+(`neoprint-minio`, `neoprint-scality`, `neoprint-zenko*`) 9000/9001/8000
+portlarını tutur. İki yol:
+
+**A. Sıfırdan (tövsiyə olunur, bütün lokal data silinir):**
+
+```bash
+docker compose down -v --remove-orphans
+cp .env.openbao-seed .env.openbao-seed.bak        # köhnəsini saxlayın
+cp .env.openbao-seed.example .env.openbao-seed    # RustFS dəyərləri
 docker compose up -d --build
 ```
 
-**B. Datanı saxlayaraq:** `.env.openbao-seed`-də `MINIO_ROOT_*` və
-`SCALITY_ACCESS_KEY` / `SCALITY_SECRET_KEY` sətirlərini silin, nümunə fayldakı
-`SCALITY_ACCESS_KEY_ID` / `SCALITY_SECRET_ACCESS_KEY` və yeni
-`NEOPRINT_STORAGE_SEED_*` sətirlərini köçürün, sonra OpenBao-dakı seed yolunu
-yeniləyin:
+**B. Mongo / OpenBao datasını saxlayaraq** (köhnə storage-dakı test faylları
+itir — obyektlər köhnə konteynerin volume-undadır):
+
+1. `.env.openbao-seed`-də `MINIO_ROOT_*`, `SCALITY_*` sətirlərini silin, nümunə
+   fayldakı `RUSTFS_ACCESS_KEY` / `RUSTFS_SECRET_KEY` və
+   `NEOPRINT_STORAGE_SEED_*` sətirlərini köçürün.
+2. Köhnə konteynerləri silin və seed yolunu yeniləyin:
 
 ```bash
-docker exec -e BAO_ADDR=http://127.0.0.1:8200 -e BAO_TOKEN=<root-token> neoprint-openbao   bao kv patch -mount=neoprint backend/seed     NEOPRINT_STORAGE_SEED_TYPE=Scality     NEOPRINT_STORAGE_SEED_NAME="Local Zenko"     NEOPRINT_STORAGE_SEED_ENDPOINT=http://zenko:8000     NEOPRINT_STORAGE_SEED_ACCESS_KEY=neoprintzenko     NEOPRINT_STORAGE_SEED_SECRET_KEY=devZenkoPassword
+docker rm -f neoprint-minio neoprint-minio-init neoprint-scality neoprint-zenko neoprint-zenko-secondary neoprint-zenko-init 2>/dev/null
+docker exec -e BAO_ADDR=http://127.0.0.1:8200 -e BAO_TOKEN=<root-token> neoprint-openbao bao kv patch -mount=neoprint backend/seed NEOPRINT_STORAGE_SEED_TYPE=RustFS NEOPRINT_STORAGE_SEED_NAME="Local RustFS" NEOPRINT_STORAGE_SEED_ENDPOINT=http://rustfs:9000 NEOPRINT_STORAGE_SEED_ACCESS_KEY=neoprintrustfs NEOPRINT_STORAGE_SEED_SECRET_KEY=devRustfsPassword
+docker exec neoprint-mongo mongosh -u neoprint -p devMongoPassword --authenticationDatabase admin neoprint --eval "db.storage_providers.deleteMany({}); db.storage_sync_jobs.deleteMany({}); db.storage_sync_failures.deleteMany({}); db.files.deleteMany({})"
 docker compose up -d --remove-orphans --build
 ```
 
-`--remove-orphans` köhnə `neoprint-minio` / `neoprint-scality` konteynerlərini
-silir. Storage provayderi yalnız `storage_providers` boş olanda seed edilir;
-əgər artıq MinIO-ya işarə edən provayder yaranıbsa, onu admin panelindən
-silin və ya Mongo-da `storage_providers` kolleksiyasını boşaldıb API-ni
-yenidən başladın.
+Storage provayderi yalnız `storage_providers` boş olanda seed edilir, ona görə
+köhnə provayder sənədi silinir; köhnə storage-a istinad edən fayl qeydləri də
+silinir, çünki obyektlərin özü artıq yoxdur. `<root-token>` —
+`.openbao/init.json`-dakı `root_token`.
 
 ### OpenBao
 

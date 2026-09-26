@@ -474,7 +474,7 @@ public sealed class S3FileStorage : IFileStorage
     /// Whether the store is saying "no such object" rather than failing.
     /// </summary>
     /// <remarks>
-    /// The code differs between operations and between products: S3 and MinIO
+    /// The code differs between operations and between products: S3, RustFS and MinIO
     /// answer NoSuchKey to a GET and a bare 404 to a HEAD.
     /// </remarks>
     private static bool IsMissing(AmazonS3Exception exception)

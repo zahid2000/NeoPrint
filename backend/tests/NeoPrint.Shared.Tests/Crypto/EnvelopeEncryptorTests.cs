@@ -85,7 +85,7 @@ public sealed class EnvelopeEncryptorTests
         var ciphertext = await EncryptAsync(encryptor, plaintext);
 
         IndexOf(ciphertext, marker).Should().Be(-1,
-            "an object downloaded straight from MinIO must not be readable (plan section 2.13)");
+            "an object downloaded straight from the object store must not be readable (plan section 2.13)");
     }
 
     [Fact]

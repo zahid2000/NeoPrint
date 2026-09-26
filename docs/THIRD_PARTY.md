@@ -54,7 +54,7 @@ mənbə və səbəblə burada qeyd olunur.
 | `Microsoft.NET.Test.Sdk` | 17.14.1 | MIT | Microsoft | Test host |
 | `FluentAssertions` | **7.2.2** | Apache-2.0 | Dennis Doomen | Assertion-lar. **v8+ kommersiyadır — yüksəldilmir** |
 | `coverlet.collector` | 6.0.4 | MIT | coverlet | Coverage (Domain üçün ≥ 80% tələbi) |
-| `Testcontainers(.MongoDb/.Redis/.RabbitMq)` | 4.15.0 | MIT | Testcontainers | Integration testlər. Obyekt saxlaması üçün modul yoxdur: CloudServer ümumi `ContainerBuilder` ilə qaldırılır. `Testcontainers.Minio` istinadı çıxarılıb (image-lər anonim çəkilmir) |
+| `Testcontainers(.MongoDb/.Redis/.RabbitMq)` | 4.15.0 | MIT | Testcontainers | Integration testlər. Obyekt saxlaması üçün modul yoxdur: RustFS ümumi `ContainerBuilder` ilə qaldırılır. `Testcontainers.Minio` istinadı çıxarılıb (image-lər anonim çəkilmir) |
 | `Microsoft.AspNetCore.Mvc.Testing` | 8.0.31 | MIT | Microsoft | API integration testləri |
 | `Avalonia.Headless.XUnit` | 11.3.22 | MIT | AvaloniaUI | Kiosk ViewModel / UI testləri |
 
@@ -90,8 +90,9 @@ Bölmə 2.0 qaydası 1-ə görə aşağıdakılar üçün paket **əlavə edilmi
 | MongoDB Community Server 7 | SSPL | Verilənlər bazası (öz serverimizdə pulsuz) |
 | Redis 7.2.x | BSD-3 | Keş, lock, SignalR backplane. 7.2 BSD lisenziyalı son xəttdir |
 | RabbitMQ 3.13 / 4.x | MPL-2.0 | Mesajlaşma |
-| Zenko CloudServer (`ghcr.io/scality/cloudserver:9.1.4`, digest ilə pinlənib) | Apache-2.0 | **Development və test-in primary obyekt saxlaması** (fayl backend-i) + migrasiya / mirror hədəfi. Bucket-ləri yaradan `zenko-init` də eyni image-dir: image `aws-sdk` daşıyır, ikinci image lazım deyil |
-| MinIO | AGPL-3.0 | **Dəstəklənən alternativ provayder**, development-də istifadə olunmur. Image-lər 2026-cı ilin sentyabrından anonim çəkilmir (Docker Hub 12 sentyabr, quay.io 24 sentyabr); müştəri öz lisenziyası və registry hesabı ilə işlədə bilər |
+| RustFS (`rustfs/rustfs:1.0.0`, digest ilə pinlənib) | Apache-2.0 | **Development, test və pilotun default obyekt saxlaması** + migrasiya / mirror hədəfi (ikinci instansiya). Non-root (UID 10001). Bucket-ləri yaradan `rustfs-init` də eyni image-dir: image-dəki `curl` S3 sorğusunu özü imzalayır (`--aws-sigv4`), ikinci image lazım deyil. Risk: 1.0 GA 16.09.2026 — layihə gəncdir |
+| MinIO | AGPL-3.0 / kommersiya | **Yalnız müştərinin öz ödənişli lisenziyası olduqda.** Image-lər 2026-cı ilin sentyabrından anonim çəkilmir (Docker Hub 12 sentyabr, quay.io 24 sentyabr); arxivləşdirilmiş MinIO image-ləri istifadə edilmir |
+| Zenko CloudServer | Apache-2.0 | **İstifadə edilmir** (2026-09-27-dən) — image-lər uzun müddətdir yenilənmir, istifadəsi çətindir (`DECISIONS.md`) |
 | OpenBao | MPL-2.0 | Secret idarəsi (Linux Foundation) |
 | LibreOffice (headless) | MPL-2.0 | Office → PDF |
 | Ghostscript (+ GhostPCL, GhostXPS) | AGPL-3.0 | PS / EPS / PCL / PRN / XPS → PDF (ayrıca proses, dəyişdirilmədən) |

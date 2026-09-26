@@ -53,8 +53,9 @@ curl http://localhost:5080/health
 | MongoDB | `mongodb://localhost:27017` (tək node-lu replica set `rs0`) |
 | Redis | `localhost:6379` |
 | RabbitMQ | http://localhost:15672 (management) |
-| Zenko CloudServer (primary storage) | http://localhost:8000 (S3 API) |
-| Zenko CloudServer (secondary) | http://localhost:8001 (migrasiya / mirror hədəfi) |
+| RustFS (primary storage) | http://localhost:9000 (S3 API) |
+| RustFS console | http://localhost:9001/rustfs/console/ |
+| RustFS (secondary) | http://localhost:9010 (migrasiya / mirror hədəfi) |
 | Mailpit | http://localhost:8025 |
 
 ---

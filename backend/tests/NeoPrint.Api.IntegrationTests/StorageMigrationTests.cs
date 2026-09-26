@@ -390,7 +390,7 @@ public sealed class StorageMigrationTests : IClassFixture<StoragePair>, IAsyncLi
             var provider = new StorageProvider
             {
                 Name = name,
-                Type = StorageProviderType.Scality,
+                Type = StorageProviderType.RustFS,
                 Endpoint = Endpoint(store),
                 Buckets = new StorageBuckets
                 {
@@ -495,7 +495,7 @@ public sealed class StorageMigrationTests : IClassFixture<StoragePair>, IAsyncLi
     private static StoredObject ToStored(FileObject o)
         => new(o.ProviderId, o.Key, o.Sha256, o.EncryptedLength, o.PlaintextLength, o.KekId);
 
-    internal static string Endpoint(IContainer store) => $"http://{store.Hostname}:{store.GetMappedPublicPort(8000)}";
+    internal static string Endpoint(IContainer store) => $"http://{store.Hostname}:{store.GetMappedPublicPort(NeoPrintApiFixture.StoragePort)}";
 
     internal static AmazonS3Client Direct(IContainer store) => new(
         new BasicAWSCredentials(NeoPrintApiFixture.StorageAccessKey, NeoPrintApiFixture.StorageSecretKey),
@@ -599,9 +599,9 @@ public sealed class StorageMigrationTests : IClassFixture<StoragePair>, IAsyncLi
 /// </remarks>
 public sealed class StoragePair : IAsyncLifetime
 {
-    public IContainer Source { get; } = NeoPrintApiFixture.CloudServer();
+    public IContainer Source { get; } = NeoPrintApiFixture.RustFs();
 
-    public IContainer Target { get; } = NeoPrintApiFixture.CloudServer();
+    public IContainer Target { get; } = NeoPrintApiFixture.RustFs();
 
     public async Task InitializeAsync()
     {

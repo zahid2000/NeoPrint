@@ -56,7 +56,7 @@ NeoPrint — çoxfunksiyalı terminal (kiosk) printer platformasıdır. 4 hissə
 | Backend | `Microsoft.AspNetCore.SignalR.StackExchangeRedis` | MIT (Microsoft) | SignalR backplane |
 | Backend | `MongoDB.Driver` | Apache-2.0 (MongoDB Inc., rəsmi) | Rəsmi drayver, MIT alternativi yoxdur |
 | Backend | `StackExchange.Redis` | MIT | Redis klienti |
-| Backend | `AWSSDK.S3` | Apache-2.0 (Amazon, rəsmi) | S3 SigV4 imzalama (istənilən S3-uyğun provayder: Zenko CloudServer, Scality RING, MinIO, bulud S3) |
+| Backend | `AWSSDK.S3` | Apache-2.0 (Amazon, rəsmi) | S3 SigV4 imzalama (istənilən S3-uyğun provayder: RustFS, Scality RING, MinIO, bulud S3) |
 | Backend | `MailKit` | MIT | SMTP (daxili `SmtpClient` köhnəlmiş hesab olunur) |
 | Backend | `MediatR` **12.x** (pinlənmiş) | Apache-2.0 | CQRS / mediator. v13+ kommersiya lisenziyalıdır — yüksəldilmir |
 | Backend | `MassTransit` + `MassTransit.RabbitMQ` + `MassTransit.MongoDb` **8.x** (pinlənmiş) | Apache-2.0 | Mesajlaşma, transactional outbox / inbox. v9+ kommersiyadır — yüksəldilmir |
@@ -112,9 +112,9 @@ NeoPrint — çoxfunksiyalı terminal (kiosk) printer platformasıdır. 4 hissə
 | MongoDB Community Server 7 | SSPL (öz serverimizdə istifadə pulsuzdur) | Verilənlər bazası |
 | Redis **7.2.x** (pinlənmiş) | BSD-3 | Keş, lock, sessiya, SignalR backplane. 7.2 BSD lisenziyalı son xəttdir |
 | RabbitMQ 3.13 / 4.x | MPL-2.0 | Mesajlaşma |
-| Zenko CloudServer (`ghcr.io/scality/cloudserver`, teq + digest ilə pinlənir) | Apache-2.0 (Scality) | **Development və test-in primary obyekt saxlaması.** Fayl backend-i ilə davamlı. Scality RING-in açıq mənbəli S3 serveridir |
-| MinIO | AGPL-3.0 (dəyişdirilmədən, server kimi) | **Dəstəklənən alternativ provayder** (`MinIO` tipi kodda qalır). 2026-cı ilin sentyabrından image-ləri **anonim çəkilmir** (Docker Hub 12 sentyabr, quay.io 24 sentyabr) — müştəri öz lisenziyası və registry hesabı ilə işlədə bilər; development mühitində istifadə olunmur |
-| Scality Zenko CloudServer | Apache-2.0 | Development/test-də Scality S3 əvəzi |
+| RustFS (`rustfs/rustfs`, 1.0.x teqi + digest ilə pinlənir) | Apache-2.0 | **Development, test və pilotun default obyekt saxlaması.** Konteyner non-root (UID 10001) işləyir. 1.0 GA 16.09.2026-da çıxıb — layihə gəncdir (risk qeydi Bölmə 2.10-da) |
+| MinIO | AGPL-3.0 / kommersiya | **Yalnız müştərinin öz ödənişli lisenziyası olduqda** (`MinIO` tipi kodda qalır). 2026-cı ilin sentyabrından image-ləri anonim çəkilmir (Docker Hub 12 sentyabr, quay.io 24 sentyabr); arxivləşdirilmiş MinIO image-ləri istifadə edilmir. Development / test mühitində yoxdur |
+| Zenko CloudServer | Apache-2.0 (Scality) | **İstifadə edilmir** — Docker image-ləri uzun müddətdir yenilənmir, konfiqurasiyası çətindir (`docs/DECISIONS.md`) |
 | LibreOffice (headless) | MPL-2.0 | Office → PDF konvertasiyası |
 | Ghostscript (+ GhostPCL, GhostXPS) | AGPL-3.0 (ayrıca proses, dəyişdirilmədən) | PS / EPS / PCL / PRN / XPS → PDF, preview və səhifə sayı |
 | Collabora Online CODE (Faza 2) | MPL-2.0 (pulsuz edition; eyni anda istifadəçi / sənəd limitləri var) | Office mətn redaktəsi (Addım 9) |
@@ -150,7 +150,7 @@ NeoPrint — çoxfunksiyalı terminal (kiosk) printer platformasıdır. 4 hissə
 | Email | MailKit (SMTP). Development-də Mailpit konteyneri |
 | Push | FCM HTTP v1 (öz klientimiz). FCM konfiqi yoxdursa `LoggingPushSender` işləyir (xəta vermir) |
 | Admin təcili bildirişi | Admin/Operator panelində real-time (SignalR `/hubs/admin`, səsli bildiriş + brauzer Notification API) + Email + Telegram bot (`NEOPRINT_TELEGRAM_BOT_TOKEN` boşdursa söndürülür) |
-| Fayl saxlama | İstənilən S3-uyğun provayder — **aktiv provayder admin web paneldən seçilir**, aralarında migrasiya və davamlı sinxronizasiya var (Bölmə 2.10). Hamısı S3 API ilə (`AWSSDK.S3`). Development-də Zenko CloudServer. **Bütün obyektlər tətbiq səviyyəsində şifrələnir** (Bölmə 2.13) |
+| Fayl saxlama | İstənilən S3-uyğun provayder — **aktiv provayder admin web paneldən seçilir**, aralarında migrasiya və davamlı sinxronizasiya var (Bölmə 2.10). Hamısı S3 API ilə (`AWSSDK.S3`). Development, test və pilotda RustFS. **Bütün obyektlər tətbiq səviyyəsində şifrələnir** (Bölmə 2.13) |
 | Feature flag | Öz sistemimiz, kiosk / platforma / istifadəçi səviyyəsində (Bölmə 2.16) |
 
 ### 2.2 Fayllar
@@ -428,12 +428,15 @@ qeyd **məcburidir**, hamısı `audit_logs`-a düşür:
 
 ### 2.10 Fayl saxlama provayderləri (S3-uyğun)
 **Provayderlər**
-- Sistem **istənilən S3-uyğun provayderlə** işləyir. Tiplər: `Scality` (Scality RING S3 Connector və ya **Zenko CloudServer**), `MinIO`; bulud S3 da eyni adapterlə qoşulur. Hamısı `S3StorageProvider` ilə (`AWSSDK.S3`, `ForcePathStyle=true`); tipə görə yalnız kiçik fərqlər (health endpoint, checksum başlıqları) ayrıca adapterdə.
-- **Development və test:** primary — Zenko CloudServer (Apache-2.0), migrasiya / mirror hədəfi — ikinci Zenko instansiyası. **Production:** seçim müştərinindir — Scality RING, MinIO (müştərinin öz lisenziyası və registry hesabı ilə), Zenko CloudServer və ya bulud S3. Development seçimi production seçimini məhdudlaşdırmır: kod hamısı üçün eynidir.
-- MinIO image-ləri 2026-cı ilin sentyabrından anonim çəkilmir (Docker Hub 12 sentyabr, quay.io 24 sentyabr), ona görə development mühitindən çıxarılıb; `MinIO` tipi dəstəkdə qalır (`docs/DECISIONS.md`).
+- Sistem **istənilən S3-uyğun provayderlə** işləyir. Tiplər: `RustFS`, `Scality` (Scality RING S3 Connector), `MinIO`; bulud S3 da eyni adapterlə qoşulur. Hamısı `S3StorageProvider` ilə (`AWSSDK.S3`, `ForcePathStyle=true`); **provayderə xas heç bir API işlədilmir** — yalnız S3 API. Tipə görə kiçik fərqlər (hazırda yalnız readiness/health endpoint-i: RustFS `/health/ready`, MinIO `/minio/health/ready`) `StorageProviderProfile` adapterindədir və düzgünlük üçün lazım deyil.
+- **Development, test və pilot:** default — **RustFS** (Apache-2.0); migrasiya / mirror hədəfi — ikinci RustFS instansiyası. Bizim istifadə etdiyimiz bütün S3 əməliyyatları (put, get, stream, multipart, delete, list, head, copy) RustFS-ə qarşı integration testləri ilə yoxlanılır (`S3CompatibilityTests`).
+- **Production:** RustFS (pilotdan sonra qiymətləndirilir), Scality RING və ya istənilən S3-uyğun bulud provayderi. Development seçimi production seçimini məhdudlaşdırmır: kod hamısı üçün eynidir.
+- **MinIO:** yalnız müştərinin öz ödənişli lisenziyası olduqda. 2026-cı ilin sentyabrından image-ləri anonim çəkilmir (Docker Hub 12 sentyabr, quay.io 24 sentyabr); arxivləşdirilmiş MinIO image-ləri istifadə edilmir. `MinIO` tipi kodda qalır.
+- **Zenko CloudServer istifadə edilmir:** Docker image-ləri uzun müddətdir yenilənmir (Docker Hub-dakı `zenko/cloudserver` 2022-dən qalıb), konfiqurasiyası çətindir (`ENDPOINT` host allowlist-i, ayrıca metadata/data daemon-ları, curl-suz image) (`docs/DECISIONS.md`).
+- **Risk:** RustFS 1.0 GA 16.09.2026-da çıxıb, layihə gəncdir. Sığorta — S3 abstraction (kod provayderə bağlı deyil) və provayderlər arası migrasiya / mirror (aşağıda): lazım gələrsə məlumat dayanmadan başqa S3 provayderinə köçürülür.
 - `storage_providers` kolleksiyası: `Id`, `Name`, `Type`, `Endpoint`, `Region`, `UseSsl`, `AccessKey`, `SecretKey` (OpenBao-dan gələn `NEOPRINT_STORAGE_SECRETS_KEY` ilə AES-GCM şifrələnmiş), `Buckets {Files, Receipts, Temp}`, `Role (Primary/Secondary/Inactive)`, `HealthStatus`, `LastCheckedAt`.
 - Eyni anda **1 Primary** olur. Mirror rejimində əlavə **1 Secondary**.
-- İlk provayder OpenBao-dakı `NEOPRINT_STORAGE_SEED_*` dəyərləri ilə yaradılır (development-də Zenko CloudServer, `Scality` tipi). Sonrakı bütün dəyişikliklər yalnız admin paneldən (`storage.manage` icazəsi).
+- İlk provayder OpenBao-dakı `NEOPRINT_STORAGE_SEED_*` dəyərləri ilə yaradılır (development-də RustFS, `RustFS` tipi). Sonrakı bütün dəyişikliklər yalnız admin paneldən (`storage.manage` icazəsi).
 - Konfiqurasiya Redis-də keşlənir; dəyişiklik `StorageConfigChanged` event-i ilə bütün API/Worker instansiyalarına yayılır, restart tələb olunmur.
 - Hər obyekt yazısında `files.StorageProviderId` (və qəbzlərdə eyni sahə) + `Sha256` (şifrələnmiş məzmunun) saxlanılır. Oxuma həmişə obyektin qeyd olunmuş provayderindən edilir → aktiv provayder dəyişsə də köhnə fayllar əlçatan qalır.
 - Obyektlər şifrəli saxlanıldığı üçün sinxronizasiya şifrəli məzmunu olduğu kimi kopyalayır (açarlar provayderdən asılı deyil).
@@ -448,7 +451,7 @@ qeyd **məcburidir**, hamısı `audit_logs`-a düşür:
 | **Migrasiya** (birdəfəlik) | Mənbədəki bütün obyektlər hədəfə kopyalanır. Başlayan andan etibarən **dual-write** aktivdir (yeni yazılar hər ikisinə), beləliklə boşluq yaranmır. Hər obyekt ölçü + SHA-256 ilə yoxlanılır, uğurlu olanda `StorageProviderId` hədəfə dəyişir. Tamamlanıb yoxlanandan sonra "Bitəndə hədəfi Primary et" seçilibsə avtomatik keçid olur. Mənbədəki obyektlər `Storage.SourceRetentionDays` sonra admin təsdiqi ilə silinir |
 | **Mirror** (davamlı) | Primary-yə hər yazı / silmə `ObjectStored` / `ObjectDeleted` event-i ilə Secondary-yə təkrarlanır. Gecəlik (`Storage.ReconciliationCron`) `StorageReconciliationJob` hər iki tərəfin siyahısını müqayisə edib fərqləri düzəldir. Primary health check-dən keçməzsə oxumalar avtomatik Secondary-yə yönəlir və Critical incident yaranır |
 
-- İstiqamət hər iki tərəfə mümkündür (məs. Zenko → Scality RING, MinIO → Zenko və ya əksinə); sinxronizasiya məntiqi provayderin növündən asılı deyil.
+- İstiqamət hər iki tərəfə mümkündür (məs. RustFS → Scality RING, MinIO → RustFS və ya əksinə); sinxronizasiya məntiqi provayderin növündən asılı deyil.
 - `storage_sync_jobs`: `Id`, `Mode`, `SourceId`, `TargetId`, `Status (Pending/Running/Paused/Verifying/Completed/Failed/Cancelled)`, `TotalObjects`, `CopiedObjects`, `FailedObjects`, `TotalBytes`, `CopiedBytes`, `Checkpoint (bucket + son key)`, `SwitchPrimaryOnComplete`, `StartedBy`, `StartedAt`, `FinishedAt`.
 - Uğursuz obyektlər `storage_sync_failures`-a yazılır (key, xəta, cəhd sayı). 3 dəfə eksponensial retry, sonra admin paneldən "Uğursuzları təkrarla".
 - İş restart-dan sonra checkpoint-dən davam edir. Eyni anda yalnız 1 aktiv migrasiya işi ola bilər.
@@ -739,14 +742,14 @@ Paketlər yalnız Bölmə 2.0 siyahısından. Burada hər hissənin ümumi qurul
 | openbao-init | `openbao/openbao` (birdəfəlik: init, unseal, mount, AppRole, policy, dev seed) | — |
 | mongo | `mongo:7` — **tək node-lu replica set** (`--replSet rs0` + init skripti; transaction-lar və MassTransit outbox üçün məcburidir) | 27017 |
 | redis | `redis:7.2` | 6379 |
-| zenko | `ghcr.io/scality/cloudserver` (teq + digest ilə pinlənmiş) — **primary obyekt saxlaması**, fayl backend-i | 8000 |
-| zenko-secondary | eyni image — migrasiya / mirror hədəfi (Bölmə 9.8) | 8001 |
-| zenko-init | eyni image (birdəfəlik: hər iki store-da bucket-lər) | — |
+| rustfs | `rustfs/rustfs:1.0.0` (digest ilə pinlənmiş) — **primary obyekt saxlaması**, non-root (UID 10001), named volume | 9000 (S3) / 9001 (console) |
+| rustfs-secondary | eyni image — migrasiya / mirror hədəfi (Bölmə 9.8) | 9010 |
+| rustfs-init | eyni image (birdəfəlik: hər iki store-da bucket-lər, `curl --aws-sigv4` ilə) | — |
 | rabbitmq | `rabbitmq:3-management` | 5672 / 15672 |
 | mailpit | `axllent/mailpit` | 1025 / 8025 |
 | admin | local build (nginx) | 8080 (development-də `ng serve` 4200, `proxy.conf.json` ilə API-yə) |
 
-Backend secret-ləri OpenBao-dan; `api` konteyneri yalnız `BAO_ADDR`, role_id və secret_id faylını alır, `openbao-init` tamamlanandan sonra başlayır (`depends_on: condition: service_completed_successfully`). Mongo, Redis, RabbitMQ, Zenko konteynerlərinin öz development parolları `.env.openbao-seed`-dən götürülür. Faza 2-də əlavə olunur: `clamav`, `otel-collector`, `prometheus`, `grafana`, `glitchtip`, `collabora`.
+Backend secret-ləri OpenBao-dan; `api` konteyneri yalnız `BAO_ADDR`, role_id və secret_id faylını alır, `openbao-init` tamamlanandan sonra başlayır (`depends_on: condition: service_completed_successfully`). Mongo, Redis, RabbitMQ, RustFS konteynerlərinin öz development parolları `.env.openbao-seed`-dən götürülür. Faza 2-də əlavə olunur: `clamav`, `otel-collector`, `prometheus`, `grafana`, `glitchtip`, `collabora`.
 
 ---
 
@@ -1306,7 +1309,7 @@ Mənbələr:
 | Pilot hesabatı / Analitika | Bölmə 2.17 hesabatları, tarix və kiosk filtri, CSV |
 | Hüquqi sənədlər | Məxfilik siyasəti və istifadə şərtləri versiyaları (az/en/ru), yeni versiya dərc et |
 | Incident-lər | Canlı siyahı (Critical yuxarıda), acknowledge, resolve, təsirlənən ödənişlər |
-| Fayl saxlama | Provayderlər (S3-uyğun: Scality / Zenko, MinIO, bulud S3): əlavə et, redaktə, bağlantı testi, Primary / Secondary, sağlamlıq; Sinxronizasiya: yeni iş sehrbazı, canlı progress, Pause/Resume/Cancel, uğursuzlar, mənbəni təmizlə |
+| Fayl saxlama | Provayderlər (S3-uyğun: RustFS, Scality RING, MinIO, bulud S3): əlavə et, redaktə, bağlantı testi, Primary / Secondary, sağlamlıq; Sinxronizasiya: yeni iş sehrbazı, canlı progress, Pause/Resume/Cancel, uğursuzlar, mənbəni təmizlə |
 | Audit log | Filtrli siyahı, before/after diff |
 | Admin istifadəçiləri | CRUD, rollar (çoxlu seçim), kiosk əhatəsi, Telegram chat ID, aktiv/deaktiv, şifrə sıfırlama, effektiv icazələr |
 | Rollar | Rol siyahısı (istifadəçi sayı ilə), yarat / redaktə / klonla / sil; icazə checkbox matrisi, tarixçə |
@@ -1407,7 +1410,7 @@ Mənbələr:
 
 ### 9.8 Storage migrasiyası (bir S3 provayderindən digərinə)
 1. Fayl saxlama → Scality provayderini əlavə et → bağlantı testi uğurlu
-2. Sinxronizasiya → Migrasiya, mənbə cari Primary (development-də `zenko`), hədəf yeni provayder (development-də `zenko-secondary`), "Bitəndə Primary et" ✔ → Başlat
+2. Sinxronizasiya → Migrasiya, mənbə cari Primary (development-də `rustfs`), hədəf yeni provayder (development-də `rustfs-secondary`), "Bitəndə Primary et" ✔ → Başlat
 3. Dual-write aktivləşir, `StorageMigrationWorker` checkpoint-lə kopyalayır (şifrəli məzmun olduğu kimi), panel canlı progress göstərir
 4. Yoxlama (ölçü + SHA-256) → uğursuzlar təkrarlanır → Scality Primary olur
 5. `SourceRetentionDays` sonra admin "Mənbəni təmizlə" ilə mənbə obyektlərini silir (və ya mənbəni Secondary edib Mirror rejiminə keçir)
@@ -1448,7 +1451,7 @@ Mənbələr:
 ---
 
 ## 11. Test tələbləri
-- Test framework: xUnit + FluentAssertions 7.x + Testcontainers (Mongo — replica set rejimində, Redis, RabbitMQ, Zenko CloudServer — migrasiya / mirror testlərində iki instansiya). Mock kitabxanası yoxdur — əl ilə yazılmış fake-lər; MassTransit test harness.
+- Test framework: xUnit + FluentAssertions 7.x + Testcontainers (Mongo — replica set rejimində, Redis, RabbitMQ, RustFS — migrasiya / mirror testlərində iki instansiya). Mock kitabxanası yoxdur — əl ilə yazılmış fake-lər; MassTransit test harness.
 - Domain: status maşını, qiymət formulu (profil, həcm endirimi, bonus, promokod ardıcıllığı), refund hesablaması və istiqamət matrisi, wallet qaydaları — unit test (coverage ≥ 80% Domain üçün).
 - OpenBao: Testcontainers ilə OpenBao (dev rejimi) — AppRole login, KV v2 oxuma, token renew, çatışmayan açarda başlamama, rotasiya olunan secret-in restart-sız yenilənməsi.
 - Crypto: envelope encryption round-trip, chunk sırasının dəyişdirilməsinin aşkarlanması, KEK rotasiyası, səhv açarla oxuma xətası.
@@ -1509,8 +1512,8 @@ Mənbələr:
 
 **Definition of Done**
 - MVP format siyahısının hər qrupundan fayl yüklənir, səhifə sayı və preview düzgündür; söndürülmüş format qəbul edilmir; limitlər (default + kiosk override) tətbiq olunur
-- Storage-da obyektlər şifrəlidir (birbaşa storage-dan — development-də Zenko-dan — endirilən fayl oxunmur), backend vasitəsilə düzgün açılır
-- 9.8 axını: bir provayderdən digərinə (development-də `zenko` → `zenko-secondary`) migrasiya worker restart olunsa da tamamlanır, Primary avtomatik dəyişir; mirror rejimində Primary söndürüləndə oxumalar Secondary-dən davam edir
+- Storage-da obyektlər şifrəlidir (birbaşa storage-dan — development-də RustFS-dən — endirilən fayl oxunmur), backend vasitəsilə düzgün açılır
+- 9.8 axını: bir provayderdən digərinə (development-də `rustfs` → `rustfs-secondary`) migrasiya worker restart olunsa da tamamlanır, Primary avtomatik dəyişir; mirror rejimində Primary söndürüləndə oxumalar Secondary-dən davam edir
 - Kioskun qiymət profili dəyişəndə quote nəticəsi dəyişir, həcm endirimi pillələri düzgün tətbiq olunur
 
 #### Addım 3 — Kiosk: printer, çap axını, queue, lockdown, kağız sayğacı

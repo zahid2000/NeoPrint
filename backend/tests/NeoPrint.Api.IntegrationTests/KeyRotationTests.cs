@@ -23,7 +23,7 @@ namespace NeoPrint.Api.IntegrationTests;
 /// rotation: <em>can an object written with the old key still be read after
 /// the new key is in place, and when is it safe to delete the old key?</em>
 /// Getting it wrong makes every stored file unreadable, so it is tested
-/// against a real MinIO rather than reasoned about.
+/// against a real object store rather than reasoned about.
 /// </para>
 /// <para>
 /// The key ring is swapped here rather than through configuration, so the

@@ -47,7 +47,7 @@
     <PackageVersion Include="MongoDB.Driver" Version="3.12.0" />
     <!-- MIT -->
     <PackageVersion Include="StackExchange.Redis" Version="2.13.17" />
-    <!-- Apache-2.0, Amazon (official; S3 SigV4 signing for MinIO / Scality) -->
+    <!-- Apache-2.0, Amazon (official; S3 SigV4 signing for any S3-compatible store: RustFS, Scality, MinIO) -->
     <PackageVersion Include="AWSSDK.S3" Version="4.0.103.3" />
     <!-- MIT -->
     <PackageVersion Include="MailKit" Version="4.18.0" />

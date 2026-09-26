@@ -45,6 +45,7 @@ public sealed class StorageMirror
     private readonly MongoContext _context;
     private readonly StorageProviderRegistry _registry;
     private readonly S3ClientFactory _clients;
+    private readonly IHttpClientFactory _http;
     private readonly IClock _clock;
     private readonly ILogger<StorageMirror> _logger;
 
@@ -52,12 +53,14 @@ public sealed class StorageMirror
         MongoContext context,
         StorageProviderRegistry registry,
         S3ClientFactory clients,
+        IHttpClientFactory http,
         IClock clock,
         ILogger<StorageMirror> logger)
     {
         _context = context;
         _registry = registry;
         _clients = clients;
+        _http = http;
         _clock = clock;
         _logger = logger;
     }
@@ -210,8 +213,15 @@ public sealed class StorageMirror
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(TimeSpan.FromSeconds(10));
 
-                await _clients.For(provider).GetBucketLocationAsync(provider.Buckets.Files, timeout.Token)
-                    .ConfigureAwait(false);
+                problem = await CheckReadinessAsync(provider, timeout.Token).ConfigureAwait(false);
+
+                if (problem is null)
+                {
+                    // Signed, so it also proves the stored credentials and the
+                    // bucket - which no product's health endpoint does.
+                    await _clients.For(provider).GetBucketLocationAsync(provider.Buckets.Files, timeout.Token)
+                        .ConfigureAwait(false);
+                }
             }
             catch (AmazonS3Exception exception)
             {
@@ -254,6 +264,33 @@ public sealed class StorageMirror
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Asks the product's own readiness endpoint, where it has one
+    /// (<see cref="StorageProviderProfile"/>).
+    /// </summary>
+    /// <returns>What is wrong, or null when ready or when there is nothing to ask.</returns>
+    /// <remarks>
+    /// Unauthenticated, so nothing secret is sent. A connection failure is
+    /// left to throw: it is the same "cannot reach" the S3 check would report.
+    /// </remarks>
+    private async Task<string?> CheckReadinessAsync(StorageProvider provider, CancellationToken cancellationToken)
+    {
+        var uri = StorageProviderProfile.ReadinessUri(provider);
+
+        if (uri is null)
+        {
+            return null;
+        }
+
+        using var response = await _http.CreateClient(nameof(StorageMirror))
+            .GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
+
+        return response.IsSuccessStatusCode
+            ? null
+            : $"Provayder hazır olmadığını bildirir (readiness: {(int)response.StatusCode}).";
     }
 
     private static async Task<Dictionary<string, long>> ListAsync(

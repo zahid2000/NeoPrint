@@ -48,7 +48,7 @@ public sealed record StoredObject(
 /// Everything written through this interface is encrypted before it leaves the
 /// process and decrypted after it comes back (plan section 2.13). Nothing
 /// hands out a plaintext byte to the object store, and nothing hands out a
-/// pre-signed URL: an object fetched straight from MinIO is ciphertext, which
+/// pre-signed URL: an object fetched straight from the store is ciphertext, which
 /// is the property <c>StorageEncryptionTests</c> exists to keep.
 /// </para>
 /// <para>

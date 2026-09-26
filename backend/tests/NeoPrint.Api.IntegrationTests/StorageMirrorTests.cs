@@ -119,8 +119,8 @@ public sealed class StorageFailoverTests : MirrorTestBase
 
     protected override async Task<(IContainer Primary, IContainer Secondary, bool Owned)> StoresAsync()
     {
-        var primary = NeoPrintApiFixture.CloudServer();
-        var secondary = NeoPrintApiFixture.CloudServer();
+        var primary = NeoPrintApiFixture.RustFs();
+        var secondary = NeoPrintApiFixture.RustFs();
         await Task.WhenAll(primary.StartAsync(), secondary.StartAsync());
 
         return (primary, secondary, true);
@@ -217,7 +217,13 @@ public abstract class MirrorTestBase : IAsyncLifetime
     }
 
     protected StorageMirror Mirror()
-        => new(Context, Registry, _clients!, new SystemClock(), NullLogger<StorageMirror>.Instance);
+        => new(
+            Context,
+            Registry,
+            _clients!,
+            _fixture.Services.GetRequiredService<IHttpClientFactory>(),
+            new SystemClock(),
+            NullLogger<StorageMirror>.Instance);
 
     protected S3FileStorage Storage()
         => new(
@@ -241,7 +247,7 @@ public abstract class MirrorTestBase : IAsyncLifetime
             var provider = new StorageProvider
             {
                 Name = name,
-                Type = StorageProviderType.Scality,
+                Type = StorageProviderType.RustFS,
                 Endpoint = StorageMigrationTests.Endpoint(store),
                 Buckets = new StorageBuckets
                 {

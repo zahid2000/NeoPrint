@@ -5,10 +5,14 @@ namespace NeoPrint.Domain.Storage;
 /// <summary>Which S3-compatible product a provider is (plan section 2.10).</summary>
 public enum StorageProviderType
 {
+    /// <summary>MinIO, only where the customer holds a licence for it (docs/DECISIONS.md).</summary>
     MinIO = 0,
 
-    /// <summary>Scality RING S3 Connector, or Zenko CloudServer in development.</summary>
+    /// <summary>Scality RING S3 Connector.</summary>
     Scality = 1,
+
+    /// <summary>RustFS: the development, test and pilot default.</summary>
+    RustFS = 2,
 }
 
 /// <summary>
@@ -79,7 +83,7 @@ public sealed class StorageProvider : Entity
 
     public StorageProviderType Type { get; set; }
 
-    /// <summary>The S3 endpoint, e.g. <c>http://minio:9000</c>.</summary>
+    /// <summary>The S3 endpoint, e.g. <c>http://rustfs:9000</c>.</summary>
     public string Endpoint { get; set; } = string.Empty;
 
     public string Region { get; set; } = "us-east-1";

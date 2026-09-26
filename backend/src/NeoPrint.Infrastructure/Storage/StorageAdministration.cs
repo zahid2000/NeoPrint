@@ -499,7 +499,7 @@ public sealed class StorageAdministration : IStorageAdministration
 
         if (!Enum.TryParse<StorageProviderType>(input.Type, ignoreCase: true, out _))
         {
-            errors.Add(new("type", "Tip Scality və ya MinIO olmalıdır."));
+            errors.Add(new("type", "Tip RustFS, Scality və ya MinIO olmalıdır."));
         }
 
         if (!Uri.TryCreate(input.Endpoint?.Trim(), UriKind.Absolute, out var endpoint)

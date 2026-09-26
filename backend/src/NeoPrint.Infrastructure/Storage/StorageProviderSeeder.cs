@@ -14,7 +14,8 @@ namespace NeoPrint.Infrastructure.Storage;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Plan section 2.10: the installation starts with MinIO, configured from
+/// Plan section 2.10: the installation starts with one provider (RustFS in
+/// development), configured from
 /// <c>NEOPRINT_STORAGE_SEED_*</c> in OpenBao, and every later change is made
 /// from the admin panel. So this runs only when the collection is empty - it
 /// does not reconcile, because doing so would silently undo an administrator
@@ -76,11 +77,11 @@ public sealed class StorageProviderSeeder
         var provider = new StorageProvider
         {
             Id = Guid.NewGuid(),
-            Name = _configuration["NEOPRINT_STORAGE_SEED_NAME"] ?? "Local MinIO",
+            Name = _configuration["NEOPRINT_STORAGE_SEED_NAME"] ?? "Local RustFS",
             Type = Enum.TryParse<StorageProviderType>(
                 _configuration["NEOPRINT_STORAGE_SEED_TYPE"], ignoreCase: true, out var type)
                 ? type
-                : StorageProviderType.MinIO,
+                : StorageProviderType.RustFS,
             Endpoint = endpoint,
             Region = _configuration["NEOPRINT_STORAGE_SEED_REGION"] ?? "us-east-1",
             UseSsl = bool.TryParse(_configuration["NEOPRINT_STORAGE_SEED_USE_SSL"], out var ssl) && ssl,

@@ -43,7 +43,7 @@ public sealed class AdminStorageApiTests
     private object Input(string name, string? secret = NeoPrintApiFixture.StorageSecretKey) => new
     {
         name,
-        type = "Scality",
+        type = "RustFS",
         endpoint = _fixture.StorageEndpoint,
         region = "us-east-1",
         useSsl = false,

@@ -15,7 +15,7 @@ namespace NeoPrint.Api.IntegrationTests;
 /// rotation (plan sections 2.10, 2.13).
 /// </summary>
 /// <remarks>
-/// Against a real MinIO, and read back the way somebody with the storage
+/// Against a real object store, and read back the way somebody with the storage
 /// credentials would read it - not through the application. A test that
 /// checks encryption by asking the application to decrypt proves nothing.
 /// </remarks>
@@ -42,7 +42,7 @@ public sealed class StorageEncryptionTests
         var stored = await storage.WriteAsync(
             StorageBucket.Files, key, new MemoryStream(plaintext), "text/plain");
 
-        // Straight to MinIO with the storage credentials, which is what an
+        // Straight to the object store with the storage credentials, which is what an
         // operator, a backup or a stolen key would have.
         using var direct = _fixture.CreateDirectStorageClient();
         using var response = await direct.GetObjectAsync(

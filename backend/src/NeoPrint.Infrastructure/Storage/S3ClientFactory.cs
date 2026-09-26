@@ -10,11 +10,11 @@ namespace NeoPrint.Infrastructure.Storage;
 /// </summary>
 /// <remarks>
 /// <para>
-/// MinIO and Scality are both reached with the same client
+/// RustFS, Scality and MinIO are all reached with the same client
 /// (<c>ForcePathStyle = true</c>, plan section 2.10); only the endpoint and
-/// the credentials differ. Where the two products genuinely differ - health
-/// endpoints, checksum headers - the difference belongs in the code that
-/// needs it, not in a second client.
+/// the credentials differ. Where the products genuinely differ - health
+/// endpoints - the difference lives in <see cref="StorageProviderProfile"/>,
+/// not in a second client.
 /// </para>
 /// <para>
 /// Clients are cached per provider and rebuilt when the provider's document
@@ -98,7 +98,7 @@ public sealed class S3ClientFactory : IDisposable
         {
             ServiceURL = endpoint,
 
-            // Neither MinIO nor Scality serves buckets as subdomains of the
+            // None of RustFS, Scality or MinIO serves buckets as subdomains of the
             // endpoint, so virtual-host addressing would resolve to nothing.
             ForcePathStyle = true,
 

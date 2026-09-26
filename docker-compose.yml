@@ -153,88 +153,90 @@ services:
     restart: unless-stopped
 
   # -------------------------------------------------------------------------
-  # Object storage - Zenko CloudServer (Scality's open-source S3 server,
-  # Apache-2.0), plan section 2.10.
+  # Object storage - RustFS (Apache-2.0), plan section 2.10.
   #
-  # zenko is the primary; zenko-secondary is the second provider the storage
-  # sync wizard needs to show a migration or a mirror (plan section 9.8). Both
-  # run the file backend, so objects survive a restart.
+  # rustfs is the primary; rustfs-secondary is the second provider the storage
+  # sync wizard needs to show a migration or a mirror (plan section 9.8).
   #
-  # MinIO used to be the primary here. Its images stopped being anonymously
-  # pullable in September 2026, which broke a clean docker compose up; the
-  # MinIO provider type is still supported for installations that license it
-  # (docs/DECISIONS.md).
+  # The application only speaks S3 to it, so any S3-compatible store can take
+  # its place (docs/DECISIONS.md: why RustFS, and not MinIO or Zenko).
+  #
+  # The image runs as a non-root user (UID/GID 10001). The data directories are
+  # named volumes, which Docker creates owned by that user from the image, so
+  # no permissions have to be fixed by hand. A host directory bind-mounted
+  # instead has to be owned by 10001 first (docs/DEV_ENVIRONMENT.md).
   #
   # The image is pinned by digest as well as by tag, so a retagged image cannot
   # change what runs.
   # -------------------------------------------------------------------------
-  zenko:
-    image: ghcr.io/scality/cloudserver:9.1.4@sha256:41e4753c25ecaddb34967ea0c888d9966214bd06cf5fbe9d53139e370c6c38a7
-    container_name: neoprint-zenko
+  rustfs:
+    image: rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff
+    container_name: neoprint-rustfs
     environment:
-      # No connection to Scality's hosted management plane.
-      REMOTE_MANAGEMENT_DISABLE: "1"
-      # CloudServer checks the Host header against the endpoints it knows and
-      # answers InvalidURI to anything else - which, without this, is every
-      # request from another container. localhost stays known by default.
-      ENDPOINT: zenko
-    # SCALITY_ACCESS_KEY_ID and SCALITY_SECRET_ACCESS_KEY, read by the image.
+      RUSTFS_VOLUMES: /data
+      # Logs to stdout, where docker compose logs finds them, rather than to a
+      # directory inside the container.
+      RUSTFS_OBS_LOG_DIRECTORY: ""
+      # The web console, for looking at buckets in development. What it shows
+      # is ciphertext: objects are encrypted before they are written.
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+    # RUSTFS_ACCESS_KEY and RUSTFS_SECRET_KEY, read by the image.
     env_file:
       - .env.openbao-seed
     ports:
-      - "8000:8000"
+      - "9000:9000"
+      - "9001:9001"
     volumes:
-      - zenko-data:/usr/src/app/localData
-      - zenko-metadata:/usr/src/app/localMetadata
+      - rustfs-data:/data
     healthcheck:
-      # /live on the metrics port, as the image documents (Healthchecks.md).
-      # The image has node but neither curl nor wget.
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8002/live',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      # Unauthenticated; "ready" also covers the disks, not just the process.
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9000/health/ready"]
       interval: 5s
       timeout: 5s
       retries: 30
-      start_period: 10s
+      start_period: 5s
     restart: unless-stopped
 
-  zenko-secondary:
-    image: ghcr.io/scality/cloudserver:9.1.4@sha256:41e4753c25ecaddb34967ea0c888d9966214bd06cf5fbe9d53139e370c6c38a7
-    container_name: neoprint-zenko-secondary
+  rustfs-secondary:
+    image: rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff
+    container_name: neoprint-rustfs-secondary
     environment:
-      REMOTE_MANAGEMENT_DISABLE: "1"
-      ENDPOINT: zenko-secondary
+      RUSTFS_VOLUMES: /data
+      RUSTFS_OBS_LOG_DIRECTORY: ""
+      RUSTFS_CONSOLE_ENABLE: "false"
     env_file:
       - .env.openbao-seed
     ports:
-      - "8001:8000"
+      - "9010:9000"
     volumes:
-      - zenko-secondary-data:/usr/src/app/localData
-      - zenko-secondary-metadata:/usr/src/app/localMetadata
+      - rustfs-secondary-data:/data
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8002/live',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:9000/health/ready"]
       interval: 5s
       timeout: 5s
       retries: 30
-      start_period: 10s
+      start_period: 5s
     restart: unless-stopped
 
-  # Creates the buckets on both stores, then exits. Same image: it ships
-  # aws-sdk, so there is no second image to keep pullable.
-  zenko-init:
-    image: ghcr.io/scality/cloudserver:9.1.4@sha256:41e4753c25ecaddb34967ea0c888d9966214bd06cf5fbe9d53139e370c6c38a7
-    container_name: neoprint-zenko-init
+  # Creates the buckets on both stores, then exits. Same image: it ships curl,
+  # which signs S3 requests itself (--aws-sigv4), so there is no second image
+  # to keep pullable.
+  rustfs-init:
+    image: rustfs/rustfs:1.0.0@sha256:8cc9801755448b71a786705ce76692c77e14936cccd87cf2fc31842e58f4d1ff
+    container_name: neoprint-rustfs-init
     depends_on:
-      zenko:
+      rustfs:
         condition: service_healthy
-      zenko-secondary:
+      rustfs-secondary:
         condition: service_healthy
     env_file:
       - .env.openbao-seed
     environment:
-      ZENKO_ENDPOINTS: http://zenko:8000,http://zenko-secondary:8000
-      AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE: "1"
-    entrypoint: ["node", "/docker/init-buckets.js"]
+      RUSTFS_ENDPOINTS: http://rustfs:9000,http://rustfs-secondary:9000
+    entrypoint: ["sh", "/docker/init-buckets.sh"]
     volumes:
-      - ./docker/zenko/init-buckets.js:/docker/init-buckets.js:ro
+      - ./docker/rustfs/init-buckets.sh:/docker/init-buckets.sh:ro
     restart: "no"
 
   # -------------------------------------------------------------------------
@@ -270,7 +272,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      zenko-init:
+      rustfs-init:
         condition: service_completed_successfully
     # Bootstrap only. Every secret comes from OpenBao (plan section 2.13):
     # nothing below is a secret, and no NEOPRINT_* variable is set here.
@@ -326,7 +328,5 @@ volumes:
   mongo-config:
   redis-data:
   rabbitmq-data:
-  zenko-data:
-  zenko-metadata:
-  zenko-secondary-data:
-  zenko-secondary-metadata:
+  rustfs-data:
+  rustfs-secondary-data:
