@@ -25,6 +25,7 @@ using NeoPrint.Domain.Settings;
 using NeoPrint.Infrastructure.Persistence;
 using NeoPrint.Infrastructure.Seeding;
 using NeoPrint.Infrastructure.SecretStore;
+using NeoPrint.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -280,6 +281,10 @@ await using (var scope = app.Services.CreateAsyncScope())
     // Idempotent: creates only what is missing, so it is safe on every start
     // and picks up settings and flags added by a later release.
     await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
+
+    // The first storage provider, from the secret store. Only when none is
+    // configured: every later change is the administrator's (plan 2.10).
+    await scope.ServiceProvider.GetRequiredService<StorageProviderSeeder>().SeedAsync();
 
     // After seeding, because the retention windows come from settings that do
     // not exist yet on a first start (docs/DATA_RETENTION.md).

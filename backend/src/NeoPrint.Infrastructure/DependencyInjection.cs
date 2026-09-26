@@ -26,6 +26,7 @@ using NeoPrint.Crypto;
 using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Infrastructure.Admin;
 using NeoPrint.Infrastructure.Crypto;
+using NeoPrint.Infrastructure.Storage;
 using NeoPrint.Infrastructure.Devices;
 using NeoPrint.Infrastructure.Features;
 using NeoPrint.Infrastructure.Email;
@@ -78,6 +79,7 @@ public static class DependencyInjection
         AddMongo(services, configuration);
         AddRedis(services, configuration);
         AddCrypto(services);
+        AddStorage(services);
         AddMessaging(services, configuration);
         AddBackgroundJobs(services, configuration);
         AddHealthChecks(services, configuration);
@@ -162,6 +164,27 @@ public static class DependencyInjection
         services.AddSingleton<IKeyEncryptionKeyProvider, ConfigurationKeyRingProvider>();
         services.AddSingleton(provider => new EnvelopeEncryptor(
             provider.GetRequiredService<IKeyEncryptionKeyProvider>()));
+    }
+
+    /// <summary>
+    /// Object storage (plan section 2.10).
+    /// </summary>
+    /// <remarks>
+    /// The registry and the client factory are singletons: both hold a cache
+    /// that exists precisely so a read does not open a connection or run a
+    /// query. The storage itself is scoped, because it resolves the request's
+    /// own logger and correlation id.
+    /// </remarks>
+    private static void AddStorage(IServiceCollection services)
+    {
+        services.AddSingleton<StorageSecretProtector>();
+        services.AddSingleton<S3ClientFactory>();
+        services.AddSingleton<StorageProviderRegistry>();
+        services.AddSingleton<StorageConnectionTester>();
+        services.AddSingleton<KeyRewrapJob>();
+
+        services.AddScoped<StorageProviderSeeder>();
+        services.AddScoped<IFileStorage, S3FileStorage>();
     }
 
     private static void AddMessaging(IServiceCollection services, IConfiguration configuration)

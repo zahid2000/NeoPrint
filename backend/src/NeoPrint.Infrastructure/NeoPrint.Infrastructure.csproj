@@ -12,6 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup Label="Data stores">
+    <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="MongoDB.Driver" />
     <PackageReference Include="StackExchange.Redis" />
   </ItemGroup>
