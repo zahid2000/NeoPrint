@@ -291,6 +291,13 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'theme.dark': 'Qaranlıq',
     'theme.system': 'Sistemə uyğun',
 
+    'live.connected': 'Canlı',
+    'live.connectedHint': 'Məlumat serverdən avtomatik yenilənir.',
+    'live.reconnecting': 'Yenidən qoşulur',
+    'live.reconnectingHint': 'Əlaqə kəsildi, yenidən qoşulmağa çalışırıq. Ekrandakı məlumat köhnə ola bilər.',
+    'live.disconnected': 'Əlaqə yoxdur',
+    'live.disconnectedHint': 'Avtomatik yenilənmə işləmir. Səhifəni yeniləyib məlumatı təzələyin.',
+
     'error.network': 'Şəbəkə xətası. Bağlantınızı yoxlayın.',
     'error.server': 'Serverdə xəta baş verdi.',
     'error.forbidden': 'Bu əməliyyat üçün icazəniz yoxdur.',
@@ -568,6 +575,13 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'theme.light': 'Light',
     'theme.dark': 'Dark',
     'theme.system': 'Follow the system',
+
+    'live.connected': 'Live',
+    'live.connectedHint': 'The data updates from the server on its own.',
+    'live.reconnecting': 'Reconnecting',
+    'live.reconnectingHint': 'The connection dropped and is being re-established. What is on screen may be out of date.',
+    'live.disconnected': 'No connection',
+    'live.disconnectedHint': 'Automatic updates are off. Reload the page to see current data.',
 
     'error.network': 'Network error. Check your connection.',
     'error.server': 'Something went wrong on the server.',
@@ -847,6 +861,13 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'theme.light': 'Светлая',
     'theme.dark': 'Тёмная',
     'theme.system': 'Как в системе',
+
+    'live.connected': 'В реальном времени',
+    'live.connectedHint': 'Данные обновляются с сервера автоматически.',
+    'live.reconnecting': 'Переподключение',
+    'live.reconnectingHint': 'Связь прервана, восстанавливаем. Данные на экране могут быть устаревшими.',
+    'live.disconnected': 'Нет связи',
+    'live.disconnectedHint': 'Автообновление не работает. Обновите страницу, чтобы увидеть актуальные данные.',
 
     'error.network': 'Ошибка сети. Проверьте подключение.',
     'error.server': 'На сервере произошла ошибка.',

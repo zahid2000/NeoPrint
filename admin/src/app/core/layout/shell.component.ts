@@ -1,4 +1,11 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  OnDestroy,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,7 +19,9 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { Permissions } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
+import { AdminHubService } from '../realtime/admin-hub.service';
 import { ThemeService } from '../theme/theme.service';
+import { LiveIndicatorComponent } from '../../shared/live-indicator.component';
 import {
   SupportedLanguage,
   languageNames,
@@ -53,13 +62,18 @@ interface NavItem {
     MatDividerModule,
     MatTooltipModule,
     TranslatePipe,
+    LiveIndicatorComponent,
   ],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
 })
-export class ShellComponent {
+export class ShellComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly theme_ = inject(ThemeService);
+  private readonly hub = inject(AdminHubService);
+
+  /** Removes the SignalR handlers when the shell goes away. */
+  private readonly subscriptions: (() => void)[] = [];
   private readonly translate = inject(TranslateService);
 
   readonly admin = this.auth.admin;
@@ -151,6 +165,30 @@ export class ShellComponent {
 
   toggleTheme(): void {
     this.theme_.toggle();
+  }
+
+  /**
+   * Opens the real-time connection once the panel is inside the shell, which
+   * is the first point at which there is a session for the hub to authorise.
+   */
+  ngOnInit(): void {
+    void this.hub.start();
+
+    // A role change used to reach the panel only on the next token exchange,
+    // up to fifteen minutes later; a permission taken away was immediate but
+    // one granted was not (docs/DECISIONS.md). The server announces it, so
+    // the menu now follows within a second.
+    this.subscriptions.push(
+      this.hub.on('PermissionsChanged', () => void this.auth.reloadPermissions()),
+    );
+  }
+
+  ngOnDestroy(): void {
+    for (const unsubscribe of this.subscriptions) {
+      unsubscribe();
+    }
+
+    void this.hub.stop();
   }
 
   selectLanguage(language: SupportedLanguage): void {
