@@ -1,12 +1,26 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="NeoPrint.Kiosk.App"
-             RequestedThemeVariant="Dark">
+             RequestedThemeVariant="Light">
 
-    <!-- The kiosk is always dark: these screens sit in shopping centres and
-         metro stations, often in low light. -->
+    <!--
+        The kiosk is light only (docs/DESIGN_SYSTEM.md section 1): these
+        screens stand in shopping centres and metro stations where the light
+        changes through the day, and a light screen at raised contrast stays
+        readable in both, while a dark one washes out in daylight.
+    -->
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://NeoPrint.Kiosk/Styles/Tokens.axaml" />
+                <ResourceInclude Source="avares://NeoPrint.Kiosk/Styles/Icons.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://NeoPrint.Kiosk/Styles/Controls.axaml" />
     </Application.Styles>
 </Application>

@@ -1,0 +1,107 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="using:System">
+
+    <!--
+        NeoPrint design tokens for the kiosk.
+
+        Every value comes from docs/DESIGN_SYSTEM.md. Views reference them with
+        {DynamicResource ...} and never write a colour, a size or a spacing of
+        their own, so a change to the system is one edit here and the same edit
+        in admin/src/styles/tokens.css and mobile/lib/core/theme/tokens.dart.
+
+        The kiosk is light only. It stands in a shopping centre or a metro
+        station where the light changes through the day, and a light screen at
+        raised contrast stays readable in both; a dark one washes out in
+        daylight (docs/DESIGN_SYSTEM.md section 1). Contrast is therefore one
+        step up from the other two applications: text is neutral-900 on
+        neutral-0 and the primary button is brand-600.
+    -->
+
+    <!-- ===== Brand ===================================================== -->
+    <Color x:Key="Brand50Color">#EEF3FF</Color>
+    <Color x:Key="Brand100Color">#DCE6FF</Color>
+    <Color x:Key="Brand300Color">#9DB8FF</Color>
+    <Color x:Key="Brand500Color">#2B5FD9</Color>
+    <Color x:Key="Brand600Color">#1F4CBF</Color>
+    <Color x:Key="Brand700Color">#173A95</Color>
+
+    <SolidColorBrush x:Key="Brand50" Color="{StaticResource Brand50Color}" />
+    <SolidColorBrush x:Key="Brand100" Color="{StaticResource Brand100Color}" />
+    <SolidColorBrush x:Key="Brand300" Color="{StaticResource Brand300Color}" />
+    <SolidColorBrush x:Key="Brand500" Color="{StaticResource Brand500Color}" />
+    <SolidColorBrush x:Key="Brand600" Color="{StaticResource Brand600Color}" />
+    <SolidColorBrush x:Key="Brand700" Color="{StaticResource Brand700Color}" />
+
+    <!-- ===== Neutrals ================================================== -->
+    <Color x:Key="Neutral0Color">#FFFFFF</Color>
+    <Color x:Key="Neutral50Color">#F7F8FA</Color>
+    <Color x:Key="Neutral100Color">#EDEFF3</Color>
+    <Color x:Key="Neutral200Color">#DFE3E9</Color>
+    <Color x:Key="Neutral400Color">#9AA3B0</Color>
+    <Color x:Key="Neutral600Color">#5B6473</Color>
+    <Color x:Key="Neutral800Color">#2A303A</Color>
+    <Color x:Key="Neutral900Color">#171B21</Color>
+
+    <SolidColorBrush x:Key="Neutral0" Color="{StaticResource Neutral0Color}" />
+    <SolidColorBrush x:Key="Neutral50" Color="{StaticResource Neutral50Color}" />
+    <SolidColorBrush x:Key="Neutral100" Color="{StaticResource Neutral100Color}" />
+    <SolidColorBrush x:Key="Neutral200" Color="{StaticResource Neutral200Color}" />
+    <SolidColorBrush x:Key="Neutral400" Color="{StaticResource Neutral400Color}" />
+    <SolidColorBrush x:Key="Neutral600" Color="{StaticResource Neutral600Color}" />
+    <SolidColorBrush x:Key="Neutral800" Color="{StaticResource Neutral800Color}" />
+    <SolidColorBrush x:Key="Neutral900" Color="{StaticResource Neutral900Color}" />
+
+    <!-- ===== Semantic ================================================== -->
+    <SolidColorBrush x:Key="Success500" Color="#16A34A" />
+    <SolidColorBrush x:Key="SuccessBg" Color="#E8F7EE" />
+    <SolidColorBrush x:Key="Warning500" Color="#D97706" />
+    <SolidColorBrush x:Key="WarningBg" Color="#FEF3E2" />
+    <SolidColorBrush x:Key="Danger500" Color="#DC2626" />
+    <SolidColorBrush x:Key="DangerBg" Color="#FDECEC" />
+    <SolidColorBrush x:Key="Info500" Color="#0284C7" />
+    <SolidColorBrush x:Key="InfoBg" Color="#E6F4FB" />
+
+    <!-- ===== Typography ================================================
+         The kiosk column of the design system's table: a 21" screen viewed
+         from standing distance, so every size is roughly double the mobile
+         one and nothing readable goes below 20.
+    -->
+    <sys:Double x:Key="FontSizeDisplay">56</sys:Double>
+    <sys:Double x:Key="FontSizeH1">44</sys:Double>
+    <sys:Double x:Key="FontSizeH2">34</sys:Double>
+    <sys:Double x:Key="FontSizeBody">26</sys:Double>
+    <sys:Double x:Key="FontSizeBodySmall">22</sys:Double>
+    <sys:Double x:Key="FontSizeCaption">20</sys:Double>
+    <sys:Double x:Key="FontSizeButton">30</sys:Double>
+
+    <!-- ===== Spacing ===================================================
+         The 4-based scale, one step up for the kiosk: the smallest gap used
+         on this screen is 16.
+    -->
+    <sys:Double x:Key="Space4">16</sys:Double>
+    <sys:Double x:Key="Space6">24</sys:Double>
+    <sys:Double x:Key="Space8">32</sys:Double>
+    <sys:Double x:Key="Space12">48</sys:Double>
+    <sys:Double x:Key="Space16">64</sys:Double>
+
+    <Thickness x:Key="PagePadding">32</Thickness>
+    <Thickness x:Key="CardPadding">24</Thickness>
+
+    <!-- ===== Radius ==================================================== -->
+    <CornerRadius x:Key="RadiusSm">16</CornerRadius>
+    <CornerRadius x:Key="RadiusMd">20</CornerRadius>
+    <CornerRadius x:Key="RadiusLg">28</CornerRadius>
+
+    <!-- ===== Sizes =====================================================
+         A finger, not a mouse: the design system's kiosk minimum is 64, and
+         a button is at least 72 tall.
+    -->
+    <sys:Double x:Key="TouchTarget">64</sys:Double>
+    <sys:Double x:Key="ButtonHeight">72</sys:Double>
+    <sys:Double x:Key="HeaderHeight">88</sys:Double>
+    <sys:Double x:Key="FooterHeight">96</sys:Double>
+    <sys:Double x:Key="QueuePanelWidth">280</sys:Double>
+    <sys:Double x:Key="StatusChipHeight">40</sys:Double>
+
+</ResourceDictionary>

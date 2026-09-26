@@ -12,67 +12,74 @@
 
     <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
 
-        <StackPanel Grid.Column="0" Spacing="20" MaxWidth="720">
+        <StackPanel Grid.Column="0" Spacing="24" MaxWidth="760">
             <TextBlock Text="{Binding Title}"
-                       FontSize="40" FontWeight="Bold"
-                       Foreground="#F8FAFC"
+                       Classes="h1"
                        TextWrapping="Wrap" />
 
             <TextBlock Text="{Binding Instruction}"
-                       FontSize="19"
-                       Foreground="#94A3B8"
+                       Classes="muted"
                        TextWrapping="Wrap" />
 
             <!-- The code is what someone reads out over the phone, so it is the
                  largest element on the screen. -->
-            <Border Background="#111C33" CornerRadius="16" Padding="32,24" HorizontalAlignment="Left">
-                <StackPanel Spacing="10">
+            <Border Background="{DynamicResource Brand50}"
+                    BorderBrush="{DynamicResource Brand300}"
+                    BorderThickness="2"
+                    CornerRadius="{DynamicResource RadiusLg}"
+                    Padding="40,28"
+                    HorizontalAlignment="Left">
+                <StackPanel Spacing="12">
                     <TextBlock Text="{Binding DisplayCode}"
-                               FontSize="68" FontWeight="Bold"
+                               FontSize="72" FontWeight="SemiBold"
                                FontFamily="monospace"
-                               Foreground="#38BDF8" />
+                               Foreground="{DynamicResource Brand700}" />
                     <TextBlock Text="{Binding CodeExpiryText}"
-                               FontSize="15"
-                               Foreground="#64748B" />
+                               Classes="caption" />
                 </StackPanel>
             </Border>
 
-            <StackPanel Orientation="Horizontal" Spacing="10">
-                <Ellipse Width="10" Height="10" VerticalAlignment="Center"
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <Ellipse Width="12" Height="12" VerticalAlignment="Center"
                          Fill="{Binding IsBackendReachable, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
                 <TextBlock Text="{Binding ConnectionStatus}"
-                           FontSize="15"
-                           Foreground="#94A3B8"
+                           Classes="caption"
                            VerticalAlignment="Center" />
             </StackPanel>
 
-            <Border Background="#111C33" CornerRadius="12" Padding="20" HorizontalAlignment="Left">
-                <StackPanel Spacing="8">
+            <Border Classes="card" HorizontalAlignment="Left">
+                <StackPanel Spacing="12">
                     <TextBlock Text="{Binding DeviceInfoHeading}"
-                               FontSize="16" FontWeight="SemiBold"
-                               Foreground="#F8FAFC"
+                               Classes="body-small"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource Neutral900}"
                                Margin="0,0,0,4" />
 
-                    <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto">
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding HostnameLabel}"
-                                   FontSize="14" Foreground="#64748B" />
+                                   Classes="caption" />
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Hostname}"
-                                   FontSize="14" Foreground="#E2E8F0" />
+                                   Classes="caption"
+                                   Foreground="{DynamicResource Neutral800}" />
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding PlatformLabel}"
-                                   FontSize="14" Foreground="#64748B" />
+                                   Classes="caption" />
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Platform}"
-                                   FontSize="14" Foreground="#E2E8F0" />
+                                   Classes="caption"
+                                   Foreground="{DynamicResource Neutral800}" />
 
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding VersionLabel}"
-                                   FontSize="14" Foreground="#64748B" />
+                                   Classes="caption" />
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Version}"
-                                   FontSize="14" Foreground="#E2E8F0" />
+                                   Classes="caption"
+                                   Foreground="{DynamicResource Neutral800}" />
 
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding PrintersHeading}"
-                                   FontSize="14" Foreground="#64748B" />
+                                   Classes="caption" />
                         <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding PrintersSummary}"
-                                   FontSize="14" Foreground="#E2E8F0" TextWrapping="Wrap" />
+                                   Classes="caption"
+                                   Foreground="{DynamicResource Neutral800}"
+                                   TextWrapping="Wrap" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -80,8 +87,12 @@
 
         <!-- The activation QR takes the place of the kiosk QR while the kiosk
              has no code of its own yet (plan sections 2.9, 7.3). -->
-        <Border Grid.Column="1" Background="White" CornerRadius="16" Padding="20"
-                VerticalAlignment="Center" Margin="40,0,0,0"
+        <Border Grid.Column="1" Background="White"
+                BorderBrush="{DynamicResource Neutral200}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource RadiusLg}"
+                Padding="24"
+                VerticalAlignment="Center" Margin="48,0,0,0"
                 IsVisible="{Binding ActivationQr, Converter={x:Static ObjectConverters.IsNotNull}}">
             <Image Source="{Binding ActivationQr, Converter={x:Static vm:ScreenConverters.QrImage}}"
                    Width="280" Height="280" />

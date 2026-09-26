@@ -4,8 +4,10 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
+import { of } from 'rxjs';
 import { describe, beforeEach, afterEach, expect, it, vi } from 'vitest';
 
 import { RoleResponse } from '../../core/api/admin-api.service';
@@ -53,6 +55,18 @@ const roles: RoleResponse[] = [
     updatedAt: new Date().toISOString(),
   },
 ];
+
+/**
+ * Answers the confirmation dialog without rendering it.
+ *
+ * The dialog is an overlay with its own change detection; a component test
+ * cares only about what the component does once it has an answer.
+ */
+function confirmWith(result: { reason: string } | undefined): void {
+  vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+    afterClosed: () => of(result),
+  } as never);
+}
 
 /** Lets the promise chain inside a component method finish. */
 async function flushMicrotasks(): Promise<void> {
@@ -250,10 +264,14 @@ describe('RolesComponent', () => {
   it('shows the message the server sent when a delete is refused', async () => {
     component.select('22222222-2222-2222-2222-222222222222');
 
-    // jsdom has no dialogs; the component asks before a destructive action.
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    // The component asks before a destructive action; the dialog itself has
+    // its own tests, so here it is answered straight away.
+    confirmWith({ reason: 'Artıq istifadə olunmur.' });
 
     const removed = component.remove(roles[1]);
+
+    // The dialog answers on a microtask, so the delete has not been sent yet.
+    await flushMicrotasks();
 
     backend
       .expectOne('/api/admin/roles/22222222-2222-2222-2222-222222222222')
@@ -265,5 +283,18 @@ describe('RolesComponent', () => {
     await removed;
 
     expect(component.errorMessage()).toBe('Bu rol 3 istifadəçiyə verilib.');
+  });
+
+  it('sends nothing when the confirmation is cancelled', async () => {
+    component.select('22222222-2222-2222-2222-222222222222');
+
+    confirmWith(undefined);
+
+    await component.remove(roles[1]);
+
+    // A cancelled dialog has to leave the role alone; afterEach's verify()
+    // would also fail on a stray request, but this says why it matters.
+    backend.expectNone('/api/admin/roles/22222222-2222-2222-2222-222222222222');
+    expect(component.errorMessage()).toBeNull();
   });
 });

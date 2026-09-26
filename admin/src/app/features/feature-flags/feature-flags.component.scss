@@ -12,7 +12,7 @@
 
     h1 {
       margin: 0;
-      font-size: 1.5rem;
+      font-size: var(--font-size-h1);
     }
   }
 
@@ -28,13 +28,13 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--mat-sys-error-container);
     color: var(--mat-sys-on-error-container);
   }
 
   &__dirty {
-    font-size: 1rem;
+    font-size: var(--font-size-body);
     width: 1rem;
     height: 1rem;
     margin-left: 0.5rem;
@@ -52,7 +52,7 @@
 
   &__subtitle {
     margin: 1rem 0 0.5rem;
-    font-size: 1rem;
+    font-size: var(--font-size-body);
   }
 
   &__kiosks {
@@ -67,7 +67,7 @@
     gap: 0.15rem;
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--mat-sys-outline-variant);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--mat-sys-surface-container);
     color: inherit;
     font: inherit;
@@ -88,7 +88,7 @@
   }
 
   &__kiosk-state {
-    font-size: 0.75rem;
+    font-size: var(--font-size-caption);
     opacity: 0.8;
   }
 

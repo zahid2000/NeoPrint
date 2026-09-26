@@ -4,7 +4,7 @@
 1. `docs/NeoPrint-PLAN.md` — layihənin əsas spesifikasiyası.
 2. `docs/ARCHITECTURE_RULES.md`
 3. `docs/STATE_MACHINES.md`
-4. Digər qayda sənədləri: `IDEMPOTENCY.md`, `PAYMENT_FLOWS.md`, `FAILURE_RECOVERY.md`, `OFFLINE_BEHAVIOR.md`, `SECURITY_THREAT_MODEL.md`, `DOMAIN_RULES.md`, `DATA_RETENTION.md`, `OBSERVABILITY.md`
+4. Digər qayda sənədləri: `IDEMPOTENCY.md`, `PAYMENT_FLOWS.md`, `FAILURE_RECOVERY.md`, `OFFLINE_BEHAVIOR.md`, `SECURITY_THREAT_MODEL.md`, `DOMAIN_RULES.md`, `DATA_RETENTION.md`, `OBSERVABILITY.md`, `DESIGN_SYSTEM.md`
 5. `docs/CLAUDE_CODE_EXECUTION_RULES.md`
 6. Mövcud repo kodu
 
@@ -38,6 +38,13 @@ Hər sessiyanın əvvəlində oxu: plandakı təlimat bölməsi, Bölmə 2.0 (ki
 ## Kitabxanalar (Plan Bölmə 2.0)
 - Yalnız təsdiqlənmiş siyahıdan, versiyalar pinli. MediatR 12.x, MassTransit 8.x, FluentAssertions 7.x — major yüksəltmə yoxdur.
 - Yeni paket lazımdırsa: əvvəl öz kodunla həll et; mümkün deyilsə dayan və təsdiq istə (ad, lisenziya, səbəb). Hər asılılıq `docs/THIRD_PARTY.md`-də.
+
+## Dizayn (`docs/DESIGN_SYSTEM.md` məcburidir)
+- **Hardcoded rəng, şrift ölçüsü və boşluq qadağandır.** Hər dəyər token faylından gəlir: `admin/src/styles/tokens.css`, `mobile/lib/core/theme/tokens.dart`, `desktop/src/NeoPrint.Kiosk/Styles/Tokens.axaml`. Token dəyişəndə üçü də yenilənir.
+- Hər yeni ekran və komponent `DESIGN_SYSTEM.md`-ə uyğun qurulur — sonradan "gözəlləşdirmə" mərhələsi yoxdur.
+- Yeni komponent yaradılanda əvvəl `DESIGN_SYSTEM.md`-ə qayda əlavə olunur, sonra kod yazılır.
+- Status həmişə rəng + ikon + mətn ilə verilir; ekranda bir primary düymə olur; boş siyahı üçün empty state yazılır; hər xəta nə baş verdiyini, nəyə təsir etdiyini və indi nə etmək lazım olduğunu deyir.
+- Mətn koda yazılmır — lokalizasiya fayllarında (az default, en, ru).
 
 ## Təhlükəsizlik
 - Real secret repo-ya yazılmır; backend secret-ləri OpenBao-dan. `.env*`, `.openbao/` gitignore-dadır.

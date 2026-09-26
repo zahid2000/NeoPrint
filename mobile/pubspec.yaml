@@ -42,3 +42,18 @@ flutter:
   # Localization is generated from lib/l10n; az is the template and the
   # default (plan section 2.1).
   generate: true
+
+  # Inter, the family the design system names (docs/DESIGN_SYSTEM.md section
+  # 2). Bundled rather than fetched, so the application looks the same on
+  # every device and needs no network to render text. One variable file
+  # declared at three weights: the asset is bundled once, and the loader
+  # applies the wght axis. Licence: SIL OFL 1.1, assets/fonts/OFL.txt.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-Variable.ttf
+          weight: 600

@@ -10,11 +10,27 @@
          new payment, because a payment the backend has not confirmed must
          never be shown as successful (docs/OFFLINE_BEHAVIOR.md). -->
 
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16" MaxWidth="620">
-        <TextBlock Text="{Binding DegradedTitle}" FontSize="40" FontWeight="Bold"
-                   Foreground="#F8FAFC" HorizontalAlignment="Center" TextWrapping="Wrap" />
-        <TextBlock Text="{Binding DegradedBody}" FontSize="19"
-                   Foreground="#94A3B8" HorizontalAlignment="Center"
-                   TextAlignment="Center" TextWrapping="Wrap" />
+    <!-- A stopped kiosk says so with a large icon as well as the text: from
+         standing distance the icon is what is read first
+         (docs/DESIGN_SYSTEM.md section 5.1). -->
+
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                Spacing="24" MaxWidth="720">
+        <Border Width="120" Height="120"
+                Background="{DynamicResource WarningBg}"
+                CornerRadius="60"
+                HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconWarning}"
+                      Width="60" Height="60"
+                      Foreground="{DynamicResource Warning500}" />
+        </Border>
+
+        <TextBlock Text="{Binding DegradedTitle}" Classes="h1"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" />
+
+        <TextBlock Text="{Binding DegradedBody}" Classes="muted"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" />
     </StackPanel>
 </UserControl>

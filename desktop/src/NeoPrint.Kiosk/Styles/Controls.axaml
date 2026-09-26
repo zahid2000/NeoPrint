@@ -1,0 +1,92 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        The kiosk's control defaults, built from Tokens.axaml.
+
+        Every screen gets these without asking, which is what keeps a button
+        added later the same size as the ones already there. A view that needs
+        something different sets a class, not a literal
+        (docs/DESIGN_SYSTEM.md section 8).
+    -->
+
+    <!-- Buttons: a finger, not a mouse. Minimum 72 tall, 64 wide. -->
+    <Style Selector="Button">
+        <Setter Property="MinHeight" Value="{DynamicResource ButtonHeight}" />
+        <Setter Property="MinWidth" Value="{DynamicResource TouchTarget}" />
+        <Setter Property="Padding" Value="32,0" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeButton}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Background" Value="{DynamicResource Neutral100}" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
+    </Style>
+
+    <!-- The one primary action on a screen. -->
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="{DynamicResource Brand600}" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral0}" />
+    </Style>
+
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brand700}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource Neutral0}" />
+    </Style>
+
+    <!-- Secondary: outlined, so the primary stays the only filled one. -->
+    <Style Selector="Button.secondary">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <!-- Text, at the design system's kiosk sizes. -->
+    <Style Selector="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource Neutral800}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    </Style>
+
+    <Style Selector="TextBlock.display">
+        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeDisplay}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="TextBlock.h1">
+        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeH1}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="TextBlock.h2">
+        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeH2}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="TextBlock.body-small">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
+    </Style>
+
+    <Style Selector="TextBlock.caption">
+        <Setter Property="Foreground" Value="{DynamicResource Neutral600}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+    </Style>
+
+    <Style Selector="TextBlock.muted">
+        <Setter Property="Foreground" Value="{DynamicResource Neutral600}" />
+    </Style>
+
+    <!-- A card, as the design system defines one: section 4. -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}" />
+        <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
+    </Style>
+
+</Styles>

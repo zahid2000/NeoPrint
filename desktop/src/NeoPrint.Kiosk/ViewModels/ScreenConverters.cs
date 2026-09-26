@@ -4,6 +4,8 @@ using Avalonia.Data.Converters;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 
+using NeoPrint.Kiosk.Styles;
+
 using QRCoder;
 
 namespace NeoPrint.Kiosk.ViewModels;
@@ -30,10 +32,13 @@ public static class ScreenConverters
     public static readonly IValueConverter IsOffline = Is(KioskScreen.Offline);
 
     /// <summary>Green while a job is printing, grey while it waits.</summary>
+    /// <remarks>
+    /// The colours come from the design tokens rather than from literals here,
+    /// so the dot matches the status chips on every other screen
+    /// (docs/DESIGN_SYSTEM.md section 1).
+    /// </remarks>
     public static readonly IValueConverter PrintingBrush = new FuncValueConverter<bool, IBrush>(
-        isPrinting => isPrinting
-            ? new SolidColorBrush(Color.Parse("#22C55E"))
-            : new SolidColorBrush(Color.Parse("#475569")));
+        isPrinting => isPrinting ? KioskTokens.Success : KioskTokens.Idle);
 
     /// <summary>
     /// Renders a QR payload to an image.

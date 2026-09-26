@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/router/app_router.dart';
+import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/widgets/auth_scaffold.dart';
+import '../../shared/widgets/neo_banner.dart';
+import '../../shared/widgets/neo_primary_button.dart';
 import 'auth_validators.dart';
 
 /// Sign-in (plan section 8.2).
@@ -42,145 +46,117 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final state = ref.watch(authControllerProvider);
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'NeoPrint',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
+    return AuthScaffold(
+      title: l10n.authSignIn,
+      subtitle: l10n.authSignInSubtitle,
+      content: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (state.errorMessage != null) ...[
+              NeoBanner.error(message: state.errorMessage!),
+              const SizedBox(height: Spacing.x4),
+            ],
 
-                    if (state.errorMessage != null) ...[
-                      _ErrorBanner(message: state.errorMessage!),
-                      const SizedBox(height: 16),
-                    ],
+            TextFormField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              autofillHints: const [AutofillHints.email],
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(labelText: l10n.authEmail),
+              validator: (value) => AuthValidators.email(value, l10n),
+            ),
+            const SizedBox(height: Spacing.x4),
 
-                    TextFormField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      autofillHints: const [AutofillHints.email],
-                      textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        labelText: l10n.authEmail,
-                        prefixIcon: const Icon(Icons.mail_outline),
-                      ),
-                      validator: (value) => AuthValidators.email(value, l10n),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _password,
-                      obscureText: _obscurePassword,
-                      autofillHints: const [AutofillHints.password],
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
-                      decoration: InputDecoration(
-                        labelText: l10n.authPassword,
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                        ),
-                      ),
-                      // Only presence is checked here: the length rule belongs
-                      // on registration, and applying it at sign-in would lock
-                      // out anyone whose password predates it.
-                      validator: (value) =>
-                          AuthValidators.passwordPresent(value, l10n),
-                    ),
-                    const SizedBox(height: 24),
-
-                    FilledButton(
-                      onPressed: state.isBusy ? null : _submit,
-                      child: state.isBusy
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(l10n.authSignIn),
-                    ),
-                    const SizedBox(height: 16),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(l10n.authNoAccount),
-                        TextButton(
-                          onPressed: state.isBusy
-                              ? null
-                              : () {
-                                  ref
-                                      .read(authControllerProvider.notifier)
-                                      .clearError();
-                                  context.go(Routes.register);
-                                },
-                          child: Text(l10n.authSignUp),
-                        ),
-                      ],
-                    ),
-                  ],
+            TextFormField(
+              controller: _password,
+              obscureText: _obscurePassword,
+              autofillHints: const [AutofillHints.password],
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _submit(),
+              decoration: InputDecoration(
+                labelText: l10n.authPassword,
+                suffixIcon: _RevealButton(
+                  obscured: _obscurePassword,
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
+              // Only presence is checked here: the length rule belongs on
+              // registration, and applying it at sign-in would lock out anyone
+              // whose password predates it.
+              validator: (value) => AuthValidators.passwordPresent(value, l10n),
             ),
-          ),
+            const SizedBox(height: Spacing.x6),
+
+            NeoPrimaryButton(
+              label: l10n.authSignIn,
+              busy: state.isBusy,
+              onPressed: _submit,
+            ),
+          ],
         ),
+      ),
+      footer: _SignUpPrompt(busy: state.isBusy),
+    );
+  }
+}
+
+/// Shows or hides the password. Labelled, because an eye on its own says
+/// nothing to a screen reader.
+class _RevealButton extends StatelessWidget {
+  const _RevealButton({required this.obscured, required this.onPressed});
+
+  final bool obscured;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return IconButton(
+      onPressed: onPressed,
+      tooltip: obscured ? l10n.authPassword : l10n.authPassword,
+      icon: Icon(
+        obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+        color: context.tokens.neutral600,
       ),
     );
   }
 }
 
-/// An error from the server, shown above the form.
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
+class _SignUpPrompt extends ConsumerWidget {
+  const _SignUpPrompt({required this.busy});
 
-  final String message;
+  final bool busy;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, color: theme.colorScheme.onErrorContainer),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: theme.colorScheme.onErrorContainer),
-            ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            l10n.authNoAccount,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-        ],
-      ),
+        ),
+        TextButton(
+          onPressed: busy
+              ? null
+              : () {
+                  ref.read(authControllerProvider.notifier).clearError();
+                  context.go(Routes.register);
+                },
+          child: Text(l10n.authSignUp),
+        ),
+      ],
     );
   }
 }

@@ -5,7 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/auth_models.dart';
 import '../../core/router/app_router.dart';
+import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/widgets/auth_scaffold.dart';
+import '../../shared/widgets/neo_banner.dart';
+import '../../shared/widgets/neo_primary_button.dart';
 import 'auth_validators.dart';
 
 /// Registration (plan section 8.2).
@@ -76,159 +80,205 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final state = ref.watch(authControllerProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.authSignUp)),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (state.errorMessage != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.errorContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          state.errorMessage!,
-                          style: TextStyle(
-                            color: theme.colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    TextFormField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      autocorrect: false,
-                      textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        labelText: l10n.authEmail,
-                        prefixIcon: const Icon(Icons.mail_outline),
-                      ),
-                      validator: (value) => AuthValidators.email(value, l10n),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _password,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        labelText: l10n.authPassword,
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
-                          onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword,
-                          ),
-                        ),
-                      ),
-                      validator: (value) =>
-                          AuthValidators.password(value, l10n),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _fullName,
-                      textCapitalization: TextCapitalization.words,
-                      textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        labelText: l10n.authFullName,
-                        prefixIcon: const Icon(Icons.person_outline),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _referralCode,
-                      textCapitalization: TextCapitalization.characters,
-                      textInputAction: TextInputAction.done,
-                      decoration: InputDecoration(
-                        labelText: l10n.authReferralCode,
-                        prefixIcon: const Icon(Icons.card_giftcard_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Plan section 2.8: both documents are accepted at
-                    // registration, so the button cannot be reached without
-                    // them.
-                    CheckboxListTile(
-                      value: _acceptedPrivacy,
-                      onChanged: (value) =>
-                          setState(() => _acceptedPrivacy = value ?? false),
-                      title: Text(l10n.consentsAcceptPrivacy),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    CheckboxListTile(
-                      value: _acceptedTerms,
-                      onChanged: (value) =>
-                          setState(() => _acceptedTerms = value ?? false),
-                      title: Text(l10n.consentsAcceptTerms),
-                      subtitle: Text(
-                        // Plan section 2.14: the wallet is not refundable, and
-                        // that is said before the account exists, not after.
-                        l10n.consentsWalletWarning,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    const SizedBox(height: 16),
-
-                    FilledButton(
-                      onPressed: (state.isBusy || !_canSubmit) ? null : _submit,
-                      child: state.isBusy
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(l10n.authSignUp),
-                    ),
-                    const SizedBox(height: 8),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(l10n.authHaveAccount),
-                        TextButton(
-                          onPressed: state.isBusy
-                              ? null
-                              : () {
-                                  ref
-                                      .read(authControllerProvider.notifier)
-                                      .clearError();
-                                  context.go(Routes.signIn);
-                                },
-                          child: Text(l10n.authSignIn),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+    return AuthScaffold(
+      title: l10n.authSignUp,
+      subtitle: l10n.authSignUpSubtitle,
+      showBrand: false,
+      appBar: AppBar(
+        leading: BackButton(
+          onPressed: () {
+            ref.read(authControllerProvider.notifier).clearError();
+            context.go(Routes.signIn);
+          },
         ),
       ),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (state.errorMessage != null) ...[
+              NeoBanner.error(message: state.errorMessage!),
+              const SizedBox(height: Spacing.x4),
+            ],
+
+            TextFormField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+              autofillHints: const [AutofillHints.email],
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(labelText: l10n.authEmail),
+              validator: (value) => AuthValidators.email(value, l10n),
+            ),
+            const SizedBox(height: Spacing.x4),
+
+            TextFormField(
+              controller: _password,
+              obscureText: _obscurePassword,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: l10n.authPassword,
+                // The rule is stated before it is broken, not after.
+                helperText: l10n.authPasswordHint,
+                suffixIcon: IconButton(
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: context.tokens.neutral600,
+                  ),
+                ),
+              ),
+              validator: (value) => AuthValidators.password(value, l10n),
+            ),
+            const SizedBox(height: Spacing.x4),
+
+            TextFormField(
+              controller: _fullName,
+              textCapitalization: TextCapitalization.words,
+              autofillHints: const [AutofillHints.name],
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: l10n.authFullName,
+                helperText: l10n.authOptional,
+              ),
+            ),
+            const SizedBox(height: Spacing.x4),
+
+            TextFormField(
+              controller: _referralCode,
+              textCapitalization: TextCapitalization.characters,
+              textInputAction: TextInputAction.done,
+              decoration: InputDecoration(labelText: l10n.authReferralCode),
+            ),
+            const SizedBox(height: Spacing.x6),
+
+            // Plan section 2.8: both documents are accepted at registration,
+            // so the button cannot be reached without them.
+            _ConsentTile(
+              value: _acceptedPrivacy,
+              onChanged: (value) => setState(() => _acceptedPrivacy = value),
+              title: l10n.consentsAcceptPrivacy,
+            ),
+            const SizedBox(height: Spacing.x2),
+            _ConsentTile(
+              value: _acceptedTerms,
+              onChanged: (value) => setState(() => _acceptedTerms = value),
+              title: l10n.consentsAcceptTerms,
+              // Plan section 2.14: the wallet is not refundable, and that is
+              // said before the account exists, not after.
+              subtitle: l10n.consentsWalletWarning,
+            ),
+            const SizedBox(height: Spacing.x6),
+
+            NeoPrimaryButton(
+              label: l10n.authSignUp,
+              busy: state.isBusy,
+              onPressed: _canSubmit ? _submit : null,
+            ),
+          ],
+        ),
+      ),
+      footer: _SignInPrompt(busy: state.isBusy),
+    );
+  }
+}
+
+/// One consent: a tick, what is being accepted, and why it matters.
+///
+/// The whole row is the target, not just the box: 48dp is the minimum and a
+/// checkbox on its own is smaller than that
+/// (docs/DESIGN_SYSTEM.md section 3).
+class _ConsentTile extends StatelessWidget {
+  const _ConsentTile({
+    required this.value,
+    required this.onChanged,
+    required this.title,
+    this.subtitle,
+  });
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final text = Theme.of(context).textTheme;
+
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(Radii.md),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Spacing.x2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox.square(
+              dimension: 24,
+              child: Checkbox(
+                value: value,
+                onChanged: (next) => onChanged(next ?? false),
+              ),
+            ),
+            const SizedBox(width: Spacing.x3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: text.bodyLarge),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: Spacing.x1),
+                    Text(
+                      subtitle!,
+                      style: text.bodySmall?.copyWith(color: tokens.neutral600),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SignInPrompt extends ConsumerWidget {
+  const _SignInPrompt({required this.busy});
+
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            l10n.authHaveAccount,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+        TextButton(
+          onPressed: busy
+              ? null
+              : () {
+                  ref.read(authControllerProvider.notifier).clearError();
+                  context.go(Routes.signIn);
+                },
+          child: Text(l10n.authSignIn),
+        ),
+      ],
     );
   }
 }

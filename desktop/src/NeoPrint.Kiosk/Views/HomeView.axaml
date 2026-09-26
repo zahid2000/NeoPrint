@@ -10,23 +10,50 @@
         size - this is a finger on a kiosk, not a mouse.
     -->
 
-    <StackPanel VerticalAlignment="Center" Spacing="28" MaxWidth="820">
-        <TextBlock Text="{Binding HomeTitle}" FontSize="44" FontWeight="Bold"
-                   Foreground="#F8FAFC" />
+    <StackPanel VerticalAlignment="Center" Spacing="24" MaxWidth="860">
+        <TextBlock Text="{Binding HomeTitle}" Classes="h1" />
 
-        <Button Content="{Binding PrintFromUsbText}"
-                MinHeight="96" FontSize="24" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Left" Padding="28,0"
-                IsEnabled="False" />
+        <!-- Each action is a card-sized button with its own icon: three
+             identical grey bars would read as one block from standing
+             distance (docs/DESIGN_SYSTEM.md section 5.1). -->
+        <Button Classes="primary"
+                MinHeight="112" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Left" Padding="32,0"
+                IsEnabled="False">
+            <StackPanel Orientation="Horizontal" Spacing="24">
+                <PathIcon Data="{StaticResource IconUsb}" Width="40" Height="40" />
+                <TextBlock Text="{Binding PrintFromUsbText}"
+                           FontSize="{DynamicResource FontSizeButton}"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource Neutral0}"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
 
-        <Button Content="{Binding ScanMyQrText}"
-                MinHeight="96" FontSize="24" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Left" Padding="28,0"
-                IsEnabled="False" />
+        <Button Classes="secondary"
+                MinHeight="112" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Left" Padding="32,0"
+                IsEnabled="False">
+            <StackPanel Orientation="Horizontal" Spacing="24">
+                <PathIcon Data="{StaticResource IconQrCode}" Width="40" Height="40" />
+                <TextBlock Text="{Binding ScanMyQrText}"
+                           FontSize="{DynamicResource FontSizeButton}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
 
-        <Button Content="{Binding CancelByCodeText}"
-                MinHeight="96" FontSize="24" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Left" Padding="28,0"
-                IsEnabled="False" />
+        <Button Classes="secondary"
+                MinHeight="112" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Left" Padding="32,0"
+                IsEnabled="False">
+            <StackPanel Orientation="Horizontal" Spacing="24">
+                <PathIcon Data="{StaticResource IconInfo}" Width="40" Height="40" />
+                <TextBlock Text="{Binding CancelByCodeText}"
+                           FontSize="{DynamicResource FontSizeButton}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
     </StackPanel>
 </UserControl>

@@ -108,3 +108,22 @@ Hər ikisi yalnız build / lint zamanı oxunur, brauzer bundle-ına düşmür.
 |---|---|---|---|
 | `caniuse-lite` | CC-BY-4.0 | "caniuse.com" — Alexis Deveria və töhfə verənlər | `browserslist` üçün brauzer dəstək məlumatı (Angular build) |
 | `spdx-exceptions` | CC-BY-3.0 | Linux Foundation (SPDX Workgroup) | SPDX lisenziya istisna identifikatorlarının rəsmi siyahısı (lint alətləri) |
+
+---
+
+## Şrift faylları (paket deyil, repo-da daşınan asılılıq)
+
+Paket meneceri ilə deyil, birbaşa fayl kimi daşınır: bu, heç bir npm/pub
+asılılığı əlavə etmir və runtime-da üçüncü tərəfə sorğu getmir (offline şəbəkədə
+də işləyir, istifadəçinin IP-si CDN-ə getmir).
+
+| Fayl | Lisenziya | Müəllif / mənbə | İstifadə |
+|---|---|---|---|
+| `admin/public/fonts/inter-{latin,latin-ext,cyrillic}.woff2` | SIL OFL 1.1 | The Inter Project Authors (rsms) | Admin və operator panelinin şrifti. Subset: latin (əsas), latin-ext (`ə`, `ğ`, `ş` — Azərbaycan hərfləri), cyrillic (`ru` lokalı). Cəmi 152 KB |
+| `admin/public/fonts/material-symbols-rounded.woff2` | Apache-2.0 | Google | Panelin ikonları. Yalnız istifadə olunan 62 ikona subset edilib — 8.7 KB (tam variabel şrift ~3.5 MB-dır) |
+| `mobile/assets/fonts/Inter-Variable.ttf` | SIL OFL 1.1 | The Inter Project Authors (rsms) | Mobil tətbiqin şrifti. Variabel fayl, `wght` oxu 400/500/600 üçün. Lisenziya mətni yanındadır: `mobile/assets/fonts/OFL.txt` |
+
+Kiosk Inter-i `Avalonia.Fonts.Inter` paketi ilə alır (yuxarıdakı cədvəldə), ona
+görə orada ayrıca fayl yoxdur. Kioskun ikonları isə `StreamGeometry` kimi
+`desktop/src/NeoPrint.Kiosk/Styles/Icons.axaml`-dadır (Material Symbols
+konturları, Apache-2.0) — kiosk maşınına şrift quraşdırmamaq üçün.

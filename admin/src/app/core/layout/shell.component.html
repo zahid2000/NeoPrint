@@ -43,6 +43,16 @@
 
       <span class="shell__spacer"></span>
 
+      <button
+        mat-icon-button
+        type="button"
+        [attr.aria-label]="'theme.toggle' | translate"
+        [matTooltip]="themeTooltip() | translate"
+        (click)="toggleTheme()"
+      >
+        <mat-icon>{{ theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      </button>
+
       <button mat-button type="button" [matMenuTriggerFor]="languageMenu">
         <mat-icon>language</mat-icon>
         {{ currentLanguage().toUpperCase() }}

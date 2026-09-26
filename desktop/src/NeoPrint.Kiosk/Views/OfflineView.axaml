@@ -4,15 +4,31 @@
              x:Class="NeoPrint.Kiosk.Views.OfflineView"
              x:DataType="vm:MainWindowViewModel">
 
-    <!-- Screen 16 (plan section 7.3): no connection, or the cached configuration
-         has gone stale, so no new order can be
-         taken. The kiosk resumes on its own when the link returns. -->
+    <!-- Screen 16 (plan section 7.3): no connection, or the cached
+         configuration has gone stale, so no new order can be taken. The kiosk
+         resumes on its own when the link returns. -->
 
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16" MaxWidth="620">
-        <TextBlock Text="{Binding OfflineTitle}" FontSize="40" FontWeight="Bold"
-                   Foreground="#F8FAFC" HorizontalAlignment="Center" TextWrapping="Wrap" />
-        <TextBlock Text="{Binding OfflineBody}" FontSize="19"
-                   Foreground="#94A3B8" HorizontalAlignment="Center"
-                   TextAlignment="Center" TextWrapping="Wrap" />
+    <!-- A stopped kiosk says so with a large icon as well as the text: from
+         standing distance the icon is what is read first
+         (docs/DESIGN_SYSTEM.md section 5.1). -->
+
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                Spacing="24" MaxWidth="720">
+        <Border Width="120" Height="120"
+                Background="{DynamicResource DangerBg}"
+                CornerRadius="60"
+                HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconOffline}"
+                      Width="60" Height="60"
+                      Foreground="{DynamicResource Danger500}" />
+        </Border>
+
+        <TextBlock Text="{Binding OfflineTitle}" Classes="h1"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" />
+
+        <TextBlock Text="{Binding OfflineBody}" Classes="muted"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" />
     </StackPanel>
 </UserControl>

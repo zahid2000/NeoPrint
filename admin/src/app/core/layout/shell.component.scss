@@ -2,16 +2,16 @@
   height: 100vh;
 
   &__sidenav {
-    width: 260px;
+    width: var(--sidebar-width);
   }
 
   &__brand {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 20px 20px 16px;
-    font-size: 20px;
-    font-weight: 600;
+    gap: var(--space-3);
+    padding: var(--space-6) var(--space-6) var(--space-4);
+    font-size: var(--font-size-h2);
+    font-weight: var(--font-weight-semibold);
   }
 
   &__toolbar {
@@ -21,8 +21,8 @@
   }
 
   &__title {
-    margin-left: 8px;
-    font-size: 18px;
+    margin-left: var(--space-2);
+    font-size: var(--font-size-body);
   }
 
   &__spacer {
@@ -33,41 +33,37 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    margin-right: 8px;
+    width: var(--space-8);
+    height: var(--space-8);
+    margin-right: var(--space-2);
     border-radius: 50%;
     background: var(--mat-sys-primary-container);
     color: var(--mat-sys-on-primary-container);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   &__account {
-    padding: 12px 16px;
+    padding: var(--space-3) var(--space-4);
 
     &-email {
-      font-weight: 500;
+      font-weight: var(--font-weight-medium);
     }
 
     &-roles {
-      font-size: 12px;
+      font-size: var(--font-size-caption);
       opacity: 0.7;
     }
   }
 
   &__content {
-    padding: 24px;
+    padding: var(--space-6);
   }
 }
 
 // A phone or an operator's tablet: the sidebar would leave no room for the
 // content, so it collapses to the menu button (plan section 8A.1).
 @media (max-width: 900px) {
-  .shell__sidenav {
-    width: 220px;
-  }
-
   .shell__content {
-    padding: 16px;
+    padding: var(--space-4);
   }
 }

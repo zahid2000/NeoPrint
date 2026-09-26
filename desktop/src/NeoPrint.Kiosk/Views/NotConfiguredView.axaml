@@ -7,11 +7,27 @@
     <!-- Screen 14 (plan section 7.3): activated, but no printer has been
          selected from the admin panel yet, so no order can be taken. -->
 
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="16" MaxWidth="620">
-        <TextBlock Text="{Binding NotConfiguredTitle}" FontSize="40" FontWeight="Bold"
-                   Foreground="#F8FAFC" HorizontalAlignment="Center" TextWrapping="Wrap" />
-        <TextBlock Text="{Binding NotConfiguredBody}" FontSize="19"
-                   Foreground="#94A3B8" HorizontalAlignment="Center"
-                   TextAlignment="Center" TextWrapping="Wrap" />
+    <!-- A stopped kiosk says so with a large icon as well as the text: from
+         standing distance the icon is what is read first
+         (docs/DESIGN_SYSTEM.md section 5.1). -->
+
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                Spacing="24" MaxWidth="720">
+        <Border Width="120" Height="120"
+                Background="{DynamicResource InfoBg}"
+                CornerRadius="60"
+                HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconSettings}"
+                      Width="60" Height="60"
+                      Foreground="{DynamicResource Info500}" />
+        </Border>
+
+        <TextBlock Text="{Binding NotConfiguredTitle}" Classes="h1"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" />
+
+        <TextBlock Text="{Binding NotConfiguredBody}" Classes="muted"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" />
     </StackPanel>
 </UserControl>

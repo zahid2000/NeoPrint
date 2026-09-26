@@ -3,7 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/widgets/auth_scaffold.dart';
+import '../../shared/widgets/neo_banner.dart';
+import '../../shared/widgets/neo_primary_button.dart';
 import 'auth_validators.dart';
 
 /// Email confirmation (plan sections 2.8, 8.2).
@@ -38,106 +42,87 @@ class _ConfirmEmailScreenState extends ConsumerState<ConfirmEmailScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
     final state = ref.watch(authControllerProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.confirmEmailTitle)),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Icon(
-                      Icons.mark_email_unread_outlined,
-                      size: 64,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(height: 24),
-
-                    Text(
-                      l10n.confirmEmailBody(state.pendingEmail ?? ''),
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyLarge,
-                    ),
-                    const SizedBox(height: 32),
-
-                    if (state.errorMessage != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.errorContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          state.errorMessage!,
-                          style: TextStyle(
-                            color: theme.colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    TextFormField(
-                      controller: _code,
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      maxLength: AuthValidators.confirmationCodeLength,
-                      // Digits only: a numeric keyboard still offers other
-                      // characters on some devices.
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        letterSpacing: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: l10n.confirmEmailCode,
-                        counterText: '',
-                      ),
-                      onFieldSubmitted: (_) => _submit(),
-                      validator: (value) =>
-                          AuthValidators.confirmationCode(value, l10n),
-                    ),
-                    const SizedBox(height: 24),
-
-                    FilledButton(
-                      onPressed: state.isBusy ? null : _submit,
-                      child: state.isBusy
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(l10n.confirmEmailSubmit),
-                    ),
-                    const SizedBox(height: 8),
-
-                    OutlinedButton(
-                      onPressed: state.isBusy
-                          ? null
-                          : () => ref
-                                .read(authControllerProvider.notifier)
-                                .resendConfirmation(),
-                      child: Text(l10n.confirmEmailResend),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextButton(
-                      onPressed: () =>
-                          ref.read(authControllerProvider.notifier).signOut(),
-                      child: Text(l10n.commonCancel),
-                    ),
-                  ],
+    return AuthScaffold(
+      title: l10n.confirmEmailTitle,
+      subtitle: l10n.confirmEmailBody(state.pendingEmail ?? ''),
+      showBrand: false,
+      content: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: tokens.brand50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.mark_email_unread_outlined,
+                  size: 30,
+                  color: tokens.brand500,
                 ),
               ),
             ),
-          ),
+            const SizedBox(height: Spacing.x6),
+
+            if (state.errorMessage != null) ...[
+              NeoBanner.error(message: state.errorMessage!),
+              const SizedBox(height: Spacing.x4),
+            ],
+
+            TextFormField(
+              controller: _code,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              autofocus: true,
+              maxLength: AuthValidators.confirmationCodeLength,
+              // Digits only: a numeric keyboard still offers other characters
+              // on some devices.
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: TextStyle(
+                fontSize: FontSizes.display,
+                fontWeight: FontWeights.semibold,
+                letterSpacing: 10,
+                color: tokens.neutral900,
+              ),
+              decoration: InputDecoration(
+                labelText: l10n.confirmEmailCode,
+                counterText: '',
+              ),
+              onFieldSubmitted: (_) => _submit(),
+              validator: (value) =>
+                  AuthValidators.confirmationCode(value, l10n),
+            ),
+            const SizedBox(height: Spacing.x6),
+
+            NeoPrimaryButton(
+              label: l10n.confirmEmailSubmit,
+              busy: state.isBusy,
+              onPressed: _submit,
+            ),
+            const SizedBox(height: Spacing.x3),
+
+            OutlinedButton(
+              onPressed: state.isBusy
+                  ? null
+                  : () => ref
+                        .read(authControllerProvider.notifier)
+                        .resendConfirmation(),
+              child: Text(l10n.confirmEmailResend),
+            ),
+          ],
+        ),
+      ),
+      footer: Center(
+        child: TextButton(
+          onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
+          child: Text(l10n.commonCancel),
         ),
       ),
     );

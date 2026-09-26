@@ -7,10 +7,19 @@
     <!-- Shown for the moment between the process starting and the kiosk
          knowing what it is (plan section 7.12, recovery flow). -->
 
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="24">
-        <TextBlock Text="NeoPrint" FontSize="56" FontWeight="Bold"
-                   Foreground="#F8FAFC" HorizontalAlignment="Center" />
-        <TextBlock Text="{Binding StartingText}" FontSize="20"
-                   Foreground="#94A3B8" HorizontalAlignment="Center" />
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="32">
+        <Border Width="96" Height="96"
+                Background="{DynamicResource Brand600}"
+                CornerRadius="{DynamicResource RadiusLg}"
+                HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconPrint}"
+                      Width="52" Height="52"
+                      Foreground="{DynamicResource Neutral0}" />
+        </Border>
+
+        <TextBlock Text="NeoPrint" Classes="display" HorizontalAlignment="Center" />
+
+        <TextBlock Text="{Binding StartingText}" Classes="muted"
+                   HorizontalAlignment="Center" />
     </StackPanel>
 </UserControl>

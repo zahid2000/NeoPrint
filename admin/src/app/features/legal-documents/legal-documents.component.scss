@@ -12,7 +12,7 @@
 
     h1 {
       margin: 0;
-      font-size: 1.5rem;
+      font-size: var(--font-size-h1);
     }
   }
 
@@ -31,7 +31,7 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--mat-sys-error-container);
     color: var(--mat-sys-on-error-container);
   }
@@ -39,7 +39,7 @@
   &__form-card h2,
   &__preview h2 {
     margin: 0 0 0.5rem;
-    font-size: 1.1rem;
+    font-size: var(--font-size-h2);
   }
 
   &__form {
@@ -75,10 +75,10 @@
     overflow: auto;
     margin: 0;
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     background: var(--mat-sys-surface-container);
     font-family: 'Roboto Mono', 'Cascadia Mono', monospace;
-    font-size: 0.85rem;
+    font-size: var(--font-size-body-small);
     line-height: 1.5;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -95,7 +95,7 @@
   }
 
   &__current {
-    font-size: 1rem;
+    font-size: var(--font-size-body);
     width: 1rem;
     height: 1rem;
     margin-left: 0.35rem;

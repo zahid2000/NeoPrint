@@ -20,6 +20,10 @@
   "authHaveAccount": "Уже есть аккаунт?",
   "authSigningIn": "Выполняется вход…",
   "authRegistering": "Создаём аккаунт…",
+  "authSignInSubtitle": "Войдите в аккаунт и продолжайте печатать.",
+  "authSignUpSubtitle": "Это займёт несколько секунд. Мы отправим код подтверждения на вашу почту.",
+  "authPasswordHint": "Не менее 8 символов.",
+  "authOptional": "Необязательно",
 
   "authEmailRequired": "Укажите адрес эл. почты.",
   "authEmailInvalid": "Адрес эл. почты некорректен.",

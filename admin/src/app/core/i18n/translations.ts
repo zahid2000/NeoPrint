@@ -170,6 +170,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'roles.clone': 'Klonla',
     'roles.cloneName': 'Yeni rolun adı',
     'roles.deleteConfirm': '"{{name}}" rolu silinsin?',
+    'roles.deleteExplanation': 'Rol birdəfəlik silinir. Bu rolu daşıyan hesab varsa əməliyyat rədd ediləcək. Səbəb audit jurnalına yazılır.',
     'roles.saved': 'Rol yadda saxlanıldı.',
 
     'permissionGroup.dashboard': 'Dashboard / hesabat',
@@ -281,6 +282,14 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'common.signOut': 'Çıxış',
     'common.language': 'Dil',
     'common.required': 'Bu sahə tələb olunur.',
+    'common.reason': 'Səbəb',
+    'common.noResults': 'Axtarışa uyğun nəticə yoxdur.',
+    'common.noResultsHint': 'Filtrləri dəyişib yenidən cəhd edin.',
+
+    'theme.toggle': 'Tema',
+    'theme.light': 'İşıqlı',
+    'theme.dark': 'Qaranlıq',
+    'theme.system': 'Sistemə uyğun',
 
     'error.network': 'Şəbəkə xətası. Bağlantınızı yoxlayın.',
     'error.server': 'Serverdə xəta baş verdi.',
@@ -439,6 +448,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'roles.clone': 'Clone',
     'roles.cloneName': 'Name for the new role',
     'roles.deleteConfirm': 'Delete the role "{{name}}"?',
+    'roles.deleteExplanation': 'The role is deleted for good. If any account still holds it the deletion is refused. The reason is written to the audit log.',
     'roles.saved': 'Role saved.',
 
     'permissionGroup.dashboard': 'Dashboard / reports',
@@ -550,6 +560,14 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'common.signOut': 'Sign out',
     'common.language': 'Language',
     'common.required': 'This field is required.',
+    'common.reason': 'Reason',
+    'common.noResults': 'Nothing matches this search.',
+    'common.noResultsHint': 'Change the filters and try again.',
+
+    'theme.toggle': 'Theme',
+    'theme.light': 'Light',
+    'theme.dark': 'Dark',
+    'theme.system': 'Follow the system',
 
     'error.network': 'Network error. Check your connection.',
     'error.server': 'Something went wrong on the server.',
@@ -708,6 +726,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'roles.clone': 'Клонировать',
     'roles.cloneName': 'Название новой роли',
     'roles.deleteConfirm': 'Удалить роль «{{name}}»?',
+    'roles.deleteExplanation': 'Роль удаляется безвозвратно. Если её ещё имеет хотя бы одна учётная запись, удаление будет отклонено. Причина записывается в журнал аудита.',
     'roles.saved': 'Роль сохранена.',
 
     'permissionGroup.dashboard': 'Дашборд / отчёты',
@@ -820,6 +839,14 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'common.signOut': 'Выйти',
     'common.language': 'Язык',
     'common.required': 'Обязательное поле.',
+    'common.reason': 'Причина',
+    'common.noResults': 'По этому запросу ничего не найдено.',
+    'common.noResultsHint': 'Измените фильтры и попробуйте снова.',
+
+    'theme.toggle': 'Тема',
+    'theme.light': 'Светлая',
+    'theme.dark': 'Тёмная',
+    'theme.system': 'Как в системе',
 
     'error.network': 'Ошибка сети. Проверьте подключение.',
     'error.server': 'На сервере произошла ошибка.',

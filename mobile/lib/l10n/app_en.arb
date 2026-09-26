@@ -20,6 +20,10 @@
   "authHaveAccount": "Already have an account?",
   "authSigningIn": "Signing in…",
   "authRegistering": "Creating your account…",
+  "authSignInSubtitle": "Sign in to your account and carry on printing.",
+  "authSignUpSubtitle": "It takes a few seconds. We will email you a confirmation code.",
+  "authPasswordHint": "At least 8 characters.",
+  "authOptional": "Optional",
 
   "authEmailRequired": "An email address is required.",
   "authEmailInvalid": "That email address is not valid.",

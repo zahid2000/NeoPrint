@@ -6,11 +6,13 @@ import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { Permissions } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
+import { ThemeService } from '../theme/theme.service';
 import {
   SupportedLanguage,
   languageNames,
@@ -49,6 +51,7 @@ interface NavItem {
     MatButtonModule,
     MatMenuModule,
     MatDividerModule,
+    MatTooltipModule,
     TranslatePipe,
   ],
   templateUrl: './shell.component.html',
@@ -56,9 +59,21 @@ interface NavItem {
 })
 export class ShellComponent {
   private readonly auth = inject(AuthService);
+  private readonly theme_ = inject(ThemeService);
   private readonly translate = inject(TranslateService);
 
   readonly admin = this.auth.admin;
+
+  /** Which theme is on screen, for the toggle's icon. */
+  readonly theme = this.theme_.resolved;
+
+  /**
+   * What the toggle would do, not what is on screen now: a button says where
+   * it takes you.
+   */
+  readonly themeTooltip = computed(() =>
+    this.theme() === 'dark' ? 'theme.light' : 'theme.dark',
+  );
   readonly sidenavOpen = signal(true);
 
   readonly languages = supportedLanguages.map((code) => ({
@@ -132,6 +147,10 @@ export class ShellComponent {
 
   toggleSidenav(): void {
     this.sidenavOpen.update((open) => !open);
+  }
+
+  toggleTheme(): void {
+    this.theme_.toggle();
   }
 
   selectLanguage(language: SupportedLanguage): void {

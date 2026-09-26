@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: 24px;
+  padding: var(--space-6);
 
   &__card {
     width: 100%;
@@ -14,16 +14,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    margin: 12px 0 4px;
-    font-size: 24px;
-    font-weight: 700;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 var(--space-1);
+    font-size: var(--font-size-h1);
+    font-weight: var(--font-weight-semibold);
   }
 
   &__title {
-    margin: 0 0 24px;
-    font-size: 16px;
-    font-weight: 400;
+    margin: 0 0 var(--space-6);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-regular);
     text-align: center;
     opacity: 0.75;
   }
@@ -31,10 +31,10 @@
   &__error {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px;
-    margin-bottom: 16px;
-    border-radius: 8px;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    margin-bottom: var(--space-4);
+    border-radius: var(--radius-sm);
     background: var(--mat-sys-error-container);
     color: var(--mat-sys-on-error-container);
   }
@@ -45,6 +45,6 @@
 
   &__submit {
     width: 100%;
-    height: 48px;
+    height: var(--control-height-lg);
   }
 }

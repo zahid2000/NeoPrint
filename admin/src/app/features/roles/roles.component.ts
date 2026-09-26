@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,6 +19,7 @@ import { firstValueFrom } from 'rxjs';
 import { AdminApiService, RoleResponse } from '../../core/api/admin-api.service';
 import { PermissionGroup } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
+import { confirmAction } from '../../shared/confirm.dialog';
 import { describeError } from '../login/login.component';
 
 /**
@@ -53,6 +55,7 @@ export class RolesComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
   private readonly translate = inject(TranslateService);
+  private readonly dialog = inject(MatDialog);
 
   readonly roles = signal<RoleResponse[]>([]);
   readonly groups = signal<PermissionGroup[]>([]);
@@ -234,7 +237,19 @@ export class RolesComponent {
   }
 
   async remove(role: RoleResponse): Promise<void> {
-    if (!window.confirm(this.translate.instant('roles.deleteConfirm', { name: role.name }) as string)) {
+    // Deleting a role is destructive, so it goes through the panel's own
+    // dialog: window.confirm cannot be translated and collects no reason
+    // (docs/DESIGN_SYSTEM.md section 4).
+    const confirmed = await confirmAction(this.dialog, {
+      title: this.translate.instant('roles.deleteConfirm', { name: role.name }) as string,
+      explanation: this.translate.instant('roles.deleteExplanation') as string,
+      confirmLabel: this.translate.instant('common.delete') as string,
+      cancelLabel: this.translate.instant('common.cancel') as string,
+      destructive: true,
+      reasonLabel: this.translate.instant('common.reason') as string,
+    });
+
+    if (!confirmed) {
       return;
     }
 

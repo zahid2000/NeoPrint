@@ -20,6 +20,10 @@
   "authHaveAccount": "Hesabınız var?",
   "authSigningIn": "Daxil olunur…",
   "authRegistering": "Qeydiyyat aparılır…",
+  "authSignInSubtitle": "Hesabınıza daxil olun və çapa davam edin.",
+  "authSignUpSubtitle": "Bir neçə saniyə çəkir. Email ünvanınıza təsdiq kodu göndərəcəyik.",
+  "authPasswordHint": "Ən azı 8 simvol.",
+  "authOptional": "İstəyə bağlı",
 
   "authEmailRequired": "Email ünvanı tələb olunur.",
   "authEmailInvalid": "Email ünvanı düzgün deyil.",
