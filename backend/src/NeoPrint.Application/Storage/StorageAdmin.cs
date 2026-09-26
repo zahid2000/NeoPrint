@@ -47,6 +47,14 @@ public sealed record StorageTestResponse(
 public sealed record StorageBucketTestDto(string Bucket, bool Succeeded, string? Problem);
 
 /// <summary>A sync job, for the list and the wizard's progress view.</summary>
+/// <param name="SourcePurgeAllowedFrom">
+/// When the source of a completed migration may be emptied
+/// (<c>Storage.SourceRetentionDays</c> after completion); null otherwise.
+/// </param>
+/// <param name="SourcePurgeRequestedAt">When an administrator approved emptying the source.</param>
+/// <param name="SourcePurgedAt">When emptying the source finished.</param>
+/// <param name="SourcePurgedObjects">Objects deleted from the source.</param>
+/// <param name="SourceKeptObjects">Objects kept on the source because they were still needed.</param>
 public sealed record StorageSyncJobResponse(
     Guid Id,
     string Mode,
@@ -64,7 +72,12 @@ public sealed record StorageSyncJobResponse(
     bool SwitchPrimaryOnComplete,
     DateTime? StartedAt,
     DateTime? FinishedAt,
-    string? FailureReason);
+    string? FailureReason,
+    DateTime? SourcePurgeAllowedFrom,
+    DateTime? SourcePurgeRequestedAt,
+    DateTime? SourcePurgedAt,
+    long SourcePurgedObjects,
+    long SourceKeptObjects);
 
 /// <summary>One object a job could not copy.</summary>
 public sealed record StorageSyncFailureResponse(
@@ -147,6 +160,19 @@ public interface IStorageAdministration
     Task<IReadOnlyList<StorageSyncFailureResponse>> ListFailuresAsync(Guid jobId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Approves deleting the migrated objects from the source of a completed
+    /// migration, once <c>Storage.SourceRetentionDays</c> have passed
+    /// (plan section 2.10). Runs in the background.
+    /// </summary>
+    Task<StorageSyncJobResponse> RequestSourcePurgeAsync(Guid jobId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Removes an inactive provider no file and no running job refers to.
+    /// The objects in it are not touched.
+    /// </summary>
+    Task DeleteProviderAsync(Guid providerId, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Queues a key rewrap over every provider and bucket, after a key
     /// rotation (plan section 2.13).
     /// </summary>
@@ -174,6 +200,9 @@ public sealed record UpdateStorageProviderCommand(
 public sealed record SetStorageProviderRoleCommand(Guid ProviderId, string Role, Guid? AdminUserId, string? Ip)
     : IRequest<StorageProviderResponse>, ITransactionalRequest;
 
+public sealed record DeleteStorageProviderCommand(Guid ProviderId, Guid? AdminUserId, string? Ip)
+    : IRequest, ITransactionalRequest;
+
 public sealed record ListStorageSyncJobsQuery : IRequest<IReadOnlyList<StorageSyncJobResponse>>;
 
 public sealed record GetStorageSyncJobQuery(Guid JobId) : IRequest<StorageSyncJobResponse>;
@@ -182,11 +211,14 @@ public sealed record StartStorageSyncCommand(
     string Mode, Guid TargetId, bool SwitchPrimaryOnComplete, Guid? AdminUserId, string? Ip)
     : IRequest<StorageSyncJobResponse>, ITransactionalRequest;
 
-/// <param name="Action">pause, resume, cancel or retry-failures.</param>
+/// <param name="Action">pause, resume, cancel or retry-failed.</param>
 public sealed record ControlStorageSyncCommand(Guid JobId, string Action, Guid? AdminUserId, string? Ip)
     : IRequest<StorageSyncJobResponse>, ITransactionalRequest;
 
 public sealed record ListStorageSyncFailuresQuery(Guid JobId) : IRequest<IReadOnlyList<StorageSyncFailureResponse>>;
+
+public sealed record PurgeStorageSourceCommand(Guid JobId, Guid? AdminUserId, string? Ip)
+    : IRequest<StorageSyncJobResponse>, ITransactionalRequest;
 
 public sealed record StartKeyRewrapCommand(Guid? AdminUserId, string? Ip) : IRequest;
 
@@ -205,11 +237,13 @@ public sealed class StorageAdminHandlers :
     IRequestHandler<AddStorageProviderCommand, StorageProviderResponse>,
     IRequestHandler<UpdateStorageProviderCommand, StorageProviderResponse>,
     IRequestHandler<SetStorageProviderRoleCommand, StorageProviderResponse>,
+    IRequestHandler<DeleteStorageProviderCommand>,
     IRequestHandler<ListStorageSyncJobsQuery, IReadOnlyList<StorageSyncJobResponse>>,
     IRequestHandler<GetStorageSyncJobQuery, StorageSyncJobResponse>,
     IRequestHandler<StartStorageSyncCommand, StorageSyncJobResponse>,
     IRequestHandler<ControlStorageSyncCommand, StorageSyncJobResponse>,
     IRequestHandler<ListStorageSyncFailuresQuery, IReadOnlyList<StorageSyncFailureResponse>>,
+    IRequestHandler<PurgeStorageSourceCommand, StorageSyncJobResponse>,
     IRequestHandler<StartKeyRewrapCommand>
 {
     private readonly IStorageAdministration _storage;
@@ -284,6 +318,31 @@ public sealed class StorageAdminHandlers :
         return updated;
     }
 
+    public async Task Handle(DeleteStorageProviderCommand request, CancellationToken cancellationToken)
+    {
+        var before = (await _storage.ListProvidersAsync(cancellationToken).ConfigureAwait(false))
+            .FirstOrDefault(p => p.Id == request.ProviderId);
+
+        await _storage.DeleteProviderAsync(request.ProviderId, cancellationToken).ConfigureAwait(false);
+
+        await AuditAsync(
+                request.AdminUserId, "storage.provider.delete", "StorageProvider", request.ProviderId.ToString(),
+                before, null, request.Ip, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<StorageSyncJobResponse> Handle(PurgeStorageSourceCommand request, CancellationToken cancellationToken)
+    {
+        var job = await _storage.RequestSourcePurgeAsync(request.JobId, cancellationToken).ConfigureAwait(false);
+
+        await AuditAsync(
+                request.AdminUserId, "storage.sync.purge-source", "StorageSyncJob", job.Id.ToString(),
+                null, new { job.SourceId, job.SourceName, job.SourcePurgeRequestedAt }, request.Ip, cancellationToken)
+            .ConfigureAwait(false);
+
+        return job;
+    }
+
     public Task<IReadOnlyList<StorageSyncJobResponse>> Handle(ListStorageSyncJobsQuery request, CancellationToken cancellationToken)
         => _storage.ListJobsAsync(cancellationToken);
 
@@ -311,9 +370,9 @@ public sealed class StorageAdminHandlers :
             "pause" => await _storage.PauseJobAsync(request.JobId, cancellationToken).ConfigureAwait(false),
             "resume" => await _storage.ResumeJobAsync(request.JobId, cancellationToken).ConfigureAwait(false),
             "cancel" => await _storage.CancelJobAsync(request.JobId, cancellationToken).ConfigureAwait(false),
-            "retry-failures" => await _storage.RetryFailuresAsync(request.JobId, cancellationToken).ConfigureAwait(false),
+            "retry-failed" => await _storage.RetryFailuresAsync(request.JobId, cancellationToken).ConfigureAwait(false),
             _ => throw new Common.ValidationException(
-                [new Common.ValidationError("action", "Naməlum əməliyyat: pause, resume, cancel və ya retry-failures.")]),
+                [new Common.ValidationError("action", "Naməlum əməliyyat: pause, resume, cancel və ya retry-failed.")]),
         };
 
         await AuditAsync(

@@ -194,7 +194,17 @@ public sealed class StorageMirror
     /// the same provider, which a row-version conflict would turn into a
     /// failed edit.
     /// </remarks>
-    public async Task<IReadOnlyDictionary<Guid, bool>> CheckHealthAsync(CancellationToken cancellationToken = default)
+    public Task<IReadOnlyDictionary<Guid, bool>> CheckHealthAsync(CancellationToken cancellationToken = default)
+        => CheckHealthAsync(onChanged: null, cancellationToken);
+
+    /// <param name="onChanged">
+    /// Told about each provider whose health is not what it was - for the
+    /// panel's <c>StorageHealthChanged</c>. Its failure does not fail the check.
+    /// </param>
+    /// <param name="cancellationToken">Stops between providers.</param>
+    public async Task<IReadOnlyDictionary<Guid, bool>> CheckHealthAsync(
+        Func<Application.Storage.StorageHealthChanged, CancellationToken, Task>? onChanged,
+        CancellationToken cancellationToken = default)
     {
         var providers = await _context.StorageProviders
             .Find(FilterDefinition<StorageProvider>.Empty)
@@ -236,7 +246,8 @@ public sealed class StorageMirror
             results[provider.Id] = healthy;
 
             var status = healthy ? StorageHealthStatus.Healthy : StorageHealthStatus.Unhealthy;
-            changed |= provider.HealthStatus != status;
+            var statusChanged = provider.HealthStatus != status;
+            changed |= statusChanged;
 
             var update = Builders<StorageProvider>.Update
                 .Set(p => p.HealthStatus, status)
@@ -255,6 +266,24 @@ public sealed class StorageMirror
                     "The primary storage provider {Name} is not answering: {Problem}",
                     provider.Name,
                     problem);
+            }
+
+            if (statusChanged && onChanged is not null)
+            {
+                try
+                {
+                    await onChanged(
+                            new Application.Storage.StorageHealthChanged(
+                                provider.Id, provider.Name, provider.Role.ToString(), status.ToString(), problem, _clock.UtcNow),
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    // Nobody watching, or the hub is restarting: the health of
+                    // the store is recorded either way.
+                    _logger.LogDebug(exception, "Could not announce the health of {Name}.", provider.Name);
+                }
             }
         }
 
@@ -359,11 +388,17 @@ public sealed class StorageMirrorJobs
     public const string ReconciliationJobId = "storage-reconciliation";
 
     private readonly StorageMirror _mirror;
+    private readonly IAdminNotifier _notifier;
 
-    public StorageMirrorJobs(StorageMirror mirror) => _mirror = mirror;
+    public StorageMirrorJobs(StorageMirror mirror, IAdminNotifier notifier)
+    {
+        _mirror = mirror;
+        _notifier = notifier;
+    }
 
     [Hangfire.DisableConcurrentExecution(timeoutInSeconds: 60)]
-    public Task CheckHealthAsync(CancellationToken cancellationToken) => _mirror.CheckHealthAsync(cancellationToken);
+    public Task CheckHealthAsync(CancellationToken cancellationToken)
+        => _mirror.CheckHealthAsync(_notifier.StorageHealthChangedAsync, cancellationToken);
 
     [Hangfire.DisableConcurrentExecution(timeoutInSeconds: 3600)]
     public Task ReconcileAsync(CancellationToken cancellationToken) => _mirror.ReconcileAsync(cancellationToken);

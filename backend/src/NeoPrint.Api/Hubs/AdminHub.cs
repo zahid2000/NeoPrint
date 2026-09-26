@@ -97,4 +97,14 @@ public sealed class SignalRAdminNotifier : IAdminNotifier
         Application.Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default)
         => _hub.Clients.Group(AdminHub.AllAdminsGroup)
             .SendAsync("StorageSyncProgress", progress, cancellationToken);
+
+    public Task StorageSyncCompletedAsync(
+        Application.Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default)
+        => _hub.Clients.Group(AdminHub.AllAdminsGroup)
+            .SendAsync("StorageSyncCompleted", progress, cancellationToken);
+
+    public Task StorageHealthChangedAsync(
+        Application.Storage.StorageHealthChanged change, CancellationToken cancellationToken = default)
+        => _hub.Clients.Group(AdminHub.AllAdminsGroup)
+            .SendAsync("StorageHealthChanged", change, cancellationToken);
 }

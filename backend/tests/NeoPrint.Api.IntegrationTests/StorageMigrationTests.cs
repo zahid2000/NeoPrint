@@ -352,6 +352,79 @@ public sealed class StorageMigrationTests : IClassFixture<StoragePair>, IAsyncLi
     // Set-up
     // -----------------------------------------------------------------------
 
+    // -----------------------------------------------------------------------
+    // Emptying the source (plan section 2.10, purge-source)
+    // -----------------------------------------------------------------------
+
+    [DockerFact]
+    public async Task Purging_the_source_deletes_only_what_the_target_holds_and_nothing_still_in_use()
+    {
+        var (source, target) = await AddProvidersAsync();
+        var files = await UploadAsync(count: 5);
+
+        var job = await StartJobAsync(source, target, switchPrimary: true);
+        (await Worker("worker-1").RunAsync(job.Id))!.Status.Should().Be(StorageSyncStatus.Completed);
+
+        // Two things on the source that must survive: an object the target
+        // never received, and one a file record still reads from the source.
+        await PutRawAsync(_sourceStore!, NeoPrintApiFixture.FilesBucket, "late/only-on-source.txt", "not on the target");
+
+        var pinned = files[0].File;
+        await _context!.Files.UpdateOneAsync(
+            f => f.Id == pinned.Id,
+            Builders<StoredFile>.Update.Set("Original.ProviderId", source.Id));
+
+        var approved = await LoadJobAsync(job.Id);
+        approved.RequestSourcePurge(retentionDays: 0, ActorContext.System("test: purge approved"), _clock.UtcNow);
+        await AggregateWriter.ReplaceAsync(_context, _context.StorageSyncJobs, approved, CancellationToken.None);
+
+        var (deleted, kept) = await Purge().RunAsync(job.Id, CancellationToken.None);
+
+        deleted.Should().Be(4);
+        kept.Should().Be(2);
+
+        (await KeysAsync(_sourceStore!, NeoPrintApiFixture.FilesBucket))
+            .Should().BeEquivalentTo(pinned.Original.Key, "late/only-on-source.txt");
+        (await KeysAsync(_targetStore!, NeoPrintApiFixture.FilesBucket))
+            .Should().HaveCount(5, "the target is never touched");
+
+        var done = await LoadJobAsync(job.Id);
+        done.SourcePurgedAt.Should().NotBeNull();
+        done.SourcePurgedObjects.Should().Be(4);
+        done.SourceKeptObjects.Should().Be(2);
+
+        // Finished is finished: a second run does nothing.
+        (await Purge().RunAsync(job.Id, CancellationToken.None)).Should().Be((0L, 0L));
+    }
+
+    [DockerFact]
+    public async Task A_source_that_is_in_use_again_is_not_purged()
+    {
+        var (source, target) = await AddProvidersAsync();
+        await UploadAsync(count: 3);
+
+        var job = await StartJobAsync(source, target, switchPrimary: true);
+        (await Worker("worker-1").RunAsync(job.Id))!.Status.Should().Be(StorageSyncStatus.Completed);
+
+        var approved = await LoadJobAsync(job.Id);
+        approved.RequestSourcePurge(retentionDays: 0, ActorContext.System("test: purge approved"), _clock.UtcNow);
+        await AggregateWriter.ReplaceAsync(_context!, _context!.StorageSyncJobs, approved, CancellationToken.None);
+
+        // Between the approval and the background run, the old source became
+        // a mirror's secondary: it holds a live copy now.
+        var stored = await _context.StorageProviders.Find(p => p.Id == source.Id).FirstAsync();
+        stored.MakeSecondary(ActorContext.System("test"), _clock.UtcNow);
+        await AggregateWriter.ReplaceAsync(_context, _context.StorageProviders, stored, CancellationToken.None);
+
+        (await Purge().RunAsync(job.Id, CancellationToken.None)).Should().Be((0L, 0L));
+
+        (await KeysAsync(_sourceStore!, NeoPrintApiFixture.FilesBucket)).Should().HaveCount(3);
+        (await LoadJobAsync(job.Id)).SourcePurgedAt.Should().BeNull("nothing was purged");
+    }
+
+    private StorageSourcePurge Purge()
+        => new(_context!, Clients(), _clock, NullLogger<StorageSourcePurge>.Instance);
+
     private StorageProviderRegistry? _registry;
     private S3ClientFactory? _clients;
 

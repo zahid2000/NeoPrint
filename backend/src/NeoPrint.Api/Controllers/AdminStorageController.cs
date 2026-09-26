@@ -64,6 +64,17 @@ public sealed class AdminStorageController : ControllerBase
         => Ok(await _sender.Send(
             new TestStorageProviderCommand(id, _currentUser.AdminUserId, _currentUser.Ip), cancellationToken));
 
+    /// <summary>Makes the provider primary; the previous primary becomes inactive.</summary>
+    [HttpPost("providers/{id:guid}/set-primary")]
+    public Task<ActionResult<StorageProviderResponse>> SetPrimary(Guid id, CancellationToken cancellationToken)
+        => SetRole(id, new SetStorageRoleRequest("Primary"), cancellationToken);
+
+    /// <summary>Makes the provider the mirror's secondary; a previous secondary becomes inactive.</summary>
+    [HttpPost("providers/{id:guid}/set-secondary")]
+    public Task<ActionResult<StorageProviderResponse>> SetSecondary(Guid id, CancellationToken cancellationToken)
+        => SetRole(id, new SetStorageRoleRequest("Secondary"), cancellationToken);
+
+    /// <summary>Any role, including Inactive, which the two shortcuts above do not cover.</summary>
     /// <param name="request">{ "role": "Primary" | "Secondary" | "Inactive" }</param>
     [HttpPut("providers/{id:guid}/role")]
     public async Task<ActionResult<StorageProviderResponse>> SetRole(
@@ -71,6 +82,15 @@ public sealed class AdminStorageController : ControllerBase
         => Ok(await _sender.Send(
             new SetStorageProviderRoleCommand(id, request.Role ?? string.Empty, _currentUser.AdminUserId, _currentUser.Ip),
             cancellationToken));
+
+    /// <summary>Removes an inactive provider no file refers to. Its objects are left in place.</summary>
+    [HttpDelete("providers/{id:guid}")]
+    public async Task<IActionResult> DeleteProvider(Guid id, CancellationToken cancellationToken)
+    {
+        await _sender.Send(
+            new DeleteStorageProviderCommand(id, _currentUser.AdminUserId, _currentUser.Ip), cancellationToken);
+        return NoContent();
+    }
 
     // -----------------------------------------------------------------------
     // Sync jobs
@@ -98,13 +118,13 @@ public sealed class AdminStorageController : ControllerBase
                 _currentUser.Ip),
             cancellationToken));
 
-    /// <param name="operation">pause, resume, cancel or retry-failures.</param>
+    /// <param name="operation">pause, resume, cancel or retry-failed.</param>
     /// <remarks>
     /// Not called "action": that is a reserved route value in MVC, and using it
     /// with a constraint breaks routing for the whole application, not just
     /// this endpoint.
     /// </remarks>
-    [HttpPost("sync-jobs/{id:guid}/{operation:regex(^(pause|resume|cancel|retry-failures)$)}")]
+    [HttpPost("sync-jobs/{id:guid}/{operation:regex(^(pause|resume|cancel|retry-failed)$)}")]
     public async Task<ActionResult<StorageSyncJobResponse>> ControlJob(
         Guid id, string operation, CancellationToken cancellationToken)
         => Ok(await _sender.Send(
@@ -114,6 +134,17 @@ public sealed class AdminStorageController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<StorageSyncFailureResponse>>> ListFailures(
         Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new ListStorageSyncFailuresQuery(id), cancellationToken));
+
+    /// <summary>
+    /// Deletes the migrated objects from the source of a completed migration,
+    /// after <c>Storage.SourceRetentionDays</c> (plan section 2.10). Runs in
+    /// the background; the job's counters show how far it got.
+    /// </summary>
+    [HttpPost("sync-jobs/{id:guid}/purge-source")]
+    [Idempotent]
+    public async Task<ActionResult<StorageSyncJobResponse>> PurgeSource(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(
+            new PurgeStorageSourceCommand(id, _currentUser.AdminUserId, _currentUser.Ip), cancellationToken));
 
     /// <summary>
     /// Rewraps every stored object onto the current key encryption key, after

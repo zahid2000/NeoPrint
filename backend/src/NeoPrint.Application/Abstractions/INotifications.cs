@@ -63,4 +63,10 @@ public interface IAdminNotifier
 
     /// <summary>A sync job moved on: the storage wizard's live progress (plan section 2.10).</summary>
     Task StorageSyncProgressAsync(Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default);
+
+    /// <summary>A migration or a mirror finished its copy: the wizard's last step.</summary>
+    Task StorageSyncCompletedAsync(Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default);
+
+    /// <summary>A provider's health changed (every-minute check, plan section 2.10).</summary>
+    Task StorageHealthChangedAsync(Storage.StorageHealthChanged change, CancellationToken cancellationToken = default);
 }

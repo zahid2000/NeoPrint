@@ -214,6 +214,63 @@ public sealed class AdminStorageApiTests
     }
 
     [DockerFact]
+    public async Task The_primary_cannot_be_deleted()
+    {
+        using var admin = await SuperAdminAsync();
+
+        var providers = await admin.GetFromJsonAsync<JsonElement>("/api/admin/storage/providers");
+        var primaryId = providers.EnumerateArray()
+            .Single(p => p.GetProperty("role").GetString() == "Primary")
+            .GetProperty("id").GetString();
+
+        var response = await admin.DeleteAsync($"/api/admin/storage/providers/{primaryId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Inactive");
+    }
+
+    [DockerFact]
+    public async Task An_inactive_provider_nothing_uses_can_be_deleted()
+    {
+        using var admin = await SuperAdminAsync();
+
+        var added = await admin.PostAsJsonAsync("/api/admin/storage/providers", Input($"Deletable {Guid.NewGuid():N}"));
+        added.StatusCode.Should().Be(HttpStatusCode.OK, await added.Content.ReadAsStringAsync());
+        var id = (await added.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+
+        var response = await admin.DeleteAsync($"/api/admin/storage/providers/{id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent, await response.Content.ReadAsStringAsync());
+
+        var providers = await admin.GetFromJsonAsync<JsonElement>("/api/admin/storage/providers");
+        providers.EnumerateArray().Should().NotContain(p => p.GetProperty("id").GetString() == id);
+    }
+
+    [DockerFact]
+    public async Task The_plan_routes_reach_their_handlers()
+    {
+        // Plan section 6 names these routes. An unknown id gets the handler's
+        // 404 - with its message - rather than routing's bare one, which is
+        // what proves the route exists.
+        using var admin = await SuperAdminAsync();
+        var unknown = Guid.NewGuid();
+
+        foreach (var (path, expected) in new[]
+                 {
+                     ($"/api/admin/storage/providers/{unknown}/set-primary", "Storage provayderi"),
+                     ($"/api/admin/storage/providers/{unknown}/set-secondary", "Storage provayderi"),
+                     ($"/api/admin/storage/sync-jobs/{unknown}/retry-failed", "Sinxronizasiya işi"),
+                     ($"/api/admin/storage/sync-jobs/{unknown}/purge-source", "Sinxronizasiya işi"),
+                 })
+        {
+            var response = await admin.PostAsync(path, content: null);
+
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound, path);
+            (await response.Content.ReadAsStringAsync()).Should().Contain(expected, path);
+        }
+    }
+
+    [DockerFact]
     public async Task Nobody_without_storage_manage_gets_in()
     {
         using var anonymous = _fixture.CreateApiClient();

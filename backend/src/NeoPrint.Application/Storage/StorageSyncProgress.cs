@@ -25,3 +25,12 @@ public sealed record StorageSyncProgress(
     long CopiedBytes,
     string? FailureReason,
     DateTime At);
+
+/// <summary>
+/// A provider started or stopped answering its health check
+/// (plan section 6, <c>StorageHealthChanged</c> on <c>/hubs/admin</c>).
+/// </summary>
+/// <param name="Status">Healthy or Unhealthy.</param>
+/// <param name="Message">What is wrong, in the panel's language, or null.</param>
+public sealed record StorageHealthChanged(
+    Guid ProviderId, string Name, string Role, string Status, string? Message, DateTime At);

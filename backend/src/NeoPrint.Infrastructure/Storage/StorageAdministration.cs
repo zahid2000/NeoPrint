@@ -24,6 +24,7 @@ public sealed class StorageAdministration : IStorageAdministration
     private readonly IBackgroundJobClient _jobs;
     private readonly IEventPublisher _events;
     private readonly ICurrentUser _currentUser;
+    private readonly ISettingsReader _settings;
     private readonly IClock _clock;
     private readonly ILogger<StorageAdministration> _logger;
 
@@ -36,6 +37,7 @@ public sealed class StorageAdministration : IStorageAdministration
         IBackgroundJobClient jobs,
         IEventPublisher events,
         ICurrentUser currentUser,
+        ISettingsReader settings,
         IClock clock,
         ILogger<StorageAdministration> logger)
     {
@@ -47,6 +49,7 @@ public sealed class StorageAdministration : IStorageAdministration
         _jobs = jobs;
         _events = events;
         _currentUser = currentUser;
+        _settings = settings;
         _clock = clock;
         _logger = logger;
     }
@@ -259,12 +262,15 @@ public sealed class StorageAdministration : IStorageAdministration
 
         var names = await NamesAsync(cancellationToken).ConfigureAwait(false);
 
-        return [.. jobs.Select(job => Map(job, names))];
+        var retentionDays = await RetentionDaysAsync(cancellationToken).ConfigureAwait(false);
+
+        return [.. jobs.Select(job => Map(job, names, retentionDays))];
     }
 
     public async Task<StorageSyncJobResponse> GetJobAsync(Guid jobId, CancellationToken cancellationToken)
         => Map(await LoadJobAsync(jobId, cancellationToken).ConfigureAwait(false),
-               await NamesAsync(cancellationToken).ConfigureAwait(false));
+               await NamesAsync(cancellationToken).ConfigureAwait(false),
+               await RetentionDaysAsync(cancellationToken).ConfigureAwait(false));
 
     public async Task<StorageSyncJobResponse> StartJobAsync(
         string mode, Guid targetId, bool switchPrimaryOnComplete, CancellationToken cancellationToken)
@@ -335,7 +341,10 @@ public sealed class StorageAdministration : IStorageAdministration
 
         _scheduler.Enqueue(job.Id);
 
-        return Map(job, await NamesAsync(cancellationToken).ConfigureAwait(false));
+        return Map(
+            job,
+            await NamesAsync(cancellationToken).ConfigureAwait(false),
+            await RetentionDaysAsync(cancellationToken).ConfigureAwait(false));
     }
 
     public Task<StorageSyncJobResponse> PauseJobAsync(Guid jobId, CancellationToken cancellationToken)
@@ -361,6 +370,99 @@ public sealed class StorageAdministration : IStorageAdministration
 
         return [.. failures.Select(f => new StorageSyncFailureResponse(
             f.Bucket, f.Key, f.Error, f.Attempts, f.LastAttemptAt, f.ResolvedAt))];
+    }
+
+    public async Task<StorageSyncJobResponse> RequestSourcePurgeAsync(Guid jobId, CancellationToken cancellationToken)
+    {
+        var job = await LoadJobAsync(jobId, cancellationToken).ConfigureAwait(false);
+        var retentionDays = await RetentionDaysAsync(cancellationToken).ConfigureAwait(false);
+
+        var allowedFrom = job.SourcePurgeAllowedFrom(retentionDays)
+            ?? throw Invalid("job", "Mənbəni yalnız tamamlanmış migrasiyadan sonra təmizləmək olar.");
+
+        if (_clock.UtcNow < allowedFrom)
+        {
+            throw Invalid(
+                "job",
+                $"Mənbədəki obyektlər {retentionDays} gün saxlanılır (Storage.SourceRetentionDays). " +
+                $"Təmizləmək {allowedFrom:yyyy-MM-dd HH:mm} UTC-dən sonra mümkün olacaq.");
+        }
+
+        var source = await LoadAsync(job.SourceId, cancellationToken).ConfigureAwait(false);
+
+        if (source.Role != StorageProviderRole.Inactive)
+        {
+            // Primary is where new files go; a mirror's secondary is a live copy.
+            throw Invalid(
+                "job",
+                $"Mənbə provayder ({source.Name}) hazırda {source.Role} rolundadır və istifadə olunur. " +
+                "Təmizləmək üçün əvvəlcə onu söndürün.");
+        }
+
+        if (job.SourcePurgeRequestedAt is null)
+        {
+            job.RequestSourcePurge(retentionDays, Actor("Mənbənin təmizlənməsi təsdiqləndi"), _clock.UtcNow);
+
+            await AggregateWriter.ReplaceAsync(_context, _context.StorageSyncJobs, job, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        // Also when already requested but not finished: a purge that stopped
+        // part-way is picked up where the listing now starts.
+        if (job.SourcePurgedAt is null)
+        {
+            var id = job.Id;
+            _jobs.Enqueue<StorageSourcePurgeJob>(purge => purge.RunAsync(id, CancellationToken.None));
+        }
+
+        return Map(job, await NamesAsync(cancellationToken).ConfigureAwait(false), retentionDays);
+    }
+
+    public async Task DeleteProviderAsync(Guid providerId, CancellationToken cancellationToken)
+    {
+        var provider = await LoadAsync(providerId, cancellationToken).ConfigureAwait(false);
+
+        if (provider.Role != StorageProviderRole.Inactive)
+        {
+            throw Invalid("role", "Yalnız söndürülmüş (Inactive) provayder silinə bilər.");
+        }
+
+        var inJob = await _context.StorageSyncJobs
+            .Find(job => (job.SourceId == providerId || job.TargetId == providerId)
+                         && (job.Status == StorageSyncStatus.Pending
+                             || job.Status == StorageSyncStatus.Running
+                             || job.Status == StorageSyncStatus.Paused
+                             || job.Status == StorageSyncStatus.Verifying))
+            .AnyAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (inJob)
+        {
+            throw Invalid("role", "Bu provayder aktiv sinxronizasiya işində iştirak edir.");
+        }
+
+        var filter = Builders<Domain.Files.StoredFile>.Filter;
+        var referenced = await _context.Files
+            .Find(filter.Or(
+                filter.Eq("Original.ProviderId", providerId),
+                filter.Eq("Pdf.ProviderId", providerId),
+                filter.Eq("Versions.Object.ProviderId", providerId)))
+            .AnyAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (referenced)
+        {
+            // Reads follow the recorded provider: deleting it would make those
+            // files unreadable. A migration moves them off first.
+            throw Invalid("role", "Bu provayderdə hələ fayllar var. Əvvəlcə onları migrasiya ilə köçürün.");
+        }
+
+        await _context.StorageProviders.DeleteOneAsync(p => p.Id == providerId, cancellationToken)
+            .ConfigureAwait(false);
+
+        _logger.LogInformation("Storage provider {Name} was deleted.", provider.Name);
+
+        await ChangedAsync(providerId, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task StartRewrapAsync(CancellationToken cancellationToken)
@@ -433,7 +535,10 @@ public sealed class StorageAdministration : IStorageAdministration
             _scheduler.Enqueue(job.Id);
         }
 
-        return Map(job, await NamesAsync(cancellationToken).ConfigureAwait(false));
+        return Map(
+            job,
+            await NamesAsync(cancellationToken).ConfigureAwait(false),
+            await RetentionDaysAsync(cancellationToken).ConfigureAwait(false));
     }
 
     private Task<StorageSyncJob?> ActiveJobAsync(CancellationToken cancellationToken)
@@ -465,6 +570,9 @@ public sealed class StorageAdministration : IStorageAdministration
         await _events.PublishAsync(new Contracts.StorageConfigChanged(providerId), cancellationToken)
             .ConfigureAwait(false);
     }
+
+    private Task<int> RetentionDaysAsync(CancellationToken cancellationToken)
+        => _settings.GetIntAsync(Domain.Settings.SettingKeys.StorageSourceRetentionDays, 30, cancellationToken);
 
     private async Task<Dictionary<Guid, string>> NamesAsync(CancellationToken cancellationToken)
         => (await _context.StorageProviders.Find(FilterDefinition<StorageProvider>.Empty)
@@ -577,7 +685,8 @@ public sealed class StorageAdministration : IStorageAdministration
             provider.IsVerified);
     }
 
-    private static StorageSyncJobResponse Map(StorageSyncJob job, IReadOnlyDictionary<Guid, string> names) => new(
+    private static StorageSyncJobResponse Map(
+        StorageSyncJob job, IReadOnlyDictionary<Guid, string> names, int retentionDays) => new(
         job.Id,
         job.Mode.ToString(),
         job.SourceId,
@@ -594,7 +703,12 @@ public sealed class StorageAdministration : IStorageAdministration
         job.SwitchPrimaryOnComplete,
         job.StartedAt,
         job.FinishedAt,
-        job.FailureReason);
+        job.FailureReason,
+        job.SourcePurgeAllowedFrom(retentionDays),
+        job.SourcePurgeRequestedAt,
+        job.SourcePurgedAt,
+        job.SourcePurgedObjects,
+        job.SourceKeptObjects);
 
     private static StorageTestResponse Map(StorageTestResult result) => new(
         result.Succeeded,

@@ -645,7 +645,7 @@ public sealed class StorageMigrationWorker
     }
 
     /// <summary>Lists a bucket in key order, one page at a time.</summary>
-    private static async IAsyncEnumerable<S3Object> ListAsync(
+    internal static async IAsyncEnumerable<S3Object> ListAsync(
         IAmazonS3 client,
         string bucket,
         string? startAfter,
@@ -675,7 +675,7 @@ public sealed class StorageMigrationWorker
         while (continuation is not null);
     }
 
-    private static string BucketName(StorageProvider provider, string role) => role switch
+    internal static string BucketName(StorageProvider provider, string role) => role switch
     {
         "Files" => provider.Buckets.Files,
         "Receipts" => provider.Buckets.Receipts,

@@ -148,20 +148,26 @@ public sealed class AdminStorageSyncObserver : IStorageSyncObserver
 
         try
         {
-            await _notifier.StorageSyncProgressAsync(
-                    new StorageSyncProgress(
-                        job.Id,
-                        job.Mode.ToString(),
-                        job.Status.ToString(),
-                        job.TotalObjects,
-                        job.CopiedObjects,
-                        job.FailedObjects,
-                        job.TotalBytes,
-                        job.CopiedBytes,
-                        job.FailureReason,
-                        now),
-                    cancellationToken)
-                .ConfigureAwait(false);
+            var progress = new StorageSyncProgress(
+                job.Id,
+                job.Mode.ToString(),
+                job.Status.ToString(),
+                job.TotalObjects,
+                job.CopiedObjects,
+                job.FailedObjects,
+                job.TotalBytes,
+                job.CopiedBytes,
+                job.FailureReason,
+                now);
+
+            await _notifier.StorageSyncProgressAsync(progress, cancellationToken).ConfigureAwait(false);
+
+            if (job.Status == StorageSyncStatus.Completed)
+            {
+                // Its own event, so a panel opened elsewhere can refresh the
+                // provider list: a completed migration may have moved the primary.
+                await _notifier.StorageSyncCompletedAsync(progress, cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

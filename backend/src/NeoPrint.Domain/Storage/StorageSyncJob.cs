@@ -183,6 +183,80 @@ public sealed class StorageSyncJob : Entity
         LeaseOwner = null;
         LeaseExpiresAt = null;
     }
+
+    // -----------------------------------------------------------------------
+    // Emptying the source after a migration (plan section 2.10)
+    // -----------------------------------------------------------------------
+
+    /// <summary>When an administrator confirmed the source could be emptied.</summary>
+    public DateTime? SourcePurgeRequestedAt { get; private set; }
+
+    public Guid? SourcePurgeRequestedBy { get; private set; }
+
+    /// <summary>When the last object that could go was deleted from the source.</summary>
+    public DateTime? SourcePurgedAt { get; private set; }
+
+    /// <summary>Objects deleted from the source so far.</summary>
+    public long SourcePurgedObjects { get; set; }
+
+    /// <summary>Objects kept on the source because they were still needed there.</summary>
+    public long SourceKeptObjects { get; set; }
+
+    /// <summary>
+    /// The earliest moment the source may be emptied: the job's completion
+    /// plus <c>Storage.SourceRetentionDays</c>. Null while the job is not a
+    /// completed migration.
+    /// </summary>
+    public DateTime? SourcePurgeAllowedFrom(int retentionDays)
+        => Mode == StorageSyncMode.Migration && Status == StorageSyncStatus.Completed && FinishedAt is { } finished
+            ? finished.AddDays(Math.Max(0, retentionDays))
+            : null;
+
+    /// <summary>
+    /// Records the administrator's go-ahead to delete the migrated objects
+    /// from the source (plan section 2.10: after
+    /// <c>Storage.SourceRetentionDays</c>, with the administrator's approval).
+    /// </summary>
+    /// <remarks>
+    /// Asking again while a purge is under way, or after it finished, changes
+    /// nothing: the request is the same request.
+    /// </remarks>
+    /// <exception cref="DomainException">
+    /// Not a completed migration, or the retention period has not passed.
+    /// </exception>
+    public void RequestSourcePurge(int retentionDays, ActorContext actor, DateTime now)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        var allowedFrom = SourcePurgeAllowedFrom(retentionDays)
+            ?? throw new DomainException(
+                $"Storage sync job {Id} is not a completed migration; its source cannot be purged.");
+
+        if (now < allowedFrom)
+        {
+            throw new DomainException(
+                $"The source of storage sync job {Id} is retained until {allowedFrom:O}.");
+        }
+
+        if (SourcePurgeRequestedAt is not null)
+        {
+            return;
+        }
+
+        SourcePurgeRequestedAt = now;
+        SourcePurgeRequestedBy = actor.ActorId;
+    }
+
+    /// <summary>Marks the purge as finished.</summary>
+    public void CompleteSourcePurge(DateTime now)
+    {
+        if (SourcePurgeRequestedAt is null)
+        {
+            throw new DomainException($"No purge was requested for storage sync job {Id}.");
+        }
+
+        SourcePurgedAt ??= now;
+    }
 }
 
 /// <summary>One object a sync could not copy (<c>storage_sync_failures</c>).</summary>

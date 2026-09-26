@@ -745,7 +745,10 @@ son 4 simvolu ilə göstərilir (`accessKeyHint: "••••test"`).
 | `POST` | `providers` | Əlavə edir. **Bağlantı testi keçməzsə saxlanmır** (`400`). Yeni provayder `Inactive` olur |
 | `PUT` | `providers/{id}` | Redaktə. `secretKey` boşdursa saxlanılan qalır (forma onu heç vaxt almır). İstifadədəki provayder yeni parametrlərlə testdən keçməlidir |
 | `POST` | `providers/{id}/test` | Saxlanmış provayderi yoxlayır və nəticəni qeyd edir |
-| `PUT` | `providers/{id}/role` | `{ "role": "Primary" \| "Secondary" \| "Inactive" }`. Rolu tutan digər provayder əvvəlcə `Inactive` olur — heç vaxt iki Primary olmur. Primary birbaşa söndürülə bilməz; aktiv sinxronizasiya varsa rol dəyişmir |
+| `POST` | `providers/{id}/set-primary` | Provayderi Primary edir (plan Bölmə 6). Əvvəlki Primary `Inactive` olur |
+| `POST` | `providers/{id}/set-secondary` | Provayderi mirror-un Secondary-si edir. Əvvəlki Secondary `Inactive` olur |
+| `PUT` | `providers/{id}/role` | `{ "role": "Primary" \| "Secondary" \| "Inactive" }` — yuxarıdakı iki qısa yolun ümumi forması; `Inactive` (söndürmə) yalnız bununla. Rolu tutan digər provayder əvvəlcə `Inactive` olur — heç vaxt iki Primary olmur. Primary birbaşa söndürülə bilməz; aktiv sinxronizasiya varsa rol dəyişmir |
+| `DELETE` | `providers/{id}` | Provayderi silir → `204`. Yalnız `Inactive`, heç bir fayl ona istinad etmirsə və aktiv sinxronizasiya işində iştirak etmirsə (əks halda `400`). **İçindəki obyektlərə toxunmur** |
 
 Provayder gövdəsi:
 
@@ -769,16 +772,20 @@ Provayder gövdəsi:
 | Metod | Yol | Məna |
 |---|---|---|
 | `GET` | `sync-jobs` | Son 50 iş |
-| `GET` | `sync-jobs/{id}` | Bir iş: status, obyekt və bayt sayğacları, checkpoint bucket-i, xəta səbəbi |
+| `GET` | `sync-jobs/{id}` | Bir iş: status, obyekt və bayt sayğacları, checkpoint bucket-i, xəta səbəbi; mənbənin təmizlənməsi: `sourcePurgeAllowedFrom` (tamamlanma + `Storage.SourceRetentionDays`, yalnız tamamlanmış migrasiyada), `sourcePurgeRequestedAt`, `sourcePurgedAt`, `sourcePurgedObjects`, `sourceKeptObjects` |
 | `POST` | `sync-jobs` | `{ "mode": "Migration" \| "Mirror", "targetId", "switchPrimaryOnComplete" }` — mənbə həmişə cari Primary-dir. **Eyni anda yalnız bir aktiv iş.** Mirror hədəfi dərhal `Secondary` olur |
 | `POST` | `sync-jobs/{id}/pause` \| `resume` \| `cancel` | Dayandır / davam et / ləğv et |
-| `POST` | `sync-jobs/{id}/retry-failures` | Uğursuz işi yenidən verification-a göndərir — hədəfdə çatışmayan **hər şey** (uğursuzlar dəqiq) köçürülür, yalnız sonra keçid olur |
+| `POST` | `sync-jobs/{id}/retry-failed` | Uğursuz işi yenidən verification-a göndərir — hədəfdə çatışmayan **hər şey** (uğursuzlar dəqiq) köçürülür, yalnız sonra keçid olur |
 | `GET` | `sync-jobs/{id}/failures` | Köçürülə bilməyən obyektlər (bucket, key, xəta, cəhd sayı, həll olunubmu) |
+| `POST` | `sync-jobs/{id}/purge-source` | **Mənbəni təmizlə** (admin təsdiqi). Yalnız tamamlanmış migrasiya, `sourcePurgeAllowedFrom` keçibsə və mənbə `Inactive`-dirsə (əks halda `400` — nə vaxt mümkün olacağı mesajda). Fonda işləyir; obyekt mənbədən **yalnız** hədəfdə eyni açar və ölçü ilə varsa və heç bir fayl qeydi onu mənbədən oxumursa silinir, qalanlar saxlanılır və sayılır. Təkrar çağırış eyni təsdiqdir (idempotent); yarıda qalan təmizləmə davam etdirilir |
 | `POST` | `rewrap` | KEK rotasiyasından sonra bütün obyektləri yeni açara keçirir (fonda, provayder × bucket üzrə) → `202` |
 
 **Canlı progress:** `/hubs/admin` üzərindən `StorageSyncProgress` hadisəsi (iş
 başına saniyədə ən çox 2 dəfə; status dəyişikliyi həmişə göndərilir):
 `{ jobId, mode, status, totalObjects, copiedObjects, failedObjects, totalBytes, copiedBytes, failureReason, at }`.
+İş `Completed` olanda eyni məzmunla əlavə olaraq `StorageSyncCompleted` göndərilir (provayder
+siyahısını yeniləmək üçün — Primary dəyişmiş ola bilər). Hər dəqiqəlik health check-də status
+dəyişən provayder üçün `StorageHealthChanged`: `{ providerId, name, role, status, message, at }`.
 
 Migrasiya **restart-safe**-dir: hər obyektdən sonra checkpoint yazılır, worker
 ölsə lease 2 dəqiqədə bitir və dəqiqəlik yoxlama işi checkpoint-dən davam
