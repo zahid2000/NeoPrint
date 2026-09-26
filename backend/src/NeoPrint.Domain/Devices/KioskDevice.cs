@@ -110,6 +110,13 @@ public sealed class KioskDevice : Entity
 
     public Guid? KioskId { get; set; }
 
+    /// <summary>
+    /// The kiosk the device was bound to before it was revoked, for the
+    /// kiosk's device history (plan section 8A.3). <see cref="KioskId"/> is
+    /// cleared on revocation, because a revoked device acts for nobody.
+    /// </summary>
+    public Guid? LastKioskId { get; set; }
+
     public Guid? ActivatedBy { get; set; }
 
     public DateTime? ActivatedAt { get; set; }
@@ -228,6 +235,7 @@ public sealed class KioskDevice : Entity
         RevokedBy = actor.ActorId;
         RevokedAt = utcNow;
         RevokeReason = actor.Reason;
+        LastKioskId = KioskId ?? LastKioskId;
         KioskId = null;
         PairingCodeHash = null;
         PairingCodeExpiresAt = null;

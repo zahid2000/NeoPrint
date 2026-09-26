@@ -130,7 +130,10 @@ public sealed class ListKiosksHandler : IRequestHandler<ListKiosksQuery, IReadOn
                 kiosk.ActiveDeviceId,
                 kiosk.AppVersion,
                 kiosk.SelectedPrinter?.Name,
-                kiosk.LastHeartbeatAt))
+                kiosk.LastHeartbeatAt,
+                kiosk.Location.Lat,
+                kiosk.Location.Lng,
+                kiosk.PricingProfileId))
             .ToList();
     }
 }

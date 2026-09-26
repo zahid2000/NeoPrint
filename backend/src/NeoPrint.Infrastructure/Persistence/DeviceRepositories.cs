@@ -46,6 +46,14 @@ public sealed class KioskDeviceRepository : IKioskDeviceRepository
         => _context.KioskDevices.CountDocumentsAsync(
             device => device.Status == DeviceStatus.Pending, cancellationToken: cancellationToken);
 
+    public async Task<IReadOnlyList<KioskDevice>> ListForKioskAsync(
+        Guid kioskId, CancellationToken cancellationToken = default)
+        => await _context.KioskDevices
+            .Find(device => device.KioskId == kioskId || device.LastKioskId == kioskId)
+            .SortByDescending(device => device.ActivatedAt)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public Task AddAsync(KioskDevice device, CancellationToken cancellationToken = default)
         => AggregateWriter.InsertAsync(_context, _context.KioskDevices, device, cancellationToken);
 
@@ -130,6 +138,9 @@ public sealed class KioskRepository : IKioskRepository
 
     public Task UpdateAsync(Kiosk kiosk, CancellationToken cancellationToken = default)
         => AggregateWriter.ReplaceAsync(_context, _context.Kiosks, kiosk, cancellationToken);
+
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+        => _context.Kiosks.DeleteOneAsync(kiosk => kiosk.Id == id, cancellationToken);
 }
 
 /// <inheritdoc cref="IAuditWriter" />

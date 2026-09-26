@@ -146,6 +146,33 @@ public sealed class FilesController : ControllerBase
             enableRangeProcessing: true);
     }
 
+    /// <summary>
+    /// One page as a PNG, for previews (plan section 6).
+    /// </summary>
+    /// <param name="id">The file.</param>
+    /// <param name="page">One-based page number.</param>
+    /// <param name="width">Requested width in pixels; snapped to 320, 640, 960, 1280 or 1600.</param>
+    /// <remarks>
+    /// Private caching only: the image is the user's document. The ETag follows
+    /// the PDF's content, so an unchanged page is answered with 304 and never
+    /// rendered twice for the same client.
+    /// </remarks>
+    [HttpGet("{id:guid}/pages/{page:int}.png")]
+    public async Task<IActionResult> PageImage(
+        Guid id, int page, [FromQuery] int? width, CancellationToken cancellationToken)
+    {
+        var image = await _sender.Send(
+            new GetFilePageImageQuery(UserId, id, page, width, Request.Headers.IfNoneMatch.ToString()),
+            cancellationToken);
+
+        Response.Headers.ETag = image.ETag;
+        Response.Headers.CacheControl = "private, max-age=86400";
+
+        return image.NotModified
+            ? StatusCode(StatusCodes.Status304NotModified)
+            : File(image.Png!, "image/png");
+    }
+
     /// <summary>Changes when the file deletes itself (plan section 2.13).</summary>
     [HttpPut("{id:guid}/auto-delete")]
     [ProducesResponseType(typeof(UserFileResult), StatusCodes.Status200OK)]

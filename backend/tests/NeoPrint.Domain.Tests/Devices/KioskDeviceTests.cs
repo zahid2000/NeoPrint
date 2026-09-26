@@ -61,13 +61,15 @@ public sealed class KioskDeviceTests
     public void Revoking_detaches_the_device_and_records_why()
     {
         var device = Pending();
-        device.Activate(Guid.NewGuid(), ActorContext.Admin(Guid.NewGuid()), Now);
+        var kioskId = Guid.NewGuid();
+        device.Activate(kioskId, ActorContext.Admin(Guid.NewGuid()), Now);
         var admin = Guid.NewGuid();
 
         device.Revoke(ActorContext.Admin(admin, "kiosk decommissioned"), Now.AddDays(1));
 
         device.Status.Should().Be(DeviceStatus.Revoked);
         device.KioskId.Should().BeNull();
+        device.LastKioskId.Should().Be(kioskId, "the kiosk's device history still lists it");
         device.RevokedBy.Should().Be(admin);
         device.RevokeReason.Should().Be("kiosk decommissioned");
         device.CanIssueKioskToken.Should().BeFalse();

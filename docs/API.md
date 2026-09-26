@@ -507,12 +507,64 @@ konfiqurasiyanı yenidən çəkir — bütün konfiqurasiyanı poll etmək lazı
 operator yalnız öz kiosklarını görür.
 
 → `[ { "id", "code", "name", "status", "platform", "address", "defaultLanguage",
-      "activeDeviceId", "appVersion", "selectedPrinter", "lastHeartbeatAt" } ]`
+      "activeDeviceId", "appVersion", "selectedPrinter", "lastHeartbeatAt",
+      "lat", "lng", "pricingProfileId" } ]` — `lat`/`lng` xəritə görünüşü üçündür.
 
 `status`: `NotActivated` | `NotConfigured` | `Online` | `Paused` | `Offline` |
 `Maintenance` | `Disabled`
 
-Kiosk CRUD-u Addım 2-dədir.
+**Null sahələr JSON-a yazılmır** (məs. cihazsız kioskda `activeDeviceId` yoxdur).
+
+### Kiosk yarat / redaktə (Addım 2)
+
+Hamısı çağıranın **kiosk əhatəsinə** tabedir: əhatədən kənar kiosk `404` qaytarır
+(`403` yox — cavab kioskun mövcudluğunu təsdiqləmir). Hər dəyişiklik
+`audit_logs`-a yazılır (admin PIN və onun hash-i heç vaxt yazılmır) və
+`configurationChangedAt`-i yeniləyir — kiosk bunu növbəti heartbeat-də görüb
+konfiqurasiyasını yenidən alır.
+
+| Metod | Yol | İcazə | Məna |
+|---|---|---|---|
+| `GET` | `admin/kiosks/{id}` | `kiosks.view` | Detal (aşağıda) |
+| `POST` | `admin/kiosks` | `kiosks.create` | Cihazsız kiosk → `201`, status `NotActivated`. `code` boşdursa növbəti `KSK-XXXX` |
+| `PUT` | `admin/kiosks/{id}` | `kiosks.edit` | `{ name, lat, lng, address, defaultLanguage, queueDisplayLimit }` |
+| `DELETE` | `admin/kiosks/{id}` | `kiosks.delete` | → `204`. **Yalnız heç vaxt cihaz bağlanmamış** kiosk; tarixçəsi olan `400` |
+| `PUT` | `admin/kiosks/{id}/limits` | `kiosks.limits.manage` | `{ maxFileSizeMb?, maxPages? }` — `null` = "Default istifadə et" |
+| `PUT` | `admin/kiosks/{id}/pricing-profile` | `pricing.manage` | `{ pricingProfileId? }` — `null` = default profil; mövcud olmayan profil `400` |
+| `PUT` | `admin/kiosks/{id}/fiscal-terminal` | `fiscal.manage` | `{ fiscalTerminalId? }` |
+| `PUT` | `admin/kiosks/{id}/paper/capacity` | `kiosks.edit` | `{ a4, a3 }` (0–100000 vərəq). Kapasitet azaldılanda sayğac ona endirilir |
+| `POST` | `admin/kiosks/{id}/admin-pin` | `kiosks.edit` | `{ pin }` — 4–12 rəqəm; yalnız hash saxlanılır |
+| `GET` | `admin/kiosks/{id}/devices` | `devices.view` | Cihaz tarixçəsi: bağlı və ayrılmış bütün cihazlar (`isActive`, platforma, versiya, hostname, aktivləşdirmə / ayrılma vaxtı və səbəbi, son əlaqə) |
+
+**POST gövdəsi:**
+
+```json
+{
+  "name": "Nizami küçəsi",
+  "code": null,
+  "lat": 40.4093, "lng": 49.8671, "address": "Nizami küç. 10, Bakı",
+  "defaultLanguage": "az",
+  "queueDisplayLimit": 5,
+  "maxFileSizeMb": null, "maxPages": null,
+  "pricingProfileId": null,
+  "fiscalTerminalId": null,
+  "paperCapacityA4": 500, "paperCapacityA3": 250,
+  "adminPin": "482915"
+}
+```
+
+Qaydalar: ad və ünvan məcburi; `queueDisplayLimit` 3 və ya 5; `defaultLanguage`
+az / en / ru; limitlər 1–2048 MB və 1–10000 səhifə; kod `KSK-0000` formatında və unikal.
+
+**Detal cavabı:** `id, code, name, status, lat, lng, address, defaultLanguage,
+queueDisplayLimit, maxFileSizeMb { override, default, effective }, maxPages { … },
+pricingProfileId, pricingProfileName` (bağlı və ya default profil)`, fiscalTerminalId,
+paper { A4: { capacity, current, lastRefillAt }, A3: { … } }, hasAdminPin,
+activeDeviceId, platform, appVersion, selectedPrinter, lastHeartbeatAt,
+configurationChangedAt, createdAt, revision`. **PIN heç vaxt qaytarılmır.**
+
+Printerlər, əmrlər, telemetriya və status əməliyyatları kiosk tətbiqi ilə birlikdə
+Addım 3-dədir.
 
 ---
 
@@ -710,6 +762,16 @@ olardı) və link sahiblik yoxlamasını yan keçərdi.
 Çevrilmiş PDF — preview, səhifə sayı və çap bunu işlədir. Fayl hələ
 çevrilirsə və ya uğursuz olubsa `400` + izah.
 
+### `GET /api/files/{id}/pages/{n}.png?width=`
+
+Bir səhifə PNG kimi (mobil "Fayllarım" önizləməsi). `n` 1-dən başlayır.
+`width` 320 / 640 / 960 / 1280 / 1600-dən ən yaxın böyüyə yuvarlanır (default 960;
+hündürlük səhifənin nisbətinə görə). Fayl `Ready` olmalıdır, əks halda `400` +
+izah; olmayan səhifə `400`; başqasının faylı `404`.
+
+`Cache-Control: private, max-age=86400` və PDF məzmununa bağlı `ETag` — eyni
+səhifə üçün `If-None-Match` göndərilsə `304`, yenidən render olunmur.
+
 ### `PUT /api/files/{id}/auto-delete`
 
 `{ "rule": "Never" | "AfterPrint" | "AfterOneDay" | "AfterSevenDays" | "AfterThirtyDays" }`
@@ -724,6 +786,19 @@ nüsxələri daxil).
 
 Anonim. Qəbul edilən uzantıların siyahısı — mobil fayl seçicisi bununla
 filtrləyir.
+
+### `GET /api/admin/files/formats` · `PUT /api/admin/files/formats`
+
+`formats.manage` ("Fayl formatları" səhifəsi). GET →
+`{ formats: [ { extension, mediaType, group, route, printerNative, enabled } ],
+defaultMaxSizeMb, defaultMaxPages, userQuotaGb }`.
+`group`: `Pdf` | `TextDocument` | `Spreadsheet` | `Presentation` | `Image` | `PageDescription`;
+`route`: `None` | `LibreOffice` | `Ghostscript` | `Image`.
+
+PUT `{ enabled: ["pdf", "docx", …], defaultMaxSizeMb, defaultMaxPages, userQuotaGb }`.
+Kataloqda olmayan format (məs. `exe`) və boş siyahı `400` — format əlavə etmək
+konvertor tələb edir, bu konfiqurasiya deyil. Söndürülmüş format upload-da
+rədd olunur. Hər dəyişən ayar üçün ayrıca audit (`formats.update`).
 
 
 ---

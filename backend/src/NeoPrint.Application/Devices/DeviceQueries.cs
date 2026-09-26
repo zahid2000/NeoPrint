@@ -45,7 +45,10 @@ public sealed record EnrollmentTokenListItem(
 
 public sealed record ListEnrollmentTokensQuery : IRequest<IReadOnlyList<EnrollmentTokenListItem>>;
 
-/// <summary>A kiosk row, as the activation wizard offers it (plan section 8A.3).</summary>
+/// <summary>
+/// A kiosk row: the kiosk list and its map, and the activation wizard's
+/// choice of kiosks (plan section 8A.3).
+/// </summary>
 public sealed record KioskListItem(
     Guid Id,
     string Code,
@@ -57,7 +60,10 @@ public sealed record KioskListItem(
     Guid? ActiveDeviceId,
     string? AppVersion,
     string? SelectedPrinter,
-    DateTime? LastHeartbeatAt);
+    DateTime? LastHeartbeatAt,
+    double Lat,
+    double Lng,
+    Guid? PricingProfileId);
 
 /// <summary>
 /// The kiosks an administrator's scope covers (plan section 8A.2).

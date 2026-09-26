@@ -36,7 +36,7 @@ public sealed class ConversionTests
     /// document rather than a header and a marker: the point is to exercise
     /// the parser, not to work around it.
     /// </remarks>
-    private static byte[] OnePagePdf(int pages = 1)
+    internal static byte[] OnePagePdf(int pages = 1)
     {
         var builder = new StringBuilder();
         var offsets = new List<int>();

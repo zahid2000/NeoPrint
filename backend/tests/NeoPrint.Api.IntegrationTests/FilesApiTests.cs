@@ -6,6 +6,8 @@ using System.Text.Json;
 
 using Amazon.S3.Model;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace NeoPrint.Api.IntegrationTests;
 
 /// <summary>
@@ -326,5 +328,162 @@ public sealed class FilesApiTests
         var formats = await client.GetFromJsonAsync<string[]>("/api/files/formats");
 
         formats.Should().Contain("pdf").And.Contain("docx").And.Contain("jpg");
+    }
+
+    // -----------------------------------------------------------------------
+    // Format administration (plan sections 2.2, 8A.3 "Fayl formatları")
+    // -----------------------------------------------------------------------
+
+    private async Task<HttpClient> SuperAdminAsync()
+    {
+        var client = _fixture.CreateApiClient();
+
+        var login = await client.PostAsJsonAsync("/api/auth/admin/login", new
+        {
+            email = NeoPrintApiFixture.SeedAdminEmail,
+            password = NeoPrintApiFixture.SeedAdminPassword,
+        });
+
+        login.StatusCode.Should().Be(HttpStatusCode.OK, await login.Content.ReadAsStringAsync());
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accessToken").GetString());
+
+        return client;
+    }
+
+    private static object FormatsUpdate(IEnumerable<string> enabled) => new
+    {
+        enabled,
+        defaultMaxSizeMb = 50,
+        defaultMaxPages = 200,
+        userQuotaGb = 1,
+    };
+
+    [DockerFact]
+    public async Task A_switched_off_format_is_refused_at_upload()
+    {
+        using var admin = await SuperAdminAsync();
+        using var user = await SignedInAsync();
+
+        var formats = await admin.GetFromJsonAsync<JsonElement>("/api/admin/files/formats");
+        var all = formats.GetProperty("formats").EnumerateArray()
+            .Select(format => format.GetProperty("extension").GetString()!)
+            .ToList();
+
+        all.Should().Contain(["pdf", "docx", "xlsx", "pptx", "jpg", "ps", "txt"]);
+
+        var text = Encoding.UTF8.GetBytes("Plain text to print.\n");
+
+        try
+        {
+            var off = await admin.PutAsJsonAsync(
+                "/api/admin/files/formats", FormatsUpdate(all.Where(extension => extension != "txt")));
+            off.StatusCode.Should().Be(HttpStatusCode.OK, await off.Content.ReadAsStringAsync());
+
+            var listed = (await off.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("formats")
+                .EnumerateArray()
+                .Single(format => format.GetProperty("extension").GetString() == "txt");
+            listed.GetProperty("enabled").GetBoolean().Should().BeFalse();
+
+            (await user.PostAsync("/api/files", Upload(text, "notes.txt", "text/plain")))
+                .StatusCode.Should().Be(HttpStatusCode.BadRequest, "txt is switched off");
+
+            // Other formats are unaffected.
+            (await user.PostAsync("/api/files", Upload(Pdf(), "still-fine.pdf", "application/pdf")))
+                .StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+        finally
+        {
+            (await admin.PutAsJsonAsync("/api/admin/files/formats", FormatsUpdate(all)))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        (await user.PostAsync("/api/files", Upload(text, "notes.txt", "text/plain")))
+            .StatusCode.Should().Be(HttpStatusCode.Created, "switched back on");
+    }
+
+    [DockerFact]
+    public async Task A_format_outside_the_catalogue_cannot_be_switched_on()
+    {
+        using var admin = await SuperAdminAsync();
+
+        foreach (var enabled in new[] { new[] { "pdf", "exe" }, Array.Empty<string>() })
+        {
+            var response = await admin.PutAsJsonAsync("/api/admin/files/formats", FormatsUpdate(enabled));
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await response.Content.ReadAsStringAsync()).Should().Contain("enabled");
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Page images (plan section 6, files/{id}/pages/{n}.png)
+    // -----------------------------------------------------------------------
+
+    private async Task<Guid> UploadReadyPdfAsync(HttpClient user, int pages)
+    {
+        var upload = await user.PostAsync(
+            "/api/files", Upload(ConversionTests.OnePagePdf(pages), "preview.pdf", "application/pdf"));
+        upload.StatusCode.Should().Be(HttpStatusCode.Created, await upload.Content.ReadAsStringAsync());
+
+        var id = (await upload.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        // The consumer converts it too; converting is idempotent, and doing it
+        // here means the test does not wait on the bus.
+        using var scope = _fixture.Services.CreateScope();
+        await scope.ServiceProvider
+            .GetRequiredService<NeoPrint.Infrastructure.Conversion.DocumentConversionService>()
+            .ConvertAsync(id);
+
+        return id;
+    }
+
+    [PdfiumFact]
+    public async Task A_page_is_served_as_a_png_of_the_requested_width()
+    {
+        using var user = await SignedInAsync();
+        var id = await UploadReadyPdfAsync(user, pages: 3);
+
+        var response = await user.GetAsync($"/api/files/{id}/pages/2.png?width=600");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        response.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
+        response.Headers.CacheControl!.Private.Should().BeTrue("it is the user's document");
+
+        var png = await response.Content.ReadAsByteArrayAsync();
+        using var bitmap = SkiaSharp.SKBitmap.Decode(png);
+
+        // 600 is snapped up to 640; A4 keeps its aspect ratio.
+        bitmap.Width.Should().Be(640);
+        bitmap.Height.Should().Be((int)Math.Round(640 * 842 / 595.0));
+
+        // Unchanged page, same tag: no second render.
+        var again = new HttpRequestMessage(HttpMethod.Get, $"/api/files/{id}/pages/2.png?width=600");
+        again.Headers.IfNoneMatch.Add(response.Headers.ETag!);
+        (await user.SendAsync(again)).StatusCode.Should().Be(HttpStatusCode.NotModified);
+    }
+
+    [PdfiumFact]
+    public async Task A_page_outside_the_document_or_someone_elses_file_is_refused()
+    {
+        using var owner = await SignedInAsync();
+        using var stranger = await SignedInAsync();
+        var id = await UploadReadyPdfAsync(owner, pages: 2);
+
+        (await owner.GetAsync($"/api/files/{id}/pages/3.png")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await owner.GetAsync($"/api/files/{id}/pages/0.png")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await stranger.GetAsync($"/api/files/{id}/pages/1.png")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public void Requested_widths_snap_to_a_few_sizes()
+    {
+        NeoPrint.Application.Files.FilePageImage.Snap(null).Should().Be(960);
+        NeoPrint.Application.Files.FilePageImage.Snap(1).Should().Be(320);
+        NeoPrint.Application.Files.FilePageImage.Snap(640).Should().Be(640);
+        NeoPrint.Application.Files.FilePageImage.Snap(641).Should().Be(960);
+        NeoPrint.Application.Files.FilePageImage.Snap(100_000).Should().Be(1600, "a caller cannot ask for a poster");
     }
 }

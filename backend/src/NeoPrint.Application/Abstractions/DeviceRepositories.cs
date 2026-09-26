@@ -25,6 +25,9 @@ public interface IKioskDeviceRepository
     /// </remarks>
     Task<long> CountPendingAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Every device that is or was bound to a kiosk, newest first.</summary>
+    Task<IReadOnlyList<KioskDevice>> ListForKioskAsync(Guid kioskId, CancellationToken cancellationToken = default);
+
     Task AddAsync(KioskDevice device, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(KioskDevice device, CancellationToken cancellationToken = default);
@@ -57,6 +60,8 @@ public interface IKioskRepository
     Task AddAsync(Kiosk kiosk, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Kiosk kiosk, CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
