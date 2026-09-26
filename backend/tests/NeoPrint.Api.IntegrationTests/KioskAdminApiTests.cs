@@ -319,6 +319,28 @@ public sealed class KioskAdminApiTests
     }
 
     [DockerFact]
+    public async Task The_reason_the_panel_gives_reaches_the_audit_log()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SuperAdminAsync();
+        var id = (await CreateAsync(admin)).GetProperty("id").GetString();
+
+        // Headers are not UTF-8, so the panel sends the reason URL-encoded.
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/kiosks/{id}");
+        request.Headers.Add("X-Audit-Reason", Uri.EscapeDataString("Səhv yaradılıb, təkrardır"));
+
+        (await admin.SendAsync(request)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        using var scope = _fixture.Services.CreateScope();
+        var entry = await scope.ServiceProvider.GetRequiredService<MongoContext>().AuditLogs
+            .Find(log => log.EntityId == id && log.Action == "kiosks.delete")
+            .FirstAsync();
+
+        entry.Reason.Should().Be("Səhv yaradılıb, təkrardır");
+    }
+
+    [DockerFact]
     public async Task A_scoped_operator_cannot_reach_a_kiosk_outside_the_scope()
     {
         if (Skip) { return; }

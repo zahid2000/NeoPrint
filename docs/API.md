@@ -100,6 +100,13 @@ RFC 7807 ProblemDetails:
 
 `detail` sahəsi istifadəçiyə göstərilmək üçün yazılır və Azərbaycan dilindədir.
 
+### Audit səbəbi (`X-Audit-Reason`)
+
+Admin panelində dağıdıcı əməliyyat (silmə, mənbəni təmizləmə, ləğv) səbəb tələb edir
+(plan 8A.1). Səbəb `X-Audit-Reason` başlığında **URL-encoded** göndərilir (başlıqlar UTF-8
+deyil) və handler öz səbəbini yazmayıbsa `audit_logs.Reason`-a düşür. Yalnız admin
+token-i ilə qəbul olunur, 500 simvoldan uzunu kəsilir.
+
 ### Rate limit
 
 | Sahə | Limit |

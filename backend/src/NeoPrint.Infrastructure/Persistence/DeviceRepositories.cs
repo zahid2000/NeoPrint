@@ -154,12 +154,15 @@ public sealed class MongoAuditWriter : IAuditWriter
 {
     private readonly MongoContext _context;
     private readonly ICorrelationContext _correlation;
+    private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
 
-    public MongoAuditWriter(MongoContext context, ICorrelationContext correlation, IClock clock)
+    public MongoAuditWriter(
+        MongoContext context, ICorrelationContext correlation, ICurrentUser currentUser, IClock clock)
     {
         _context = context;
         _correlation = correlation;
+        _currentUser = currentUser;
         _clock = clock;
     }
 
@@ -179,7 +182,9 @@ public sealed class MongoAuditWriter : IAuditWriter
                 Before = entry.Before,
                 After = entry.After,
                 Ip = entry.Ip,
-                Reason = entry.Reason,
+                // The handler's own reason when it has one; otherwise the one
+                // the administrator gave the request (X-Audit-Reason).
+                Reason = entry.Reason ?? _currentUser.AuditReason,
                 CreatedAt = _clock.UtcNow,
             },
             cancellationToken: cancellationToken);

@@ -55,6 +55,49 @@ public sealed class CurrentUser : ICurrentUser
         }
     }
 
+    /// <summary>The header the panel sends a reason in: URL-encoded, since headers are not UTF-8.</summary>
+    public const string AuditReasonHeader = "X-Audit-Reason";
+
+    /// <summary>The longest reason kept; anything past it is cut, not refused.</summary>
+    public const int MaxAuditReasonLength = 500;
+
+    /// <summary>
+    /// The reason for this request, from <see cref="AuditReasonHeader"/>.
+    /// </summary>
+    /// <remarks>
+    /// Only an administrator's: a reason is part of an admin action's record,
+    /// and nobody else's request writes to the audit log.
+    /// </remarks>
+    public string? AuditReason
+    {
+        get
+        {
+            var raw = AdminUserId is null
+                ? null
+                : _accessor.HttpContext?.Request.Headers[AuditReasonHeader].FirstOrDefault();
+
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return null;
+            }
+
+            string decoded;
+
+            try
+            {
+                decoded = Uri.UnescapeDataString(raw).Trim();
+            }
+            catch (UriFormatException)
+            {
+                return null;
+            }
+
+            return decoded.Length == 0
+                ? null
+                : decoded.Length > MaxAuditReasonLength ? decoded[..MaxAuditReasonLength] : decoded;
+        }
+    }
+
     private bool IsTokenType(string expected)
         => string.Equals(Principal?.FindFirstValue(NeoPrintClaims.TokenType), expected, StringComparison.Ordinal);
 

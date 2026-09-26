@@ -23,4 +23,11 @@ public interface ICurrentUser
 
     /// <summary>Caller IP, recorded on consents and audit entries.</summary>
     string? Ip { get; }
+
+    /// <summary>
+    /// Why an administrator did what this request does, when the panel asked
+    /// (plan section 8A.1: a destructive action carries a reason into the
+    /// audit log). Null when none was given.
+    /// </summary>
+    string? AuditReason { get; }
 }
