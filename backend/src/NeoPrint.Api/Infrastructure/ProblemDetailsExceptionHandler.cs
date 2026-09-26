@@ -96,6 +96,16 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             Status = StatusCodes.Status409Conflict,
         },
 
+        // Not signed in, or the credential has expired: 401, not 400. A client
+        // that gets a 400 has been told its request was malformed and will
+        // retry it; a 401 tells it to sign in again.
+        AuthenticationException authentication => new ProblemDetails
+        {
+            Title = "Not authenticated",
+            Detail = authentication.Message,
+            Status = StatusCodes.Status401Unauthorized,
+        },
+
         UnauthorizedAccessException => new ProblemDetails
         {
             Title = "Forbidden",

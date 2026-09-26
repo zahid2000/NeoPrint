@@ -282,6 +282,16 @@ deyir.
 
 Cookie ilə, gövdə yoxdur. → yeni `accessToken` + yeni cookie.
 
+Rədd edilmiş hər hal **`401`** qaytarır və hamısı eyni mətni verir
+(«Sessiya bitib. Yenidən daxil olun.»): cookie yoxdur, token tanınmır, vaxtı
+keçib, artıq bir dəfə istifadə olunub (rotasiya — bu halda bütün ailə ləğv
+edilir) və ya hesab deaktiv edilib. Hallar bir-birindən ayrılmır — fərq yalnız
+hücumçuya faydalıdır, detal log-a yazılır.
+
+`400` deyil, məhz `401`: sorğu düzgün formalaşdırılıb, sadəcə sessiya bitib.
+`400` alan klient sorğusunun səhv olduğunu düşünüb təkrar cəhd edər; `401`
+isə yenidən giriş deməkdir.
+
 ### `POST /api/auth/admin/logout`
 
 → `204`, cookie silinir.

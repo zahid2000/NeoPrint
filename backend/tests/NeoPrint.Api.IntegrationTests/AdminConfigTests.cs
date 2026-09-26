@@ -320,13 +320,12 @@ public sealed class AdminConfigTests
 
         reset.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // A stolen session must not outlive the reset. The refused refresh
-        // answers 400 rather than 401 - a revoked token is treated as invalid
-        // input by the existing contract - so what is asserted is that it is
-        // refused at all.
+        // A stolen session must not outlive the reset, and the refusal says
+        // 401: the request was well formed, the session is simply over. A 400
+        // would tell a client its request was malformed and invite a retry.
         var refused = await theirs.PostAsync("/api/auth/admin/refresh", content: null);
 
-        refused.IsSuccessStatusCode.Should().BeFalse();
+        refused.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         // The new password works, and has to be changed.
         using var afterReset = _fixture.CreateApiClient();

@@ -160,8 +160,9 @@ public sealed class AdminRefreshHandler : IRequestHandler<AdminRefreshCommand, A
             .FindByHashAsync(_secrets.HashToken(request.RefreshToken), cancellationToken)
             .ConfigureAwait(false);
 
-        var invalid = new ValidationException(
-            [new ValidationError("refreshToken", "Sessiya bitib. Yenidən daxil olun.")]);
+        // 401, not a validation problem: the request was well formed, the
+        // session simply ended. The panel signs the person in again on a 401.
+        var invalid = new AuthenticationException("Sessiya bitib. Yenidən daxil olun.");
 
         if (stored is null)
         {
