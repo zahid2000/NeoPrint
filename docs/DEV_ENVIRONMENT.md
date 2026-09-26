@@ -11,7 +11,7 @@ yarandıqca bu fayl yenilənir.
 > yazılır (`docs/OPENBAO.md`).
 
 > **Layihədə PostgreSQL yoxdur.** Source of truth MongoDB-dir, Redis keş/queue/lock,
-> RabbitMQ mesaj brokeri, MinIO/Scality obyekt saxlamasıdır (plan Bölmə 4).
+> RabbitMQ mesaj brokeri, Zenko CloudServer obyekt saxlamasıdır (plan Bölmə 4).
 
 ---
 
@@ -31,7 +31,7 @@ curl http://localhost:5080/health
 
 `docker compose up` ardıcıllığı: `openbao` → `openbao-init` (init + unseal + KV v2
 mount + AppRole + policy + audit + 29 secret) → `mongo` → `mongo-init` (replica
-set `rs0`) → `redis`, `rabbitmq`, `minio` → `minio-init` (bucket-lər) → `api` →
+set `rs0`) → `redis`, `rabbitmq`, `zenko` + `zenko-secondary` → `zenko-init` (hər ikisində bucket-lər) → `api` →
 `admin`.
 
 **Backend kodu dəyişəndən sonra** konteyner köhnə image ilə işləməyə davam edir,
@@ -46,7 +46,7 @@ docker compose up -d --build api
 ```bash
 docker compose stop            # datanı saxlayır
 docker compose down            # konteynerləri silir, volume-lar qalır
-docker compose down -v         # HƏR ŞEYİ silir (Mongo, OpenBao, MinIO datası)
+docker compose down -v         # HƏR ŞEYİ silir (Mongo, OpenBao, Zenko datası)
 ```
 
 ### OpenBao restart-dan sonra möhürlənir (sealed)
@@ -75,9 +75,8 @@ docker compose restart api
 | **Redis** | `localhost:6379` | |
 | **RabbitMQ (AMQP)** | `localhost:5672` | |
 | **RabbitMQ management** | http://localhost:15672 | |
-| **MinIO S3 API** | http://localhost:9000 | |
-| **MinIO konsolu** | http://localhost:9001 | |
-| **Scality (Zenko) S3** | http://localhost:8000 | migrasiya / mirror hədəfi |
+| **Zenko CloudServer — primary** | http://localhost:8000 | S3 API. Veb konsolu yoxdur |
+| **Zenko CloudServer — secondary** | http://localhost:8001 | migrasiya / mirror hədəfi (plan 9.8) |
 | **Mailpit (SMTP tutucu)** | http://localhost:8025 | bütün email-lər buraya gəlir; SMTP: `localhost:1025` |
 | **Hangfire dashboard** | http://localhost:5080/hangfire | yalnız Development |
 
@@ -135,22 +134,62 @@ docker exec -it neoprint-redis redis-cli -a devRedisPassword
 amqp://neoprint:devRabbitPassword@localhost:5672/
 ```
 
-### MinIO
+### Obyekt saxlaması — Zenko CloudServer
+
+Hər iki instansiya (`zenko`, `zenko-secondary`) eyni açarlarla işləyir.
 
 | | |
 |---|---|
-| Access key | `neoprintminio` |
-| Secret key | `devMinioPassword` |
-| Konsol | http://localhost:9001 |
-| Bucket-lər | `neoprint-files`, `neoprint-receipts`, `neoprint-temp` |
+| Access key | `neoprintzenko` |
+| Secret key | `devZenkoPassword` |
+| Primary endpoint | http://localhost:8000 (konteyner daxilindən `http://zenko:8000`) |
+| Secondary endpoint | http://localhost:8001 (konteyner daxilindən `http://zenko-secondary:8000`) |
+| Region | `us-east-1` |
+| Bucket-lər | `neoprint-files`, `neoprint-receipts`, `neoprint-temp` (hər ikisində) |
+| Image | `ghcr.io/scality/cloudserver:9.1.4` (digest ilə pinlənib) |
 
-### Scality (Zenko CloudServer)
+Veb konsolu yoxdur. Obyektlərə baxmaq üçün istənilən S3 klienti — məsələn
+AWS CLI:
 
-| | |
-|---|---|
-| Access key | `neoprintscality` |
-| Secret key | `devScalityPassword` |
-| Endpoint | http://localhost:8000 |
+```bash
+aws --endpoint-url http://localhost:8000 s3 ls s3://neoprint-files --recursive
+# (AWS_ACCESS_KEY_ID=neoprintzenko AWS_SECRET_ACCESS_KEY=devZenkoPassword)
+```
+
+Oradakı obyektlər **şifrəlidir** — endirsəniz açılmaz, bu gözlənilən haldır.
+
+Admin panelində ikinci provayderi (migrasiya / mirror üçün) əlavə edərkən:
+endpoint `http://zenko-secondary:8000`, tip **Scality**, yuxarıdakı açarlar.
+
+#### MinIO-dan Zenko-ya keçid (mövcud lokal mühit üçün)
+
+Əvvəlki mühitdə MinIO var idi. `openbao-init` artıq dəyəri olan secret-ə
+**toxunmur**, ona görə sizin OpenBao-da hələ MinIO seed dəyərləri qalıb. İki yol:
+
+**A. Sıfırdan (ən sadə, bütün lokal data silinir):**
+
+```bash
+cp .env.openbao-seed.example .env.openbao-seed   # MinIO dəyərləri Zenko ilə əvəzlənir
+docker compose down -v
+docker compose up -d --build
+```
+
+**B. Datanı saxlayaraq:** `.env.openbao-seed`-də `MINIO_ROOT_*` və
+`SCALITY_ACCESS_KEY` / `SCALITY_SECRET_KEY` sətirlərini silin, nümunə fayldakı
+`SCALITY_ACCESS_KEY_ID` / `SCALITY_SECRET_ACCESS_KEY` və yeni
+`NEOPRINT_STORAGE_SEED_*` sətirlərini köçürün, sonra OpenBao-dakı seed yolunu
+yeniləyin:
+
+```bash
+docker exec -e BAO_ADDR=http://127.0.0.1:8200 -e BAO_TOKEN=<root-token> neoprint-openbao   bao kv patch -mount=neoprint backend/seed     NEOPRINT_STORAGE_SEED_TYPE=Scality     NEOPRINT_STORAGE_SEED_NAME="Local Zenko"     NEOPRINT_STORAGE_SEED_ENDPOINT=http://zenko:8000     NEOPRINT_STORAGE_SEED_ACCESS_KEY=neoprintzenko     NEOPRINT_STORAGE_SEED_SECRET_KEY=devZenkoPassword
+docker compose up -d --remove-orphans --build
+```
+
+`--remove-orphans` köhnə `neoprint-minio` / `neoprint-scality` konteynerlərini
+silir. Storage provayderi yalnız `storage_providers` boş olanda seed edilir;
+əgər artıq MinIO-ya işarə edən provayder yaranıbsa, onu admin panelindən
+silin və ya Mongo-da `storage_providers` kolleksiyasını boşaldıb API-ni
+yenidən başladın.
 
 ### OpenBao
 

@@ -7,6 +7,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 
 using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 
 using Microsoft.AspNetCore.Hosting;
@@ -76,24 +77,11 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         // means is what the server hands back, not what a fake decides to
         // return.
         //
-        // Zenko CloudServer rather than MinIO: MinIO's images stopped being
-        // anonymously pullable, and Zenko is the other provider the plan
-        // supports (section 2.10). Both are reached through the same
-        // S3StorageProvider, so the code under test is identical
-        // (docs/DECISIONS.md).
-        _storage = new ContainerBuilder("zenko/cloudserver:latest-7.70.10")
-            .WithEnvironment("S3BACKEND", "mem")
-            .WithEnvironment("REMOTE_MANAGEMENT_DISABLE", "1")
-            .WithEnvironment("SCALITY_ACCESS_KEY_ID", StorageAccessKey)
-            .WithEnvironment("SCALITY_SECRET_ACCESS_KEY", StorageSecretKey)
-            .WithPortBinding(8000, assignRandomHostPort: true)
-            // Ready when it answers HTTP at all. CloudServer restricts its
-            // health route to allowed addresses and replies 403 from
-            // anywhere else, so "succeeded" is the wrong test - an answer of
-            // any kind is what says the S3 API is up.
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(request =>
-                request.ForPort(8000).ForPath("/").ForStatusCodeMatching(_ => true)))
-            .Build();
+        // Zenko CloudServer, configured exactly as docker-compose.yml runs it
+        // (the file backend, not the in-memory one), so a difference between
+        // the two cannot hide here. MinIO's images stopped being anonymously
+        // pullable in September 2026 (docs/DECISIONS.md).
+        _storage = CloudServer();
 
         _openBao = new ContainerBuilder("openbao/openbao:2.6.2")
             .WithEnvironment("BAO_DEV_ROOT_TOKEN_ID", RootToken)
@@ -263,6 +251,58 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
     public const string ReceiptsBucket = "neoprint-receipts";
 
     public const string TempBucket = "neoprint-temp";
+
+    /// <summary>The image docker-compose.yml pins; the two must not drift apart.</summary>
+    public const string CloudServerImage =
+        "ghcr.io/scality/cloudserver:9.1.4@sha256:41e4753c25ecaddb34967ea0c888d9966214bd06cf5fbe9d53139e370c6c38a7";
+
+    /// <summary>
+    /// A CloudServer container, as the development environment runs it.
+    /// </summary>
+    /// <remarks>
+    /// Ready means a signed ListBuckets succeeds - the question every test
+    /// actually asks - rather than that the port is open or /live answers.
+    /// The S3 server accepts connections before its metadata and data daemons
+    /// are up, and /live reports the process, not the API behind it.
+    /// </remarks>
+    public static IContainer CloudServer() =>
+        new ContainerBuilder(CloudServerImage)
+            .WithEnvironment("SCALITY_ACCESS_KEY_ID", StorageAccessKey)
+            .WithEnvironment("SCALITY_SECRET_ACCESS_KEY", StorageSecretKey)
+            .WithEnvironment("REMOTE_MANAGEMENT_DISABLE", "1")
+            .WithPortBinding(8000, assignRandomHostPort: true)
+            .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new S3ApiReady()))
+            .Build();
+
+    /// <summary>Waits until the container answers a signed S3 request.</summary>
+    private sealed class S3ApiReady : IWaitUntil
+    {
+        public async Task<bool> UntilAsync(IContainer container)
+        {
+            using var client = new AmazonS3Client(
+                new BasicAWSCredentials(StorageAccessKey, StorageSecretKey),
+                new AmazonS3Config
+                {
+                    ServiceURL = $"http://{container.Hostname}:{container.GetMappedPublicPort(8000)}",
+                    ForcePathStyle = true,
+                    AuthenticationRegion = "us-east-1",
+                    UseHttp = true,
+                    MaxErrorRetry = 0,
+                    Timeout = TimeSpan.FromSeconds(3),
+                });
+
+            try
+            {
+                await client.ListBucketsAsync();
+                return true;
+            }
+            catch (Exception)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(500));
+                return false;
+            }
+        }
+    }
 
     /// <summary>Where the object store is listening, from the test process.</summary>
     public string StorageEndpoint =>

@@ -23,7 +23,7 @@ mənbə və səbəblə burada qeyd olunur.
 | `Microsoft.AspNetCore.SignalR.StackExchangeRedis` | 8.0.31 | MIT | Microsoft | SignalR backplane (çoxlu API instansiyası) |
 | `MongoDB.Driver` | 3.12.0 | Apache-2.0 | MongoDB Inc. (rəsmi) | Verilənlər bazası drayveri; MIT alternativi yoxdur |
 | `StackExchange.Redis` | 2.13.17 | MIT | StackExchange | Keş, lock, sessiya, SignalR backplane |
-| `AWSSDK.S3` | 4.0.103.3 | Apache-2.0 | Amazon (rəsmi) | S3 SigV4 imzalama (MinIO / Scality) |
+| `AWSSDK.S3` | 4.0.103.3 | Apache-2.0 | Amazon (rəsmi) | S3 SigV4 imzalama (istənilən S3-uyğun provayder) |
 | `MailKit` | 4.18.0 | MIT | Jeffrey Stedfast | SMTP; daxili `SmtpClient` köhnəlmiş hesab olunur |
 | `MediatR` | **12.5.0** | Apache-2.0 | Jimmy Bogard | CQRS / mediator. **v13+ kommersiyadır — yüksəldilmir** |
 | `MassTransit`, `MassTransit.RabbitMQ`, `MassTransit.MongoDb` | **8.5.10** | Apache-2.0 | MassTransit | Mesajlaşma, transactional outbox / inbox. **v9+ kommersiyadır — yüksəldilmir** |
@@ -54,7 +54,7 @@ mənbə və səbəblə burada qeyd olunur.
 | `Microsoft.NET.Test.Sdk` | 17.14.1 | MIT | Microsoft | Test host |
 | `FluentAssertions` | **7.2.2** | Apache-2.0 | Dennis Doomen | Assertion-lar. **v8+ kommersiyadır — yüksəldilmir** |
 | `coverlet.collector` | 6.0.4 | MIT | coverlet | Coverage (Domain üçün ≥ 80% tələbi) |
-| `Testcontainers(.MongoDb/.Redis/.RabbitMq/.Minio)` | 4.15.0 | MIT | Testcontainers | Integration testlər |
+| `Testcontainers(.MongoDb/.Redis/.RabbitMq)` | 4.15.0 | MIT | Testcontainers | Integration testlər. Obyekt saxlaması üçün modul yoxdur: CloudServer ümumi `ContainerBuilder` ilə qaldırılır. `Testcontainers.Minio` istinadı çıxarılıb (image-lər anonim çəkilmir) |
 | `Microsoft.AspNetCore.Mvc.Testing` | 8.0.31 | MIT | Microsoft | API integration testləri |
 | `Avalonia.Headless.XUnit` | 11.3.22 | MIT | AvaloniaUI | Kiosk ViewModel / UI testləri |
 
@@ -90,8 +90,8 @@ Bölmə 2.0 qaydası 1-ə görə aşağıdakılar üçün paket **əlavə edilmi
 | MongoDB Community Server 7 | SSPL | Verilənlər bazası (öz serverimizdə pulsuz) |
 | Redis 7.2.x | BSD-3 | Keş, lock, SignalR backplane. 7.2 BSD lisenziyalı son xəttdir |
 | RabbitMQ 3.13 / 4.x | MPL-2.0 | Mesajlaşma |
-| MinIO | AGPL-3.0 | Obyekt saxlama (dəyişdirilmədən, server kimi) |
-| Scality Zenko CloudServer | Apache-2.0 | Development/test-də Scality S3 əvəzi |
+| Zenko CloudServer (`ghcr.io/scality/cloudserver:9.1.4`, digest ilə pinlənib) | Apache-2.0 | **Development və test-in primary obyekt saxlaması** (fayl backend-i) + migrasiya / mirror hədəfi. Bucket-ləri yaradan `zenko-init` də eyni image-dir: image `aws-sdk` daşıyır, ikinci image lazım deyil |
+| MinIO | AGPL-3.0 | **Dəstəklənən alternativ provayder**, development-də istifadə olunmur. Image-lər 2026-cı ilin sentyabrından anonim çəkilmir (Docker Hub 12 sentyabr, quay.io 24 sentyabr); müştəri öz lisenziyası və registry hesabı ilə işlədə bilər |
 | OpenBao | MPL-2.0 | Secret idarəsi (Linux Foundation) |
 | LibreOffice (headless) | MPL-2.0 | Office → PDF |
 | Ghostscript (+ GhostPCL, GhostXPS) | AGPL-3.0 | PS / EPS / PCL / PRN / XPS → PDF (ayrıca proses, dəyişdirilmədən) |

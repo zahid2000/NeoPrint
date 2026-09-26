@@ -153,53 +153,89 @@ services:
     restart: unless-stopped
 
   # -------------------------------------------------------------------------
-  # Object storage — MinIO is the primary provider, Scality the migration and
-  # mirror target (plan section 2.10).
+  # Object storage - Zenko CloudServer (Scality's open-source S3 server,
+  # Apache-2.0), plan section 2.10.
+  #
+  # zenko is the primary; zenko-secondary is the second provider the storage
+  # sync wizard needs to show a migration or a mirror (plan section 9.8). Both
+  # run the file backend, so objects survive a restart.
+  #
+  # MinIO used to be the primary here. Its images stopped being anonymously
+  # pullable in September 2026, which broke a clean docker compose up; the
+  # MinIO provider type is still supported for installations that license it
+  # (docs/DECISIONS.md).
+  #
+  # The image is pinned by digest as well as by tag, so a retagged image cannot
+  # change what runs.
   # -------------------------------------------------------------------------
-  minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
-    container_name: neoprint-minio
-    command: ["server", "/data", "--console-address", ":9001"]
-    env_file:
-      - .env.openbao-seed
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio-data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "mc ready local || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
-    restart: unless-stopped
-
-  minio-init:
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
-    container_name: neoprint-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
-    env_file:
-      - .env.openbao-seed
-    entrypoint: ["/bin/sh", "/docker/init-buckets.sh"]
-    volumes:
-      - ./docker/minio/init-buckets.sh:/docker/init-buckets.sh:ro
-    restart: "no"
-
-  scality:
-    image: zenko/cloudserver:latest-7.70.10
-    container_name: neoprint-scality
+  zenko:
+    image: ghcr.io/scality/cloudserver:9.1.4@sha256:41e4753c25ecaddb34967ea0c888d9966214bd06cf5fbe9d53139e370c6c38a7
+    container_name: neoprint-zenko
     environment:
-      S3BACKEND: mem
-      ENDPOINT: scality
+      # No connection to Scality's hosted management plane.
       REMOTE_MANAGEMENT_DISABLE: "1"
+      # CloudServer checks the Host header against the endpoints it knows and
+      # answers InvalidURI to anything else - which, without this, is every
+      # request from another container. localhost stays known by default.
+      ENDPOINT: zenko
+    # SCALITY_ACCESS_KEY_ID and SCALITY_SECRET_ACCESS_KEY, read by the image.
     env_file:
       - .env.openbao-seed
     ports:
       - "8000:8000"
+    volumes:
+      - zenko-data:/usr/src/app/localData
+      - zenko-metadata:/usr/src/app/localMetadata
+    healthcheck:
+      # /live on the metrics port, as the image documents (Healthchecks.md).
+      # The image has node but neither curl nor wget.
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8002/live',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     restart: unless-stopped
+
+  zenko-secondary:
+    image: ghcr.io/scality/cloudserver:9.1.4@sha256:41e4753c25ecaddb34967ea0c888d9966214bd06cf5fbe9d53139e370c6c38a7
+    container_name: neoprint-zenko-secondary
+    environment:
+      REMOTE_MANAGEMENT_DISABLE: "1"
+      ENDPOINT: zenko-secondary
+    env_file:
+      - .env.openbao-seed
+    ports:
+      - "8001:8000"
+    volumes:
+      - zenko-secondary-data:/usr/src/app/localData
+      - zenko-secondary-metadata:/usr/src/app/localMetadata
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8002/live',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    restart: unless-stopped
+
+  # Creates the buckets on both stores, then exits. Same image: it ships
+  # aws-sdk, so there is no second image to keep pullable.
+  zenko-init:
+    image: ghcr.io/scality/cloudserver:9.1.4@sha256:41e4753c25ecaddb34967ea0c888d9966214bd06cf5fbe9d53139e370c6c38a7
+    container_name: neoprint-zenko-init
+    depends_on:
+      zenko:
+        condition: service_healthy
+      zenko-secondary:
+        condition: service_healthy
+    env_file:
+      - .env.openbao-seed
+    environment:
+      ZENKO_ENDPOINTS: http://zenko:8000,http://zenko-secondary:8000
+      AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE: "1"
+    entrypoint: ["node", "/docker/init-buckets.js"]
+    volumes:
+      - ./docker/zenko/init-buckets.js:/docker/init-buckets.js:ro
+    restart: "no"
 
   # -------------------------------------------------------------------------
   # Mail catcher
@@ -234,7 +270,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      minio-init:
+      zenko-init:
         condition: service_completed_successfully
     # Bootstrap only. Every secret comes from OpenBao (plan section 2.13):
     # nothing below is a secret, and no NEOPRINT_* variable is set here.
@@ -290,4 +326,7 @@ volumes:
   mongo-config:
   redis-data:
   rabbitmq-data:
-  minio-data:
+  zenko-data:
+  zenko-metadata:
+  zenko-secondary-data:
+  zenko-secondary-metadata:
