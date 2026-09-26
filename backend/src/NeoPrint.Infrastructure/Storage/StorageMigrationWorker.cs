@@ -572,7 +572,7 @@ public sealed class StorageMigrationWorker
         {
             try
             {
-                var bytes = await CopyOneAsync(source, sourceBucket, target, targetBucket, key, cancellationToken)
+                var bytes = await S3ObjectCopier.CopyAsync(source, sourceBucket, target, targetBucket, key, cancellationToken)
                     .ConfigureAwait(false);
 
                 return (bytes, null);
@@ -604,110 +604,6 @@ public sealed class StorageMigrationWorker
         }
 
         return (0, lastError ?? "Naməlum xəta");
-    }
-
-    /// <summary>
-    /// Copies one object and proves the copy by reading it back.
-    /// </summary>
-    private static async Task<long> CopyOneAsync(
-        IAmazonS3 source,
-        string sourceBucket,
-        IAmazonS3 target,
-        string targetBucket,
-        string key,
-        CancellationToken cancellationToken)
-    {
-        var scratch = Path.Combine(Path.GetTempPath(), $"neoprint-sync-{Guid.NewGuid():N}");
-
-        try
-        {
-            byte[] sourceHash;
-            Dictionary<string, string> metadata;
-
-            using (var response = await source
-                       .GetObjectAsync(new GetObjectRequest { BucketName = sourceBucket, Key = key }, cancellationToken)
-                       .ConfigureAwait(false))
-            {
-                metadata = response.Metadata.Keys.ToDictionary(k => k, k => response.Metadata[k]);
-
-                await using var file = File.Create(scratch);
-                sourceHash = await HashWhileCopyingAsync(response.ResponseStream, file, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-
-            var length = new FileInfo(scratch).Length;
-
-            await using (var body = File.OpenRead(scratch))
-            {
-                var put = new PutObjectRequest
-                {
-                    BucketName = targetBucket,
-                    Key = key,
-                    InputStream = body,
-                    ContentType = "application/octet-stream",
-                    AutoCloseStream = false,
-                };
-
-                // The operator-facing labels the application wrote travel with
-                // the object; they are not authenticated and nothing reads
-                // them as a decision.
-                foreach (var (name, value) in metadata)
-                {
-                    put.Metadata.Add(name.StartsWith("x-amz-meta-", StringComparison.OrdinalIgnoreCase)
-                        ? name["x-amz-meta-".Length..]
-                        : name, value);
-                }
-
-                await target.PutObjectAsync(put, cancellationToken).ConfigureAwait(false);
-            }
-
-            // Read it back. A copy that has only been written has not been
-            // proven: a gateway that truncated or rewrote the body would pass
-            // a length check on the request side.
-            using var check = await target
-                .GetObjectAsync(new GetObjectRequest { BucketName = targetBucket, Key = key }, cancellationToken)
-                .ConfigureAwait(false);
-
-            var targetHash = await HashWhileCopyingAsync(check.ResponseStream, Stream.Null, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!CryptographicOperations.FixedTimeEquals(sourceHash, targetHash))
-            {
-                throw new InvalidOperationException($"The copy of '{key}' does not match the source.");
-            }
-
-            return length;
-        }
-        finally
-        {
-            try
-            {
-                if (File.Exists(scratch))
-                {
-                    File.Delete(scratch);
-                }
-            }
-            catch (IOException)
-            {
-                // Cleaned up by the operating system.
-            }
-        }
-    }
-
-    private static async Task<byte[]> HashWhileCopyingAsync(
-        Stream source, Stream destination, CancellationToken cancellationToken)
-    {
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        var buffer = new byte[81920];
-
-        int read;
-        while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
-        {
-            hash.AppendData(buffer, 0, read);
-            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
-        }
-
-        return hash.GetHashAndReset();
     }
 
     private async Task RecordFailureAsync(

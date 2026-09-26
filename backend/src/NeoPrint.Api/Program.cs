@@ -295,6 +295,27 @@ await using (var scope = app.Services.CreateAsyncScope())
         scheduler => scheduler.ResumeStaleAsync(CancellationToken.None),
         Cron.Minutely());
 
+    var recurring = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+    // Which providers answer: for the panel, and for noticing a primary that
+    // has gone quiet (plan section 2.10).
+    recurring.AddOrUpdate<StorageMirrorJobs>(
+        StorageMirrorJobs.HealthJobId,
+        jobs => jobs.CheckHealthAsync(CancellationToken.None),
+        Cron.Minutely());
+
+    // The nightly mirror pass, on the schedule the settings give. A change to
+    // the setting takes effect at the next start.
+    var reconciliationCron = await scope.ServiceProvider.GetRequiredService<ISettingsReader>()
+            .GetAsync(SettingKeys.StorageReconciliationCron) is { Length: > 0 } cron
+        ? cron
+        : "0 3 * * *";
+
+    recurring.AddOrUpdate<StorageMirrorJobs>(
+        StorageMirrorJobs.ReconciliationJobId,
+        jobs => jobs.ReconcileAsync(CancellationToken.None),
+        reconciliationCron);
+
     // After seeding, because the retention windows come from settings that do
     // not exist yet on a first start (docs/DATA_RETENTION.md).
     var settings = scope.ServiceProvider.GetRequiredService<ISettingsReader>();

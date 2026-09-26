@@ -203,6 +203,8 @@ public static class DependencyInjection
         services.AddTransient<StorageMigrationWorker>();
         services.AddScoped<IStorageSyncObserver, AdminStorageSyncObserver>();
         services.AddScoped<StorageSyncScheduler>();
+        services.AddSingleton<StorageMirror>();
+        services.AddTransient<StorageMirrorJobs>();
     }
 
     private static void AddMessaging(IServiceCollection services, IConfiguration configuration)
@@ -226,6 +228,7 @@ public static class DependencyInjection
             });
 
             bus.AddConsumer<DocumentConversionConsumer>();
+            bus.AddConsumer<StorageMirrorConsumer>();
 
             // Every process caches the storage providers, so every process needs
             // its own copy of this event: a queue per instance, deleted when the

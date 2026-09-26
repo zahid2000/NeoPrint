@@ -105,6 +105,12 @@ public sealed class S3ClientFactory : IDisposable
             AuthenticationRegion = string.IsNullOrWhiteSpace(region) ? "us-east-1" : region,
             UseHttp = !useSsl,
 
+            // A provider that does not answer is given up on in seconds, not
+            // minutes: in mirror mode the secondary is waiting to serve the
+            // read, and a user is waiting on the other end of it.
+            MaxErrorRetry = 2,
+            Timeout = TimeSpan.FromSeconds(30),
+
             // The object is already encrypted and its hash is recorded, so the
             // SDK's own integrity headers add a second checksum that some
             // S3-compatible servers reject outright.

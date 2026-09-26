@@ -39,18 +39,23 @@ public sealed class S3FileStorage : IFileStorage
     private readonly IKeyEncryptionKeyProvider _keys;
     private readonly ILogger<S3FileStorage> _logger;
 
+    /// <summary>Publishes ObjectStored for mirror mode; null where nothing mirrors (tests).</summary>
+    private readonly IEventPublisher? _events;
+
     public S3FileStorage(
         StorageProviderRegistry registry,
         S3ClientFactory clients,
         EnvelopeEncryptor encryptor,
         IKeyEncryptionKeyProvider keys,
-        ILogger<S3FileStorage> logger)
+        ILogger<S3FileStorage> logger,
+        IEventPublisher? events = null)
     {
         _registry = registry;
         _clients = clients;
         _encryptor = encryptor;
         _keys = keys;
         _logger = logger;
+        _events = events;
     }
 
     /// <inheritdoc />
@@ -120,6 +125,8 @@ public sealed class S3FileStorage : IFileStorage
 
             await DualWriteAsync(provider, bucket, key, scratch, header.KekId, cancellationToken)
                 .ConfigureAwait(false);
+
+            await AnnounceForMirrorAsync(provider, bucket, key, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "Stored object {Key} in {Bucket} on provider {ProviderId} ({Bytes} bytes encrypted).",
@@ -354,6 +361,40 @@ public sealed class S3FileStorage : IFileStorage
     {
         try
         {
+            return await GetFromAsync(provider, bucket, stored, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (IsUnavailable(exception, cancellationToken))
+        {
+            // Mirror mode's promise (plan section 2.10): the provider the
+            // object was written to is not answering, and the secondary holds
+            // a copy. Not on "not found" - that is an answer, and the
+            // secondary is a copy of the primary, not a second opinion.
+            var secondary = await _registry.GetSecondaryAsync(cancellationToken).ConfigureAwait(false);
+
+            if (secondary is null || secondary.Id == provider.Id)
+            {
+                throw;
+            }
+
+            _logger.LogCritical(
+                exception,
+                "Storage provider {ProviderId} is not answering; {Key} is served from the secondary {SecondaryId}.",
+                provider.Id,
+                stored.Key,
+                secondary.Id);
+
+            return await GetFromAsync(secondary, bucket, stored, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task<GetObjectResponse> GetFromAsync(
+        StorageProvider provider,
+        StorageBucket bucket,
+        StoredObject stored,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
             return await _clients.For(provider).GetObjectAsync(
                     new GetObjectRequest
                     {
@@ -366,6 +407,57 @@ public sealed class S3FileStorage : IFileStorage
         catch (AmazonS3Exception exception) when (IsMissing(exception))
         {
             throw new StorageObjectNotFoundException(stored.Key, provider.Id);
+        }
+    }
+
+    /// <summary>
+    /// Whether a failure means the provider is down, as opposed to having
+    /// answered.
+    /// </summary>
+    private static bool IsUnavailable(Exception exception, CancellationToken cancellationToken)
+        => exception switch
+        {
+            StorageObjectNotFoundException => false,
+            OperationCanceledException when cancellationToken.IsCancellationRequested => false,
+            AmazonS3Exception s3 => (int)s3.StatusCode >= 500 || s3.StatusCode == 0,
+            HttpRequestException or System.Net.Sockets.SocketException or TimeoutException => true,
+            OperationCanceledException => true,
+            Amazon.Runtime.AmazonServiceException => true,
+            _ => exception.InnerException is not null && IsUnavailable(exception.InnerException, cancellationToken),
+        };
+
+    /// <summary>
+    /// Tells the mirror about a write, when there is a secondary to mirror to.
+    /// </summary>
+    /// <remarks>
+    /// After the write, and never failing it: the upload is complete on the
+    /// primary, and a copy that is late or lost is what the reconciliation
+    /// pass exists for.
+    /// </remarks>
+    private async Task AnnounceForMirrorAsync(
+        StorageProvider provider, StorageBucket bucket, string key, CancellationToken cancellationToken)
+    {
+        if (_events is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var secondary = await _registry.GetSecondaryAsync(cancellationToken).ConfigureAwait(false);
+
+            if (secondary is null || secondary.Id == provider.Id)
+            {
+                return;
+            }
+
+            await _events.PublishAsync(
+                    new Contracts.ObjectStored(provider.Id, bucket.ToString(), key), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning(exception, "Could not announce {Key} for mirroring; reconciliation will copy it.", key);
         }
     }
 
