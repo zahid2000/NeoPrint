@@ -98,6 +98,32 @@ Refund nəticəsi:
 
 Cihaz ayrıldıqda: `* → NotActivated`.
 
+## Fayl (`StoredFile`)
+
+`Pending → Converting → Ready`
+
+`Pending | Converting → Failed`
+
+`Failed → Converting` (yenidən cəhd)
+
+`Ready → Converting` (yenidən konvertasiya)
+
+`Ready → Pending` — **redaktə** (`StoredFile.ApplyEdit`): redaktə yeni versiya kimi
+saxlanılır, orijinal toxunulmaz qalır; fayl upload kimi yenidən çevrilir və səhifə
+sayı (qiymət) redaktəyə uyğunlaşır. Redaktə yalnız `Ready` faylda mümkündür.
+
+## Storage sinxronizasiya işi (`StorageSyncJob`)
+
+`Pending → Running → Verifying → Completed`
+
+`Running ↔ Paused`, `Pending | Running | Paused → Cancelled`, `Running | Verifying → Failed`
+
+`Failed → Running | Verifying` ("Uğursuzları təkrarla"), `Completed → Running`
+
+Mənbənin təmizlənməsi status deyil, tamamlanmış migrasiyanın alt vəziyyətidir:
+`RequestSourcePurge` (yalnız `Completed` migrasiya, `Storage.SourceRetentionDays` keçəndən
+sonra) → `CompleteSourcePurge`.
+
 ## Update (kiosk versiyası)
 
 `Idle → Downloading → Ready → Applying → HealthCheck → Succeeded`

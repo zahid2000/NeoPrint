@@ -78,7 +78,7 @@ public sealed class DocumentConversionService
             return;
         }
 
-        var actor = ActorContext.System($"Konvertasiya: {file.Extension}");
+        var actor = ActorContext.System($"Konvertasiya: {file.CurrentExtension}");
 
         file.BeginConversion(actor, _clock.UtcNow);
         await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
@@ -115,20 +115,24 @@ public sealed class DocumentConversionService
     private async Task RunAsync(
         StoredFile file, string workspace, ActorContext actor, CancellationToken cancellationToken)
     {
-        var format = FileFormats.Find(file.Extension);
+        // The newest version when the file was edited, the original otherwise
+        // (plan section 2.2: the original is never changed).
+        var extension = file.CurrentExtension;
+        var source = file.CurrentContent;
+        var format = FileFormats.Find(extension);
 
         if (format is null)
         {
-            file.Fail($"'{file.Extension}' formatı artıq dəstəklənmir.", actor, _clock.UtcNow);
+            file.Fail($"'{extension}' formatı artıq dəstəklənmir.", actor, _clock.UtcNow);
             await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        var inputPath = Path.Combine(workspace, $"input.{file.Extension}");
+        var inputPath = Path.Combine(workspace, $"input.{extension}");
 
         await using (var input = File.Create(inputPath))
         {
-            await _storage.ReadAsync(ToStoredObject(file.Original), StorageBucket.Files, input, cancellationToken)
+            await _storage.ReadAsync(ToStoredObject(source), StorageBucket.Files, input, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -201,11 +205,13 @@ public sealed class DocumentConversionService
 
         FileObject pdf;
 
+        var previous = file.Pdf;
+
         if (format.Route == ConversionRoute.None)
         {
-            // The original is the PDF: pointing at the same object rather than
+            // The source is the PDF: pointing at the same object rather than
             // storing the bytes twice.
-            pdf = file.Original;
+            pdf = source;
         }
         else
         {
@@ -213,7 +219,9 @@ public sealed class DocumentConversionService
 
             var stored = await _storage.WriteAsync(
                     StorageBucket.Files,
-                    $"files/{file.UserId:N}/{file.Id:N}/print.pdf",
+                    file.LatestVersion is { } version
+                        ? $"files/{file.UserId:N}/{file.Id:N}/print-v{version.Number}.pdf"
+                        : $"files/{file.UserId:N}/{file.Id:N}/print.pdf",
                     converted,
                     "application/pdf",
                     cancellationToken)
@@ -232,11 +240,45 @@ public sealed class DocumentConversionService
 
         await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
 
+        await DeleteIfUnusedAsync(file, previous, cancellationToken).ConfigureAwait(false);
+
         _logger.LogInformation(
             "File {FileId} converted from {Extension}: {PageCount} pages.",
             file.Id,
-            file.Extension,
+            extension,
             pageCount);
+    }
+
+    /// <summary>
+    /// Deletes the PDF an edit replaced, unless something still uses it.
+    /// </summary>
+    /// <remarks>
+    /// The PDF rendered from a Word original is its own object; once an edit
+    /// produced a new PDF, nothing refers to the old one and it would sit in
+    /// storage, encrypted but unaccounted for, until the file was deleted - and
+    /// not even then, since the file no longer lists it.
+    /// </remarks>
+    private async Task DeleteIfUnusedAsync(StoredFile file, FileObject? previous, CancellationToken cancellationToken)
+    {
+        if (previous is null
+            || previous.Key == file.Pdf?.Key
+            || previous.Key == file.Original.Key
+            || file.Versions.Any(version => version.Object.Key == previous.Key))
+        {
+            return;
+        }
+
+        try
+        {
+            await _storage.DeleteAsync(ToStoredObject(previous), StorageBucket.Files, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // The new PDF is in place; a leftover object is not worth failing
+            // the conversion over.
+            _logger.LogWarning(exception, "The replaced PDF of file {FileId} could not be deleted.", file.Id);
+        }
     }
 
     private static StoredObject ToStoredObject(FileObject stored) => new(

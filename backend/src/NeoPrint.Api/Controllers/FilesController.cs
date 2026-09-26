@@ -173,6 +173,42 @@ public sealed class FilesController : ControllerBase
             : File(image.Png!, "image/png");
     }
 
+    /// <summary>
+    /// Saves an edit as a new version (plan section 2.2): pages, an image or
+    /// text. The original is kept; the file is converted again, so it comes
+    /// back as Pending and turns Ready with the new page count.
+    /// </summary>
+    [HttpPost("{id:guid}/edit")]
+    public async Task<ActionResult<UserFileResult>> Edit(
+        Guid id, [FromBody] FileEditInput edit, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new EditFileCommand(UserId, id, edit), cancellationToken));
+
+    /// <summary>The saved versions, newest first.</summary>
+    [HttpGet("{id:guid}/versions")]
+    public async Task<ActionResult<IReadOnlyList<FileVersionItem>>> Versions(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new ListFileVersionsQuery(UserId, id), cancellationToken));
+
+    /// <summary>One saved version's content, decrypted.</summary>
+    [HttpGet("{id:guid}/versions/{number:int}/content")]
+    public async Task<IActionResult> VersionContent(Guid id, int number, CancellationToken cancellationToken)
+    {
+        var file = await LoadOwnedAsync(id, cancellationToken);
+
+        var version = file.Versions.FirstOrDefault(v => v.Number == number)
+                      ?? throw new NeoPrint.Domain.Common.NotFoundException("Versiya");
+
+        var extension = version.Extension ?? file.Extension;
+
+        var stream = await _storage.OpenReadAsync(
+            ToStoredObject(version.Object), StorageBucket.Files, cancellationToken);
+
+        return File(
+            stream,
+            FileFormats.Find(extension)?.MediaType ?? "application/octet-stream",
+            $"{Path.GetFileNameWithoutExtension(file.FileName)} (v{number}).{extension}",
+            enableRangeProcessing: true);
+    }
+
     /// <summary>Changes when the file deletes itself (plan section 2.13).</summary>
     [HttpPut("{id:guid}/auto-delete")]
     [ProducesResponseType(typeof(UserFileResult), StatusCodes.Status200OK)]

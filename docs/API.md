@@ -772,6 +772,40 @@ izah; olmayan səhifə `400`; başqasının faylı `404`.
 `Cache-Control: private, max-age=86400` və PDF məzmununa bağlı `ETag` — eyni
 səhifə üçün `If-None-Match` göndərilsə `304`, yenidən render olunmur.
 
+### `POST /api/files/{id}/edit`
+
+Redaktəni **yeni versiya** kimi saxlayır (plan 2.2). Orijinal toxunulmaz qalır;
+fayl `Pending` olur və upload kimi yenidən çevrilir — səhifə sayı, önizləmə və
+qiymət redaktəyə uyğunlaşır. Gövdədə **yalnız biri**:
+
+```json
+{ "pages": [ { "page": 3, "rotate": 90 }, { "page": 1, "rotate": 0 } ] }
+{ "image": { "rotate": 90, "crop": { "x": 0, "y": 0, "width": 0.5, "height": 1 },
+             "grayscale": true, "brightness": 10, "contrast": -5 } }
+{ "text": "TXT faylının yeni məzmunu" }
+```
+
+- `pages` — nəticənin səhifələri, sırası ilə: göstərilməyən səhifə silinir, sıra
+  dəyişir, `rotate` (0/90/180/270, saat əqrəbi ilə) fırladır. Cari PDF üzərində
+  işləyir, ona görə Office faylları üçün də (konvertasiyadan sonra) — nəticə PDF versiyadır.
+- `image` — yalnız şəkil faylları: kəsmə (0–1 nisbətlər), fırlatma, ağ-qara,
+  parlaqlıq / kontrast (-100…100), bu ardıcıllıqla. JPEG/PNG/WebP öz formatında,
+  qalanları PNG kimi yazılır.
+- `text` — yalnız TXT (ən çox 1 000 000 simvol).
+- PS / PCL / XPS redaktə olunmur (`400`) — çapda səhifə aralığı seçilir.
+- Fayl `Ready` deyilsə `400`. "Səhifədə yerləşdir" `files/layout`-dadır (plan 2.11).
+
+Ən çox `Files.VersionsToKeep` (default 5) versiya saxlanılır; köhnələri storage-dan
+silinir. Əvəz olunan çevrilmiş PDF də silinir.
+
+### `GET /api/files/{id}/versions`
+
+→ `[ { "number", "extension", "sizeBytes", "createdAt", "note", "isCurrent" } ]`, yenisi əvvəldə.
+
+### `GET /api/files/{id}/versions/{n}/content`
+
+Bir versiyanın məzmunu, deşifrə olunmuş.
+
 ### `PUT /api/files/{id}/auto-delete`
 
 `{ "rule": "Never" | "AfterPrint" | "AfterOneDay" | "AfterSevenDays" | "AfterThirtyDays" }`

@@ -74,6 +74,13 @@ public sealed class FileVersion
 
     /// <summary>What produced it, e.g. "səhifə silindi".</summary>
     public string? Note { get; set; }
+
+    /// <summary>
+    /// The version's own format. An edit can change it - reordering the pages
+    /// of a Word document produces a PDF. Null on versions saved before this
+    /// was recorded, which were in the file's own format.
+    /// </summary>
+    public string? Extension { get; set; }
 }
 
 /// <summary>
@@ -146,9 +153,52 @@ public sealed class StoredFile : Entity
         new StateMachine<FileStatus>(nameof(StoredFile))
             .Allow(FileStatus.Pending, FileStatus.Converting, FileStatus.Failed)
             .Allow(FileStatus.Converting, FileStatus.Ready, FileStatus.Failed)
-            // A new version, or a retry after a failure, converts again.
-            .Allow(FileStatus.Ready, FileStatus.Converting)
+            // A retry after a failure converts again; so does a new version,
+            // which first waits in Pending like a fresh upload (ApplyEdit).
+            .Allow(FileStatus.Ready, FileStatus.Converting, FileStatus.Pending)
             .Allow(FileStatus.Failed, FileStatus.Converting);
+
+    /// <summary>The newest saved version, or null while there is none.</summary>
+    public FileVersion? LatestVersion => Versions.Count == 0 ? null : Versions.MaxBy(v => v.Number);
+
+    /// <summary>
+    /// What the PDF is made from: the newest version, or the original when
+    /// nothing has been edited. The original itself is never changed.
+    /// </summary>
+    public FileObject CurrentContent => LatestVersion?.Object ?? Original;
+
+    /// <summary>The format of <see cref="CurrentContent"/>.</summary>
+    public string CurrentExtension => LatestVersion?.Extension ?? Extension;
+
+    /// <summary>
+    /// Saves an edit as a new version and sends the file back for conversion
+    /// (plan section 2.2: "redaktə olunmuş versiya yeni fayl versiyası kimi
+    /// saxlanılır, orijinal toxunulmaz qalır").
+    /// </summary>
+    /// <param name="stored">The edited content, already in storage.</param>
+    /// <param name="extension">Its format.</param>
+    /// <param name="note">What the edit was, for the version list.</param>
+    /// <param name="keep"><c>Files.VersionsToKeep</c>.</param>
+    /// <returns>Versions dropped to stay within <paramref name="keep"/>, whose objects can be deleted.</returns>
+    /// <exception cref="DomainException">The file is not ready - there is nothing settled to edit.</exception>
+    public IReadOnlyList<FileVersion> ApplyEdit(
+        FileObject stored, string extension, string? note, int keep, ActorContext actor, DateTime now)
+    {
+        ArgumentNullException.ThrowIfNull(stored);
+        ArgumentException.ThrowIfNullOrWhiteSpace(extension);
+
+        if (Status != FileStatus.Ready)
+        {
+            throw new DomainException($"'{FileName}' hələ hazır deyil; hazır olandan sonra redaktə edin.");
+        }
+
+        Record(Transitions.Transition(Id, Status, FileStatus.Pending, actor, now));
+
+        var dropped = AddVersion(stored, note, keep, now, extension);
+        Status = FileStatus.Pending;
+
+        return dropped;
+    }
 
     /// <summary>Marks the file as being converted.</summary>
     public void BeginConversion(ActorContext actor, DateTime now)
@@ -193,7 +243,8 @@ public sealed class StoredFile : Entity
 
     /// <summary>Adds a saved revision, keeping at most <paramref name="keep"/>.</summary>
     /// <returns>The versions dropped, so their objects can be deleted.</returns>
-    public IReadOnlyList<FileVersion> AddVersion(FileObject stored, string? note, int keep, DateTime now)
+    public IReadOnlyList<FileVersion> AddVersion(
+        FileObject stored, string? note, int keep, DateTime now, string? extension = null)
     {
         ArgumentNullException.ThrowIfNull(stored);
         ArgumentOutOfRangeException.ThrowIfLessThan(keep, 1);
@@ -204,6 +255,7 @@ public sealed class StoredFile : Entity
             Object = stored,
             CreatedAt = now,
             Note = note,
+            Extension = extension,
         });
 
         if (Versions.Count <= keep)

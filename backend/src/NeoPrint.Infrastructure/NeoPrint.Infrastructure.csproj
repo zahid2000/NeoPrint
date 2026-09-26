@@ -30,6 +30,7 @@
   <ItemGroup Label="Providers">
     <PackageReference Include="MailKit" />
     <PackageReference Include="QRCoder" />
+    <PackageReference Include="PDFsharp" />
     <PackageReference Include="SkiaSharp" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
   </ItemGroup>

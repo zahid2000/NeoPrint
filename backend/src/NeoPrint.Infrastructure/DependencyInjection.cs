@@ -198,6 +198,7 @@ public static class DependencyInjection
         services.AddSingleton<IDocumentConverter, ImageConverter>();
         services.AddScoped<DocumentConversionService>();
         services.AddSingleton<IPageRenderer, PdfiumPageRenderer>();
+        services.AddSingleton<NeoPrint.Application.Files.IFileEditor, FileEditor>();
         services.AddScoped<IEventPublisher, Messaging.MassTransitEventPublisher>();
 
         // Storage sync (plan section 2.10). The worker is transient: each Hangfire

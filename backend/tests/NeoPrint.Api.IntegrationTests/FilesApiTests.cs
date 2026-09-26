@@ -430,12 +430,7 @@ public sealed class FilesApiTests
 
         var id = (await upload.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
-        // The consumer converts it too; converting is idempotent, and doing it
-        // here means the test does not wait on the bus.
-        using var scope = _fixture.Services.CreateScope();
-        await scope.ServiceProvider
-            .GetRequiredService<NeoPrint.Infrastructure.Conversion.DocumentConversionService>()
-            .ConvertAsync(id);
+        await ConvertAsync(id);
 
         return id;
     }
@@ -485,5 +480,213 @@ public sealed class FilesApiTests
         NeoPrint.Application.Files.FilePageImage.Snap(640).Should().Be(640);
         NeoPrint.Application.Files.FilePageImage.Snap(641).Should().Be(960);
         NeoPrint.Application.Files.FilePageImage.Snap(100_000).Should().Be(1600, "a caller cannot ask for a poster");
+    }
+
+    // -----------------------------------------------------------------------
+    // Editing and versions (plan section 2.2, POST files/{id}/edit)
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Waits until the file is settled - Ready or Failed - converting it here
+    /// when the bus has not got to it yet.
+    /// </summary>
+    /// <remarks>
+    /// The conversion consumer receives the same file at the same time. Two
+    /// conversions of one file meet on the row version or on the state
+    /// machine, and one of them gives way; whichever wins, the file ends up
+    /// settled, which is what the tests wait for.
+    /// </remarks>
+    private async Task<NeoPrint.Domain.Files.FileStatus> ConvertAsync(Guid id)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+
+        while (true)
+        {
+            using var scope = _fixture.Services.CreateScope();
+            var file = await scope.ServiceProvider
+                .GetRequiredService<NeoPrint.Application.Files.IFileRepository>()
+                .FindByIdAsync(id);
+
+            if (file!.Status is NeoPrint.Domain.Files.FileStatus.Ready or NeoPrint.Domain.Files.FileStatus.Failed)
+            {
+                return file.Status;
+            }
+
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException($"File {id} is still {file.Status}.");
+            }
+
+            try
+            {
+                await scope.ServiceProvider
+                    .GetRequiredService<NeoPrint.Infrastructure.Conversion.DocumentConversionService>()
+                    .ConvertAsync(id);
+            }
+            catch (NeoPrint.Domain.Common.DomainException)
+            {
+                // The consumer is converting it: wait for that instead.
+                await Task.Delay(200);
+            }
+        }
+    }
+
+    private static async Task<JsonElement> FileAsync(HttpClient user, Guid id)
+        => await user.GetFromJsonAsync<JsonElement>($"/api/files/{id}");
+
+    private static byte[] Png(int width, int height, SkiaSharp.SKColor color)
+    {
+        using var bitmap = new SkiaSharp.SKBitmap(width, height);
+        bitmap.Erase(color);
+        using var image = SkiaSharp.SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
+    }
+
+    [PdfiumFact]
+    public async Task A_page_edit_becomes_a_new_version_and_the_original_stays()
+    {
+        using var user = await SignedInAsync();
+        var original = ConversionTests.OnePagePdf(3);
+
+        var upload = await user.PostAsync("/api/files", Upload(original, "hesabat.pdf", "application/pdf"));
+        var id = (await upload.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        await ConvertAsync(id);
+
+        // Keep pages 3 and 1, in that order, the first turned a quarter.
+        var edit = await user.PostAsJsonAsync($"/api/files/{id}/edit", new
+        {
+            pages = new[] { new { page = 3, rotate = 90 }, new { page = 1, rotate = 0 } },
+        });
+
+        edit.StatusCode.Should().Be(HttpStatusCode.OK, await edit.Content.ReadAsStringAsync());
+        (await edit.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString()
+            .Should().Be("Pending", "the edit is converted like an upload");
+
+        await ConvertAsync(id);
+
+        var file = await FileAsync(user, id);
+        file.GetProperty("status").GetString().Should().Be("Ready");
+        file.GetProperty("pageCount").GetInt32().Should().Be(2, "the price follows the edit");
+        file.GetProperty("versionCount").GetInt32().Should().Be(1);
+
+        // The original is untouched.
+        (await user.GetByteArrayAsync($"/api/files/{id}/content")).Should().Equal(original);
+
+        var versions = await user.GetFromJsonAsync<JsonElement>($"/api/files/{id}/versions");
+        versions.GetArrayLength().Should().Be(1);
+        versions[0].GetProperty("extension").GetString().Should().Be("pdf");
+        versions[0].GetProperty("isCurrent").GetBoolean().Should().BeTrue();
+        versions[0].GetProperty("note").GetString().Should().Contain("3 səhifədən 2-i").And.Contain("fırlandı");
+
+        var saved = await user.GetByteArrayAsync($"/api/files/{id}/versions/1/content");
+        using var document = PdfSharp.Pdf.IO.PdfReader.Open(
+            new MemoryStream(saved), PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+        document.PageCount.Should().Be(2);
+        document.Pages[0].Rotate.Should().Be(90);
+        document.Pages[1].Rotate.Should().Be(0);
+    }
+
+    [PdfiumFact]
+    public async Task An_image_edit_crops_turns_and_greys_and_the_old_pdf_is_removed()
+    {
+        using var user = await SignedInAsync();
+
+        var upload = await user.PostAsync(
+            "/api/files", Upload(Png(40, 20, new SkiaSharp.SKColor(200, 40, 40)), "foto.png", "image/png"));
+        var id = (await upload.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        await ConvertAsync(id);
+
+        var edit = await user.PostAsJsonAsync($"/api/files/{id}/edit", new
+        {
+            image = new { rotate = 90, crop = new { x = 0.0, y = 0.0, width = 0.5, height = 1.0 }, grayscale = true },
+        });
+        edit.StatusCode.Should().Be(HttpStatusCode.OK, await edit.Content.ReadAsStringAsync());
+
+        await ConvertAsync(id);
+        (await FileAsync(user, id)).GetProperty("status").GetString().Should().Be("Ready");
+
+        using var bitmap = SkiaSharp.SKBitmap.Decode(
+            await user.GetByteArrayAsync($"/api/files/{id}/versions/1/content"));
+
+        // Cropped to 20x20, then turned: still 20x20; grey means r = g = b.
+        bitmap.Width.Should().Be(20);
+        bitmap.Height.Should().Be(20);
+        var pixel = bitmap.GetPixel(10, 10);
+        pixel.Red.Should().Be(pixel.Green);
+        pixel.Green.Should().Be(pixel.Blue);
+
+        // The PDF rendered from the original image was replaced by the
+        // version's, and deleted rather than left in storage.
+        using var scope = _fixture.Services.CreateScope();
+        var stored = await scope.ServiceProvider
+            .GetRequiredService<NeoPrint.Application.Files.IFileRepository>()
+            .FindByIdAsync(id);
+
+        using var direct = _fixture.CreateDirectStorageClient();
+        var listing = await direct.ListObjectsV2Async(new ListObjectsV2Request
+        {
+            BucketName = NeoPrintApiFixture.FilesBucket,
+            Prefix = $"files/{stored!.UserId:N}/{id:N}/",
+        });
+
+        listing.S3Objects.Select(o => o.Key[(o.Key.LastIndexOf('/') + 1)..])
+            .Should().BeEquivalentTo("original.png", "v1.png", "print-v1.pdf");
+    }
+
+    [DockerFact]
+    public async Task A_text_edit_is_saved_as_a_new_version()
+    {
+        using var user = await SignedInAsync();
+
+        var upload = await user.PostAsync(
+            "/api/files", Upload(Encoding.UTF8.GetBytes("Köhnə mətn\n"), "qeyd.txt", "text/plain"));
+        var id = (await upload.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        // Text becomes a PDF through LibreOffice, which only the backend image
+        // has. Once conversion has settled either way, the file is marked
+        // ready here, so that the edit is what is tested.
+        if (await ConvertAsync(id) != NeoPrint.Domain.Files.FileStatus.Ready)
+        {
+            using var scope = _fixture.Services.CreateScope();
+            var files = scope.ServiceProvider.GetRequiredService<NeoPrint.Application.Files.IFileRepository>();
+            var file = await files.FindByIdAsync(id);
+            var actor = NeoPrint.Domain.Common.ActorContext.System("test");
+
+            file!.BeginConversion(actor, DateTime.UtcNow);
+            file.Complete(file.Original, 1, actor, DateTime.UtcNow);
+            await files.UpdateAsync(file);
+        }
+
+        var edit = await user.PostAsJsonAsync($"/api/files/{id}/edit", new { text = "Yeni mətn, düzəldilib.\n" });
+        edit.StatusCode.Should().Be(HttpStatusCode.OK, await edit.Content.ReadAsStringAsync());
+
+        Encoding.UTF8.GetString(await user.GetByteArrayAsync($"/api/files/{id}/versions/1/content"))
+            .Should().Be("Yeni mətn, düzəldilib.\n");
+        Encoding.UTF8.GetString(await user.GetByteArrayAsync($"/api/files/{id}/content"))
+            .Should().Be("Köhnə mətn\n", "the original is never changed");
+    }
+
+    [DockerFact]
+    public async Task Edits_that_cannot_apply_are_refused()
+    {
+        using var user = await SignedInAsync();
+
+        // A PostScript file: a page range at print time only.
+        var ps = await user.PostAsync(
+            "/api/files", Upload(Encoding.ASCII.GetBytes("%!PS-Adobe-3.0\n%%Pages: 1\nshowpage\n"), "doc.ps"));
+        ps.StatusCode.Should().Be(HttpStatusCode.Created, await ps.Content.ReadAsStringAsync());
+        var psId = (await ps.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var refused = await user.PostAsJsonAsync($"/api/files/{psId}/edit", new { pages = new[] { new { page = 1 } } });
+        refused.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await refused.Content.ReadAsStringAsync()).Should().Contain("PS, PCL");
+
+        // Two kinds at once, and a page given twice.
+        (await user.PostAsJsonAsync($"/api/files/{psId}/edit", new { text = "x", image = new { rotate = 90 } }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await user.PostAsJsonAsync(
+                $"/api/files/{psId}/edit", new { pages = new[] { new { page = 1 }, new { page = 1 } } }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }
