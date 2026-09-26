@@ -13,4 +13,13 @@
     <RootNamespace>NeoPrint.Domain</RootNamespace>
   </PropertyGroup>
 
+  <!--
+    The price formula. A pure calculation with no dependencies - shared with the
+    kiosk - so the domain stays free of technology (docs/ARCHITECTURE_RULES.md)
+    while a price snapshot can hold the exact inputs it was computed from.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\shared\NeoPrint.Pricing\NeoPrint.Pricing.csproj" />
+  </ItemGroup>
+
 </Project>

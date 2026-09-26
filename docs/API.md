@@ -784,6 +784,53 @@ etdirir.
 
 ---
 
+## Qiymət (`/api/pricing`, `/api/admin/pricing-profiles`)
+
+### `POST /api/pricing/quote`
+
+İstənilən daxil olmuş çağıran (mobil, kiosk, panel).
+
+```json
+{
+  "kioskId": "…",              // null → default profil
+  "options": { "pageCount": 10, "copies": 1, "duplex": false, "color": false, "paper": "A4", "pagesPerSheet": 1 },
+  "promoCode": null,           // qəbul olunur, Addım 4-dən tətbiq edilir
+  "useBonus": false            // qəbul olunur, Addım 4-dən tətbiq edilir
+}
+```
+
+→ `{ profileId, profileName, price: { pages, sides, sheets, copies, color, duplex, paper, pricePerSide, paperMultiplier, basePrice, discountPercent, volumeDiscount, promoDiscount, bonusPages, minimumApplied, finalPrice, currency } }`
+
+Formul (plan 2.3), yuvarlaqlaşdırma 2 onluq, half-to-even:
+
+```
+sides  = ceil(pageCount / pagesPerSheet) * copies
+sheets = duplex ? ceil(sides / 2) : sides
+base   = sides * qiymət(rəng) * kağızƏmsalı
+endirim = ən böyük pillə (sides >= MinSides) — pillələr toplanmır
+final  = max(MinOrder, base − endirim)
+```
+
+Hesablama `NeoPrint.Pricing`-dədir və **kiosk da eyni kodu işlədir** — ekranda
+görünən qiymət tutulanla eynidir. Sifariş yaradılanda qiymət **snapshot** kimi
+saxlanılır (dərəcələrin kopyası ilə); profil sonradan dəyişsə də snapshot
+dəyişmir.
+
+### Admin (`pricing.manage`)
+
+| Metod | Yol | Məna |
+|---|---|---|
+| `GET` | `/api/admin/pricing-profiles` | Siyahı, hər profilə bağlı kiosk sayı ilə; default birinci |
+| `GET` | `…/{id}` | Profil + bu profillə qiymətlənən kiosklar (default profil üçün öz profili olmayanlar da) |
+| `POST` | `…` | Yarat. A4 əmsalı məcburi, qiymətlər mənfi ola bilməz, endirim 0–100 arası (sərhədlər daxil deyil), pillə üz sayları unikal |
+| `PUT` | `…/{id}` | Redaktə. Əvvəlki dəyərlər `History`-yə yazılır, `revision` artır; iki admin eyni anda redaktə etsə ikincisi `409` alır |
+| `DELETE` | `…/{id}` | Default profil və kioska bağlı profil silinmir (`400`, neçə kioska bağlı olduğu yazılır) |
+| `POST` | `…/{id}/default` | Default et — həmişə tam olaraq bir default qalır |
+| `PUT` | `…/{id}/kiosks` | `{ "kioskIds": [...] }` — bir neçə kiosku eyni anda bu profilə bağla |
+| `POST` | `…/calculate` | Kalkulyator: `{ "profileId" }` və ya saxlanmamış `{ "draft": {...} }` + `options` → qiymət təfərrüatı |
+
+---
+
 ## Hələ mövcud olmayan endpoint-lər
 
 Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: print job-lar və
@@ -791,6 +838,5 @@ queue (Addım 3), ödəniş / refund / wallet / fiskal (Addım 4), skan və payl
 (Addım 6), telemetriya və operator paneli (Addım 7).
 
 Addım 2-nin qalan hissəsi: fayl redaktəsi (`POST files/{id}/edit`), səhifə
-şəkilləri (`GET files/{id}/pages/{n}.png`), versiyalar, kiosk CRUD-u və qiymət
-profilləri
+şəkilləri (`GET files/{id}/pages/{n}.png`), versiyalar və kiosk CRUD-u
 (`POST pricing/quote`).

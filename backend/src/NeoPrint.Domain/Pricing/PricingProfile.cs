@@ -1,4 +1,5 @@
 using NeoPrint.Domain.Common;
+using NeoPrint.Pricing;
 
 namespace NeoPrint.Domain.Pricing;
 
@@ -62,6 +63,69 @@ public sealed class PricingProfile : Entity
 
     /// <summary>Change history, newest last.</summary>
     public List<PricingProfileChange> History { get; set; } = [];
+
+    /// <summary>
+    /// The rates as a value, for the calculator and for a snapshot.
+    /// </summary>
+    /// <remarks>
+    /// New collections, not the profile's own: a snapshot that shared this
+    /// profile's dictionary would change in memory the moment the profile was
+    /// edited, before anything was even saved.
+    /// </remarks>
+    public PriceTable ToPriceTable() => new(
+        BwPricePerSide.Amount,
+        ColorPricePerSide.Amount,
+        new Dictionary<string, decimal>(PaperMultipliers, StringComparer.Ordinal),
+        MinOrder.Amount,
+        [.. VolumeTiers.OrderBy(t => t.MinSides).Select(t => new PriceTier(t.MinSides, t.DiscountPercent))]);
+
+    /// <summary>
+    /// Checks the values an administrator entered.
+    /// </summary>
+    /// <returns>Problems by field; empty when the profile is valid.</returns>
+    public IReadOnlyList<(string Field, string Message)> Validate()
+    {
+        var problems = new List<(string, string)>();
+
+        if (string.IsNullOrWhiteSpace(Name))
+        {
+            problems.Add(("name", "Ad tələb olunur."));
+        }
+
+        if (BwPricePerSide.Amount < 0 || ColorPricePerSide.Amount < 0 || MinOrder.Amount < 0)
+        {
+            problems.Add(("prices", "Qiymətlər mənfi ola bilməz."));
+        }
+
+        if (!PaperMultipliers.ContainsKey("A4"))
+        {
+            // Every order has a paper size; without A4 the most common order
+            // could not be priced at all.
+            problems.Add(("paperMultipliers", "A4 əmsalı tələb olunur."));
+        }
+
+        if (PaperMultipliers.Values.Any(m => m <= 0))
+        {
+            problems.Add(("paperMultipliers", "Kağız əmsalı müsbət olmalıdır."));
+        }
+
+        if (VolumeTiers.Any(t => t.MinSides < 1))
+        {
+            problems.Add(("volumeTiers", "Pillənin minimum üz sayı ən azı 1 olmalıdır."));
+        }
+
+        if (VolumeTiers.Any(t => t.DiscountPercent <= 0 || t.DiscountPercent >= 100))
+        {
+            problems.Add(("volumeTiers", "Endirim faizi 0 ilə 100 arasında olmalıdır."));
+        }
+
+        if (VolumeTiers.GroupBy(t => t.MinSides).Any(g => g.Count() > 1))
+        {
+            problems.Add(("volumeTiers", "Eyni minimum üz sayı ilə iki pillə ola bilməz."));
+        }
+
+        return problems;
+    }
 }
 
 /// <summary>One recorded change to a pricing profile.</summary>
