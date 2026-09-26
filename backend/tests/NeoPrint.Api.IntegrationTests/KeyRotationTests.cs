@@ -143,8 +143,11 @@ public sealed class KeyRotationTests
         var keys = new SwappableKeys(old);
         var (storage, rewrap, _) = Build(keys);
 
-        // A prefix of its own, so the pass sees only this test's object.
-        var key = $"tests/rewrap-{Guid.NewGuid():N}/document.txt";
+        // A prefix of its own: the bucket is shared with every other test
+        // in the collection, and objects written by the application use the
+        // application's key ring, not this test's.
+        var prefix = $"tests/rewrap-{Guid.NewGuid():N}/";
+        var key = prefix + "document.txt";
         var stored = await storage.WriteAsync(
             StorageBucket.Files, key, new MemoryStream(Encoding.UTF8.GetBytes(Content)), "text/plain");
 
@@ -152,7 +155,7 @@ public sealed class KeyRotationTests
 
         keys.Rotate(NewKey("rewrap-new"));
 
-        var summary = await rewrap.RunAsync(stored.ProviderId, StorageBucket.Files);
+        var summary = await rewrap.RunAsync(stored.ProviderId, StorageBucket.Files, prefix);
 
         summary.Failed.Should().Be(0);
         summary.Rewrapped.Should().BeGreaterThan(0);
@@ -204,12 +207,13 @@ public sealed class KeyRotationTests
         var content = new byte[(int)(2.5 * 1024 * 1024)];
         Random.Shared.NextBytes(content);
 
-        var key = $"tests/rewrap-{Guid.NewGuid():N}/large.bin";
+        var prefix = $"tests/rewrap-{Guid.NewGuid():N}/";
+        var key = prefix + "large.bin";
         var stored = await storage.WriteAsync(
             StorageBucket.Files, key, new MemoryStream(content), "application/octet-stream");
 
         keys.Rotate(NewKey("content-new"));
-        await rewrap.RunAsync(stored.ProviderId, StorageBucket.Files);
+        await rewrap.RunAsync(stored.ProviderId, StorageBucket.Files, prefix);
         keys.Retire("content-old");
 
         using var readBack = new MemoryStream();
@@ -226,14 +230,15 @@ public sealed class KeyRotationTests
         var keys = new SwappableKeys(NewKey("twice-old"));
         var (storage, rewrap, _) = Build(keys);
 
-        var key = $"tests/rewrap-{Guid.NewGuid():N}/document.txt";
+        var prefix = $"tests/rewrap-{Guid.NewGuid():N}/";
+        var key = prefix + "document.txt";
         var stored = await storage.WriteAsync(
             StorageBucket.Files, key, new MemoryStream(Encoding.UTF8.GetBytes(Content)), "text/plain");
 
         keys.Rotate(NewKey("twice-new"));
 
-        var first = await rewrap.RunAsync(stored.ProviderId, StorageBucket.Files);
-        var second = await rewrap.RunAsync(stored.ProviderId, StorageBucket.Files);
+        var first = await rewrap.RunAsync(stored.ProviderId, StorageBucket.Files, prefix);
+        var second = await rewrap.RunAsync(stored.ProviderId, StorageBucket.Files, prefix);
 
         first.Rewrapped.Should().BeGreaterThan(0);
 
@@ -251,14 +256,15 @@ public sealed class KeyRotationTests
         var keys = new SwappableKeys(NewKey("stable-k1"));
         var (storage, rewrap, _) = Build(keys);
 
-        var key = $"tests/rewrap-{Guid.NewGuid():N}/stable.txt";
+        var prefix = $"tests/rewrap-{Guid.NewGuid():N}/";
+        var key = prefix + "stable.txt";
         var stored = await storage.WriteAsync(
             StorageBucket.Files, key, new MemoryStream(Encoding.UTF8.GetBytes(Content)), "text/plain");
 
         var before = await HashInStoreAsync(key);
 
         // No rotation: everything is already on the active key.
-        var summary = await rewrap.RunAsync(stored.ProviderId, StorageBucket.Files);
+        var summary = await rewrap.RunAsync(stored.ProviderId, StorageBucket.Files, prefix);
 
         summary.Rewrapped.Should().Be(0);
         (await HashInStoreAsync(key)).Should().Be(before);

@@ -185,6 +185,7 @@ public static class DependencyInjection
 
         services.AddScoped<StorageProviderSeeder>();
         services.AddScoped<IFileStorage, S3FileStorage>();
+        services.AddScoped<NeoPrint.Application.Files.IFileRepository, FileRepository>();
     }
 
     private static void AddMessaging(IServiceCollection services, IConfiguration configuration)

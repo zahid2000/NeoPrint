@@ -66,11 +66,17 @@ public sealed class KeyRewrapJob
     }
 
     /// <summary>
-    /// Rewraps every object in one bucket of one provider.
+    /// Rewraps the objects in one bucket of one provider.
     /// </summary>
+    /// <param name="keyPrefix">
+    /// Limits the pass to keys under this prefix. A bucket can hold millions
+    /// of objects, and a rotation is run in parts - per user, per year - so
+    /// that a failure costs one part rather than the whole pass.
+    /// </param>
     public async Task<RewrapSummary> RunAsync(
         Guid providerId,
         Application.Abstractions.StorageBucket bucket,
+        string? keyPrefix = null,
         CancellationToken cancellationToken = default)
     {
         var provider = await _registry.GetByIdAsync(providerId, cancellationToken).ConfigureAwait(false);
@@ -91,6 +97,7 @@ public sealed class KeyRewrapJob
                     new ListObjectsV2Request
                     {
                         BucketName = bucketName,
+                        Prefix = keyPrefix,
                         ContinuationToken = continuationToken,
                     },
                     cancellationToken)

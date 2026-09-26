@@ -113,6 +113,7 @@ public sealed class MongoContext
     public MongoSet<PricingProfile> PricingProfiles => Set<PricingProfile>("pricing_profiles");
     public MongoSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>("feature_flags");
     public MongoSet<Domain.Storage.StorageProvider> StorageProviders => Set<Domain.Storage.StorageProvider>("storage_providers");
+    public MongoSet<Domain.Files.StoredFile> Files => Set<Domain.Files.StoredFile>("files");
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
     public MongoSet<AuditLog> AuditLogs => Set<AuditLog>("audit_logs");
