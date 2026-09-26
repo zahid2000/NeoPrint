@@ -1,0 +1,196 @@
+/*
+ * NeoPrint design tokens - the single source for the admin and operator panels.
+ *
+ * Every value here comes from docs/DESIGN_SYSTEM.md. Components read these and
+ * never write a colour, a font size or a spacing value of their own, so a
+ * change to the system is one edit in three files (this one,
+ * mobile/lib/core/theme/tokens.dart and
+ * desktop/src/NeoPrint.Kiosk/Styles/Tokens.axaml).
+ *
+ * Light is the default. Dark follows the operating system unless the person
+ * chose a theme, which ThemeService records as data-theme on <html>.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* --- Brand ----------------------------------------------------------- */
+  --brand-50: #eef3ff;
+  --brand-100: #dce6ff;
+  --brand-300: #9db8ff;
+  --brand-500: #2b5fd9;
+  --brand-600: #1f4cbf;
+  --brand-700: #173a95;
+
+  /* --- Neutrals -------------------------------------------------------- */
+  --neutral-0: #ffffff;
+  --neutral-50: #f7f8fa;
+  --neutral-100: #edeff3;
+  --neutral-200: #dfe3e9;
+  --neutral-400: #9aa3b0;
+  --neutral-600: #5b6473;
+  --neutral-800: #2a303a;
+  --neutral-900: #171b21;
+
+  /* --- Semantic -------------------------------------------------------- */
+  --success-500: #16a34a;
+  --success-bg: #e8f7ee;
+  --warning-500: #d97706;
+  --warning-bg: #fef3e2;
+  --danger-500: #dc2626;
+  --danger-bg: #fdecec;
+  --info-500: #0284c7;
+  --info-bg: #e6f4fb;
+  --focus-ring: #2b5fd9;
+
+  /* --- Typography ------------------------------------------------------ */
+  --font-family: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  --font-size-display: 28px;
+  --font-size-h1: 24px;
+  --font-size-h2: 20px;
+  --font-size-body: 16px;
+  --font-size-body-small: 14px;
+  --font-size-caption: 12px;
+  --font-size-button: 16px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  --line-height-body: 1.5;
+
+  /* --- Spacing (4-based scale) ----------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* --- Radius ---------------------------------------------------------- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* --- Elevation ------------------------------------------------------- */
+  --shadow-1: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
+  --shadow-2: 0 4px 8px rgb(16 24 40 / 8%), 0 2px 4px rgb(16 24 40 / 6%);
+  --shadow-3: 0 12px 24px rgb(16 24 40 / 12%), 0 4px 8px rgb(16 24 40 / 8%);
+
+  /* --- Motion ---------------------------------------------------------- */
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+  --motion-easing: ease-out;
+
+  /* --- Sizes ----------------------------------------------------------- */
+  --touch-target: 36px;
+
+  /* A full-width primary control, e.g. the sign-in button. */
+  --control-height-lg: 48px;
+  --table-row-height: 48px;
+  --status-chip-height: 24px;
+  --icon-size: 20px;
+  --sidebar-width: 260px;
+}
+
+/*
+ * Dark. Declared twice on purpose: once for the operating system preference,
+ * which must not win over an explicit light choice, and once for the explicit
+ * dark choice.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --brand-50: #111a2e;
+    --brand-100: #16243f;
+    --brand-300: #3d67c7;
+    --brand-500: #7ba4ff;
+    --brand-600: #5e8ff5;
+    --brand-700: #4a7ae0;
+
+    --neutral-0: #0f1216;
+    --neutral-50: #151a20;
+    --neutral-100: #1c222a;
+    --neutral-200: #252c36;
+    --neutral-400: #6b7684;
+    --neutral-600: #9aa3b0;
+    --neutral-800: #dde2e8;
+    --neutral-900: #f2f4f7;
+
+    --success-500: #4ade80;
+    --success-bg: #12291c;
+    --warning-500: #fbbf24;
+    --warning-bg: #2c2110;
+    --danger-500: #f87171;
+    --danger-bg: #2e1414;
+    --info-500: #38bdf8;
+    --info-bg: #0e2430;
+    --focus-ring: #7ba4ff;
+
+    /*
+     * Dark surfaces sit close together, so a drop shadow reads as dirt rather
+     * than height; the design system uses a border there instead.
+     */
+    --shadow-1: none;
+    --shadow-2: 0 4px 8px rgb(0 0 0 / 40%);
+    --shadow-3: 0 12px 24px rgb(0 0 0 / 50%);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --brand-50: #111a2e;
+  --brand-100: #16243f;
+  --brand-300: #3d67c7;
+  --brand-500: #7ba4ff;
+  --brand-600: #5e8ff5;
+  --brand-700: #4a7ae0;
+
+  --neutral-0: #0f1216;
+  --neutral-50: #151a20;
+  --neutral-100: #1c222a;
+  --neutral-200: #252c36;
+  --neutral-400: #6b7684;
+  --neutral-600: #9aa3b0;
+  --neutral-800: #dde2e8;
+  --neutral-900: #f2f4f7;
+
+  --success-500: #4ade80;
+  --success-bg: #12291c;
+  --warning-500: #fbbf24;
+  --warning-bg: #2c2110;
+  --danger-500: #f87171;
+  --danger-bg: #2e1414;
+  --info-500: #38bdf8;
+  --info-bg: #0e2430;
+  --focus-ring: #7ba4ff;
+
+  --shadow-1: none;
+  --shadow-2: 0 4px 8px rgb(0 0 0 / 40%);
+  --shadow-3: 0 12px 24px rgb(0 0 0 / 50%);
+}
+
+/*
+ * A viewport narrow enough to be a phone is the operator panel's normal case
+ * (plan section 8B): the touch target grows to the mobile minimum.
+ */
+@media (max-width: 900px) {
+  :root {
+    --touch-target: 48px;
+    --sidebar-width: 220px;
+  }
+}
+
+/* The system setting wins over every transition we would otherwise run. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 1ms;
+    --motion-base: 1ms;
+  }
+}

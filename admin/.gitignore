@@ -53,3 +53,11 @@ Thumbs.db
 # used instead.
 src/**/*.css
 src/**/*.css.map
+
+# The design tokens are plain CSS on purpose: they are custom properties on
+# :root that the theme, the components and the browser all read at runtime, so
+# there is nothing for SCSS to compile. Named by docs/DESIGN_SYSTEM.md section
+# 8, and a source file rather than build output - the rule above would
+# otherwise drop it from the repository and the build would fail on a clean
+# checkout, as it did in CI run 36234643034.
+!src/styles/tokens.css
