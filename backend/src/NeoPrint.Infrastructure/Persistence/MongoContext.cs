@@ -114,6 +114,8 @@ public sealed class MongoContext
     public MongoSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>("feature_flags");
     public MongoSet<Domain.Storage.StorageProvider> StorageProviders => Set<Domain.Storage.StorageProvider>("storage_providers");
     public MongoSet<Domain.Files.StoredFile> Files => Set<Domain.Files.StoredFile>("files");
+    public MongoSet<Domain.Storage.StorageSyncJob> StorageSyncJobs => Set<Domain.Storage.StorageSyncJob>("storage_sync_jobs");
+    public MongoSet<Domain.Storage.StorageSyncFailure> StorageSyncFailures => Set<Domain.Storage.StorageSyncFailure>("storage_sync_failures");
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
     public MongoSet<AuditLog> AuditLogs => Set<AuditLog>("audit_logs");
@@ -291,6 +293,23 @@ public sealed class MongoContext
                 Unique("ux_provider_events")),
             (Builders<ProviderEvent>.IndexKeys.Descending(e => e.ProcessedAt),
                 Named("ix_provider_events_processed")));
+
+        // A user's file list, newest first, and the migration's reference
+        // switch, which finds every file pointing at the source provider.
+        await CreateAsync(Files,
+            (Builders<Domain.Files.StoredFile>.IndexKeys
+                .Ascending(file => file.UserId).Descending(file => file.CreatedAt), Named("ix_files_user_created")),
+            (Builders<Domain.Files.StoredFile>.IndexKeys.Ascending("Original.ProviderId"), Named("ix_files_original_provider")));
+
+        await CreateAsync(StorageSyncJobs,
+            (Builders<Domain.Storage.StorageSyncJob>.IndexKeys.Ascending(job => job.Status), Named("ix_storage_sync_jobs_status")));
+
+        // One row per object per job: a retry updates the row rather than
+        // adding another, so the failure count is the number of objects.
+        await CreateAsync(StorageSyncFailures,
+            (Builders<Domain.Storage.StorageSyncFailure>.IndexKeys
+                .Ascending(failure => failure.JobId).Ascending(failure => failure.Bucket).Ascending(failure => failure.Key),
+                Unique("ux_storage_sync_failures_object")));
 
         return;
 

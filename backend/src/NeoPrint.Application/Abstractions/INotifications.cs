@@ -60,4 +60,7 @@ public interface IAdminNotifier
 
     /// <summary>A feature flag changed.</summary>
     Task FeatureFlagsChangedAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>A sync job moved on: the storage wizard's live progress (plan section 2.10).</summary>
+    Task StorageSyncProgressAsync(Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default);
 }

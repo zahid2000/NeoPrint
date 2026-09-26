@@ -118,6 +118,9 @@ public sealed class S3FileStorage : IFileStorage
                     .ConfigureAwait(false);
             }
 
+            await DualWriteAsync(provider, bucket, key, scratch, header.KekId, cancellationToken)
+                .ConfigureAwait(false);
+
             _logger.LogInformation(
                 "Stored object {Key} in {Bucket} on provider {ProviderId} ({Bytes} bytes encrypted).",
                 key,
@@ -136,6 +139,69 @@ public sealed class S3FileStorage : IFileStorage
         finally
         {
             Delete(scratch);
+        }
+    }
+
+    /// <summary>
+    /// Writes the same ciphertext to a migration's target while one is active.
+    /// </summary>
+    /// <remarks>
+    /// Best effort by design. The user's upload has already succeeded on the
+    /// primary, which stays the copy every file points at until the migration
+    /// is verified; failing the upload because the target hiccuped would turn
+    /// a background task's problem into the user's. What does not land here
+    /// is found and copied by the migration's verification pass before any
+    /// reference is switched (StorageMigrationWorker).
+    /// </remarks>
+    private async Task DualWriteAsync(
+        StorageProvider primary,
+        StorageBucket bucket,
+        string key,
+        string scratch,
+        string kekId,
+        CancellationToken cancellationToken)
+    {
+        StorageProvider? target;
+
+        try
+        {
+            target = await _registry.GetMigrationTargetAsync(primary.Id, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Could not look up an active migration; {Key} was written to the primary only.", key);
+            return;
+        }
+
+        if (target is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await using var body = File.OpenRead(scratch);
+
+            var request = new PutObjectRequest
+            {
+                BucketName = BucketName(target, bucket),
+                Key = key,
+                InputStream = body,
+                ContentType = "application/octet-stream",
+                AutoCloseStream = false,
+            };
+
+            request.Metadata.Add("neoprint-kek", kekId);
+
+            await _clients.For(target).PutObjectAsync(request, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning(
+                exception,
+                "Dual-write of {Key} to migration target {TargetId} failed; verification will copy it.",
+                key,
+                target.Id);
         }
     }
 

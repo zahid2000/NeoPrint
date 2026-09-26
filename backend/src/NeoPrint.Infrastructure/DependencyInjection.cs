@@ -197,6 +197,12 @@ public static class DependencyInjection
         services.AddSingleton<IDocumentConverter, ImageConverter>();
         services.AddScoped<DocumentConversionService>();
         services.AddScoped<IEventPublisher, Messaging.MassTransitEventPublisher>();
+
+        // Storage sync (plan section 2.10). The worker is transient: each Hangfire
+        // job gets its own, with its own worker id in the lease.
+        services.AddTransient<StorageMigrationWorker>();
+        services.AddScoped<IStorageSyncObserver, AdminStorageSyncObserver>();
+        services.AddScoped<StorageSyncScheduler>();
     }
 
     private static void AddMessaging(IServiceCollection services, IConfiguration configuration)
@@ -220,6 +226,17 @@ public static class DependencyInjection
             });
 
             bus.AddConsumer<DocumentConversionConsumer>();
+
+            // Every process caches the storage providers, so every process needs
+            // its own copy of this event: a queue per instance, deleted when the
+            // instance goes. The default - one queue for the consumer type -
+            // would hand it to just one of them.
+            bus.AddConsumer<StorageConfigChangedConsumer>()
+                .Endpoint(endpoint =>
+                {
+                    endpoint.InstanceId = $"-{Environment.MachineName}-{Environment.ProcessId}";
+                    endpoint.Temporary = true;
+                });
 
             bus.SetKebabCaseEndpointNameFormatter();
 

@@ -92,4 +92,9 @@ public sealed class SignalRAdminNotifier : IAdminNotifier
     public Task FeatureFlagsChangedAsync(CancellationToken cancellationToken = default)
         => _hub.Clients.Group(AdminHub.AllAdminsGroup)
             .SendAsync("FeatureFlagsChanged", cancellationToken);
+
+    public Task StorageSyncProgressAsync(
+        Application.Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default)
+        => _hub.Clients.Group(AdminHub.AllAdminsGroup)
+            .SendAsync("StorageSyncProgress", progress, cancellationToken);
 }

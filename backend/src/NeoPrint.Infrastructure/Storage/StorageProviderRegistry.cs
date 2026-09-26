@@ -37,6 +37,9 @@ public sealed class StorageProviderRegistry
 
     private IReadOnlyList<StorageProvider>? _providers;
 
+    /// <summary>The active migrations, cached with the providers and dropped with them.</summary>
+    private IReadOnlyList<StorageSyncJob>? _migrations;
+
     public StorageProviderRegistry(MongoContext context, ILogger<StorageProviderRegistry> logger)
     {
         _context = context;
@@ -131,12 +134,62 @@ public sealed class StorageProviderRegistry
                 + "Restore it, or migrate those objects before removing it.");
     }
 
+    /// <summary>
+    /// The provider a migration is copying the given primary to, or null.
+    /// </summary>
+    /// <remarks>
+    /// While a migration is active - running, paused or verifying - new
+    /// writes go to the target as well, so the copy cannot fall behind what is
+    /// being uploaded (plan section 2.10). Paused counts: the uploads do not
+    /// pause with it.
+    /// </remarks>
+    public async Task<StorageProvider?> GetMigrationTargetAsync(
+        Guid primaryId, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<StorageSyncJob>? migrations;
+
+        lock (_gate)
+        {
+            migrations = _migrations;
+        }
+
+        if (migrations is null)
+        {
+            var loaded = await _context.StorageSyncJobs
+                .Find(job => job.Mode == StorageSyncMode.Migration
+                             && (job.Status == StorageSyncStatus.Running
+                                 || job.Status == StorageSyncStatus.Paused
+                                 || job.Status == StorageSyncStatus.Verifying
+                                 || job.Status == StorageSyncStatus.Pending))
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            lock (_gate)
+            {
+                _migrations = loaded;
+                migrations = loaded;
+            }
+        }
+
+        var active = migrations.FirstOrDefault(job => job.SourceId == primaryId);
+
+        if (active is null)
+        {
+            return null;
+        }
+
+        var providers = await GetAllAsync(cancellationToken).ConfigureAwait(false);
+
+        return providers.FirstOrDefault(provider => provider.Id == active.TargetId);
+    }
+
     /// <summary>Drops the cache so the next call re-reads the collection.</summary>
     public void Invalidate()
     {
         lock (_gate)
         {
             _providers = null;
+            _migrations = null;
         }
 
         _logger.LogInformation("The storage provider cache was invalidated.");

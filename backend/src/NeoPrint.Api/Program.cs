@@ -25,6 +25,8 @@ using NeoPrint.Domain.Settings;
 using NeoPrint.Infrastructure.Persistence;
 using NeoPrint.Infrastructure.Seeding;
 using NeoPrint.Infrastructure.SecretStore;
+using Hangfire;
+
 using NeoPrint.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -285,6 +287,13 @@ await using (var scope = app.Services.CreateAsyncScope())
     // The first storage provider, from the secret store. Only when none is
     // configured: every later change is the administrator's (plan 2.10).
     await scope.ServiceProvider.GetRequiredService<StorageProviderSeeder>().SeedAsync();
+
+    // Every minute: a sync job whose worker died - a crash, a redeploy - is
+    // picked up again and resumes from its checkpoint (plan section 2.10).
+    scope.ServiceProvider.GetRequiredService<IRecurringJobManager>().AddOrUpdate<StorageSyncScheduler>(
+        StorageSyncScheduler.ResumeJobId,
+        scheduler => scheduler.ResumeStaleAsync(CancellationToken.None),
+        Cron.Minutely());
 
     // After seeding, because the retention windows come from settings that do
     // not exist yet on a first start (docs/DATA_RETENTION.md).

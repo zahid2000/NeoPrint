@@ -137,6 +137,36 @@ public readonly struct MongoSet<TDocument> : IEquatable<MongoSet<TDocument>>
             ? _collection.UpdateManyAsync(session, filter, update, cancellationToken: cancellationToken)
             : _collection.UpdateManyAsync(filter, update, cancellationToken: cancellationToken);
 
+    /// <summary>
+    /// Updates every match, by a filter built rather than written as a lambda -
+    /// needed where the field is a nested path such as <c>Original.ProviderId</c>
+    /// or the update uses array filters.
+    /// </summary>
+    public Task<UpdateResult> UpdateManyAsync(
+        FilterDefinition<TDocument> filter,
+        UpdateDefinition<TDocument> update,
+        UpdateOptions? options = null,
+        CancellationToken cancellationToken = default)
+        => Session is { } session
+            ? _collection.UpdateManyAsync(session, filter, update, options, cancellationToken)
+            : _collection.UpdateManyAsync(filter, update, options, cancellationToken);
+
+    /// <summary>
+    /// Updates one document and returns it, atomically.
+    /// </summary>
+    /// <remarks>
+    /// What a lease needs: claiming a document and reading what was claimed
+    /// must be one operation, or two workers could each see the lease free.
+    /// </remarks>
+    public async Task<TDocument?> FindOneAndUpdateAsync(
+        FilterDefinition<TDocument> filter,
+        UpdateDefinition<TDocument> update,
+        FindOneAndUpdateOptions<TDocument, TDocument>? options = null,
+        CancellationToken cancellationToken = default)
+        => Session is { } session
+            ? await _collection.FindOneAndUpdateAsync(session, filter, update, options, cancellationToken).ConfigureAwait(false)
+            : await _collection.FindOneAndUpdateAsync(filter, update, options, cancellationToken).ConfigureAwait(false);
+
     public Task<DeleteResult> DeleteOneAsync(
         Expression<Func<TDocument, bool>> filter, CancellationToken cancellationToken = default)
         => Session is { } session

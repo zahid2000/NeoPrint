@@ -252,6 +252,12 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
 
     public const string TempBucket = "neoprint-temp";
 
+    /// <summary>
+    /// The Mongo replica set, for tests that need a database of their own next
+    /// to the application's rather than sharing its collections.
+    /// </summary>
+    public string MongoConnectionString => _mongo!.GetConnectionString();
+
     /// <summary>The image docker-compose.yml pins; the two must not drift apart.</summary>
     public const string CloudServerImage =
         "ghcr.io/scality/cloudserver:9.1.4@sha256:41e4753c25ecaddb34967ea0c888d9966214bd06cf5fbe9d53139e370c6c38a7";
