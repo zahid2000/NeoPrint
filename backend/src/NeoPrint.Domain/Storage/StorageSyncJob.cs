@@ -109,7 +109,7 @@ public sealed class StorageSyncJob : Entity
             .Allow(StorageSyncStatus.Verifying, StorageSyncStatus.Completed, StorageSyncStatus.Failed)
             // "Retry the failures" re-opens a finished job rather than starting
             // a second one, so its history stays in one place.
-            .Allow(StorageSyncStatus.Failed, StorageSyncStatus.Running)
+            .Allow(StorageSyncStatus.Failed, StorageSyncStatus.Running, StorageSyncStatus.Verifying)
             .Allow(StorageSyncStatus.Completed, StorageSyncStatus.Running);
 
     /// <summary>Whether the job still has work to do or could be resumed.</summary>
@@ -136,6 +136,19 @@ public sealed class StorageSyncJob : Entity
     {
         Record(Transitions.Transition(Id, Status, StorageSyncStatus.Verifying, actor, now));
         Status = StorageSyncStatus.Verifying;
+    }
+
+    /// <summary>
+    /// Sends a failed job back to verification, which copies whatever is still
+    /// missing on the target - the failed objects, exactly - and switches only
+    /// once all of it is there. "Retry the failures" in the panel.
+    /// </summary>
+    public void RetryVerification(ActorContext actor, DateTime now)
+    {
+        Record(Transitions.Transition(Id, Status, StorageSyncStatus.Verifying, actor, now));
+        Status = StorageSyncStatus.Verifying;
+        FailureReason = null;
+        FinishedAt = null;
     }
 
     public void Complete(ActorContext actor, DateTime now)

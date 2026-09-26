@@ -728,6 +728,62 @@ filtrləyir.
 
 ---
 
+## Storage idarəsi (`/api/admin/storage`)
+
+Hamısı **`storage.manage`** icazəsi tələb edir (defolt olaraq yalnız
+SuperAdmin-də var). Dəyişiklik edən hər əməliyyat `audit_logs`-a yazılır.
+
+**Secret key heç vaxt serverdən çıxmır** — nə açıq, nə şifrəli. Access key yalnız
+son 4 simvolu ilə göstərilir (`accessKeyHint: "••••test"`).
+
+### Provayderlər
+
+| Metod | Yol | Məna |
+|---|---|---|
+| `GET` | `providers` | Siyahı: ad, tip, endpoint, bucket-lər, rol (`Primary` / `Secondary` / `Inactive`), sağlamlıq, son yoxlama |
+| `POST` | `providers/test` | Hələ saxlanmamış credential-ları yoxlayır (formadakı "Bağlantını yoxla"). Hər bucket-də yazma → oxuma → müqayisə → silmə |
+| `POST` | `providers` | Əlavə edir. **Bağlantı testi keçməzsə saxlanmır** (`400`). Yeni provayder `Inactive` olur |
+| `PUT` | `providers/{id}` | Redaktə. `secretKey` boşdursa saxlanılan qalır (forma onu heç vaxt almır). İstifadədəki provayder yeni parametrlərlə testdən keçməlidir |
+| `POST` | `providers/{id}/test` | Saxlanmış provayderi yoxlayır və nəticəni qeyd edir |
+| `PUT` | `providers/{id}/role` | `{ "role": "Primary" \| "Secondary" \| "Inactive" }`. Rolu tutan digər provayder əvvəlcə `Inactive` olur — heç vaxt iki Primary olmur. Primary birbaşa söndürülə bilməz; aktiv sinxronizasiya varsa rol dəyişmir |
+
+Provayder gövdəsi:
+
+```json
+{
+  "name": "Scality RING",
+  "type": "Scality",
+  "endpoint": "https://s3.example.az",
+  "region": "us-east-1",
+  "useSsl": true,
+  "accessKey": "…",
+  "secretKey": "…",
+  "buckets": { "files": "neoprint-files", "receipts": "neoprint-receipts", "temp": "neoprint-temp" }
+}
+```
+
+### Sinxronizasiya
+
+| Metod | Yol | Məna |
+|---|---|---|
+| `GET` | `sync-jobs` | Son 50 iş |
+| `GET` | `sync-jobs/{id}` | Bir iş: status, obyekt və bayt sayğacları, checkpoint bucket-i, xəta səbəbi |
+| `POST` | `sync-jobs` | `{ "mode": "Migration" \| "Mirror", "targetId", "switchPrimaryOnComplete" }` — mənbə həmişə cari Primary-dir. **Eyni anda yalnız bir aktiv iş.** Mirror hədəfi dərhal `Secondary` olur |
+| `POST` | `sync-jobs/{id}/pause` \| `resume` \| `cancel` | Dayandır / davam et / ləğv et |
+| `POST` | `sync-jobs/{id}/retry-failures` | Uğursuz işi yenidən verification-a göndərir — hədəfdə çatışmayan **hər şey** (uğursuzlar dəqiq) köçürülür, yalnız sonra keçid olur |
+| `GET` | `sync-jobs/{id}/failures` | Köçürülə bilməyən obyektlər (bucket, key, xəta, cəhd sayı, həll olunubmu) |
+| `POST` | `rewrap` | KEK rotasiyasından sonra bütün obyektləri yeni açara keçirir (fonda, provayder × bucket üzrə) → `202` |
+
+**Canlı progress:** `/hubs/admin` üzərindən `StorageSyncProgress` hadisəsi (iş
+başına saniyədə ən çox 2 dəfə; status dəyişikliyi həmişə göndərilir):
+`{ jobId, mode, status, totalObjects, copiedObjects, failedObjects, totalBytes, copiedBytes, failureReason, at }`.
+
+Migrasiya **restart-safe**-dir: hər obyektdən sonra checkpoint yazılır, worker
+ölsə lease 2 dəqiqədə bitir və dəqiqəlik yoxlama işi checkpoint-dən davam
+etdirir.
+
+---
+
 ## Hələ mövcud olmayan endpoint-lər
 
 Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: print job-lar və
@@ -735,6 +791,6 @@ queue (Addım 3), ödəniş / refund / wallet / fiskal (Addım 4), skan və payl
 (Addım 6), telemetriya və operator paneli (Addım 7).
 
 Addım 2-nin qalan hissəsi: fayl redaktəsi (`POST files/{id}/edit`), səhifə
-şəkilləri (`GET files/{id}/pages/{n}.png`), versiyalar, storage provayder
-idarəsi və sinxronizasiyası, kiosk CRUD-u və qiymət profilləri
+şəkilləri (`GET files/{id}/pages/{n}.png`), versiyalar, kiosk CRUD-u və qiymət
+profilləri
 (`POST pricing/quote`).

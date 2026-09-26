@@ -205,6 +205,7 @@ public static class DependencyInjection
         services.AddScoped<StorageSyncScheduler>();
         services.AddSingleton<StorageMirror>();
         services.AddTransient<StorageMirrorJobs>();
+        services.AddScoped<NeoPrint.Application.Storage.IStorageAdministration, StorageAdministration>();
     }
 
     private static void AddMessaging(IServiceCollection services, IConfiguration configuration)
