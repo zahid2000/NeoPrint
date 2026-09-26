@@ -944,7 +944,7 @@ dəyişmir.
 | `PUT` | `…/{id}` | Redaktə. Əvvəlki dəyərlər `History`-yə yazılır, `revision` artır; iki admin eyni anda redaktə etsə ikincisi `409` alır |
 | `DELETE` | `…/{id}` | Default profil və kioska bağlı profil silinmir (`400`, neçə kioska bağlı olduğu yazılır) |
 | `POST` | `…/{id}/default` | Default et — həmişə tam olaraq bir default qalır |
-| `PUT` | `…/{id}/kiosks` | `{ "kioskIds": [...] }` — bir neçə kiosku eyni anda bu profilə bağla |
+| `POST` | `…/{id}/assign` | `{ "kioskIds": [...] }` — bir neçə kiosku eyni anda bu profilə bağla (plan Bölmə 6) |
 | `POST` | `…/calculate` | Kalkulyator: `{ "profileId" }` və ya saxlanmamış `{ "draft": {...} }` + `options` → qiymət təfərrüatı |
 
 ---

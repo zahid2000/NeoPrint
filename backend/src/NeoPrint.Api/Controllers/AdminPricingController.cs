@@ -60,8 +60,8 @@ public sealed class AdminPricingController : ControllerBase
         => Ok(await _sender.Send(
             new MakeDefaultPricingProfileCommand(id, _currentUser.AdminUserId, _currentUser.Ip), cancellationToken));
 
-    /// <summary>Points several kiosks at this profile at once.</summary>
-    [HttpPut("{id:guid}/kiosks")]
+    /// <summary>Points several kiosks at this profile at once (plan section 6: <c>POST {id}/assign</c>).</summary>
+    [HttpPost("{id:guid}/assign")]
     public async Task<ActionResult<PricingProfileDetail>> AssignKiosks(
         Guid id, [FromBody] AssignKiosksRequest request, CancellationToken cancellationToken)
         => Ok(await _sender.Send(

@@ -112,7 +112,7 @@ public sealed class PricingApiTests
         var before = await QuoteAsync(admin, kiosk, 10);
 
         var profile = await CreateAsync(admin, Profile($"Mall {Guid.NewGuid():N}"));
-        var assign = await admin.PutAsJsonAsync($"/api/admin/pricing-profiles/{profile}/kiosks", new { kioskIds = new[] { kiosk } });
+        var assign = await admin.PostAsJsonAsync($"/api/admin/pricing-profiles/{profile}/assign", new { kioskIds = new[] { kiosk } });
         assign.StatusCode.Should().Be(HttpStatusCode.OK, await assign.Content.ReadAsStringAsync());
 
         var after = await QuoteAsync(admin, kiosk, 10);
@@ -134,7 +134,7 @@ public sealed class PricingApiTests
         var kiosk = await NewKioskAsync();
 
         var profile = await CreateAsync(admin, Profile($"Tiers {Guid.NewGuid():N}"));
-        await admin.PutAsJsonAsync($"/api/admin/pricing-profiles/{profile}/kiosks", new { kioskIds = new[] { kiosk } });
+        await admin.PostAsJsonAsync($"/api/admin/pricing-profiles/{profile}/assign", new { kioskIds = new[] { kiosk } });
 
         // 0.15 a side; tiers at 20 (5%) and 40 (20%).
         (await QuoteAsync(admin, kiosk, 19)).Should().Be(2.85m);   // no tier
@@ -157,7 +157,7 @@ public sealed class PricingApiTests
 
         var kiosk = await NewKioskAsync();
         var used = await CreateAsync(admin, Profile($"Used {Guid.NewGuid():N}"));
-        await admin.PutAsJsonAsync($"/api/admin/pricing-profiles/{used}/kiosks", new { kioskIds = new[] { kiosk } });
+        await admin.PostAsJsonAsync($"/api/admin/pricing-profiles/{used}/assign", new { kioskIds = new[] { kiosk } });
 
         var refused = await admin.DeleteAsync($"/api/admin/pricing-profiles/{used}");
         refused.StatusCode.Should().Be(HttpStatusCode.BadRequest);
