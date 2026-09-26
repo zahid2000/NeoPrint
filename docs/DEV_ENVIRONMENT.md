@@ -377,6 +377,27 @@ node tools/license-check --strict
 cd tools/license-check && npm test
 ```
 
+### Konvertasiya testləri (PDFium)
+
+Səhifə sayı və preview PDFium native kitabxanasını tələb edir. Backend Docker
+image-i və CI onu daşıyır; Windows maşınında yoxdursa həmin testlər **skip**
+olunur (`PdfiumFact` səbəbini yazır). Lokalda da işlətmək istəsəniz:
+
+```bash
+# Linux / WSL
+curl -fsSL -o /tmp/pdfium.tgz \
+  "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8066/pdfium-linux-x64.tgz"
+tar -xzf /tmp/pdfium.tgz -C /tmp
+sudo cp /tmp/lib/libpdfium.so /usr/local/lib/ && sudo ldconfig
+```
+
+Windows üçün eyni release-dən `pdfium-win-x64.tgz` götürüb `pdfium.dll`-i test
+çıxış qovluğuna qoyun.
+
+LibreOffice və Ghostscript marşrutları yalnız backend image-ində işləyir; onlar
+olmayanda konvertasiya faylı `Failed` edir və səbəbini yazır — sorğu xəta
+atmır.
+
 > Kiosk build-i "file is locked" xətası verirsə, işləyən kiosk tətbiqi DLL-ləri
 > tutub saxlayır: `Stop-Process -Name NeoPrint.Kiosk -Force`.
 

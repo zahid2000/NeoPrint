@@ -659,11 +659,82 @@ xidmət edə bilir.
 
 Production-da OpenBao-da məcburi açar olmasa API **başlamır**.
 
+## Fayllar (`/api/files`)
+
+Hamısı **istifadəçi token-i** tələb edir (`files/formats` istisna). Başqasının
+faylı **`404`** qaytarır, `403` yox: `403` id-nin mövcudluğunu təsdiqləyər və
+sayma hücumuna imkan verər.
+
+### `POST /api/files`
+
+`multipart/form-data`:
+
+| Sahə | Tip | Məna |
+|---|---|---|
+| `file` | fayl | Məcburi |
+| `kioskId` | GUID | Seçilibsə həmin kioskun ölçü limiti tətbiq olunur |
+| `source` | mətn | `Uploaded` (default), `Scan`, `Layout`, `Usb`, `Shared` |
+| `isSensitive` | bool | Şəxsi sənəd (skan) — avtomatik silinmə defolt olaraq `AfterPrint` olur |
+
+→ `201` + fayl obyekti.
+
+**Format uzantı ilə deyil, məzmun imzası ilə müəyyən edilir.** Uzantı yalnız
+konteyner formatlarında (OOXML/OpenDocument, köhnə Office) qeyri-müəyyənliyi
+həll edir. Məzmunla uzantı ziddiyyət təşkil edərsə fayl rədd olunur.
+
+Ölçü limiti **iki dəfə** yoxlanılır: elan edilmiş uzunluqla (oxumadan əvvəl) və
+faktiki uzunluqla (yazıldıqdan sonra).
+
+Cavabda `status` = `Pending`: konvertasiya sorğudan sonra, ayrıca prosesdə
+işləyir. `Ready` olandan sonra `pageCount` doludur.
+
+### `GET /api/files?page=&pageSize=`
+
+→ `{ "items": [...], "total": n }`. Yenidən köhnəyə doğru, silinmişlər yoxdur.
+
+### `GET /api/files/{id}`
+
+→ Fayl obyekti: `id`, `fileName`, `extension`, `mediaType`, `source`, `status`
+(`Pending` / `Converting` / `Ready` / `Failed`), `failureReason`, `sizeBytes`,
+`pageCount`, `isSensitive`, `autoDelete`, `versionCount`, `createdAt`.
+
+### `GET /api/files/{id}/content`
+
+Faylın özü, deşifrə olunmuş. Range dəstəklənir.
+
+**Pre-signed link verilmir:** store-dakı baytlar şifrəlidir (link yararsız
+olardı) və link sahiblik yoxlamasını yan keçərdi.
+
+### `GET /api/files/{id}/pdf`
+
+Çevrilmiş PDF — preview, səhifə sayı və çap bunu işlədir. Fayl hələ
+çevrilirsə və ya uğursuz olubsa `400` + izah.
+
+### `PUT /api/files/{id}/auto-delete`
+
+`{ "rule": "Never" | "AfterPrint" | "AfterOneDay" | "AfterSevenDays" | "AfterThirtyDays" }`
+→ fayl obyekti.
+
+### `DELETE /api/files/{id}`
+
+→ `204`. Obyektlər **bütün** provayderlərdən silinir (mirror və migrasiya
+nüsxələri daxil).
+
+### `GET /api/files/formats`
+
+Anonim. Qəbul edilən uzantıların siyahısı — mobil fayl seçicisi bununla
+filtrləyir.
+
+
 ---
 
 ## Hələ mövcud olmayan endpoint-lər
 
-Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: fayllar və
-konvertasiya (Addım 2), print job-lar və queue (Addım 3), ödəniş / refund /
-wallet / fiskal (Addım 4), skan və paylaşım (Addım 6), telemetriya və operator
-paneli (Addım 7). Kiosk CRUD-u və qiymət profilləri Addım 2-dədir.
+Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: print job-lar və
+queue (Addım 3), ödəniş / refund / wallet / fiskal (Addım 4), skan və paylaşım
+(Addım 6), telemetriya və operator paneli (Addım 7).
+
+Addım 2-nin qalan hissəsi: fayl redaktəsi (`POST files/{id}/edit`), səhifə
+şəkilləri (`GET files/{id}/pages/{n}.png`), versiyalar, storage provayder
+idarəsi və sinxronizasiyası, kiosk CRUD-u və qiymət profilləri
+(`POST pricing/quote`).
