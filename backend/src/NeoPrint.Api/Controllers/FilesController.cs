@@ -236,11 +236,18 @@ public sealed class FilesController : ControllerBase
     /// <summary>The formats this installation currently accepts.</summary>
     /// <remarks>
     /// So the mobile file picker can filter, rather than letting somebody
-    /// choose a file that the upload will then refuse.
+    /// choose a file that the upload will then refuse - which is why it lists
+    /// only the formats switched on in <c>Files.AllowedFormats</c>, not the
+    /// whole catalogue.
     /// </remarks>
     [HttpGet("formats")]
     [AllowAnonymous]
-    public ActionResult<IReadOnlyList<string>> Formats() => Ok(FileFormats.Extensions);
+    public async Task<ActionResult<IReadOnlyList<string>>> Formats(CancellationToken cancellationToken)
+    {
+        var formats = await _sender.Send(new GetFileFormatsQuery(), cancellationToken);
+
+        return Ok(formats.Formats.Where(format => format.Enabled).Select(format => format.Extension).ToList());
+    }
 
     private async Task<StoredFile> LoadOwnedAsync(Guid id, CancellationToken cancellationToken)
     {

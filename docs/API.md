@@ -825,8 +825,8 @@ nüsxələri daxil).
 
 ### `GET /api/files/formats`
 
-Anonim. Qəbul edilən uzantıların siyahısı — mobil fayl seçicisi bununla
-filtrləyir.
+Anonim. **Hazırda aktiv olan** uzantıların siyahısı (`Files.AllowedFormats`; admin-in
+söndürdüyü format burada yoxdur) — mobil fayl seçicisi bununla filtrləyir.
 
 ### `GET /api/admin/files/formats` · `PUT /api/admin/files/formats`
 

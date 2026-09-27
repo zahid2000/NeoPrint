@@ -390,6 +390,11 @@ public sealed class FilesApiTests
             (await user.PostAsync("/api/files", Upload(text, "notes.txt", "text/plain")))
                 .StatusCode.Should().Be(HttpStatusCode.BadRequest, "txt is switched off");
 
+            // The list the mobile picker filters by leaves it out too.
+            using var anonymous = _fixture.CreateApiClient();
+            (await anonymous.GetFromJsonAsync<string[]>("/api/files/formats"))
+                .Should().Contain("pdf").And.NotContain("txt");
+
             // Other formats are unaffected.
             (await user.PostAsync("/api/files", Upload(Pdf(), "still-fine.pdf", "application/pdf")))
                 .StatusCode.Should().Be(HttpStatusCode.Created);
