@@ -410,6 +410,74 @@ public sealed class FilesApiTests
     }
 
     [DockerFact]
+    public async Task The_size_limit_is_the_default_unless_the_kiosk_has_its_own()
+    {
+        // Plan section 2.2: effective limit = kiosk.MaxFileSizeMb ?? Files.DefaultMaxSizeMb.
+        using var admin = await SuperAdminAsync();
+        using var user = await SignedInAsync();
+
+        var formats = await admin.GetFromJsonAsync<JsonElement>("/api/admin/files/formats");
+        var all = formats.GetProperty("formats").EnumerateArray()
+            .Where(format => format.GetProperty("enabled").GetBoolean())
+            .Select(format => format.GetProperty("extension").GetString()!)
+            .ToList();
+
+        var kiosk = await admin.PostAsJsonAsync("/api/admin/kiosks", new
+        {
+            name = "Limit kiosk",
+            lat = 40.4,
+            lng = 49.8,
+            address = "Bakı",
+            defaultLanguage = "az",
+            maxFileSizeMb = 3,
+            paperCapacityA4 = 500,
+            paperCapacityA3 = 0,
+            adminPin = "482915",
+        });
+        kiosk.StatusCode.Should().Be(HttpStatusCode.Created, await kiosk.Content.ReadAsStringAsync());
+        var kioskId = (await kiosk.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString();
+
+        // 1.5 MB: over a 1 MB default, under the kiosk's 3 MB.
+        var padding = Enumerable.Repeat((byte)'%', (int)(1.5 * 1024 * 1024)).ToArray();
+        var large = Pdf().Concat(padding).ToArray();
+
+        MultipartFormDataContent ForKiosk()
+        {
+            var form = Upload(large, "large.pdf", "application/pdf");
+            form.Add(new StringContent(kioskId!), "kioskId");
+            return form;
+        }
+
+        try
+        {
+            (await admin.PutAsJsonAsync("/api/admin/files/formats", new
+            {
+                enabled = all,
+                defaultMaxSizeMb = 1,
+                defaultMaxPages = 200,
+                userQuotaGb = 1,
+            })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var refused = await user.PostAsync("/api/files", Upload(large, "large.pdf", "application/pdf"));
+            refused.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await refused.Content.ReadAsStringAsync()).Should().Contain("maksimum 1");
+
+            (await user.PostAsync("/api/files", ForKiosk()))
+                .StatusCode.Should().Be(HttpStatusCode.Created, "the kiosk allows 3 MB");
+        }
+        finally
+        {
+            await admin.PutAsJsonAsync("/api/admin/files/formats", new
+            {
+                enabled = all,
+                defaultMaxSizeMb = formats.GetProperty("defaultMaxSizeMb").GetInt32(),
+                defaultMaxPages = formats.GetProperty("defaultMaxPages").GetInt32(),
+                userQuotaGb = formats.GetProperty("userQuotaGb").GetInt32(),
+            });
+        }
+    }
+
+    [DockerFact]
     public async Task A_format_outside_the_catalogue_cannot_be_switched_on()
     {
         using var admin = await SuperAdminAsync();
