@@ -1,10 +1,15 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using MongoDB.Driver;
 
+using NeoPrint.Application.Abstractions;
+using NeoPrint.Domain.Admin;
 using NeoPrint.Domain.Devices;
 using NeoPrint.Domain.Kiosks;
 using NeoPrint.Domain.Settings;
+using NeoPrint.Domain.Users;
 using NeoPrint.Infrastructure.Persistence;
 using NeoPrint.Infrastructure.Security;
 
@@ -13,21 +18,62 @@ namespace NeoPrint.Infrastructure.Seeding;
 /// <summary>
 /// Development-only data: two kiosk records with an enrollment token each, so a
 /// locally built kiosk application activates itself on first start
-/// (plan section 12, step 1).
+/// (plan section 12, step 1), and a ready account for every admin role and for
+/// the mobile app (docs/DEV_ENVIRONMENT.md).
 /// </summary>
 /// <remarks>
+/// <para>
 /// The tokens are written to the log, which is why this never runs outside
 /// Development. In production an administrator creates enrollment tokens from
 /// the admin panel.
+/// </para>
+/// <para>
+/// The test accounts share one password, <c>NEOPRINT_DEV_TEST_PASSWORD</c>
+/// from the seed file, and do not have to change it at first sign-in: they
+/// exist to be signed into by anyone testing the stack, with the password the
+/// runbook gives. That is a relaxation of plan section 2.8, and it holds only
+/// because this class runs only in Development (Program.cs); the first
+/// SuperAdmin, seeded in every environment, still has to change its password.
+/// No password is ever logged.
+/// </para>
 /// </remarks>
 public sealed class DevelopmentSeeder
 {
+    /// <summary>The seed value holding the test accounts' shared password.</summary>
+    public const string TestPasswordKey = "NEOPRINT_DEV_TEST_PASSWORD";
+
+    /// <summary>The ready-made mobile user, with its email already confirmed.</summary>
+    public const string TestUserEmail = "dev-user@neoprint.local";
+
+    /// <summary>One account per admin role template (plan section 8A.2).</summary>
+    public static readonly IReadOnlyList<(string Email, string FullName, string Role)> TestAdmins =
+    [
+        ("dev-superadmin@neoprint.local", "Test SuperAdmin", AdminRole.SuperAdminName),
+        ("dev-admin@neoprint.local", "Test Admin", "Admin"),
+        ("dev-operator@neoprint.local", "Test Operator", "Operator"),
+        ("dev-finance@neoprint.local", "Test Maliyyə", "Maliyyə"),
+    ];
+
     private readonly MongoContext _context;
+    private readonly IConfiguration _configuration;
+    private readonly IPasswordHasher<AdminUser> _adminHasher;
+    private readonly IPasswordHasher<User> _userHasher;
+    private readonly ILegalDocumentRepository _legal;
     private readonly ILogger<DevelopmentSeeder> _logger;
 
-    public DevelopmentSeeder(MongoContext context, ILogger<DevelopmentSeeder> logger)
+    public DevelopmentSeeder(
+        MongoContext context,
+        IConfiguration configuration,
+        IPasswordHasher<AdminUser> adminHasher,
+        IPasswordHasher<User> userHasher,
+        ILegalDocumentRepository legal,
+        ILogger<DevelopmentSeeder> logger)
     {
         _context = context;
+        _configuration = configuration;
+        _adminHasher = adminHasher;
+        _userHasher = userHasher;
+        _legal = legal;
         _logger = logger;
     }
 
@@ -42,6 +88,12 @@ public sealed class DevelopmentSeeder
     private const string TestAdminPin = "135790";
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
+    {
+        await SeedTestAccountsAsync(cancellationToken).ConfigureAwait(false);
+        await SeedKiosksAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task SeedKiosksAsync(CancellationToken cancellationToken)
     {
         var ttlHours = await ReadEnrollmentTokenTtlHoursAsync(cancellationToken).ConfigureAwait(false);
         var issued = new List<(string Code, string Token)>();
@@ -131,6 +183,105 @@ public sealed class DevelopmentSeeder
                 issued.Select(entry =>
                     $"  {entry.Code}:  --enrollment-token {entry.Token}")),
             TestAdminPin);
+    }
+
+    /// <summary>
+    /// Creates the test accounts that do not exist yet. An account that exists
+    /// is left alone - including a password someone changed on purpose.
+    /// </summary>
+    private async Task SeedTestAccountsAsync(CancellationToken cancellationToken)
+    {
+        var password = _configuration[TestPasswordKey];
+
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            _logger.LogWarning(
+                "{Key} is not set; no development test accounts were seeded (docs/DEV_ENVIRONMENT.md).",
+                TestPasswordKey);
+            return;
+        }
+
+        var roles = await _context.AdminRoles
+            .Find(FilterDefinition<AdminRole>.Empty)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var (email, fullName, roleName) in TestAdmins)
+        {
+            var exists = await _context.AdminUsers
+                .Find(admin => admin.Email == email)
+                .AnyAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // A template the owner deleted or renamed is simply skipped.
+            var role = roles.FirstOrDefault(candidate => candidate.Name == roleName);
+
+            if (exists || role is null)
+            {
+                continue;
+            }
+
+            var admin = new AdminUser
+            {
+                Email = email,
+                FullName = fullName,
+                RoleIds = [role.Id],
+                KioskScope = KioskScope.Everything(),
+                IsActive = true,
+                MustChangePassword = false,
+            };
+
+            admin.PasswordHash = _adminHasher.HashPassword(admin, password);
+
+            await _context.AdminUsers.InsertOneAsync(admin, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            _logger.LogInformation("Seeded development test account {Email} ({Role}).", email, roleName);
+        }
+
+        var userExists = await _context.Users
+            .Find(user => user.Email == TestUserEmail)
+            .AnyAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (userExists)
+        {
+            return;
+        }
+
+        var user = new User
+        {
+            PublicId = User.NewPublicId(),
+            Email = TestUserEmail,
+            FullName = "Test User",
+            ReferralCode = User.NewReferralCode(),
+            EmailConfirmed = true,
+            Language = "az",
+        };
+
+        user.PasswordHash = _userHasher.HashPassword(user, password);
+
+        await _context.Users.InsertOneAsync(user, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        // The current documents, accepted, so signing in lands on the home
+        // screen rather than on the consent screen.
+        var current = await _legal.GetCurrentAsync(user.Language, cancellationToken).ConfigureAwait(false);
+
+        var consents = current.Values
+            .Select(document => new Consent
+            {
+                UserId = user.Id,
+                DocType = document.DocType,
+                Version = document.Version,
+            })
+            .ToList();
+
+        if (consents.Count > 0)
+        {
+            await _legal.AddConsentsAsync(consents, cancellationToken).ConfigureAwait(false);
+        }
+
+        _logger.LogInformation("Seeded development test account {Email} (mobile).", TestUserEmail);
     }
 
     private async Task<int> ReadEnrollmentTokenTtlHoursAsync(CancellationToken cancellationToken)

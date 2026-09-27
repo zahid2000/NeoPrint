@@ -60,6 +60,39 @@ docker compose up -d openbao-init      # init.sh mövcud vəziyyəti görüb yal
 docker compose restart api
 ```
 
+### Seed faylı (`.env.openbao-seed`) — yoxlama və yeniləmə
+
+`openbao-init` hər `docker compose up`-da sizin `.env.openbao-seed` faylınızı
+`.env.openbao-seed.example` ilə müqayisə edir və bu hallarda **dayanır** (API
+başlamır):
+
+- nümunədə olan açar sizin faylda yoxdur (**missing keys**);
+- sizin faylda nümunədə olmayan açar var — adətən silinmiş servisdən qalıb, məs.
+  `MINIO_ROOT_USER`, `SCALITY_*` (**unknown keys**);
+- məcburi dəyər boşdur (**empty but needed**).
+
+`SEED_SCHEMA_VERSION` nümunədəkindən fərqlidirsə, xəbərdarlıq verilir. Səbəbi görmək:
+
+```bash
+docker compose logs openbao-init
+```
+
+Düzəltmək:
+
+- Faylda **öz dəyəriniz yoxdursa** (hər şey nümunədəki kimidir):
+  `cp .env.openbao-seed.example .env.openbao-seed`, sonra `docker compose up -d --remove-orphans`.
+- **Öz dəyərləriniz varsa**: çatışmayan sətirləri nümunədən köçürün, tanınmayanları silin.
+
+OpenBao-da artıq olan dəyər heç vaxt dəyişdirilmir; seed faylına sonradan əlavə
+olunan açar isə növbəti `up`-da OpenBao-ya əlavə edilir.
+
+| Versiya | Dəyişiklik |
+|---|---|
+| (yoxdur) | Addım 2-yə qədərki fayllar |
+| 2 | `SEED_SCHEMA_VERSION` və `NEOPRINT_DEV_TEST_PASSWORD` əlavə olundu; `MINIO_*`, `SCALITY_*` çıxarıldı, `RUSTFS_*` əlavə olundu |
+
+Problem olarsa əvvəlcə `tools/dev-doctor` işlədin (bölmə 9).
+
 ---
 
 ## 2. Ünvanlar və portlar
@@ -241,13 +274,30 @@ KV yolları: `neoprint/backend/core`, `/crypto`, `/providers`, `/seed`.
 
 ## 4. Test hesabları
 
-### Admin paneli — SuperAdmin (seed edilir)
+### Hazır test hesabları (Development-də avtomatik yaradılır)
+
+API `Development` rejimində işə düşəndə bu hesablar **yoxdursa** yaradılır
+(mövcud hesaba — dəyişdirdiyiniz şifrəyə də — toxunulmur). Hamısının şifrəsi
+seed faylındakı `NEOPRINT_DEV_TEST_PASSWORD`-dur və **ilk girişdə şifrə dəyişmək
+tələb olunmur**. Production-da bu hesablar heç vaxt yaradılmır.
+
+| Hesab | Rol / tətbiq | Email | Şifrə |
+|---|---|---|---|
+| SuperAdmin (test) | Admin paneli — hər şey | `dev-superadmin@neoprint.local` | `DevTest!2026` |
+| Admin | Admin paneli — storage, adminlər, rollar, audit xaric | `dev-admin@neoprint.local` | `DevTest!2026` |
+| Operator | Admin paneli — kiosk xidməti + `/operator` | `dev-operator@neoprint.local` | `DevTest!2026` |
+| Maliyyə | Admin paneli — ödəniş, qaytarma, qəbz, fiskal | `dev-finance@neoprint.local` | `DevTest!2026` |
+| Mobil istifadəçi | Mobil tətbiq — email təsdiqlənib, razılıqlar qəbul olunub | `dev-user@neoprint.local` | `DevTest!2026` |
+
+Admin paneli: http://localhost:8080 · Mobil tətbiq: bölmə 6.
+
+### Admin paneli — əsas SuperAdmin (hər mühitdə seed edilir)
 
 | | |
 |---|---|
 | Ünvan | http://localhost:8080 |
 | Email | `admin@neoprint.local` |
-| Şifrə | `ChangeMe!2026` |
+| İlk şifrə | `ChangeMe!2026` |
 
 **İlk girişdə şifrə dəyişmək məcburidir** (plan Bölmə 2.8). Dəyişdiyiniz şifrəni
 buraya yazın ki, itməsin:
@@ -256,9 +306,7 @@ buraya yazın ki, itməsin:
 |---|---|
 | Yeni şifrə (siz təyin edirsiniz) | `…` |
 
-### Digər rollar
-
-Seed yalnız rolları yaradır, istifadəçiləri yaratmır. Aşağıdakı rollar hazırdır:
+Rolların nə gördüyü:
 
 | Rol | Nə görür |
 |---|---|
@@ -267,36 +315,22 @@ Seed yalnız rolları yaradır, istifadəçiləri yaratmır. Aşağıdakı rolla
 | `Operator` | Kiosk xidməti: kiosklar, printerlər, sərf materialları, servis tapşırıqları, incident-lər + `/operator` paneli |
 | `Maliyyə` | Ödəniş, qaytarma, qəbz, fiskal çeklər, wallet düzəlişi |
 
-Test istifadəçisi yaratmaq: SuperAdmin ilə daxil ol → **Admin istifadəçiləri** →
-**Yeni** → rol seç. Sistem müvəqqəti şifrə verir və ilk girişdə dəyişməyi tələb edir.
-Yaratdığınız hesabları buraya yazın:
+### Mobil tətbiq — yeni hesab
 
-| Email | Rol | Şifrə |
-|---|---|---|
-| `…` | `…` | `…` |
+Hazır hesab yuxarıdadır (`dev-user@neoprint.local`). Yeni hesab yaratmaq üçün
+tətbiqdən qeydiyyatdan keçin — təsdiq kodu email ilə gəlir və **Mailpit**-də
+görünür: http://localhost:8025
 
-### Mobil tətbiq istifadəçisi
-
-Seed edilmir, lakin lokal mühitdə bir hesab artıq yaradılıb və emaili
-təsdiqlənib:
-
-| | |
-|---|---|
-| Email | `test@neoprint.local` |
-| Şifrə | `TestUser!2026` |
-
-Yeni hesab yaratmaq: tətbiqdən qeydiyyatdan keçin. Təsdiq kodu email ilə gəlir
-və **Mailpit**-də görünür: http://localhost:8025
-
-Kodu tərminaldan götürmək:
+Kodu terminaldan götürmək (ünvanı öz emailinizlə əvəz edin):
 
 ```bash
-ID=$(curl -s "http://localhost:8025/api/v1/messages?limit=1" | grep -o '"ID":"[^"]*"' | head -1 | sed 's/.*://;s/"//g')
+EMAIL=siz@neoprint.test
+ID=$(curl -s "http://localhost:8025/api/v1/search?query=to:$EMAIL" | grep -o '"ID":"[^"]*"' | head -1 | sed 's/.*://;s/"//g')
 curl -s "http://localhost:8025/api/v1/message/$ID" | grep -o '[0-9]\{6\}' | head -1
 ```
 
-> `docker compose down -v` bu hesabı silir (Mongo volume-u ilə birlikdə) —
-> onda yuxarıdakı addımlarla yenidən yaradın.
+> `docker compose down -v --remove-orphans` bütün hesabları silir (Mongo volume-u ilə);
+> növbəti `up`-da hazır test hesabları yenidən yaradılır.
 
 ---
 

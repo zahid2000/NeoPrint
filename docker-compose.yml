@@ -62,6 +62,8 @@ services:
       - ./openbao/init:/openbao-init:ro
       - ./openbao/policies:/openbao-policies:ro
       - ./.env.openbao-seed:/openbao-seed/.env.openbao-seed:ro
+      # The reference the seed file is checked against (openbao/init/init.sh).
+      - ./.env.openbao-seed.example:/openbao-seed/.env.openbao-seed.example:ro
       - ./.openbao:/openbao-out
       - openbao-logs:/openbao/logs
     restart: "no"

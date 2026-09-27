@@ -19,6 +19,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Infrastructure.Seeding;
 
 using Testcontainers.MongoDb;
 using Testcontainers.RabbitMq;
@@ -197,6 +198,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         {
             ["NEOPRINT_SEED_ADMIN_EMAIL"] = SeedAdminEmail,
             ["NEOPRINT_SEED_ADMIN_PASSWORD"] = SeedAdminPassword,
+            [DevelopmentSeeder.TestPasswordKey] = DevTestPassword,
 
             // The application seeds its first storage provider from these, as
             // it does in production, rather than the test inserting a
@@ -234,6 +236,9 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
 
     /// <summary>The seeded SuperAdmin, which must change its password at first sign-in.</summary>
     public const string SeedAdminEmail = "admin@neoprint.test";
+
+    /// <summary>The password of the development test accounts (DevelopmentSeeder).</summary>
+    public const string DevTestPassword = "DevTest!2026";
 
     public const string SeedAdminPassword = "IntegrationSeed!2026";
 

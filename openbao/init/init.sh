@@ -9,10 +9,13 @@
 #      device,
 #   4. writes the neoprint-api / neoprint-worker policies and roles,
 #   5. hands the API container a role_id and a secret_id file,
-#   6. seeds the development secrets from .env.openbao-seed.
+#   6. checks .env.openbao-seed against .env.openbao-seed.example and stops
+#      with a clear message when a key is missing, unknown or empty,
+#   7. seeds the development secrets from .env.openbao-seed.
 #
 # It is idempotent: running it again only fixes what is missing and never
-# overwrites a secret that already has a value.
+# overwrites a secret that already has a value. A key added to the seed file
+# later is added to OpenBao on the next run; existing values stay.
 #
 # This script is for DEVELOPMENT ONLY. In production OpenBao is initialised by
 # the operations team and this container is not deployed (docs/OPENBAO.md).
@@ -25,6 +28,7 @@ export BAO_ADDR
 OUT_DIR="${OUT_DIR:-/openbao-out}"
 POLICY_DIR="${POLICY_DIR:-/openbao-policies}"
 SEED_FILE="${SEED_FILE:-/openbao-seed/.env.openbao-seed}"
+EXAMPLE_FILE="${EXAMPLE_FILE:-/openbao-seed/.env.openbao-seed.example}"
 KV_MOUNT="${BAO_KV_MOUNT:-neoprint}"
 
 # The unprivileged user the API container runs as; it must be able to read the
@@ -177,7 +181,80 @@ done
 log "role_id and secret_id files written to .openbao/creds/"
 
 # ---------------------------------------------------------------------------
-# 5. Seed the development secrets.
+# 5. Check the seed file against the example.
+#
+# Without this an outdated copy carried on silently: the old values went into
+# OpenBao and the stack came up pointing at a storage service that no longer
+# existed (docs/DECISIONS.md, 2026-09-27).
+# ---------------------------------------------------------------------------
+
+# Keys whose value must not be empty. The generated ones (needs_generated_value)
+# and the optional provider settings may be.
+MANDATORY_VALUES="MONGO_INITDB_ROOT_USERNAME MONGO_INITDB_ROOT_PASSWORD REDIS_PASSWORD
+RABBITMQ_DEFAULT_USER RABBITMQ_DEFAULT_PASS RUSTFS_ACCESS_KEY RUSTFS_SECRET_KEY
+NEOPRINT_MONGO_URI NEOPRINT_REDIS NEOPRINT_RABBITMQ_URI NEOPRINT_KEK_CURRENT_ID
+NEOPRINT_STORAGE_SEED_TYPE NEOPRINT_STORAGE_SEED_ENDPOINT NEOPRINT_STORAGE_SEED_ACCESS_KEY
+NEOPRINT_STORAGE_SEED_SECRET_KEY NEOPRINT_SEED_ADMIN_EMAIL NEOPRINT_SEED_ADMIN_PASSWORD"
+
+# The KEY names a file assigns, one per line, sorted.
+keys_of() {
+    tr -d '\r' <"$1" | grep -E '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=' \
+        | sed -e 's/^[[:space:]]*//' -e 's/=.*//' | sort -u
+}
+
+# The value a file gives KEY (the last assignment wins, as in env_file).
+value_of() {
+    tr -d '\r' <"$2" | grep -E "^[[:space:]]*$1=" | tail -n 1 | sed -e 's/^[^=]*=//'
+}
+
+check_seed_file() {
+    if [ ! -f "$EXAMPLE_FILE" ]; then
+        log "WARNING: $(basename "$EXAMPLE_FILE") is not mounted; the seed file was not checked."
+        return 0
+    fi
+
+    expected_version=$(value_of SEED_SCHEMA_VERSION "$EXAMPLE_FILE")
+    actual_version=$(value_of SEED_SCHEMA_VERSION "$SEED_FILE")
+
+    if [ "$actual_version" != "$expected_version" ]; then
+        log "WARNING: .env.openbao-seed is schema version ${actual_version:-(none)}," \
+            "the example is version $expected_version. Compare the two files" \
+            "(docs/DEV_ENVIRONMENT.md, \"Seed faylı\")."
+    fi
+
+    keys_of "$EXAMPLE_FILE" >/tmp/seed-expected
+    keys_of "$SEED_FILE" >/tmp/seed-actual
+
+    missing=$(comm -23 /tmp/seed-expected /tmp/seed-actual | tr '\n' ' ')
+    unknown=$(comm -13 /tmp/seed-expected /tmp/seed-actual | tr '\n' ' ')
+
+    empty=""
+    for key in $MANDATORY_VALUES; do
+        if grep -qx "$key" /tmp/seed-actual && [ -z "$(value_of "$key" "$SEED_FILE")" ]; then
+            empty="$empty$key "
+        fi
+    done
+
+    if [ -z "$missing$unknown$empty" ]; then
+        log "seed file matches the example (schema version ${actual_version})"
+        return 0
+    fi
+
+    printf '\n' >&2
+    printf '[openbao-init] ERROR: .env.openbao-seed does not match .env.openbao-seed.example.\n' >&2
+    [ -n "$missing" ] && printf '[openbao-init]   missing keys:     %s\n' "$missing" >&2
+    [ -n "$unknown" ] && printf '[openbao-init]   unknown keys:     %s\n' "$unknown" >&2
+    [ -n "$empty" ] && printf '[openbao-init]   empty but needed: %s\n' "$empty" >&2
+    printf '[openbao-init]\n' >&2
+    printf '[openbao-init] No secret was written to OpenBao. Unknown keys usually come from a service that\n' >&2
+    printf '[openbao-init] was removed (MinIO, Scality, Zenko). Fix the file and run docker compose up again:\n' >&2
+    printf '[openbao-init]   docs/DEV_ENVIRONMENT.md, "Seed faylı" - or tools/dev-doctor.\n' >&2
+    printf '\n' >&2
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# 6. Seed the development secrets.
 # ---------------------------------------------------------------------------
 
 # Decide which KV path a seed key belongs to (plan section 2.13).
@@ -189,7 +266,7 @@ route_for_key() {
         NEOPRINT_KEK_CURRENT_ID | NEOPRINT_KEK__* | NEOPRINT_STORAGE_SECRETS_KEY | \
             NEOPRINT_DATA_PROTECTION_KEY | NEOPRINT_QR_HMAC_KEY)
             echo "backend/crypto" ;;
-        NEOPRINT_STORAGE_SEED_* | NEOPRINT_SEED_ADMIN_*)
+        NEOPRINT_STORAGE_SEED_* | NEOPRINT_SEED_ADMIN_* | NEOPRINT_DEV_*)
             echo "backend/seed" ;;
         NEOPRINT_SMTP_* | NEOPRINT_FCM_* | NEOPRINT_TELEGRAM_* | NEOPRINT_FISCAL_* | NEOPRINT_BANK_*)
             echo "backend/providers" ;;
@@ -222,13 +299,14 @@ path_has_value() {
     bao kv get -mount="$KV_MOUNT" "$1" >/dev/null 2>&1
 }
 
+path_has_key() {
+    bao kv get -mount="$KV_MOUNT" -field="$2" "$1" >/dev/null 2>&1
+}
+
 seed_path() {
     target="$1"
-
-    if path_has_value "$target"; then
-        log "seed: $KV_MOUNT/$target already has a value, leaving it untouched"
-        return 0
-    fi
+    existing=false
+    path_has_value "$target" && existing=true
 
     set --
     while IFS= read -r line || [ -n "$line" ]; do
@@ -242,6 +320,12 @@ seed_path() {
 
         [ "$(route_for_key "$key")" = "$target" ] || continue
 
+        # A value already in OpenBao is never replaced; only keys it does not
+        # have yet - added to the seed file later - are written.
+        if [ "$existing" = true ] && path_has_key "$target" "$key"; then
+            continue
+        fi
+
         if [ -z "$value" ] && needs_generated_value "$key"; then
             value=$(random_base64_256)
             log "seed: generated a random value for $key"
@@ -252,15 +336,21 @@ seed_path() {
     done <"$SEED_FILE"
 
     if [ "$#" -eq 0 ]; then
-        log "seed: nothing to write to $KV_MOUNT/$target"
+        log "seed: $KV_MOUNT/$target is up to date"
         return 0
     fi
 
-    bao kv put -mount="$KV_MOUNT" "$target" "$@" >/dev/null
-    log "seed: wrote $# key(s) to $KV_MOUNT/$target"
+    if [ "$existing" = true ]; then
+        bao kv patch -mount="$KV_MOUNT" "$target" "$@" >/dev/null
+        log "seed: added $# new key(s) to $KV_MOUNT/$target; existing values left untouched"
+    else
+        bao kv put -mount="$KV_MOUNT" "$target" "$@" >/dev/null
+        log "seed: wrote $# key(s) to $KV_MOUNT/$target"
+    fi
 }
 
 if [ -f "$SEED_FILE" ]; then
+    check_seed_file
     log "seeding development secrets from $(basename "$SEED_FILE")"
     seed_path "backend/core"
     seed_path "backend/crypto"
