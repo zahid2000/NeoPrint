@@ -55,10 +55,15 @@ public sealed class FileRepository : IFileRepository
             + file.Versions.Sum(version => version.Object.PlaintextLength));
     }
 
+    // Through AggregateWriter like every other aggregate: the status changes
+    // the file records (upload, conversion, edit) reach state_transitions, and
+    // two writers of the same file cannot silently overwrite each other - the
+    // second gets a ConcurrencyException. Before this the transitions were
+    // dropped and the dashboard had no conversion failures to count
+    // (docs/DECISIONS.md).
     public Task AddAsync(StoredFile file, CancellationToken cancellationToken = default)
-        => _context.Files.InsertOneAsync(file, cancellationToken: cancellationToken);
+        => AggregateWriter.InsertAsync(_context, _context.Files, file, cancellationToken);
 
     public Task UpdateAsync(StoredFile file, CancellationToken cancellationToken = default)
-        => _context.Files.ReplaceOneAsync(
-            existing => existing.Id == file.Id, file, cancellationToken: cancellationToken);
+        => AggregateWriter.ReplaceAsync(_context, _context.Files, file, cancellationToken);
 }
