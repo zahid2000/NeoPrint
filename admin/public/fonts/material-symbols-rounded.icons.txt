@@ -40,6 +40,7 @@ print
 progress_activity
 radio_button_unchecked
 refresh
+report
 restart_alt
 rule
 search
@@ -48,13 +49,13 @@ sell
 settings
 shield
 star
+storage
 storefront
 sync
 sync_alt
 timer_off
 toggle_on
 verified
-verified_user
 visibility
 visibility_off
 vpn_key
