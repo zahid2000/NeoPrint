@@ -115,10 +115,25 @@ public sealed class SandboxedProcess : IProcessSandbox
 
         // The limits are applied by the wrapper before exec, so they bind the
         // converter itself rather than a shell that started it.
+        var wrapped = false;
+
         if (LimitCommand(limits) is { } wrapper)
         {
+            // Under the wrapper a missing converter would surface as the
+            // wrapper's exit code - "the document failed" - rather than as
+            // "the converter is not installed". Look it up first, so the
+            // user is told the right thing.
+            if (FindExecutable(fileName) is null)
+            {
+                _logger.LogError("The converter {FileName} is not installed.", fileName);
+
+                return new SandboxResult(
+                    SandboxOutcome.NotStarted, null, $"{fileName} was not found.", TimeSpan.Zero);
+            }
+
             arguments = [.. wrapper.Prefix, fileName, .. arguments];
             fileName = wrapper.FileName;
+            wrapped = true;
         }
 
         var startInfo = new ProcessStartInfo
@@ -211,7 +226,15 @@ public sealed class SandboxedProcess : IProcessSandbox
         stopwatch.Stop();
 
         return new SandboxResult(
-            process.ExitCode == 0 ? SandboxOutcome.Succeeded : SandboxOutcome.Failed,
+            process.ExitCode switch
+            {
+                0 => SandboxOutcome.Succeeded,
+
+                // prlimit could not exec the program (126: not executable,
+                // 127: not found) - the program never ran.
+                126 or 127 when wrapped => SandboxOutcome.NotStarted,
+                _ => SandboxOutcome.Failed,
+            },
             process.ExitCode,
             Truncate(stderr),
             stopwatch.Elapsed);
@@ -292,6 +315,33 @@ public sealed class SandboxedProcess : IProcessSandbox
     /// sets the limits before exec, which is the only way to have them apply
     /// to the tool itself rather than to a shell that started it.
     /// </remarks>
+    /// <summary>
+    /// The full path a program name resolves to, the way the OS would find
+    /// it: an absolute or relative path as it is, a bare name on PATH.
+    /// </summary>
+    public static string? FindExecutable(string fileName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+
+        if (fileName.Contains(Path.DirectorySeparatorChar) || fileName.Contains(Path.AltDirectorySeparatorChar))
+        {
+            return File.Exists(fileName) ? fileName : null;
+        }
+
+        foreach (var directory in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+                     .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var candidate = Path.Combine(directory, fileName);
+
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
     public static (string FileName, string[] Prefix)? LimitCommand(SandboxLimits limits)
     {
         ArgumentNullException.ThrowIfNull(limits);
