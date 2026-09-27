@@ -1,7 +1,7 @@
 namespace NeoPrint.Api.Infrastructure;
 
 /// <summary>
-/// The cross-origin policy used while developing, and only then.
+/// The origins a developer's own machine serves the Flutter web app from.
 /// </summary>
 /// <remarks>
 /// The admin panel shares an origin with the API in every environment: nginx
@@ -14,15 +14,12 @@ namespace NeoPrint.Api.Infrastructure;
 /// the browser blocks every request before it is sent - which showed up only as
 /// "network error" on the register screen and told nobody what was wrong.
 ///
-/// The policy is therefore registered behind an <c>IsDevelopment()</c> check in
-/// <c>Program.cs</c> and accepts loopback origins only, so it cannot be widened
-/// by configuration and cannot reach production. <c>docs/DECISIONS.md</c>
-/// records the decision; <c>CorsRulesTests</c> keeps it true.
+/// Loopback on any port is accepted in Development only; a deployment accepts
+/// the origins in <c>Cors:AllowedOrigins</c> and nothing else
+/// (<see cref="CorsOrigins"/>, docs/DECISIONS.md).
 /// </remarks>
 public static class DevelopmentCors
 {
-    /// <summary>The policy name, used at both the registration and the usage site.</summary>
-    public const string PolicyName = "neoprint-development";
 
     /// <summary>
     /// The hosts a development origin may name. 10.0.2.2 is how the Android

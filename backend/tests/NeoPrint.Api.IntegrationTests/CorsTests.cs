@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http;
 
+using Microsoft.Extensions.Configuration;
+
 using NeoPrint.Api.Infrastructure;
 
 namespace NeoPrint.Api.IntegrationTests;
@@ -74,44 +76,67 @@ public sealed class CorsTests
     public void Everything_else_is_not(string origin)
         => DevelopmentCors.IsLoopbackOrigin(origin).Should().BeFalse();
 
-    /// <summary>
-    /// The registration and the usage site both have to sit inside an
-    /// <c>IsDevelopment()</c> branch.
-    /// </summary>
-    /// <remarks>
-    /// A source check rather than a request, because the alternative is booting
-    /// the API in Production, which by design refuses to start without a real
-    /// secret store. This keeps the guard honest for whoever edits
-    /// <c>Program.cs</c> next.
-    /// </remarks>
+    private static CorsOrigins Origins(bool development, params string[] configured)
+    {
+        var settings = configured
+            .Select((origin, index) => new KeyValuePair<string, string?>($"{CorsOrigins.SectionName}:{index}", origin));
+
+        return CorsOrigins.FromConfiguration(
+            new ConfigurationBuilder().AddInMemoryCollection(settings).Build(),
+            development);
+    }
+
     [Fact]
-    public void Cors_is_registered_only_for_development()
+    public void Outside_development_only_the_configured_origins_are_allowed()
+    {
+        var origins = Origins(development: false, "https://app.neoprint.az");
+
+        origins.IsAllowed("https://app.neoprint.az").Should().BeTrue();
+
+        // No loopback, no neighbour, no downgrade.
+        origins.IsAllowed("http://localhost:4200").Should().BeFalse();
+        origins.IsAllowed("https://evil.neoprint.az").Should().BeFalse();
+        origins.IsAllowed("http://app.neoprint.az").Should().BeFalse();
+    }
+
+    [Fact]
+    public void With_nothing_configured_a_deployment_allows_no_origin_at_all()
+    {
+        var origins = Origins(development: false);
+
+        origins.IsAllowed("http://localhost:4200").Should().BeFalse();
+        origins.IsAllowed("https://app.neoprint.az").Should().BeFalse();
+    }
+
+    [Fact]
+    public void Development_allows_loopback_and_the_configured_origins()
+    {
+        var origins = Origins(development: true, "http://192.168.1.50:8080");
+
+        origins.IsAllowed("http://localhost:63412").Should().BeTrue();
+        origins.IsAllowed("http://192.168.1.50:8080").Should().BeTrue();
+        origins.IsAllowed("https://neoprint.attacker.example").Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("https://*.neoprint.az")]
+    [InlineData("https://app.neoprint.az/path")]
+    [InlineData("app.neoprint.az")]
+    [InlineData("http://app.neoprint.az")]
+    public void A_loose_origin_stops_a_deployment_from_starting(string origin)
+    {
+        var configure = () => Origins(development: false, origin);
+
+        configure.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void The_policy_is_the_one_the_pipeline_uses()
     {
         var program = File.ReadAllText(ProgramFile());
-        var lines = program.Split('\n');
 
-        foreach (var (line, index) in lines.Select((line, index) => (line, index)))
-        {
-            if (!line.Contains("AddCors(", StringComparison.Ordinal)
-                && !line.Contains("UseCors(", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            // Walk back to the nearest enclosing condition. Both call sites are
-            // one block deep, so the guard is within a few lines above.
-            var guarded = lines
-                .Take(index)
-                .Reverse()
-                .Take(20)
-                .Any(earlier => earlier.Contains("IsDevelopment()", StringComparison.Ordinal));
-
-            guarded.Should().BeTrue(
-                $"line {index + 1} ({line.Trim()}) must be reachable only in Development");
-        }
-
-        program.Should().Contain("AddCors(", "the development policy is what this test guards");
-        program.Should().Contain("UseCors(");
+        program.Should().Contain("AddCors(").And.Contain("CorsOrigins.PolicyName");
+        program.Should().Contain("app.UseCors(CorsOrigins.PolicyName)");
     }
 
     private static string ProgramFile()

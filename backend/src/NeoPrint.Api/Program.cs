@@ -296,18 +296,19 @@ if (builder.Environment.IsDevelopment())
     // reachable from the admin panel (plan section 1).
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
-
-    // Cross-origin access for the Flutter app running in a browser. Registered
-    // here and nowhere else, so it cannot be turned on outside Development
-    // (see DevelopmentCors).
-    builder.Services.AddCors(options => options.AddPolicy(
-        DevelopmentCors.PolicyName,
-        policy => policy
-            .SetIsOriginAllowed(DevelopmentCors.IsLoopbackOrigin)
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials()));
 }
+
+// Cross-origin access for the Flutter app in a browser: loopback in
+// Development, otherwise only the origins configured in Cors:AllowedOrigins
+// (see CorsOrigins). A bad entry stops the start rather than widening access.
+var corsOrigins = CorsOrigins.FromConfiguration(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.AddCors(options => options.AddPolicy(
+    CorsOrigins.PolicyName,
+    policy => policy
+        .SetIsOriginAllowed(corsOrigins.IsAllowed)
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()));
 
 var app = builder.Build();
 
@@ -380,15 +381,16 @@ app.UseNeoPrintCorrelationId();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+// Before the rate limiter and authentication: a preflight carries neither
+// credentials nor a body, and answering it must not spend a request from the
+// sign-in limit.
+app.UseCors(CorsOrigins.PolicyName);
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 
-    // Before the rate limiter and authentication: a preflight carries neither
-    // credentials nor a body, and answering it must not spend a request from
-    // the sign-in limit.
-    app.UseCors(DevelopmentCors.PolicyName);
 }
 else
 {
