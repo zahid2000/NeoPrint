@@ -1,3 +1,5 @@
+import '../../core/theme/tokens.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -21,12 +23,12 @@ class PlaceholderScreen extends StatelessWidget {
       appBar: AppBar(title: Text(title)),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(Spacing.x8),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 64, color: theme.colorScheme.outline),
-              const SizedBox(height: 16),
+              const SizedBox(height: Spacing.x4),
               Text(
                 l10n.commonComingSoon,
                 textAlign: TextAlign.center,

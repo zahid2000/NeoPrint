@@ -79,6 +79,9 @@ cd admin && npm ci && npm run lint && npm test && npm run build
 
 # Lisenziya yoxlaması (bütün ekosistemlər)
 node tools/license-check
+
+# Dizayn qaydaları: hardcoded rəng / şrift ölçüsü / boşluq yoxdur (admin, mobil, kiosk)
+node tools/design-lint
 ```
 
 CI (`.github/workflows/ci.yml`) eyni addımları `windows-latest` və `ubuntu-latest` üzərində icra edir.

@@ -267,6 +267,33 @@ jobs:
         working-directory: admin
 
   # --------------------------------------------------------------------
+  # Design rules
+  # --------------------------------------------------------------------
+  #
+  # No hardcoded colour, font size or spacing in the admin panel, the mobile
+  # app or the kiosk (CLAUDE.md, docs/DESIGN_SYSTEM.md): every such value is a
+  # token, so a redesign is a change to the token files alone.
+  design-lint:
+    name: design rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test the checker
+        run: npm test
+        working-directory: tools/design-lint
+
+      - name: Check the UIs
+        run: node tools/design-lint
+
+  # --------------------------------------------------------------------
   # Licence policy
   # --------------------------------------------------------------------
   #

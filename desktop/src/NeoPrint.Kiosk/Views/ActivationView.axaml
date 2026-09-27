@@ -12,7 +12,7 @@
 
     <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
 
-        <StackPanel Grid.Column="0" Spacing="24" MaxWidth="760">
+        <StackPanel Grid.Column="0" Spacing="{DynamicResource Space6}" MaxWidth="760">
             <TextBlock Text="{Binding Title}"
                        Classes="h1"
                        TextWrapping="Wrap" />
@@ -27,11 +27,11 @@
                     BorderBrush="{DynamicResource Brand300}"
                     BorderThickness="2"
                     CornerRadius="{DynamicResource RadiusLg}"
-                    Padding="40,28"
+                    Padding="{DynamicResource CodeBoxPadding}"
                     HorizontalAlignment="Left">
-                <StackPanel Spacing="12">
+                <StackPanel Spacing="{DynamicResource Space4}">
                     <TextBlock Text="{Binding DisplayCode}"
-                               FontSize="72" FontWeight="SemiBold"
+                               FontSize="{DynamicResource FontSizeCode}" FontWeight="SemiBold"
                                FontFamily="monospace"
                                Foreground="{DynamicResource Brand700}" />
                     <TextBlock Text="{Binding CodeExpiryText}"
@@ -39,7 +39,7 @@
                 </StackPanel>
             </Border>
 
-            <StackPanel Orientation="Horizontal" Spacing="12">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
                 <Ellipse Width="12" Height="12" VerticalAlignment="Center"
                          Fill="{Binding IsBackendReachable, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
                 <TextBlock Text="{Binding ConnectionStatus}"
@@ -48,12 +48,12 @@
             </StackPanel>
 
             <Border Classes="card" HorizontalAlignment="Left">
-                <StackPanel Spacing="12">
+                <StackPanel Spacing="{DynamicResource Space4}">
                     <TextBlock Text="{Binding DeviceInfoHeading}"
                                Classes="body-small"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource Neutral900}"
-                               Margin="0,0,0,4" />
+                               Margin="{DynamicResource GapBelow4}" />
 
                     <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto">
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding HostnameLabel}"
@@ -87,12 +87,12 @@
 
         <!-- The activation QR takes the place of the kiosk QR while the kiosk
              has no code of its own yet (plan sections 2.9, 7.3). -->
-        <Border Grid.Column="1" Background="White"
+        <Border Grid.Column="1" Background="{DynamicResource QrBackground}"
                 BorderBrush="{DynamicResource Neutral200}"
                 BorderThickness="1"
                 CornerRadius="{DynamicResource RadiusLg}"
-                Padding="24"
-                VerticalAlignment="Center" Margin="48,0,0,0"
+                Padding="{DynamicResource Inset6}"
+                VerticalAlignment="Center" Margin="{DynamicResource GapStart12}"
                 IsVisible="{Binding ActivationQr, Converter={x:Static ObjectConverters.IsNotNull}}">
             <Image Source="{Binding ActivationQr, Converter={x:Static vm:ScreenConverters.QrImage}}"
                    Width="280" Height="280" />

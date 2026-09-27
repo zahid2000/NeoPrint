@@ -7,7 +7,7 @@
     <!-- Shown for the moment between the process starting and the kiosk
          knowing what it is (plan section 7.12, recovery flow). -->
 
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="32">
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space8}">
         <Border Width="96" Height="96"
                 Background="{DynamicResource Brand600}"
                 CornerRadius="{DynamicResource RadiusLg}"

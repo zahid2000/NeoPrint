@@ -74,6 +74,8 @@
     <sys:Double x:Key="FontSizeBodySmall">22</sys:Double>
     <sys:Double x:Key="FontSizeCaption">20</sys:Double>
     <sys:Double x:Key="FontSizeButton">30</sys:Double>
+    <!-- The activation code, read from a distance by the person activating. -->
+    <sys:Double x:Key="FontSizeCode">72</sys:Double>
 
     <!-- ===== Spacing ===================================================
          The 4-based scale, one step up for the kiosk: the smallest gap used
@@ -87,6 +89,28 @@
 
     <Thickness x:Key="PagePadding">32</Thickness>
     <Thickness x:Key="CardPadding">24</Thickness>
+
+    <!-- Thickness forms of the same scale, for Margin and Padding (Avalonia
+         needs a Thickness there, not a Double). Named by what they are:
+         Inset = all round or left/right, GapStart / GapBelow = space before
+         or under an element. -->
+    <Thickness x:Key="Inset4">16</Thickness>
+    <Thickness x:Key="Inset6">24</Thickness>
+    <Thickness x:Key="InsetX4">16,0</Thickness>
+    <Thickness x:Key="InsetX8">32,0</Thickness>
+    <Thickness x:Key="GapStart4">16,0,0,0</Thickness>
+    <Thickness x:Key="GapStart6">24,0,0,0</Thickness>
+    <Thickness x:Key="GapStart8">32,0,0,0</Thickness>
+    <Thickness x:Key="GapStart12">48,0,0,0</Thickness>
+    <Thickness x:Key="GapBelow4">0,0,0,16</Thickness>
+
+    <!-- The activation code's box: roomy, so the code reads across a room. -->
+    <Thickness x:Key="CodeBoxPadding">48,24</Thickness>
+
+    <!-- Functional, not decorative: a QR scanner needs a quiet zone and
+         black on white whatever the theme. -->
+    <Thickness x:Key="QrQuietZone">4</Thickness>
+    <SolidColorBrush x:Key="QrBackground" Color="#FFFFFF" />
 
     <!-- ===== Radius ==================================================== -->
     <CornerRadius x:Key="RadiusSm">16</CornerRadius>

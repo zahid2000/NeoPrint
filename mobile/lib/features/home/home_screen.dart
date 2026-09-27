@@ -1,3 +1,5 @@
+import '../../core/theme/tokens.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,12 +23,12 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.appTitle)),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(Spacing.x4),
         children: [
           Card(
             color: theme.colorScheme.primaryContainer,
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(Spacing.x4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -36,7 +38,7 @@ class HomeScreen extends ConsumerWidget {
                       color: theme.colorScheme.onPrimaryContainer,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: Spacing.x4),
                   Row(
                     children: [
                       Expanded(
@@ -56,20 +58,20 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: Spacing.x4),
 
           FilledButton.icon(
             onPressed: null,
             icon: const Icon(Icons.qr_code_scanner),
             label: Text(l10n.homeScanQr),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: Spacing.x6),
 
           Text(l10n.homeActiveJobs, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
+          const SizedBox(height: Spacing.x2),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(Spacing.x6),
               child: Center(
                 child: Text(
                   l10n.homeNoActiveJobs,

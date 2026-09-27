@@ -10,7 +10,7 @@
         size - this is a finger on a kiosk, not a mouse.
     -->
 
-    <StackPanel VerticalAlignment="Center" Spacing="24" MaxWidth="860">
+    <StackPanel VerticalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="860">
         <TextBlock Text="{Binding HomeTitle}" Classes="h1" />
 
         <!-- Each action is a card-sized button with its own icon: three
@@ -18,9 +18,9 @@
              distance (docs/DESIGN_SYSTEM.md section 5.1). -->
         <Button Classes="primary"
                 MinHeight="112" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Left" Padding="32,0"
+                HorizontalContentAlignment="Left" Padding="{DynamicResource InsetX8}"
                 IsEnabled="False">
-            <StackPanel Orientation="Horizontal" Spacing="24">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
                 <PathIcon Data="{StaticResource IconUsb}" Width="40" Height="40" />
                 <TextBlock Text="{Binding PrintFromUsbText}"
                            FontSize="{DynamicResource FontSizeButton}"
@@ -32,9 +32,9 @@
 
         <Button Classes="secondary"
                 MinHeight="112" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Left" Padding="32,0"
+                HorizontalContentAlignment="Left" Padding="{DynamicResource InsetX8}"
                 IsEnabled="False">
-            <StackPanel Orientation="Horizontal" Spacing="24">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
                 <PathIcon Data="{StaticResource IconQrCode}" Width="40" Height="40" />
                 <TextBlock Text="{Binding ScanMyQrText}"
                            FontSize="{DynamicResource FontSizeButton}"
@@ -45,9 +45,9 @@
 
         <Button Classes="secondary"
                 MinHeight="112" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Left" Padding="32,0"
+                HorizontalContentAlignment="Left" Padding="{DynamicResource InsetX8}"
                 IsEnabled="False">
-            <StackPanel Orientation="Horizontal" Spacing="24">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
                 <PathIcon Data="{StaticResource IconInfo}" Width="40" Height="40" />
                 <TextBlock Text="{Binding CancelByCodeText}"
                            FontSize="{DynamicResource FontSizeButton}"

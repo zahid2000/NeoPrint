@@ -1,3 +1,5 @@
+import '../../core/theme/tokens.dart';
+
 import 'package:flutter/material.dart';
 
 /// Shown while the stored refresh token is being checked.
@@ -23,7 +25,7 @@ class SplashScreen extends StatelessWidget {
                 color: theme.colorScheme.primary,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: Spacing.x8),
             const CircularProgressIndicator(),
           ],
         ),

@@ -1,14 +1,14 @@
 .flags {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 
   &__header {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: var(--space-4);
 
     h1 {
       margin: 0;
@@ -19,15 +19,15 @@
   &__hint,
   &__note,
   &__description {
-    margin: 0 0 0.75rem;
+    margin: 0 0 var(--space-3);
     color: var(--mat-sys-on-surface-variant);
   }
 
   &__error {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-sm);
     background: var(--mat-sys-error-container);
     color: var(--mat-sys-on-error-container);
@@ -37,13 +37,13 @@
     font-size: var(--font-size-body);
     width: 1rem;
     height: 1rem;
-    margin-left: 0.5rem;
+    margin-left: var(--space-2);
     vertical-align: middle;
     color: var(--mat-sys-primary);
   }
 
   &__rollout {
-    margin: 1rem 0;
+    margin: var(--space-4) 0;
 
     mat-slider {
       width: min(100%, 24rem);
@@ -51,21 +51,21 @@
   }
 
   &__subtitle {
-    margin: 1rem 0 0.5rem;
+    margin: var(--space-4) 0 var(--space-2);
     font-size: var(--font-size-body);
   }
 
   &__kiosks {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   &__kiosk {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
-    padding: 0.5rem 0.75rem;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--mat-sys-outline-variant);
     border-radius: var(--radius-sm);
     background: var(--mat-sys-surface-container);
@@ -95,7 +95,7 @@
   &__actions {
     display: flex;
     justify-content: flex-end;
-    gap: 0.5rem;
-    padding-top: 1rem;
+    gap: var(--space-2);
+    padding-top: var(--space-4);
   }
 }

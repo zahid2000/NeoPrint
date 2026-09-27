@@ -15,7 +15,7 @@
          (docs/DESIGN_SYSTEM.md section 5.1). -->
 
     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                Spacing="24" MaxWidth="720">
+                Spacing="{DynamicResource Space6}" MaxWidth="720">
         <Border Width="120" Height="120"
                 Background="{DynamicResource WarningBg}"
                 CornerRadius="60"

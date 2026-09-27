@@ -59,12 +59,10 @@ public sealed class DesignSystemTests
             }
         }
 
-        // The pairing code is the one exception, and it is stated here rather
-        // than left for the reader to infer: it is the largest thing on the
-        // screen by design, above every size in the scale.
-        offenders.Should().OnlyContain(
-            offender => offender.StartsWith("ActivationView.axaml", StringComparison.Ordinal),
-            "only the pairing code is allowed to set its own size");
+        // No exception: even the pairing code, the largest thing on the
+        // screen, takes its size from a token (FontSizeCode), so a redesign
+        // changes it in Tokens.axaml (tools/design-lint checks the same).
+        offenders.Should().BeEmpty();
     }
 
     [Fact]

@@ -2,9 +2,9 @@
   &__error {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    padding: 0.75rem 1rem;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-sm);
     background: var(--mat-sys-error-container);
     color: var(--mat-sys-on-error-container);
@@ -13,8 +13,8 @@
   &__facts {
     display: grid;
     grid-template-columns: max-content 1fr;
-    gap: 0.35rem 1rem;
-    margin: 0 0 1rem;
+    gap: var(--space-1) var(--space-4);
+    margin: 0 0 var(--space-4);
 
     dt {
       color: var(--mat-sys-on-surface-variant);
@@ -26,22 +26,22 @@
   }
 
   &__hint {
-    margin: 0 0 1rem;
+    margin: 0 0 var(--space-4);
     color: var(--mat-sys-on-surface-variant);
   }
 
   &__form {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 1rem;
+    gap: 0 var(--space-4);
   }
 
   &__modes {
     grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
   }
 
   &__field {
@@ -53,15 +53,15 @@
   }
 
   &__printers {
-    margin: 0 0 1rem;
+    margin: 0 0 var(--space-4);
     padding: 0;
     list-style: none;
 
     li {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.75rem;
-      padding: 0.35rem 0;
+      gap: var(--space-3);
+      padding: var(--space-1) 0;
       border-bottom: 1px solid var(--mat-sys-outline-variant);
       color: var(--mat-sys-on-surface-variant);
 
@@ -73,8 +73,8 @@
 
   &__step-actions {
     display: flex;
-    gap: 0.5rem;
-    padding: 0.5rem 0 0;
+    gap: var(--space-2);
+    padding: var(--space-2) 0 0;
   }
 }
 
@@ -89,9 +89,9 @@
 .token {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin: 0.5rem 0 1rem;
-  padding: 0.5rem 0.75rem;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: var(--radius-sm);
   background: var(--mat-sys-surface-container);
