@@ -323,12 +323,27 @@ public sealed class FilesApiTests
                 "/api/files", Upload(Pdf(), "gözləyir.pdf", "application/pdf")))
             .Content.ReadFromJsonAsync<JsonElement>();
 
-        var id = created.GetProperty("id").GetString();
+        // The upload's own event reaches the conversion consumer within
+        // moments, so the file this asks about is one of the same user's that
+        // no event announces: it stays Pending for as long as the test needs.
+        using var scope = _fixture.Services.CreateScope();
+        var files = scope.ServiceProvider.GetRequiredService<NeoPrint.Application.Files.IFileRepository>();
+        var uploaded = await files.FindByIdAsync(created.GetProperty("id").GetGuid());
 
-        var response = await client.GetAsync($"/api/files/{id}/pdf");
+        var pending = new NeoPrint.Domain.Files.StoredFile
+        {
+            UserId = uploaded!.UserId,
+            FileName = "gözləyir.pdf",
+            Extension = "pdf",
+            MediaType = "application/pdf",
+            Source = NeoPrint.Domain.Files.FileSource.Uploaded,
+            Original = uploaded.Original,
+        };
+        await files.AddAsync(pending);
 
-        // Conversion lands later in step 2; until then this must be an
-        // explained refusal rather than a 500 or an empty file.
+        var response = await client.GetAsync($"/api/files/{pending.Id}/pdf");
+
+        // An explained refusal rather than a 500 or an empty file.
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain("çevrilir");
     }
