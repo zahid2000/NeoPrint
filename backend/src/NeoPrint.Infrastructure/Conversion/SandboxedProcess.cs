@@ -53,12 +53,19 @@ public sealed record SandboxResult(
 /// A directory of its own, deleted by the caller afterwards, so the tool has
 /// nowhere else to write.
 /// </param>
+/// <param name="CpuSeconds">
+/// Processor time, as opposed to the wall-clock <paramref name="Timeout"/>: a
+/// document that makes a converter spin is stopped by the kernel even when a
+/// busy machine would let it run long. Summed over threads, so it is set above
+/// the timeout.
+/// </param>
 public sealed record SandboxLimits(
     TimeSpan Timeout,
     long MemoryLimitBytes,
-    string WorkingDirectory)
+    string WorkingDirectory,
+    int CpuSeconds = 120)
 {
-    /// <summary>The defaults from plan section 2.2: 60 seconds, 1 GB.</summary>
+    /// <summary>The defaults from plan section 2.2: 60 seconds, 1 GB, and 120 CPU seconds.</summary>
     public static SandboxLimits Default(string workingDirectory) =>
         new(TimeSpan.FromSeconds(60), 1024L * 1024 * 1024, workingDirectory);
 }
@@ -77,18 +84,16 @@ public sealed record SandboxLimits(
 /// and is killed with its children when the deadline passes.
 /// </para>
 /// <para>
-/// <strong>What this does not do.</strong> It does not put the process in its
-/// own network namespace or run it as a different user. Those are OS-level
-/// controls: on Linux they need a cgroup and CAP_SYS_ADMIN, on Windows a
-/// restricted token and a firewall rule, and plan section 10 schedules them
-/// for step 8, where the converter becomes its own network-less container.
-/// What is here instead is the part that can be enforced from inside the
-/// process, plus removing every environment variable a tool might read a
-/// proxy or a remote path out of. <c>docs/DECISIONS.md</c> records the
-/// remaining gap rather than leaving it implied.
+/// On Linux the program is started under <c>prlimit</c> with an address-space
+/// and a CPU-time cap. It does not by itself take the network away: that is
+/// the converter container's job (<see cref="IsolatedProcessSandbox"/>,
+/// <c>network_mode: none</c>), which runs this same class inside it. On a
+/// development machine without Docker, <c>Conversion:Mode=Local</c> runs it
+/// in the API's own environment - allowed in Development only
+/// (<see cref="ConversionOptions.EnsureAllowedIn"/>).
 /// </para>
 /// </remarks>
-public sealed class SandboxedProcess
+public sealed class SandboxedProcess : IProcessSandbox
 {
     /// <summary>Stderr kept per run. Enough to diagnose, bounded so a loop cannot fill the log.</summary>
     private const int MaxStandardErrorChars = 8 * 1024;
@@ -107,6 +112,14 @@ public sealed class SandboxedProcess
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
         ArgumentNullException.ThrowIfNull(arguments);
         ArgumentNullException.ThrowIfNull(limits);
+
+        // The limits are applied by the wrapper before exec, so they bind the
+        // converter itself rather than a shell that started it.
+        if (LimitCommand(limits) is { } wrapper)
+        {
+            arguments = [.. wrapper.Prefix, fileName, .. arguments];
+            fileName = wrapper.FileName;
+        }
 
         var startInfo = new ProcessStartInfo
         {
@@ -271,21 +284,24 @@ public sealed class SandboxedProcess
     }
 
     /// <summary>
-    /// The command that applies a memory limit on this platform, or null.
+    /// The command that applies the memory and CPU-time limits on this
+    /// platform, or null.
     /// </summary>
     /// <remarks>
     /// <c>prlimit</c> is in util-linux and is present in the backend image. It
-    /// sets the limit before exec, which is the only way to have it apply to
-    /// the tool itself rather than to a shell that started it.
+    /// sets the limits before exec, which is the only way to have them apply
+    /// to the tool itself rather than to a shell that started it.
     /// </remarks>
-    public static (string FileName, string[] Prefix)? MemoryLimitCommand(long bytes)
+    public static (string FileName, string[] Prefix)? LimitCommand(SandboxLimits limits)
     {
+        ArgumentNullException.ThrowIfNull(limits);
+
         if (!OperatingSystem.IsLinux())
         {
             return null;
         }
 
-        return ("prlimit", [$"--as={bytes}", "--"]);
+        return ("prlimit", [$"--as={limits.MemoryLimitBytes}", $"--cpu={limits.CpuSeconds}", "--"]);
     }
 
     private void Kill(Process process)

@@ -28,6 +28,19 @@ using NeoPrint.Infrastructure.SecretStore;
 using Hangfire;
 
 using NeoPrint.Infrastructure.Storage;
+using NeoPrint.Infrastructure.Conversion;
+
+// ---------------------------------------------------------------------------
+// The converter container (docs/adr/ADR-0005-isolated-converter.md): the same
+// image, started with this switch, runs only the spool worker - before any
+// configuration, secret store or database is touched. It has no network and
+// no secrets to read.
+// ---------------------------------------------------------------------------
+if (args is [ConverterWorker.CommandLineSwitch, ..])
+{
+    Environment.ExitCode = await ConverterHost.RunAsync(args[1..]);
+    return;
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -105,6 +118,12 @@ builder.Services.AddSingleton<ISecretStore>(provider =>
 });
 
 builder.Services.AddNeoPrintInfrastructure(builder.Configuration);
+
+// Outside Development a converter never runs inside the API
+// (docs/adr/ADR-0005-isolated-converter.md): refuse to start rather than run
+// untrusted documents with the API's network and user.
+(builder.Configuration.GetSection(ConversionOptions.SectionName).Get<ConversionOptions>() ?? new ConversionOptions())
+    .EnsureAllowedIn(builder.Environment.IsDevelopment());
 builder.Services.AddNeoPrintSeeding(builder.Environment.IsDevelopment());
 
 builder.Services.AddMediatR(configuration =>

@@ -285,9 +285,14 @@ services:
       BAO_KV_MOUNT: neoprint
       BAO_ROLE_ID_FILE: /run/secrets/neoprint-api.role_id
       BAO_SECRET_ID_FILE: /run/secrets/neoprint-api.secret_id
+      # Documents are converted in the converter container, never in here
+      # (docs/adr/ADR-0005-isolated-converter.md).
+      Conversion__Mode: Isolated
+      Conversion__WorkRoot: /spool
     ports:
       - "5080:8080"
     volumes:
+      - conversion-spool:/spool
       # Written by openbao-init; mounted read-only, like a Docker secret.
       # The directory is mounted rather than the two files: openbao-init
       # replaces them on every run, and a single-file bind mount would then
@@ -300,6 +305,43 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+    restart: unless-stopped
+
+  # Document conversion, isolated (plan section 10, CLAUDE.md "İstifadəçi
+  # faylları untrusted input", docs/adr/ADR-0005-isolated-converter.md).
+  # The API image, started as the spool worker: LibreOffice and Ghostscript run
+  # here, with no network at all, a read-only root, no capabilities, no
+  # secrets, and CPU / memory / process count capped by the cgroup (prlimit
+  # caps each conversion again inside). The only thing it shares with the API
+  # is the spool, a tmpfs volume, so no document is ever written to disk.
+  converter:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: neoprint-converter
+    command: ["--converter-worker", "/spool"]
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    environment:
+      HOME: /tmp
+    volumes:
+      - conversion-spool:/spool
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    cpus: 2
+    mem_limit: 2g
+    pids_limit: 256
+    healthcheck:
+      # The worker touches this file every five seconds.
+      test: ["CMD-SHELL", "find /spool/.converter-alive -newermt '-30 seconds' | grep -q ."]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
     restart: unless-stopped
 
   # The panel and the API behind one origin: nginx proxies /api and /hubs to
@@ -324,6 +366,14 @@ services:
     restart: unless-stopped
 
 volumes:
+  # The conversion spool: in memory only, owned by the API's and the
+  # converter's user (2000), shared by those two containers alone.
+  conversion-spool:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: "size=2g,uid=2000,gid=2000,mode=0700"
   openbao-file:
   openbao-logs:
   mongo-data:

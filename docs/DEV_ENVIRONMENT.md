@@ -488,6 +488,28 @@ SuperAdmin: `admin@neoprint.local`.
 RustFS konsolunda obyektlərə baxmaq: http://localhost:9001/rustfs/console/ — orada
 görünən fayllar **şifrəlidir**, endirsəniz açılmaz (gözlənilən haldır).
 
+### Konvertasiya — izolyasiya olunmuş `converter` konteyneri
+
+Word/Excel/PowerPoint/PS/PCL/XPS faylları API-də yox, `neoprint-converter`
+konteynerində çevrilir (şəbəkəsiz, read-only, CPU/RAM limitli —
+`docs/adr/ADR-0005-isolated-converter.md`). Portu yoxdur.
+
+```bash
+docker compose logs -f converter                       # hər iş üçün bir sətir: proqram, nəticə, müddət
+curl -s http://localhost:5080/health | grep converter  # "Healthy" — heartbeat gəlir
+
+# İzolyasiyanı öz gözünüzlə yoxlamaq
+docker exec neoprint-converter sh -c 'tail -n +3 /proc/net/dev | cut -d: -f1'   # yalnız lo
+docker exec neoprint-converter curl -m 3 http://api:8080/health/live             # uğursuz olmalıdır
+docker inspect neoprint-converter --format '{{.HostConfig.Memory}} {{.HostConfig.NanoCpus}} {{.HostConfig.PidsLimit}} {{.HostConfig.NetworkMode}}'
+```
+
+Converter dayanıbsa fayllar "Hazırlanır" statusunda gözləyir və converter qalxanda
+çevrilir (təxminən 90 saniyədən çox gözlədisə "Açılmadı" olur — faylı yenidən yükləyin).
+
+Docker-siz `dotnet run` ilə API-ni işlədəndə konvertasiya lokal child prosesdə gedir
+(`Conversion:Mode=Local`, yalnız Development-də icazəlidir).
+
 ### Şifrələməni storage-dan birbaşa yoxlamaq
 
 Backend-i keçərək obyekti RustFS-dən birbaşa oxuyun — faylın özü (`%PDF`, `%!PS`)

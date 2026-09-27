@@ -252,24 +252,61 @@ public sealed class SandboxedProcessTests : IDisposable
     }
 
     [Fact]
-    public void The_memory_limit_wrapper_is_used_on_linux_only()
+    public void The_limit_wrapper_is_used_on_linux_only()
     {
-        var command = SandboxedProcess.MemoryLimitCommand(512L * 1024 * 1024);
+        var command = SandboxedProcess.LimitCommand(Limits() with { CpuSeconds = 7 });
 
         if (OperatingSystem.IsLinux())
         {
             command.Should().NotBeNull();
             command!.Value.FileName.Should().Be("prlimit");
 
-            // Before exec, so the limit applies to the converter itself rather
+            // Before exec, so the limits apply to the converter itself rather
             // than to a shell that started it.
-            command.Value.Prefix.Should().Contain("--as=536870912");
+            command.Value.Prefix.Should().Contain("--as=536870912").And.Contain("--cpu=7");
         }
         else
         {
-            // Windows enforcement is a Job Object, which lands with the rest
-            // of the isolation in step 8 (docs/DECISIONS.md).
+            // A Windows development machine runs conversions locally without
+            // them; every deployed environment runs the isolated converter
+            // container, whose cgroup caps CPU and memory
+            // (docs/adr/ADR-0005-isolated-converter.md).
             command.Should().BeNull();
         }
+    }
+
+    [LinuxFact]
+    public async Task A_program_that_spins_is_stopped_by_the_cpu_limit_long_before_its_timeout()
+    {
+        // One CPU second, a thirty second deadline: the kernel ends a busy
+        // loop at the CPU limit, so a document that makes a converter spin
+        // cannot hold a core for the whole timeout.
+        var stopwatch = Stopwatch.StartNew();
+
+        var result = await _sandbox.RunAsync(
+            "/bin/sh", ["-c", "while :; do :; done"], Limits(TimeSpan.FromSeconds(30)) with { CpuSeconds = 1 });
+
+        stopwatch.Stop();
+
+        result.Outcome.Should().Be(SandboxOutcome.Failed, "SIGXCPU/SIGKILL ends it, not the deadline");
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(10));
+    }
+
+    [LinuxFact]
+    public async Task A_program_that_allocates_without_bound_is_stopped_by_the_memory_limit()
+    {
+        // awk grows a string until the address-space limit refuses the next
+        // allocation; without the limit it would take the machine's memory.
+        var stopwatch = Stopwatch.StartNew();
+
+        var result = await _sandbox.RunAsync(
+            "/usr/bin/awk",
+            ["BEGIN { s = \"x\"; while (1) s = s s }"],
+            new SandboxLimits(TimeSpan.FromSeconds(30), 64L * 1024 * 1024, _workingDirectory));
+
+        stopwatch.Stop();
+
+        result.Outcome.Should().Be(SandboxOutcome.Failed);
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(20));
     }
 }

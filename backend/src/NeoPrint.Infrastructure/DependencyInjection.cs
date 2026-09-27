@@ -8,6 +8,7 @@ using Hangfire.Mongo.Migration.Strategies.Backup;
 using MassTransit;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -80,7 +81,7 @@ public static class DependencyInjection
         AddMongo(services, configuration);
         AddRedis(services, configuration);
         AddCrypto(services);
-        AddStorage(services);
+        AddStorage(services, configuration);
         AddMessaging(services, configuration);
         AddBackgroundJobs(services, configuration);
         AddHealthChecks(services, configuration);
@@ -176,7 +177,7 @@ public static class DependencyInjection
     /// query. The storage itself is scoped, because it resolves the request's
     /// own logger and correlation id.
     /// </remarks>
-    private static void AddStorage(IServiceCollection services)
+    private static void AddStorage(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<StorageSecretProtector>();
         services.AddSingleton<S3ClientFactory>();
@@ -194,6 +195,15 @@ public static class DependencyInjection
         // state - and the service is scoped because it writes through the
         // request's repositories.
         services.AddSingleton<SandboxedProcess>();
+
+        // Where converters run: inside the API (Development only) or in the
+        // network-less converter container (docs/adr/ADR-0005-isolated-converter.md).
+        services.Configure<ConversionOptions>(configuration.GetSection(ConversionOptions.SectionName));
+        services.AddSingleton<IsolatedProcessSandbox>();
+        services.AddSingleton<IProcessSandbox>(provider =>
+            provider.GetRequiredService<IOptions<ConversionOptions>>().Value.IsIsolated
+                ? provider.GetRequiredService<IsolatedProcessSandbox>()
+                : provider.GetRequiredService<SandboxedProcess>());
         services.AddSingleton<IDocumentConverter, LibreOfficeConverter>();
         services.AddSingleton<IDocumentConverter, GhostscriptConverter>();
         services.AddSingleton<IDocumentConverter, ImageConverter>();
@@ -317,6 +327,13 @@ public static class DependencyInjection
             // it already loaded (plan section 2.13).
             HealthStatus.Degraded,
             ["ready", "secrets"]));
+
+        // The converter container's heartbeat, where conversions go to it.
+        // Degraded when it is missing: uploads still work, conversions wait.
+        if (configuration.GetSection(ConversionOptions.SectionName).Get<ConversionOptions>() is { IsIsolated: true })
+        {
+            builder.AddCheck<ConverterHealthCheck>("converter", HealthStatus.Degraded, ["ready"]);
+        }
     }
 
     /// <summary>Registers every <see cref="IValidator{T}"/> in an assembly.</summary>

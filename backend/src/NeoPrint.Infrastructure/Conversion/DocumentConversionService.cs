@@ -36,16 +36,22 @@ public sealed class DocumentConversionService
     private readonly IReadOnlyDictionary<ConversionRoute, IDocumentConverter> _converters;
     private readonly ILogger<DocumentConversionService> _logger;
 
+    /// <summary>The spool in Isolated mode, the temp folder otherwise (ConversionOptions).</summary>
+    private readonly string _workRoot;
+
     public DocumentConversionService(
         IFileRepository files,
         IFileStorage storage,
         ISettingsReader settings,
         IClock clock,
         IEnumerable<IDocumentConverter> converters,
+        Microsoft.Extensions.Options.IOptions<ConversionOptions> conversion,
         ILogger<DocumentConversionService> logger)
     {
         ArgumentNullException.ThrowIfNull(converters);
+        ArgumentNullException.ThrowIfNull(conversion);
 
+        _workRoot = conversion.Value.ResolveWorkRoot();
         _files = files;
         _storage = storage;
         _settings = settings;
@@ -87,7 +93,7 @@ public sealed class DocumentConversionService
         // nowhere else to write, and nothing of one file's content survives
         // into the next conversion.
         var workspace = Path.Combine(
-            Path.GetTempPath(), $"neoprint-convert-{Guid.NewGuid():N}");
+            _workRoot, $"neoprint-convert-{Guid.NewGuid():N}");
 
         Directory.CreateDirectory(workspace);
 

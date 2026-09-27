@@ -53,12 +53,12 @@ public interface IDocumentConverter
 /// </remarks>
 public sealed class LibreOfficeConverter : IDocumentConverter
 {
-    private readonly SandboxedProcess _sandbox;
+    private readonly IProcessSandbox _sandbox;
     private readonly ILogger<LibreOfficeConverter> _logger;
     private readonly string _executable;
 
     public LibreOfficeConverter(
-        SandboxedProcess sandbox, ILogger<LibreOfficeConverter> logger, string? executable = null)
+        IProcessSandbox sandbox, ILogger<LibreOfficeConverter> logger, string? executable = null)
     {
         _sandbox = sandbox;
         _logger = logger;
@@ -98,9 +98,7 @@ public sealed class LibreOfficeConverter : IDocumentConverter
             inputPath,
         ];
 
-        var (fileName, args) = WithMemoryLimit(_executable, arguments, limits);
-
-        var result = await _sandbox.RunAsync(fileName, args, limits, cancellationToken)
+        var result = await _sandbox.RunAsync(_executable, arguments, limits, cancellationToken)
             .ConfigureAwait(false);
 
         var expected = Path.Combine(
@@ -134,18 +132,6 @@ public sealed class LibreOfficeConverter : IDocumentConverter
         _ => "Sənədi PDF-ə çevirmək mümkün olmadı. Fayl zədələnib və ya şifrələnib ola bilər.",
     };
 
-    /// <summary>Prefixes the memory-limit wrapper where the platform has one.</summary>
-    internal static (string FileName, string[] Arguments) WithMemoryLimit(
-        string executable, string[] arguments, SandboxLimits limits)
-    {
-        if (SandboxedProcess.MemoryLimitCommand(limits.MemoryLimitBytes) is not { } wrapper)
-        {
-            return (executable, arguments);
-        }
-
-        return (wrapper.FileName, [.. wrapper.Prefix, executable, .. arguments]);
-    }
-
     private static string DefaultExecutable()
         => OperatingSystem.IsWindows()
             ? @"C:\Program Files\LibreOffice\program\soffice.exe"
@@ -165,10 +151,10 @@ public sealed class LibreOfficeConverter : IDocumentConverter
 /// </remarks>
 public sealed class GhostscriptConverter : IDocumentConverter
 {
-    private readonly SandboxedProcess _sandbox;
+    private readonly IProcessSandbox _sandbox;
     private readonly ILogger<GhostscriptConverter> _logger;
 
-    public GhostscriptConverter(SandboxedProcess sandbox, ILogger<GhostscriptConverter> logger)
+    public GhostscriptConverter(IProcessSandbox sandbox, ILogger<GhostscriptConverter> logger)
     {
         _sandbox = sandbox;
         _logger = logger;
@@ -206,9 +192,7 @@ public sealed class GhostscriptConverter : IDocumentConverter
             inputPath,
         ];
 
-        var (fileName, args) = LibreOfficeConverter.WithMemoryLimit(executable, arguments, limits);
-
-        var result = await _sandbox.RunAsync(fileName, args, limits, cancellationToken)
+        var result = await _sandbox.RunAsync(executable, arguments, limits, cancellationToken)
             .ConfigureAwait(false);
 
         if (result.Succeeded && File.Exists(output) && new FileInfo(output).Length > 0)
