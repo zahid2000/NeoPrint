@@ -1597,6 +1597,7 @@ Mənbələr:
 - Admin web: Buraxılışlar, Cihazlar → Enrollment token-lər, kiosk detalında versiya / yeniləmə statusu, log yükləmə
 - `FileCleanupJob`, DLQ monitorinqi, wallet ledger uzlaşdırması, ödəniş reconciliation-ı
 - Integration testlər (Bölmə 11), CI-də hamısı
+- **Vizual yenidən dizayn** (addımın sonunda, pilotdan əvvəl): daha canlı və müasir rəng palitrası, sidebar, dashboard kartları, illüstrasiyalar — admin, mobil, kiosk. Layihə sahibi nümunələr təqdim edir. Bütün UI token-lərdən istifadə etdiyi üçün (`docs/DESIGN_SYSTEM.md`, `tools/design-lint`) dəyişiklik əsasən token fayllarında (`admin/src/styles/tokens.css`, `mobile/lib/core/theme/tokens.dart`, `desktop/src/NeoPrint.Kiosk/Styles/Tokens.axaml`) və ümumi komponentlərdə aparılır (`docs/TASKS.md` T-022)
 - Buraxılış: backend Docker image, desktop (UI + Agent) `dotnet publish -r win-x64 --self-contained` və `-r linux-x64 --self-contained` → imzalı buraxılış paketləri + provisioning skriptləri, Flutter `apk` / `appbundle` və iOS build, admin web Docker image (nginx), `docs/API.md`, `docs/ADMIN_GUIDE.md`, `docs/OPERATOR_GUIDE.md`, `docs/PILOT.md`, `docs/legal/*` qaralamaları, README
 
 **Definition of Done**
