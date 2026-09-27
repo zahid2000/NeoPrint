@@ -53,7 +53,7 @@ public sealed class MongoContext
     /// method, which would be forgotten exactly once and then silently write
     /// outside the transaction. <see cref="MongoSet{TDocument}"/> reads it, so
     /// no caller has to know it exists
-    /// (<c>docs/adr/0004-ambient-mongo-session.md</c>).
+    /// (<c>docs/adr/ADR-0004-ambient-mongo-session.md</c>).
     ///
     /// Static, because the context may be resolved more than once in a request
     /// while the transaction is one thing.
@@ -79,7 +79,7 @@ public sealed class MongoContext
         {
             throw new InvalidOperationException(
                 "A transaction is already running in this flow. Nesting them would make the inner " +
-                "commit meaningless (docs/adr/0004-ambient-mongo-session.md).");
+                "commit meaningless (docs/adr/ADR-0004-ambient-mongo-session.md).");
         }
 
         AmbientSession.Value = session;

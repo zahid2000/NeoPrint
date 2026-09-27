@@ -145,3 +145,24 @@ tranzaksiya tələbi). Addım 2 və 4-ün ödəniş/wallet yazıları bunun üst
 ### Date
 
 2026-09-25
+
+### Yeniləmə — 2026-09-27 (Addım 2): sessiyanın sahibi MassTransit outbox-udur
+
+Qərar dəyişmir (ambient sessiya + `MongoSet<T>`), dəyişən sessiyanın **kim
+tərəfindən açıldığıdır**. `MongoTransactionRunner` artıq öz sessiyasını açmır:
+tranzaksiyanı MassTransit-in `MongoDbContext`-i (`BeginTransaction` /
+`CommitTransaction` / `AbortTransaction`) idarə edir və runner onun
+`Session`-ını `_context.Enlist(...)` ilə ambient edir.
+
+Səbəb: `UseBusOutbox` publish olunan hadisəni yaddaşda saxlayır və onu yalnız
+öz kontekstinin commit-i outbox kolleksiyasına yazır. Ayrıca sessiya ilə
+biznes dəyişikliyi commit olunurdu, hadisə isə heç vaxt yazılmırdı — Addım 2-nin
+DoD yoxlamasında bütün fayllar `Pending` qaldı (`docs/DECISIONS.md`). İndi
+state dəyişikliyi və onun hadisəsi eyni tranzaksiyada saxlanılır.
+
+Tranzaksiyadan kənarda (upload, background job) `IEventPublisher` hadisəni
+birbaşa broker-ə göndərir, çünki orada buferi commit edəcək kontekst yoxdur.
+`PersistenceRulesTests.The_transaction_runner_enlists_the_session` hər iki
+şərti (outbox sessiyasının enlist olunması, commit-in outbox vasitəsilə getməsi)
+yoxlayır; `FilesApiTests.An_upload_is_converted_by_the_bus_on_its_own` isə
+hadisənin consumer-ə real olaraq çatdığını.

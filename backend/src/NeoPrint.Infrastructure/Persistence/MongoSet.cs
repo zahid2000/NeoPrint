@@ -21,7 +21,7 @@ namespace NeoPrint.Infrastructure.Persistence;
 /// is not a mistake that can be made any more: there is nothing to forget, and
 /// the driver collection itself is internal to this assembly and used only for
 /// index work, which a transaction must not include
-/// (<c>docs/adr/0004-ambient-mongo-session.md</c>).
+/// (<c>docs/adr/ADR-0004-ambient-mongo-session.md</c>).
 /// </para>
 /// </remarks>
 public readonly struct MongoSet<TDocument> : IEquatable<MongoSet<TDocument>>
@@ -55,7 +55,7 @@ public readonly struct MongoSet<TDocument> : IEquatable<MongoSet<TDocument>>
                 $"The '{_collection.CollectionNamespace.CollectionName}' collection was asked for " +
                 "without the session while a transaction is running. An operation that goes round " +
                 "the session is not part of the transaction and survives an abort, so it is refused " +
-                "(docs/adr/0004-ambient-mongo-session.md).");
+                "(docs/adr/ADR-0004-ambient-mongo-session.md).");
 
     private IClientSessionHandle? Session => _context.Session;
 

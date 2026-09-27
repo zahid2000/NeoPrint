@@ -16,7 +16,7 @@ namespace NeoPrint.Api.IntegrationTests;
 /// its write survives an abort. <see cref="MongoSet{TDocument}"/> makes that
 /// impossible to do by accident; these tests are what keeps it impossible on
 /// purpose, for the next person who needs a collection and finds a way to one
-/// (<c>docs/adr/0004-ambient-mongo-session.md</c>).
+/// (<c>docs/adr/ADR-0004-ambient-mongo-session.md</c>).
 ///
 /// No Docker: they read files.
 /// </remarks>

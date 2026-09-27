@@ -59,7 +59,7 @@ public sealed class MongoTransactionRunner : ITransactionRunner
                 // session, which is what makes the commit and the abort mean
                 // anything: the driver only enlists an operation when the
                 // session is passed to it, and nothing passes it by hand
-                // (docs/adr/0004-ambient-mongo-session.md).
+                // (docs/adr/ADR-0004-ambient-mongo-session.md).
                 using (_context.Enlist(_outbox.Session
                     ?? throw new InvalidOperationException("The outbox started no session.")))
                 {

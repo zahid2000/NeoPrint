@@ -446,6 +446,29 @@ SuperAdmin: `admin@neoprint.local`.
 RustFS konsolunda obyektlərə baxmaq: http://localhost:9001/rustfs/console/ — orada
 görünən fayllar **şifrəlidir**, endirsəniz açılmaz (gözlənilən haldır).
 
+### Şifrələməni storage-dan birbaşa yoxlamaq
+
+Backend-i keçərək obyekti RustFS-dən birbaşa oxuyun — faylın özü (`%PDF`, `%!PS`)
+yox, `NPENC` ilə başlayan şifrəli zərf gəlməlidir; açarsız sorğu `403` alır:
+
+```bash
+# Obyekt açarlarını siyahıla
+curl -s --aws-sigv4 "aws:amz:us-east-1:s3" -u "neoprintrustfs:devRustfsPassword"   "http://localhost:9000/neoprint-files?list-type=2&max-keys=20" | grep -o "<Key>[^<]*</Key>"
+
+# Birini oxu: ilk baytlar NPENC olmalıdır
+curl -s --aws-sigv4 "aws:amz:us-east-1:s3" -u "neoprintrustfs:devRustfsPassword"   "http://localhost:9000/neoprint-files/<açar>" | head -c 16 | od -c
+
+# Açarsız: 403
+curl -s -o /dev/null -w "%{http_code}
+" "http://localhost:9000/neoprint-files/<açar>"
+```
+
+### Fayl yüklədim, amma "Növbədədir" statusundan çıxmır
+
+Köhnə API image-idir: `v0.2.0`-dan əvvəlki build-də hadisələr outbox-a yazılmırdı və
+konvertasiya başlamırdı (`docs/DECISIONS.md`). `docker compose up -d --build api` ilə
+yenidən qurun; əvvəl yüklənmiş fayllar üçün onları silib yenidən yükləyin.
+
 ### Mobil — Fayllarım
 
 | Nə | Necə |

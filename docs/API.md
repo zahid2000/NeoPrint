@@ -962,6 +962,6 @@ Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: print jo
 queue (Addım 3), ödəniş / refund / wallet / fiskal (Addım 4), skan və paylaşım
 (Addım 6), telemetriya və operator paneli (Addım 7).
 
-Addım 2-nin qalan hissəsi: fayl redaktəsi (`POST files/{id}/edit`), səhifə
-şəkilləri (`GET files/{id}/pages/{n}.png`), versiyalar və kiosk CRUD-u
-(`POST pricing/quote`).
+Addım 2-nin bütün endpoint-ləri (fayllar, redaktə və versiyalar, səhifə
+şəkilləri, formatlar, storage provayderləri və sinxronizasiya, kiosk idarəsi,
+qiymət profilləri və `pricing/quote`) yuxarıdakı bölmələrdədir.
