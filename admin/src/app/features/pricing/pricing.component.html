@@ -1,0 +1,325 @@
+<div class="neo-page">
+  <app-page-header
+    [title]="'pricing.title' | translate"
+    [description]="'pricing.description' | translate"
+  >
+    <button mat-stroked-button type="button" (click)="startNew()">
+      <mat-icon>add</mat-icon>
+      {{ 'pricing.new' | translate }}
+    </button>
+  </app-page-header>
+
+  @if (problem(); as problem) {
+    <app-error-banner [problem]="problem" effect="pricing.loadFailedEffect" (retry)="load()" />
+  }
+
+  @if (loading() && profiles().length === 0) {
+    <div class="pricing__layout" aria-busy="true">
+      <div class="neo-card">
+        @for (row of [1, 2, 3]; track row) {
+          <div class="neo-skeleton neo-skeleton--row"></div>
+        }
+      </div>
+      <div class="neo-card"><div class="neo-skeleton neo-skeleton--block"></div></div>
+    </div>
+  } @else if (!problem() && profiles().length === 0 && !creating()) {
+    <app-empty-state
+      icon="sell"
+      [message]="'pricing.empty' | translate"
+      [hint]="'pricing.emptyHint' | translate"
+    >
+      <button mat-flat-button type="button" (click)="startNew()">
+        {{ 'pricing.new' | translate }}
+      </button>
+    </app-empty-state>
+  } @else {
+    <div class="pricing__layout">
+      <nav class="neo-card pricing__list" [attr.aria-label]="'pricing.listLabel' | translate">
+        @for (profile of profiles(); track profile.id) {
+          <button
+            type="button"
+            class="pricing__item"
+            [class.pricing__item--active]="profile.id === selectedId() && !creating()"
+            [attr.aria-current]="profile.id === selectedId() && !creating() ? 'true' : null"
+            (click)="select(profile.id)"
+          >
+            <span class="pricing__item-name">
+              {{ profile.name }}
+              @if (profile.isDefault) {
+                <span class="pricing__default">
+                  <mat-icon aria-hidden="true">star</mat-icon>
+                  {{ 'common.default' | translate }}
+                </span>
+              }
+            </span>
+            <span class="neo-caption">
+              {{ 'pricing.kioskCount' | translate: { count: profile.kioskCount } }} ·
+              {{ profile.updatedAt | dateTime }}
+            </span>
+          </button>
+        }
+        @if (creating()) {
+          <div class="pricing__item pricing__item--active">
+            <span class="pricing__item-name">{{ 'pricing.newProfile' | translate }}</span>
+          </div>
+        }
+      </nav>
+
+      @if (editing()) {
+        <div class="pricing__editor">
+          <section class="neo-card pricing__section" aria-labelledby="rates-title">
+            <div class="pricing__section-header">
+              <h2 id="rates-title">
+                {{ (creating() ? 'pricing.newProfile' : 'pricing.rates') | translate }}
+              </h2>
+              @if (selected()?.isDefault) {
+                <span class="pricing__default">
+                  <mat-icon aria-hidden="true">star</mat-icon>
+                  {{ 'pricing.isDefault' | translate }}
+                </span>
+              }
+            </div>
+
+            <mat-form-field appearance="outline" class="neo-form__field">
+              <mat-label>{{ 'pricing.name' | translate }}</mat-label>
+              <input matInput required [ngModel]="draft().name" (ngModelChange)="update('name', $event)" />
+            </mat-form-field>
+
+            <div class="pricing__grid">
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'pricing.bw' | translate }}</mat-label>
+                <input matInput type="number" min="0" step="0.01" [ngModel]="draft().bw" (ngModelChange)="update('bw', +$event)" />
+                <span matTextSuffix>₼</span>
+                <mat-hint>{{ 'pricing.perSide' | translate }}</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'pricing.color' | translate }}</mat-label>
+                <input matInput type="number" min="0" step="0.01" [ngModel]="draft().color" (ngModelChange)="update('color', +$event)" />
+                <span matTextSuffix>₼</span>
+                <mat-hint>{{ 'pricing.perSide' | translate }}</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'pricing.minOrder' | translate }}</mat-label>
+                <input matInput type="number" min="0" step="0.01" [ngModel]="draft().minOrder" (ngModelChange)="update('minOrder', +$event)" />
+                <span matTextSuffix>₼</span>
+                <mat-hint>{{ 'pricing.minOrderHint' | translate }}</mat-hint>
+              </mat-form-field>
+            </div>
+
+            <h3>{{ 'pricing.paper' | translate }}</h3>
+            <div class="pricing__grid">
+              <mat-form-field appearance="outline">
+                <mat-label>A4</mat-label>
+                <input matInput type="number" min="0.01" step="0.1" [ngModel]="draft().a4" (ngModelChange)="update('a4', +$event)" />
+                <span matTextSuffix>×</span>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>A3</mat-label>
+                <input matInput type="number" min="0.01" step="0.1" [ngModel]="draft().a3" (ngModelChange)="update('a3', +$event)" />
+                <span matTextSuffix>×</span>
+              </mat-form-field>
+            </div>
+            <p class="neo-caption">{{ 'pricing.paperHint' | translate }}</p>
+
+            <div class="pricing__section-header">
+              <h3>{{ 'pricing.tiers' | translate }}</h3>
+              <button mat-button type="button" (click)="addTier()">
+                <mat-icon>add</mat-icon>
+                {{ 'pricing.addTier' | translate }}
+              </button>
+            </div>
+
+            @if (draft().tiers.length === 0) {
+              <p class="neo-muted neo-body-small">{{ 'pricing.noTiers' | translate }}</p>
+            } @else {
+              @for (tier of draft().tiers; track $index) {
+                <div class="pricing__tier">
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'pricing.tierFrom' | translate }}</mat-label>
+                    <input matInput type="number" min="1" step="1" [ngModel]="tier.minSides" (ngModelChange)="updateTier($index, 'minSides', +$event)" />
+                    <span matTextSuffix>{{ 'pricing.sides' | translate }}</span>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'pricing.tierDiscount' | translate }}</mat-label>
+                    <input matInput type="number" min="0.1" max="99.9" step="0.5" [ngModel]="tier.discountPercent" (ngModelChange)="updateTier($index, 'discountPercent', +$event)" />
+                    <span matTextSuffix>%</span>
+                  </mat-form-field>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    [attr.aria-label]="'pricing.removeTier' | translate"
+                    [matTooltip]="'pricing.removeTier' | translate"
+                    (click)="removeTier($index)"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              }
+              <p class="neo-caption">{{ 'pricing.tiersHint' | translate }}</p>
+            }
+
+            @for (key of problems(); track key) {
+              <p class="neo-field-error" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                {{ key | translate }}
+              </p>
+            }
+
+            <div class="pricing__actions">
+              @if (!creating() && selected(); as profile) {
+                <button mat-button type="button" class="pricing__danger" [disabled]="profile.isDefault" (click)="remove()">
+                  <mat-icon>delete</mat-icon>
+                  {{ 'common.delete' | translate }}
+                </button>
+                @if (!profile.isDefault) {
+                  <button mat-stroked-button type="button" [disabled]="dirty()" (click)="makeDefault()">
+                    <mat-icon>star</mat-icon>
+                    {{ 'pricing.makeDefault' | translate }}
+                  </button>
+                }
+              }
+              <span class="pricing__spacer"></span>
+              <button mat-stroked-button type="button" [disabled]="!dirty() || saving()" (click)="revert()">
+                {{ 'common.revert' | translate }}
+              </button>
+              <button mat-flat-button type="button" [disabled]="!canSave()" (click)="save()">
+                @if (saving()) {
+                  <mat-spinner diameter="18" class="neo-button-spinner" />
+                }
+                {{ 'common.save' | translate }}
+              </button>
+            </div>
+          </section>
+
+          <section class="neo-card pricing__section" aria-labelledby="calc-title">
+            <h2 id="calc-title">{{ 'pricing.calculator' | translate }}</h2>
+            <p class="neo-muted neo-body-small">{{ 'pricing.calculatorHint' | translate }}</p>
+
+            <div class="pricing__grid">
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'pricing.calc.pages' | translate }}</mat-label>
+                <input matInput type="number" min="1" [ngModel]="calculator().pageCount" (ngModelChange)="updateCalculator('pageCount', +$event)" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'pricing.calc.copies' | translate }}</mat-label>
+                <input matInput type="number" min="1" [ngModel]="calculator().copies" (ngModelChange)="updateCalculator('copies', +$event)" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'pricing.calc.perSheet' | translate }}</mat-label>
+                <mat-select [ngModel]="calculator().pagesPerSheet" (ngModelChange)="updateCalculator('pagesPerSheet', $event)">
+                  @for (n of [1, 2, 4]; track n) {
+                    <mat-option [value]="n">{{ n }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="pricing__switches">
+              <mat-button-toggle-group
+                [attr.aria-label]="'pricing.calc.paper' | translate"
+                [ngModel]="calculator().paper"
+                (ngModelChange)="updateCalculator('paper', $event)"
+              >
+                <mat-button-toggle value="A4">A4</mat-button-toggle>
+                <mat-button-toggle value="A3">A3</mat-button-toggle>
+              </mat-button-toggle-group>
+              <mat-slide-toggle [ngModel]="calculator().color" (ngModelChange)="updateCalculator('color', $event)">
+                {{ 'pricing.calc.color' | translate }}
+              </mat-slide-toggle>
+              <mat-slide-toggle [ngModel]="calculator().duplex" (ngModelChange)="updateCalculator('duplex', $event)">
+                {{ 'pricing.calc.duplex' | translate }}
+              </mat-slide-toggle>
+              <button mat-stroked-button type="button" [disabled]="quoting() || problems().length > 0" (click)="calculate()">
+                @if (quoting()) {
+                  <mat-spinner diameter="18" class="neo-button-spinner" />
+                }
+                <mat-icon>calculate</mat-icon>
+                {{ 'pricing.calc.run' | translate }}
+              </button>
+            </div>
+
+            @if (quoteError(); as message) {
+              <p class="neo-field-error" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                {{ message | translate }}
+              </p>
+            }
+
+            @if (quote(); as price) {
+              <dl class="pricing__breakdown neo-numeric">
+                <dt>{{ 'pricing.calc.sides' | translate }}</dt>
+                <dd>{{ price.sides }}</dd>
+                <dt>{{ 'pricing.calc.sheets' | translate }}</dt>
+                <dd>{{ price.sheets }}</dd>
+                <dt>{{ 'pricing.calc.pricePerSide' | translate }}</dt>
+                <dd>{{ price.pricePerSide | money }} × {{ price.paperMultiplier }}</dd>
+                <dt>{{ 'pricing.calc.base' | translate }}</dt>
+                <dd>{{ price.basePrice | money }}</dd>
+                @if (price.volumeDiscount > 0) {
+                  <dt>{{ 'pricing.calc.discount' | translate: { percent: price.discountPercent } }}</dt>
+                  <dd>−{{ price.volumeDiscount | money }}</dd>
+                }
+                @if (price.minimumApplied) {
+                  <dt>{{ 'pricing.calc.minimum' | translate }}</dt>
+                  <dd><mat-icon aria-hidden="true">info</mat-icon></dd>
+                }
+                <dt class="pricing__total">{{ 'pricing.calc.total' | translate }}</dt>
+                <dd class="pricing__total">{{ price.finalPrice | money }}</dd>
+              </dl>
+            }
+          </section>
+
+          @if (!creating() && selected(); as profile) {
+            <section class="neo-card pricing__section" aria-labelledby="kiosks-title">
+              <h2 id="kiosks-title">{{ 'pricing.kiosks' | translate }}</h2>
+              <p class="neo-muted neo-body-small">
+                {{ (profile.isDefault ? 'pricing.kiosksDefaultHint' : 'pricing.kiosksHint') | translate }}
+              </p>
+
+              @if (pricedKiosks().length === 0) {
+                <p class="neo-muted">{{ 'pricing.noKiosks' | translate }}</p>
+              } @else {
+                <ul class="pricing__kiosks">
+                  @for (kiosk of pricedKiosks(); track kiosk.id) {
+                    <li class="pricing__kiosk">
+                      <span><strong>{{ kiosk.code }}</strong> {{ kiosk.name }}</span>
+                      @if (kiosk.pricingProfileId) {
+                        @if (!profile.isDefault) {
+                          <button mat-button type="button" (click)="unassign(kiosk)">
+                            {{ 'pricing.unassign' | translate }}
+                          </button>
+                        }
+                      } @else {
+                        <span class="neo-caption">{{ 'pricing.byDefault' | translate }}</span>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+
+              @if (canSeeKiosks()) {
+                <div class="pricing__assign">
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'pricing.addKiosks' | translate }}</mat-label>
+                    <mat-select multiple [ngModel]="kioskToAdd()" (ngModelChange)="kioskToAdd.set($event)">
+                      @for (kiosk of assignable(); track kiosk.id) {
+                        <mat-option [value]="kiosk.id">{{ kiosk.code }} — {{ kiosk.name }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                  <button mat-stroked-button type="button" [disabled]="kioskToAdd().length === 0" (click)="assignSelected()">
+                    {{ 'pricing.assign' | translate }}
+                  </button>
+                </div>
+              }
+            </section>
+          }
+        </div>
+      } @else {
+        <app-empty-state icon="sell" [message]="'pricing.selectProfile' | translate" />
+      }
+    </div>
+  }
+</div>

@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 import { RetryContext } from '@microsoft/signalr';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AdminHubService, ForeverRetryPolicy } from './admin-hub.service';
+import { AdminHubService, ForeverRetryPolicy, HUB_CONNECTION_BUILDER } from './admin-hub.service';
 
 /**
  * A stand-in for a SignalR connection.
@@ -55,26 +55,21 @@ class FakeConnection {
 
 let connection: FakeConnection;
 
-vi.mock('@microsoft/signalr', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@microsoft/signalr')>();
-
-  class FakeBuilder {
-    withUrl() {
-      return this;
-    }
-    withAutomaticReconnect() {
-      return this;
-    }
-    configureLogging() {
-      return this;
-    }
-    build() {
-      return connection;
-    }
+/** Builds the fake connection the test controls. */
+class FakeBuilder {
+  withUrl() {
+    return this;
   }
-
-  return { ...actual, HubConnectionBuilder: FakeBuilder };
-});
+  withAutomaticReconnect() {
+    return this;
+  }
+  configureLogging() {
+    return this;
+  }
+  build() {
+    return connection;
+  }
+}
 
 describe('AdminHubService', () => {
   let service: AdminHubService;
@@ -87,6 +82,7 @@ describe('AdminHubService', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: HUB_CONNECTION_BUILDER, useValue: () => new FakeBuilder() },
       ],
     });
 

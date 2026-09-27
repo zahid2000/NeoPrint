@@ -234,6 +234,12 @@ jobs:
         run: npm run lint
         working-directory: admin
 
+      # An icon outside the self-hosted Material Symbols subset renders as
+      # its name in plain text (docs/DECISIONS.md).
+      - name: Icon subset
+        run: node scripts/icon-subset.mjs --check
+        working-directory: admin
+
       # The tests run in jsdom, so no browser is needed on the runner.
       - name: Test
         run: npx ng test --watch=false

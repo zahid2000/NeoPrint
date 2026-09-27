@@ -29,7 +29,9 @@
                 "input": "public"
               }
             ],
+            "allowedCommonJsDependencies": ["leaflet"],
             "styles": [
+              "node_modules/leaflet/dist/leaflet.css",
               "src/styles/tokens.css",
               "src/styles.scss"
             ]
@@ -39,7 +41,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
+                  "maximumWarning": "600kB",
                   "maximumError": "1MB"
                 },
                 {

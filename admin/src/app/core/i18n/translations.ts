@@ -6,6 +6,13 @@
  * switch is instant and the panel works offline once loaded. Only UI text
  * lives here; identifiers stay English (CLAUDE.md).
  */
+import { commonTranslations } from './common.i18n';
+import { formatsTranslations } from './formats.i18n';
+import { kiosksTranslations } from './kiosks.i18n';
+import { pricingTranslations } from './pricing.i18n';
+import { storageTranslations } from './storage.i18n';
+import type { PageTranslations } from './page-translations';
+
 export const supportedLanguages = ['az', 'en', 'ru'] as const;
 
 export type SupportedLanguage = (typeof supportedLanguages)[number];
@@ -874,3 +881,21 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'error.forbidden': 'У вас нет прав на это действие.',
   },
 };
+
+/**
+ * The pages that keep their text in files of their own (page-translations.ts),
+ * merged in here so every check on this dictionary covers them too.
+ */
+const pages: readonly PageTranslations[] = [
+  commonTranslations,
+  formatsTranslations,
+  pricingTranslations,
+  storageTranslations,
+  kiosksTranslations,
+];
+
+for (const language of supportedLanguages) {
+  for (const page of pages) {
+    Object.assign(translations[language], page[language]);
+  }
+}

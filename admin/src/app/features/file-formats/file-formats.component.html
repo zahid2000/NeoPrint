@@ -1,0 +1,142 @@
+<div class="neo-page">
+  <app-page-header
+    [title]="'formats.title' | translate"
+    [description]="'formats.description' | translate"
+  >
+    <button mat-stroked-button type="button" [disabled]="!dirty() || saving()" (click)="revert()">
+      {{ 'common.revert' | translate }}
+    </button>
+    <button mat-flat-button type="button" [disabled]="!canSave()" (click)="save()">
+      @if (saving()) {
+        <mat-spinner diameter="18" class="neo-button-spinner" />
+      }
+      {{ 'common.save' | translate }}
+    </button>
+  </app-page-header>
+
+  @if (problem(); as problem) {
+    <app-error-banner [problem]="problem" effect="formats.loadFailedEffect" (retry)="load()" />
+  }
+
+  @if (loading()) {
+    <div class="neo-card formats__limits" aria-busy="true">
+      <div class="neo-skeleton neo-skeleton--line"></div>
+      <div class="neo-skeleton neo-skeleton--line"></div>
+    </div>
+    <div class="neo-card formats__list" aria-busy="true">
+      @for (row of [1, 2, 3, 4]; track row) {
+        <div class="neo-skeleton neo-skeleton--row"></div>
+      }
+    </div>
+  } @else if (saved()) {
+    <section class="neo-card formats__limits" aria-labelledby="limits-title">
+      <h2 id="limits-title">{{ 'formats.limitsTitle' | translate }}</h2>
+      <p class="neo-muted neo-body-small">{{ 'formats.limitsHint' | translate }}</p>
+
+      <div class="formats__limit-fields">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'formats.maxSize' | translate }}</mat-label>
+          <input
+            matInput
+            type="number"
+            min="1"
+            max="2048"
+            [ngModel]="maxSizeMb()"
+            (ngModelChange)="maxSizeMb.set(+$event)"
+          />
+          <span matTextSuffix>MB</span>
+          <mat-hint>{{ 'formats.maxSizeHint' | translate }}</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'formats.maxPages' | translate }}</mat-label>
+          <input
+            matInput
+            type="number"
+            min="1"
+            max="10000"
+            [ngModel]="maxPages()"
+            (ngModelChange)="maxPages.set(+$event)"
+          />
+          <mat-hint>{{ 'formats.maxPagesHint' | translate }}</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'formats.quota' | translate }}</mat-label>
+          <input
+            matInput
+            type="number"
+            min="1"
+            max="1000"
+            [ngModel]="quotaGb()"
+            (ngModelChange)="quotaGb.set(+$event)"
+          />
+          <span matTextSuffix>GB</span>
+          <mat-hint>{{ 'formats.quotaHint' | translate }}</mat-hint>
+        </mat-form-field>
+      </div>
+
+      @if (!limitsValid()) {
+        <p class="neo-field-error" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          {{ 'formats.limitsInvalid' | translate }}
+        </p>
+      }
+    </section>
+
+    <section class="neo-card formats__list" aria-labelledby="formats-title">
+      <div class="formats__list-header">
+        <h2 id="formats-title">{{ 'formats.listTitle' | translate }}</h2>
+        <span class="neo-muted neo-body-small">
+          {{ 'formats.enabledCount' | translate: { on: enabledCount(), total: totalCount() } }}
+        </span>
+      </div>
+
+      @if (enabledCount() === 0) {
+        <p class="neo-field-error" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          {{ 'formats.noneEnabled' | translate }}
+        </p>
+      }
+
+      @for (section of sections(); track section.group) {
+        <div class="formats__section">
+          <div class="formats__section-header">
+            <mat-checkbox
+              [checked]="sectionState(section) === 'all'"
+              [indeterminate]="sectionState(section) === 'some'"
+              (change)="toggleSection(section, $event.checked)"
+            >
+              <span class="formats__group">{{ 'formats.group.' + section.group | translate }}</span>
+            </mat-checkbox>
+            <span class="neo-caption">{{ 'formats.route.' + section.group | translate }}</span>
+          </div>
+
+          <div class="formats__items">
+            @for (format of section.formats; track format.extension) {
+              <mat-checkbox
+                [checked]="isEnabled(format.extension)"
+                (change)="toggle(format.extension, $event.checked)"
+              >
+                <code>.{{ format.extension }}</code>
+                @if (format.printerNative) {
+                  <mat-icon
+                    class="formats__native"
+                    [matTooltip]="'formats.printerNative' | translate"
+                    [attr.aria-label]="'formats.printerNative' | translate"
+                    >print</mat-icon
+                  >
+                }
+              </mat-checkbox>
+            }
+          </div>
+        </div>
+      }
+
+      <p class="neo-caption formats__legend">
+        <mat-icon class="formats__native" aria-hidden="true">print</mat-icon>
+        {{ 'formats.printerNative' | translate }}
+      </p>
+    </section>
+  }
+</div>

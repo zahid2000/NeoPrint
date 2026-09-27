@@ -401,3 +401,62 @@ a {
   --mdc-snackbar-supporting-text-color: var(--neutral-0);
   --mat-snack-bar-button-color: var(--neutral-0);
 }
+
+/* ---------------------------------------------------------------------------
+ * Loading, inline errors
+ *
+ * Lists and cards load as skeletons rather than behind a full-page spinner
+ * (docs/DESIGN_SYSTEM.md section 4, "Yüklənmə").
+ * ------------------------------------------------------------------------ */
+
+.neo-skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--neutral-100), var(--neutral-200), var(--neutral-100));
+  background-size: 200% 100%;
+  animation: neo-skeleton 1.2s var(--motion-easing) infinite;
+}
+
+.neo-skeleton--line {
+  height: var(--space-4);
+}
+
+.neo-skeleton--row {
+  height: var(--table-row-height);
+  margin-bottom: var(--space-2);
+}
+
+.neo-skeleton--block {
+  height: calc(var(--space-16) * 3);
+}
+
+@keyframes neo-skeleton {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neo-skeleton {
+    animation: none;
+  }
+}
+
+/* An error under a field or a group of fields: colour, icon and words. */
+.neo-field-error {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--danger-500);
+  font-size: var(--font-size-body-small);
+}
+
+/* The spinner a busy button shows beside its unchanged label. */
+.neo-button-spinner {
+  display: inline-block;
+  margin-right: var(--space-2);
+  vertical-align: middle;
+}

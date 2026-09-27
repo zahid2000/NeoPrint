@@ -1,0 +1,273 @@
+<div class="neo-page">
+  <app-page-header [title]="'storage.title' | translate" [description]="'storage.description' | translate">
+    <button mat-button type="button" (click)="rewrap()">
+      <mat-icon>key</mat-icon>
+      {{ 'storage.rewrap' | translate }}
+    </button>
+    @if (tab() === 0) {
+      <button mat-flat-button type="button" (click)="addProvider()">
+        <mat-icon>add</mat-icon>
+        {{ 'storage.provider.add' | translate }}
+      </button>
+    } @else {
+      <button mat-flat-button type="button" [disabled]="activeJob() !== null" (click)="newSync()">
+        <mat-icon>sync</mat-icon>
+        {{ 'storage.sync.new' | translate }}
+      </button>
+    }
+  </app-page-header>
+
+  @if (problem(); as problem) {
+    <app-error-banner [problem]="problem" effect="storage.loadFailedEffect" (retry)="load()" />
+  }
+
+  <mat-tab-group [selectedIndex]="tab()" (selectedIndexChange)="tab.set($event)" animationDuration="150ms">
+    <mat-tab [label]="'storage.tabProviders' | translate">
+      <div class="storage__tab">
+        @if (loading()) {
+          <div class="neo-card">
+            @for (row of [1, 2]; track row) {
+              <div class="neo-skeleton neo-skeleton--row"></div>
+            }
+          </div>
+        } @else if (providers().length === 0) {
+          <app-empty-state icon="cloud" [message]="'storage.provider.empty' | translate">
+            <button mat-flat-button type="button" (click)="addProvider()">
+              {{ 'storage.provider.add' | translate }}
+            </button>
+          </app-empty-state>
+        } @else {
+          <div class="neo-table-wrapper">
+            <table mat-table class="neo-table" [dataSource]="providers()">
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.provider.name' | translate }}</th>
+                <td mat-cell *matCellDef="let provider">
+                  <strong>{{ provider.name }}</strong>
+                  <span class="neo-caption storage__type">{{ provider.type }}</span>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="endpoint">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.provider.endpoint' | translate }}</th>
+                <td mat-cell *matCellDef="let provider">
+                  <code>{{ provider.endpoint }}</code>
+                  <span class="neo-caption storage__buckets">
+                    {{ provider.buckets.files }} · {{ provider.buckets.receipts }} · {{ provider.buckets.temp }}
+                  </span>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="role">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.provider.role' | translate }}</th>
+                <td mat-cell *matCellDef="let provider">
+                  <app-status-chip
+                    [status]="provider.role"
+                    [toneOverride]="provider.role === 'Primary' ? 'info' : provider.role === 'Secondary' ? 'success' : 'neutral'"
+                    [text]="'storage.role.' + provider.role | translate"
+                  />
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="health">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.provider.health' | translate }}</th>
+                <td mat-cell *matCellDef="let provider">
+                  <app-status-chip
+                    [status]="provider.healthStatus"
+                    [text]="'storage.health.' + provider.healthStatus | translate"
+                    [matTooltip]="provider.healthMessage ?? ''"
+                  />
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="checked">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.provider.lastChecked' | translate }}</th>
+                <td mat-cell *matCellDef="let provider">{{ provider.lastCheckedAt | dateTime }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>
+                  <span class="cdk-visually-hidden">{{ 'storage.actions' | translate }}</span>
+                </th>
+                <td mat-cell *matCellDef="let provider" class="storage__actions">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    [matMenuTriggerFor]="menu"
+                    [attr.aria-label]="'storage.actionsFor' | translate: { name: provider.name }"
+                  >
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #menu="matMenu">
+                    <button mat-menu-item type="button" [disabled]="busy()" (click)="testProvider(provider)">
+                      <mat-icon>network_check</mat-icon>
+                      {{ 'storage.provider.test' | translate }}
+                    </button>
+                    <button mat-menu-item type="button" (click)="editProvider(provider)">
+                      <mat-icon>edit</mat-icon>
+                      {{ 'common.edit' | translate }}
+                    </button>
+                    @if (provider.role !== 'Primary') {
+                      <button mat-menu-item type="button" [disabled]="!provider.isVerified || activeJob() !== null" (click)="makePrimary(provider)">
+                        <mat-icon>star</mat-icon>
+                        {{ 'storage.provider.makePrimary' | translate }}
+                      </button>
+                    }
+                    @if (provider.role === 'Inactive') {
+                      <button mat-menu-item type="button" [disabled]="!provider.isVerified || activeJob() !== null" (click)="makeSecondary(provider)">
+                        <mat-icon>sync_alt</mat-icon>
+                        {{ 'storage.provider.makeSecondary' | translate }}
+                      </button>
+                      <button mat-menu-item type="button" class="storage__danger" [disabled]="activeJob() !== null" (click)="deleteProvider(provider)">
+                        <mat-icon>delete</mat-icon>
+                        {{ 'common.delete' | translate }}
+                      </button>
+                    }
+                    @if (provider.role === 'Secondary') {
+                      <button mat-menu-item type="button" class="storage__danger" [disabled]="activeJob() !== null" (click)="deactivate(provider)">
+                        <mat-icon>link_off</mat-icon>
+                        {{ 'storage.provider.deactivate' | translate }}
+                      </button>
+                    }
+                  </mat-menu>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="providerColumns; sticky: true"></tr>
+              <tr mat-row *matRowDef="let row; columns: providerColumns"></tr>
+            </table>
+          </div>
+          <p class="neo-caption">{{ 'storage.provider.rolesHint' | translate }}</p>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab [label]="'storage.tabSync' | translate">
+      <div class="storage__tab">
+        @if (activeJob(); as job) {
+          <app-sync-progress
+            [job]="job"
+            [bytesPerSecond]="speed()"
+            [busy]="busy()"
+            (pauseRequested)="control(job, 'pause')"
+            (resumeRequested)="control(job, 'resume')"
+            (cancelRequested)="control(job, 'cancel')"
+            (failuresRequested)="showFailures(job)"
+          />
+        }
+
+        @if (loading()) {
+          <div class="neo-card">
+            @for (row of [1, 2, 3]; track row) {
+              <div class="neo-skeleton neo-skeleton--row"></div>
+            }
+          </div>
+        } @else if (jobs().length === 0) {
+          <app-empty-state icon="sync" [message]="'storage.sync.empty' | translate" [hint]="'storage.sync.emptyHint' | translate">
+            <button mat-flat-button type="button" (click)="newSync()">{{ 'storage.sync.new' | translate }}</button>
+          </app-empty-state>
+        } @else {
+          <div class="neo-table-wrapper">
+            <table mat-table class="neo-table" [dataSource]="jobs()">
+              <ng-container matColumnDef="mode">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.sync.modeColumn' | translate }}</th>
+                <td mat-cell *matCellDef="let job">{{ 'storage.sync.mode.' + job.mode | translate }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="route">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.sync.route' | translate }}</th>
+                <td mat-cell *matCellDef="let job">
+                  {{ job.sourceName }} → {{ job.targetName }}
+                  @if (job.switchPrimaryOnComplete) {
+                    <mat-icon class="storage__inline-icon" [matTooltip]="'storage.sync.switchesPrimary' | translate" [attr.aria-label]="'storage.sync.switchesPrimary' | translate">star</mat-icon>
+                  }
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.sync.statusColumn' | translate }}</th>
+                <td mat-cell *matCellDef="let job">
+                  <app-status-chip [status]="job.status" [text]="'storage.sync.status.' + job.status | translate" />
+                  @if (job.failureReason) {
+                    <span class="neo-caption storage__reason">{{ job.failureReason }}</span>
+                  }
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="objects">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.progress.objects' | translate }}</th>
+                <td mat-cell *matCellDef="let job">
+                  {{ job.copiedObjects | count }} / {{ job.totalObjects | count }}
+                  @if (job.failedObjects > 0) {
+                    <span class="storage__failed">({{ 'storage.sync.failedCount' | translate: { count: job.failedObjects } }})</span>
+                  }
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="size">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.progress.size' | translate }}</th>
+                <td mat-cell *matCellDef="let job">{{ job.copiedBytes | bytes }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="started">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.sync.startedAt' | translate }}</th>
+                <td mat-cell *matCellDef="let job">{{ job.startedAt | dateTime }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="finished">
+                <th mat-header-cell *matHeaderCellDef>{{ 'storage.sync.finishedAt' | translate }}</th>
+                <td mat-cell *matCellDef="let job">
+                  {{ job.finishedAt | dateTime }}
+                  @switch (purgeState(job)) {
+                    @case ('waiting') {
+                      <span class="neo-caption storage__purge">{{ 'storage.purge.waiting' | translate: { date: purgeDate(job) } }}</span>
+                    }
+                    @case ('running') {
+                      <span class="neo-caption storage__purge">{{ 'storage.purge.running' | translate: { count: job.sourcePurgedObjects } }}</span>
+                    }
+                    @case ('done') {
+                      <span class="neo-caption storage__purge">
+                        {{ 'storage.purge.done' | translate: { deleted: job.sourcePurgedObjects, kept: job.sourceKeptObjects } }}
+                      </span>
+                    }
+                  }
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>
+                  <span class="cdk-visually-hidden">{{ 'storage.actions' | translate }}</span>
+                </th>
+                <td mat-cell *matCellDef="let job" class="storage__actions">
+                  <button mat-icon-button type="button" [matMenuTriggerFor]="jobMenu" [attr.aria-label]="'storage.actions' | translate">
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #jobMenu="matMenu">
+                    <button mat-menu-item type="button" (click)="showFailures(job)">
+                      <mat-icon>error_outline</mat-icon>
+                      {{ 'storage.progress.showFailures' | translate }}
+                    </button>
+                    @if (job.status === 'Failed') {
+                      <button mat-menu-item type="button" [disabled]="busy() || activeJob() !== null" (click)="control(job, 'retry-failed')">
+                        <mat-icon>refresh</mat-icon>
+                        {{ 'storage.sync.retryFailed' | translate }}
+                      </button>
+                    }
+                    @if (purgeState(job) === 'ready') {
+                      <button mat-menu-item type="button" class="storage__danger" (click)="purge(job)">
+                        <mat-icon>delete_sweep</mat-icon>
+                        {{ 'storage.purge.action' | translate }}
+                      </button>
+                    }
+                  </mat-menu>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="jobColumns; sticky: true"></tr>
+              <tr mat-row *matRowDef="let row; columns: jobColumns"></tr>
+            </table>
+          </div>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

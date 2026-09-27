@@ -28,6 +28,13 @@ const tones: Record<string, StatusTone> = {
   PendingActivation: 'warning',
   Revoked: 'danger',
 
+  // Storage providers and sync jobs
+  Healthy: 'success',
+  Unhealthy: 'danger',
+  Unknown: 'neutral',
+  Running: 'info',
+  Verifying: 'info',
+
   // Jobs and payments
   Completed: 'success',
   Succeeded: 'success',

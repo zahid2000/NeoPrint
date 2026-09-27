@@ -79,6 +79,44 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'kiosks',
+        canActivate: [permissionGuard(Permissions.kiosksView)],
+        loadComponent: () =>
+          import('./features/kiosks/kiosks.component').then((m) => m.KiosksComponent),
+      },
+      {
+        path: 'kiosks/new',
+        canActivate: [permissionGuard(Permissions.kiosksCreate)],
+        loadComponent: () =>
+          import('./features/kiosks/kiosk-editor.component').then((m) => m.KioskEditorComponent),
+      },
+      {
+        path: 'kiosks/:id',
+        canActivate: [permissionGuard(Permissions.kiosksView)],
+        loadComponent: () =>
+          import('./features/kiosks/kiosk-editor.component').then((m) => m.KioskEditorComponent),
+      },
+      {
+        path: 'pricing',
+        canActivate: [permissionGuard(Permissions.pricingManage)],
+        loadComponent: () =>
+          import('./features/pricing/pricing.component').then((m) => m.PricingComponent),
+      },
+      {
+        path: 'formats',
+        canActivate: [permissionGuard(Permissions.formatsManage)],
+        loadComponent: () =>
+          import('./features/file-formats/file-formats.component').then(
+            (m) => m.FileFormatsComponent,
+          ),
+      },
+      {
+        path: 'storage',
+        canActivate: [permissionGuard(Permissions.storageManage)],
+        loadComponent: () =>
+          import('./features/storage/storage.component').then((m) => m.StorageComponent),
+      },
+      {
         path: 'settings',
         canActivate: [permissionGuard(Permissions.settingsManage)],
         loadComponent: () =>

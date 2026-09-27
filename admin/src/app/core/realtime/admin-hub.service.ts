@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, InjectionToken, inject, signal } from '@angular/core';
 import {
   HubConnection,
   HubConnectionBuilder,
@@ -9,6 +9,19 @@ import {
 } from '@microsoft/signalr';
 
 import { AuthService } from '../auth/auth.service';
+
+/**
+ * Makes the SignalR connection builder.
+ *
+ * A token rather than a `new` in the service, so a test hands in a fake
+ * connection through dependency injection instead of mocking the module - a
+ * module mock breaks as soon as the service is shared with another spec's
+ * bundle.
+ */
+export const HUB_CONNECTION_BUILDER = new InjectionToken<() => HubConnectionBuilder>(
+  'HUB_CONNECTION_BUILDER',
+  { providedIn: 'root', factory: () => () => new HubConnectionBuilder() },
+);
 
 /** What the panel shows about its own link to the server. */
 export type ConnectionState = 'connected' | 'reconnecting' | 'disconnected';
@@ -44,6 +57,7 @@ export class ForeverRetryPolicy implements IRetryPolicy {
 @Injectable({ providedIn: 'root' })
 export class AdminHubService {
   private readonly auth = inject(AuthService);
+  private readonly createBuilder = inject(HUB_CONNECTION_BUILDER);
 
   private connection: HubConnection | null = null;
 
@@ -78,7 +92,7 @@ export class AdminHubService {
       return;
     }
 
-    const connection = new HubConnectionBuilder()
+    const connection = this.createBuilder()
       .withUrl('/hubs/admin', {
         // Read per connection attempt, not captured once: the access token
         // rotates every fifteen minutes.

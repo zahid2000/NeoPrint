@@ -1,8 +1,50 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { PermissionGroup } from '../auth/auth.models';
+import {
+  CreateKioskInput,
+  FileFormats,
+  KioskDetail,
+  KioskDeviceHistoryItem,
+  PriceBreakdown,
+  PricingProfile,
+  PricingProfileDetail,
+  PricingProfileInput,
+  PrintOptions,
+  StorageProvider,
+  StorageProviderInput,
+  StorageRole,
+  StorageSyncFailure,
+  StorageSyncJob,
+  StorageSyncMode,
+  StorageSyncOperation,
+  StorageTestResult,
+  UpdateKioskInput,
+} from './step2.models';
+
+/**
+ * A fresh Idempotency-Key for one action (docs/IDEMPOTENCY.md). The endpoints
+ * marked idempotent answer a repeated request with the first answer instead
+ * of doing the work twice - a double click, or a retry after a timeout.
+ */
+function idempotent(): { headers: HttpHeaders } {
+  return { headers: new HttpHeaders({ 'Idempotency-Key': crypto.randomUUID() }) };
+}
+
+/**
+ * The reason an administrator gave for a destructive action, for the audit
+ * log (plan section 8A.1). URL-encoded: header values are not UTF-8, and a
+ * reason is usually written in Azerbaijani.
+ */
+function withReason(reason: string | null | undefined): { headers: HttpHeaders } {
+  const trimmed = reason?.trim();
+
+  return {
+    headers: trimmed ? new HttpHeaders({ 'X-Audit-Reason': encodeURIComponent(trimmed) }) : new HttpHeaders(),
+  };
+}
 
 /** Where a device is in its lifecycle (plan section 7.11). */
 export type DeviceStatus = 'Pending' | 'Active' | 'Revoked' | 'Expired';
@@ -33,6 +75,9 @@ export interface KioskListItem {
   readonly appVersion: string | null;
   readonly selectedPrinter: string | null;
   readonly lastHeartbeatAt: string | null;
+  readonly lat?: number;
+  readonly lng?: number;
+  readonly pricingProfileId?: string | null;
 }
 
 /** An administrator account as the panel lists it (plan section 8A.3). */
@@ -451,5 +496,197 @@ export class AdminApiService {
       currentPassword,
       newPassword,
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Kiosks (plan section 8A.3: "Kiosklar", "Kiosk yarat/redaktə")
+  // ---------------------------------------------------------------------
+
+  getKiosk(id: string): Observable<KioskDetail> {
+    return this.http.get<KioskDetail>(`/api/admin/kiosks/${id}`);
+  }
+
+  createKiosk(body: CreateKioskInput): Observable<KioskDetail> {
+    return this.http.post<KioskDetail>('/api/admin/kiosks', body, idempotent());
+  }
+
+  updateKiosk(id: string, body: UpdateKioskInput): Observable<KioskDetail> {
+    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}`, body);
+  }
+
+  deleteKiosk(id: string, reason: string): Observable<void> {
+    return this.http.delete<void>(`/api/admin/kiosks/${id}`, withReason(reason));
+  }
+
+  /** Null for either limit means "Default istifadə et". */
+  setKioskLimits(id: string, maxFileSizeMb: number | null, maxPages: number | null): Observable<KioskDetail> {
+    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/limits`, { maxFileSizeMb, maxPages });
+  }
+
+  setKioskPricingProfile(id: string, pricingProfileId: string | null): Observable<KioskDetail> {
+    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/pricing-profile`, { pricingProfileId });
+  }
+
+  setKioskFiscalTerminal(id: string, fiscalTerminalId: string | null): Observable<KioskDetail> {
+    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/fiscal-terminal`, { fiscalTerminalId });
+  }
+
+  setKioskPaperCapacity(id: string, a4: number, a3: number): Observable<KioskDetail> {
+    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/paper/capacity`, { a4, a3 });
+  }
+
+  setKioskAdminPin(id: string, pin: string): Observable<KioskDetail> {
+    return this.http.post<KioskDetail>(`/api/admin/kiosks/${id}/admin-pin`, { pin });
+  }
+
+  kioskDevices(id: string): Observable<KioskDeviceHistoryItem[]> {
+    return this.http.get<KioskDeviceHistoryItem[]>(`/api/admin/kiosks/${id}/devices`);
+  }
+
+  // ---------------------------------------------------------------------
+  // Pricing profiles (plan sections 2.3, 8A.3)
+  // ---------------------------------------------------------------------
+
+  listPricingProfiles(): Observable<PricingProfile[]> {
+    return this.http.get<PricingProfile[]>('/api/admin/pricing-profiles');
+  }
+
+  getPricingProfile(id: string): Observable<PricingProfileDetail> {
+    return this.http.get<PricingProfileDetail>(`/api/admin/pricing-profiles/${id}`);
+  }
+
+  createPricingProfile(body: PricingProfileInput): Observable<PricingProfile> {
+    return this.http.post<PricingProfile>('/api/admin/pricing-profiles', body, idempotent());
+  }
+
+  updatePricingProfile(id: string, body: PricingProfileInput): Observable<PricingProfile> {
+    return this.http.put<PricingProfile>(`/api/admin/pricing-profiles/${id}`, body);
+  }
+
+  deletePricingProfile(id: string, reason: string): Observable<void> {
+    return this.http.delete<void>(`/api/admin/pricing-profiles/${id}`, withReason(reason));
+  }
+
+  makeDefaultPricingProfile(id: string): Observable<PricingProfile> {
+    return this.http.post<PricingProfile>(`/api/admin/pricing-profiles/${id}/default`, {});
+  }
+
+  assignKiosksToProfile(id: string, kioskIds: readonly string[]): Observable<PricingProfileDetail> {
+    return this.http.post<PricingProfileDetail>(`/api/admin/pricing-profiles/${id}/assign`, { kioskIds });
+  }
+
+  /** The calculator: a saved profile, or the values still on the form. */
+  calculatePrice(body: {
+    profileId: string | null;
+    draft: PricingProfileInput | null;
+    options: PrintOptions;
+  }): Observable<PriceBreakdown> {
+    return this.http.post<PriceBreakdown>('/api/admin/pricing-profiles/calculate', body);
+  }
+
+  // ---------------------------------------------------------------------
+  // File formats (plan sections 2.2, 8A.3)
+  // ---------------------------------------------------------------------
+
+  getFileFormats(): Observable<FileFormats> {
+    return this.http.get<FileFormats>('/api/admin/files/formats');
+  }
+
+  updateFileFormats(body: {
+    enabled: readonly string[];
+    defaultMaxSizeMb: number;
+    defaultMaxPages: number;
+    userQuotaGb: number;
+  }): Observable<FileFormats> {
+    return this.http.put<FileFormats>('/api/admin/files/formats', body);
+  }
+
+  // ---------------------------------------------------------------------
+  // Storage (plan sections 2.10, 8A.3)
+  // ---------------------------------------------------------------------
+
+  listStorageProviders(): Observable<StorageProvider[]> {
+    return this.http.get<StorageProvider[]>('/api/admin/storage/providers');
+  }
+
+  testStorageCredentials(body: StorageProviderInput): Observable<StorageTestResult> {
+    return this.http.post<StorageTestResult>('/api/admin/storage/providers/test', body);
+  }
+
+  addStorageProvider(body: StorageProviderInput): Observable<StorageProvider> {
+    return this.http.post<StorageProvider>('/api/admin/storage/providers', body, idempotent());
+  }
+
+  updateStorageProvider(id: string, body: StorageProviderInput): Observable<StorageProvider> {
+    return this.http.put<StorageProvider>(`/api/admin/storage/providers/${id}`, body);
+  }
+
+  testStorageProvider(id: string): Observable<StorageTestResult> {
+    return this.http.post<StorageTestResult>(`/api/admin/storage/providers/${id}/test`, {});
+  }
+
+  setStorageRole(id: string, role: StorageRole, reason?: string): Observable<StorageProvider> {
+    switch (role) {
+      case 'Primary':
+        return this.http.post<StorageProvider>(`/api/admin/storage/providers/${id}/set-primary`, {});
+      case 'Secondary':
+        return this.http.post<StorageProvider>(`/api/admin/storage/providers/${id}/set-secondary`, {});
+      default:
+        return this.http.put<StorageProvider>(
+          `/api/admin/storage/providers/${id}/role`,
+          { role },
+          withReason(reason),
+        );
+    }
+  }
+
+  deleteStorageProvider(id: string, reason: string): Observable<void> {
+    return this.http.delete<void>(`/api/admin/storage/providers/${id}`, withReason(reason));
+  }
+
+  listStorageSyncJobs(): Observable<StorageSyncJob[]> {
+    return this.http.get<StorageSyncJob[]>('/api/admin/storage/sync-jobs');
+  }
+
+  startStorageSync(body: {
+    mode: StorageSyncMode;
+    targetId: string;
+    switchPrimaryOnComplete: boolean;
+  }): Observable<StorageSyncJob> {
+    return this.http.post<StorageSyncJob>('/api/admin/storage/sync-jobs', body, idempotent());
+  }
+
+  /** A reason is sent with a cancel, which throws away the work done so far. */
+  controlStorageSync(
+    id: string,
+    operation: StorageSyncOperation,
+    reason?: string,
+  ): Observable<StorageSyncJob> {
+    return this.http.post<StorageSyncJob>(
+      `/api/admin/storage/sync-jobs/${id}/${operation}`,
+      {},
+      withReason(reason),
+    );
+  }
+
+  storageSyncFailures(id: string): Observable<StorageSyncFailure[]> {
+    return this.http.get<StorageSyncFailure[]>(`/api/admin/storage/sync-jobs/${id}/failures`);
+  }
+
+  purgeStorageSource(id: string, reason: string): Observable<StorageSyncJob> {
+    const headers = idempotent().headers.set(
+      'X-Audit-Reason',
+      encodeURIComponent(reason.trim()),
+    );
+
+    return this.http.post<StorageSyncJob>(
+      `/api/admin/storage/sync-jobs/${id}/purge-source`,
+      {},
+      { headers },
+    );
+  }
+
+  startKeyRewrap(): Observable<void> {
+    return this.http.post<void>('/api/admin/storage/rewrap', {}, idempotent());
   }
 }

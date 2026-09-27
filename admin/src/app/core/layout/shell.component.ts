@@ -105,10 +105,34 @@ export class ShellComponent implements OnInit, OnDestroy {
       permissions: [],
     },
     {
+      path: '/kiosks',
+      labelKey: 'nav.kiosks',
+      icon: 'storefront',
+      permissions: [Permissions.kiosksView],
+    },
+    {
       path: '/devices',
       labelKey: 'nav.devices',
       icon: 'devices',
       permissions: [Permissions.devicesView],
+    },
+    {
+      path: '/pricing',
+      labelKey: 'nav.pricing',
+      icon: 'sell',
+      permissions: [Permissions.pricingManage],
+    },
+    {
+      path: '/formats',
+      labelKey: 'nav.formats',
+      icon: 'rule',
+      permissions: [Permissions.formatsManage],
+    },
+    {
+      path: '/storage',
+      labelKey: 'nav.storage',
+      icon: 'cloud',
+      permissions: [Permissions.storageManage],
     },
     {
       path: '/roles',

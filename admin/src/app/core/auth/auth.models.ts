@@ -49,12 +49,20 @@ export const Permissions = {
   dashboardView: 'dashboard.view',
 
   kiosksView: 'kiosks.view',
+  kiosksCreate: 'kiosks.create',
+  kiosksEdit: 'kiosks.edit',
+  kiosksDelete: 'kiosks.delete',
   kiosksActivate: 'kiosks.activate',
+  kioskLimitsManage: 'kiosks.limits.manage',
   devicesView: 'devices.view',
   devicesRevoke: 'devices.revoke',
   devicesEnroll: 'devices.enroll',
 
   settingsManage: 'settings.manage',
+  pricingManage: 'pricing.manage',
+  formatsManage: 'formats.manage',
+  fiscalManage: 'fiscal.manage',
+  storageManage: 'storage.manage',
   featuresManage: 'features.manage',
   legalManage: 'legal.manage',
 
