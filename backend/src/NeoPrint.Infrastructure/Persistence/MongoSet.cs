@@ -89,6 +89,12 @@ public readonly struct MongoSet<TDocument> : IEquatable<MongoSet<TDocument>>
             ? _collection.CountDocumentsAsync(session, filter, cancellationToken: cancellationToken)
             : _collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
 
+    /// <summary>An aggregation pipeline, for figures counted in the database (sums, groups).</summary>
+    public IAggregateFluent<TDocument> Aggregate()
+        => Session is { } session
+            ? _collection.Aggregate(session)
+            : _collection.Aggregate();
+
     // -----------------------------------------------------------------------
     // Writes
     // -----------------------------------------------------------------------

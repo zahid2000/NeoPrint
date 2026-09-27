@@ -268,15 +268,46 @@ public sealed class AdminConfigTests
         var me = await admin.GetFromJsonAsync<JsonElement>("/api/admin/me");
         var myId = me.GetProperty("id").GetGuid();
 
-        var response = await admin.PostAsJsonAsync(
-            $"/api/admin/admins/{myId}/active", new { isActive = false, reason = "Locking myself out" });
+        // Every other active SuperAdmin is switched off for the test, so this
+        // account really is the last one - in Development the seeder adds a
+        // test SuperAdmin (DevelopmentSeeder), and with two the rule is not
+        // what is being exercised. They are switched back on afterwards.
+        var others = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/admins"))
+            .EnumerateArray()
+            .Where(account => account.GetProperty("isActive").GetBoolean()
+                              && account.GetProperty("id").GetGuid() != myId
+                              && account.GetProperty("roleNames").EnumerateArray()
+                                  .Any(role => role.GetString() == "SuperAdmin"))
+            .Select(account => account.GetProperty("id").GetGuid())
+            .ToList();
 
-        // Otherwise the installation has nobody who can put it back, short of
-        // editing the database (plan section 8A.2).
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        try
+        {
+            foreach (var other in others)
+            {
+                (await admin.PostAsJsonAsync(
+                        $"/api/admin/admins/{other}/active", new { isActive = false, reason = "Test: leave one" }))
+                    .StatusCode.Should().Be(HttpStatusCode.NoContent);
+            }
 
-        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
-        problem.GetProperty("detail").GetString().Should().Contain("SuperAdmin");
+            var response = await admin.PostAsJsonAsync(
+                $"/api/admin/admins/{myId}/active", new { isActive = false, reason = "Locking myself out" });
+
+            // Otherwise the installation has nobody who can put it back, short of
+            // editing the database (plan section 8A.2).
+            response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+            problem.GetProperty("detail").GetString().Should().Contain("SuperAdmin");
+        }
+        finally
+        {
+            foreach (var other in others)
+            {
+                await admin.PostAsJsonAsync(
+                    $"/api/admin/admins/{other}/active", new { isActive = true, reason = "Test: restore" });
+            }
+        }
     }
 
     [DockerFact]

@@ -65,7 +65,17 @@ public sealed class DevelopmentAccountsTests
         var user = (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("user");
 
         user.GetProperty("emailConfirmed").GetBoolean().Should().BeTrue();
-        user.GetProperty("pendingConsents").GetArrayLength().Should().Be(0);
+
+        // Both documents were accepted when the account was seeded, so it
+        // signs in to the home screen. Checked on the record rather than on
+        // pendingConsents, which other tests change by publishing new versions.
+        using var scope = _fixture.Services.CreateScope();
+        var accepted = await scope.ServiceProvider
+            .GetRequiredService<NeoPrint.Application.Abstractions.ILegalDocumentRepository>()
+            .GetAcceptedVersionsAsync(user.GetProperty("id").GetGuid());
+
+        accepted.Keys.Should().Contain(
+            [NeoPrint.Domain.Users.LegalDocumentType.Privacy, NeoPrint.Domain.Users.LegalDocumentType.Terms]);
     }
 
     [DockerFact]

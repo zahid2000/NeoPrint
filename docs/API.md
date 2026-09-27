@@ -367,6 +367,39 @@ Qaydalar:
 
 ---
 
+## Dashboard (`/api/admin/dashboard`)
+
+### `GET /api/admin/dashboard`
+
+İcazə: `dashboard.view`. Plan Bölmə 8A.3-ün kartları addım-addım əlavə olunur; Addım 2:
+
+```json
+{
+  "files": {
+    "count": 124,
+    "totalBytes": 734003200,
+    "inProgress": 2,
+    "failedLast24Hours": 1,
+    "failedLast7Days": 3
+  },
+  "storage": {
+    "providers": [
+      { "id": "…", "name": "Local RustFS", "type": "RustFS", "role": "Primary",
+        "healthStatus": "Healthy", "lastCheckedAt": "2026-09-27T16:40:00Z" }
+    ],
+    "activeSync": null,
+    "lastSync": { "…": "StorageSyncJobResponse, storage bölməsindəki kimi" }
+  }
+}
+```
+
+- `files.totalBytes` — silinməmiş faylların orijinal ölçüləri (şifrələnmədən əvvəl).
+- `failedLast24Hours` / `failedLast7Days` — `state_transitions`-dakı `StoredFile → Failed` keçidlərindən sayılır.
+- `storage` yalnız `storage.manage` icazəsi olan hesaba qaytarılır (Admin rol şablonunda storage icazəsi yoxdur); provayder üçün endpoint, açar izi və bucket adları verilmir.
+- Canlı yenilənmə: panel `/hubs/admin`-in `StorageSyncProgress`, `StorageSyncCompleted`, `StorageHealthChanged` hadisələrində sorğunu təkrarlayır.
+
+---
+
 ## Admin hesabları
 
 Hamısı `admins.manage` tələb edir.

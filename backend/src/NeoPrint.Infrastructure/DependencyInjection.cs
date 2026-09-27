@@ -187,6 +187,7 @@ public static class DependencyInjection
         services.AddScoped<StorageProviderSeeder>();
         services.AddScoped<IFileStorage, S3FileStorage>();
         services.AddScoped<NeoPrint.Application.Files.IFileRepository, FileRepository>();
+        services.AddScoped<NeoPrint.Application.Dashboard.IFileStatistics, FileStatisticsReader>();
         services.AddScoped<NeoPrint.Application.Pricing.IPricingProfileRepository, PricingProfileRepository>();
 
         // Conversion. The converters are singletons - they hold no per-request
