@@ -55,6 +55,7 @@ public sealed class AdminAuthController : ControllerBase
     /// <summary>Exchanges the refresh cookie for a new access token.</summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting("refresh")]
     public async Task<ActionResult<AdminLoginResponse>> Refresh(CancellationToken cancellationToken)
     {
         if (!Request.Cookies.TryGetValue(RefreshCookieName, out var refreshToken) ||

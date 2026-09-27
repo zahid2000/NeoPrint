@@ -1,3 +1,4 @@
+import 'sign_in_screen.dart' show RevealPasswordButton;
 import '../../shared/api_error_text.dart';
 
 import 'package:flutter/material.dart';
@@ -126,15 +127,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 labelText: l10n.authPassword,
                 // The rule is stated before it is broken, not after.
                 helperText: l10n.authPasswordHint,
-                suffixIcon: IconButton(
+                suffixIcon: RevealPasswordButton(
+                  obscured: _obscurePassword,
                   onPressed: () =>
                       setState(() => _obscurePassword = !_obscurePassword),
-                  icon: Icon(
-                    _obscurePassword
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                    color: context.tokens.neutral600,
-                  ),
                 ),
               ),
               validator: (value) => AuthValidators.password(value, l10n),

@@ -82,7 +82,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               onFieldSubmitted: (_) => _submit(),
               decoration: InputDecoration(
                 labelText: l10n.authPassword,
-                suffixIcon: _RevealButton(
+                suffixIcon: RevealPasswordButton(
                   obscured: _obscurePassword,
                   onPressed: () =>
                       setState(() => _obscurePassword = !_obscurePassword),
@@ -110,8 +110,12 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
 /// Shows or hides the password. Labelled, because an eye on its own says
 /// nothing to a screen reader.
-class _RevealButton extends StatelessWidget {
-  const _RevealButton({required this.obscured, required this.onPressed});
+class RevealPasswordButton extends StatelessWidget {
+  const RevealPasswordButton({
+    super.key,
+    required this.obscured,
+    required this.onPressed,
+  });
 
   final bool obscured;
   final VoidCallback onPressed;
@@ -122,7 +126,8 @@ class _RevealButton extends StatelessWidget {
 
     return IconButton(
       onPressed: onPressed,
-      tooltip: obscured ? l10n.authPassword : l10n.authPassword,
+      // Says what pressing it does, which is also what a screen reader reads.
+      tooltip: obscured ? l10n.authShowPassword : l10n.authHidePassword,
       icon: Icon(
         obscured ? Icons.visibility_outlined : Icons.visibility_off_outlined,
         color: context.tokens.neutral600,

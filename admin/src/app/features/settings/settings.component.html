@@ -40,7 +40,7 @@
       <mat-expansion-panel>
         <mat-expansion-panel-header>
           <mat-panel-title>
-            {{ group.name }}
+            {{ groupLabel(group.name) }}
             @if (groupHasChanges(group)) {
               <mat-icon class="settings__dirty" [matTooltip]="'settings.unsaved' | translate"
                 >edit</mat-icon

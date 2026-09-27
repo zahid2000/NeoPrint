@@ -13,6 +13,8 @@
   "authSignUp": "Qeydiyyatdan keç",
   "authEmail": "Email",
   "authPassword": "Şifrə",
+  "authShowPassword": "Şifrəni göstər",
+  "authHidePassword": "Şifrəni gizlət",
   "authFullName": "Ad, soyad",
   "authReferralCode": "Dəvət kodu (istəyə görə)",
   "authForgotPassword": "Şifrəni unutmusunuz?",

@@ -267,6 +267,19 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
             }));
 
+    // Refreshing a session is not guessing a credential (docs/DECISIONS.md):
+    // it has its own, higher per-IP limit, so reloading the panel or a
+    // carrier NAT full of phones does not sign people out.
+    options.AddPolicy("refresh", context => rateLimits.Disabled
+        ? RateLimitPartition.GetNoLimiter("all")
+        : RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimits.RefreshPerMinute,
+                Window = TimeSpan.FromMinutes(1),
+            }));
+
     options.AddPolicy("device-register", context => rateLimits.Disabled
         ? RateLimitPartition.GetNoLimiter("all")
         // Device registration is anonymous, so it is limited per IP per hour

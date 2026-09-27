@@ -24,7 +24,7 @@ public sealed class VolumeTier
 /// </remarks>
 public sealed class PricingProfile : Entity
 {
-    public const string DefaultProfileName = "Default";
+    public const string DefaultProfileName = "Standart";
 
     public string Name { get; set; } = string.Empty;
 

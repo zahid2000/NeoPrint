@@ -22,6 +22,14 @@ public sealed class RateLimitSettings
     /// </summary>
     public int DeviceRegisterPerHour { get; init; } = 10;
 
+    /// <summary>
+    /// Token refreshes per minute per IP. Higher than the credential limit:
+    /// a refresh carries a 256-bit server-issued token, which cannot be
+    /// guessed, and many people share an IP behind an office or mobile NAT
+    /// (docs/DECISIONS.md).
+    /// </summary>
+    public int RefreshPerMinute { get; init; } = 60;
+
     /// <summary>Everything else: 120 per minute per caller.</summary>
     public int GlobalPerMinute { get; init; } = 120;
 
@@ -41,6 +49,7 @@ public sealed class RateLimitSettings
         {
             AuthPerMinute = section.GetValue("AuthPerMinute", 10),
             DeviceRegisterPerHour = section.GetValue("DeviceRegisterPerHour", 10),
+            RefreshPerMinute = section.GetValue("RefreshPerMinute", 60),
             GlobalPerMinute = section.GetValue("GlobalPerMinute", 120),
             Disabled = section.GetValue("Disabled", false),
         };

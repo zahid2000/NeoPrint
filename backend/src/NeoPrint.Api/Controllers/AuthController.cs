@@ -87,6 +87,7 @@ public sealed class AuthController : ControllerBase
     /// <summary>Exchanges a refresh token for a new pair.</summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting("refresh")]
     [ProducesResponseType(typeof(AuthResult), StatusCodes.Status200OK)]
     public async Task<ActionResult<AuthResult>> Refresh(
         [FromBody] RefreshRequest request, CancellationToken cancellationToken)

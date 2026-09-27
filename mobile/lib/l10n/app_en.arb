@@ -13,6 +13,8 @@
   "authSignUp": "Create an account",
   "authEmail": "Email",
   "authPassword": "Password",
+  "authShowPassword": "Show the password",
+  "authHidePassword": "Hide the password",
   "authFullName": "Full name",
   "authReferralCode": "Referral code (optional)",
   "authForgotPassword": "Forgotten your password?",

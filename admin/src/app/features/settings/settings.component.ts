@@ -136,6 +136,13 @@ export class SettingsComponent {
     return this.value(setting) !== setting.value;
   }
 
+  /** A group's name in the panel's language; the key prefix itself when there is no translation. */
+  groupLabel(name: string): string {
+    const key = `settings.group.${name}`;
+    const label = this.translate.instant(key);
+    return label === key ? name : label;
+  }
+
   /** Whether a group holds anything the operator has edited. */
   groupHasChanges(group: SettingGroup): boolean {
     return group.settings.some((setting) => this.isChanged(setting));

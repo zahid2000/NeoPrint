@@ -13,6 +13,8 @@
   "authSignUp": "Создать аккаунт",
   "authEmail": "Эл. почта",
   "authPassword": "Пароль",
+  "authShowPassword": "Показать пароль",
+  "authHidePassword": "Скрыть пароль",
   "authFullName": "Имя и фамилия",
   "authReferralCode": "Код приглашения (необязательно)",
   "authForgotPassword": "Забыли пароль?",
