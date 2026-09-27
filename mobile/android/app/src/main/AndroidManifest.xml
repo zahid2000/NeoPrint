@@ -1,4 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The API. The Flutter template grants this only to debug builds, so a
+         release build could not reach the server without it. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Taking a photo to upload (plan section 8.2). Asked for when the
+         camera screen opens, not at install. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+
     <application
         android:label="neoprint"
         android:name="${applicationName}"

@@ -13,10 +13,11 @@ class NeoBanner extends StatelessWidget {
     required this.message,
     this.tone = StatusTone.danger,
     this.icon,
+    this.onClose,
   });
 
   /// Shorthand for the common case.
-  const NeoBanner.error({super.key, required this.message})
+  const NeoBanner.error({super.key, required this.message, this.onClose})
     : tone = StatusTone.danger,
       icon = null;
 
@@ -25,6 +26,9 @@ class NeoBanner extends StatelessWidget {
 
   /// Overrides the icon the tone would pick.
   final IconData? icon;
+
+  /// Shows a close button, for a message that stays until it is dismissed.
+  final VoidCallback? onClose;
 
   static const _icons = <StatusTone, IconData>{
     StatusTone.success: Icons.check_circle_outline,
@@ -59,6 +63,12 @@ class NeoBanner extends StatelessWidget {
                     ?.copyWith(color: colours.foreground),
               ),
             ),
+            if (onClose != null)
+              IconButton(
+                onPressed: onClose,
+                tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                icon: Icon(Icons.close, color: colours.foreground),
+              ),
           ],
         ),
       ),

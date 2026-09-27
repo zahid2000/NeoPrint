@@ -137,33 +137,52 @@ final class ApiClient {
 
   /// Sends a request, refreshing the token once if the server says the token
   /// has expired.
+  ///
+  /// [responseType] set to [ResponseType.bytes] hands [parse] the raw bytes -
+  /// page images. [onSendProgress] reports an upload as it goes, and
+  /// [cancelToken] stops it. [headers] are sent as well as the usual ones.
+  /// A [response] callback sees the whole response, for its headers.
   Future<T> send<T>({
     required String method,
     required String path,
     Object? body,
     Map<String, dynamic>? query,
+    Map<String, dynamic>? headers,
     bool authenticated = true,
+    ResponseType? responseType,
+    ProgressCallback? onSendProgress,
+    CancelToken? cancelToken,
+    void Function(Response<dynamic> response)? response,
     required T Function(dynamic json) parse,
   }) async {
     Future<Response<dynamic>> attempt() => _dio.request<dynamic>(
       path,
-      data: body,
+      // A multipart body is a stream and can be read once; the retry after a
+      // refresh needs a fresh copy.
+      data: body is FormData ? body.clone() : body,
       queryParameters: query,
-      options: Options(method: method, extra: {'skipAuth': !authenticated}),
+      onSendProgress: onSendProgress,
+      cancelToken: cancelToken,
+      options: Options(
+        method: method,
+        headers: headers,
+        responseType: responseType,
+        extra: {'skipAuth': !authenticated},
+      ),
     );
 
-    Response<dynamic> response;
+    Response<dynamic> reply;
 
     try {
-      response = await attempt();
+      reply = await attempt();
     } on DioException catch (error) {
       throw _toApiException(error);
     }
 
-    if (response.statusCode == 401 && authenticated) {
+    if (reply.statusCode == 401 && authenticated) {
       if (await _refreshOnce()) {
         try {
-          response = await attempt();
+          reply = await attempt();
         } on DioException catch (error) {
           throw _toApiException(error);
         }
@@ -179,13 +198,20 @@ final class ApiClient {
       }
     }
 
-    final status = response.statusCode ?? 0;
+    final status = reply.statusCode ?? 0;
 
-    if (status < 200 || status >= 300) {
-      throw _fromProblemDetails(status, response.data);
+    if (status == 304) {
+      response?.call(reply);
+      return parse(null);
     }
 
-    return parse(response.data);
+    if (status < 200 || status >= 300) {
+      throw _fromProblemDetails(status, reply.data);
+    }
+
+    response?.call(reply);
+
+    return parse(reply.data);
   }
 
   /// Runs at most one refresh at a time and hands the result to every waiter.
@@ -234,6 +260,10 @@ final class ApiClient {
   }
 
   static ApiException _toApiException(DioException error) {
+    if (error.type == DioExceptionType.cancel) {
+      return const ApiException(statusCode: 0, message: 'Ləğv edildi.');
+    }
+
     if (error.response != null) {
       return _fromProblemDetails(
         error.response!.statusCode ?? 0,

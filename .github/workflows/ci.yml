@@ -160,9 +160,9 @@ jobs:
   # Mobile
   # --------------------------------------------------------------------
   mobile:
-    name: mobile (analyze + test)
+    name: mobile (analyze + test + build)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v4
@@ -205,6 +205,23 @@ jobs:
 
       - name: Test
         run: flutter test
+        working-directory: mobile
+
+      # The Android build compiles the Kotlin platform code (the HEIC channel)
+      # and the plugins, which analyze and test never touch. The runner image
+      # carries the Android SDK; Java 17 is what the Gradle plugin needs.
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Build Android (debug)
+        run: flutter build apk --debug
+        working-directory: mobile
+
+      - name: Build web
+        run: flutter build web
         working-directory: mobile
 
   # --------------------------------------------------------------------

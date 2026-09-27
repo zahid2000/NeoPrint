@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Sənədin şəklini çəkib çap üçün yükləmək üçün kamera lazımdır.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Çap etmək istədiyiniz şəkli seçmək üçün foto kitabxanasına giriş lazımdır.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

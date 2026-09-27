@@ -7,6 +7,9 @@ import '../../features/auth/register_screen.dart';
 import '../../features/auth/sign_in_screen.dart';
 import '../../features/auth/splash_screen.dart';
 import '../../features/consents/consents_screen.dart';
+import '../../features/files/camera_capture_screen.dart';
+import '../../features/files/file_models.dart';
+import '../../features/files/file_preview_screen.dart';
 import '../../features/files/files_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/kiosk_search/kiosk_search_screen.dart';
@@ -27,6 +30,8 @@ abstract final class Routes {
   static const home = '/home';
   static const kiosks = '/kiosks';
   static const files = '/files';
+  static const filesCamera = '/files/camera';
+  static String filePreview(String id) => '/files/$id';
   static const scheduled = '/scheduled';
   static const profile = '/profile';
 }
@@ -121,6 +126,23 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.files,
                 builder: (_, __) => const FilesScreen(),
+                routes: [
+                  // Before ':id', which would otherwise take "camera" for an id.
+                  GoRoute(
+                    path: 'camera',
+                    builder: (_, __) => const CameraCaptureScreen(),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    // The list hands over the file it already has. Without
+                    // it - a link from outside - there is nothing to show
+                    // yet, so the list is where the user lands.
+                    redirect: (_, state) =>
+                        state.extra is UserFile ? null : Routes.files,
+                    builder: (_, state) =>
+                        FilePreviewScreen(file: state.extra! as UserFile),
+                  ),
+                ],
               ),
             ],
           ),

@@ -412,6 +412,56 @@ konteynerinin nginx-inə) yönləndirir, ona görə `docker compose up -d` işl�
 
 ---
 
+## 7a. Addım 2 funksiyalarını yoxlamaq
+
+Yeni kod üçün image-ləri yenidən qurun: `docker compose up -d --build api admin`.
+Admin paneli: http://localhost:8080 (və ya `npm start` ilə http://localhost:4200),
+SuperAdmin: `admin@neoprint.local`.
+
+| Səhifə | Ünvan | Nəyi yoxlamaq |
+|---|---|---|
+| Kiosklar | `/kiosks` | Siyahı ↔ Xəritə, status filtri, axtarış; sətirə klik → redaktə |
+| Yeni kiosk | `/kiosks/new` | Xəritədə nöqtə seç, PIN (4–12 rəqəm), kağız tutumu → "Kiosk yarat" |
+| Kiosk redaktə | `/kiosks/{id}` | Tab-lar: Ümumi, Limitlər ("Default istifadə et"), Qiymət və fiskal, Kağız, Admin PIN, Cihaz |
+| Qiymət profilləri | `/pricing` | Profil yarat/redaktə, pillələr, "Default et", kiosk bağla, kalkulyator |
+| Fayl formatları | `/formats` | Formatı söndür → mobil tətbiqdə həmin fayl seçilmir və yüklənmir |
+| Fayl saxlama | `/storage` | Provayderlər, bağlantı testi, sinxronizasiya sehrbazı, canlı proqres |
+
+### Storage migrasiyası (plan 9.8) — addım-addım
+
+1. **Fayl saxlama → Provayder əlavə et**:
+   ad `Second RustFS`, tip **RustFS**, endpoint `http://rustfs-secondary:9000`,
+   region `us-east-1`, HTTPS **söndürülü**, access key `neoprintrustfs`,
+   secret key `devRustfsPassword`, bucket-lər `neoprint-files` / `neoprint-receipts` /
+   `neoprint-temp` → **Bağlantını yoxla** → **Yadda saxla**.
+2. **Sinxronizasiya → Yeni sinxronizasiya** → Migrasiya → hədəf `Second RustFS` →
+   "Bitəndə hədəfi Primary et" → Başlat. Proqres canlı yenilənir; Dayandır / Davam et işləyir.
+3. Bitəndə `Second RustFS` Primary olur. Faylların oxunduğunu mobil tətbiqdə yoxlayın.
+4. **Mənbəni təmizlə**: `Storage.SourceRetentionDays` (default 30 gün) keçəndən sonra
+   görünür. Lokalda yoxlamaq üçün **Tənzimləmələr**-də onu `0` edin.
+5. Mirror: köhnə provayderi "Mirror kimi qoş" ilə Secondary edin; sonra
+   `docker stop neoprint-rustfs-secondary` (hansı Primary-dirsə onu dayandırın) —
+   oxumalar digərindən davam edir, provayderin vəziyyəti ~1 dəqiqədə "Cavab vermir" olur.
+
+RustFS konsolunda obyektlərə baxmaq: http://localhost:9001/rustfs/console/ — orada
+görünən fayllar **şifrəlidir**, endirsəniz açılmaz (gözlənilən haldır).
+
+### Mobil — Fayllarım
+
+| Nə | Necə |
+|---|---|
+| Fayl yüklə | "Fayl yüklə" → "Fayl seç". Seçici yalnız aktiv formatları göstərir (+ HEIC) |
+| Şəkil çək | "Fayl yüklə" → "Şəkil çək" (brauzerdə yoxdur; emulyatorda virtual kamera) |
+| HEIC → JPEG | iPhone şəkli (`.heic`) seçin: telefonda JPEG-ə çevrilib yüklənir. Android 9+ lazımdır; web-də işləmir (izah göstərilir) |
+| Baxış | Hazır fayla toxunun → səhifələr serverdə render olunur (PDFium API image-ində var) |
+| Sil | Faylın menyusu (⋮) → Sil → təsdiq |
+
+Word / Excel / PowerPoint faylları LibreOffice ilə API image-ində çevrilir; lokal
+`dotnet run` ilə işlədəndə LibreOffice yoxdursa fayl "Açılmadı" statusu alır — bu gözlənilir.
+Emulyatora test faylı atmaq: faylı emulyator pəncərəsinə sürükləyin (Downloads-a düşür).
+
+---
+
 ## 8. Build, test, lint
 
 ```bash
@@ -425,9 +475,12 @@ dotnet test  desktop/NeoPrint.Kiosk.sln
 
 # Mobil
 cd mobile && flutter analyze && flutter test && dart format --set-exit-if-changed .
+flutter build web          # lokalda; Android build CI-da (Android SDK 36 lazımdır)
 
 # Admin
 cd admin && npm run lint && npm test && npm run build
+node scripts/icon-subset.mjs --check   # istifadə olunan ikonlar şriftdədirmi
+node scripts/icon-subset.mjs           # yeni ikon əlavə edəndən sonra şrifti yenidən qur
 
 # Lisenziya siyasəti (bütün ekosistemlər)
 node tools/license-check --strict
@@ -450,8 +503,16 @@ tar -xzf /tmp/pdfium.tgz -C /tmp
 sudo cp /tmp/lib/libpdfium.so /usr/local/lib/ && sudo ldconfig
 ```
 
-Windows üçün eyni release-dən `pdfium-win-x64.tgz` götürüb `pdfium.dll`-i test
-çıxış qovluğuna qoyun.
+Windows üçün (Git Bash):
+
+```bash
+curl -fsSL -o pdfium.tgz \
+  "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8066/pdfium-win-x64.tgz"
+mkdir -p pdfium && tar -xzf pdfium.tgz -C pdfium
+cp pdfium/bin/pdfium.dll backend/tests/NeoPrint.Api.IntegrationTests/bin/Debug/net8.0/
+```
+
+`dotnet clean`-dən sonra DLL-i yenidən köçürün (bin qovluğu silinir).
 
 LibreOffice və Ghostscript marşrutları yalnız backend image-ində işləyir; onlar
 olmayanda konvertasiya faylı `Failed` edir və səbəbini yazır — sorğu xəta

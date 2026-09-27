@@ -78,5 +78,72 @@
 
   "errorNetwork": "Şəbəkə xətası. Bağlantınızı yoxlayın.",
   "errorServer": "Serverdə xəta baş verdi. Bir az sonra yenidən cəhd edin.",
-  "errorSessionExpired": "Sessiya bitib. Yenidən daxil olun."
+  "errorSessionExpired": "Sessiya bitib. Yenidən daxil olun.",
+
+  "commonToday": "Bu gün",
+  "commonYesterday": "Dünən",
+  "commonDelete": "Sil",
+  "commonMore": "Əməliyyatlar",
+  "filesUpload": "Fayl yüklə",
+  "filesPickFile": "Fayl seç",
+  "filesPickFileHint": "PDF, Word, Excel, PowerPoint, şəkil və s.",
+  "filesTakePhoto": "Şəkil çək",
+  "filesTakePhotoHint": "Sənədin və ya şəklin fotosunu çəkin",
+  "filesEmpty": "Hələ faylınız yoxdur.",
+  "filesEmptyHint": "Yüklədiyiniz fayllar burada saxlanılır və istənilən kioskda çap oluna bilər.",
+  "filesLoadFailed": "Fayllar göstərilə bilmir.",
+  "filesUploading": "Yüklənir: {percent}%",
+  "@filesUploading": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
+  "filesPreparingPhoto": "Şəkil hazırlanır…",
+  "filesUploadFailed": "{name} yüklənmədi",
+  "@filesUploadFailed": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "filesHeicUnsupported": "Bu telefon HEIC şəklini çevirə bilmir. Kameranın ayarlarında formatı \"JPEG\" seçib yenidən çəkin.",
+  "filesHeicFailed": "Şəkli oxumaq mümkün olmadı. Başqa şəkil seçin.",
+  "filesUploadNetwork": "Şəbəkə xətası: fayl yüklənmədi. Bağlantını yoxlayıb yenidən cəhd edin.",
+  "filesCancelUpload": "Yükləməni dayandır",
+  "filesStatusPending": "Növbədədir",
+  "filesStatusConverting": "Hazırlanır",
+  "filesStatusFailed": "Açılmadı",
+  "filesSourceUploaded": "Yüklənib",
+  "filesSourceScan": "Skan",
+  "filesSourceLayout": "Tərtibat",
+  "filesSourceUsb": "USB",
+  "filesSourceShared": "Paylaşılıb",
+  "filesSensitive": "Həssas",
+  "filesPageCount": "{count, plural, =1{1 səhifə} other{{count} səhifə}}",
+  "@filesPageCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "filesNotReady": "Fayl hələ hazırlanır. Bir az sonra baxın.",
+  "filesDeleteTitle": "\"{name}\" silinsin?",
+  "@filesDeleteTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "filesDeleteExplanation": "Fayl və onun bütün nüsxələri birdəfəlik silinir. Bunu geri qaytarmaq olmur.",
+  "filesDeleted": "Fayl silindi.",
+  "filesPageOf": "Səhifə {current} / {total}",
+  "@filesPageOf": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "filesPageFailed": "Səhifəni göstərmək mümkün olmadı.",
+  "cameraTitle": "Şəkil çək",
+  "cameraCapture": "Çək",
+  "cameraNoCamera": "Bu cihazda kamera tapılmadı.",
+  "cameraPermission": "Kameraya icazə verilməyib. Telefonun ayarlarından icazə verib yenidən cəhd edin.",
+  "cameraFailed": "Kamera açılmadı. Yenidən cəhd edin."
 }

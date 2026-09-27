@@ -60,10 +60,60 @@ mənbə və səbəblə burada qeyd olunur.
 
 > **Mock kitabxanası yoxdur** (Bölmə 11) — bütün test ikiliyi əl ilə yazılmış fake-lərdir.
 
-## Mobile (pub) və Admin (npm)
+## Mobile (pub)
 
-Bu asılılıqlar müvafiq addımlarda (`mobile/pubspec.yaml`, `admin/package.json`) əlavə olunanda
-bu fayla yazılır.
+Birbaşa asılılıqlar (`mobile/pubspec.yaml`), hamısı plan 2.0-dakı siyahıdan və pinlidir. Tranzitiv
+asılılıqları `tools/license-check` yoxlayır. Qeyd: `file_picker`-in Linux implementasiyası `dbus`
+(Canonical, **MPL-2.0**) gətirir — plan 2.0-da icazəlidir; alətin onu AGPL kimi təsnif etməsi baq idi və
+düzəldildi (`DECISIONS.md`).
+
+| Paket | Versiya | Lisenziya | İstifadə |
+|---|---|---|---|
+| `flutter_riverpod` | 2.6.1 | MIT | State management |
+| `go_router` | 14.6.2 | BSD-3-Clause (Flutter komandası) | Naviqasiya, deep link-lər |
+| `dio` | 5.7.0 | MIT | HTTP, token yeniləmə, yükləmə proqresi |
+| `web_socket_channel` | 3.0.1 | BSD-3-Clause (Dart komandası) | Öz SignalR klientimizin nəqliyyatı |
+| `intl` | 0.20.3 | BSD-3-Clause (Dart komandası) | Lokalizasiya |
+| `file_picker` | 13.1.0 | MIT | Fayllarım: yüklənəcək faylın seçimi (Addım 2) |
+| `camera` | 0.12.1 | BSD-3-Clause (Flutter komandası) | Fayllarım: şəkil çəkib yükləmə (Addım 2) |
+| `flutter_lints` | 5.0.0 | BSD-3-Clause | Lint qaydaları (dev) |
+
+HEIC → JPEG çevrilməsi paket deyil — platformanın öz API-si (Android `ImageDecoder`, iOS `UIImage`), `MainActivity.kt` və `AppDelegate.swift`-də.
+
+## Admin (npm)
+
+Birbaşa asılılıqlar (`admin/package.json`), versiyalar pinli.
+
+| Paket | Versiya | Lisenziya | İstifadə |
+|---|---|---|---|
+| `@angular/common` | 21.2.23 | MIT | Angular |
+| `@angular/compiler` | 21.2.23 | MIT | Angular |
+| `@angular/core` | 21.2.23 | MIT | Angular |
+| `@angular/forms` | 21.2.23 | MIT | Angular |
+| `@angular/platform-browser` | 21.2.23 | MIT | Angular |
+| `@angular/router` | 21.2.23 | MIT | Angular |
+| `@angular/cdk` | 21.2.14 | MIT | Material-in əsası |
+| `@angular/material` | 21.2.14 | MIT | UI komponentləri, token-lərə bağlı tema |
+| `@angular/service-worker` | 21.2.23 | MIT | Angular |
+| `@microsoft/signalr` | 9.0.6 | MIT | `/hubs/admin` klienti |
+| `@ngx-translate/core` | 17.0.0 | MIT | az / en / ru |
+| `chart.js` | 4.5.0 | MIT | Dashboard qrafikləri |
+| `leaflet` | 1.9.4 | BSD-2-Clause (plan 2.0-da istisna) | Kiosk xəritəsi (OpenStreetMap) |
+| `rxjs` | 7.8.2 | Apache-2.0 | Angular asılılığı |
+| `tslib` | 2.8.1 | 0BSD | TypeScript runtime köməkçiləri |
+| `@angular/build` | 21.2.24 | MIT | Angular |
+| `@angular/cli` | 21.2.24 | MIT | Angular |
+| `@angular/compiler-cli` | 21.2.23 | MIT | Angular |
+| `@types/leaflet` | 1.9.20 | MIT | Leaflet tipləri |
+| `angular-eslint` | 21.1.0 | MIT | Tərtibat / lint / test |
+| `eslint` | 9.39.0 | MIT | Tərtibat / lint / test |
+| `jsdom` | 28.0.0 | MIT | Testlərin DOM mühiti |
+| `prettier` | 3.8.1 | MIT | Tərtibat / lint / test |
+| `typescript` | 5.9.2 | Apache-2.0 | Tərtibat / lint / test |
+| `typescript-eslint` | 8.46.0 | MIT | Tərtibat / lint / test |
+| `vitest` | 4.0.8 | MIT | Unit testlər |
+
+Material Symbols Rounded şrifti self-host edilib və istifadə olunan ikonlara subset edilib (`admin/scripts/icon-subset.mjs`).
 
 ---
 
