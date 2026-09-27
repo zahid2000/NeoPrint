@@ -28,6 +28,22 @@ const androidEmulatorApiBaseUrl = 'http://10.0.2.2:5080';
 /// loopback interface. 5080 is the port docker-compose publishes the API on.
 const localApiBaseUrl = 'http://localhost:5080';
 
+/// The address with exactly one trailing slash.
+///
+/// Every request path is relative (`api/auth/register`), and Dio joins it to
+/// the base address as written: without the slash the result was
+/// `http://localhost:5080api/auth/register`, a URL with an invalid port. The
+/// browser refused it before sending anything, so the API never saw a request
+/// and the screen said "network error" - on every target, not just the web
+/// (docs/DECISIONS.md).
+String withTrailingSlash(String url) {
+  var trimmed = url.trim();
+  while (trimmed.endsWith('/')) {
+    trimmed = trimmed.substring(0, trimmed.length - 1);
+  }
+  return '$trimmed/';
+}
+
 /// Resolves the address this build should use.
 ///
 /// The parameters exist so the decision can be tested for every target without
@@ -36,6 +52,20 @@ String resolveApiBaseUrl({
   String configured = _configuredApiUrl,
   bool isRelease = kReleaseMode,
   bool isWeb = kIsWeb,
+  TargetPlatform? platform,
+}) => withTrailingSlash(
+  _pickApiBaseUrl(
+    configured: configured,
+    isRelease: isRelease,
+    isWeb: isWeb,
+    platform: platform,
+  ),
+);
+
+String _pickApiBaseUrl({
+  required String configured,
+  required bool isRelease,
+  required bool isWeb,
   TargetPlatform? platform,
 }) {
   if (configured.isNotEmpty) {

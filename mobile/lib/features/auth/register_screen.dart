@@ -1,3 +1,5 @@
+import '../../shared/api_error_text.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -99,8 +101,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (state.errorMessage != null) ...[
-              NeoBanner.error(message: state.errorMessage!),
+            if (state.error != null) ...[
+              NeoBanner.error(message: apiErrorText(l10n, state.error!)),
               const SizedBox(height: Spacing.x4),
             ],
 
@@ -213,38 +215,44 @@ class _ConsentTile extends StatelessWidget {
     final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
 
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(Radii.md),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Spacing.x2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox.square(
-              dimension: 24,
-              child: Checkbox(
-                value: value,
-                onChanged: (next) => onChanged(next ?? false),
+    // One node for the box and its text, so a screen reader announces the
+    // checkbox by what it agrees to.
+    return MergeSemantics(
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(Radii.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Spacing.x2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox.square(
+                dimension: 24,
+                child: Checkbox(
+                  value: value,
+                  onChanged: (next) => onChanged(next ?? false),
+                ),
               ),
-            ),
-            const SizedBox(width: Spacing.x3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: text.bodyLarge),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: Spacing.x1),
-                    Text(
-                      subtitle!,
-                      style: text.bodySmall?.copyWith(color: tokens.neutral600),
-                    ),
+              const SizedBox(width: Spacing.x3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: text.bodyLarge),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: Spacing.x1),
+                      Text(
+                        subtitle!,
+                        style: text.bodySmall?.copyWith(
+                          color: tokens.neutral600,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

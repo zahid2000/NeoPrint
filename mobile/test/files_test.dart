@@ -342,7 +342,7 @@ void main() {
           .error;
 
       expect(error, isA<ServerUploadError>());
-      expect((error! as ServerUploadError).message, contains('50 MB'));
+      expect((error! as ServerUploadError).error.message, contains('50 MB'));
     });
   });
 }

@@ -1,3 +1,5 @@
+import '../../shared/api_error_text.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -71,8 +73,8 @@ class _ConfirmEmailScreenState extends ConsumerState<ConfirmEmailScreen> {
             ),
             const SizedBox(height: Spacing.x6),
 
-            if (state.errorMessage != null) ...[
-              NeoBanner.error(message: state.errorMessage!),
+            if (state.error != null) ...[
+              NeoBanner.error(message: apiErrorText(l10n, state.error!)),
               const SizedBox(height: Spacing.x4),
             ],
 

@@ -76,7 +76,8 @@
   "commonLoading": "Yüklənir…",
   "commonComingSoon": "Bu bölmə növbəti addımlarda əlavə olunacaq.",
 
-  "errorNetwork": "Şəbəkə xətası. Bağlantınızı yoxlayın.",
+  "errorNetwork": "Serverə qoşulmaq mümkün olmadı. İnternet bağlantısını yoxlayıb yenidən cəhd edin.",
+  "errorCancelled": "Əməliyyat ləğv edildi.",
   "errorServer": "Serverdə xəta baş verdi. Bir az sonra yenidən cəhd edin.",
   "errorSessionExpired": "Sessiya bitib. Yenidən daxil olun.",
 

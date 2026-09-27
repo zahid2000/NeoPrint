@@ -1,3 +1,5 @@
+import '../network/api_client.dart';
+
 /// The documents a user consents to (plan sections 2.8, 2.13).
 enum LegalDocumentType {
   privacy('Privacy'),
@@ -121,14 +123,14 @@ final class AuthState {
     required this.status,
     this.user,
     this.pendingEmail,
-    this.errorMessage,
+    this.error,
     this.isBusy = false,
   });
 
   const AuthState.restoring() : this(status: AuthStatus.restoring);
 
-  const AuthState.signedOut({String? errorMessage})
-    : this(status: AuthStatus.signedOut, errorMessage: errorMessage);
+  const AuthState.signedOut({ApiException? error})
+    : this(status: AuthStatus.signedOut, error: error);
 
   final AuthStatus status;
   final UserProfile? user;
@@ -136,14 +138,15 @@ final class AuthState {
   /// The address awaiting confirmation, so the confirmation screen can show it.
   final String? pendingEmail;
 
-  final String? errorMessage;
+  /// Why the last action failed; the screen words it (`apiErrorText`).
+  final ApiException? error;
   final bool isBusy;
 
   AuthState copyWith({
     AuthStatus? status,
     UserProfile? user,
     String? pendingEmail,
-    String? errorMessage,
+    ApiException? error,
     bool? isBusy,
     bool clearError = false,
     bool clearUser = false,
@@ -151,7 +154,7 @@ final class AuthState {
     status: status ?? this.status,
     user: clearUser ? null : (user ?? this.user),
     pendingEmail: pendingEmail ?? this.pendingEmail,
-    errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+    error: clearError ? null : (error ?? this.error),
     isBusy: isBusy ?? this.isBusy,
   );
 }

@@ -1,30 +1,65 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../storage/secure_storage.dart';
+import 'api_base_url.dart';
 import 'correlation_id.dart';
+
+/// Why a request failed, as far as the screen needs to know.
+enum ApiErrorKind {
+  /// No answer at all: offline, the server down, or a request that could not
+  /// be sent. The screen says the server could not be reached.
+  unreachable,
+
+  /// The user or the app cancelled the request.
+  cancelled,
+
+  /// The session could not be refreshed; the user has to sign in again.
+  sessionExpired,
+
+  /// The server answered and refused. [ApiException.message] is its own
+  /// sentence when it sent one.
+  server,
+}
 
 /// What the API returned when a request failed.
 ///
-/// The backend answers with RFC 7807 problem details (plan section 6), so the
-/// message shown to the user comes from the server rather than being invented
-/// here - the server already writes it in the right language.
+/// The backend answers with RFC 7807 problem details (plan section 6), so a
+/// refusal is shown in the server's own words - it writes them in the language
+/// the request asked for (`Accept-Language`). Failures that never reached the
+/// server have no server text; the screen words those from the app's own
+/// translations, by [kind] (`apiErrorText`).
 final class ApiException implements Exception {
   const ApiException({
     required this.statusCode,
     required this.message,
+    this.kind = ApiErrorKind.server,
     this.fieldErrors = const {},
   });
 
+  const ApiException.unreachable()
+    : this(statusCode: null, message: '', kind: ApiErrorKind.unreachable);
+
+  const ApiException.cancelled()
+    : this(statusCode: 0, message: '', kind: ApiErrorKind.cancelled);
+
+  const ApiException.sessionExpired()
+    : this(statusCode: 401, message: '', kind: ApiErrorKind.sessionExpired);
+
   final int? statusCode;
+
+  /// The server's sentence; empty when it sent none.
   final String message;
+
+  final ApiErrorKind kind;
 
   /// Validation errors grouped by field, for marking up the form.
   final Map<String, List<String>> fieldErrors;
 
   /// Whether this was a network problem rather than a refusal.
-  bool get isNetworkError => statusCode == null;
+  bool get isNetworkError => kind == ApiErrorKind.unreachable;
 
   /// The first error recorded against a field, if any.
   String? errorFor(String field) => fieldErrors[field]?.firstOrNull;
@@ -78,14 +113,16 @@ final class ApiClient {
     required String baseUrl,
     required SecureStorage storage,
     required AccessTokenHolder tokens,
+    String Function()? language,
     Dio? dio,
   }) : _storage = storage,
        _tokens = tokens,
+       _language = language,
        _dio =
            dio ??
            Dio(
              BaseOptions(
-               baseUrl: baseUrl,
+               baseUrl: withTrailingSlash(baseUrl),
                connectTimeout: const Duration(seconds: 15),
                receiveTimeout: const Duration(seconds: 30),
                contentType: 'application/json',
@@ -102,6 +139,10 @@ final class ApiClient {
   final Dio _dio;
   final SecureStorage _storage;
   final AccessTokenHolder _tokens;
+
+  /// The app's language, sent as `Accept-Language` so the server words its
+  /// errors and emails the way the user reads the screen.
+  final String Function()? _language;
 
   /// The refresh in flight, so concurrent callers await the same one.
   Future<bool>? _refreshing;
@@ -124,6 +165,11 @@ final class ApiClient {
     // never overwritten: a caller that set one is tying this request to work
     // that started earlier.
     options.headers.putIfAbsent(correlationIdHeader, newCorrelationId);
+
+    final language = _language?.call();
+    if (language != null) {
+      options.headers.putIfAbsent('Accept-Language', () => language);
+    }
 
     handler.next(options);
   }
@@ -191,10 +237,7 @@ final class ApiClient {
         await _storage.delete(SecureStorageKeys.refreshToken);
         onSessionExpired?.call();
 
-        throw const ApiException(
-          statusCode: 401,
-          message: 'Sessiya bitib. Yenidən daxil olun.',
-        );
+        throw const ApiException.sessionExpired();
       }
     }
 
@@ -261,7 +304,17 @@ final class ApiClient {
 
   static ApiException _toApiException(DioException error) {
     if (error.type == DioExceptionType.cancel) {
-      return const ApiException(statusCode: 0, message: 'Ləğv edildi.');
+      return const ApiException.cancelled();
+    }
+
+    if (error.response == null && kDebugMode) {
+      // What actually went wrong, for whoever is debugging: the user only
+      // ever sees "could not reach the server". No URL query, header or body
+      // is printed, so nothing sensitive reaches the console.
+      debugPrint(
+        'Request to ${error.requestOptions.path} failed without a response: '
+        '${error.type.name} ${error.error ?? error.message}',
+      );
     }
 
     if (error.response != null) {
@@ -271,19 +324,13 @@ final class ApiClient {
       );
     }
 
-    return const ApiException(
-      statusCode: null,
-      message: 'Şəbəkə xətası. Bağlantınızı yoxlayın.',
-    );
+    return const ApiException.unreachable();
   }
 
   /// Reads an RFC 7807 problem document (plan section 6).
   static ApiException _fromProblemDetails(int status, dynamic data) {
     if (data is! Map<String, dynamic>) {
-      return ApiException(
-        statusCode: status,
-        message: 'Serverdə xəta baş verdi ($status).',
-      );
+      return ApiException(statusCode: status, message: '');
     }
 
     final fieldErrors = <String, List<String>>{};
@@ -304,7 +351,7 @@ final class ApiClient {
         (data['detail'] as String?) ??
         (fieldErrors.values.firstOrNull?.firstOrNull) ??
         (data['title'] as String?) ??
-        'Serverdə xəta baş verdi ($status).';
+        '';
 
     return ApiException(
       statusCode: status,

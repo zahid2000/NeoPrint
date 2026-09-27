@@ -1,3 +1,5 @@
+import '../l10n/app_language.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../network/api_base_url.dart';
@@ -20,6 +22,7 @@ final accessTokenProvider = Provider<AccessTokenHolder>(
 final apiClientProvider = Provider<ApiClient>((ref) {
   final client = ApiClient(
     baseUrl: apiBaseUrl,
+    language: currentLanguageCode,
     storage: ref.watch(secureStorageProvider),
     tokens: ref.watch(accessTokenProvider),
   );
@@ -73,9 +76,7 @@ final class AuthController extends Notifier<AuthState> {
     } on ApiException catch (error) {
       // A network failure at start is not a sign-out: the user keeps their
       // stored token and can retry.
-      state = AuthState.signedOut(
-        errorMessage: error.isNetworkError ? error.message : null,
-      );
+      state = AuthState.signedOut(error: error.isNetworkError ? error : null);
     }
   }
 
@@ -84,7 +85,7 @@ final class AuthController extends Notifier<AuthState> {
     required String email,
     required String password,
     String? fullName,
-    String language = 'az',
+    String? language,
     String? referralCode,
     required List<PendingConsent> consents,
   }) async {
@@ -95,7 +96,7 @@ final class AuthController extends Notifier<AuthState> {
         email: email,
         password: password,
         fullName: fullName,
-        language: language,
+        language: language ?? currentLanguageCode(),
         referralCode: referralCode,
         consents: consents,
       );
@@ -105,7 +106,7 @@ final class AuthController extends Notifier<AuthState> {
         pendingEmail: registeredEmail,
       );
     } on ApiException catch (error) {
-      state = state.copyWith(isBusy: false, errorMessage: error.message);
+      state = state.copyWith(isBusy: false, error: error);
     }
   }
 
@@ -123,7 +124,7 @@ final class AuthController extends Notifier<AuthState> {
         await _repository.confirmEmail(email: email, code: code),
       );
     } on ApiException catch (error) {
-      state = state.copyWith(isBusy: false, errorMessage: error.message);
+      state = state.copyWith(isBusy: false, error: error);
     }
   }
 
@@ -137,7 +138,7 @@ final class AuthController extends Notifier<AuthState> {
     try {
       await _repository.resendConfirmation(email);
     } on ApiException catch (error) {
-      state = state.copyWith(errorMessage: error.message);
+      state = state.copyWith(error: error);
     }
   }
 
@@ -150,7 +151,7 @@ final class AuthController extends Notifier<AuthState> {
         await _repository.signIn(email: email, password: password),
       );
     } on ApiException catch (error) {
-      state = AuthState.signedOut(errorMessage: error.message);
+      state = AuthState.signedOut(error: error);
     }
   }
 
@@ -179,7 +180,7 @@ final class AuthController extends Notifier<AuthState> {
               ),
       );
     } on ApiException catch (error) {
-      state = state.copyWith(isBusy: false, errorMessage: error.message);
+      state = state.copyWith(isBusy: false, error: error);
     }
   }
 
@@ -191,9 +192,7 @@ final class AuthController extends Notifier<AuthState> {
 
   /// Called by the API client when the refresh token is refused.
   void onSessionExpired() {
-    state = const AuthState.signedOut(
-      errorMessage: 'Sessiya bitib. Yenidən daxil olun.',
-    );
+    state = const AuthState.signedOut(error: ApiException.sessionExpired());
   }
 
   /// Clears the error banner.

@@ -76,7 +76,8 @@
   "commonLoading": "Loading…",
   "commonComingSoon": "This section arrives in a later step.",
 
-  "errorNetwork": "Network error. Please check your connection.",
+  "errorNetwork": "Could not connect to the server. Check your internet connection and try again.",
+  "errorCancelled": "The request was cancelled.",
   "errorServer": "Something went wrong on the server. Please try again shortly.",
   "errorSessionExpired": "Your session has expired. Please sign in again.",
 

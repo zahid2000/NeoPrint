@@ -39,10 +39,10 @@ sealed class UploadError {
   const UploadError();
 }
 
-/// The server's own sentence: too large, a format switched off, quota full.
+/// The server refused: too large, a format switched off, quota full.
 final class ServerUploadError extends UploadError {
-  const ServerUploadError(this.message);
-  final String message;
+  const ServerUploadError(this.error);
+  final ApiException error;
 }
 
 final class HeicUploadError extends UploadError {
@@ -96,14 +96,14 @@ final class FilesState {
   final bool loading;
 
   /// Why the list could not be loaded, worded by the server or the client.
-  final String? error;
+  final ApiException? error;
 
   final List<UploadItem> uploads;
 
   FilesState copyWith({
     List<UserFile>? files,
     bool? loading,
-    String? error,
+    ApiException? error,
     bool clearError = false,
     List<UploadItem>? uploads,
   }) => FilesState(
@@ -143,7 +143,7 @@ class FilesController extends Notifier<FilesState> {
         clearError: true,
       );
     } on ApiException catch (error) {
-      state = state.copyWith(loading: false, error: error.message);
+      state = state.copyWith(loading: false, error: error);
     }
 
     _schedulePoll();
@@ -207,7 +207,7 @@ class FilesController extends Notifier<FilesState> {
           (upload) => upload.copyWith(
             error: error.isNetworkError
                 ? const NetworkUploadError()
-                : ServerUploadError(error.message),
+                : ServerUploadError(error),
           ),
         );
       }
@@ -226,8 +226,8 @@ class FilesController extends Notifier<FilesState> {
 
   /// Deletes a file everywhere it is stored.
   ///
-  /// Returns the server's message when it refused, or null.
-  Future<String?> delete(UserFile file) async {
+  /// Returns why it was refused, or null.
+  Future<ApiException?> delete(UserFile file) async {
     try {
       await _repository.delete(file.id);
       state = state.copyWith(
@@ -237,7 +237,7 @@ class FilesController extends Notifier<FilesState> {
       );
       return null;
     } on ApiException catch (error) {
-      return error.message;
+      return error;
     }
   }
 

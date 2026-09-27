@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:neoprint/core/network/api_base_url.dart';
@@ -12,7 +13,7 @@ void main() {
           isWeb: false,
           platform: TargetPlatform.android,
         ),
-        productionApiBaseUrl,
+        withTrailingSlash(productionApiBaseUrl),
       );
     });
 
@@ -24,7 +25,7 @@ void main() {
           isWeb: false,
           platform: TargetPlatform.android,
         ),
-        'http://192.168.1.50:5080',
+        'http://192.168.1.50:5080/',
       );
     });
 
@@ -36,7 +37,7 @@ void main() {
           isWeb: false,
           platform: TargetPlatform.android,
         ),
-        androidEmulatorApiBaseUrl,
+        withTrailingSlash(androidEmulatorApiBaseUrl),
       );
     });
 
@@ -51,7 +52,7 @@ void main() {
           isWeb: true,
           platform: TargetPlatform.android,
         ),
-        localApiBaseUrl,
+        withTrailingSlash(localApiBaseUrl),
       );
     });
 
@@ -63,7 +64,7 @@ void main() {
           isWeb: false,
           platform: TargetPlatform.iOS,
         ),
-        localApiBaseUrl,
+        withTrailingSlash(localApiBaseUrl),
       );
     });
 
@@ -77,11 +78,53 @@ void main() {
               isWeb: isWeb,
               platform: platform,
             ),
-            isNot(productionApiBaseUrl),
+            isNot(withTrailingSlash(productionApiBaseUrl)),
             reason: 'platform $platform, web $isWeb',
           );
         }
       }
+    });
+    test('every target builds a valid request url', () {
+      // The bug this guards against: without the trailing slash Dio produced
+      // http://localhost:5080api/auth/register, which no browser or phone
+      // could send, and registration failed as a "network error".
+      final configurations = [
+        for (final platform in TargetPlatform.values)
+          for (final isWeb in [true, false])
+            for (final isRelease in [true, false])
+              resolveApiBaseUrl(
+                configured: '',
+                isRelease: isRelease,
+                isWeb: isWeb,
+                platform: platform,
+              ),
+        resolveApiBaseUrl(configured: 'http://192.168.1.50:5080'),
+        resolveApiBaseUrl(configured: 'http://192.168.1.50:5080///'),
+      ];
+
+      for (final base in configurations) {
+        final uri = RequestOptions(
+          baseUrl: base,
+          path: 'api/auth/register',
+        ).uri;
+        expect(uri.path, '/api/auth/register', reason: base);
+        expect(uri.hasPort || uri.scheme == 'https', isTrue, reason: base);
+      }
+    });
+
+    test('an address is given exactly one trailing slash', () {
+      expect(
+        withTrailingSlash('http://localhost:5080'),
+        'http://localhost:5080/',
+      );
+      expect(
+        withTrailingSlash('http://localhost:5080/'),
+        'http://localhost:5080/',
+      );
+      expect(
+        withTrailingSlash(' http://localhost:5080// '),
+        'http://localhost:5080/',
+      );
     });
   });
 }

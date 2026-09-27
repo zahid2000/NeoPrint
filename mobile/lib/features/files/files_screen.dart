@@ -1,3 +1,5 @@
+import '../../shared/api_error_text.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -54,7 +56,10 @@ class FilesScreen extends ConsumerWidget {
       return ListView(
         padding: const EdgeInsets.all(Spacing.x4),
         children: [
-          NeoBanner.error(message: '${l10n.filesLoadFailed} ${state.error}'),
+          NeoBanner.error(
+            message:
+                '${l10n.filesLoadFailed} ${apiErrorText(l10n, state.error!)}',
+          ),
           const SizedBox(height: Spacing.x4),
           OutlinedButton(
             onPressed: ref.read(filesControllerProvider.notifier).load,
@@ -351,8 +356,13 @@ class _FileCard extends ConsumerWidget {
         .delete(file);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(problem ?? l10n.filesDeleted)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            problem == null ? l10n.filesDeleted : apiErrorText(l10n, problem),
+          ),
+        ),
+      );
     }
   }
 
@@ -412,7 +422,7 @@ class _UploadCard extends ConsumerWidget {
 
     if (error != null) {
       final message = switch (error) {
-        ServerUploadError(:final message) => message,
+        ServerUploadError(:final error) => apiErrorText(l10n, error),
         HeicUploadError(:final reason) =>
           reason == HeicFailure.unsupported
               ? l10n.filesHeicUnsupported

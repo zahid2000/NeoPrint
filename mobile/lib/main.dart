@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/l10n/app_language.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
@@ -39,17 +40,8 @@ class NeoPrintApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      localeResolutionCallback: (deviceLocale, supported) {
-        if (deviceLocale != null) {
-          for (final locale in supported) {
-            if (locale.languageCode == deviceLocale.languageCode) {
-              return locale;
-            }
-          }
-        }
-
-        return const Locale('az');
-      },
+      localeResolutionCallback: (deviceLocale, _) =>
+          Locale(resolveLanguageCode(deviceLocale)),
     );
   }
 }

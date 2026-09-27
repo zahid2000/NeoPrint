@@ -1,3 +1,5 @@
+import '../../shared/api_error_text.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -61,8 +63,8 @@ class _ConsentsScreenState extends ConsumerState<ConsentsScreen> {
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (state.errorMessage != null) ...[
-            NeoBanner.error(message: state.errorMessage!),
+          if (state.error != null) ...[
+            NeoBanner.error(message: apiErrorText(l10n, state.error!)),
             const SizedBox(height: Spacing.x4),
           ],
 
@@ -129,65 +131,69 @@ class _ConsentRow extends StatelessWidget {
     final tokens = context.tokens;
     final text = Theme.of(context).textTheme;
 
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(Radii.md),
-      child: Container(
-        padding: const EdgeInsets.all(Spacing.x3),
-        decoration: BoxDecoration(
-          color: value ? tokens.brand50 : tokens.neutral50,
-          border: Border.all(
-            color: value ? tokens.brand500 : tokens.neutral200,
-          ),
-          borderRadius: BorderRadius.circular(Radii.md),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox.square(
-              dimension: 24,
-              child: Checkbox(
-                value: value,
-                onChanged: (next) => onChanged(next ?? false),
-              ),
+    // One node for the box and its text, so a screen reader announces the
+    // checkbox by what it agrees to.
+    return MergeSemantics(
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(Radii.md),
+        child: Container(
+          padding: const EdgeInsets.all(Spacing.x3),
+          decoration: BoxDecoration(
+            color: value ? tokens.brand50 : tokens.neutral50,
+            border: Border.all(
+              color: value ? tokens.brand500 : tokens.neutral200,
             ),
-            const SizedBox(width: Spacing.x3),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: text.bodyLarge),
-                  const SizedBox(height: Spacing.x1),
-                  Text(
-                    'v$version',
-                    style: text.bodySmall?.copyWith(color: tokens.neutral600),
-                  ),
-                  if (note != null) ...[
-                    const SizedBox(height: Spacing.x2),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 16,
-                          color: tokens.neutral600,
-                        ),
-                        const SizedBox(width: Spacing.x2),
-                        Expanded(
-                          child: Text(
-                            note!,
-                            style: text.bodySmall?.copyWith(
-                              color: tokens.neutral600,
+            borderRadius: BorderRadius.circular(Radii.md),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox.square(
+                dimension: 24,
+                child: Checkbox(
+                  value: value,
+                  onChanged: (next) => onChanged(next ?? false),
+                ),
+              ),
+              const SizedBox(width: Spacing.x3),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: text.bodyLarge),
+                    const SizedBox(height: Spacing.x1),
+                    Text(
+                      'v$version',
+                      style: text.bodySmall?.copyWith(color: tokens.neutral600),
+                    ),
+                    if (note != null) ...[
+                      const SizedBox(height: Spacing.x2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 16,
+                            color: tokens.neutral600,
+                          ),
+                          const SizedBox(width: Spacing.x2),
+                          Expanded(
+                            child: Text(
+                              note!,
+                              style: text.bodySmall?.copyWith(
+                                color: tokens.neutral600,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
