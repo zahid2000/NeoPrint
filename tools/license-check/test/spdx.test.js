@@ -105,6 +105,17 @@ describe('identifyFromText', () => {
         assert.equal(identifyFromText(text), 'Apache-2.0');
     });
 
+    it('recognises MPL-2.0 although its text names the GNU licences', () => {
+        // Section 1.12 of the MPL defines "Secondary License" by naming the
+        // GNU GPL, LGPL and AGPL; the dbus package ships exactly this text.
+        const text =
+            'Mozilla Public License Version 2.0\n==================================\n' +
+            '1.12. "Secondary License" means either the GNU General Public License, Version 2.0, ' +
+            'the GNU Lesser General Public License, Version 2.1, the GNU Affero General Public ' +
+            'License, Version 3.0, or any later versions of those licenses.';
+        assert.equal(identifyFromText(text), 'MPL-2.0');
+    });
+
     it('distinguishes the GNU family', () => {
         assert.equal(identifyFromText('GNU AFFERO GENERAL PUBLIC LICENSE Version 3'), 'AGPL-3.0');
         assert.equal(identifyFromText('GNU LESSER GENERAL PUBLIC LICENSE Version 3'), 'LGPL-3.0');

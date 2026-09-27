@@ -156,10 +156,13 @@ export function evaluate(expression, isAllowed) {
  */
 const TEXT_SIGNATURES = [
     { id: 'Apache-2.0', phrases: ['apache license', 'version 2.0, january 2004'] },
+    // Before the GNU family: the MPL's own text names the GPL, LGPL and AGPL
+    // as "Secondary Licenses", so an AGPL phrase check would claim every
+    // MPL-2.0 package. No GNU licence text carries the MPL's title.
+    { id: 'MPL-2.0', phrases: ['mozilla public license version 2.0'] },
     { id: 'AGPL-3.0', phrases: ['gnu affero general public license'] },
     { id: 'LGPL-3.0', phrases: ['gnu lesser general public license'] },
     { id: 'GPL-3.0', phrases: ['gnu general public license'] },
-    { id: 'MPL-2.0', phrases: ['mozilla public license version 2.0'] },
     { id: 'ISC', phrases: ['permission to use, copy, modify, and/or distribute this software'] },
     { id: 'MIT', phrases: ['permission is hereby granted, free of charge'] },
     { id: 'BSD-3-Clause', phrases: ['redistributions in binary form', 'neither the name of'] },
