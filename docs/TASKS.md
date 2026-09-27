@@ -1,0 +1,65 @@
+# NeoPrint — tapşırıq reyestri
+
+Layihə sahibinin verdiyi **bütün** tapşırıqların yeganə siyahısı. Məqsəd: sessiya
+bitəndə, limit dolanda və ya iş dayananda heç nə itməsin.
+
+## Qaydalar
+
+- Hər yeni tapşırıq işə başlamazdan **əvvəl** bura yazılır və commit olunur.
+- Status dəyişəndə dərhal yenilənir. `Tamamlandı` yalnız sübutla (commit / test /
+  fayl) və real stack-də yoxlandıqdan sonra yazılır.
+- Hər sessiyanın başında: `CLAUDE.md` → bu fayl → `git status` / `git log`. `Açıq`
+  və `İcrada` olanlar davam etdirilir.
+- Addım yalnız ona aid bütün tapşırıqlar `Tamamlandı` (və ya əsaslandırılmış
+  `Təxirə salındı`) olanda bağlanır. Addım hesabatı plan DoD-undan əlavə həmin
+  addım zamanı verilən bütün tapşırıqları ayrıca yoxlayır.
+- Tapşırıq heç vaxt silinmir; lazım olmayanlar `Ləğv edildi` (səbəb ilə) olur.
+
+Statuslar: `Açıq`, `İcrada`, `Tamamlandı`, `Ləğv edildi (səbəb)`, `Təxirə salındı (Addım N)`.
+
+## Tapşırıqlar
+
+| ID | Tarix | Addım | Tapşırıq (qısa) | Status | Sübut (commit / test / fayl) |
+|---|---|---|---|---|---|
+| T-001 | 2026-09-25 | 1 | `v0.1.0` teqini qoy (Addım 1 təsdiqləndi) | Tamamlandı | teq `v0.1.0` → `1324153` |
+| T-002 | 2026-09-25 | 2 | `docs/DEV_ENVIRONMENT.md`: bütün əmrlər (kiosk, backend, admin, Flutter), URL-lər, connection string / credential-lar, rol üzrə test hesabları (SuperAdmin, Admin, Operator, Maliyyə + təsdiqlənmiş mobil istifadəçi), docker compose ilə təmiz qaldırma; hər addımda yenilənir | Açıq | |
+| T-003 | 2026-09-25 | 2 | Flutter-də "Create account" şəbəkə xətası (Chrome — Flutter web) | Açıq | |
+| T-004 | 2026-09-25 | 2 | UI dizayn sualına cavab + dizayn qaydalarına riayət | Tamamlandı | cavab sessiyada verildi; qaydalar T-015-də tətbiq olundu |
+| T-005 | 2026-09-25 | 2 | `dart format` (16 fayl) ayrıca commit + CI mobil job-da format yoxlaması | Açıq | |
+| T-006 | 2026-09-25 | 2 | Admin refresh rədd edilmiş token üçün `401`; `docs/API.md` | Açıq | |
+| T-007 | 2026-09-25 | 2 | SignalR boşluqlarının yeri `DECISIONS.md`-də: `/hubs/admin` — Addım 2-nin ilk işi; `/hubs/provisioning` + `/hubs/kiosk` — Addım 3-ün ilk işi | Açıq | |
+| T-008 | 2026-09-25 | 2 | Addım 2: mərhələli icra planı, mərhələlər arası dayanmadan, hər mərhələdən sonra qısa hesabat, sonda dayan | Açıq | |
+| T-009 | 2026-09-25 | 2 | KEK rotasiyası: köhnə açarla yazılmış obyekt yeni açardan sonra oxunur, `KeyRewrapJob` real test | Açıq | |
+| T-010 | 2026-09-25 | 2 | Storage-dan birbaşa endirilən obyektin oxunmadığı test ilə sübut | Açıq | |
+| T-011 | 2026-09-25 | 2 | Migrasiya worker restart olunanda checkpoint-dən davam — test | Açıq | |
+| T-012 | 2026-09-25 | 2 | Konvertasiya şəbəkəsiz, timeout və resurs (CPU/RAM) limiti ilə — test | Açıq | |
+| T-013 | 2026-09-25 | 2 | Qiymət snapshot-u profil dəyişəndə dəyişmir — test | Açıq | |
+| T-014 | 2026-09-25 | 2 | Refund strategiyası sənədləri: plan 2.5 + 7.12, `FAILURE_RECOVERY.md`, `Suspected`, `StuckJobWatchdogJob`, "Baxış gözləyən job-lar", müştəri müraciəti, `Job.SuspectedAfterMinutes`/`Job.SuspectedAutoResolveHours`, `docs/legal/REFUND_POLICY.az.md`, Bölmə 14; commit `docs: split automatic and admin-reviewed refund flows` | Açıq | |
+| T-015 | 2026-09-25 | 2 | Dizayn sistemi: token faylları (admin, mobil, kiosk), Material teması + light/dark, ümumi komponentlər, kiosk ekranları token-lərə, `CLAUDE.md` qaydası; commit `feat(ui): add design system tokens and apply to admin, mobile and kiosk` | Açıq | |
+| T-016 | 2026-09-25 | 2 | Mobil auth ekranlarını (login, qeydiyyat, razılıq, email kodu) dizayn sistemi ilə yenidən qur | Açıq | |
+| T-017 | 2026-09-25 | 2 | Addım 2-nin bütün yeni admin səhifələri və mobil ekranları `DESIGN_SYSTEM.md`-ə uyğun | Açıq | |
+| T-018 | 2026-09-26 | 2 | Storage Zenko → RustFS: compose (digest, non-root), iki instansiya ilə migrasiya/mirror testləri, `RustFS` provayder tipi, S3 uyğunluq testləri, plan 2.0/2.10/4 + `THIRD_PARTY` + `DEV_ENVIRONMENT` + `DECISIONS`; commit `chore(storage): switch default dev storage to RustFS` | Açıq | |
+| T-019 | 2026-09-27 | 2 | `docker compose up` — `Bind for 0.0.0.0:9001 failed: port is already allocated` | Açıq | |
+| T-020 | 2026-09-27 | 2 | `docs/TASKS.md` reyestri + qaydalar `CLAUDE.md`-də; Addım 1-dən bəri bütün tapşırıqlar köçürülür | İcrada | |
+| T-021 | 2026-09-27 | 2 | Audit (a–j): edilib / qismən / edilməyib + sübut | Açıq | |
+| T-022 | 2026-09-27 | 7 | Vizual yenidən dizayn (daha canlı və müasir rəng palitrası, sidebar, dashboard kartları, illüstrasiyalar) — Addım 7-nin sonunda, pilotdan əvvəl; istifadəçi nümunələr təqdim edəcək | Təxirə salındı (Addım 7) | |
+| T-023 | 2026-09-27 | 7 | T-022 bəndini plan Addım 7 işlərinə yaz | Açıq | |
+| T-024 | 2026-09-27 | 2 | CORS: development-də Flutter web origin-i (localhost, istənilən port); production-da yalnız konfiqurasiyadakı origin-lər; admin (eyni origin) təsirlənmir | Açıq | |
+| T-025 | 2026-09-27 | 2 | Flutter web API ünvanı `--dart-define` ilə, düzgün development default-u | Açıq | |
+| T-026 | 2026-09-27 | 2 | Şəbəkə xətasında aydın mətn: "Serverə qoşulmaq mümkün olmadı" | Açıq | |
+| T-027 | 2026-09-27 | 2 | Real yoxlama: Chrome-da qeydiyyat → Mailpit kodu → login | Açıq | |
+| T-028 | 2026-09-27 | 2 | `DEV_ENVIRONMENT.md`: Chrome, Android emulyator, real telefon üçün ayrıca işə salma əmrləri | Açıq | |
+| T-029 | 2026-09-27 | 2 | Admin: "Əlaqə yoxdur" həmişə görünür — `/hubs/admin` bağlantısını düzəlt, real stack-də yoxla | Açıq | |
+| T-030 | 2026-09-27 | 2 | Tarix/saat/pul formatı `DESIGN_SYSTEM.md` §6 (`27.09.2026 18:33`); admin, mobil, kiosk — mərkəzi helper, dilə görə | Açıq | |
+| T-031 | 2026-09-27 | 2 | Tərcümə qarışığı ("Enrollment token", "Feature flag" və s.) Azərbaycan dilində; az/en/ru-da çatışmayan / dilə uyğun olmayan açarları tapan yoxlama + CI | Açıq | |
+| T-032 | 2026-09-27 | 2 | Dashboard: icazələrin texniki siyahısını gizlət; Addım 2 kartları — storage sağlamlığı, sinxronizasiya statusu, fayl sayı/həcmi, konvertasiya xətaları (plan 8A.3) | Açıq | |
+| T-033 | 2026-09-27 | 2 | Cihazlar səhifəsi: son sütun başlığı "Əməliyyatlar"; "Aktivləşdirmə kodu" inputu ilə "Kod ilə tap" düyməsinin hündürlüyü | Açıq | |
+| T-034 | 2026-09-27 | 2 | Real stack-də yoxlama: `docker compose up -d --build`, admin düzəlişləri brauzerdə; Playwright ekran görüntüləri `docs/screenshots/step-2/` (admin + Chrome-da mobil) | Açıq | |
+| T-035 | 2026-09-27 | 2 | Hesabat: audit cədvəli, DoD cədvəli, `TASKS.md` xülasəsi, test hesabları (email + şifrə), mobili Chrome-da işə salma əmri | Açıq | |
+| T-036 | 2026-09-27 | 2 | `7227db1` commit-ini push et | Açıq | |
+| T-037 | 2026-09-27 | 2 | `DEV_ENVIRONMENT.md`-də bütün `docker compose up/down` əmrlərinə `--remove-orphans` | Açıq | |
+| T-038 | 2026-09-27 | 2 | `openbao-init` seed faylını yoxlasın: məcburi açar yoxdursa və ya köhnə/tanınmayan açar varsa aydın xəta ilə dayansın; `SEED_SCHEMA_VERSION`, nümunə ilə uyğunsuzluqda xəbərdarlıq | Açıq | |
+| T-039 | 2026-09-27 | 2 | `tools/dev-doctor` (PowerShell + bash): port konfliktləri, compose-dan kənar `neoprint-*` konteyner/volume, seed versiyası, Docker; `DEV_ENVIRONMENT.md`-də "əvvəlcə bunu işlət" | Açıq | |
+| T-040 | 2026-09-27 | 2 | `CLAUDE.md` qaydası: compose-dan servis çıxarılanda/adı dəyişəndə və ya seed/konfiqurasiya strukturu dəyişəndə — `DEV_ENVIRONMENT.md`-də keçid addımları + hesabatda "Lokal mühitinizdə etməli olduğunuz" | Açıq | |
+| T-041 | 2026-09-27 | 2 | Port problemi (T-019) `DECISIONS.md`-də səbəb + həll | Açıq | |
+| T-042 | 2026-09-27 | 2 | Hamısı bitəndən və CI yaşıl olandan sonra `v0.2.1` teqi (yeni `v0.2.0` qoyulmur); Addım 3-ə keçilmir | Açıq | |

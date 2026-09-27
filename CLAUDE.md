@@ -10,7 +10,19 @@
 
 Ziddiyyət olarsa plan üstündür. Uyğunsuzluğu göstər, təhlükəsiz variantı seç, `docs/DECISIONS.md`-ə yaz. Arxitektura qərarı üçün `docs/adr/TEMPLATE.md` formatında ADR yarat.
 
+**Hər sessiyanın birinci işi:** `CLAUDE.md` → `docs/TASKS.md` → `git status` / `git log`. `Açıq` və `İcrada` tapşırıqlar davam etdirilir.
+
 Hər sessiyanın əvvəlində oxu: plandakı təlimat bölməsi, Bölmə 2.0 (kitabxana siyasəti), Bölmə 12 (icra planı) və cari addıma aid bölmələr + `docs/README.md`.
+
+## Tapşırıq reyestri (`docs/TASKS.md`)
+- Layihə sahibinin hər yeni tapşırığı işə başlamazdan **əvvəl** `docs/TASKS.md`-yə yazılır və commit olunur.
+- Status dəyişəndə dərhal yenilənir; `Tamamlandı` yalnız sübutla (commit / test / fayl) və real stack-də yoxlandıqdan sonra.
+- Addım yalnız ona aid bütün tapşırıqlar `Tamamlandı` (və ya əsaslandırılmış `Təxirə salındı`) olanda bağlanır.
+- Addım hesabatında plan DoD-undan əlavə həmin addım zamanı verilən bütün tapşırıqlar ayrıca yoxlanılır.
+- Tapşırıq heç vaxt siyahıdan silinmir.
+
+## Lokal mühit dəyişiklikləri
+- Compose-dan servis çıxarılanda, adı dəyişəndə və ya seed/konfiqurasiya strukturu dəyişəndə `docs/DEV_ENVIRONMENT.md`-də keçid addımları yazılır, addım hesabatında isə "Lokal mühitinizdə etməli olduğunuz" bölməsi olur.
 
 ## İş qaydası
 - Yalnız cari addım. Faza 2 və 3 (Addım 8–10) istifadəçi göstərişi olmadan başlanmır; gələcək işləri "hazır olsun" deyə əvvəlcədən yazma.
@@ -60,7 +72,7 @@ Kod compile olur; testlər keçir; error handling var; idempotency/retry nəzər
 2. Keçməlidir: build (backend, desktop win+linux, mobile, admin), bütün testlər, lint, `tools/license-check`.
 3. Sənədləri yenilə (README, API, DECISIONS, THIRD_PARTY, ADR-lər).
 4. Commit → tag (Plan Bölmə 13) → `git push origin main --tags`.
-5. Hesabat ver: görülən işlər; DoD cədvəli (bənd | nəticə | necə yoxlanıldı); yeni qərarlar; əl ilə yoxlanmalı olanlar; risklər.
+5. Hesabat ver: görülən işlər; DoD cədvəli (bənd | nəticə | necə yoxlanıldı); addım zamanı verilmiş əlavə tapşırıqların cədvəli (`docs/TASKS.md`-dən); yeni qərarlar; əl ilə yoxlanmalı olanlar; "Lokal mühitinizdə etməli olduğunuz" (varsa); risklər.
 6. Növbəti addıma keçmə — təsdiq gözlə.
 
 ## Dayan və soruş
