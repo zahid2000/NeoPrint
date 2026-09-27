@@ -22,7 +22,7 @@ yarandıqca bu fayl yenilənir.
 cp .env.openbao-seed.example .env.openbao-seed
 
 # 2. Bütün infrastrukturu və API-ni qaldır
-docker compose up -d
+docker compose up --remove-orphans -d
 
 # 3. Hər şeyin qalxdığını yoxla
 docker compose ps
@@ -38,16 +38,30 @@ set `rs0`) → `redis`, `rabbitmq`, `rustfs` + `rustfs-secondary` → `rustfs-in
 ona görə yenidən qurmaq lazımdır:
 
 ```bash
-docker compose up -d --build api
+docker compose up --remove-orphans -d --build api
 ```
 
 **Dayandırma:**
 
 ```bash
 docker compose stop            # datanı saxlayır
-docker compose down            # konteynerləri silir, volume-lar qalır
-docker compose down -v         # HƏR ŞEYİ silir (Mongo, OpenBao, RustFS datası)
+docker compose down --remove-orphans            # konteynerləri silir, volume-lar qalır
+docker compose down --remove-orphans -v         # HƏR ŞEYİ silir (Mongo, OpenBao, RustFS datası)
 ```
+
+### Problem olarsa — əvvəlcə bunu işlədin
+
+```bash
+bash tools/dev-doctor/dev-doctor.sh                                    # Git Bash, Linux, macOS
+powershell -ExecutionPolicy Bypass -File tools\dev-doctor\dev-doctor.ps1   # Windows PowerShell
+```
+
+Heç nəyi dəyişmir, yalnız yoxlayır və nə etmək lazım olduğunu yazır: Docker işləyirmi;
+seed faylı nümunə ilə uyğundurmu (versiya, çatışmayan / köhnə açarlar); compose-un
+portlarını (5080, 8080, 9000/9001, 9010, 27017, 6379, 5672/15672, 8200, 8025/1025)
+başqa konteyner və ya proqram tuturmu; compose faylında artıq olmayan `neoprint-*`
+konteyner və `neoprint_*` volume qalıbmı. Docker Desktop-da bash versiyası ~40 san,
+PowerShell versiyası ~10 san çəkir.
 
 ### OpenBao restart-dan sonra möhürlənir (sealed)
 
@@ -56,7 +70,7 @@ docker compose down -v         # HƏR ŞEYİ silir (Mongo, OpenBao, RustFS datas
 
 ```bash
 # Unseal açarı openbao-init tərəfindən yazılıb (bu fayl .gitignore-dadır)
-docker compose up -d openbao-init      # init.sh mövcud vəziyyəti görüb yalnız unseal edir
+docker compose up --remove-orphans -d openbao-init      # init.sh mövcud vəziyyəti görüb yalnız unseal edir
 docker compose restart api
 ```
 
@@ -229,7 +243,7 @@ docker compose down -v --remove-orphans
 docker volume rm neoprint_minio-data 2>/dev/null  # köhnə servisin volume-u compose-dan kənarda qalır
 cp .env.openbao-seed .env.openbao-seed.bak        # köhnəsini saxlayın
 cp .env.openbao-seed.example .env.openbao-seed    # RustFS dəyərləri
-docker compose up -d --build
+docker compose up --remove-orphans -d --build
 ```
 
 **B. Mongo / OpenBao datasını saxlayaraq** (köhnə storage-dakı test faylları
@@ -408,36 +422,66 @@ görə həmin qovluğa yazma icazəsi lazımdır.
 
 ## 6. Mobil tətbiqi işə salmaq (Flutter)
 
-API ünvanı **debug build-də avtomatik** seçilir:
+Əvvəlcə stack qalxmış olmalıdır (`docker compose up --remove-orphans -d`). Giriş üçün
+hazır hesab: `dev-user@neoprint.local` / `DevTest!2026` (bölmə 4). Yeni hesabın
+təsdiq kodu Mailpit-dədir: http://localhost:8025
 
-| Hədəf | Avtomatik URL |
+API ünvanı build zamanı seçilir; `--dart-define=NEOPRINT_API_URL=...` verilməyibsə
+debug build bu default-ları götürür:
+
+| Hədəf | Default API ünvanı |
 |---|---|
-| Android emulyator | `http://10.0.2.2:5080` |
-| iOS simulyator, brauzer, desktop | `http://localhost:5080` |
-| Release build | `https://api.neoprint.az` |
+| Chrome (Flutter web) | `http://localhost:5080/` |
+| Android emulyator | `http://10.0.2.2:5080/` (emulyatorun içindən kompüterin `localhost`-u) |
+| iOS simulyator | `http://localhost:5080/` |
+| Real telefon | default işləmir — kompüterin şəbəkə IP-si verilməlidir (aşağıda) |
+| Release build | `https://api.neoprint.az/` |
 
 ```bash
 cd mobile
 flutter pub get
+```
 
-# Android emulyator
-flutter run
+### Chrome (Flutter web)
 
-# Brauzer (yalnız UI-a baxmaq üçün; plan hədəfi Android/iOS-dur)
+```bash
 flutter run -d chrome
 ```
 
-Real telefondan kompüterdəki API-yə qoşulmaq üçün ünvanı əl ilə verin:
+API CORS-u Development-də `localhost`-un istənilən portunu qəbul edir; Flutter-in
+seçdiyi port fərq etmir. Başqa ünvan lazımdırsa: `--dart-define=NEOPRINT_API_URL=http://localhost:5080`.
+
+### Android emulyator
 
 ```bash
-flutter run --dart-define=NEOPRINT_API_URL=http://192.168.1.50:5080
+flutter emulators                          # mövcud emulyatorlar
+flutter emulators --launch <emulator_id>   # birini açın
+flutter run -d emulator-5554               # və ya sadəcə: flutter run
 ```
 
-> **Brauzerdə (Flutter web) işlədəndə API-nin CORS-u lazımdır.** API yalnız
-> `ASPNETCORE_ENVIRONMENT=Development` olduqda `http://localhost:*` mənşələrini
-> qəbul edir (`Cors:DevelopmentOrigins`). Produksiyada CORS tamamilə bağlıdır.
+Ünvan avtomatik `10.0.2.2:5080`-dir, heç nə vermək lazım deyil.
 
-Qeydiyyat kodu Mailpit-də: http://localhost:8025
+### Real telefon (Android, USB və ya eyni Wi-Fi)
+
+1. Kompüterin yerli şəbəkə IP-sini tapın: Windows `ipconfig` → "IPv4 Address"
+   (məs. `192.168.1.50`); Linux/macOS `ip addr` / `ifconfig`.
+2. Telefon və kompüter **eyni Wi-Fi**-da olmalıdır; Windows firewall 5080 portuna
+   daxil olan bağlantını buraxmalıdır (ilk dəfə soruşanda "Allow").
+3. Telefonda "Developer options" → "USB debugging" açıq, USB ilə qoşun, sonra:
+
+```bash
+flutter devices                            # telefonun ID-si
+flutter run -d <telefon_id> --dart-define=NEOPRINT_API_URL=http://192.168.1.50:5080
+```
+
+Telefonun brauzerində `http://192.168.1.50:5080/health/live` açılırsa, tətbiq də
+qoşulacaq. Açılmırsa problem şəbəkə/firewall-dadır, tətbiqdə yox.
+
+### Şəbəkə xətası görsəniz
+
+Tətbiq "Serverə qoşulmaq mümkün olmadı" deyirsə: API işləyir? (`curl http://localhost:5080/health/live`);
+ünvan düzgündür? (debug konsolunda `Request to ... failed without a response: ...`
+sətri əsl səbəbi göstərir); real telefondursa — yuxarıdakı IP/Wi-Fi/firewall addımları.
 
 ---
 
@@ -450,13 +494,13 @@ npm start            # http://localhost:4200
 ```
 
 `proxy.conf.json` `/api` və `/hubs`-u `http://localhost:8080`-ə (admin
-konteynerinin nginx-inə) yönləndirir, ona görə `docker compose up -d` işləməlidir.
+konteynerinin nginx-inə) yönləndirir, ona görə `docker compose up --remove-orphans -d` işləməlidir.
 
 ---
 
 ## 7a. Addım 2 funksiyalarını yoxlamaq
 
-Yeni kod üçün image-ləri yenidən qurun: `docker compose up -d --build api admin`.
+Yeni kod üçün image-ləri yenidən qurun: `docker compose up --remove-orphans -d --build api admin`.
 Admin paneli: http://localhost:8080 (və ya `npm start` ilə http://localhost:4200),
 SuperAdmin: `admin@neoprint.local`.
 
@@ -530,7 +574,7 @@ curl -s -o /dev/null -w "%{http_code}
 ### Fayl yüklədim, amma "Növbədədir" statusundan çıxmır
 
 Köhnə API image-idir: `v0.2.0`-dan əvvəlki build-də hadisələr outbox-a yazılmırdı və
-konvertasiya başlamırdı (`docs/DECISIONS.md`). `docker compose up -d --build api` ilə
+konvertasiya başlamırdı (`docs/DECISIONS.md`). `docker compose up --remove-orphans -d --build api` ilə
 yenidən qurun; əvvəl yüklənmiş fayllar üçün onları silib yenidən yükləyin.
 
 ### Mobil — Fayllarım
@@ -574,6 +618,10 @@ node tools/license-check --strict
 
 # Lisenziya yoxlayıcısının öz testləri
 cd tools/license-check && npm test
+
+# Dizayn qaydaları: hardcoded rəng / şrift ölçüsü / boşluq (admin, mobil, kiosk)
+node tools/design-lint --list
+cd tools/design-lint && npm test
 ```
 
 ### Konvertasiya testləri (PDFium)
@@ -611,6 +659,8 @@ atmır.
 ---
 
 ## 9. Tez-tez lazım olan yoxlamalar
+
+Mühit qalxmırsa əvvəlcə `tools/dev-doctor` (bölmə 1, "Problem olarsa").
 
 ```bash
 # API log-u (canlı)

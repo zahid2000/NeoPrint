@@ -35,7 +35,7 @@ cp .env.openbao-seed.example .env.openbao-seed
 #    Faylı aç və development dəyərlərini yaz. Bu fayl .gitignore-dadır.
 
 # 2. Bütün servisləri qaldır
-docker compose up -d
+docker compose up --remove-orphans -d
 
 # 3. Sağlamlığı yoxla
 curl http://localhost:5080/health

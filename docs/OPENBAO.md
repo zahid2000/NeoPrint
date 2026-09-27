@@ -86,7 +86,7 @@ Policy faylları: [`openbao/policies/`](../openbao/policies/).
 
 ```bash
 cp .env.openbao-seed.example .env.openbao-seed
-docker compose up
+docker compose up --remove-orphans
 ```
 
 `docker compose up` zamanı iki konteyner qalxır:
@@ -106,7 +106,7 @@ docker compose up
 > Həlli bir əmrdir:
 >
 > ```bash
-> docker compose up openbao-init    # init → unseal, mövcud secret-lərə toxunmur
+> docker compose up --remove-orphans openbao-init    # init → unseal, mövcud secret-lərə toxunmur
 > ```
 >
 > `docker compose up` bunu özü edir; yalnız `docker compose restart` və ya
@@ -152,10 +152,10 @@ bao audit list
 ### Sıfırdan başlamaq
 
 ```bash
-docker compose down
+docker compose down --remove-orphans
 docker volume rm neoprint_openbao-file neoprint_openbao-logs
 rm -rf .openbao
-docker compose up
+docker compose up --remove-orphans
 ```
 
 > `.openbao/init.json` silinsə, amma volume qalsa, `openbao-init` unseal açarını tapmayıb
