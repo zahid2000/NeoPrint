@@ -180,12 +180,20 @@ Log-lar `docker compose logs rustfs` ilə görünür (stdout-a yazılır).
 Sizin lokal `.env.openbao-seed` faylınız hələ köhnə (MinIO) dəyərlərdədir və
 `openbao-init` artıq dəyəri olan secret-ə **toxunmur**. Köhnə konteynerlər
 (`neoprint-minio`, `neoprint-scality`, `neoprint-zenko*`) 9000/9001/8000
-portlarını tutur. İki yol:
+portlarını tutur. Əlamət — `docker compose up` bu xəta ilə dayanır:
+
+```
+Bind for 0.0.0.0:9001 failed: port is already allocated
+```
+
+Köhnə servislər yeni compose faylında olmadığı üçün `docker compose up` onları
+özü dayandırmır. İki yol:
 
 **A. Sıfırdan (tövsiyə olunur, bütün lokal data silinir):**
 
 ```bash
 docker compose down -v --remove-orphans
+docker volume rm neoprint_minio-data 2>/dev/null  # köhnə servisin volume-u compose-dan kənarda qalır
 cp .env.openbao-seed .env.openbao-seed.bak        # köhnəsini saxlayın
 cp .env.openbao-seed.example .env.openbao-seed    # RustFS dəyərləri
 docker compose up -d --build
