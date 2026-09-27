@@ -152,9 +152,13 @@ public static class ContentSignature
     /// <remarks>
     /// Only the local file header that the archive starts with is read, which
     /// is where the first entry's name sits. That is enough to separate the
-    /// three families - OOXML starts with <c>[Content_Types].xml</c>,
-    /// OpenDocument with <c>mimetype</c>, XPS with a fixed part name - without
-    /// decompressing anything.
+    /// families without decompressing anything - but which part comes first
+    /// depends on the program that wrote the file, not on the format:
+    /// Microsoft Office starts OOXML with <c>[Content_Types].xml</c>,
+    /// LibreOffice with <c>_rels/.rels</c>, other tools with a part of the
+    /// document itself; Ghostscript starts XPS with
+    /// <c>FixedDocumentSequence.fdseq</c>. OpenDocument always starts with
+    /// <c>mimetype</c>, as its specification requires.
     /// </remarks>
     private static SignatureResult FromZip(ReadOnlySpan<byte> header, FileFormat? declared)
     {
@@ -163,7 +167,7 @@ public static class ContentSignature
         var family = text.Contains("mimetype", StringComparison.Ordinal)
                      || text.Contains("opendocument", StringComparison.Ordinal)
             ? FamilyOpenDocument
-            : text.Contains("[Content_Types].xml", StringComparison.Ordinal)
+            : OoxmlFirstParts.Any(part => text.Contains(part, StringComparison.Ordinal))
                 ? FamilyOoxml
                 : null;
 
@@ -184,6 +188,23 @@ public static class ContentSignature
         return SignatureResult.Unrecognised(
             "Faylın uzantısı onun daxili quruluşu ilə uyğun gəlmir.");
     }
+
+    /// <summary>
+    /// Names an OOXML or XPS package can start with: the package parts, then
+    /// the folders of each document type.
+    /// </summary>
+    private static readonly string[] OoxmlFirstParts =
+    [
+        "[Content_Types].xml",
+        "_rels/.rels",
+        "docProps/",
+        "word/",
+        "xl/",
+        "ppt/",
+        "FixedDocumentSequence.fdseq",
+        "FixedDocSeq.fdseq",
+        "Documents/",
+    ];
 
     private static readonly string[] FamilyOoxml =
         ["docx", "docm", "dotx", "xlsx", "xlsm", "xltx", "pptx", "ppsx", "potx", "xps", "oxps"];

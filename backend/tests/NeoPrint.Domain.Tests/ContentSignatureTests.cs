@@ -101,6 +101,21 @@ public sealed class ContentSignatureTests
         Identify([.. zip], "deck.pptx").Format?.Extension.Should().Be("pptx");
     }
 
+    [Theory]
+    // Which part comes first depends on the program that wrote the file.
+    [InlineData("_rels/.rels", "report.docx")] // LibreOffice
+    [InlineData("docProps/app.xml", "budget.xlsx")]
+    [InlineData("ppt/presentation.xml", "deck.pptx")]
+    [InlineData("FixedDocumentSequence.fdseq", "print.xps")] // Ghostscript
+    [InlineData("_rels/.rels", "print.oxps")]
+    public void An_ooxml_or_xps_package_is_recognised_whatever_part_it_starts_with(string firstPart, string name)
+    {
+        var zip = new List<byte> { 0x50, 0x4B, 0x03, 0x04 };
+        zip.AddRange(Bytes(new string(' ', 26) + firstPart));
+
+        Identify([.. zip], name).Format?.Extension.Should().Be(Path.GetExtension(name)[1..]);
+    }
+
     [Fact]
     public void An_ooxml_document_with_an_extension_from_another_family_is_refused()
     {

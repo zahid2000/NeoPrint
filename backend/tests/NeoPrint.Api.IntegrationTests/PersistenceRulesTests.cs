@@ -95,8 +95,14 @@ public sealed class PersistenceRulesTests
             Path.Combine(InfrastructureRoot(), "Persistence", "MongoTransactionRunner.cs"));
 
         runner.Should().Contain(
-            "_context.Enlist(session)",
+            "_context.Enlist(_outbox.Session",
             "starting a transaction whose session nothing uses is the bug this replaced");
+
+        // And the transaction is the outbox's own: committing a session of our
+        // own left the published events buffered and never written.
+        runner.Should().Contain("_outbox.BeginTransaction(")
+            .And.Contain("_outbox.CommitTransaction(")
+            .And.NotContain("StartSessionAsync", "a second session would not carry the outbox");
     }
 
     private static IEnumerable<string> InfrastructureSources()

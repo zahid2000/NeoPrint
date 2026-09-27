@@ -78,9 +78,15 @@ public sealed class S3FileStorage : IFileStorage
             string hash;
             long encryptedLength;
 
+            // Counted on the way through: an upload arrives as a stream whose
+            // length is not known up front, and the encryptor then records
+            // the length as unknown. The file's size - what quotas and limits
+            // are checked against - is what was actually read.
+            var counted = new CountingReadStream(content);
+
             await using (var buffer = File.Create(scratch))
             {
-                header = await _encryptor.EncryptAsync(content, buffer, cancellationToken)
+                header = await _encryptor.EncryptAsync(counted, buffer, cancellationToken)
                     .ConfigureAwait(false);
 
                 await buffer.FlushAsync(cancellationToken).ConfigureAwait(false);
@@ -140,7 +146,7 @@ public sealed class S3FileStorage : IFileStorage
                 key,
                 hash,
                 encryptedLength,
-                header.PlaintextLength,
+                counted.BytesRead,
                 header.KekId);
         }
         finally
@@ -496,5 +502,52 @@ public sealed class S3FileStorage : IFileStorage
             // A leftover temporary file is cleaned up by the operating system;
             // failing the request over it would be worse.
         }
+    }
+
+    /// <summary>Passes reads through and counts the bytes.</summary>
+    private sealed class CountingReadStream(Stream inner) : Stream
+    {
+        public long BytesRead { get; private set; }
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            var read = inner.Read(buffer, offset, count);
+            BytesRead += read;
+            return read;
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var read = await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            BytesRead += read;
+            return read;
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 }

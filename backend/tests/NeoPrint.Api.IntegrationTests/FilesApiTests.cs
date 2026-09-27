@@ -91,11 +91,24 @@ public sealed class FilesApiTests
         created.GetProperty("fileName").GetString().Should().Be("hesabat.pdf");
         created.GetProperty("status").GetString().Should().Be("Pending");
 
+        // The upload is streamed, so its length is counted rather than known
+        // up front - and quotas and limits are checked against this number.
+        created.GetProperty("sizeBytes").GetInt64().Should().Be(Pdf().Length);
+
         var list = await client.GetFromJsonAsync<JsonElement>("/api/files");
 
         list.GetProperty("total").GetInt64().Should().Be(1);
         list.GetProperty("items")[0].GetProperty("id").GetString()
             .Should().Be(created.GetProperty("id").GetString());
+
+        // And the quota adds up real sizes, or it would never fill.
+        await client.PostAsync("/api/files", Upload(Pdf("second"), "ikinci.pdf", "application/pdf"));
+
+        using var scope = _fixture.Services.CreateScope();
+        var files = scope.ServiceProvider.GetRequiredService<NeoPrint.Application.Files.IFileRepository>();
+        var file = await files.FindByIdAsync(created.GetProperty("id").GetGuid());
+
+        (await files.TotalBytesAsync(file!.UserId)).Should().Be(Pdf().Length + Pdf("second").Length);
     }
 
     [DockerFact]
@@ -543,6 +556,34 @@ public sealed class FilesApiTests
         (await owner.GetAsync($"/api/files/{id}/pages/3.png")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await owner.GetAsync($"/api/files/{id}/pages/0.png")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await stranger.GetAsync($"/api/files/{id}/pages/1.png")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [PdfiumFact]
+    public async Task An_upload_is_converted_by_the_bus_on_its_own()
+    {
+        // Nothing here converts the file: the upload's event has to reach the
+        // conversion consumer through the outbox and the broker. Before the
+        // outbox shared the command's transaction, the event was buffered and
+        // never written, and every file stayed Pending (docs/DECISIONS.md).
+        using var user = await SignedInAsync();
+
+        var upload = await user.PostAsync(
+            "/api/files", Upload(ConversionTests.OnePagePdf(2), "bus.pdf", "application/pdf"));
+        upload.StatusCode.Should().Be(HttpStatusCode.Created, await upload.Content.ReadAsStringAsync());
+
+        var id = (await upload.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        JsonElement file;
+
+        do
+        {
+            await Task.Delay(250);
+            file = await FileAsync(user, id);
+        }
+        while (file.GetProperty("status").GetString() is "Pending" or "Converting" && DateTime.UtcNow < deadline);
+
+        file.GetProperty("status").GetString().Should().Be("Ready", file.ToString());
+        file.GetProperty("pageCount").GetInt32().Should().Be(2);
     }
 
     [Fact]
