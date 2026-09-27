@@ -1,6 +1,28 @@
 /// The formats docs/DESIGN_SYSTEM.md section 6 fixes for every screen, in one
-/// place so no widget formats a date or a size its own way.
+/// place so no widget formats a date, a size or money its own way. The admin
+/// panel (shared/format.pipes.ts) and the kiosk (Localization/Formats.cs)
+/// follow the same table: dates read the same in every language, numbers take
+/// a decimal comma in az and ru and a decimal point in en.
 library;
+
+/// Decimal and thousands separators for a language code.
+({String decimal, String group}) _separators(String language) =>
+    language == 'en'
+    ? (decimal: '.', group: ',')
+    : (decimal: ',', group: '\u00a0');
+
+String _grouped(String digits, String separator) =>
+    digits.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => separator);
+
+/// `1 240,00 ₼` (az, ru) or `1,240.00 ₼` (en).
+String formatMoney(num amount, {String language = 'az'}) {
+  final separators = _separators(language);
+  final parts = amount.abs().toStringAsFixed(2).split('.');
+  final sign = amount < 0 ? '−' : '';
+
+  return '$sign${_grouped(parts[0], separators.group)}'
+      '${separators.decimal}${parts[1]}\u00a0₼';
+}
 
 String _two(int value) => value.toString().padLeft(2, '0');
 
@@ -31,9 +53,9 @@ String formatDateTime(
   return '${_two(local.day)}.${_two(local.month)}.${local.year} $time';
 }
 
-/// `12,5 MB`: the largest unit that keeps the number readable, with the same
-/// decimal comma as money.
-String formatBytes(int bytes) {
+/// `12,5 MB` (az, ru) or `12.5 MB` (en): the largest unit that keeps the
+/// number readable.
+String formatBytes(int bytes, {String language = 'az'}) {
   const units = ['B', 'KB', 'MB', 'GB'];
   var value = bytes.toDouble();
   var unit = 0;
@@ -47,5 +69,5 @@ String formatBytes(int bytes) {
       ? value.toStringAsFixed(0)
       : value.toStringAsFixed(value < 10 ? 1 : 0);
 
-  return '${text.replaceAll('.', ',')} ${units[unit]}';
+  return '${text.replaceAll('.', _separators(language).decimal)}\u00a0${units[unit]}';
 }

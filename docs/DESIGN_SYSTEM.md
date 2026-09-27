@@ -101,7 +101,7 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 
 **Düymələr.** Üç növ: `primary` (dolu, brend rəngi), `secondary` (kənarlı), `ghost` (yalnız mətn). Dağıdıcı əməliyyat üçün `danger` variantı. Ekranda bir primary. Yüklənmə zamanı düymə deaktiv olur və içində spinner göstərilir, mətn dəyişmir. Kioskda düymə hündürlüyü ≥ 72 px.
 
-**Inputlar.** Yuxarıda etiket (placeholder etiket əvəzi deyil), altında köməkçi mətn. Xəta: qırmızı kənar + altında izah + ikon. Xəta yalnız sahə tərk ediləndə və ya göndərmə cəhdində göstərilir, hər hərfdə yox. Kioskda hər input fokuslananda ekran klaviaturası açılır.
+**Inputlar.** Admin paneldə bütün form sahələri eyni görünüşdədir (Material `outline`), mərkəzi olaraq `MAT_FORM_FIELD_DEFAULT_OPTIONS`-da təyin olunur — şablonda `appearance` yazılmır. Sahə ilə yanındakı düymə bir sətirdədirsə, hər ikisi `--control-height-lg` hündürlüyündədir. Yuxarıda etiket (placeholder etiket əvəzi deyil), altında köməkçi mətn. Xəta: qırmızı kənar + altında izah + ikon. Xəta yalnız sahə tərk ediləndə və ya göndərmə cəhdində göstərilir, hər hərfdə yox. Kioskda hər input fokuslananda ekran klaviaturası açılır.
 
 **Kartlar.** `--neutral-0` fon, `--neutral-200` kənar, `--radius-md`, daxili boşluq 16 (kiosk 24).
 
@@ -161,11 +161,22 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 ## 6. Məzmun və format qaydaları
 
 - **Pul:** `12,50 ₼` (vergül onluq ayırıcı, min ayırıcısı boşluq: `1 240,00 ₼`).
+- **Dilə görə format** — hər tətbiqdə bir mərkəzi helper (admin `shared/format.pipes.ts`, mobil `core/format/formats.dart`, kiosk `Localization/Formats.cs`); şablon/widget öz formatını yazmır:
+
+  | | az | en | ru |
+  |---|---|---|---|
+  | Tarix + saat | `27.09.2026 18:33` | `27.09.2026 18:33` | `27.09.2026 18:33` |
+  | Bu gün / dünən | `Bu gün 14:20` / `Dünən 14:20` | `Today 14:20` / `Yesterday 14:20` | `Сегодня 14:20` / `Вчера 14:20` |
+  | Pul | `1 240,00 ₼` | `1,240.00 ₼` | `1 240,00 ₼` |
+  | Ölçü, say | `1,5 MB`, `12 480` | `1.5 MB`, `12,480` | `1,5 MB`, `12 480` |
+
+  Tarix hər dildə eyni rəqəm formatındadır (ay/gün qarışıqlığı olmasın, 24 saat); dilə görə yalnız sözlər və onluq/min ayırıcısı dəyişir.
 - **Tarix:** `dd.MM.yyyy`, **saat:** `HH:mm` (24 saat). Bu gün/dünən üçün nisbi yazı ("Bu gün 14:20").
 - **Səhifə/vərəq:** "12 səhifə", "6 vərəq" — qısaltma işlədilmir.
 - **Mətn tonu:** sadə, birbaşa, "siz" formasında. Texniki termin əvəzinə gündəlik söz ("əlaqə yoxdur" ≠ "connection timeout").
 - **Xəta nümunəsi:** «Ödəniş tamamlanmadı. Məbləğ kartınızdan çıxılmayıb. Yenidən cəhd edin və ya başqa ödəniş üsulu seçin.»
 - **Lokalizasiya:** az (default), en, ru. Layout mətnin 40% uzanmasına dözməlidir; düymələrdə mətn kəsilmir, sətir aşağı keçir. Heç bir mətn koda yazılmır.
+- **Tərcümə yoxlaması** (hər üç tətbiqin test dəstində, CI-da): hər açar üç dildə var və boş deyil; placeholder-lər eynidir; ru mətnində kiril hərfi var; en mətnində Azərbaycan hərfi və kiril yoxdur; az mətni en ilə eyni deyil (brend/qısaltma istisnası: NeoPrint, Email, PDF, QR, PIN, USB, Kiosk, Printer, Status…); az mətnində ingilis texniki sözləri yoxdur — `token`, `flag`, `feature`, `enrollment`, `dashboard`, `default`, `override`, `rollout`, `provisioning`, `endpoint`, `mirror`, `primary`, `secondary`, `hash`, `job`, `queue`, `upload`, `download`, `error`, `network`. Qarşılıqlar: qeydiyyat açarı, funksiya açarı, idarə paneli, standart, fərdi ayar, açılma faizi, quraşdırma, server ünvanı, güzgü, əsas / ehtiyat, sifariş, növbə. Yoxlama: admin `translations.spec.ts`, mobil `test/l10n_test.dart`, kiosk `StringsQualityTests`.
 
 ---
 

@@ -147,7 +147,7 @@
                                                    Classes="body-small"
                                                    FontWeight="SemiBold"
                                                    Foreground="{DynamicResource Neutral900}" />
-                                        <TextBlock Text="{Binding Pages, StringFormat={}{0} səh.}"
+                                        <TextBlock Text="{Binding PagesText}"
                                                    Classes="caption" />
                                     </StackPanel>
                                     <Ellipse Grid.Column="2" Width="12" Height="12"

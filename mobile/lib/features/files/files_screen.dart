@@ -210,7 +210,10 @@ class _FileCard extends ConsumerWidget {
     final tokens = context.tokens;
 
     final details = [
-      formatBytes(file.sizeBytes),
+      formatBytes(
+        file.sizeBytes,
+        language: Localizations.localeOf(context).languageCode,
+      ),
       if (file.pageCount > 0) l10n.filesPageCount(file.pageCount),
       formatDateTime(
         file.createdAt,

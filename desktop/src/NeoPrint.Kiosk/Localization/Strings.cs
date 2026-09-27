@@ -52,7 +52,7 @@ public static class Strings
                 ["home.title"] = "Xoş gəlmisiniz",
                 ["home.printFromUsb"] = "Flash kartdan çap et",
                 ["home.scanMyQr"] = "QR kodumu oxut",
-                ["home.cancelByCode"] = "Job kodu ilə ləğv et",
+                ["home.cancelByCode"] = "Sifariş kodu ilə ləğv et",
 
                 ["notConfigured.title"] = "Kiosk quraşdırılır",
                 ["notConfigured.body"] = "Printer hələ seçilməyib. Bir az sonra yenidən cəhd edin.",
@@ -62,6 +62,12 @@ public static class Strings
                     "Növbədəki ödənilmiş işlər çap olunmağa davam edir. Yeni sifariş bir azdan qəbul edilə biləcək.",
                 ["offline.title"] = "İnternet bağlantısı yoxdur",
                 ["offline.body"] = "Yeni sifariş qəbul edilmir. Bağlantı bərpa olunanda kiosk özü işə qayıdır.",
+
+                ["format.today"] = "Bu gün",
+                ["format.yesterday"] = "Dünən",
+                ["format.pages.one"] = "{0} səhifə",
+                ["format.pages.few"] = "{0} səhifə",
+                ["format.pages.many"] = "{0} səhifə",
 
                 ["queue.title"] = "Növbə",
                 ["queue.empty"] = "Növbə boşdur",
@@ -103,6 +109,12 @@ public static class Strings
                 ["offline.title"] = "No internet connection",
                 ["offline.body"] = "New orders cannot be taken. The kiosk resumes on its own once the connection is back.",
 
+                ["format.today"] = "Today",
+                ["format.yesterday"] = "Yesterday",
+                ["format.pages.one"] = "{0} page",
+                ["format.pages.few"] = "{0} pages",
+                ["format.pages.many"] = "{0} pages",
+
                 ["queue.title"] = "Queue",
                 ["queue.empty"] = "The queue is empty",
                 ["queue.guest"] = "Guest",
@@ -142,6 +154,17 @@ public static class Strings
                     "Оплаченные задания в очереди продолжают печататься. Новые заказы можно будет оформить чуть позже.",
                 ["offline.title"] = "Нет подключения к интернету",
                 ["offline.body"] = "Новые заказы не принимаются. Киоск возобновит работу сам.",
+
+                ["format.today"] = "Сегодня",
+
+                ["format.yesterday"] = "Вчера",
+
+                ["format.pages.one"] = "{0} страница",
+
+                ["format.pages.few"] = "{0} страницы",
+
+                ["format.pages.many"] = "{0} страниц",
+
 
                 ["queue.title"] = "Очередь",
                 ["queue.empty"] = "Очередь пуста",
@@ -184,6 +207,13 @@ public static class Strings
 
     /// <summary>Every key in the default language, for the completeness test.</summary>
     public static IReadOnlyCollection<string> AllKeys => Catalogue[DefaultLanguage].Keys;
+
+    /// <summary>
+    /// The keys one language actually has - without the fallback <see cref="Get(string, string)"/>
+    /// applies, which would hide a missing translation behind the Azerbaijani text.
+    /// </summary>
+    public static IReadOnlyCollection<string> KeysOf(string language)
+        => Catalogue.TryGetValue(language, out var table) ? table.Keys : [];
 
     /// <summary>Whether a language has a table at all.</summary>
     public static bool IsSupported(string? language)

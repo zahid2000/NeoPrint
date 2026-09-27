@@ -39,7 +39,11 @@ public enum KioskScreen
 /// <param name="OwnerInitial">First letter of the owner's name, or empty when anonymous.</param>
 /// <param name="Pages">Page count.</param>
 /// <param name="IsPrinting">Whether this job is on the printer now.</param>
-public sealed record QueueEntry(int Position, string JobCode, string OwnerInitial, int Pages, bool IsPrinting);
+public sealed record QueueEntry(int Position, string JobCode, string OwnerInitial, int Pages, bool IsPrinting)
+{
+    /// <summary>"12 səhifə", in the kiosk's language (Localization.Formats).</summary>
+    public string PagesText { get; init; } = string.Empty;
+}
 
 /// <summary>
 /// The shell: header, footer and queue panel, with one changing central area
@@ -137,7 +141,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public string CancelByCodeText => T("home.cancelByCode");
 
     /// <summary>The wall clock, rendered in Asia/Baku (plan section 2.1).</summary>
-    public string ClockText => Now.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+    public string ClockText => Localization.Formats.Time(Now);
 
     /// <summary>Switches the interface language from the header.</summary>
     [RelayCommand]
@@ -232,7 +236,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         foreach (var entry in entries.Take(QueueDisplayLimit))
         {
-            Queue.Add(entry);
+            Queue.Add(entry with { PagesText = Localization.Formats.Pages(entry.Pages, Language) });
         }
     }
 
@@ -240,6 +244,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         Activation.Language = Language;
         base.OnLanguageChanged();
+
+        // The queue lines carry text of their own; word them again.
+        SetQueue([.. Queue]);
     }
 
     partial void OnKioskCodeChanged(string? value)

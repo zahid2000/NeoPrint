@@ -145,6 +145,14 @@ void main() {
       expect(formatBytes(512), '512 B');
       expect(formatBytes(1536), '1,5 KB');
       expect(formatBytes(12 * 1024 * 1024), '12 MB');
+      expect(formatBytes(1536, language: 'en'), '1.5\u00a0KB');
+    });
+
+    test('money follows the language', () {
+      expect(formatMoney(1240), '1\u00a0240,00\u00a0₼');
+      expect(formatMoney(12.5, language: 'ru'), '12,50\u00a0₼');
+      expect(formatMoney(1240, language: 'en'), '1,240.00\u00a0₼');
+      expect(formatMoney(-3), '−3,00\u00a0₼');
     });
   });
 
