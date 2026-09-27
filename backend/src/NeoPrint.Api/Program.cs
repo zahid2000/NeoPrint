@@ -150,6 +150,26 @@ builder.Services
             // third of that.
             ClockSkew = TimeSpan.FromSeconds(30),
         };
+
+        // A browser cannot put a header on a WebSocket or an EventSource
+        // request, so the SignalR client sends the token as ?access_token=.
+        // Taken from the query on hub paths only: everywhere else a token in
+        // a URL would end up in history, proxies and logs for no reason. The
+        // admin nginx logs request paths without the query (admin/nginx.conf).
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var token = context.Request.Query["access_token"];
+
+                if (!string.IsNullOrEmpty(token) && context.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = token;
+                }
+
+                return Task.CompletedTask;
+            },
+        };
     });
 
 builder.Services.AddAuthorization(options => options.AddNeoPrintPolicies());
