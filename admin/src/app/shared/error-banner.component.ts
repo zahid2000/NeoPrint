@@ -25,7 +25,12 @@ import { Problem } from './problem';
           <p class="banner__effect">{{ effect()! | translate }}</p>
         }
         @if (problem().correlationId) {
-          <button mat-button type="button" class="banner__details" (click)="detailsOpen.set(!detailsOpen())">
+          <button
+            mat-button
+            type="button"
+            class="banner__details"
+            (click)="detailsOpen.set(!detailsOpen())"
+          >
             {{ 'common.details' | translate }}
           </button>
           @if (detailsOpen()) {

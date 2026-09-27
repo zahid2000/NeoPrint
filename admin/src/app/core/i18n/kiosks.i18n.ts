@@ -9,7 +9,8 @@ export const kiosksTranslations: PageTranslations = {
       'Bütün kiosklar, statusu və yeri. Kiosk cihazsız yaradıla bilər; cihaz sonra "Cihazlar" səhifəsindən bağlanır.',
     'kiosks.new': 'Yeni kiosk',
     'kiosks.loadFailedEffect': 'Kiosklar göstərilə bilmir. Kioskların işinə təsir etmir.',
-    'kiosks.loadOneFailedEffect': 'Kiosk göstərilə bilmir. Səhifəni yeniləyin və ya siyahıya qayıdın.',
+    'kiosks.loadOneFailedEffect':
+      'Kiosk göstərilə bilmir. Səhifəni yeniləyin və ya siyahıya qayıdın.',
     'kiosks.empty': 'Hələ kiosk yoxdur.',
     'kiosks.emptyHint': 'Kiosk yaradın, sonra "Cihazlar" səhifəsində ona cihaz bağlayın.',
     'kiosks.clearFilters': 'Filtrləri təmizlə',
@@ -52,17 +53,17 @@ export const kiosksTranslations: PageTranslations = {
     'kiosks.lng': 'Uzunluq',
     'kiosks.mapPickLabel': 'Kioskun yerini seçin',
     'kiosks.mapPickHint': 'Xəritədə kioskun yerinə klikləyin və ya koordinatları yazın.',
-    'kiosks.language': 'Default dil',
-    'kiosks.queueLimit': 'Ekranda queue',
+    'kiosks.language': 'Standart dil',
+    'kiosks.queueLimit': 'Ekranda növbə',
     'kiosks.queueLimitHint': 'Kiosk ekranında göstərilən növbə sayı',
     'kiosks.limitsHint':
-      'Kioskun özünə aid limit. "Default" seçilibsə, Fayl formatları səhifəsindəki ümumi dəyər tətbiq olunur.',
-    'kiosks.sizeDefault': 'Maksimum ölçü: default ({{value}} MB)',
-    'kiosks.pagesDefault': 'Maksimum səhifə: default ({{value}})',
+      'Kioskun özünə aid limit. "Standart" seçilibsə, Fayl formatları səhifəsindəki ümumi dəyər tətbiq olunur.',
+    'kiosks.sizeDefault': 'Maksimum ölçü: standart ({{value}} MB)',
+    'kiosks.pagesDefault': 'Maksimum səhifə: standart ({{value}})',
     'kiosks.maxSize': 'Maksimum fayl ölçüsü',
     'kiosks.maxPages': 'Maksimum səhifə sayı',
     'kiosks.pricingProfile': 'Qiymət profili',
-    'kiosks.defaultProfile': 'Default profil',
+    'kiosks.defaultProfile': 'Standart profil',
     'kiosks.fiscalTerminal': 'Fiskal terminal ID',
     'kiosks.fiscalHint': 'E-kassa terminalının identifikatoru; boş ola bilər',
     'kiosks.paperHint':
@@ -75,7 +76,7 @@ export const kiosksTranslations: PageTranslations = {
     'kiosks.pinConfirm': 'PIN-i təkrarlayın',
     'kiosks.pinHint': '4–12 rəqəm',
     'kiosks.pinExplanation':
-      'PIN kiosk ekranındakı gizli admin çıxışını açır. Yalnız onun hash-i saxlanılır; PIN heç yerdə göstərilmir.',
+      'PIN kiosk ekranındakı gizli admin çıxışını açır. Serverdə PIN-in özü saxlanılmır və heç yerdə göstərilmir.',
     'kiosks.pinChangeExplanation':
       'Yeni PIN kiosk növbəti dəfə konfiqurasiyasını alanda qüvvəyə minir. Köhnə PIN göstərilmir, çünki saxlanılmır.',
     'kiosks.changePin': 'PIN-i dəyiş',
@@ -84,7 +85,8 @@ export const kiosksTranslations: PageTranslations = {
       'Kiosk birdəfəlik silinir. Yalnız heç vaxt cihaz bağlanmamış kiosk silinə bilər — tarixçəsi olan kiosk saxlanılır.',
     'kiosks.deleted': '{{code}} silindi.',
     'kiosks.noDevices': 'Bu kioska hələ cihaz bağlanmayıb.',
-    'kiosks.noDevicesHint': 'Kiosk tətbiqini quraşdırın və cihazı "Cihazlar" səhifəsindən bu kioska bağlayın.',
+    'kiosks.noDevicesHint':
+      'Kiosk tətbiqini quraşdırın və cihazı "Cihazlar" səhifəsindən bu kioska bağlayın.',
     'kiosks.goToDevices': 'Cihazlara keç',
     'kiosks.deviceColumn': 'Cihaz',
     'kiosks.deviceActive': 'Aktiv',
@@ -109,7 +111,8 @@ export const kiosksTranslations: PageTranslations = {
       'Every kiosk, its status and where it is. A kiosk can be created without a device; the device is attached later on the Devices page.',
     'kiosks.new': 'New kiosk',
     'kiosks.loadFailedEffect': 'The kiosks cannot be shown. The kiosks themselves keep working.',
-    'kiosks.loadOneFailedEffect': 'The kiosk cannot be shown. Refresh the page or go back to the list.',
+    'kiosks.loadOneFailedEffect':
+      'The kiosk cannot be shown. Refresh the page or go back to the list.',
     'kiosks.empty': 'There are no kiosks yet.',
     'kiosks.emptyHint': 'Create a kiosk, then attach a device to it on the Devices page.',
     'kiosks.clearFilters': 'Clear the filters',
@@ -155,7 +158,8 @@ export const kiosksTranslations: PageTranslations = {
     'kiosks.language': 'Default language',
     'kiosks.queueLimit': 'Queue on screen',
     'kiosks.queueLimitHint': 'How many queued jobs the kiosk screen shows',
-    'kiosks.limitsHint': 'Limits of this kiosk only. With "default", the value on the File formats page applies.',
+    'kiosks.limitsHint':
+      'Limits of this kiosk only. With "default", the value on the File formats page applies.',
     'kiosks.sizeDefault': 'Maximum size: default ({{value}} MB)',
     'kiosks.pagesDefault': 'Maximum pages: default ({{value}})',
     'kiosks.maxSize': 'Maximum file size',
@@ -183,7 +187,8 @@ export const kiosksTranslations: PageTranslations = {
       'The kiosk is deleted for good. Only a kiosk that never had a device can be deleted - one with a history is kept.',
     'kiosks.deleted': '{{code}} was deleted.',
     'kiosks.noDevices': 'No device has been attached to this kiosk yet.',
-    'kiosks.noDevicesHint': 'Install the kiosk application and attach the device to this kiosk on the Devices page.',
+    'kiosks.noDevicesHint':
+      'Install the kiosk application and attach the device to this kiosk on the Devices page.',
     'kiosks.goToDevices': 'Go to Devices',
     'kiosks.deviceColumn': 'Device',
     'kiosks.deviceActive': 'Active',
@@ -208,9 +213,11 @@ export const kiosksTranslations: PageTranslations = {
       'Все киоски, их статус и расположение. Киоск можно создать без устройства; устройство привязывается позже на странице «Устройства».',
     'kiosks.new': 'Новый киоск',
     'kiosks.loadFailedEffect': 'Не удаётся показать киоски. На работу самих киосков это не влияет.',
-    'kiosks.loadOneFailedEffect': 'Не удаётся показать киоск. Обновите страницу или вернитесь к списку.',
+    'kiosks.loadOneFailedEffect':
+      'Не удаётся показать киоск. Обновите страницу или вернитесь к списку.',
     'kiosks.empty': 'Киосков пока нет.',
-    'kiosks.emptyHint': 'Создайте киоск, затем привяжите к нему устройство на странице «Устройства».',
+    'kiosks.emptyHint':
+      'Создайте киоск, затем привяжите к нему устройство на странице «Устройства».',
     'kiosks.clearFilters': 'Сбросить фильтры',
     'kiosks.statusFilter': 'Статус',
     'kiosks.view': 'Вид',
@@ -283,7 +290,8 @@ export const kiosksTranslations: PageTranslations = {
       'Киоск удаляется навсегда. Удалить можно только киоск, к которому никогда не привязывалось устройство, — киоск с историей сохраняется.',
     'kiosks.deleted': '{{code}} удалён.',
     'kiosks.noDevices': 'К этому киоску ещё не привязано устройство.',
-    'kiosks.noDevicesHint': 'Установите приложение киоска и привяжите устройство к этому киоску на странице «Устройства».',
+    'kiosks.noDevicesHint':
+      'Установите приложение киоска и привяжите устройство к этому киоску на странице «Устройства».',
     'kiosks.goToDevices': 'К устройствам',
     'kiosks.deviceColumn': 'Устройство',
     'kiosks.deviceActive': 'Активно',
@@ -294,7 +302,8 @@ export const kiosksTranslations: PageTranslations = {
     'kiosks.deviceHint': 'При смене устройства у киоска сохраняются код, история и счётчики.',
     'kiosks.invalid.name': 'Укажите название киоска.',
     'kiosks.invalid.address': 'Укажите адрес.',
-    'kiosks.invalid.location': 'Выберите расположение киоска на карте или введите правильные координаты.',
+    'kiosks.invalid.location':
+      'Выберите расположение киоска на карте или введите правильные координаты.',
     'kiosks.invalid.code': 'Код должен быть в формате KSK-0000.',
     'kiosks.invalid.limits': 'Размер — 1–2048 МБ, страниц — 1–10 000.',
     'kiosks.invalid.paper': 'Вместимость — от 0 до 100 000 листов.',

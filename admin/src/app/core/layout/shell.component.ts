@@ -1,11 +1,4 @@
-import {
-  Component,
-  OnDestroy,
-  OnInit,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,11 +15,7 @@ import { AuthService } from '../auth/auth.service';
 import { AdminHubService } from '../realtime/admin-hub.service';
 import { ThemeService } from '../theme/theme.service';
 import { LiveIndicatorComponent } from '../../shared/live-indicator.component';
-import {
-  SupportedLanguage,
-  languageNames,
-  supportedLanguages,
-} from '../i18n/translations';
+import { SupportedLanguage, languageNames, supportedLanguages } from '../i18n/translations';
 
 /** One entry in the sidebar. */
 interface NavItem {
@@ -85,9 +74,7 @@ export class ShellComponent implements OnInit, OnDestroy {
    * What the toggle would do, not what is on screen now: a button says where
    * it takes you.
    */
-  readonly themeTooltip = computed(() =>
-    this.theme() === 'dark' ? 'theme.light' : 'theme.dark',
-  );
+  readonly themeTooltip = computed(() => (this.theme() === 'dark' ? 'theme.light' : 'theme.dark'));
   readonly sidenavOpen = signal(true);
 
   readonly languages = supportedLanguages.map((code) => ({

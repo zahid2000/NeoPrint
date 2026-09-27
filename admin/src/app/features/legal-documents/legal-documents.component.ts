@@ -1,5 +1,4 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -22,6 +21,7 @@ import {
 } from '../../core/api/admin-api.service';
 import { supportedLanguages } from '../../core/i18n/translations';
 import { describeError } from '../login/login.component';
+import { DateTimePipe } from '../../shared/format.pipes';
 
 /**
  * Legal documents (plan section 2.13).
@@ -35,7 +35,7 @@ import { describeError } from '../login/login.component';
   selector: 'app-legal-documents',
   imports: [
     ReactiveFormsModule,
-    DatePipe,
+    DateTimePipe,
     MatCardModule,
     MatTableModule,
     MatButtonModule,
@@ -85,9 +85,7 @@ export class LegalDocumentsComponent {
   });
 
   /** The version in force for each type and language. */
-  readonly current = computed(() =>
-    this.documents().filter((document) => document.isCurrent),
-  );
+  readonly current = computed(() => this.documents().filter((document) => document.isCurrent));
 
   constructor() {
     void this.reload();

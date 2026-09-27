@@ -80,29 +80,55 @@
               }
             </div>
 
-            <mat-form-field appearance="outline" class="neo-form__field">
+            <mat-form-field class="neo-form__field">
               <mat-label>{{ 'pricing.name' | translate }}</mat-label>
-              <input matInput required [ngModel]="draft().name" (ngModelChange)="update('name', $event)" />
+              <input
+                matInput
+                required
+                [ngModel]="draft().name"
+                (ngModelChange)="update('name', $event)"
+              />
             </mat-form-field>
 
             <div class="pricing__grid">
-              <mat-form-field appearance="outline">
+              <mat-form-field>
                 <mat-label>{{ 'pricing.bw' | translate }}</mat-label>
-                <input matInput type="number" min="0" step="0.01" [ngModel]="draft().bw" (ngModelChange)="update('bw', +$event)" />
+                <input
+                  matInput
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="draft().bw"
+                  (ngModelChange)="update('bw', +$event)"
+                />
                 <span matTextSuffix>₼</span>
                 <mat-hint>{{ 'pricing.perSide' | translate }}</mat-hint>
               </mat-form-field>
 
-              <mat-form-field appearance="outline">
+              <mat-form-field>
                 <mat-label>{{ 'pricing.color' | translate }}</mat-label>
-                <input matInput type="number" min="0" step="0.01" [ngModel]="draft().color" (ngModelChange)="update('color', +$event)" />
+                <input
+                  matInput
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="draft().color"
+                  (ngModelChange)="update('color', +$event)"
+                />
                 <span matTextSuffix>₼</span>
                 <mat-hint>{{ 'pricing.perSide' | translate }}</mat-hint>
               </mat-form-field>
 
-              <mat-form-field appearance="outline">
+              <mat-form-field>
                 <mat-label>{{ 'pricing.minOrder' | translate }}</mat-label>
-                <input matInput type="number" min="0" step="0.01" [ngModel]="draft().minOrder" (ngModelChange)="update('minOrder', +$event)" />
+                <input
+                  matInput
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="draft().minOrder"
+                  (ngModelChange)="update('minOrder', +$event)"
+                />
                 <span matTextSuffix>₼</span>
                 <mat-hint>{{ 'pricing.minOrderHint' | translate }}</mat-hint>
               </mat-form-field>
@@ -110,14 +136,28 @@
 
             <h3>{{ 'pricing.paper' | translate }}</h3>
             <div class="pricing__grid">
-              <mat-form-field appearance="outline">
+              <mat-form-field>
                 <mat-label>A4</mat-label>
-                <input matInput type="number" min="0.01" step="0.1" [ngModel]="draft().a4" (ngModelChange)="update('a4', +$event)" />
+                <input
+                  matInput
+                  type="number"
+                  min="0.01"
+                  step="0.1"
+                  [ngModel]="draft().a4"
+                  (ngModelChange)="update('a4', +$event)"
+                />
                 <span matTextSuffix>×</span>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field>
                 <mat-label>A3</mat-label>
-                <input matInput type="number" min="0.01" step="0.1" [ngModel]="draft().a3" (ngModelChange)="update('a3', +$event)" />
+                <input
+                  matInput
+                  type="number"
+                  min="0.01"
+                  step="0.1"
+                  [ngModel]="draft().a3"
+                  (ngModelChange)="update('a3', +$event)"
+                />
                 <span matTextSuffix>×</span>
               </mat-form-field>
             </div>
@@ -136,14 +176,29 @@
             } @else {
               @for (tier of draft().tiers; track $index) {
                 <div class="pricing__tier">
-                  <mat-form-field appearance="outline">
+                  <mat-form-field>
                     <mat-label>{{ 'pricing.tierFrom' | translate }}</mat-label>
-                    <input matInput type="number" min="1" step="1" [ngModel]="tier.minSides" (ngModelChange)="updateTier($index, 'minSides', +$event)" />
+                    <input
+                      matInput
+                      type="number"
+                      min="1"
+                      step="1"
+                      [ngModel]="tier.minSides"
+                      (ngModelChange)="updateTier($index, 'minSides', +$event)"
+                    />
                     <span matTextSuffix>{{ 'pricing.sides' | translate }}</span>
                   </mat-form-field>
-                  <mat-form-field appearance="outline">
+                  <mat-form-field>
                     <mat-label>{{ 'pricing.tierDiscount' | translate }}</mat-label>
-                    <input matInput type="number" min="0.1" max="99.9" step="0.5" [ngModel]="tier.discountPercent" (ngModelChange)="updateTier($index, 'discountPercent', +$event)" />
+                    <input
+                      matInput
+                      type="number"
+                      min="0.1"
+                      max="99.9"
+                      step="0.5"
+                      [ngModel]="tier.discountPercent"
+                      (ngModelChange)="updateTier($index, 'discountPercent', +$event)"
+                    />
                     <span matTextSuffix>%</span>
                   </mat-form-field>
                   <button
@@ -169,19 +224,35 @@
 
             <div class="pricing__actions">
               @if (!creating() && selected(); as profile) {
-                <button mat-button type="button" class="pricing__danger" [disabled]="profile.isDefault" (click)="remove()">
+                <button
+                  mat-button
+                  type="button"
+                  class="pricing__danger"
+                  [disabled]="profile.isDefault"
+                  (click)="remove()"
+                >
                   <mat-icon>delete</mat-icon>
                   {{ 'common.delete' | translate }}
                 </button>
                 @if (!profile.isDefault) {
-                  <button mat-stroked-button type="button" [disabled]="dirty()" (click)="makeDefault()">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="dirty()"
+                    (click)="makeDefault()"
+                  >
                     <mat-icon>star</mat-icon>
                     {{ 'pricing.makeDefault' | translate }}
                   </button>
                 }
               }
               <span class="pricing__spacer"></span>
-              <button mat-stroked-button type="button" [disabled]="!dirty() || saving()" (click)="revert()">
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!dirty() || saving()"
+                (click)="revert()"
+              >
                 {{ 'common.revert' | translate }}
               </button>
               <button mat-flat-button type="button" [disabled]="!canSave()" (click)="save()">
@@ -198,17 +269,32 @@
             <p class="neo-muted neo-body-small">{{ 'pricing.calculatorHint' | translate }}</p>
 
             <div class="pricing__grid">
-              <mat-form-field appearance="outline">
+              <mat-form-field>
                 <mat-label>{{ 'pricing.calc.pages' | translate }}</mat-label>
-                <input matInput type="number" min="1" [ngModel]="calculator().pageCount" (ngModelChange)="updateCalculator('pageCount', +$event)" />
+                <input
+                  matInput
+                  type="number"
+                  min="1"
+                  [ngModel]="calculator().pageCount"
+                  (ngModelChange)="updateCalculator('pageCount', +$event)"
+                />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field>
                 <mat-label>{{ 'pricing.calc.copies' | translate }}</mat-label>
-                <input matInput type="number" min="1" [ngModel]="calculator().copies" (ngModelChange)="updateCalculator('copies', +$event)" />
+                <input
+                  matInput
+                  type="number"
+                  min="1"
+                  [ngModel]="calculator().copies"
+                  (ngModelChange)="updateCalculator('copies', +$event)"
+                />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field>
                 <mat-label>{{ 'pricing.calc.perSheet' | translate }}</mat-label>
-                <mat-select [ngModel]="calculator().pagesPerSheet" (ngModelChange)="updateCalculator('pagesPerSheet', $event)">
+                <mat-select
+                  [ngModel]="calculator().pagesPerSheet"
+                  (ngModelChange)="updateCalculator('pagesPerSheet', $event)"
+                >
                   @for (n of [1, 2, 4]; track n) {
                     <mat-option [value]="n">{{ n }}</mat-option>
                   }
@@ -225,13 +311,24 @@
                 <mat-button-toggle value="A4">A4</mat-button-toggle>
                 <mat-button-toggle value="A3">A3</mat-button-toggle>
               </mat-button-toggle-group>
-              <mat-slide-toggle [ngModel]="calculator().color" (ngModelChange)="updateCalculator('color', $event)">
+              <mat-slide-toggle
+                [ngModel]="calculator().color"
+                (ngModelChange)="updateCalculator('color', $event)"
+              >
                 {{ 'pricing.calc.color' | translate }}
               </mat-slide-toggle>
-              <mat-slide-toggle [ngModel]="calculator().duplex" (ngModelChange)="updateCalculator('duplex', $event)">
+              <mat-slide-toggle
+                [ngModel]="calculator().duplex"
+                (ngModelChange)="updateCalculator('duplex', $event)"
+              >
                 {{ 'pricing.calc.duplex' | translate }}
               </mat-slide-toggle>
-              <button mat-stroked-button type="button" [disabled]="quoting() || problems().length > 0" (click)="calculate()">
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="quoting() || problems().length > 0"
+                (click)="calculate()"
+              >
                 @if (quoting()) {
                   <mat-spinner diameter="18" class="neo-button-spinner" />
                 }
@@ -258,7 +355,9 @@
                 <dt>{{ 'pricing.calc.base' | translate }}</dt>
                 <dd>{{ price.basePrice | money }}</dd>
                 @if (price.volumeDiscount > 0) {
-                  <dt>{{ 'pricing.calc.discount' | translate: { percent: price.discountPercent } }}</dt>
+                  <dt>
+                    {{ 'pricing.calc.discount' | translate: { percent: price.discountPercent } }}
+                  </dt>
                   <dd>−{{ price.volumeDiscount | money }}</dd>
                 }
                 @if (price.minimumApplied) {
@@ -275,7 +374,10 @@
             <section class="neo-card pricing__section" aria-labelledby="kiosks-title">
               <h2 id="kiosks-title">{{ 'pricing.kiosks' | translate }}</h2>
               <p class="neo-muted neo-body-small">
-                {{ (profile.isDefault ? 'pricing.kiosksDefaultHint' : 'pricing.kiosksHint') | translate }}
+                {{
+                  (profile.isDefault ? 'pricing.kiosksDefaultHint' : 'pricing.kiosksHint')
+                    | translate
+                }}
               </p>
 
               @if (pricedKiosks().length === 0) {
@@ -284,7 +386,9 @@
                 <ul class="pricing__kiosks">
                   @for (kiosk of pricedKiosks(); track kiosk.id) {
                     <li class="pricing__kiosk">
-                      <span><strong>{{ kiosk.code }}</strong> {{ kiosk.name }}</span>
+                      <span
+                        ><strong>{{ kiosk.code }}</strong> {{ kiosk.name }}</span
+                      >
                       @if (kiosk.pricingProfileId) {
                         @if (!profile.isDefault) {
                           <button mat-button type="button" (click)="unassign(kiosk)">
@@ -301,15 +405,26 @@
 
               @if (canSeeKiosks()) {
                 <div class="pricing__assign">
-                  <mat-form-field appearance="outline">
+                  <mat-form-field>
                     <mat-label>{{ 'pricing.addKiosks' | translate }}</mat-label>
-                    <mat-select multiple [ngModel]="kioskToAdd()" (ngModelChange)="kioskToAdd.set($event)">
+                    <mat-select
+                      multiple
+                      [ngModel]="kioskToAdd()"
+                      (ngModelChange)="kioskToAdd.set($event)"
+                    >
                       @for (kiosk of assignable(); track kiosk.id) {
-                        <mat-option [value]="kiosk.id">{{ kiosk.code }} — {{ kiosk.name }}</mat-option>
+                        <mat-option [value]="kiosk.id"
+                          >{{ kiosk.code }} — {{ kiosk.name }}</mat-option
+                        >
                       }
                     </mat-select>
                   </mat-form-field>
-                  <button mat-stroked-button type="button" [disabled]="kioskToAdd().length === 0" (click)="assignSelected()">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="kioskToAdd().length === 0"
+                    (click)="assignSelected()"
+                  >
                     {{ 'pricing.assign' | translate }}
                   </button>
                 </div>

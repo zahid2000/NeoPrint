@@ -1,6 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -25,6 +24,7 @@ import {
 import { AuthService } from '../../core/auth/auth.service';
 import { minimumAdminPasswordLength } from '../login/change-password.component';
 import { describeError } from '../login/login.component';
+import { DateTimePipe } from '../../shared/format.pipes';
 
 /**
  * Administrator and operator accounts (plan sections 8A.2, 8A.3).
@@ -37,7 +37,7 @@ import { describeError } from '../login/login.component';
   selector: 'app-admin-users',
   imports: [
     ReactiveFormsModule,
-    DatePipe,
+    DateTimePipe,
     MatCardModule,
     MatTableModule,
     MatButtonModule,
@@ -76,14 +76,7 @@ export class AdminUsersComponent {
 
   readonly showForm = signal(false);
 
-  readonly columns = [
-    'name',
-    'roles',
-    'scope',
-    'status',
-    'lastLogin',
-    'actions',
-  ] as const;
+  readonly columns = ['name', 'roles', 'scope', 'status', 'lastLogin', 'actions'] as const;
 
   readonly form = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],

@@ -1,4 +1,5 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import {
   ApplicationConfig,
   inject,
@@ -14,14 +15,13 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthService } from './core/auth/auth.service';
 import { ThemeService } from './core/theme/theme.service';
-import {
-  defaultLanguage,
-  supportedLanguages,
-  translations,
-} from './core/i18n/translations';
+import { defaultLanguage, supportedLanguages, translations } from './core/i18n/translations';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    // One look for every form field, set here rather than per template, so a
+    // redesign changes it in one place (docs/DESIGN_SYSTEM.md, "Inputlar").
+    { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { appearance: 'outline' } },
     provideBrowserGlobalErrorListeners(),
     provideZonelessChangeDetection(),
 
@@ -62,9 +62,7 @@ export const appConfig: ApplicationConfig = {
       }
 
       const stored = localStorage.getItem('neoprint.language');
-      const language = supportedLanguages.includes(
-        stored as (typeof supportedLanguages)[number],
-      )
+      const language = supportedLanguages.includes(stored as (typeof supportedLanguages)[number])
         ? stored!
         : defaultLanguage;
 

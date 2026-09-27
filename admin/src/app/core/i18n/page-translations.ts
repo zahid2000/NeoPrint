@@ -5,4 +5,6 @@
  * in translations.ts: the parity checks in translations.spec.ts cover them all
  * the same, and no single file grows past reading.
  */
-export type PageTranslations = Readonly<Record<'az' | 'en' | 'ru', Readonly<Record<string, string>>>>;
+export type PageTranslations = Readonly<
+  Record<'az' | 'en' | 'ru', Readonly<Record<string, string>>>
+>;

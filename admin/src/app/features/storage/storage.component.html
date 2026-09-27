@@ -1,5 +1,8 @@
 <div class="neo-page">
-  <app-page-header [title]="'storage.title' | translate" [description]="'storage.description' | translate">
+  <app-page-header
+    [title]="'storage.title' | translate"
+    [description]="'storage.description' | translate"
+  >
     <button mat-button type="button" (click)="rewrap()">
       <mat-icon>key</mat-icon>
       {{ 'storage.rewrap' | translate }}
@@ -21,7 +24,11 @@
     <app-error-banner [problem]="problem" effect="storage.loadFailedEffect" (retry)="load()" />
   }
 
-  <mat-tab-group [selectedIndex]="tab()" (selectedIndexChange)="tab.set($event)" animationDuration="150ms">
+  <mat-tab-group
+    [selectedIndex]="tab()"
+    (selectedIndexChange)="tab.set($event)"
+    animationDuration="150ms"
+  >
     <mat-tab [label]="'storage.tabProviders' | translate">
       <div class="storage__tab">
         @if (loading()) {
@@ -48,11 +55,14 @@
               </ng-container>
 
               <ng-container matColumnDef="endpoint">
-                <th mat-header-cell *matHeaderCellDef>{{ 'storage.provider.endpoint' | translate }}</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'storage.provider.endpoint' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let provider">
                   <code>{{ provider.endpoint }}</code>
                   <span class="neo-caption storage__buckets">
-                    {{ provider.buckets.files }} · {{ provider.buckets.receipts }} · {{ provider.buckets.temp }}
+                    {{ provider.buckets.files }} · {{ provider.buckets.receipts }} ·
+                    {{ provider.buckets.temp }}
                   </span>
                 </td>
               </ng-container>
@@ -62,14 +72,22 @@
                 <td mat-cell *matCellDef="let provider">
                   <app-status-chip
                     [status]="provider.role"
-                    [toneOverride]="provider.role === 'Primary' ? 'info' : provider.role === 'Secondary' ? 'success' : 'neutral'"
+                    [toneOverride]="
+                      provider.role === 'Primary'
+                        ? 'info'
+                        : provider.role === 'Secondary'
+                          ? 'success'
+                          : 'neutral'
+                    "
                     [text]="'storage.role.' + provider.role | translate"
                   />
                 </td>
               </ng-container>
 
               <ng-container matColumnDef="health">
-                <th mat-header-cell *matHeaderCellDef>{{ 'storage.provider.health' | translate }}</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'storage.provider.health' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let provider">
                   <app-status-chip
                     [status]="provider.healthStatus"
@@ -80,7 +98,9 @@
               </ng-container>
 
               <ng-container matColumnDef="checked">
-                <th mat-header-cell *matHeaderCellDef>{{ 'storage.provider.lastChecked' | translate }}</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'storage.provider.lastChecked' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let provider">{{ provider.lastCheckedAt | dateTime }}</td>
               </ng-container>
 
@@ -98,7 +118,12 @@
                     <mat-icon>more_vert</mat-icon>
                   </button>
                   <mat-menu #menu="matMenu">
-                    <button mat-menu-item type="button" [disabled]="busy()" (click)="testProvider(provider)">
+                    <button
+                      mat-menu-item
+                      type="button"
+                      [disabled]="busy()"
+                      (click)="testProvider(provider)"
+                    >
                       <mat-icon>network_check</mat-icon>
                       {{ 'storage.provider.test' | translate }}
                     </button>
@@ -107,23 +132,45 @@
                       {{ 'common.edit' | translate }}
                     </button>
                     @if (provider.role !== 'Primary') {
-                      <button mat-menu-item type="button" [disabled]="!provider.isVerified || activeJob() !== null" (click)="makePrimary(provider)">
+                      <button
+                        mat-menu-item
+                        type="button"
+                        [disabled]="!provider.isVerified || activeJob() !== null"
+                        (click)="makePrimary(provider)"
+                      >
                         <mat-icon>star</mat-icon>
                         {{ 'storage.provider.makePrimary' | translate }}
                       </button>
                     }
                     @if (provider.role === 'Inactive') {
-                      <button mat-menu-item type="button" [disabled]="!provider.isVerified || activeJob() !== null" (click)="makeSecondary(provider)">
+                      <button
+                        mat-menu-item
+                        type="button"
+                        [disabled]="!provider.isVerified || activeJob() !== null"
+                        (click)="makeSecondary(provider)"
+                      >
                         <mat-icon>sync_alt</mat-icon>
                         {{ 'storage.provider.makeSecondary' | translate }}
                       </button>
-                      <button mat-menu-item type="button" class="storage__danger" [disabled]="activeJob() !== null" (click)="deleteProvider(provider)">
+                      <button
+                        mat-menu-item
+                        type="button"
+                        class="storage__danger"
+                        [disabled]="activeJob() !== null"
+                        (click)="deleteProvider(provider)"
+                      >
                         <mat-icon>delete</mat-icon>
                         {{ 'common.delete' | translate }}
                       </button>
                     }
                     @if (provider.role === 'Secondary') {
-                      <button mat-menu-item type="button" class="storage__danger" [disabled]="activeJob() !== null" (click)="deactivate(provider)">
+                      <button
+                        mat-menu-item
+                        type="button"
+                        class="storage__danger"
+                        [disabled]="activeJob() !== null"
+                        (click)="deactivate(provider)"
+                      >
                         <mat-icon>link_off</mat-icon>
                         {{ 'storage.provider.deactivate' | translate }}
                       </button>
@@ -162,15 +209,25 @@
             }
           </div>
         } @else if (jobs().length === 0) {
-          <app-empty-state icon="sync" [message]="'storage.sync.empty' | translate" [hint]="'storage.sync.emptyHint' | translate">
-            <button mat-flat-button type="button" (click)="newSync()">{{ 'storage.sync.new' | translate }}</button>
+          <app-empty-state
+            icon="sync"
+            [message]="'storage.sync.empty' | translate"
+            [hint]="'storage.sync.emptyHint' | translate"
+          >
+            <button mat-flat-button type="button" (click)="newSync()">
+              {{ 'storage.sync.new' | translate }}
+            </button>
           </app-empty-state>
         } @else {
           <div class="neo-table-wrapper">
             <table mat-table class="neo-table" [dataSource]="jobs()">
               <ng-container matColumnDef="mode">
-                <th mat-header-cell *matHeaderCellDef>{{ 'storage.sync.modeColumn' | translate }}</th>
-                <td mat-cell *matCellDef="let job">{{ 'storage.sync.mode.' + job.mode | translate }}</td>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'storage.sync.modeColumn' | translate }}
+                </th>
+                <td mat-cell *matCellDef="let job">
+                  {{ 'storage.sync.mode.' + job.mode | translate }}
+                </td>
               </ng-container>
 
               <ng-container matColumnDef="route">
@@ -178,15 +235,25 @@
                 <td mat-cell *matCellDef="let job">
                   {{ job.sourceName }} → {{ job.targetName }}
                   @if (job.switchPrimaryOnComplete) {
-                    <mat-icon class="storage__inline-icon" [matTooltip]="'storage.sync.switchesPrimary' | translate" [attr.aria-label]="'storage.sync.switchesPrimary' | translate">star</mat-icon>
+                    <mat-icon
+                      class="storage__inline-icon"
+                      [matTooltip]="'storage.sync.switchesPrimary' | translate"
+                      [attr.aria-label]="'storage.sync.switchesPrimary' | translate"
+                      >star</mat-icon
+                    >
                   }
                 </td>
               </ng-container>
 
               <ng-container matColumnDef="status">
-                <th mat-header-cell *matHeaderCellDef>{{ 'storage.sync.statusColumn' | translate }}</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'storage.sync.statusColumn' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let job">
-                  <app-status-chip [status]="job.status" [text]="'storage.sync.status.' + job.status | translate" />
+                  <app-status-chip
+                    [status]="job.status"
+                    [text]="'storage.sync.status.' + job.status | translate"
+                  />
                   @if (job.failureReason) {
                     <span class="neo-caption storage__reason">{{ job.failureReason }}</span>
                   }
@@ -194,11 +261,17 @@
               </ng-container>
 
               <ng-container matColumnDef="objects">
-                <th mat-header-cell *matHeaderCellDef>{{ 'storage.progress.objects' | translate }}</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'storage.progress.objects' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let job">
                   {{ job.copiedObjects | count }} / {{ job.totalObjects | count }}
                   @if (job.failedObjects > 0) {
-                    <span class="storage__failed">({{ 'storage.sync.failedCount' | translate: { count: job.failedObjects } }})</span>
+                    <span class="storage__failed"
+                      >({{
+                        'storage.sync.failedCount' | translate: { count: job.failedObjects }
+                      }})</span
+                    >
                   }
                 </td>
               </ng-container>
@@ -209,24 +282,36 @@
               </ng-container>
 
               <ng-container matColumnDef="started">
-                <th mat-header-cell *matHeaderCellDef>{{ 'storage.sync.startedAt' | translate }}</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'storage.sync.startedAt' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let job">{{ job.startedAt | dateTime }}</td>
               </ng-container>
 
               <ng-container matColumnDef="finished">
-                <th mat-header-cell *matHeaderCellDef>{{ 'storage.sync.finishedAt' | translate }}</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'storage.sync.finishedAt' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let job">
                   {{ job.finishedAt | dateTime }}
                   @switch (purgeState(job)) {
                     @case ('waiting') {
-                      <span class="neo-caption storage__purge">{{ 'storage.purge.waiting' | translate: { date: purgeDate(job) } }}</span>
+                      <span class="neo-caption storage__purge">{{
+                        'storage.purge.waiting' | translate: { date: purgeDate(job) }
+                      }}</span>
                     }
                     @case ('running') {
-                      <span class="neo-caption storage__purge">{{ 'storage.purge.running' | translate: { count: job.sourcePurgedObjects } }}</span>
+                      <span class="neo-caption storage__purge">{{
+                        'storage.purge.running' | translate: { count: job.sourcePurgedObjects }
+                      }}</span>
                     }
                     @case ('done') {
                       <span class="neo-caption storage__purge">
-                        {{ 'storage.purge.done' | translate: { deleted: job.sourcePurgedObjects, kept: job.sourceKeptObjects } }}
+                        {{
+                          'storage.purge.done'
+                            | translate
+                              : { deleted: job.sourcePurgedObjects, kept: job.sourceKeptObjects }
+                        }}
                       </span>
                     }
                   }
@@ -238,7 +323,12 @@
                   <span class="cdk-visually-hidden">{{ 'storage.actions' | translate }}</span>
                 </th>
                 <td mat-cell *matCellDef="let job" class="storage__actions">
-                  <button mat-icon-button type="button" [matMenuTriggerFor]="jobMenu" [attr.aria-label]="'storage.actions' | translate">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    [matMenuTriggerFor]="jobMenu"
+                    [attr.aria-label]="'storage.actions' | translate"
+                  >
                     <mat-icon>more_vert</mat-icon>
                   </button>
                   <mat-menu #jobMenu="matMenu">
@@ -247,13 +337,23 @@
                       {{ 'storage.progress.showFailures' | translate }}
                     </button>
                     @if (job.status === 'Failed') {
-                      <button mat-menu-item type="button" [disabled]="busy() || activeJob() !== null" (click)="control(job, 'retry-failed')">
+                      <button
+                        mat-menu-item
+                        type="button"
+                        [disabled]="busy() || activeJob() !== null"
+                        (click)="control(job, 'retry-failed')"
+                      >
                         <mat-icon>refresh</mat-icon>
                         {{ 'storage.sync.retryFailed' | translate }}
                       </button>
                     }
                     @if (purgeState(job) === 'ready') {
-                      <button mat-menu-item type="button" class="storage__danger" (click)="purge(job)">
+                      <button
+                        mat-menu-item
+                        type="button"
+                        class="storage__danger"
+                        (click)="purge(job)"
+                      >
                         <mat-icon>delete_sweep</mat-icon>
                         {{ 'storage.purge.action' | translate }}
                       </button>

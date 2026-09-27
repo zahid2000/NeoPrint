@@ -1,8 +1,5 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, beforeEach, afterEach, expect, it } from 'vitest';
@@ -84,9 +81,7 @@ describe('authInterceptor', () => {
   it('refreshes once and retries the request after a 401', async () => {
     const response = http.get('/api/admin/devices').toPromise();
 
-    backend
-      .expectOne('/api/admin/devices')
-      .flush('', { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/api/admin/devices').flush('', { status: 401, statusText: 'Unauthorized' });
 
     backend.expectOne('/api/auth/admin/refresh').flush(refreshed);
 
@@ -104,12 +99,8 @@ describe('authInterceptor', () => {
     const first = http.get('/api/admin/devices').toPromise();
     const second = http.get('/api/admin/roles').toPromise();
 
-    backend
-      .expectOne('/api/admin/devices')
-      .flush('', { status: 401, statusText: 'Unauthorized' });
-    backend
-      .expectOne('/api/admin/roles')
-      .flush('', { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/api/admin/devices').flush('', { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/api/admin/roles').flush('', { status: 401, statusText: 'Unauthorized' });
 
     // One refresh, not two: the refresh token rotates on use, so a second
     // call would be treated as a replay and revoke the whole chain
@@ -128,9 +119,7 @@ describe('authInterceptor', () => {
   it('signs the panel out when the refresh is refused too', async () => {
     const response = http.get('/api/admin/devices').toPromise();
 
-    backend
-      .expectOne('/api/admin/devices')
-      .flush('', { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/api/admin/devices').flush('', { status: 401, statusText: 'Unauthorized' });
 
     backend
       .expectOne('/api/auth/admin/refresh')
@@ -144,9 +133,7 @@ describe('authInterceptor', () => {
   it('passes a 403 straight through without refreshing', async () => {
     const response = http.get('/api/admin/roles').toPromise();
 
-    backend
-      .expectOne('/api/admin/roles')
-      .flush('', { status: 403, statusText: 'Forbidden' });
+    backend.expectOne('/api/admin/roles').flush('', { status: 403, statusText: 'Forbidden' });
 
     await expect(response).rejects.toBeTruthy();
 

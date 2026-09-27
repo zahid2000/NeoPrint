@@ -1,12 +1,7 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import {
-  MAT_DIALOG_DATA,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -24,6 +19,7 @@ import {
   KioskListItem,
 } from '../../core/api/admin-api.service';
 import { describeError } from '../login/login.component';
+import { DateTimePipe } from '../../shared/format.pipes';
 
 /**
  * The kiosk admin PIN length the panel asks for.
@@ -44,7 +40,7 @@ export const adminPinLength = 6;
   selector: 'app-activate-device',
   imports: [
     ReactiveFormsModule,
-    DatePipe,
+    DateTimePipe,
     MatDialogModule,
     MatStepperModule,
     MatButtonModule,
@@ -63,9 +59,7 @@ export class ActivateDeviceDialogComponent {
   private readonly api = inject(AdminApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialogRef =
-    inject<MatDialogRef<ActivateDeviceDialogComponent, ActivateDeviceResult>>(
-      MatDialogRef,
-    );
+    inject<MatDialogRef<ActivateDeviceDialogComponent, ActivateDeviceResult>>(MatDialogRef);
 
   readonly device = inject<DeviceDetails>(MAT_DIALOG_DATA);
 

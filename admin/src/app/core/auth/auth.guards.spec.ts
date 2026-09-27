@@ -1,8 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import {
   ActivatedRouteSnapshot,
@@ -85,9 +82,7 @@ describe('route guards', () => {
     it('lets a signed-in administrator through', async () => {
       await signIn();
 
-      expect(
-        TestBed.runInInjectionContext(() => authGuard(route, state('/devices'))),
-      ).toBe(true);
+      expect(TestBed.runInInjectionContext(() => authGuard(route, state('/devices')))).toBe(true);
     });
 
     it('holds the panel on the password screen while a change is outstanding', async () => {
@@ -103,11 +98,9 @@ describe('route guards', () => {
     it('does not redirect the password screen to itself', async () => {
       await signIn({ mustChangePassword: true });
 
-      expect(
-        TestBed.runInInjectionContext(() =>
-          authGuard(route, state('/change-password')),
-        ),
-      ).toBe(true);
+      expect(TestBed.runInInjectionContext(() => authGuard(route, state('/change-password')))).toBe(
+        true,
+      );
     });
   });
 
@@ -117,9 +110,7 @@ describe('route guards', () => {
 
       const guard = permissionGuard('devices.view');
 
-      expect(TestBed.runInInjectionContext(() => guard(route, state('/devices')))).toBe(
-        true,
-      );
+      expect(TestBed.runInInjectionContext(() => guard(route, state('/devices')))).toBe(true);
     });
 
     it('sends an account without the permission to the dashboard', async () => {
@@ -127,9 +118,7 @@ describe('route guards', () => {
 
       const guard = permissionGuard('roles.manage');
 
-      const result = TestBed.runInInjectionContext(() =>
-        guard(route, state('/roles')),
-      ) as UrlTree;
+      const result = TestBed.runInInjectionContext(() => guard(route, state('/roles'))) as UrlTree;
 
       expect(result).toBeInstanceOf(UrlTree);
       expect(result.toString()).toBe('/');
@@ -140,17 +129,15 @@ describe('route guards', () => {
 
       const guard = permissionGuard('devices.view', 'devices.enroll');
 
-      expect(TestBed.runInInjectionContext(() => guard(route, state('/devices')))).toBe(
-        true,
-      );
+      expect(TestBed.runInInjectionContext(() => guard(route, state('/devices')))).toBe(true);
     });
   });
 
   describe('anonymousGuard', () => {
     it('lets an anonymous visitor reach sign-in', () => {
-      expect(
-        TestBed.runInInjectionContext(() => anonymousGuard(route, state('/login'))),
-      ).toBe(true);
+      expect(TestBed.runInInjectionContext(() => anonymousGuard(route, state('/login')))).toBe(
+        true,
+      );
     });
 
     it('keeps a signed-in administrator off the sign-in screen', async () => {

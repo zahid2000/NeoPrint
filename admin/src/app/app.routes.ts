@@ -1,11 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { Permissions } from './core/auth/auth.models';
-import {
-  anonymousGuard,
-  authGuard,
-  permissionGuard,
-} from './core/auth/auth.guards';
+import { anonymousGuard, authGuard, permissionGuard } from './core/auth/auth.guards';
 
 /**
  * The panel's routes (plan section 8A.3).
@@ -19,8 +15,7 @@ export const routes: Routes = [
   {
     path: 'login',
     canActivate: [anonymousGuard],
-    loadComponent: () =>
-      import('./features/login/login.component').then((m) => m.LoginComponent),
+    loadComponent: () => import('./features/login/login.component').then((m) => m.LoginComponent),
   },
   {
     // Outside the shell: while a password change is outstanding there is no
@@ -28,39 +23,30 @@ export const routes: Routes = [
     path: 'change-password',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./features/login/change-password.component').then(
-        (m) => m.ChangePasswordComponent,
-      ),
+      import('./features/login/change-password.component').then((m) => m.ChangePasswordComponent),
   },
   {
     path: '',
     canActivate: [authGuard],
-    loadComponent: () =>
-      import('./core/layout/shell.component').then((m) => m.ShellComponent),
+    loadComponent: () => import('./core/layout/shell.component').then((m) => m.ShellComponent),
     children: [
       {
         path: '',
         pathMatch: 'full',
         loadComponent: () =>
-          import('./features/dashboard/dashboard.component').then(
-            (m) => m.DashboardComponent,
-          ),
+          import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
         path: 'devices',
         canActivate: [permissionGuard(Permissions.devicesView)],
         loadComponent: () =>
-          import('./features/devices/devices.component').then(
-            (m) => m.DevicesComponent,
-          ),
+          import('./features/devices/devices.component').then((m) => m.DevicesComponent),
       },
       {
         path: 'roles',
         canActivate: [permissionGuard(Permissions.rolesManage)],
         loadComponent: () =>
-          import('./features/roles/roles.component').then(
-            (m) => m.RolesComponent,
-          ),
+          import('./features/roles/roles.component').then((m) => m.RolesComponent),
       },
       {
         path: 'features',
@@ -74,9 +60,7 @@ export const routes: Routes = [
         path: 'admins',
         canActivate: [permissionGuard(Permissions.adminsManage)],
         loadComponent: () =>
-          import('./features/admin-users/admin-users.component').then(
-            (m) => m.AdminUsersComponent,
-          ),
+          import('./features/admin-users/admin-users.component').then((m) => m.AdminUsersComponent),
       },
       {
         path: 'kiosks',
@@ -120,9 +104,7 @@ export const routes: Routes = [
         path: 'settings',
         canActivate: [permissionGuard(Permissions.settingsManage)],
         loadComponent: () =>
-          import('./features/settings/settings.component').then(
-            (m) => m.SettingsComponent,
-          ),
+          import('./features/settings/settings.component').then((m) => m.SettingsComponent),
       },
       {
         path: 'legal',

@@ -10,9 +10,30 @@ import { FileFormatsComponent } from './file-formats.component';
 
 const formats: FileFormats = {
   formats: [
-    { extension: 'pdf', mediaType: 'application/pdf', group: 'Pdf', route: 'None', printerNative: true, enabled: true },
-    { extension: 'docx', mediaType: 'application/x', group: 'TextDocument', route: 'LibreOffice', printerNative: false, enabled: true },
-    { extension: 'txt', mediaType: 'text/plain', group: 'TextDocument', route: 'LibreOffice', printerNative: false, enabled: false },
+    {
+      extension: 'pdf',
+      mediaType: 'application/pdf',
+      group: 'Pdf',
+      route: 'None',
+      printerNative: true,
+      enabled: true,
+    },
+    {
+      extension: 'docx',
+      mediaType: 'application/x',
+      group: 'TextDocument',
+      route: 'LibreOffice',
+      printerNative: false,
+      enabled: true,
+    },
+    {
+      extension: 'txt',
+      mediaType: 'text/plain',
+      group: 'TextDocument',
+      route: 'LibreOffice',
+      printerNative: false,
+      enabled: false,
+    },
   ],
   defaultMaxSizeMb: 50,
   defaultMaxPages: 200,

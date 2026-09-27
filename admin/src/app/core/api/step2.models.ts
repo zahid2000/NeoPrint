@@ -79,7 +79,12 @@ export type StorageSyncStatus =
   | 'Cancelled';
 
 /** Statuses a job can still move on from. */
-export const activeSyncStatuses: readonly StorageSyncStatus[] = ['Pending', 'Running', 'Paused', 'Verifying'];
+export const activeSyncStatuses: readonly StorageSyncStatus[] = [
+  'Pending',
+  'Running',
+  'Paused',
+  'Verifying',
+];
 
 export interface StorageSyncJob {
   readonly id: string;
@@ -316,4 +321,36 @@ export interface FileFormats {
   readonly defaultMaxSizeMb: number;
   readonly defaultMaxPages: number;
   readonly userQuotaGb: number;
+}
+
+/** The dashboard's file figures (GET /api/admin/dashboard). */
+export interface DashboardFiles {
+  readonly count: number;
+  readonly totalBytes: number;
+  readonly inProgress: number;
+  readonly failedLast24Hours: number;
+  readonly failedLast7Days: number;
+}
+
+/** A storage provider as the dashboard shows it: no endpoint, no key. */
+export interface DashboardStorageProvider {
+  readonly id: string;
+  readonly name: string;
+  readonly type: StorageProviderType;
+  readonly role: string;
+  readonly healthStatus: string;
+  readonly healthMessage?: string;
+  readonly lastCheckedAt?: string;
+}
+
+export interface DashboardStorage {
+  readonly providers: readonly DashboardStorageProvider[];
+  readonly activeSync?: StorageSyncJob;
+  readonly lastSync?: StorageSyncJob;
+}
+
+/** Storage is present only for accounts that may manage it. */
+export interface AdminDashboard {
+  readonly files: DashboardFiles;
+  readonly storage?: DashboardStorage;
 }

@@ -1,9 +1,5 @@
 <mat-sidenav-container class="shell">
-  <mat-sidenav
-    class="shell__sidenav"
-    mode="side"
-    [opened]="sidenavOpen()"
-  >
+  <mat-sidenav class="shell__sidenav" mode="side" [opened]="sidenavOpen()">
     <div class="shell__brand">
       <mat-icon>print</mat-icon>
       <span>NeoPrint</span>
@@ -62,11 +58,7 @@
 
       <mat-menu #languageMenu>
         @for (language of languages; track language.code) {
-          <button
-            mat-menu-item
-            type="button"
-            (click)="selectLanguage(language.code)"
-          >
+          <button mat-menu-item type="button" (click)="selectLanguage(language.code)">
             {{ language.name }}
           </button>
         }

@@ -110,7 +110,12 @@ export class KiosksComponent {
   /** Kiosks with a real position; one at 0,0 has not been placed yet. */
   readonly markers = computed<MapMarker[]>(() =>
     this.filtered()
-      .filter((kiosk) => kiosk.lat !== undefined && kiosk.lng !== undefined && (kiosk.lat !== 0 || kiosk.lng !== 0))
+      .filter(
+        (kiosk) =>
+          kiosk.lat !== undefined &&
+          kiosk.lng !== undefined &&
+          (kiosk.lat !== 0 || kiosk.lng !== 0),
+      )
       .map((kiosk) => ({
         id: kiosk.id,
         lat: kiosk.lat!,

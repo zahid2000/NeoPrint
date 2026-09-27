@@ -29,12 +29,12 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
   az: {
     'app.title': 'NeoPrint admin',
 
-    'nav.dashboard': 'Dashboard',
+    'nav.dashboard': 'İdarə paneli',
     'nav.devices': 'Cihazlar',
     'nav.roles': 'Rollar',
     'nav.admins': 'Admin istifadəçiləri',
     'nav.settings': 'Tənzimləmələr',
-    'nav.features': 'Feature flag-lar',
+    'nav.features': 'Funksiya açarları',
     'nav.legal': 'Hüquqi sənədlər',
 
     'language.az': 'Azərbaycan',
@@ -59,11 +59,25 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'password.mismatch': 'Şifrələr uyğun gəlmir.',
     'password.changed': 'Şifrə dəyişdirildi. Yenidən daxil olun.',
 
-    'dashboard.title': 'Dashboard',
+    'dashboard.title': 'İdarə paneli',
     'dashboard.welcome': 'Xoş gəlmisiniz, {{name}}',
     'dashboard.pendingDevices': 'Aktivləşdirmə gözləyən cihazlar',
-    'dashboard.yourPermissions': 'İcazələriniz',
     'dashboard.kioskScope': 'Kiosk əhatəsi',
+    'dashboard.loadFailed':
+      'Göstəricilər yüklənmədi. Səhifəni yeniləyin; problem qalarsa, API-nin işlədiyini yoxlayın.',
+    'dashboard.files': 'Fayllar',
+    'dashboard.filesSize': 'Ümumi həcm: {{size}}',
+    'dashboard.filesInProgress': 'Emal olunur: {{count}}',
+    'dashboard.conversionFailures': 'Konvertasiya xətaları (24 saat)',
+    'dashboard.noFailures': 'Xəta yoxdur',
+    'dashboard.someFailures': 'Baxmaq lazımdır',
+    'dashboard.failuresWeek': 'Son 7 gündə: {{count}}',
+    'dashboard.storageHealth': 'Fayl saxlama',
+    'dashboard.noProviders': 'Provayder əlavə olunmayıb.',
+    'dashboard.sync': 'Sinxronizasiya',
+    'dashboard.syncProgress': 'Sinxronizasiyanın gedişi',
+    'dashboard.syncCopied': '{{copied}} / {{total}} obyekt ({{percent}}%)',
+    'dashboard.noSync': 'Sinxronizasiya işi olmayıb.',
     'dashboard.allKiosks': 'Bütün kiosklar',
     'dashboard.scopedKiosks': '{{count}} kiosk',
 
@@ -91,7 +105,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'devices.lookup': 'Kod ilə tap',
     'devices.pairingCode': 'Aktivləşdirmə kodu',
     'devices.lookupHint':
-      'Kiosk ekranındakı kodu daxil edin. Kod serverdə yalnız hash kimi saxlanılır, ona görə paneldə göstərilmir.',
+      'Kiosk ekranındakı kodu daxil edin. Kod serverdə açıq şəkildə saxlanılmır, ona görə paneldə göstərilmir.',
     'devices.lookupNotFound': 'Bu kodla cihaz tapılmadı və ya kodun vaxtı keçib.',
 
     'activate.title': 'Cihazı aktivləşdir',
@@ -102,8 +116,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'activate.ram': 'Yaddaş',
     'activate.screen': 'Ekran',
     'activate.lastIp': 'Son IP',
-    'activate.confirmHint':
-      'Bu məlumatlar kiosk ekranındakı maşına uyğun gəlirsə davam edin.',
+    'activate.confirmHint': 'Bu məlumatlar kiosk ekranındakı maşına uyğun gəlirsə davam edin.',
     'activate.thisIsIt': 'Bəli, bu həmin maşındır',
     'activate.modeNew': 'Yeni kiosk kimi aktivləşdir',
     'activate.modeExisting': 'Mövcud kioska bağla',
@@ -117,12 +130,12 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'activate.address': 'Ünvan',
     'activate.lat': 'Enlik',
     'activate.lng': 'Uzunluq',
-    'activate.language': 'Default dil',
+    'activate.language': 'Standart dil',
     'activate.paperA4': 'A4 kağız kapasiteti',
     'activate.paperA3': 'A3 kağız kapasiteti',
     'activate.adminPin': 'Admin PIN',
     'activate.adminPinHint':
-      'Kioskda gizli admin çıxışı üçün, {{length}} rəqəm. Cihaza yalnız hash-i göndərilir.',
+      'Kioskda gizli admin çıxışı üçün, {{length}} rəqəm. Cihaza PIN-in özü göndərilmir.',
     'activate.adminPinInvalid': 'PIN ən azı {{length}} rəqəm olmalıdır.',
     'activate.fiscalTerminal': 'Fiskal terminal ID (istəyə görə)',
     'activate.printer': 'Aktiv printer',
@@ -136,12 +149,12 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'activate.submit': 'Aktivləşdir',
     'activate.success': '{{code}} aktivləşdirildi.',
 
-    'tokens.title': 'Enrollment token-lər',
-    'tokens.create': 'Enrollment token yarat',
+    'tokens.title': 'Qeydiyyat açarları',
+    'tokens.create': 'Qeydiyyat açarı yarat',
     'tokens.generate': 'Yarat',
     'tokens.hint':
-      'Sıfır toxunuş aktivləşdirmə: provisioning skriptini bu token ilə işə salın, cihaz özü qeydiyyatdan keçir.',
-    'tokens.none': 'Token yoxdur.',
+      'Toxunuşsuz aktivləşdirmə: quraşdırma skriptini bu açarla işə salın, cihaz özü qeydiyyatdan keçir.',
+    'tokens.none': 'Qeydiyyat açarı yoxdur.',
     'tokens.target': 'Təyinat',
     'tokens.newKiosk': 'Yeni kiosk',
     'tokens.forNewKiosk': 'Yeni kiosk üçün',
@@ -156,17 +169,15 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.revoked': 'Ləğv edilib',
     'tokens.expired': 'Vaxtı keçib',
     'tokens.revoke': 'Ləğv et',
-    'tokens.onceOnly':
-      'Bu token yalnız bir dəfə göstərilir — serverdə yalnız hash-i saxlanılır.',
-    'tokens.commandHint': 'Hazır provisioning əmri:',
+    'tokens.onceOnly': 'Bu açar yalnız bir dəfə göstərilir — serverdə açarın özü saxlanılmır.',
+    'tokens.commandHint': 'Hazır quraşdırma əmri:',
 
     'roles.title': 'Rollar',
     'roles.new': 'Yeni rol',
     'roles.name': 'Ad',
     'roles.description': 'Təsvir',
     'roles.system': 'Sistem rolu',
-    'roles.systemHint':
-      'Sistem rolu dəyişdirilə və silinə bilməz. Klonlayıb redaktə edin.',
+    'roles.systemHint': 'Sistem rolu dəyişdirilə və silinə bilməz. Klonlayıb redaktə edin.',
     'roles.permissionCount': '{{count}} icazə',
     'roles.userCount': '{{count}} istifadəçi',
     'roles.selectedCount': 'Seçilmiş icazə: {{count}}',
@@ -177,39 +188,40 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'roles.clone': 'Klonla',
     'roles.cloneName': 'Yeni rolun adı',
     'roles.deleteConfirm': '"{{name}}" rolu silinsin?',
-    'roles.deleteExplanation': 'Rol birdəfəlik silinir. Bu rolu daşıyan hesab varsa əməliyyat rədd ediləcək. Səbəb audit jurnalına yazılır.',
+    'roles.deleteExplanation':
+      'Rol birdəfəlik silinir. Bu rolu daşıyan hesab varsa əməliyyat rədd ediləcək. Səbəb audit jurnalına yazılır.',
     'roles.saved': 'Rol yadda saxlanıldı.',
 
-    'permissionGroup.dashboard': 'Dashboard / hesabat',
+    'permissionGroup.dashboard': 'İdarə paneli / hesabat',
     'permissionGroup.kiosks': 'Kiosklar',
     'permissionGroup.printers': 'Printerlər',
     'permissionGroup.supplies': 'Sərf / servis',
     'permissionGroup.operator': 'Operator paneli',
-    'permissionGroup.jobs': 'Queue / job-lar',
+    'permissionGroup.jobs': 'Növbə / sifarişlər',
     'permissionGroup.payments': 'Ödənişlər',
     'permissionGroup.users': 'İstifadəçilər',
     'permissionGroup.config': 'Konfiqurasiya',
     'permissionGroup.incidents': 'Incident-lər',
     'permissionGroup.system': 'Sistem',
 
-    'features.title': 'Feature flag-lar',
+    'features.title': 'Funksiya açarları',
     'features.hint':
-      'Kiosk override-ı faizdən üstündür — funksiyanı əvvəlcə bir kioskda yoxlayıb sonra hamıya aça bilərsiniz.',
+      'Kiosk üzrə fərdi ayar faizdən üstündür — funksiyanı əvvəlcə bir kioskda yoxlayıb sonra hamıya aça bilərsiniz.',
     'features.on': 'Açıq',
     'features.off': 'Bağlı',
     'features.unsaved': 'Yadda saxlanılmamış dəyişiklik',
-    'features.defaultEnabled': 'Default açıqdır',
-    'features.rollout': 'Rollout',
+    'features.defaultEnabled': 'Standart olaraq açıqdır',
+    'features.rollout': 'Açılma faizi',
     'features.rolloutNote':
-      'Faiz yalnız qeydiyyatlı istifadəçilərə tətbiq olunur; anonim kiosk sessiyasında default qərar verir.',
+      'Faiz yalnız qeydiyyatlı istifadəçilərə tətbiq olunur; anonim kiosk sessiyasında standart dəyər qərar verir.',
     'features.platforms': 'Platformalar',
-    'features.kioskOverrides': 'Kiosk override-ları',
-    'features.overrideCount': '{{count}} override',
-    'features.followsDefault': 'default',
-    'features.cycleHint': 'Açıq → bağlı → default',
+    'features.kioskOverrides': 'Kiosk üzrə fərdi ayarlar',
+    'features.overrideCount': '{{count}} fərdi ayar',
+    'features.followsDefault': 'standart',
+    'features.cycleHint': 'Açıq → bağlı → standart',
     'features.noKiosks': 'Kiosk siyahısı əlçatan deyil.',
     'features.allowlist': 'Allowlist: {{count}} istifadəçi',
-    'features.saved': 'Flag yadda saxlanıldı.',
+    'features.saved': 'Funksiya açarı yadda saxlanıldı.',
 
     'admins.new': 'Yeni hesab',
     'admins.edit': 'Redaktə et',
@@ -217,8 +229,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'admins.emailFixed': 'Email dəyişdirilə bilməz — hesabı o müəyyən edir.',
     'admins.fullName': 'Ad və soyad',
     'admins.password': 'Başlanğıc şifrə',
-    'admins.passwordHint':
-      'Ən azı {{min}} simvol. Hesab sahibi ilk girişdə onu dəyişməlidir.',
+    'admins.passwordHint': 'Ən azı {{min}} simvol. Hesab sahibi ilk girişdə onu dəyişməlidir.',
     'admins.roles': 'Rollar',
     'admins.rolesHint': 'Ən azı bir rol seçilməlidir.',
     'admins.allKiosks': 'Bütün kiosklara icazə',
@@ -236,17 +247,16 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'admins.deactivateReason': 'Səbəb (audit log-a yazılır)',
     'admins.cannotDisableSelf': 'Öz hesabınızı deaktiv edə bilməzsiniz.',
     'admins.resetPassword': 'Şifrəni sıfırla',
-    'admins.newPasswordPrompt':
-      'Yeni şifrə (ən azı {{min}} simvol). Bütün sessiyalar bağlanacaq.',
+    'admins.newPasswordPrompt': 'Yeni şifrə (ən azı {{min}} simvol). Bütün sessiyalar bağlanacaq.',
     'admins.passwordReset': 'Şifrə sıfırlandı. Hesabın bütün sessiyaları bağlandı.',
     'admins.saved': 'Hesab yadda saxlanıldı.',
     'admins.none': 'Hesab yoxdur.',
 
     'settings.hint':
-      'Hər parametrin yanında sənədləşdirilmiş default dəyəri göstərilir. Yalnız dəyişdirdiyiniz parametrlər yadda saxlanılır.',
+      'Hər parametrin yanında sənədləşdirilmiş standart dəyəri göstərilir. Yalnız dəyişdirdiyiniz parametrlər yadda saxlanılır.',
     'settings.count': '{{count}} parametr',
-    'settings.defaultIs': 'Default:',
-    'settings.reset': 'Default dəyərə qaytar',
+    'settings.defaultIs': 'Standart:',
+    'settings.reset': 'Standart dəyərə qaytar',
     'settings.unsaved': 'Yadda saxlanılmamış dəyişiklik',
     'settings.saved': 'Parametrlər yadda saxlanıldı.',
 
@@ -301,7 +311,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'live.connected': 'Canlı',
     'live.connectedHint': 'Məlumat serverdən avtomatik yenilənir.',
     'live.reconnecting': 'Yenidən qoşulur',
-    'live.reconnectingHint': 'Əlaqə kəsildi, yenidən qoşulmağa çalışırıq. Ekrandakı məlumat köhnə ola bilər.',
+    'live.reconnectingHint':
+      'Əlaqə kəsildi, yenidən qoşulmağa çalışırıq. Ekrandakı məlumat köhnə ola bilər.',
     'live.disconnected': 'Əlaqə yoxdur',
     'live.disconnectedHint': 'Avtomatik yenilənmə işləmir. Səhifəni yeniləyib məlumatı təzələyin.',
 
@@ -346,8 +357,22 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'dashboard.title': 'Dashboard',
     'dashboard.welcome': 'Welcome, {{name}}',
     'dashboard.pendingDevices': 'Devices waiting to be activated',
-    'dashboard.yourPermissions': 'Your permissions',
     'dashboard.kioskScope': 'Kiosk scope',
+    'dashboard.loadFailed':
+      'The figures did not load. Refresh the page; if it persists, check that the API is running.',
+    'dashboard.files': 'Files',
+    'dashboard.filesSize': 'Total size: {{size}}',
+    'dashboard.filesInProgress': 'Being processed: {{count}}',
+    'dashboard.conversionFailures': 'Conversion failures (24 hours)',
+    'dashboard.noFailures': 'No failures',
+    'dashboard.someFailures': 'Needs a look',
+    'dashboard.failuresWeek': 'In the last 7 days: {{count}}',
+    'dashboard.storageHealth': 'File storage',
+    'dashboard.noProviders': 'No provider has been added.',
+    'dashboard.sync': 'Synchronisation',
+    'dashboard.syncProgress': 'Synchronisation progress',
+    'dashboard.syncCopied': '{{copied}} / {{total}} objects ({{percent}}%)',
+    'dashboard.noSync': 'There has been no synchronisation.',
     'dashboard.allKiosks': 'All kiosks',
     'dashboard.scopedKiosks': '{{count}} kiosks',
 
@@ -386,8 +411,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'activate.ram': 'Memory',
     'activate.screen': 'Screen',
     'activate.lastIp': 'Last IP',
-    'activate.confirmHint':
-      'Continue if this matches the machine showing the code.',
+    'activate.confirmHint': 'Continue if this matches the machine showing the code.',
     'activate.thisIsIt': 'Yes, this is the machine',
     'activate.modeNew': 'Activate as a new kiosk',
     'activate.modeExisting': 'Bind to an existing kiosk',
@@ -412,10 +436,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'activate.printer': 'Active printer',
     'activate.printerLater': 'I will pick one later',
     'activate.printerOffline': 'offline',
-    'activate.printerHint':
-      'Without a printer the kiosk activates as not configured.',
-    'activate.noPrinters':
-      'The device has not reported a printer yet. One can be selected later.',
+    'activate.printerHint': 'Without a printer the kiosk activates as not configured.',
+    'activate.noPrinters': 'The device has not reported a printer yet. One can be selected later.',
     'activate.color': 'colour',
     'activate.duplex': 'duplex',
     'activate.submit': 'Activate',
@@ -441,8 +463,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.revoked': 'Revoked',
     'tokens.expired': 'Expired',
     'tokens.revoke': 'Revoke',
-    'tokens.onceOnly':
-      'This token is shown once - the server keeps only its hash.',
+    'tokens.onceOnly': 'This token is shown once - the server keeps only its hash.',
     'tokens.commandHint': 'Ready-made provisioning command:',
 
     'roles.title': 'Roles',
@@ -450,8 +471,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'roles.name': 'Name',
     'roles.description': 'Description',
     'roles.system': 'System role',
-    'roles.systemHint':
-      'A system role cannot be changed or deleted. Clone it and edit the copy.',
+    'roles.systemHint': 'A system role cannot be changed or deleted. Clone it and edit the copy.',
     'roles.permissionCount': '{{count}} permissions',
     'roles.userCount': '{{count}} accounts',
     'roles.selectedCount': 'Selected permissions: {{count}}',
@@ -462,7 +482,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'roles.clone': 'Clone',
     'roles.cloneName': 'Name for the new role',
     'roles.deleteConfirm': 'Delete the role "{{name}}"?',
-    'roles.deleteExplanation': 'The role is deleted for good. If any account still holds it the deletion is refused. The reason is written to the audit log.',
+    'roles.deleteExplanation':
+      'The role is deleted for good. If any account still holds it the deletion is refused. The reason is written to the audit log.',
     'roles.saved': 'Role saved.',
 
     'permissionGroup.dashboard': 'Dashboard / reports',
@@ -512,8 +533,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'admins.active': 'Active',
     'admins.inactive': 'Disabled',
     'admins.locked': 'Locked out',
-    'admins.lockedHint':
-      'Locked after failed sign-in attempts. Resetting the password clears it.',
+    'admins.lockedHint': 'Locked after failed sign-in attempts. Resetting the password clears it.',
     'admins.mustChangePassword': 'Must change the password at next sign-in',
     'admins.lastLogin': 'Last sign-in',
     'admins.activate': 'Activate',
@@ -586,7 +606,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'live.connected': 'Live',
     'live.connectedHint': 'The data updates from the server on its own.',
     'live.reconnecting': 'Reconnecting',
-    'live.reconnectingHint': 'The connection dropped and is being re-established. What is on screen may be out of date.',
+    'live.reconnectingHint':
+      'The connection dropped and is being re-established. What is on screen may be out of date.',
     'live.disconnected': 'No connection',
     'live.disconnectedHint': 'Automatic updates are off. Reload the page to see current data.',
 
@@ -603,7 +624,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'nav.roles': 'Роли',
     'nav.admins': 'Администраторы',
     'nav.settings': 'Настройки',
-    'nav.features': 'Feature-флаги',
+    'nav.features': 'Переключатели функций',
     'nav.legal': 'Правовые документы',
 
     'language.az': 'Азербайджанский',
@@ -631,8 +652,22 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'dashboard.title': 'Дашборд',
     'dashboard.welcome': 'Добро пожаловать, {{name}}',
     'dashboard.pendingDevices': 'Устройства, ожидающие активации',
-    'dashboard.yourPermissions': 'Ваши права',
     'dashboard.kioskScope': 'Область киосков',
+    'dashboard.loadFailed':
+      'Показатели не загрузились. Обновите страницу; если не помогает, проверьте, что API работает.',
+    'dashboard.files': 'Файлы',
+    'dashboard.filesSize': 'Общий объём: {{size}}',
+    'dashboard.filesInProgress': 'Обрабатывается: {{count}}',
+    'dashboard.conversionFailures': 'Ошибки конвертации (24 часа)',
+    'dashboard.noFailures': 'Ошибок нет',
+    'dashboard.someFailures': 'Требует внимания',
+    'dashboard.failuresWeek': 'За последние 7 дней: {{count}}',
+    'dashboard.storageHealth': 'Хранилище файлов',
+    'dashboard.noProviders': 'Провайдер не добавлен.',
+    'dashboard.sync': 'Синхронизация',
+    'dashboard.syncProgress': 'Ход синхронизации',
+    'dashboard.syncCopied': '{{copied}} / {{total}} объектов ({{percent}}%)',
+    'dashboard.noSync': 'Синхронизаций не было.',
     'dashboard.allKiosks': 'Все киоски',
     'dashboard.scopedKiosks': '{{count}} киосков',
 
@@ -671,8 +706,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'activate.ram': 'Память',
     'activate.screen': 'Экран',
     'activate.lastIp': 'Последний IP',
-    'activate.confirmHint':
-      'Продолжайте, если данные совпадают с машиной, показывающей код.',
+    'activate.confirmHint': 'Продолжайте, если данные совпадают с машиной, показывающей код.',
     'activate.thisIsIt': 'Да, это она',
     'activate.modeNew': 'Активировать как новый киоск',
     'activate.modeExisting': 'Привязать к существующему киоску',
@@ -697,21 +731,19 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'activate.printer': 'Активный принтер',
     'activate.printerLater': 'Выберу позже',
     'activate.printerOffline': 'офлайн',
-    'activate.printerHint':
-      'Без принтера киоск активируется со статусом «не настроен».',
-    'activate.noPrinters':
-      'Устройство ещё не сообщило о принтерах. Принтер можно выбрать позже.',
+    'activate.printerHint': 'Без принтера киоск активируется со статусом «не настроен».',
+    'activate.noPrinters': 'Устройство ещё не сообщило о принтерах. Принтер можно выбрать позже.',
     'activate.color': 'цветной',
     'activate.duplex': 'двусторонний',
     'activate.submit': 'Активировать',
     'activate.success': '{{code}} активирован.',
 
-    'tokens.title': 'Enrollment-токены',
-    'tokens.create': 'Создать enrollment-токен',
+    'tokens.title': 'Ключи регистрации',
+    'tokens.create': 'Создать ключ регистрации',
     'tokens.generate': 'Создать',
     'tokens.hint':
       'Активация без участия оператора: запустите скрипт с этим токеном, и устройство зарегистрируется само.',
-    'tokens.none': 'Токенов нет.',
+    'tokens.none': 'Ключей регистрации нет.',
     'tokens.target': 'Назначение',
     'tokens.newKiosk': 'Новый киоск',
     'tokens.forNewKiosk': 'Для нового киоска',
@@ -726,8 +758,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.revoked': 'Отозван',
     'tokens.expired': 'Просрочен',
     'tokens.revoke': 'Отозвать',
-    'tokens.onceOnly':
-      'Токен показывается один раз — на сервере хранится только его хеш.',
+    'tokens.onceOnly': 'Токен показывается один раз — на сервере хранится только его хеш.',
     'tokens.commandHint': 'Готовая команда provisioning:',
 
     'roles.title': 'Роли',
@@ -747,7 +778,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'roles.clone': 'Клонировать',
     'roles.cloneName': 'Название новой роли',
     'roles.deleteConfirm': 'Удалить роль «{{name}}»?',
-    'roles.deleteExplanation': 'Роль удаляется безвозвратно. Если её ещё имеет хотя бы одна учётная запись, удаление будет отклонено. Причина записывается в журнал аудита.',
+    'roles.deleteExplanation':
+      'Роль удаляется безвозвратно. Если её ещё имеет хотя бы одна учётная запись, удаление будет отклонено. Причина записывается в журнал аудита.',
     'roles.saved': 'Роль сохранена.',
 
     'permissionGroup.dashboard': 'Дашборд / отчёты',
@@ -762,19 +794,19 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'permissionGroup.incidents': 'Инциденты',
     'permissionGroup.system': 'Система',
 
-    'features.title': 'Feature-флаги',
+    'features.title': 'Переключатели функций',
     'features.hint':
       'Override киоска важнее процента, поэтому функцию можно проверить на одном киоске, а затем открыть части трафика.',
     'features.on': 'Вкл',
     'features.off': 'Выкл',
     'features.unsaved': 'Несохранённое изменение',
     'features.defaultEnabled': 'Включено по умолчанию',
-    'features.rollout': 'Rollout',
+    'features.rollout': 'Доля включения',
     'features.rolloutNote':
       'Процент применяется только к вошедшим пользователям; анонимная сессия киоска следует значению по умолчанию.',
     'features.platforms': 'Платформы',
     'features.kioskOverrides': 'Override по киоскам',
-    'features.overrideCount': 'Override: {{count}}',
+    'features.overrideCount': 'Переопределений: {{count}}',
     'features.followsDefault': 'по умолчанию',
     'features.cycleHint': 'Вкл → выкл → по умолчанию',
     'features.noKiosks': 'Список киосков недоступен.',
@@ -841,7 +873,6 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'legal.view': 'Открыть',
     'legal.none': 'Документов нет.',
 
-
     'common.save': 'Сохранить',
     'common.cancel': 'Отмена',
     'common.close': 'Закрыть',
@@ -872,9 +903,11 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'live.connected': 'В реальном времени',
     'live.connectedHint': 'Данные обновляются с сервера автоматически.',
     'live.reconnecting': 'Переподключение',
-    'live.reconnectingHint': 'Связь прервана, восстанавливаем. Данные на экране могут быть устаревшими.',
+    'live.reconnectingHint':
+      'Связь прервана, восстанавливаем. Данные на экране могут быть устаревшими.',
     'live.disconnected': 'Нет связи',
-    'live.disconnectedHint': 'Автообновление не работает. Обновите страницу, чтобы увидеть актуальные данные.',
+    'live.disconnectedHint':
+      'Автообновление не работает. Обновите страницу, чтобы увидеть актуальные данные.',
 
     'error.network': 'Ошибка сети. Проверьте подключение.',
     'error.server': 'На сервере произошла ошибка.',

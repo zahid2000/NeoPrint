@@ -22,6 +22,7 @@ import {
   StorageSyncOperation,
   StorageTestResult,
   UpdateKioskInput,
+  AdminDashboard,
 } from './step2.models';
 
 /**
@@ -42,7 +43,9 @@ function withReason(reason: string | null | undefined): { headers: HttpHeaders }
   const trimmed = reason?.trim();
 
   return {
-    headers: trimmed ? new HttpHeaders({ 'X-Audit-Reason': encodeURIComponent(trimmed) }) : new HttpHeaders(),
+    headers: trimmed
+      ? new HttpHeaders({ 'X-Audit-Reason': encodeURIComponent(trimmed) })
+      : new HttpHeaders(),
   };
 }
 
@@ -310,10 +313,7 @@ export class AdminApiService {
       selectedPrinterName?: string | null;
     },
   ): Observable<ActivateDeviceResult> {
-    return this.http.post<ActivateDeviceResult>(
-      `/api/admin/devices/${deviceId}/activate`,
-      body,
-    );
+    return this.http.post<ActivateDeviceResult>(`/api/admin/devices/${deviceId}/activate`, body);
   }
 
   revokeDevice(deviceId: string, reason: string | null): Observable<void> {
@@ -327,9 +327,7 @@ export class AdminApiService {
   // ---------------------------------------------------------------------
 
   listEnrollmentTokens(): Observable<EnrollmentTokenListItem[]> {
-    return this.http.get<EnrollmentTokenListItem[]>(
-      '/api/admin/enrollment-tokens',
-    );
+    return this.http.get<EnrollmentTokenListItem[]>('/api/admin/enrollment-tokens');
   }
 
   createEnrollmentToken(body: {
@@ -337,10 +335,7 @@ export class AdminApiService {
     newKiosk?: NewKioskParameters | null;
     ttlHours?: number | null;
   }): Observable<EnrollmentTokenResult> {
-    return this.http.post<EnrollmentTokenResult>(
-      '/api/admin/enrollment-tokens',
-      body,
-    );
+    return this.http.post<EnrollmentTokenResult>('/api/admin/enrollment-tokens', body);
   }
 
   revokeEnrollmentToken(id: string): Observable<void> {
@@ -405,13 +400,10 @@ export class AdminApiService {
       userAllowlist?: readonly string[] | null;
     },
   ): Observable<FeatureFlagDetails> {
-    return this.http.put<FeatureFlagDetails>(
-      `/api/admin/features/${key}`,
-      body,
-    );
+    return this.http.put<FeatureFlagDetails>(`/api/admin/features/${key}`, body);
   }
 
-// ---------------------------------------------------------------------
+  // ---------------------------------------------------------------------
   // Administrator accounts
   // ---------------------------------------------------------------------
 
@@ -519,16 +511,27 @@ export class AdminApiService {
   }
 
   /** Null for either limit means "Default istifadə et". */
-  setKioskLimits(id: string, maxFileSizeMb: number | null, maxPages: number | null): Observable<KioskDetail> {
-    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/limits`, { maxFileSizeMb, maxPages });
+  setKioskLimits(
+    id: string,
+    maxFileSizeMb: number | null,
+    maxPages: number | null,
+  ): Observable<KioskDetail> {
+    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/limits`, {
+      maxFileSizeMb,
+      maxPages,
+    });
   }
 
   setKioskPricingProfile(id: string, pricingProfileId: string | null): Observable<KioskDetail> {
-    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/pricing-profile`, { pricingProfileId });
+    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/pricing-profile`, {
+      pricingProfileId,
+    });
   }
 
   setKioskFiscalTerminal(id: string, fiscalTerminalId: string | null): Observable<KioskDetail> {
-    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/fiscal-terminal`, { fiscalTerminalId });
+    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/fiscal-terminal`, {
+      fiscalTerminalId,
+    });
   }
 
   setKioskPaperCapacity(id: string, a4: number, a3: number): Observable<KioskDetail> {
@@ -572,7 +575,9 @@ export class AdminApiService {
   }
 
   assignKiosksToProfile(id: string, kioskIds: readonly string[]): Observable<PricingProfileDetail> {
-    return this.http.post<PricingProfileDetail>(`/api/admin/pricing-profiles/${id}/assign`, { kioskIds });
+    return this.http.post<PricingProfileDetail>(`/api/admin/pricing-profiles/${id}/assign`, {
+      kioskIds,
+    });
   }
 
   /** The calculator: a saved profile, or the values still on the form. */
@@ -605,6 +610,11 @@ export class AdminApiService {
   // Storage (plan sections 2.10, 8A.3)
   // ---------------------------------------------------------------------
 
+  /** The dashboard's figures; storage only for accounts that may manage it. */
+  getDashboard(): Observable<AdminDashboard> {
+    return this.http.get<AdminDashboard>('/api/admin/dashboard');
+  }
+
   listStorageProviders(): Observable<StorageProvider[]> {
     return this.http.get<StorageProvider[]>('/api/admin/storage/providers');
   }
@@ -628,9 +638,15 @@ export class AdminApiService {
   setStorageRole(id: string, role: StorageRole, reason?: string): Observable<StorageProvider> {
     switch (role) {
       case 'Primary':
-        return this.http.post<StorageProvider>(`/api/admin/storage/providers/${id}/set-primary`, {});
+        return this.http.post<StorageProvider>(
+          `/api/admin/storage/providers/${id}/set-primary`,
+          {},
+        );
       case 'Secondary':
-        return this.http.post<StorageProvider>(`/api/admin/storage/providers/${id}/set-secondary`, {});
+        return this.http.post<StorageProvider>(
+          `/api/admin/storage/providers/${id}/set-secondary`,
+          {},
+        );
       default:
         return this.http.put<StorageProvider>(
           `/api/admin/storage/providers/${id}/role`,
@@ -674,10 +690,7 @@ export class AdminApiService {
   }
 
   purgeStorageSource(id: string, reason: string): Observable<StorageSyncJob> {
-    const headers = idempotent().headers.set(
-      'X-Audit-Reason',
-      encodeURIComponent(reason.trim()),
-    );
+    const headers = idempotent().headers.set('X-Audit-Reason', encodeURIComponent(reason.trim()));
 
     return this.http.post<StorageSyncJob>(
       `/api/admin/storage/sync-jobs/${id}/purge-source`,

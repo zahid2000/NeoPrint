@@ -4,6 +4,10 @@
   {{ 'dashboard.welcome' | translate: { name: admin()?.fullName || admin()?.email } }}
 </p>
 
+@if (failed()) {
+  <p class="neo-field-error" role="alert">{{ 'dashboard.loadFailed' | translate }}</p>
+}
+
 <div class="dashboard__grid">
   <mat-card *appHasPermission="permissions.devicesView" class="dashboard__tile">
     <mat-card-content>
@@ -22,6 +26,124 @@
     </mat-card-content>
   </mat-card>
 
+  @if (dashboard(); as data) {
+    <mat-card class="dashboard__tile">
+      <mat-card-content>
+        <div class="dashboard__tile-head">
+          <mat-icon>description</mat-icon>
+          <span>{{ 'dashboard.files' | translate }}</span>
+        </div>
+
+        <div class="dashboard__metric">{{ data.files.count | count }}</div>
+
+        <p class="dashboard__detail">
+          {{ 'dashboard.filesSize' | translate: { size: (data.files.totalBytes | bytes) } }}
+        </p>
+        <p class="dashboard__detail">
+          {{ 'dashboard.filesInProgress' | translate: { count: (data.files.inProgress | count) } }}
+        </p>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="dashboard__tile">
+      <mat-card-content>
+        <div class="dashboard__tile-head">
+          <mat-icon>report</mat-icon>
+          <span>{{ 'dashboard.conversionFailures' | translate }}</span>
+        </div>
+
+        <div class="dashboard__metric">{{ data.files.failedLast24Hours | count }}</div>
+
+        <app-status-chip
+          [status]="failuresStatus()"
+          [text]="
+            (data.files.failedLast24Hours === 0 ? 'dashboard.noFailures' : 'dashboard.someFailures')
+              | translate
+          "
+        />
+
+        <p class="dashboard__detail">
+          {{
+            'dashboard.failuresWeek' | translate: { count: (data.files.failedLast7Days | count) }
+          }}
+        </p>
+      </mat-card-content>
+    </mat-card>
+
+    @if (data.storage; as storage) {
+      <mat-card class="dashboard__tile">
+        <mat-card-content>
+          <div class="dashboard__tile-head">
+            <mat-icon>storage</mat-icon>
+            <span>{{ 'dashboard.storageHealth' | translate }}</span>
+          </div>
+
+          <ul class="dashboard__list">
+            @for (provider of storage.providers; track provider.id) {
+              <li>
+                <span class="dashboard__list-name">
+                  {{ provider.name }} · {{ 'storage.role.' + provider.role | translate }}
+                </span>
+                <app-status-chip
+                  [status]="provider.healthStatus"
+                  [text]="'storage.health.' + provider.healthStatus | translate"
+                />
+              </li>
+            } @empty {
+              <li>{{ 'dashboard.noProviders' | translate }}</li>
+            }
+          </ul>
+
+          <a mat-button routerLink="/storage">{{ 'nav.storage' | translate }}</a>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="dashboard__tile">
+        <mat-card-content>
+          <div class="dashboard__tile-head">
+            <mat-icon>sync</mat-icon>
+            <span>{{ 'dashboard.sync' | translate }}</span>
+          </div>
+
+          @if (storage.activeSync; as job) {
+            <app-status-chip
+              [status]="job.status"
+              [text]="'storage.sync.status.' + job.status | translate"
+            />
+            <p class="dashboard__detail">{{ job.sourceName }} → {{ job.targetName }}</p>
+            <mat-progress-bar
+              mode="determinate"
+              [value]="percent(job)"
+              [attr.aria-label]="'dashboard.syncProgress' | translate"
+            />
+            <p class="dashboard__detail">
+              {{
+                'dashboard.syncCopied'
+                  | translate
+                    : {
+                        copied: (job.copiedObjects | count),
+                        total: (job.totalObjects | count),
+                        percent: percent(job),
+                      }
+              }}
+            </p>
+          } @else if (storage.lastSync; as job) {
+            <app-status-chip
+              [status]="job.status"
+              [text]="'storage.sync.status.' + job.status | translate"
+            />
+            <p class="dashboard__detail">
+              {{ job.sourceName }} → {{ job.targetName }} ·
+              {{ job.finishedAt | dateTime }}
+            </p>
+          } @else {
+            <p class="dashboard__detail">{{ 'dashboard.noSync' | translate }}</p>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
   <mat-card class="dashboard__tile">
     <mat-card-content>
       <div class="dashboard__tile-head">
@@ -35,18 +157,3 @@
     </mat-card-content>
   </mat-card>
 </div>
-
-<mat-card class="dashboard__permissions">
-  <mat-card-content>
-    <div class="dashboard__tile-head">
-      <mat-icon>verified_user</mat-icon>
-      <span>{{ 'dashboard.yourPermissions' | translate }}</span>
-    </div>
-
-    <mat-chip-set>
-      @for (permission of admin()?.permissions ?? []; track permission) {
-        <mat-chip>{{ permission }}</mat-chip>
-      }
-    </mat-chip-set>
-  </mat-card-content>
-</mat-card>

@@ -12,9 +12,10 @@ export interface Problem {
 }
 
 export function toProblem(error: unknown): Problem {
-  const body = error instanceof HttpErrorResponse
-    ? (error.error as { correlationId?: string } | null | undefined)
-    : undefined;
+  const body =
+    error instanceof HttpErrorResponse
+      ? (error.error as { correlationId?: string } | null | undefined)
+      : undefined;
 
   return { message: describeError(error), correlationId: body?.correlationId };
 }

@@ -13,7 +13,6 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { DatePipe } from '@angular/common';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
@@ -28,6 +27,7 @@ import { HasPermissionDirective } from '../../core/auth/has-permission.directive
 import { describeError } from '../login/login.component';
 import { ActivateDeviceDialogComponent } from './activate-device.dialog';
 import { EnrollmentTokenDialogComponent } from './enrollment-token.dialog';
+import { DateTimePipe } from '../../shared/format.pipes';
 
 /**
  * The Devices page (plan sections 7.11, 8A.3).
@@ -40,7 +40,7 @@ import { EnrollmentTokenDialogComponent } from './enrollment-token.dialog';
   selector: 'app-devices',
   imports: [
     ReactiveFormsModule,
-    DatePipe,
+    DateTimePipe,
     MatCardModule,
     MatTabsModule,
     MatTableModule,
@@ -94,13 +94,7 @@ export class DevicesComponent {
     'actions',
   ] as const;
 
-  readonly tokenColumns = [
-    'target',
-    'createdAt',
-    'expiresAt',
-    'status',
-    'actions',
-  ] as const;
+  readonly tokenColumns = ['target', 'createdAt', 'expiresAt', 'status', 'actions'] as const;
 
   /** The pairing code an administrator types in from the kiosk screen. */
   readonly lookupForm = this.formBuilder.nonNullable.group({
@@ -263,10 +257,6 @@ export class DevicesComponent {
   }
 
   private notify(messageKey: string): void {
-    this.snackBar.open(
-      this.translate.instant(messageKey) as string,
-      undefined,
-      { duration: 5000 },
-    );
+    this.snackBar.open(this.translate.instant(messageKey) as string, undefined, { duration: 5000 });
   }
 }

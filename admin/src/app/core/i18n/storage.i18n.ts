@@ -7,7 +7,8 @@ export const storageTranslations: PageTranslations = {
     'storage.title': 'Fayl saxlama',
     'storage.description':
       'Faylların saxlandığı S3-uyğun provayderlər və onlar arasında köçürmə. Bütün obyektlər şifrəli saxlanılır; provayder dəyişəndə köhnə fayllar oxunmağa davam edir.',
-    'storage.loadFailedEffect': 'Provayderlər göstərilə bilmir. Faylların yazılıb-oxunmasına təsir etmir.',
+    'storage.loadFailedEffect':
+      'Provayderlər göstərilə bilmir. Faylların yazılıb-oxunmasına təsir etmir.',
     'storage.tabProviders': 'Provayderlər',
     'storage.tabSync': 'Sinxronizasiya',
     'storage.actions': 'Əməliyyatlar',
@@ -17,8 +18,8 @@ export const storageTranslations: PageTranslations = {
     'storage.rewrapExplanation':
       'Açar rotasiyasından sonra hər obyektin məlumat açarı yeni açarla yenidən bağlanır. Fonda işləyir, faylların məzmunu dəyişmir.',
     'storage.rewrapStarted': 'Açarların yenilənməsi fonda başladı.',
-    'storage.role.Primary': 'Primary',
-    'storage.role.Secondary': 'Secondary (mirror)',
+    'storage.role.Primary': 'Əsas',
+    'storage.role.Secondary': 'Ehtiyat (güzgü)',
     'storage.role.Inactive': 'Söndürülüb',
     'storage.health.Healthy': 'İşləyir',
     'storage.health.Unhealthy': 'Cavab vermir',
@@ -26,32 +27,33 @@ export const storageTranslations: PageTranslations = {
     'storage.provider.add': 'Provayder əlavə et',
     'storage.provider.empty': 'Heç bir provayder yoxdur. Fayl yükləmək üçün ən azı biri lazımdır.',
     'storage.provider.name': 'Ad',
-    'storage.provider.endpoint': 'Endpoint',
+    'storage.provider.endpoint': 'Server ünvanı',
     'storage.provider.role': 'Rol',
     'storage.provider.health': 'Vəziyyət',
     'storage.provider.lastChecked': 'Son yoxlama',
     'storage.provider.rolesHint':
-      'Yeni fayllar Primary-yə yazılır. Secondary mirror-dur: Primary cavab verməyəndə oxumalar ondan davam edir. Vəziyyət hər dəqiqə yoxlanılır.',
+      'Yeni fayllar əsas provayderə yazılır. Ehtiyat provayder onun güzgüsüdür: əsas cavab verməyəndə oxumalar ondan davam edir. Vəziyyət hər dəqiqə yoxlanılır.',
     'storage.provider.test': 'Bağlantını yoxla',
     'storage.provider.testPassed': '{{name}}: bağlantı işləyir.',
-    'storage.provider.makePrimary': 'Primary et',
-    'storage.provider.makePrimaryTitle': '{{name}} Primary olsun?',
+    'storage.provider.makePrimary': 'Əsas et',
+    'storage.provider.makePrimaryTitle': '{{name}} əsas provayder olsun?',
     'storage.provider.makePrimaryExplanation':
       'Yeni fayllar dərhal bu provayderə yazılacaq. Köhnə fayllar yerində qalır və oxunur; onları köçürmək üçün migrasiya başladın.',
-    'storage.provider.makeSecondary': 'Mirror kimi qoş',
-    'storage.provider.deactivate': 'Mirror-u söndür',
+    'storage.provider.makeSecondary': 'Güzgü kimi qoş',
+    'storage.provider.deactivate': 'Güzgünü söndür',
     'storage.provider.deactivateTitle': '{{name}} söndürülsün?',
     'storage.provider.deactivateExplanation':
-      'Yazılar artıq bu provayderə təkrarlanmayacaq və Primary cavab verməyəndə oxumalar ona keçməyəcək. İçindəki obyektlər silinmir.',
+      'Yazılar artıq bu provayderə təkrarlanmayacaq və əsas provayder cavab verməyəndə oxumalar ona keçməyəcək. İçindəki obyektlər silinmir.',
     'storage.provider.deleteTitle': '{{name}} silinsin?',
     'storage.provider.deleteExplanation':
       'Provayder siyahıdan silinir. İçindəki obyektlərə toxunulmur. Hələ fayllar ona istinad edirsə, silinmə rədd olunur.',
     'storage.provider.deleted': '{{name}} silindi.',
     'storage.provider.added': '{{name}} əlavə olundu.',
     'storage.provider.updated': '{{name}} yadda saxlanıldı.',
-    'storage.provider.rolePrimary': '{{name}} indi Primary-dir.',
+    'storage.provider.rolePrimary': '{{name}} indi əsas provayderdir.',
     'storage.provider.roleInactive': '{{name}} söndürüldü.',
-    'storage.provider.becameUnhealthy': '{{name}} cavab vermir. Primary-dirsə, oxumalar mirror-dan davam edir.',
+    'storage.provider.becameUnhealthy':
+      '{{name}} cavab vermir. Əsas provayderdirsə, oxumalar güzgüdən davam edir.',
     'storage.provider.addTitle': 'Provayder əlavə et',
     'storage.provider.editTitle': 'Provayderi redaktə et',
     'storage.provider.explanation':
@@ -61,9 +63,9 @@ export const storageTranslations: PageTranslations = {
     'storage.provider.region': 'Region',
     'storage.provider.endpointHint': 'http:// və ya https:// ilə tam ünvan',
     'storage.provider.useSsl': 'HTTPS ilə qoşul',
-    'storage.provider.accessKey': 'Access key',
+    'storage.provider.accessKey': 'Giriş açarı',
     'storage.provider.keyKeepHint': 'Hazırkı: {{hint}}. Boş saxlasanız dəyişmir.',
-    'storage.provider.secretKey': 'Secret key',
+    'storage.provider.secretKey': 'Gizli açar',
     'storage.provider.secretKeepHint': 'Boş saxlasanız mövcud açar qalır.',
     'storage.provider.bucketFiles': 'Fayllar bucket-i',
     'storage.provider.bucketReceipts': 'Qəbzlər bucket-i',
@@ -74,12 +76,13 @@ export const storageTranslations: PageTranslations = {
     'storage.sync.new': 'Yeni sinxronizasiya',
     'storage.sync.started': 'Sinxronizasiya başladı.',
     'storage.sync.empty': 'Hələ sinxronizasiya olmayıb.',
-    'storage.sync.emptyHint': 'Faylları başqa provayderə köçürmək və ya mirror qurmaq üçün başladın.',
+    'storage.sync.emptyHint':
+      'Faylları başqa provayderə köçürmək və ya güzgü qurmaq üçün başladın.',
     'storage.sync.modeColumn': 'Rejim',
     'storage.sync.mode.Migration': 'Migrasiya',
-    'storage.sync.mode.Mirror': 'Mirror',
+    'storage.sync.mode.Mirror': 'Güzgü',
     'storage.sync.route': 'Mənbə → hədəf',
-    'storage.sync.switchesPrimary': 'Bitəndə hədəf Primary olur',
+    'storage.sync.switchesPrimary': 'Bitəndə hədəf əsas provayder olur',
     'storage.sync.statusColumn': 'Status',
     'storage.sync.status.Pending': 'Gözləyir',
     'storage.sync.status.Running': 'Gedir',
@@ -99,19 +102,19 @@ export const storageTranslations: PageTranslations = {
     'storage.sync.migration': 'Migrasiya (birdəfəlik köçürmə)',
     'storage.sync.migrationHint':
       'Bütün obyektlər hədəfə kopyalanır və yoxlanılır. Başlayan andan yeni fayllar hər ikisinə yazılır.',
-    'storage.sync.mirror': 'Mirror (davamlı nüsxə)',
+    'storage.sync.mirror': 'Güzgü (davamlı nüsxə)',
     'storage.sync.mirrorHint':
-      'Hədəf Secondary olur: hər yeni fayl ona da yazılır, Primary cavab verməyəndə oxumalar ondan gedir.',
-    'storage.sync.sourceIs': 'Mənbə: {{name}} (hazırkı Primary)',
+      'Hədəf ehtiyat provayder olur: hər yeni fayl ona da yazılır, əsas cavab verməyəndə oxumalar ondan gedir.',
+    'storage.sync.sourceIs': 'Mənbə: {{name}} (hazırkı əsas provayder)',
     'storage.sync.noTargets':
       'Uyğun hədəf yoxdur. Əvvəlcə başqa provayder əlavə edin və onun bağlantı testi keçsin.',
-    'storage.sync.switchPrimary': 'Bitəndə hədəfi Primary et',
+    'storage.sync.switchPrimary': 'Bitəndə hədəfi əsas provayder et',
     'storage.sync.summaryMigrationSwitch':
-      '{{source}}-dəki bütün fayllar {{target}}-ə köçürüləcək və yoxlanılacaq. Bitəndə {{target}} Primary olacaq.',
+      '{{source}}-dəki bütün fayllar {{target}}-ə köçürüləcək və yoxlanılacaq. Bitəndə {{target}} əsas provayder olacaq.',
     'storage.sync.summaryMigration':
-      '{{source}}-dəki bütün fayllar {{target}}-ə köçürüləcək və yoxlanılacaq. Primary dəyişməyəcək.',
+      '{{source}}-dəki bütün fayllar {{target}}-ə köçürüləcək və yoxlanılacaq. Əsas provayder dəyişməyəcək.',
     'storage.sync.summaryMirror':
-      '{{target}} {{source}}-in mirror-u olacaq: əvvəlcə mövcud fayllar kopyalanır, sonra hər yeni fayl ikisinə də yazılır.',
+      '{{target}} {{source}}-in güzgüsü olacaq: əvvəlcə mövcud fayllar kopyalanır, sonra hər yeni fayl ikisinə də yazılır.',
     'storage.sync.summaryNote':
       'İş fonda gedir, istənilən an dayandırıla və davam etdirilə bilər; server yenidən başlasa checkpoint-dən davam edir.',
     'storage.sync.start': 'Başlat',
@@ -122,7 +125,8 @@ export const storageTranslations: PageTranslations = {
     'storage.progress.stage.Paused': 'Dayandırılıb. Davam etdirəndə qaldığı yerdən başlayacaq.',
     'storage.progress.stage.Verifying': 'Kopyalar yoxlanılır (ölçü və SHA-256).',
     'storage.progress.stage.Completed': 'Tamamlandı.',
-    'storage.progress.stage.Failed': 'Uğursuz oldu. Uğursuz obyektlərə baxıb təkrarlaya bilərsiniz.',
+    'storage.progress.stage.Failed':
+      'Uğursuz oldu. Uğursuz obyektlərə baxıb təkrarlaya bilərsiniz.',
     'storage.progress.stage.Cancelled': 'Ləğv edildi.',
     'storage.progress.percent': 'Gediş',
     'storage.progress.objects': 'Obyektlər',
@@ -139,9 +143,9 @@ export const storageTranslations: PageTranslations = {
     'storage.progress.cancel': 'Ləğv et',
     'storage.progress.cancelTitle': 'Sinxronizasiya ləğv edilsin?',
     'storage.progress.cancelMigration':
-      'Kopyalama dayanır və Primary dəyişmir. Artıq kopyalanmış obyektlər hədəfdə qalır; faylların oxunmasına təsir etmir.',
+      'Kopyalama dayanır və əsas provayder dəyişmir. Artıq kopyalanmış obyektlər hədəfdə qalır; faylların oxunmasına təsir etmir.',
     'storage.progress.cancelMirror':
-      'İlkin kopyalama dayanır. Hədəf Secondary olaraq qalır — lazım deyilsə, provayderlər siyahısından söndürün.',
+      'İlkin kopyalama dayanır. Hədəf ehtiyat provayder olaraq qalır — lazım deyilsə, provayderlər siyahısından söndürün.',
     'storage.progress.done.pause': 'Sinxronizasiya dayandırıldı.',
     'storage.progress.done.resume': 'Sinxronizasiya davam edir.',
     'storage.progress.done.cancel': 'Sinxronizasiya ləğv edildi.',
@@ -216,7 +220,8 @@ export const storageTranslations: PageTranslations = {
     'storage.provider.updated': '{{name}} was saved.',
     'storage.provider.rolePrimary': '{{name}} is now the primary.',
     'storage.provider.roleInactive': '{{name}} was switched off.',
-    'storage.provider.becameUnhealthy': '{{name}} is not answering. If it is the primary, reads continue from the mirror.',
+    'storage.provider.becameUnhealthy':
+      '{{name}} is not answering. If it is the primary, reads continue from the mirror.',
     'storage.provider.addTitle': 'Add a provider',
     'storage.provider.editTitle': 'Edit the provider',
     'storage.provider.explanation':
@@ -233,7 +238,8 @@ export const storageTranslations: PageTranslations = {
     'storage.provider.bucketFiles': 'Files bucket',
     'storage.provider.bucketReceipts': 'Receipts bucket',
     'storage.provider.bucketTemp': 'Temporary bucket',
-    'storage.provider.editTestHint': 'Without new keys, the server tests the connection with the stored ones when you save.',
+    'storage.provider.editTestHint':
+      'Without new keys, the server tests the connection with the stored ones when you save.',
     'storage.provider.bucketOk': 'write, read and delete work',
     'storage.sync.new': 'New sync',
     'storage.sync.started': 'The sync has started.',
@@ -267,7 +273,8 @@ export const storageTranslations: PageTranslations = {
     'storage.sync.mirrorHint':
       'The target becomes the secondary: every new file is written to it too, and reads fall back to it when the primary does not answer.',
     'storage.sync.sourceIs': 'Source: {{name}} (the current primary)',
-    'storage.sync.noTargets': 'There is no suitable target. Add another provider first and let it pass its connection test.',
+    'storage.sync.noTargets':
+      'There is no suitable target. Add another provider first and let it pass its connection test.',
     'storage.sync.switchPrimary': 'Make the target primary when done',
     'storage.sync.summaryMigrationSwitch':
       'Every file on {{source}} will be copied to {{target}} and verified. When done, {{target}} becomes the primary.',
@@ -335,7 +342,8 @@ export const storageTranslations: PageTranslations = {
     'storage.title': 'Хранилище файлов',
     'storage.description':
       'S3-совместимые хранилища для файлов и перенос между ними. Все объекты хранятся зашифрованными; при смене хранилища старые файлы остаются доступными.',
-    'storage.loadFailedEffect': 'Не удаётся показать провайдеров. Запись и чтение файлов не затронуты.',
+    'storage.loadFailedEffect':
+      'Не удаётся показать провайдеров. Запись и чтение файлов не затронуты.',
     'storage.tabProviders': 'Провайдеры',
     'storage.tabSync': 'Синхронизация',
     'storage.actions': 'Действия',
@@ -354,7 +362,7 @@ export const storageTranslations: PageTranslations = {
     'storage.provider.add': 'Добавить провайдера',
     'storage.provider.empty': 'Провайдеров нет. Чтобы загружать файлы, нужен хотя бы один.',
     'storage.provider.name': 'Название',
-    'storage.provider.endpoint': 'Endpoint',
+    'storage.provider.endpoint': 'Адрес сервера',
     'storage.provider.role': 'Роль',
     'storage.provider.health': 'Состояние',
     'storage.provider.lastChecked': 'Последняя проверка',
@@ -379,7 +387,8 @@ export const storageTranslations: PageTranslations = {
     'storage.provider.updated': '{{name}} сохранён.',
     'storage.provider.rolePrimary': '{{name}} теперь основной.',
     'storage.provider.roleInactive': '{{name}} отключён.',
-    'storage.provider.becameUnhealthy': '{{name}} не отвечает. Если это основной, чтение продолжается из зеркала.',
+    'storage.provider.becameUnhealthy':
+      '{{name}} не отвечает. Если это основной, чтение продолжается из зеркала.',
     'storage.provider.addTitle': 'Добавить провайдера',
     'storage.provider.editTitle': 'Изменить провайдера',
     'storage.provider.explanation':
@@ -389,9 +398,9 @@ export const storageTranslations: PageTranslations = {
     'storage.provider.region': 'Регион',
     'storage.provider.endpointHint': 'Полный адрес, начинающийся с http:// или https://',
     'storage.provider.useSsl': 'Подключаться по HTTPS',
-    'storage.provider.accessKey': 'Access key',
+    'storage.provider.accessKey': 'Ключ доступа',
     'storage.provider.keyKeepHint': 'Сейчас: {{hint}}. Оставьте пустым, чтобы не менять.',
-    'storage.provider.secretKey': 'Secret key',
+    'storage.provider.secretKey': 'Секретный ключ',
     'storage.provider.secretKeepHint': 'Оставьте пустым, чтобы сохранить текущий ключ.',
     'storage.provider.bucketFiles': 'Бакет файлов',
     'storage.provider.bucketReceipts': 'Бакет чеков',
@@ -402,7 +411,8 @@ export const storageTranslations: PageTranslations = {
     'storage.sync.new': 'Новая синхронизация',
     'storage.sync.started': 'Синхронизация запущена.',
     'storage.sync.empty': 'Синхронизаций ещё не было.',
-    'storage.sync.emptyHint': 'Запустите, чтобы перенести файлы к другому провайдеру или настроить зеркало.',
+    'storage.sync.emptyHint':
+      'Запустите, чтобы перенести файлы к другому провайдеру или настроить зеркало.',
     'storage.sync.modeColumn': 'Режим',
     'storage.sync.mode.Migration': 'Миграция',
     'storage.sync.mode.Mirror': 'Зеркало',
@@ -431,7 +441,8 @@ export const storageTranslations: PageTranslations = {
     'storage.sync.mirrorHint':
       'Цель становится резервной: каждый новый файл пишется и в неё, а если основной не отвечает, чтение идёт из неё.',
     'storage.sync.sourceIs': 'Источник: {{name}} (текущий основной)',
-    'storage.sync.noTargets': 'Подходящей цели нет. Сначала добавьте другого провайдера, и пусть он пройдёт проверку подключения.',
+    'storage.sync.noTargets':
+      'Подходящей цели нет. Сначала добавьте другого провайдера, и пусть он пройдёт проверку подключения.',
     'storage.sync.switchPrimary': 'По завершении сделать цель основной',
     'storage.sync.summaryMigrationSwitch':
       'Все файлы из {{source}} будут скопированы в {{target}} и проверены. По завершении {{target}} станет основным.',
@@ -449,7 +460,8 @@ export const storageTranslations: PageTranslations = {
     'storage.progress.stage.Paused': 'Приостановлена. Продолжит с того места, где остановилась.',
     'storage.progress.stage.Verifying': 'Копии проверяются (размер и SHA-256).',
     'storage.progress.stage.Completed': 'Завершена.',
-    'storage.progress.stage.Failed': 'Завершилась ошибкой. Посмотрите неудачные объекты и повторите.',
+    'storage.progress.stage.Failed':
+      'Завершилась ошибкой. Посмотрите неудачные объекты и повторите.',
     'storage.progress.stage.Cancelled': 'Отменена.',
     'storage.progress.percent': 'Ход',
     'storage.progress.objects': 'Объекты',

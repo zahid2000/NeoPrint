@@ -58,11 +58,15 @@ export interface StorageSyncDialogData {
           <mat-radio-group class="choices" [ngModel]="mode()" (ngModelChange)="mode.set($event)">
             <mat-radio-button value="Migration">
               <strong>{{ 'storage.sync.migration' | translate }}</strong>
-              <span class="neo-caption choices__hint">{{ 'storage.sync.migrationHint' | translate }}</span>
+              <span class="neo-caption choices__hint">{{
+                'storage.sync.migrationHint' | translate
+              }}</span>
             </mat-radio-button>
             <mat-radio-button value="Mirror">
               <strong>{{ 'storage.sync.mirror' | translate }}</strong>
-              <span class="neo-caption choices__hint">{{ 'storage.sync.mirrorHint' | translate }}</span>
+              <span class="neo-caption choices__hint">{{
+                'storage.sync.mirrorHint' | translate
+              }}</span>
             </mat-radio-button>
           </mat-radio-group>
         }
@@ -75,11 +79,17 @@ export interface StorageSyncDialogData {
               {{ 'storage.sync.noTargets' | translate }}
             </p>
           } @else {
-            <mat-radio-group class="choices" [ngModel]="targetId()" (ngModelChange)="targetId.set($event)">
+            <mat-radio-group
+              class="choices"
+              [ngModel]="targetId()"
+              (ngModelChange)="targetId.set($event)"
+            >
               @for (provider of targets(); track provider.id) {
                 <mat-radio-button [value]="provider.id">
                   <strong>{{ provider.name }}</strong>
-                  <span class="neo-caption choices__hint">{{ provider.type }} · {{ provider.endpoint }}</span>
+                  <span class="neo-caption choices__hint"
+                    >{{ provider.type }} · {{ provider.endpoint }}</span
+                  >
                 </mat-radio-button>
               }
             </mat-radio-group>
@@ -116,7 +126,9 @@ export interface StorageSyncDialogData {
 
     <mat-dialog-actions class="neo-dialog__actions">
       @if (step() === 0) {
-        <button mat-button type="button" (click)="close()">{{ 'common.cancel' | translate }}</button>
+        <button mat-button type="button" (click)="close()">
+          {{ 'common.cancel' | translate }}
+        </button>
       } @else {
         <button mat-button type="button" [disabled]="starting()" (click)="step.set(step() - 1)">
           {{ 'common.back' | translate }}
@@ -124,7 +136,12 @@ export interface StorageSyncDialogData {
       }
 
       @if (step() < 2) {
-        <button mat-flat-button type="button" [disabled]="!canContinue()" (click)="step.set(step() + 1)">
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="!canContinue()"
+          (click)="step.set(step() + 1)"
+        >
           {{ 'common.next' | translate }}
         </button>
       } @else {
@@ -205,7 +222,11 @@ export class StorageSyncDialogComponent {
     inject<MatDialogRef<StorageSyncDialogComponent, StorageSyncJob | undefined>>(MatDialogRef);
   private readonly data = inject<StorageSyncDialogData>(MAT_DIALOG_DATA);
 
-  readonly stepLabels = ['storage.sync.stepMode', 'storage.sync.stepTarget', 'storage.sync.stepConfirm'];
+  readonly stepLabels = [
+    'storage.sync.stepMode',
+    'storage.sync.stepTarget',
+    'storage.sync.stepConfirm',
+  ];
 
   readonly step = signal(this.data.targetId ? 1 : 0);
   readonly mode = signal<StorageSyncMode>(this.data.mode ?? 'Migration');
@@ -214,14 +235,18 @@ export class StorageSyncDialogComponent {
   readonly starting = signal(false);
   readonly error = signal<string | null>(null);
 
-  readonly primary = computed(() => this.data.providers.find((provider) => provider.role === 'Primary') ?? null);
+  readonly primary = computed(
+    () => this.data.providers.find((provider) => provider.role === 'Primary') ?? null,
+  );
 
   /** A target has to be tested and must not be the primary itself. */
   readonly targets = computed(() =>
     this.data.providers.filter((provider) => provider.role !== 'Primary' && provider.isVerified),
   );
 
-  readonly target = computed(() => this.targets().find((provider) => provider.id === this.targetId()) ?? null);
+  readonly target = computed(
+    () => this.targets().find((provider) => provider.id === this.targetId()) ?? null,
+  );
 
   readonly canContinue = computed(() => (this.step() === 0 ? true : this.target() !== null));
 

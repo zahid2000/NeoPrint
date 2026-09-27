@@ -1,10 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
-import {
-  FormBuilder,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -71,9 +67,7 @@ export class LoginComponent {
 
       // Plan section 2.8: the seeded password came from a configuration value,
       // so it has to be replaced before anything else is reachable.
-      await this.router.navigate([
-        response.admin.mustChangePassword ? '/change-password' : '/',
-      ]);
+      await this.router.navigate([response.admin.mustChangePassword ? '/change-password' : '/']);
     } catch (error) {
       this.errorMessage.set(describeError(error));
     } finally {
@@ -102,9 +96,7 @@ export function describeError(error: unknown): string {
     | null
     | undefined;
 
-  const fromErrors = body?.errors
-    ? Object.values(body.errors).flat()[0]
-    : undefined;
+  const fromErrors = body?.errors ? Object.values(body.errors).flat()[0] : undefined;
 
   return body?.detail ?? fromErrors ?? body?.title ?? 'error.server';
 }

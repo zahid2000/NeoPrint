@@ -1,17 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
 import { describe, beforeEach, afterEach, expect, it, vi } from 'vitest';
 
-import {
-  DeviceListItem,
-  EnrollmentTokenListItem,
-} from '../../core/api/admin-api.service';
+import { DeviceListItem, EnrollmentTokenListItem } from '../../core/api/admin-api.service';
 import { DevicesComponent } from './devices.component';
 
 function device(overrides: Partial<DeviceListItem> = {}): DeviceListItem {
@@ -35,9 +29,7 @@ function device(overrides: Partial<DeviceListItem> = {}): DeviceListItem {
   };
 }
 
-function token(
-  overrides: Partial<EnrollmentTokenListItem> = {},
-): EnrollmentTokenListItem {
+function token(overrides: Partial<EnrollmentTokenListItem> = {}): EnrollmentTokenListItem {
   return {
     id: '99999999-9999-9999-9999-999999999999',
     kioskId: null,
@@ -84,9 +76,7 @@ describe('DevicesComponent', () => {
 
     await flushMicrotasks();
 
-    backend
-      .expectOne('/api/admin/enrollment-tokens')
-      .flush(options.tokens ?? []);
+    backend.expectOne('/api/admin/enrollment-tokens').flush(options.tokens ?? []);
 
     await fixture.whenStable();
   }
@@ -153,18 +143,12 @@ describe('DevicesComponent', () => {
 
     expect(component.tokenStatusKey(token())).toBe('tokens.usable');
     expect(
-      component.tokenStatusKey(
-        token({ usedByDeviceId: '55555555-5555-5555-5555-555555555555' }),
-      ),
+      component.tokenStatusKey(token({ usedByDeviceId: '55555555-5555-5555-5555-555555555555' })),
     ).toBe('tokens.used');
     expect(
-      component.tokenStatusKey(
-        token({ revokedAt: new Date().toISOString(), isUsable: false }),
-      ),
+      component.tokenStatusKey(token({ revokedAt: new Date().toISOString(), isUsable: false })),
     ).toBe('tokens.revoked');
-    expect(component.tokenStatusKey(token({ isUsable: false }))).toBe(
-      'tokens.expired',
-    );
+    expect(component.tokenStatusKey(token({ isUsable: false }))).toBe('tokens.expired');
   });
 
   it('looks a device up by the code shown on the kiosk', async () => {
@@ -215,9 +199,7 @@ describe('DevicesComponent', () => {
 
     await component.revoke(component.active()[0]);
 
-    backend.expectNone(
-      '/api/admin/devices/11111111-1111-1111-1111-111111111111/revoke',
-    );
+    backend.expectNone('/api/admin/devices/11111111-1111-1111-1111-111111111111/revoke');
   });
 
   it('reports a failed load without leaving stale rows on screen', async () => {

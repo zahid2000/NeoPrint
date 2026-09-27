@@ -1,8 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -16,9 +13,7 @@ import { HasPermissionDirective } from './has-permission.directive';
   imports: [HasPermissionDirective],
   template: `
     <button *appHasPermission="'devices.revoke'" id="revoke">Detach</button>
-    <button *appHasPermission="['roles.manage', 'admins.manage']" id="manage">
-      Manage
-    </button>
+    <button *appHasPermission="['roles.manage', 'admins.manage']" id="manage">Manage</button>
   `,
 })
 class HostComponent {}

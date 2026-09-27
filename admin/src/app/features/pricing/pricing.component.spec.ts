@@ -84,9 +84,23 @@ describe('PricingComponent', () => {
     expect(request.request.body.options).toMatchObject({ pageCount: 4, color: true, paper: 'A4' });
 
     request.flush({
-      pages: 4, sides: 4, sheets: 4, copies: 1, color: true, duplex: false, paper: 'A4',
-      pricePerSide: 0.5, paperMultiplier: 1, basePrice: 2, discountPercent: 0, volumeDiscount: 0,
-      promoDiscount: 0, bonusPages: 0, minimumApplied: false, finalPrice: 2, currency: 'AZN',
+      pages: 4,
+      sides: 4,
+      sheets: 4,
+      copies: 1,
+      color: true,
+      duplex: false,
+      paper: 'A4',
+      pricePerSide: 0.5,
+      paperMultiplier: 1,
+      basePrice: 2,
+      discountPercent: 0,
+      volumeDiscount: 0,
+      promoDiscount: 0,
+      bonusPages: 0,
+      minimumApplied: false,
+      finalPrice: 2,
+      currency: 'AZN',
     });
     await calculating;
 
@@ -101,7 +115,9 @@ describe('PricingComponent', () => {
     const request = backend.expectOne('/api/admin/pricing-profiles/p1');
 
     expect(request.request.method).toBe('PUT');
-    expect(request.request.body.volumeTiers.map((tier: { minSides: number }) => tier.minSides)).toEqual([20, 50]);
+    expect(
+      request.request.body.volumeTiers.map((tier: { minSides: number }) => tier.minSides),
+    ).toEqual([20, 50]);
 
     request.flush(standard);
     await settle(fixture);

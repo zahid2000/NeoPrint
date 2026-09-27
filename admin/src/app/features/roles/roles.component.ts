@@ -146,9 +146,7 @@ export class RolesComponent {
 
   /** Whether every permission in a group is ticked, for the group checkbox. */
   groupState(group: PermissionGroup): 'all' | 'some' | 'none' {
-    const ticked = group.permissions.filter((permission) =>
-      this.draft().has(permission),
-    ).length;
+    const ticked = group.permissions.filter((permission) => this.draft().has(permission)).length;
 
     if (ticked === 0) {
       return 'none';

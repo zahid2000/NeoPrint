@@ -55,12 +55,12 @@ export type StorageProviderDialogResult = StorageProvider | undefined;
       <p class="neo-dialog__explanation">{{ 'storage.provider.explanation' | translate }}</p>
 
       <div class="form">
-        <mat-form-field appearance="outline" class="form__wide">
+        <mat-form-field class="form__wide">
           <mat-label>{{ 'storage.provider.name' | translate }}</mat-label>
           <input matInput required [ngModel]="name()" (ngModelChange)="set(name, $event)" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'storage.provider.type' | translate }}</mat-label>
           <mat-select [ngModel]="type()" (ngModelChange)="set(type, $event)">
             @for (option of types; track option) {
@@ -70,30 +70,48 @@ export type StorageProviderDialogResult = StorageProvider | undefined;
           <mat-hint>{{ 'storage.provider.typeHint' | translate }}</mat-hint>
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'storage.provider.region' | translate }}</mat-label>
           <input matInput [ngModel]="region()" (ngModelChange)="set(region, $event)" />
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="form__wide">
+        <mat-form-field class="form__wide">
           <mat-label>{{ 'storage.provider.endpoint' | translate }}</mat-label>
-          <input matInput required placeholder="https://s3.example.az" [ngModel]="endpoint()" (ngModelChange)="set(endpoint, $event)" />
+          <input
+            matInput
+            required
+            placeholder="https://s3.example.az"
+            [ngModel]="endpoint()"
+            (ngModelChange)="set(endpoint, $event)"
+          />
           <mat-hint>{{ 'storage.provider.endpointHint' | translate }}</mat-hint>
         </mat-form-field>
 
-        <mat-slide-toggle class="form__wide" [ngModel]="useSsl()" (ngModelChange)="set(useSsl, $event)">
+        <mat-slide-toggle
+          class="form__wide"
+          [ngModel]="useSsl()"
+          (ngModelChange)="set(useSsl, $event)"
+        >
           {{ 'storage.provider.useSsl' | translate }}
         </mat-slide-toggle>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'storage.provider.accessKey' | translate }}</mat-label>
-          <input matInput autocomplete="off" [required]="!existing" [ngModel]="accessKey()" (ngModelChange)="set(accessKey, $event)" />
+          <input
+            matInput
+            autocomplete="off"
+            [required]="!existing"
+            [ngModel]="accessKey()"
+            (ngModelChange)="set(accessKey, $event)"
+          />
           @if (existing) {
-            <mat-hint>{{ 'storage.provider.keyKeepHint' | translate: { hint: existing.accessKeyHint } }}</mat-hint>
+            <mat-hint>{{
+              'storage.provider.keyKeepHint' | translate: { hint: existing.accessKeyHint }
+            }}</mat-hint>
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'storage.provider.secretKey' | translate }}</mat-label>
           <input
             matInput
@@ -108,19 +126,34 @@ export type StorageProviderDialogResult = StorageProvider | undefined;
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'storage.provider.bucketFiles' | translate }}</mat-label>
-          <input matInput required [ngModel]="bucketFiles()" (ngModelChange)="set(bucketFiles, $event)" />
+          <input
+            matInput
+            required
+            [ngModel]="bucketFiles()"
+            (ngModelChange)="set(bucketFiles, $event)"
+          />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'storage.provider.bucketReceipts' | translate }}</mat-label>
-          <input matInput required [ngModel]="bucketReceipts()" (ngModelChange)="set(bucketReceipts, $event)" />
+          <input
+            matInput
+            required
+            [ngModel]="bucketReceipts()"
+            (ngModelChange)="set(bucketReceipts, $event)"
+          />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'storage.provider.bucketTemp' | translate }}</mat-label>
-          <input matInput required [ngModel]="bucketTemp()" (ngModelChange)="set(bucketTemp, $event)" />
+          <input
+            matInput
+            required
+            [ngModel]="bucketTemp()"
+            (ngModelChange)="set(bucketTemp, $event)"
+          />
         </mat-form-field>
       </div>
 
@@ -129,15 +162,23 @@ export type StorageProviderDialogResult = StorageProvider | undefined;
       }
 
       @if (test(); as result) {
-        <div class="test" [class.test--ok]="result.succeeded" [class.test--failed]="!result.succeeded" role="status">
+        <div
+          class="test"
+          [class.test--ok]="result.succeeded"
+          [class.test--failed]="!result.succeeded"
+          role="status"
+        >
           <mat-icon aria-hidden="true">{{ result.succeeded ? 'check_circle' : 'error' }}</mat-icon>
           <div>
             <p>{{ result.message }}</p>
             <ul>
               @for (bucket of result.buckets; track bucket.bucket) {
                 <li>
-                  <code>{{ bucket.bucket }}</code>:
-                  {{ bucket.succeeded ? ('storage.provider.bucketOk' | translate) : bucket.problem }}
+                  <code>{{ bucket.bucket }}</code
+                  >:
+                  {{
+                    bucket.succeeded ? ('storage.provider.bucketOk' | translate) : bucket.problem
+                  }}
                 </li>
               }
             </ul>
@@ -155,7 +196,12 @@ export type StorageProviderDialogResult = StorageProvider | undefined;
 
     <mat-dialog-actions class="neo-dialog__actions">
       <button mat-button type="button" (click)="close()">{{ 'common.cancel' | translate }}</button>
-      <button mat-stroked-button type="button" [disabled]="!canTest() || busy()" (click)="runTest()">
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="!canTest() || busy()"
+        (click)="runTest()"
+      >
         @if (testing()) {
           <mat-spinner diameter="18" class="neo-button-spinner" />
         }

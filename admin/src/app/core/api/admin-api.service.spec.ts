@@ -12,7 +12,9 @@ describe('AdminApiService', () => {
   let backend: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     api = TestBed.inject(AdminApiService);
     backend = TestBed.inject(HttpTestingController);
   });
@@ -23,7 +25,9 @@ describe('AdminApiService', () => {
     const deleting = firstValueFrom(api.deleteKiosk('k1', '  Səhv yaradılıb  '));
     const request = backend.expectOne('/api/admin/kiosks/k1');
 
-    expect(request.request.headers.get('X-Audit-Reason')).toBe(encodeURIComponent('Səhv yaradılıb'));
+    expect(request.request.headers.get('X-Audit-Reason')).toBe(
+      encodeURIComponent('Səhv yaradılıb'),
+    );
 
     request.flush(null);
     await deleting;
@@ -52,11 +56,16 @@ describe('AdminApiService', () => {
 
   it('uses the plan’s routes for the storage roles', async () => {
     const primary = firstValueFrom(api.setStorageRole('p', 'Primary'));
-    backend.expectOne({ method: 'POST', url: '/api/admin/storage/providers/p/set-primary' }).flush({});
+    backend
+      .expectOne({ method: 'POST', url: '/api/admin/storage/providers/p/set-primary' })
+      .flush({});
     await primary;
 
     const off = firstValueFrom(api.setStorageRole('p', 'Inactive', 'Lazım deyil'));
-    const request = backend.expectOne({ method: 'PUT', url: '/api/admin/storage/providers/p/role' });
+    const request = backend.expectOne({
+      method: 'PUT',
+      url: '/api/admin/storage/providers/p/role',
+    });
     expect(request.request.body).toEqual({ role: 'Inactive' });
     request.flush({});
     await off;

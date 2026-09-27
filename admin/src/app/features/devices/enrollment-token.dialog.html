@@ -66,19 +66,17 @@
       </mat-radio-group>
 
       @if (!isNewKiosk) {
-        <mat-form-field appearance="fill" class="activate__field activate__field--wide">
+        <mat-form-field class="activate__field activate__field--wide">
           <mat-label>{{ 'activate.kiosk' | translate }}</mat-label>
           <mat-select formControlName="kioskId">
             @for (kiosk of bindableKiosks(); track kiosk.id) {
-              <mat-option [value]="kiosk.id">
-                {{ kiosk.code }} — {{ kiosk.name }}
-              </mat-option>
+              <mat-option [value]="kiosk.id"> {{ kiosk.code }} — {{ kiosk.name }} </mat-option>
             }
           </mat-select>
         </mat-form-field>
       }
 
-      <mat-form-field appearance="fill" class="activate__field">
+      <mat-form-field class="activate__field">
         <mat-label>{{ 'tokens.ttlHours' | translate }}</mat-label>
         <input matInput type="number" min="1" max="720" formControlName="ttlHours" required />
         <mat-hint>{{ 'tokens.ttlHint' | translate }}</mat-hint>

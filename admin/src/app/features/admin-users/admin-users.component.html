@@ -32,7 +32,7 @@
         <h2>{{ (isEditing() ? 'admins.edit' : 'admins.new') | translate }}</h2>
 
         <form [formGroup]="form" (ngSubmit)="save()" class="admins__form">
-          <mat-form-field appearance="fill" class="admins__field">
+          <mat-form-field class="admins__field">
             <mat-label>{{ 'admins.email' | translate }}</mat-label>
             <input matInput formControlName="email" autocomplete="off" required />
             @if (isEditing()) {
@@ -40,22 +40,28 @@
             }
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="admins__field">
+          <mat-form-field class="admins__field">
             <mat-label>{{ 'admins.fullName' | translate }}</mat-label>
             <input matInput formControlName="fullName" required />
           </mat-form-field>
 
           @if (!isEditing()) {
-            <mat-form-field appearance="fill" class="admins__field">
+            <mat-form-field class="admins__field">
               <mat-label>{{ 'admins.password' | translate }}</mat-label>
-              <input matInput type="password" formControlName="password" autocomplete="new-password" required />
+              <input
+                matInput
+                type="password"
+                formControlName="password"
+                autocomplete="new-password"
+                required
+              />
               <mat-hint>
                 {{ 'admins.passwordHint' | translate: { min: minimumPasswordLength } }}
               </mat-hint>
             </mat-form-field>
           }
 
-          <mat-form-field appearance="fill" class="admins__field">
+          <mat-form-field class="admins__field">
             <mat-label>{{ 'admins.roles' | translate }}</mat-label>
             <mat-select formControlName="roleIds" multiple required>
               @for (role of roles(); track role.id) {
@@ -70,13 +76,11 @@
           </mat-checkbox>
 
           @if (!form.controls.allKiosks.value) {
-            <mat-form-field appearance="fill" class="admins__field admins__field--wide">
+            <mat-form-field class="admins__field admins__field--wide">
               <mat-label>{{ 'admins.kiosks' | translate }}</mat-label>
               <mat-select formControlName="kioskIds" multiple>
                 @for (kiosk of kiosks(); track kiosk.id) {
-                  <mat-option [value]="kiosk.id">
-                    {{ kiosk.code }} — {{ kiosk.name }}
-                  </mat-option>
+                  <mat-option [value]="kiosk.id"> {{ kiosk.code }} — {{ kiosk.name }} </mat-option>
                 }
               </mat-select>
               <mat-hint>{{ 'admins.kiosksHint' | translate }}</mat-hint>
@@ -158,9 +162,7 @@
             }
 
             @if (admin.mustChangePassword) {
-              <mat-icon
-                class="admins__flag"
-                [matTooltip]="'admins.mustChangePassword' | translate"
+              <mat-icon class="admins__flag" [matTooltip]="'admins.mustChangePassword' | translate"
                 >key</mat-icon
               >
             }
@@ -170,12 +172,12 @@
         <ng-container matColumnDef="lastLogin">
           <th mat-header-cell *matHeaderCellDef>{{ 'admins.lastLogin' | translate }}</th>
           <td mat-cell *matCellDef="let admin">
-            {{ admin.lastLoginAt ? (admin.lastLoginAt | date: 'short') : '—' }}
+            {{ admin.lastLoginAt ? (admin.lastLoginAt | dateTime) : '—' }}
           </td>
         </ng-container>
 
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef></th>
+          <th mat-header-cell *matHeaderCellDef>{{ 'common.actions' | translate }}</th>
           <td mat-cell *matCellDef="let admin">
             <button
               mat-icon-button

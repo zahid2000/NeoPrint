@@ -5,10 +5,16 @@
   </a>
 
   @if (isNew()) {
-    <app-page-header [title]="'kiosks.newTitle' | translate" [description]="'kiosks.newDescription' | translate" />
+    <app-page-header
+      [title]="'kiosks.newTitle' | translate"
+      [description]="'kiosks.newDescription' | translate"
+    />
   } @else if (kiosk(); as current) {
     <app-page-header [title]="current.code + ' — ' + current.name" [description]="current.address">
-      <app-status-chip [status]="current.status" [text]="'kiosks.status.' + current.status | translate" />
+      <app-status-chip
+        [status]="current.status"
+        [text]="'kiosks.status.' + current.status | translate"
+      />
       @if (canDelete()) {
         <button mat-button type="button" class="editor__danger" (click)="remove()">
           <mat-icon>delete</mat-icon>
@@ -26,32 +32,63 @@
   <ng-template #general let-readonly="readonly">
     <div class="editor__section">
       <div class="editor__grid">
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'kiosks.name' | translate }}</mat-label>
-          <input matInput required [readonly]="readonly" [ngModel]="name()" (ngModelChange)="name.set($event)" />
+          <input
+            matInput
+            required
+            [readonly]="readonly"
+            [ngModel]="name()"
+            (ngModelChange)="name.set($event)"
+          />
         </mat-form-field>
 
         @if (isNew()) {
-          <mat-form-field appearance="outline">
+          <mat-form-field>
             <mat-label>{{ 'kiosks.code' | translate }}</mat-label>
-            <input matInput placeholder="KSK-0000" [ngModel]="code()" (ngModelChange)="code.set($event)" />
+            <input
+              matInput
+              placeholder="KSK-0000"
+              [ngModel]="code()"
+              (ngModelChange)="code.set($event)"
+            />
             <mat-hint>{{ 'kiosks.codeHint' | translate }}</mat-hint>
           </mat-form-field>
         }
 
-        <mat-form-field appearance="outline" class="editor__wide">
+        <mat-form-field class="editor__wide">
           <mat-label>{{ 'kiosks.address' | translate }}</mat-label>
-          <input matInput required [readonly]="readonly" [ngModel]="address()" (ngModelChange)="address.set($event)" />
+          <input
+            matInput
+            required
+            [readonly]="readonly"
+            [ngModel]="address()"
+            (ngModelChange)="address.set($event)"
+          />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'kiosks.lat' | translate }}</mat-label>
-          <input matInput type="number" step="0.000001" [readonly]="readonly" [ngModel]="lat()" (ngModelChange)="lat.set(numberOrNull($event))" />
+          <input
+            matInput
+            type="number"
+            step="0.000001"
+            [readonly]="readonly"
+            [ngModel]="lat()"
+            (ngModelChange)="lat.set(numberOrNull($event))"
+          />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'kiosks.lng' | translate }}</mat-label>
-          <input matInput type="number" step="0.000001" [readonly]="readonly" [ngModel]="lng()" (ngModelChange)="lng.set(numberOrNull($event))" />
+          <input
+            matInput
+            type="number"
+            step="0.000001"
+            [readonly]="readonly"
+            [ngModel]="lng()"
+            (ngModelChange)="lng.set(numberOrNull($event))"
+          />
         </mat-form-field>
       </div>
 
@@ -67,18 +104,26 @@
       }
 
       <div class="editor__grid">
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'kiosks.language' | translate }}</mat-label>
-          <mat-select [disabled]="readonly" [ngModel]="language()" (ngModelChange)="language.set($event)">
+          <mat-select
+            [disabled]="readonly"
+            [ngModel]="language()"
+            (ngModelChange)="language.set($event)"
+          >
             @for (option of languages; track option) {
               <mat-option [value]="option">{{ 'language.' + option | translate }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'kiosks.queueLimit' | translate }}</mat-label>
-          <mat-select [disabled]="readonly" [ngModel]="queueLimit()" (ngModelChange)="queueLimit.set($event)">
+          <mat-select
+            [disabled]="readonly"
+            [ngModel]="queueLimit()"
+            (ngModelChange)="queueLimit.set($event)"
+          >
             <mat-option [value]="null">{{ 'common.useDefault' | translate }}</mat-option>
             <mat-option [value]="3">3</mat-option>
             <mat-option [value]="5">5</mat-option>
@@ -101,25 +146,53 @@
       <p class="neo-muted neo-body-small">{{ 'kiosks.limitsHint' | translate }}</p>
       <div class="editor__grid">
         <div class="editor__limit">
-          <mat-checkbox [disabled]="readonly" [checked]="maxSizeMb() === null" (change)="maxSizeMb.set($event.checked ? null : (kiosk()?.maxFileSizeMb?.default ?? 50))">
-            {{ 'kiosks.sizeDefault' | translate: { value: kiosk()?.maxFileSizeMb?.default ?? '—' } }}
+          <mat-checkbox
+            [disabled]="readonly"
+            [checked]="maxSizeMb() === null"
+            (change)="
+              maxSizeMb.set($event.checked ? null : (kiosk()?.maxFileSizeMb?.default ?? 50))
+            "
+          >
+            {{
+              'kiosks.sizeDefault' | translate: { value: kiosk()?.maxFileSizeMb?.default ?? '—' }
+            }}
           </mat-checkbox>
           @if (maxSizeMb() !== null) {
-            <mat-form-field appearance="outline">
+            <mat-form-field>
               <mat-label>{{ 'kiosks.maxSize' | translate }}</mat-label>
-              <input matInput type="number" min="1" max="2048" [readonly]="readonly" [ngModel]="maxSizeMb()" (ngModelChange)="maxSizeMb.set(numberOrNull($event))" />
+              <input
+                matInput
+                type="number"
+                min="1"
+                max="2048"
+                [readonly]="readonly"
+                [ngModel]="maxSizeMb()"
+                (ngModelChange)="maxSizeMb.set(numberOrNull($event))"
+              />
               <span matTextSuffix>MB</span>
             </mat-form-field>
           }
         </div>
         <div class="editor__limit">
-          <mat-checkbox [disabled]="readonly" [checked]="maxPages() === null" (change)="maxPages.set($event.checked ? null : (kiosk()?.maxPages?.default ?? 200))">
+          <mat-checkbox
+            [disabled]="readonly"
+            [checked]="maxPages() === null"
+            (change)="maxPages.set($event.checked ? null : (kiosk()?.maxPages?.default ?? 200))"
+          >
             {{ 'kiosks.pagesDefault' | translate: { value: kiosk()?.maxPages?.default ?? '—' } }}
           </mat-checkbox>
           @if (maxPages() !== null) {
-            <mat-form-field appearance="outline">
+            <mat-form-field>
               <mat-label>{{ 'kiosks.maxPages' | translate }}</mat-label>
-              <input matInput type="number" min="1" max="10000" [readonly]="readonly" [ngModel]="maxPages()" (ngModelChange)="maxPages.set(numberOrNull($event))" />
+              <input
+                matInput
+                type="number"
+                min="1"
+                max="10000"
+                [readonly]="readonly"
+                [ngModel]="maxPages()"
+                (ngModelChange)="maxPages.set(numberOrNull($event))"
+              />
             </mat-form-field>
           }
         </div>
@@ -137,17 +210,33 @@
     <div class="editor__section">
       <p class="neo-muted neo-body-small">{{ 'kiosks.paperHint' | translate }}</p>
       <div class="editor__grid">
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'kiosks.capacityA4' | translate }}</mat-label>
-          <input matInput type="number" min="0" max="100000" [readonly]="readonly" [ngModel]="capacityA4()" (ngModelChange)="capacityA4.set(+$event)" />
+          <input
+            matInput
+            type="number"
+            min="0"
+            max="100000"
+            [readonly]="readonly"
+            [ngModel]="capacityA4()"
+            (ngModelChange)="capacityA4.set(+$event)"
+          />
           <span matTextSuffix>{{ 'kiosks.sheets' | translate }}</span>
           @if (kiosk()?.paper?.['A4']; as stock) {
             <mat-hint>{{ 'kiosks.loaded' | translate: { current: stock.current } }}</mat-hint>
           }
         </mat-form-field>
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'kiosks.capacityA3' | translate }}</mat-label>
-          <input matInput type="number" min="0" max="100000" [readonly]="readonly" [ngModel]="capacityA3()" (ngModelChange)="capacityA3.set(+$event)" />
+          <input
+            matInput
+            type="number"
+            min="0"
+            max="100000"
+            [readonly]="readonly"
+            [ngModel]="capacityA3()"
+            (ngModelChange)="capacityA3.set(+$event)"
+          />
           <span matTextSuffix>{{ 'kiosks.sheets' | translate }}</span>
           @if (kiosk()?.paper?.['A3']; as stock) {
             <mat-hint>{{ 'kiosks.loaded' | translate: { current: stock.current } }}</mat-hint>
@@ -165,14 +254,28 @@
 
   <ng-template #pinForm>
     <div class="editor__grid">
-      <mat-form-field appearance="outline">
+      <mat-form-field>
         <mat-label>{{ 'kiosks.pin' | translate }}</mat-label>
-        <input matInput type="password" inputmode="numeric" autocomplete="new-password" [ngModel]="pin()" (ngModelChange)="pin.set($event)" />
+        <input
+          matInput
+          type="password"
+          inputmode="numeric"
+          autocomplete="new-password"
+          [ngModel]="pin()"
+          (ngModelChange)="pin.set($event)"
+        />
         <mat-hint>{{ 'kiosks.pinHint' | translate }}</mat-hint>
       </mat-form-field>
-      <mat-form-field appearance="outline">
+      <mat-form-field>
         <mat-label>{{ 'kiosks.pinConfirm' | translate }}</mat-label>
-        <input matInput type="password" inputmode="numeric" autocomplete="new-password" [ngModel]="pinConfirm()" (ngModelChange)="pinConfirm.set($event)" />
+        <input
+          matInput
+          type="password"
+          inputmode="numeric"
+          autocomplete="new-password"
+          [ngModel]="pinConfirm()"
+          (ngModelChange)="pinConfirm.set($event)"
+        />
       </mat-form-field>
     </div>
     @if (pinProblem(); as key) {
@@ -195,7 +298,7 @@
 
       @if (canPricing()) {
         <h2>{{ 'kiosks.pricingProfile' | translate }}</h2>
-        <mat-form-field appearance="outline">
+        <mat-form-field>
           <mat-label>{{ 'kiosks.pricingProfile' | translate }}</mat-label>
           <mat-select [ngModel]="pricingProfileId()" (ngModelChange)="pricingProfileId.set($event)">
             <mat-option [value]="null">{{ 'kiosks.defaultProfile' | translate }}</mat-option>
@@ -206,9 +309,13 @@
         </mat-form-field>
       }
 
-      <mat-form-field appearance="outline">
+      <mat-form-field>
         <mat-label>{{ 'kiosks.fiscalTerminal' | translate }}</mat-label>
-        <input matInput [ngModel]="fiscalTerminalId()" (ngModelChange)="fiscalTerminalId.set($event)" />
+        <input
+          matInput
+          [ngModel]="fiscalTerminalId()"
+          (ngModelChange)="fiscalTerminalId.set($event)"
+        />
         <mat-hint>{{ 'kiosks.fiscalHint' | translate }}</mat-hint>
       </mat-form-field>
 
@@ -233,10 +340,18 @@
     <mat-tab-group animationDuration="150ms">
       <mat-tab [label]="'kiosks.tabGeneral' | translate">
         <section class="neo-card editor__card editor__tab">
-          <ng-container [ngTemplateOutlet]="general" [ngTemplateOutletContext]="{ readonly: !canEdit() }" />
+          <ng-container
+            [ngTemplateOutlet]="general"
+            [ngTemplateOutletContext]="{ readonly: !canEdit() }"
+          />
           @if (canEdit()) {
             <div class="editor__actions">
-              <button mat-flat-button type="button" [disabled]="generalProblems().length > 0 || saving() !== null" (click)="saveGeneral()">
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="generalProblems().length > 0 || saving() !== null"
+                (click)="saveGeneral()"
+              >
                 @if (saving() === 'general') {
                   <mat-spinner diameter="18" class="neo-button-spinner" />
                 }
@@ -249,10 +364,18 @@
 
       <mat-tab [label]="'kiosks.tabLimits' | translate">
         <section class="neo-card editor__card editor__tab">
-          <ng-container [ngTemplateOutlet]="limits" [ngTemplateOutletContext]="{ readonly: !canLimits() }" />
+          <ng-container
+            [ngTemplateOutlet]="limits"
+            [ngTemplateOutletContext]="{ readonly: !canLimits() }"
+          />
           @if (canLimits()) {
             <div class="editor__actions">
-              <button mat-flat-button type="button" [disabled]="!limitsValid() || saving() !== null" (click)="saveLimits()">
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="!limitsValid() || saving() !== null"
+                (click)="saveLimits()"
+              >
                 @if (saving() === 'limits') {
                   <mat-spinner diameter="18" class="neo-button-spinner" />
                 }
@@ -270,16 +393,24 @@
           <h3>{{ 'kiosks.pricingProfile' | translate }}</h3>
           @if (canPricing()) {
             <div class="editor__inline">
-              <mat-form-field appearance="outline">
+              <mat-form-field>
                 <mat-label>{{ 'kiosks.pricingProfile' | translate }}</mat-label>
-                <mat-select [ngModel]="pricingProfileId()" (ngModelChange)="pricingProfileId.set($event)">
+                <mat-select
+                  [ngModel]="pricingProfileId()"
+                  (ngModelChange)="pricingProfileId.set($event)"
+                >
                   <mat-option [value]="null">{{ 'kiosks.defaultProfile' | translate }}</mat-option>
                   @for (profile of profiles(); track profile.id) {
                     <mat-option [value]="profile.id">{{ profile.name }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
-              <button mat-flat-button type="button" [disabled]="saving() !== null" (click)="savePricing()">
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="saving() !== null"
+                (click)="savePricing()"
+              >
                 @if (saving() === 'pricing') {
                   <mat-spinner diameter="18" class="neo-button-spinner" />
                 }
@@ -293,12 +424,21 @@
           <h3>{{ 'kiosks.fiscalTerminal' | translate }}</h3>
           @if (canFiscal()) {
             <div class="editor__inline">
-              <mat-form-field appearance="outline">
+              <mat-form-field>
                 <mat-label>{{ 'kiosks.fiscalTerminal' | translate }}</mat-label>
-                <input matInput [ngModel]="fiscalTerminalId()" (ngModelChange)="fiscalTerminalId.set($event)" />
+                <input
+                  matInput
+                  [ngModel]="fiscalTerminalId()"
+                  (ngModelChange)="fiscalTerminalId.set($event)"
+                />
                 <mat-hint>{{ 'kiosks.fiscalHint' | translate }}</mat-hint>
               </mat-form-field>
-              <button mat-stroked-button type="button" [disabled]="saving() !== null" (click)="saveFiscal()">
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="saving() !== null"
+                (click)="saveFiscal()"
+              >
                 @if (saving() === 'fiscal') {
                   <mat-spinner diameter="18" class="neo-button-spinner" />
                 }
@@ -313,10 +453,18 @@
 
       <mat-tab [label]="'kiosks.tabPaper' | translate">
         <section class="neo-card editor__card editor__tab">
-          <ng-container [ngTemplateOutlet]="paper" [ngTemplateOutletContext]="{ readonly: !canEdit() }" />
+          <ng-container
+            [ngTemplateOutlet]="paper"
+            [ngTemplateOutletContext]="{ readonly: !canEdit() }"
+          />
           @if (canEdit()) {
             <div class="editor__actions">
-              <button mat-flat-button type="button" [disabled]="!paperValid() || saving() !== null" (click)="savePaper()">
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="!paperValid() || saving() !== null"
+                (click)="savePaper()"
+              >
                 @if (saving() === 'paper') {
                   <mat-spinner diameter="18" class="neo-button-spinner" />
                 }
@@ -333,7 +481,12 @@
             <p class="neo-muted neo-body-small">{{ 'kiosks.pinChangeExplanation' | translate }}</p>
             <ng-container [ngTemplateOutlet]="pinForm" />
             <div class="editor__actions">
-              <button mat-flat-button type="button" [disabled]="!pin() || pinProblem() !== null || saving() !== null" (click)="savePin()">
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="!pin() || pinProblem() !== null || saving() !== null"
+                (click)="savePin()"
+              >
                 @if (saving() === 'pin') {
                   <mat-spinner diameter="18" class="neo-button-spinner" />
                 }
@@ -348,30 +501,47 @@
         <mat-tab [label]="'kiosks.tabDevice' | translate">
           <section class="editor__tab">
             @if (devices().length === 0) {
-              <app-empty-state icon="devices" [message]="'kiosks.noDevices' | translate" [hint]="'kiosks.noDevicesHint' | translate">
-                <a mat-stroked-button routerLink="/devices">{{ 'kiosks.goToDevices' | translate }}</a>
+              <app-empty-state
+                icon="devices"
+                [message]="'kiosks.noDevices' | translate"
+                [hint]="'kiosks.noDevicesHint' | translate"
+              >
+                <a mat-stroked-button routerLink="/devices">{{
+                  'kiosks.goToDevices' | translate
+                }}</a>
               </app-empty-state>
             } @else {
               <div class="neo-table-wrapper">
                 <table mat-table class="neo-table" [dataSource]="devices()">
                   <ng-container matColumnDef="device">
-                    <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.deviceColumn' | translate }}</th>
+                    <th mat-header-cell *matHeaderCellDef>
+                      {{ 'kiosks.deviceColumn' | translate }}
+                    </th>
                     <td mat-cell *matCellDef="let device">
                       <strong>{{ device.hostname ?? '—' }}</strong>
-                      <span class="neo-caption editor__block">{{ device.platform }} · {{ device.appVersion ?? '—' }}</span>
+                      <span class="neo-caption editor__block"
+                        >{{ device.platform }} · {{ device.appVersion ?? '—' }}</span
+                      >
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="state">
-                    <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.statusColumn' | translate }}</th>
+                    <th mat-header-cell *matHeaderCellDef>
+                      {{ 'kiosks.statusColumn' | translate }}
+                    </th>
                     <td mat-cell *matCellDef="let device">
                       <app-status-chip
                         [status]="device.isActive ? 'Active' : 'Revoked'"
-                        [text]="(device.isActive ? 'kiosks.deviceActive' : 'kiosks.deviceFormer') | translate"
+                        [text]="
+                          (device.isActive ? 'kiosks.deviceActive' : 'kiosks.deviceFormer')
+                            | translate
+                        "
                       />
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="activated">
-                    <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.activatedAt' | translate }}</th>
+                    <th mat-header-cell *matHeaderCellDef>
+                      {{ 'kiosks.activatedAt' | translate }}
+                    </th>
                     <td mat-cell *matCellDef="let device">{{ device.activatedAt | dateTime }}</td>
                   </ng-container>
                   <ng-container matColumnDef="revoked">
@@ -387,8 +557,17 @@
                     <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.lastSeen' | translate }}</th>
                     <td mat-cell *matCellDef="let device">{{ device.lastSeenAt | dateTime }}</td>
                   </ng-container>
-                  <tr mat-header-row *matHeaderRowDef="['device', 'state', 'activated', 'revoked', 'seen']"></tr>
-                  <tr mat-row *matRowDef="let row; columns: ['device', 'state', 'activated', 'revoked', 'seen']"></tr>
+                  <tr
+                    mat-header-row
+                    *matHeaderRowDef="['device', 'state', 'activated', 'revoked', 'seen']"
+                  ></tr>
+                  <tr
+                    mat-row
+                    *matRowDef="
+                      let row;
+                      columns: ['device', 'state', 'activated', 'revoked', 'seen']
+                    "
+                  ></tr>
                 </table>
               </div>
               <p class="neo-caption">{{ 'kiosks.deviceHint' | translate }}</p>

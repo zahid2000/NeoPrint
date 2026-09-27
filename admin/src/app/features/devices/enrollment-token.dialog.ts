@@ -54,9 +54,7 @@ export class EnrollmentTokenDialogComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly translate = inject(TranslateService);
   private readonly dialogRef =
-    inject<MatDialogRef<EnrollmentTokenDialogComponent, EnrollmentTokenResult>>(
-      MatDialogRef,
-    );
+    inject<MatDialogRef<EnrollmentTokenDialogComponent, EnrollmentTokenResult>>(MatDialogRef);
 
   readonly kiosks = signal<KioskListItem[]>([]);
   readonly created = signal<EnrollmentTokenResult | null>(null);
@@ -66,10 +64,7 @@ export class EnrollmentTokenDialogComponent {
   readonly form = this.formBuilder.nonNullable.group({
     mode: ['new' as 'new' | 'existing', [Validators.required]],
     kioskId: [''],
-    ttlHours: [
-      defaultTokenTtlHours,
-      [Validators.required, Validators.min(1), Validators.max(720)],
-    ],
+    ttlHours: [defaultTokenTtlHours, [Validators.required, Validators.min(1), Validators.max(720)]],
   });
 
   readonly bindableKiosks = computed(() =>

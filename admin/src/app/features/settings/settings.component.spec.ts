@@ -1,8 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
@@ -80,7 +77,6 @@ describe('SettingsComponent', () => {
     // Forty-odd settings in one list is unusable, and the prefix is already
     // how the plan organises them.
     const groups = component.groups();
-
 
     expect(groups.map((group) => group.name)).toEqual(['Paper', 'Queue']);
     expect(groups.find((group) => group.name === 'Queue')!.settings).toHaveLength(2);
@@ -171,10 +167,12 @@ describe('SettingsComponent', () => {
 
     const saved = component.save();
 
-    backend.expectOne('/api/admin/settings').flush(
-      { errors: { 'Queue.DisplayLimit': ['Dəyər tam ədəd olmalıdır.'] } },
-      { status: 400, statusText: 'Bad Request' },
-    );
+    backend
+      .expectOne('/api/admin/settings')
+      .flush(
+        { errors: { 'Queue.DisplayLimit': ['Dəyər tam ədəd olmalıdır.'] } },
+        { status: 400, statusText: 'Bad Request' },
+      );
 
     await saved;
 

@@ -197,7 +197,10 @@ export class PricingComponent {
       }
 
       const keep = this.selectedId();
-      const next = profiles.find((profile) => profile.id === keep) ?? profiles.find((p) => p.isDefault) ?? profiles[0];
+      const next =
+        profiles.find((profile) => profile.id === keep) ??
+        profiles.find((p) => p.isDefault) ??
+        profiles[0];
 
       if (next && !this.creating()) {
         await this.select(next.id);
@@ -266,7 +269,10 @@ export class PricingComponent {
   }
 
   removeTier(index: number): void {
-    this.update('tiers', this.draft().tiers.filter((_, i) => i !== index));
+    this.update(
+      'tiers',
+      this.draft().tiers.filter((_, i) => i !== index),
+    );
   }
 
   revert(): void {

@@ -19,8 +19,7 @@ function stubMatchMedia(prefersDark: boolean): (matches: boolean) => void {
     removeEventListener: () => undefined,
   }));
 
-  return (matches: boolean) =>
-    listener?.({ matches } as MediaQueryListEvent);
+  return (matches: boolean) => listener?.({ matches } as MediaQueryListEvent);
 }
 
 describe('ThemeService', () => {
@@ -115,16 +114,12 @@ describe('ThemeService', () => {
   it('still works when storage is unavailable', () => {
     stubMatchMedia(false);
 
-    const getItem = vi
-      .spyOn(Storage.prototype, 'getItem')
-      .mockImplementation(() => {
-        throw new Error('storage disabled');
-      });
-    const setItem = vi
-      .spyOn(Storage.prototype, 'setItem')
-      .mockImplementation(() => {
-        throw new Error('storage disabled');
-      });
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage disabled');
+    });
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage disabled');
+    });
 
     service.initialise();
     service.set('dark');

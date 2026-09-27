@@ -54,9 +54,7 @@ export class ThemeService {
     // the 'system' preference the panel is supposed to follow. The colours
     // follow on their own - the media query in tokens.css does that - so only
     // the signal behind the toggle's icon has to be updated here.
-    query.addEventListener('change', (event) =>
-      this._systemPrefersDark.set(event.matches),
-    );
+    query.addEventListener('change', (event) => this._systemPrefersDark.set(event.matches));
 
     this.apply();
   }

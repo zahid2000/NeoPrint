@@ -108,9 +108,7 @@ export class SettingsComponent {
       const settings = await firstValueFrom(this.api.listSettings());
 
       this.settings.set(settings);
-      this.draft.set(
-        Object.fromEntries(settings.map((setting) => [setting.key, setting.value])),
-      );
+      this.draft.set(Object.fromEntries(settings.map((setting) => [setting.key, setting.value])));
     } catch (error) {
       this.errorMessage.set(describeError(error));
     } finally {
@@ -172,9 +170,7 @@ export class SettingsComponent {
       const saved = await firstValueFrom(this.api.updateSettings(values));
 
       this.settings.set(saved);
-      this.draft.set(
-        Object.fromEntries(saved.map((setting) => [setting.key, setting.value])),
-      );
+      this.draft.set(Object.fromEntries(saved.map((setting) => [setting.key, setting.value])));
 
       this.notify('settings.saved');
     } catch (error) {

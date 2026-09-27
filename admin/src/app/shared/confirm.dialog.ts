@@ -44,13 +44,7 @@ export type ConfirmResult = { readonly reason: string } | undefined;
  */
 @Component({
   selector: 'app-confirm-dialog',
-  imports: [
-    MatDialogModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    FormsModule,
-  ],
+  imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title>{{ data.title }}</h2>
@@ -128,16 +122,14 @@ export class ConfirmDialogComponent {
  * A function rather than a service so a component can `await` it without
  * subscribing, which is how the panel's other asynchronous calls read.
  */
-export function confirmAction(
-  dialog: MatDialog,
-  request: ConfirmRequest,
-): Promise<ConfirmResult> {
+export function confirmAction(dialog: MatDialog, request: ConfirmRequest): Promise<ConfirmResult> {
   return new Promise((resolve) => {
     dialog
-      .open<ConfirmDialogComponent, ConfirmRequest, ConfirmResult>(
-        ConfirmDialogComponent,
-        { data: request, autoFocus: 'dialog', restoreFocus: true },
-      )
+      .open<ConfirmDialogComponent, ConfirmRequest, ConfirmResult>(ConfirmDialogComponent, {
+        data: request,
+        autoFocus: 'dialog',
+        restoreFocus: true,
+      })
       .afterClosed()
       .subscribe((result) => resolve(result));
   });

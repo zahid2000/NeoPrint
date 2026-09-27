@@ -42,7 +42,7 @@
         <dd>{{ device.lastIp ?? '—' }}</dd>
 
         <dt>{{ 'devices.lastSeen' | translate }}</dt>
-        <dd>{{ device.lastSeenAt | date: 'medium' }}</dd>
+        <dd>{{ device.lastSeenAt | dateTime }}</dd>
       </dl>
 
       <p class="activate__hint">{{ 'activate.confirmHint' | translate }}</p>
@@ -71,13 +71,11 @@
         @if (!isNewKiosk) {
           <p class="activate__hint">{{ 'activate.existingHint' | translate }}</p>
 
-          <mat-form-field appearance="fill" class="activate__field">
+          <mat-form-field class="activate__field">
             <mat-label>{{ 'activate.kiosk' | translate }}</mat-label>
             <mat-select formControlName="kioskId">
               @for (kiosk of bindableKiosks(); track kiosk.id) {
-                <mat-option [value]="kiosk.id">
-                  {{ kiosk.code }} — {{ kiosk.name }}
-                </mat-option>
+                <mat-option [value]="kiosk.id"> {{ kiosk.code }} — {{ kiosk.name }} </mat-option>
               }
             </mat-select>
           </mat-form-field>
@@ -86,33 +84,33 @@
 
       @if (isNewKiosk) {
         <form [formGroup]="newKioskForm" class="activate__form">
-          <mat-form-field appearance="fill" class="activate__field">
+          <mat-form-field class="activate__field">
             <mat-label>{{ 'activate.name' | translate }}</mat-label>
             <input matInput formControlName="name" required />
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="activate__field">
+          <mat-form-field class="activate__field">
             <mat-label>{{ 'activate.code' | translate }}</mat-label>
             <input matInput formControlName="code" placeholder="KSK-0007" />
             <mat-hint>{{ 'activate.codeHint' | translate }}</mat-hint>
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="activate__field activate__field--wide">
+          <mat-form-field class="activate__field activate__field--wide">
             <mat-label>{{ 'activate.address' | translate }}</mat-label>
             <input matInput formControlName="address" required />
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="activate__field">
+          <mat-form-field class="activate__field">
             <mat-label>{{ 'activate.lat' | translate }}</mat-label>
             <input matInput type="number" step="0.000001" formControlName="lat" required />
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="activate__field">
+          <mat-form-field class="activate__field">
             <mat-label>{{ 'activate.lng' | translate }}</mat-label>
             <input matInput type="number" step="0.000001" formControlName="lng" required />
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="activate__field">
+          <mat-form-field class="activate__field">
             <mat-label>{{ 'activate.language' | translate }}</mat-label>
             <mat-select formControlName="defaultLanguage">
               @for (language of languages; track language) {
@@ -123,17 +121,17 @@
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="activate__field">
+          <mat-form-field class="activate__field">
             <mat-label>{{ 'activate.paperA4' | translate }}</mat-label>
             <input matInput type="number" formControlName="paperCapacityA4" required />
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="activate__field">
+          <mat-form-field class="activate__field">
             <mat-label>{{ 'activate.paperA3' | translate }}</mat-label>
             <input matInput type="number" formControlName="paperCapacityA3" required />
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="activate__field">
+          <mat-form-field class="activate__field">
             <mat-label>{{ 'activate.adminPin' | translate }}</mat-label>
             <input
               matInput
@@ -144,17 +142,14 @@
               required
             />
             <mat-hint>{{ 'activate.adminPinHint' | translate: { length: pinLength } }}</mat-hint>
-            @if (
-              newKioskForm.controls.adminPin.touched &&
-              newKioskForm.controls.adminPin.invalid
-            ) {
+            @if (newKioskForm.controls.adminPin.touched && newKioskForm.controls.adminPin.invalid) {
               <mat-error>
                 {{ 'activate.adminPinInvalid' | translate: { length: pinLength } }}
               </mat-error>
             }
           </mat-form-field>
 
-          <mat-form-field appearance="fill" class="activate__field">
+          <mat-form-field class="activate__field">
             <mat-label>{{ 'activate.fiscalTerminal' | translate }}</mat-label>
             <input matInput formControlName="fiscalTerminalId" />
           </mat-form-field>
@@ -179,7 +174,7 @@
         <p class="activate__hint">{{ 'activate.noPrinters' | translate }}</p>
       } @else {
         <form [formGroup]="printerForm" class="activate__form">
-          <mat-form-field appearance="fill" class="activate__field activate__field--wide">
+          <mat-form-field class="activate__field activate__field--wide">
             <mat-label>{{ 'activate.printer' | translate }}</mat-label>
             <mat-select formControlName="selectedPrinterName">
               <mat-option value="">{{ 'activate.printerLater' | translate }}</mat-option>

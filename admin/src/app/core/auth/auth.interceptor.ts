@@ -1,9 +1,4 @@
-import {
-  HttpErrorResponse,
-  HttpEvent,
-  HttpHandlerFn,
-  HttpRequest,
-} from '@angular/common/http';
+import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Observable, catchError, shareReplay, switchMap, throwError } from 'rxjs';
 
@@ -48,19 +43,13 @@ export function authInterceptor(
 
   return next(authorized).pipe(
     catchError((error: unknown) => {
-      if (
-        !(error instanceof HttpErrorResponse) ||
-        error.status !== 401 ||
-        isAnonymous
-      ) {
+      if (!(error instanceof HttpErrorResponse) || error.status !== 401 || isAnonymous) {
         return throwError(() => error);
       }
 
       // shareReplay, because the refresh observable is cold: subscribing to it
       // twice would send two requests and defeat the whole point of sharing.
-      refreshInFlight ??= auth
-        .refresh()
-        .pipe(shareReplay({ bufferSize: 1, refCount: false }));
+      refreshInFlight ??= auth.refresh().pipe(shareReplay({ bufferSize: 1, refCount: false }));
 
       const shared = refreshInFlight;
 

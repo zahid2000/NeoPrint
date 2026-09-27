@@ -31,7 +31,10 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
 
     <mat-dialog-content class="neo-dialog">
       <p class="neo-dialog__explanation">
-        {{ 'storage.failures.explanation' | translate: { source: job.sourceName, target: job.targetName } }}
+        {{
+          'storage.failures.explanation'
+            | translate: { source: job.sourceName, target: job.targetName }
+        }}
       </p>
 
       @if (problem(); as problem) {
@@ -56,21 +59,28 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
               <td mat-cell *matCellDef="let failure">{{ failure.error }}</td>
             </ng-container>
             <ng-container matColumnDef="attempts">
-              <th mat-header-cell *matHeaderCellDef>{{ 'storage.failures.attempts' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'storage.failures.attempts' | translate }}
+              </th>
               <td mat-cell *matCellDef="let failure">{{ failure.attempts }}</td>
             </ng-container>
             <ng-container matColumnDef="state">
               <th mat-header-cell *matHeaderCellDef>{{ 'storage.failures.state' | translate }}</th>
               <td mat-cell *matCellDef="let failure">
                 @if (failure.resolvedAt) {
-                  <app-status-chip status="Completed" [text]="'storage.failures.resolved' | translate" />
+                  <app-status-chip
+                    status="Completed"
+                    [text]="'storage.failures.resolved' | translate"
+                  />
                 } @else {
                   <app-status-chip status="Failed" [text]="'storage.failures.open' | translate" />
                 }
               </td>
             </ng-container>
             <ng-container matColumnDef="at">
-              <th mat-header-cell *matHeaderCellDef>{{ 'storage.failures.lastAttempt' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'storage.failures.lastAttempt' | translate }}
+              </th>
               <td mat-cell *matCellDef="let failure">{{ failure.lastAttemptAt | dateTime }}</td>
             </ng-container>
 
@@ -82,7 +92,9 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
     </mat-dialog-content>
 
     <mat-dialog-actions class="neo-dialog__actions">
-      <button mat-flat-button type="button" mat-dialog-close>{{ 'common.close' | translate }}</button>
+      <button mat-flat-button type="button" mat-dialog-close>
+        {{ 'common.close' | translate }}
+      </button>
     </mat-dialog-actions>
   `,
 })

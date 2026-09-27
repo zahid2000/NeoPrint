@@ -1,9 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { describe, beforeEach, afterEach, expect, it } from 'vitest';
 
@@ -71,9 +68,7 @@ describe('AuthService', () => {
   it('applies the account and the token on sign-in', async () => {
     const signedIn = service.signIn('admin@neoprint.test', 'password').toPromise();
 
-    http
-      .expectOne('/api/auth/admin/login')
-      .flush(loginResponse());
+    http.expectOne('/api/auth/admin/login').flush(loginResponse());
 
     await signedIn;
 
@@ -89,18 +84,13 @@ describe('AuthService', () => {
 
     // The token lives fifteen minutes and any script on the page can read
     // storage, so it is deliberately kept in memory only (plan section 8A.1).
-    const stored = [
-      ...Object.values(localStorage),
-      ...Object.values(sessionStorage),
-    ].join('|');
+    const stored = [...Object.values(localStorage), ...Object.values(sessionStorage)].join('|');
 
     expect(stored).not.toContain('header.payload.signature');
   });
 
   it('answers permission questions from the account it was given', async () => {
-    const signedIn = service
-      .signIn('operator@neoprint.test', 'password')
-      .toPromise();
+    const signedIn = service.signIn('operator@neoprint.test', 'password').toPromise();
 
     http.expectOne('/api/auth/admin/login').flush(
       loginResponse(
@@ -177,9 +167,7 @@ describe('AuthService', () => {
     http.expectOne('/api/auth/admin/refresh').flush(loginResponse());
     await settle();
 
-    http
-      .expectOne('/api/admin/me')
-      .flush('', { status: 500, statusText: 'Server Error' });
+    http.expectOne('/api/admin/me').flush('', { status: 500, statusText: 'Server Error' });
 
     await reloaded;
 
@@ -198,9 +186,7 @@ describe('AuthService', () => {
     http.expectOne('/api/auth/admin/refresh').flush(loginResponse());
     await settle();
 
-    http
-      .expectOne('/api/admin/me')
-      .flush(admin({ permissions: ['devices.view', 'roles.manage'] }));
+    http.expectOne('/api/admin/me').flush(admin({ permissions: ['devices.view', 'roles.manage'] }));
 
     await reloaded;
 
@@ -270,9 +256,7 @@ describe('AuthService', () => {
 
     const signedOut = service.signOut();
 
-    http
-      .expectOne('/api/auth/admin/logout')
-      .error(new ProgressEvent('network error'));
+    http.expectOne('/api/auth/admin/logout').error(new ProgressEvent('network error'));
 
     await signedOut;
 

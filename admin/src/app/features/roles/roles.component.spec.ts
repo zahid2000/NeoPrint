@@ -1,8 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
@@ -222,9 +219,7 @@ describe('RolesComponent', () => {
 
     const saved = component.save();
 
-    const request = backend.expectOne(
-      '/api/admin/roles/22222222-2222-2222-2222-222222222222',
-    );
+    const request = backend.expectOne('/api/admin/roles/22222222-2222-2222-2222-222222222222');
     expect(request.request.method).toBe('PUT');
 
     request.flush({ ...roles[1], permissions: ['kiosks.view', 'devices.view'] });
@@ -275,10 +270,7 @@ describe('RolesComponent', () => {
 
     backend
       .expectOne('/api/admin/roles/22222222-2222-2222-2222-222222222222')
-      .flush(
-        { detail: 'Bu rol 3 istifadəçiyə verilib.' },
-        { status: 409, statusText: 'Conflict' },
-      );
+      .flush({ detail: 'Bu rol 3 istifadəçiyə verilib.' }, { status: 409, statusText: 'Conflict' });
 
     await removed;
 

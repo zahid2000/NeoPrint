@@ -1,6 +1,14 @@
 <div class="neo-page">
-  <app-page-header [title]="'kiosks.title' | translate" [description]="'kiosks.description' | translate">
-    <button *appHasPermission="permissions.kiosksCreate" mat-flat-button type="button" (click)="create()">
+  <app-page-header
+    [title]="'kiosks.title' | translate"
+    [description]="'kiosks.description' | translate"
+  >
+    <button
+      *appHasPermission="permissions.kiosksCreate"
+      mat-flat-button
+      type="button"
+      (click)="create()"
+    >
       <mat-icon>add</mat-icon>
       {{ 'kiosks.new' | translate }}
     </button>
@@ -11,13 +19,13 @@
   }
 
   <app-filter-bar>
-    <mat-form-field appearance="outline">
+    <mat-form-field>
       <mat-label>{{ 'common.search' | translate }}</mat-label>
       <mat-icon matPrefix>search</mat-icon>
       <input matInput [ngModel]="search()" (ngModelChange)="search.set($event)" />
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
+    <mat-form-field>
       <mat-label>{{ 'kiosks.statusFilter' | translate }}</mat-label>
       <mat-select [ngModel]="status()" (ngModelChange)="status.set($event)">
         <mat-option value="all">{{ 'common.all' | translate }}</mat-option>
@@ -50,21 +58,38 @@
       }
     </div>
   } @else if (kiosks().length === 0 && !problem()) {
-    <app-empty-state icon="storefront" [message]="'kiosks.empty' | translate" [hint]="'kiosks.emptyHint' | translate">
-      <button *appHasPermission="permissions.kiosksCreate" mat-flat-button type="button" (click)="create()">
+    <app-empty-state
+      icon="storefront"
+      [message]="'kiosks.empty' | translate"
+      [hint]="'kiosks.emptyHint' | translate"
+    >
+      <button
+        *appHasPermission="permissions.kiosksCreate"
+        mat-flat-button
+        type="button"
+        (click)="create()"
+      >
         {{ 'kiosks.new' | translate }}
       </button>
     </app-empty-state>
   } @else if (filtered().length === 0) {
-    <app-empty-state icon="search_off" [message]="'common.noResults' | translate" [hint]="'common.noResultsHint' | translate">
-      <button mat-stroked-button type="button" (click)="clearFilters()">{{ 'kiosks.clearFilters' | translate }}</button>
+    <app-empty-state
+      icon="search_off"
+      [message]="'common.noResults' | translate"
+      [hint]="'common.noResultsHint' | translate"
+    >
+      <button mat-stroked-button type="button" (click)="clearFilters()">
+        {{ 'kiosks.clearFilters' | translate }}
+      </button>
     </app-empty-state>
   } @else if (view() === 'list') {
     <div class="neo-table-wrapper">
       <table mat-table class="neo-table" [dataSource]="filtered()">
         <ng-container matColumnDef="code">
           <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.code' | translate }}</th>
-          <td mat-cell *matCellDef="let kiosk"><strong>{{ kiosk.code }}</strong></td>
+          <td mat-cell *matCellDef="let kiosk">
+            <strong>{{ kiosk.code }}</strong>
+          </td>
         </ng-container>
         <ng-container matColumnDef="name">
           <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.name' | translate }}</th>
@@ -73,7 +98,10 @@
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.statusColumn' | translate }}</th>
           <td mat-cell *matCellDef="let kiosk">
-            <app-status-chip [status]="kiosk.status" [text]="'kiosks.status.' + kiosk.status | translate" />
+            <app-status-chip
+              [status]="kiosk.status"
+              [text]="'kiosks.status.' + kiosk.status | translate"
+            />
           </td>
         </ng-container>
         <ng-container matColumnDef="address">
@@ -106,13 +134,21 @@
         ></tr>
       </table>
     </div>
-    <p class="neo-caption">{{ 'kiosks.count' | translate: { shown: filtered().length, total: kiosks().length } }}</p>
+    <p class="neo-caption">
+      {{ 'kiosks.count' | translate: { shown: filtered().length, total: kiosks().length } }}
+    </p>
   } @else {
-    <app-kiosk-map [markers]="markers()" [label]="'kiosks.mapLabel' | translate" (markerClick)="open($event)" />
+    <app-kiosk-map
+      [markers]="markers()"
+      [label]="'kiosks.mapLabel' | translate"
+      (markerClick)="open($event)"
+    />
 
     <ul class="kiosks__legend" [attr.aria-label]="'kiosks.legend' | translate">
       @for (option of statuses; track option) {
-        <li><app-status-chip [status]="option" [text]="'kiosks.status.' + option | translate" /></li>
+        <li>
+          <app-status-chip [status]="option" [text]="'kiosks.status.' + option | translate" />
+        </li>
       }
     </ul>
 

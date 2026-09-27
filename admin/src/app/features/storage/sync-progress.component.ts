@@ -30,16 +30,26 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let current = job();
-    <section class="neo-card progress" aria-live="polite" [attr.aria-label]="'storage.progress.label' | translate">
+    <section
+      class="neo-card progress"
+      aria-live="polite"
+      [attr.aria-label]="'storage.progress.label' | translate"
+    >
       <div class="progress__header">
         <div>
-          <h2>{{ 'storage.sync.mode.' + current.mode | translate }}: {{ current.sourceName }} → {{ current.targetName }}</h2>
+          <h2>
+            {{ 'storage.sync.mode.' + current.mode | translate }}: {{ current.sourceName }} →
+            {{ current.targetName }}
+          </h2>
           <p class="neo-caption">
             {{ 'storage.progress.startedAt' | translate: { time: (current.startedAt | dateTime) } }}
           </p>
         </div>
         <div class="progress__status">
-          <app-status-chip [status]="current.status" [text]="'storage.sync.status.' + current.status | translate" />
+          <app-status-chip
+            [status]="current.status"
+            [text]="'storage.sync.status.' + current.status | translate"
+          />
           <app-live-indicator />
         </div>
       </div>
@@ -47,7 +57,11 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
       <p class="progress__stage">{{ 'storage.progress.stage.' + current.status | translate }}</p>
 
       <mat-progress-bar
-        [mode]="current.status === 'Pending' || current.totalObjects === 0 ? 'indeterminate' : 'determinate'"
+        [mode]="
+          current.status === 'Pending' || current.totalObjects === 0
+            ? 'indeterminate'
+            : 'determinate'
+        "
         [value]="percent()"
         [attr.aria-valuenow]="percent()"
       />
@@ -83,13 +97,23 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
 
       <div class="neo-actions">
         @if (current.status === 'Running' || current.status === 'Pending') {
-          <button mat-stroked-button type="button" [disabled]="busy()" (click)="pauseRequested.emit()">
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="busy()"
+            (click)="pauseRequested.emit()"
+          >
             <mat-icon>pause</mat-icon>
             {{ 'storage.progress.pause' | translate }}
           </button>
         }
         @if (current.status === 'Paused') {
-          <button mat-flat-button type="button" [disabled]="busy()" (click)="resumeRequested.emit()">
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="busy()"
+            (click)="resumeRequested.emit()"
+          >
             <mat-icon>play_arrow</mat-icon>
             {{ 'storage.progress.resume' | translate }}
           </button>
@@ -100,7 +124,13 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
           </button>
         }
         @if (current.status !== 'Verifying') {
-          <button mat-button type="button" class="progress__cancel" [disabled]="busy()" (click)="cancelRequested.emit()">
+          <button
+            mat-button
+            type="button"
+            class="progress__cancel"
+            [disabled]="busy()"
+            (click)="cancelRequested.emit()"
+          >
             <mat-icon>cancel</mat-icon>
             {{ 'storage.progress.cancel' | translate }}
           </button>
@@ -180,7 +210,9 @@ export class SyncProgressComponent {
       return Math.min(100, Math.floor((job.copiedBytes / job.totalBytes) * 100));
     }
 
-    return job.totalObjects > 0 ? Math.min(100, Math.floor((job.copiedObjects / job.totalObjects) * 100)) : 0;
+    return job.totalObjects > 0
+      ? Math.min(100, Math.floor((job.copiedObjects / job.totalObjects) * 100))
+      : 0;
   });
 
   /** Seconds left at the current speed, when there is a speed to go by. */

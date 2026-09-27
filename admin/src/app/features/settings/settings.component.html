@@ -3,12 +3,7 @@
     <h1>{{ 'nav.settings' | translate }}</h1>
 
     <div class="settings__actions">
-      <button
-        mat-button
-        type="button"
-        [disabled]="!hasChanges() || saving()"
-        (click)="revertAll()"
-      >
+      <button mat-button type="button" [disabled]="!hasChanges() || saving()" (click)="revertAll()">
         {{ 'common.revert' | translate }}
       </button>
 
@@ -47,9 +42,7 @@
           <mat-panel-title>
             {{ group.name }}
             @if (groupHasChanges(group)) {
-              <mat-icon
-                class="settings__dirty"
-                [matTooltip]="'settings.unsaved' | translate"
+              <mat-icon class="settings__dirty" [matTooltip]="'settings.unsaved' | translate"
                 >edit</mat-icon
               >
             }
@@ -83,7 +76,7 @@
                   }
 
                   @case ('Integer') {
-                    <mat-form-field appearance="fill" class="settings__input">
+                    <mat-form-field class="settings__input">
                       <input
                         matInput
                         type="number"
@@ -95,7 +88,7 @@
                   }
 
                   @case ('Decimal') {
-                    <mat-form-field appearance="fill" class="settings__input">
+                    <mat-form-field class="settings__input">
                       <input
                         matInput
                         type="number"
@@ -108,7 +101,7 @@
                   }
 
                   @default {
-                    <mat-form-field appearance="fill" class="settings__input settings__input--wide">
+                    <mat-form-field class="settings__input settings__input--wide">
                       <input
                         matInput
                         [ngModel]="value(setting)"

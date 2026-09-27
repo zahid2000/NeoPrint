@@ -33,22 +33,30 @@
 
   &__lookup-hint,
   &__hint {
-    margin: 0 0 0.75rem;
+    margin: 0 0 var(--space-3);
     color: var(--mat-sys-on-surface-variant);
   }
 
   &__hint {
-    padding: 1rem 0 0;
+    padding: var(--space-4) 0 0;
   }
 
   &__lookup-form {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 1rem;
+    align-items: center;
+    gap: var(--space-4);
 
+    // The field and the button share one height, the control token, so the
+    // row lines up (the field's own default is taller than a button).
     mat-form-field {
       min-width: 16rem;
+      --mat-form-field-container-height: var(--control-height-lg);
+      --mat-form-field-container-vertical-padding: var(--space-3);
+    }
+
+    button {
+      height: var(--control-height-lg);
     }
   }
 
@@ -57,7 +65,7 @@
   }
 
   &__empty {
-    padding: 2rem 0;
+    padding: var(--space-8) 0;
     text-align: center;
     color: var(--mat-sys-on-surface-variant);
   }

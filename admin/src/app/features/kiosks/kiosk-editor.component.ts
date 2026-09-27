@@ -17,11 +17,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 import { AdminApiService } from '../../core/api/admin-api.service';
-import {
-  KioskDetail,
-  KioskDeviceHistoryItem,
-  PricingProfile,
-} from '../../core/api/step2.models';
+import { KioskDetail, KioskDeviceHistoryItem, PricingProfile } from '../../core/api/step2.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { supportedLanguages } from '../../core/i18n/translations';
@@ -300,20 +296,28 @@ export class KioskEditorComponent implements OnInit {
 
   async saveLimits(): Promise<void> {
     await this.run('limits', async () => {
-      this.apply(await firstValueFrom(this.api.setKioskLimits(this.id()!, this.maxSizeMb(), this.maxPages())));
+      this.apply(
+        await firstValueFrom(
+          this.api.setKioskLimits(this.id()!, this.maxSizeMb(), this.maxPages()),
+        ),
+      );
     });
   }
 
   async savePricing(): Promise<void> {
     await this.run('pricing', async () => {
-      this.apply(await firstValueFrom(this.api.setKioskPricingProfile(this.id()!, this.pricingProfileId())));
+      this.apply(
+        await firstValueFrom(this.api.setKioskPricingProfile(this.id()!, this.pricingProfileId())),
+      );
     });
   }
 
   async saveFiscal(): Promise<void> {
     await this.run('fiscal', async () => {
       this.apply(
-        await firstValueFrom(this.api.setKioskFiscalTerminal(this.id()!, this.fiscalTerminalId().trim() || null)),
+        await firstValueFrom(
+          this.api.setKioskFiscalTerminal(this.id()!, this.fiscalTerminalId().trim() || null),
+        ),
       );
     });
   }
@@ -321,7 +325,9 @@ export class KioskEditorComponent implements OnInit {
   async savePaper(): Promise<void> {
     await this.run('paper', async () => {
       this.apply(
-        await firstValueFrom(this.api.setKioskPaperCapacity(this.id()!, this.capacityA4(), this.capacityA3())),
+        await firstValueFrom(
+          this.api.setKioskPaperCapacity(this.id()!, this.capacityA4(), this.capacityA3()),
+        ),
       );
     });
   }

@@ -28,9 +28,7 @@
           <mat-panel-title>
             <code>{{ flag.key }}</code>
             @if (isDirty(flag)) {
-              <mat-icon
-                class="flags__dirty"
-                [matTooltip]="'features.unsaved' | translate"
+              <mat-icon class="flags__dirty" [matTooltip]="'features.unsaved' | translate"
                 >edit</mat-icon
               >
             }
@@ -45,7 +43,10 @@
               · {{ draft(flag.key).rolloutPercent }}%
             }
             @if (overriddenKioskIds(flag.key).length > 0) {
-              · {{ 'features.overrideCount' | translate: { count: overriddenKioskIds(flag.key).length } }}
+              ·
+              {{
+                'features.overrideCount' | translate: { count: overriddenKioskIds(flag.key).length }
+              }}
             }
           </mat-panel-description>
         </mat-expansion-panel-header>

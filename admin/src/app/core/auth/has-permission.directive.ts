@@ -1,11 +1,4 @@
-import {
-  Directive,
-  effect,
-  inject,
-  input,
-  TemplateRef,
-  ViewContainerRef,
-} from '@angular/core';
+import { Directive, effect, inject, input, TemplateRef, ViewContainerRef } from '@angular/core';
 
 import { AuthService } from './auth.service';
 
@@ -40,9 +33,7 @@ export class HasPermissionDirective {
     // permissions, and the view has to follow (plan section 8A.2).
     effect(() => {
       const required = this.appHasPermission();
-      const allowed = this.auth.canAny(
-        typeof required === 'string' ? [required] : required,
-      );
+      const allowed = this.auth.canAny(typeof required === 'string' ? [required] : required);
 
       if (allowed === this.rendered) {
         return;

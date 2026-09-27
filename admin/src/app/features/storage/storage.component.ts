@@ -28,7 +28,10 @@ import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { StorageFailuresDialogComponent } from './storage-failures.dialog';
-import { StorageProviderDialogComponent, StorageProviderDialogResult } from './storage-provider.dialog';
+import {
+  StorageProviderDialogComponent,
+  StorageProviderDialogResult,
+} from './storage-provider.dialog';
 import { StorageSyncDialogComponent, StorageSyncDialogData } from './storage-sync.dialog';
 import { SyncProgressComponent } from './sync-progress.component';
 
@@ -86,7 +89,16 @@ export class StorageComponent {
   private readonly samples = signal<Sample[]>([]);
 
   readonly providerColumns = ['name', 'endpoint', 'role', 'health', 'checked', 'actions'];
-  readonly jobColumns = ['mode', 'route', 'status', 'objects', 'size', 'started', 'finished', 'actions'];
+  readonly jobColumns = [
+    'mode',
+    'route',
+    'status',
+    'objects',
+    'size',
+    'started',
+    'finished',
+    'actions',
+  ];
 
   readonly activeJob = computed(
     () => this.jobs().find((job) => activeSyncStatuses.includes(job.status)) ?? null,
@@ -109,7 +121,9 @@ export class StorageComponent {
 
   constructor() {
     const off = [
-      this.hub.on<StorageSyncProgress>('StorageSyncProgress', (progress) => this.onProgress(progress)),
+      this.hub.on<StorageSyncProgress>('StorageSyncProgress', (progress) =>
+        this.onProgress(progress),
+      ),
       this.hub.on<StorageSyncProgress>('StorageSyncCompleted', () => void this.load()),
       this.hub.on<StorageHealthChange>('StorageHealthChanged', (change) => this.onHealth(change)),
     ];
@@ -260,7 +274,9 @@ export class StorageComponent {
       const confirmed = await confirmAction(this.dialog, {
         title: this.t('storage.progress.cancelTitle'),
         explanation: this.t(
-          job.mode === 'Migration' ? 'storage.progress.cancelMigration' : 'storage.progress.cancelMirror',
+          job.mode === 'Migration'
+            ? 'storage.progress.cancelMigration'
+            : 'storage.progress.cancelMirror',
         ),
         confirmLabel: this.t('storage.progress.cancel'),
         cancelLabel: this.t('common.back'),
@@ -326,7 +342,10 @@ export class StorageComponent {
   async purge(job: StorageSyncJob): Promise<void> {
     const confirmed = await confirmAction(this.dialog, {
       title: this.t('storage.purge.title', { name: job.sourceName }),
-      explanation: this.t('storage.purge.explanation', { source: job.sourceName, target: job.targetName }),
+      explanation: this.t('storage.purge.explanation', {
+        source: job.sourceName,
+        target: job.targetName,
+      }),
       confirmLabel: this.t('storage.purge.confirm'),
       cancelLabel: this.t('common.cancel'),
       destructive: true,
@@ -352,15 +371,18 @@ export class StorageComponent {
   private async openProvider(existing: StorageProvider | null): Promise<void> {
     const saved = await firstValueFrom(
       this.dialog
-        .open<StorageProviderDialogComponent, StorageProvider | null, StorageProviderDialogResult>(
+        .open<
           StorageProviderDialogComponent,
-          { data: existing, width: 'min(720px, 95vw)', autoFocus: 'first-tabbable' },
-        )
+          StorageProvider | null,
+          StorageProviderDialogResult
+        >(StorageProviderDialogComponent, { data: existing, width: 'min(720px, 95vw)', autoFocus: 'first-tabbable' })
         .afterClosed(),
     );
 
     if (saved) {
-      this.notify.success(existing ? 'storage.provider.updated' : 'storage.provider.added', { name: saved.name });
+      this.notify.success(existing ? 'storage.provider.updated' : 'storage.provider.added', {
+        name: saved.name,
+      });
       await this.load();
     }
   }
@@ -368,10 +390,11 @@ export class StorageComponent {
   private async startSync(data: StorageSyncDialogData): Promise<void> {
     const job = await firstValueFrom(
       this.dialog
-        .open<StorageSyncDialogComponent, StorageSyncDialogData, StorageSyncJob | undefined>(
+        .open<
           StorageSyncDialogComponent,
-          { data, width: 'min(640px, 95vw)' },
-        )
+          StorageSyncDialogData,
+          StorageSyncJob | undefined
+        >(StorageSyncDialogComponent, { data, width: 'min(640px, 95vw)' })
         .afterClosed(),
     );
 
@@ -383,7 +406,11 @@ export class StorageComponent {
     }
   }
 
-  private async setRole(provider: StorageProvider, role: 'Primary' | 'Inactive', reason?: string): Promise<void> {
+  private async setRole(
+    provider: StorageProvider,
+    role: 'Primary' | 'Inactive',
+    reason?: string,
+  ): Promise<void> {
     try {
       await firstValueFrom(this.api.setStorageRole(provider.id, role, reason));
       this.notify.success(`storage.provider.role${role}`, { name: provider.name });
@@ -422,7 +449,9 @@ export class StorageComponent {
     // object out, short enough to follow a real change of pace.
     const now = new Date(progress.at).getTime();
     this.samples.update((samples) =>
-      [...samples, { at: now, bytes: progress.copiedBytes }].filter((sample) => now - sample.at <= 30_000),
+      [...samples, { at: now, bytes: progress.copiedBytes }].filter(
+        (sample) => now - sample.at <= 30_000,
+      ),
     );
 
     if (!activeSyncStatuses.includes(progress.status)) {
@@ -434,7 +463,12 @@ export class StorageComponent {
     this.providers.update((providers) =>
       providers.map((provider) =>
         provider.id === change.providerId
-          ? { ...provider, healthStatus: change.status, healthMessage: change.message, lastCheckedAt: change.at }
+          ? {
+              ...provider,
+              healthStatus: change.status,
+              healthMessage: change.message,
+              lastCheckedAt: change.at,
+            }
           : provider,
       ),
     );

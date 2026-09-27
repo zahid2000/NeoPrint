@@ -4,6 +4,9 @@ import type { PageTranslations } from './page-translations';
 export const commonTranslations: PageTranslations = {
   az: {
     'common.details': 'Ətraflı',
+    'common.today': 'Bu gün',
+    'common.actions': 'Əməliyyatlar',
+    'common.yesterday': 'Dünən',
     'common.correlationId': 'Sorğu ID-si (dəstək üçün)',
     'common.edit': 'Redaktə et',
     'common.add': 'Əlavə et',
@@ -12,8 +15,8 @@ export const commonTranslations: PageTranslations = {
     'common.yes': 'Bəli',
     'common.no': 'Xeyr',
     'common.never': 'Heç vaxt',
-    'common.default': 'Default',
-    'common.useDefault': 'Default istifadə et',
+    'common.default': 'Standart',
+    'common.useDefault': 'Standart dəyəri istifadə et',
     'common.unsavedChanges': 'Yadda saxlanmamış dəyişikliklər var.',
     'common.list': 'Siyahı',
     'common.map': 'Xəritə',
@@ -23,6 +26,9 @@ export const commonTranslations: PageTranslations = {
   },
   en: {
     'common.details': 'Details',
+    'common.today': 'Today',
+    'common.actions': 'Actions',
+    'common.yesterday': 'Yesterday',
     'common.correlationId': 'Request ID (for support)',
     'common.edit': 'Edit',
     'common.add': 'Add',
@@ -42,6 +48,9 @@ export const commonTranslations: PageTranslations = {
   },
   ru: {
     'common.details': 'Подробнее',
+    'common.today': 'Сегодня',
+    'common.actions': 'Действия',
+    'common.yesterday': 'Вчера',
     'common.correlationId': 'ID запроса (для поддержки)',
     'common.edit': 'Изменить',
     'common.add': 'Добавить',

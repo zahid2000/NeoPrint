@@ -98,8 +98,20 @@ describe('StorageComponent', () => {
   });
 
   it('moves the progress on and works out a speed from the hub', () => {
-    hub.fire('StorageSyncProgress', { ...running, jobId: 'job', copiedObjects: 20, copiedBytes: 200, at: '2026-09-27T10:00:00Z' });
-    hub.fire('StorageSyncProgress', { ...running, jobId: 'job', copiedObjects: 30, copiedBytes: 400, at: '2026-09-27T10:00:02Z' });
+    hub.fire('StorageSyncProgress', {
+      ...running,
+      jobId: 'job',
+      copiedObjects: 20,
+      copiedBytes: 200,
+      at: '2026-09-27T10:00:00Z',
+    });
+    hub.fire('StorageSyncProgress', {
+      ...running,
+      jobId: 'job',
+      copiedObjects: 30,
+      copiedBytes: 400,
+      at: '2026-09-27T10:00:02Z',
+    });
 
     expect(component.activeJob()?.copiedObjects).toBe(30);
 
@@ -122,12 +134,24 @@ describe('StorageComponent', () => {
   });
 
   it('offers to empty the source only after the retention period', () => {
-    const completed: StorageSyncJob = { ...running, status: 'Completed', finishedAt: '2026-09-01T00:00:00Z' };
+    const completed: StorageSyncJob = {
+      ...running,
+      status: 'Completed',
+      finishedAt: '2026-09-01T00:00:00Z',
+    };
 
-    expect(component.purgeState({ ...completed, sourcePurgeAllowedFrom: '2999-01-01T00:00:00Z' })).toBe('waiting');
-    expect(component.purgeState({ ...completed, sourcePurgeAllowedFrom: '2026-09-02T00:00:00Z' })).toBe('ready');
-    expect(component.purgeState({ ...completed, sourcePurgeRequestedAt: '2026-10-02T00:00:00Z' })).toBe('running');
-    expect(component.purgeState({ ...completed, sourcePurgedAt: '2026-10-02T00:00:00Z' })).toBe('done');
+    expect(
+      component.purgeState({ ...completed, sourcePurgeAllowedFrom: '2999-01-01T00:00:00Z' }),
+    ).toBe('waiting');
+    expect(
+      component.purgeState({ ...completed, sourcePurgeAllowedFrom: '2026-09-02T00:00:00Z' }),
+    ).toBe('ready');
+    expect(
+      component.purgeState({ ...completed, sourcePurgeRequestedAt: '2026-10-02T00:00:00Z' }),
+    ).toBe('running');
+    expect(component.purgeState({ ...completed, sourcePurgedAt: '2026-10-02T00:00:00Z' })).toBe(
+      'done',
+    );
     expect(component.purgeState({ ...completed, mode: 'Mirror' })).toBe('none');
   });
 });

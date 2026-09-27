@@ -1,17 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
 import { describe, beforeEach, afterEach, expect, it } from 'vitest';
 
-import {
-  FeatureFlagDetails,
-  KioskListItem,
-} from '../../core/api/admin-api.service';
+import { FeatureFlagDetails, KioskListItem } from '../../core/api/admin-api.service';
 import { FeatureFlagsComponent } from './feature-flags.component';
 
 const kioskA = '11111111-1111-1111-1111-111111111111';

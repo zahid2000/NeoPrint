@@ -35,9 +35,7 @@ export class AuthService {
    * Whether a password change is outstanding. The router blocks everything
    * else until it clears (plan section 2.8).
    */
-  readonly mustChangePassword = computed(
-    () => this.currentAdmin()?.mustChangePassword ?? false,
-  );
+  readonly mustChangePassword = computed(() => this.currentAdmin()?.mustChangePassword ?? false);
 
   /** The current access token, for the interceptor. */
   get token(): string | null {
@@ -121,9 +119,7 @@ export class AuthService {
     }
 
     try {
-      const admin = await firstValueFrom(
-        this.http.get<AdminSummary>('/api/admin/me'),
-      );
+      const admin = await firstValueFrom(this.http.get<AdminSummary>('/api/admin/me'));
 
       this.currentAdmin.set(admin);
     } catch {

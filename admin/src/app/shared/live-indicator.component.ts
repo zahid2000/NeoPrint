@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { AdminHubService } from '../core/realtime/admin-hub.service';
+import { TimePipe } from './format.pipes';
 
 /**
  * Whether what is on screen is still live.
@@ -16,19 +16,15 @@ import { AdminHubService } from '../core/realtime/admin-hub.service';
  */
 @Component({
   selector: 'app-live-indicator',
-  imports: [MatIconModule, MatTooltipModule, TranslatePipe, DatePipe],
+  imports: [MatIconModule, MatTooltipModule, TranslatePipe, TimePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <span
-      class="live"
-      [class]="'live--' + state()"
-      [matTooltip]="tooltip() | translate"
-    >
+    <span class="live" [class]="'live--' + state()" [matTooltip]="tooltip() | translate">
       <mat-icon class="live__icon" aria-hidden="true">{{ icon() }}</mat-icon>
       <span>{{ label() | translate }}</span>
 
       @if (lastEventAt(); as at) {
-        <span class="live__time">{{ at | date: 'HH:mm' }}</span>
+        <span class="live__time">{{ at | time }}</span>
       }
     </span>
   `,
