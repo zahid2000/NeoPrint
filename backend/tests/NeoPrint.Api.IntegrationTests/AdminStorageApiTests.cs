@@ -214,6 +214,46 @@ public sealed class AdminStorageApiTests
     }
 
     [DockerFact]
+    public async Task An_edit_that_leaves_both_keys_empty_keeps_the_stored_ones()
+    {
+        using var admin = await SuperAdminAsync();
+
+        var added = await admin.PostAsJsonAsync("/api/admin/storage/providers", Input($"Keys kept {Guid.NewGuid():N}"));
+        added.StatusCode.Should().Be(HttpStatusCode.OK, await added.Content.ReadAsStringAsync());
+        var provider = await added.Content.ReadFromJsonAsync<JsonElement>();
+        var id = provider.GetProperty("id").GetString();
+
+        // The panel never has either key to send back: renaming must not need them.
+        var renamed = $"Renamed {Guid.NewGuid():N}";
+        var edit = await admin.PutAsJsonAsync($"/api/admin/storage/providers/{id}", new
+        {
+            name = renamed,
+            type = "RustFS",
+            endpoint = _fixture.StorageEndpoint,
+            region = "us-east-1",
+            useSsl = false,
+            accessKey = "",
+            secretKey = (string?)null,
+            buckets = new
+            {
+                files = NeoPrintApiFixture.FilesBucket,
+                receipts = NeoPrintApiFixture.ReceiptsBucket,
+                temp = NeoPrintApiFixture.TempBucket,
+            },
+        });
+
+        edit.StatusCode.Should().Be(HttpStatusCode.OK, await edit.Content.ReadAsStringAsync());
+        var saved = await edit.Content.ReadFromJsonAsync<JsonElement>();
+
+        saved.GetProperty("name").GetString().Should().Be(renamed);
+        saved.GetProperty("accessKeyHint").GetString().Should().Be(provider.GetProperty("accessKeyHint").GetString());
+
+        // And the stored keys still work.
+        var test = await admin.PostAsync($"/api/admin/storage/providers/{id}/test", content: null);
+        (await test.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("succeeded").GetBoolean().Should().BeTrue();
+    }
+
+    [DockerFact]
     public async Task The_primary_cannot_be_deleted()
     {
         using var admin = await SuperAdminAsync();

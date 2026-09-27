@@ -160,9 +160,13 @@ public sealed class StorageAdministration : IStorageAdministration
             ? _secrets.Unprotect(provider.SecretKeyCiphertext, provider.Id)
             : input.SecretKey;
 
+        var access = string.IsNullOrWhiteSpace(input.AccessKey)
+            ? _secrets.Unprotect(provider.AccessKeyCiphertext, provider.Id)
+            : input.AccessKey.Trim();
+
         var test = await _tester.TestAsync(
                 input.Endpoint.Trim(), Region(input), input.UseSsl,
-                input.AccessKey.Trim(), secret, Buckets(input), cancellationToken)
+                access, secret, Buckets(input), cancellationToken)
             .ConfigureAwait(false);
 
         // A provider in use must keep working after the edit; an inactive one
@@ -180,7 +184,7 @@ public sealed class StorageAdministration : IStorageAdministration
         provider.Region = Region(input);
         provider.UseSsl = input.UseSsl;
         provider.Buckets = Buckets(input);
-        provider.AccessKeyCiphertext = _secrets.Protect(input.AccessKey.Trim(), provider.Id);
+        provider.AccessKeyCiphertext = _secrets.Protect(access, provider.Id);
         provider.SecretKeyCiphertext = _secrets.Protect(secret, provider.Id);
         provider.RecordHealth(test.Succeeded, test.Succeeded ? null : test.Message, _clock.UtcNow);
 
@@ -616,7 +620,9 @@ public sealed class StorageAdministration : IStorageAdministration
             errors.Add(new("endpoint", "Endpoint http:// və ya https:// ilə başlayan tam ünvan olmalıdır."));
         }
 
-        if (string.IsNullOrWhiteSpace(input.AccessKey))
+        // On an edit both keys may be left empty to keep the stored ones: the
+        // panel shows neither, so it cannot send them back.
+        if (requireSecret && string.IsNullOrWhiteSpace(input.AccessKey))
         {
             errors.Add(new("accessKey", "Access key tələb olunur."));
         }
