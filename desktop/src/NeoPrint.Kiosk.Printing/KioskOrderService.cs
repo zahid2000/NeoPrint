@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using NeoPrint.Documents;
 using NeoPrint.Kiosk.Core;
 using NeoPrint.Kiosk.Core.Printing;
+using NeoPrint.Kiosk.Platform.Abstractions;
 using NeoPrint.Pricing;
 
 namespace NeoPrint.Kiosk.Printing;
@@ -36,6 +37,7 @@ public sealed class KioskOrderService
     private readonly SpoolStore _spool;
     private readonly DocumentPreparer _preparer;
     private readonly KioskRuntime _runtime;
+    private readonly IPrinterFormatSupport _formats;
     private readonly KioskSettings _settings;
     private readonly ILogger<KioskOrderService> _logger;
 
@@ -45,6 +47,7 @@ public sealed class KioskOrderService
         SpoolStore spool,
         DocumentPreparer preparer,
         KioskRuntime runtime,
+        IPrinterFormatSupport formats,
         IOptions<KioskSettings> settings,
         ILogger<KioskOrderService> logger)
     {
@@ -53,6 +56,7 @@ public sealed class KioskOrderService
         _spool = spool;
         _preparer = preparer;
         _runtime = runtime;
+        _formats = formats;
         _settings = settings.Value;
         _logger = logger;
     }
@@ -141,6 +145,9 @@ public sealed class KioskOrderService
 
         ArgumentException.ThrowIfNullOrWhiteSpace(idempotencyKey);
 
+        // Asked before the job exists: the printer's answer can take a moment.
+        var original = await OriginalFormatAsync(document, options, cancellationToken).ConfigureAwait(false);
+
         var job = await _api
             .CreatePrintJobAsync(fileName, document.PageCount, options, _settings.SkipPayment, idempotencyKey, cancellationToken)
             .ConfigureAwait(false);
@@ -149,17 +156,27 @@ public sealed class KioskOrderService
 
         try
         {
-            var printFile = Path.Combine(folder, "print.pdf");
-            PdfTools.BuildForPrint(document.PdfPath, printFile, pages, options.PagesPerSheet, options.Paper);
+            var printFile = document.SourcePath;
 
-            await using (var stream = File.OpenRead(printFile))
+            if (original is null)
             {
-                await _spool.PutAsync(JournalEntry.SpoolNameFor(job.Id), stream, cancellationToken).ConfigureAwait(false);
+                printFile = Path.Combine(folder, "print.pdf");
+                PdfTools.BuildForPrint(document.PdfPath, printFile, pages, options.PagesPerSheet, options.Paper);
             }
 
-            _worker.Accept(job.Id, job.JobCode, options, job.RequiredSheets, DateTime.UtcNow);
+            await using (var stream = File.OpenRead(printFile!))
+            {
+                await _spool.PutAsync(JournalEntry.SpoolNameFor(job.Id, original), stream, cancellationToken).ConfigureAwait(false);
+            }
 
-            _logger.LogInformation("Order {JobCode} placed: {Pages} pages, {Sheets} sheets.", job.JobCode, job.SelectedPages, job.RequiredSheets);
+            _worker.Accept(job.Id, job.JobCode, options, job.RequiredSheets, DateTime.UtcNow, original);
+
+            _logger.LogInformation(
+                "Order {JobCode} placed: {Pages} pages, {Sheets} sheets, sent as {ContentType}.",
+                job.JobCode,
+                job.SelectedPages,
+                job.RequiredSheets,
+                original ?? "the prepared PDF");
 
             return job;
         }
@@ -182,6 +199,42 @@ public sealed class KioskOrderService
         finally
         {
             _spool.Discard(folder);
+        }
+    }
+
+    /// <summary>
+    /// The rule of plan section 2.2: the customer's own file goes to the
+    /// printer when the printer takes its format natively and nothing was
+    /// done to it here - no edit, no page range, one page to a side. Anything
+    /// else, or a printer that cannot say, gets the prepared PDF.
+    /// </summary>
+    /// <returns>The original's MIME type when it is sent as it is; null for the PDF.</returns>
+    public async Task<string?> OriginalFormatAsync(PreparedDocument document, JobOptions options, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(options);
+
+        var contentType = PrintContentTypes.ForExtension(document.Format.Extension);
+
+        if (contentType is null
+            || document.Edited
+            || document.SourcePath is null
+            || !string.IsNullOrWhiteSpace(options.PageRange)
+            || options.PagesPerSheet > 1
+            || _runtime.Configuration?.SelectedPrinter is not { } printer)
+        {
+            return null;
+        }
+
+        try
+        {
+            var native = await _formats.GetNativeFormatsAsync(printer, cancellationToken).ConfigureAwait(false);
+            return native.Contains(contentType) ? contentType : null;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning(exception, "The printer's native formats could not be read; the PDF is sent.");
+            return null;
         }
     }
 

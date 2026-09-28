@@ -30,7 +30,12 @@ namespace NeoPrint.Kiosk.Platform.Windows;
 /// </para>
 /// </remarks>
 [SupportedOSPlatform("windows")]
-public sealed class WindowsPrinterService : IPrinterService
+/// <remarks>
+/// Every job goes through the driver as the prepared PDF: the spooler's RAW
+/// path would bypass the driver, and with it the copies, sides and grey the
+/// customer paid for (docs/DECISIONS.md, native formats on Windows).
+/// </remarks>
+public sealed class WindowsPrinterService : IPrinterService, IPrinterFormatSupport
 {
     private const string PdfPrinter = "Microsoft Print to PDF";
     private const int PrintDpi = 300;
@@ -79,9 +84,18 @@ public sealed class WindowsPrinterService : IPrinterService
     public Task<PrinterState> GetStateAsync(string printer, CancellationToken cancellationToken = default)
         => Task.FromResult(State(printer));
 
+    public Task<IReadOnlySet<string>> GetNativeFormatsAsync(string printer, CancellationToken cancellationToken = default)
+        => NoNativeFormats.Instance.GetNativeFormatsAsync(printer, cancellationToken);
+
     public async Task<PrintOutcome> PrintAsync(PrintRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        if (request.ContentType != PrintContentTypes.Pdf)
+        {
+            // Never asked for (no native formats are offered), refused if it is.
+            return PrintOutcome.Failed("printer.error");
+        }
 
         var state = State(request.Printer);
 

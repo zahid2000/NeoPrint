@@ -57,7 +57,7 @@ public sealed class ProcessCommandRunner : ICommandRunner
 /// The kiosk user is in <c>lpadmin</c> (plan section 7.6), so no elevation is
 /// needed. The job is named after the job code, never the file name.
 /// </remarks>
-public sealed partial class LinuxPrinterService : IPrinterService
+public sealed partial class LinuxPrinterService : IPrinterService, IPrinterFormatSupport
 {
     private static readonly TimeSpan JobTimeout = TimeSpan.FromMinutes(15);
 
@@ -90,6 +90,47 @@ public sealed partial class LinuxPrinterService : IPrinterService
         }
 
         return printers;
+    }
+
+    /// <summary>
+    /// The queue's IPP <c>document-format-supported</c>, through <c>ipptool</c>
+    /// (package <c>cups-ipp-utils</c>, installed by the provisioning script).
+    /// Without it the answer is empty and every job goes as the prepared PDF.
+    /// </summary>
+    public async Task<IReadOnlySet<string>> GetNativeFormatsAsync(string printer, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(printer);
+
+        try
+        {
+            var (exit, output) = await _commands
+                .RunAsync(
+                    "ipptool",
+                    ["-T", "10", "-t", "-v", $"ipp://localhost/printers/{Uri.EscapeDataString(printer)}", "get-printer-attributes.test"],
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            return exit == 0 ? ParseDocumentFormats(output) : new HashSet<string>();
+        }
+        catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return new HashSet<string>();
+        }
+    }
+
+    /// <summary>Reads <c>document-format-supported (1setOf mimeMediaType) = a,b,c</c> from ipptool.</summary>
+    public static IReadOnlySet<string> ParseDocumentFormats(string output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+
+        var line = output.Split('\n').FirstOrDefault(text => text.TrimStart().StartsWith("document-format-supported", StringComparison.Ordinal));
+        var equals = line?.IndexOf('=', StringComparison.Ordinal) ?? -1;
+
+        return equals < 0
+            ? new HashSet<string>()
+            : line![(equals + 1)..]
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     public async Task<PrinterState> GetStateAsync(string printer, CancellationToken cancellationToken = default)
@@ -138,6 +179,7 @@ public sealed partial class LinuxPrinterService : IPrinterService
             "-o", $"media={request.Paper}",
             "-o", request.Color ? "ColorModel=RGB" : "ColorModel=Gray",
             "-o", "fit-to-page",
+            "-o", $"document-format={request.ContentType}",
             request.PdfPath,
         ];
     }

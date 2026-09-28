@@ -762,7 +762,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
                 })
                 .ConfigureAwait(true);
 
-            _document = document with { PdfPath = edited + ".pdf", PageCount = DocumentPreparer.PageCount(edited + ".pdf") };
+            _document = document with { PdfPath = edited + ".pdf", PageCount = DocumentPreparer.PageCount(edited + ".pdf"), Edited = true };
             Brightness = 0;
             await LoadPagesAsync().ConfigureAwait(true);
             ResetOptions();

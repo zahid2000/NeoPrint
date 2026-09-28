@@ -20,8 +20,10 @@ namespace NeoPrint.Kiosk.Tests;
 /// </summary>
 internal sealed class OrderTestKit : IDisposable
 {
-    private OrderTestKit(FakeAppPaths paths, OrderBackend backend, SpoolStore spool, JobJournal journal, KioskOrderService orders)
+    private OrderTestKit(
+        FakeAppPaths paths, OrderBackend backend, SpoolStore spool, JobJournal journal, FakePrinterService printer, KioskOrderService orders)
     {
+        Printer = printer;
         Paths = paths;
         Backend = backend;
         Spool = spool;
@@ -38,6 +40,9 @@ internal sealed class OrderTestKit : IDisposable
     public JobJournal Journal { get; }
 
     public KioskOrderService Orders { get; }
+
+    /// <summary>The fake printer: what it takes natively, what it printed.</summary>
+    public FakePrinterService Printer { get; }
 
     public static async Task<OrderTestKit> CreateAsync(
         int paperCurrent = 480, bool blockOnPaper = true, IReadOnlyList<string>? allowedFormats = null, int maxFileSizeMb = 50)
@@ -66,8 +71,9 @@ internal sealed class OrderTestKit : IDisposable
         var runtime = new KioskRuntime(api, new SystemClock(), NullLogger<KioskRuntime>.Instance, cache);
         runtime.LoadCachedConfiguration().Should().BeTrue();
 
+        var printer = new FakePrinterService();
         var worker = new PrintQueueWorker(
-            new ApiPrintBackend(api), new FakePrinterService(), spool, journal, () => FakePrinterService.FakePrinterName,
+            new ApiPrintBackend(api), printer, spool, journal, () => FakePrinterService.FakePrinterName,
             NullLogger<PrintQueueWorker>.Instance);
 
         var orders = new KioskOrderService(
@@ -76,10 +82,11 @@ internal sealed class OrderTestKit : IDisposable
             spool,
             new DocumentPreparer(new PlainConverterRunner(), new ConverterPaths(), NullLogger<DocumentPreparer>.Instance),
             runtime,
+            printer,
             Options.Create(new KioskSettings { SkipPayment = true }),
             NullLogger<KioskOrderService>.Instance);
 
-        return new OrderTestKit(paths, backend, spool, journal, orders);
+        return new OrderTestKit(paths, backend, spool, journal, printer, orders);
     }
 
     public void Dispose()

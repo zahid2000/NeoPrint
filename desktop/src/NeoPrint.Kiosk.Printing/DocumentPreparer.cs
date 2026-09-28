@@ -40,7 +40,9 @@ public sealed class ConverterPaths
 /// <summary>A file from the flash drive, ready to show and print.</summary>
 /// <param name="PdfPath">The PDF made from it, in a private working folder.</param>
 /// <param name="Format">What the file is.</param>
-public sealed record PreparedDocument(string PdfPath, int PageCount, FileFormat Format);
+/// <param name="SourcePath">The customer's file as it came off the drive (a working copy).</param>
+/// <param name="Edited">Whether the pages were changed on the kiosk; an edited file is never sent as the original.</param>
+public sealed record PreparedDocument(string PdfPath, int PageCount, FileFormat Format, string? SourcePath = null, bool Edited = false);
 
 /// <summary>
 /// Turns a file from the flash drive into a PDF on the kiosk (plan sections
@@ -141,7 +143,7 @@ public sealed class DocumentPreparer
             throw new PrintingException("pdf.damaged");
         }
 
-        return new PreparedDocument(pdf, pages, format);
+        return new PreparedDocument(pdf, pages, format, input);
     }
 
     /// <summary>Pages in a PDF: PDFium when it is here, PDFsharp otherwise.</summary>

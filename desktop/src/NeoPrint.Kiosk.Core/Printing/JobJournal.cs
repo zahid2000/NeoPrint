@@ -26,6 +26,7 @@ public enum JournalState
 
 /// <summary>One job as this kiosk remembers it.</summary>
 /// <param name="StatusReported">Whether the backend has heard the final state.</param>
+/// <param name="ContentType">What the spooled file is; null (older entries) is the prepared PDF.</param>
 public sealed record JournalEntry(
     Guid JobId,
     string JobCode,
@@ -37,12 +38,14 @@ public sealed record JournalEntry(
     string? ErrorCode,
     bool StatusReported,
     DateTime QueuedAt,
-    DateTime UpdatedAt)
+    DateTime UpdatedAt,
+    string? ContentType = null)
 {
     /// <summary>The spool name of the job's print file.</summary>
-    public string SpoolName => SpoolNameFor(JobId);
+    public string SpoolName => SpoolNameFor(JobId, ContentType);
 
-    public static string SpoolNameFor(Guid jobId) => $"job-{jobId:N}.pdf";
+    public static string SpoolNameFor(Guid jobId, string? contentType = null)
+        => $"job-{jobId:N}.{PrintContentTypes.ExtensionFor(contentType)}";
 }
 
 /// <summary>

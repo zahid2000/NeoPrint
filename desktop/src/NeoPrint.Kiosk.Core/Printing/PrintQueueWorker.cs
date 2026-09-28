@@ -92,10 +92,11 @@ public sealed class PrintQueueWorker
     /// A job placed at this kiosk: its print file is already in the spool.
     /// Recorded first, so the worker knows its options even without the backend.
     /// </summary>
-    public void Accept(Guid jobId, string jobCode, JobOptions options, int requiredSheets, DateTime queuedAt)
+    /// <param name="contentType">What was spooled: null for the prepared PDF, or the original's type.</param>
+    public void Accept(Guid jobId, string jobCode, JobOptions options, int requiredSheets, DateTime queuedAt, string? contentType = null)
     {
         _journal.Save(new JournalEntry(
-            jobId, jobCode, JournalState.Queued, options, requiredSheets, 0, 0, null, false, queuedAt, DateTime.UtcNow));
+            jobId, jobCode, JournalState.Queued, options, requiredSheets, 0, 0, null, false, queuedAt, DateTime.UtcNow, contentType));
         Wake();
     }
 
@@ -294,7 +295,8 @@ public sealed class PrintQueueWorker
                         entry.Options.Duplex,
                         entry.Options.Color,
                         entry.Options.Paper,
-                        $"NeoPrint-{entry.JobCode}"),
+                        $"NeoPrint-{entry.JobCode}",
+                        entry.ContentType ?? PrintContentTypes.Pdf),
                     cancellationToken)
                 .ConfigureAwait(false);
         }

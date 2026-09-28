@@ -11,7 +11,7 @@ namespace NeoPrint.Kiosk.Core.Printing;
 /// machine can print to the fake printer and to "Microsoft Print to PDF" side
 /// by side.
 /// </remarks>
-public sealed class CompositePrinterService : IPrinterService
+public sealed class CompositePrinterService : IPrinterService, IPrinterFormatSupport
 {
     private readonly IPrinterService _machine;
     private readonly FakePrinterService _fake;
@@ -47,6 +47,9 @@ public sealed class CompositePrinterService : IPrinterService
         ArgumentNullException.ThrowIfNull(request);
         return For(request.Printer).PrintAsync(request, cancellationToken);
     }
+
+    public Task<IReadOnlySet<string>> GetNativeFormatsAsync(string printer, CancellationToken cancellationToken = default)
+        => (For(printer) as IPrinterFormatSupport ?? NoNativeFormats.Instance).GetNativeFormatsAsync(printer, cancellationToken);
 
     private IPrinterService For(string printer)
         => printer == FakePrinterService.FakePrinterName ? _fake : _machine;

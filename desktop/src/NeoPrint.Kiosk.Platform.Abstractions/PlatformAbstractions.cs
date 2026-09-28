@@ -170,8 +170,81 @@ public enum PrinterState
 /// <param name="Color">Colour; false prints in grey.</param>
 /// <param name="Paper">A4 or A3.</param>
 /// <param name="JobName">What the spooler shows: the job code, never the file name.</param>
+/// <param name="ContentType">
+/// What the file is: the prepared PDF, or the customer's original file when
+/// the printer speaks its format natively (plan section 2.2).
+/// </param>
 public sealed record PrintRequest(
-    string Printer, string PdfPath, int Copies, bool Duplex, bool Color, string Paper, string JobName);
+    string Printer,
+    string PdfPath,
+    int Copies,
+    bool Duplex,
+    bool Color,
+    string Paper,
+    string JobName,
+    string ContentType = PrintContentTypes.Pdf);
+
+/// <summary>
+/// The page description languages a printer may take as they are (plan
+/// section 2.2, IPP <c>document-format-supported</c>), by MIME type.
+/// </summary>
+public static class PrintContentTypes
+{
+    public const string Pdf = "application/pdf";
+    public const string PostScript = "application/postscript";
+    public const string Pcl = "application/vnd.hp-pcl";
+    public const string Jpeg = "image/jpeg";
+    public const string Xps = "application/vnd.ms-xpsdocument";
+    public const string Oxps = "application/oxps";
+
+    private static readonly Dictionary<string, string> ByExtension = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["pdf"] = Pdf,
+        ["ps"] = PostScript,
+        ["eps"] = PostScript,
+        ["pcl"] = Pcl,
+        ["prn"] = Pcl,
+        ["jpg"] = Jpeg,
+        ["jpeg"] = Jpeg,
+        ["xps"] = Xps,
+        ["oxps"] = Oxps,
+    };
+
+    /// <summary>The MIME type of a file a printer might take natively; null for anything else (DOCX, PNG ...).</summary>
+    public static string? ForExtension(string? extension)
+        => extension is not null && ByExtension.TryGetValue(extension.TrimStart('.'), out var type) ? type : null;
+
+    /// <summary>A file extension for a spooled file of this type.</summary>
+    public static string ExtensionFor(string? contentType) => contentType switch
+    {
+        PostScript => "ps",
+        Pcl => "pcl",
+        Jpeg => "jpg",
+        Xps => "xps",
+        Oxps => "oxps",
+        _ => "pdf",
+    };
+}
+
+/// <summary>
+/// Which formats a printer takes as they are (plan section 7.6,
+/// <c>IPrinterFormatSupport</c>): the rule of plan section 2.2 sends the
+/// customer's original file only to a printer that lists its format.
+/// </summary>
+public interface IPrinterFormatSupport
+{
+    /// <summary>MIME types (<see cref="PrintContentTypes"/>); empty when the printer is not known or cannot say.</summary>
+    Task<IReadOnlySet<string>> GetNativeFormatsAsync(string printer, CancellationToken cancellationToken = default);
+}
+
+/// <summary>A platform that sends every job as the prepared PDF.</summary>
+public sealed class NoNativeFormats : IPrinterFormatSupport
+{
+    public static readonly NoNativeFormats Instance = new();
+
+    public Task<IReadOnlySet<string>> GetNativeFormatsAsync(string printer, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlySet<string>>(new HashSet<string>());
+}
 
 /// <summary>How a print went.</summary>
 /// <param name="ErrorCode">A message key when it failed: <c>printer.outOfPaper</c>.</param>

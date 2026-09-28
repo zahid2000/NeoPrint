@@ -3,6 +3,7 @@ using System.Text;
 using NeoPrint.Documents;
 using NeoPrint.Kiosk.Core;
 using NeoPrint.Kiosk.Core.Printing;
+using NeoPrint.Kiosk.Platform.Abstractions;
 using NeoPrint.Kiosk.Printing;
 
 namespace NeoPrint.Kiosk.Tests;
@@ -82,5 +83,75 @@ public sealed class KioskOrderServiceTests
         await place.Should().ThrowAsync<Exception>();
         kit.Backend.Cancelled.Should().ContainSingle();
         kit.Journal.All().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task An_untouched_pdf_goes_as_the_original_to_a_printer_that_takes_pdf()
+    {
+        using var kit = await OrderTestKit.CreateAsync();
+        var source = kit.Pdf(3);
+
+        var job = await kit.Orders.PlaceAsync(
+            new PreparedDocument(kit.Pdf(3), 3, Pdf, source), "report.pdf", new JobOptions(Copies: 2, Duplex: true), "order-3", CancellationToken.None);
+
+        (await SpooledBytesAsync(kit, job.Id, PrintContentTypes.Pdf)).Should().Equal(await File.ReadAllBytesAsync(source));
+        kit.Journal.All().Should().ContainSingle().Which.ContentType.Should().Be(PrintContentTypes.Pdf);
+    }
+
+    [Theory]
+    [InlineData("2-3", 1, false, true)]
+    [InlineData(null, 2, false, true)]
+    [InlineData(null, 1, true, true)]
+    [InlineData(null, 1, false, false)]
+    public async Task A_changed_file_or_a_printer_without_the_format_gets_the_prepared_pdf(
+        string? range, int perSheet, bool edited, bool printerTakesPdf)
+    {
+        using var kit = await OrderTestKit.CreateAsync();
+
+        if (!printerTakesPdf)
+        {
+            kit.Printer.NativeFormats.Clear();
+        }
+
+        var source = kit.Pdf(3);
+        var document = new PreparedDocument(kit.Pdf(3), 3, Pdf, source, edited);
+
+        var original = await kit.Orders.OriginalFormatAsync(document, new JobOptions(PageRange: range, PagesPerSheet: perSheet), CancellationToken.None);
+        var job = await kit.Orders.PlaceAsync(document, "report.pdf", new JobOptions(PageRange: range, PagesPerSheet: perSheet), "order-4", CancellationToken.None);
+
+        original.Should().BeNull();
+        kit.Journal.All().Should().ContainSingle().Which.ContentType.Should().BeNull();
+        (await SpooledBytesAsync(kit, job.Id, null)).Should().NotEqual(await File.ReadAllBytesAsync(source));
+    }
+
+    [Fact]
+    public async Task A_postscript_file_goes_as_postscript_only_to_a_printer_that_speaks_it()
+    {
+        using var kit = await OrderTestKit.CreateAsync();
+        var postScript = Path.Combine(kit.Paths.Root, "flyer.ps");
+        await File.WriteAllTextAsync(postScript, "%!PS-Adobe-3.0\nshowpage\n");
+        var document = new PreparedDocument(kit.Pdf(1), 1, FileFormats.Find("ps")!, postScript);
+
+        (await kit.Orders.OriginalFormatAsync(document, new JobOptions(), CancellationToken.None)).Should().BeNull("the printer lists PDF only");
+
+        kit.Printer.NativeFormats.Add(PrintContentTypes.PostScript);
+        var job = await kit.Orders.PlaceAsync(document, "flyer.ps", new JobOptions(), "order-5", CancellationToken.None);
+
+        kit.Journal.All().Should().ContainSingle().Which.SpoolName.Should().EndWith(".ps");
+        (await SpooledBytesAsync(kit, job.Id, PrintContentTypes.PostScript)).Should().Equal(await File.ReadAllBytesAsync(postScript));
+    }
+
+    private static async Task<byte[]> SpooledBytesAsync(OrderTestKit kit, Guid jobId, string? contentType)
+    {
+        var plain = await kit.Spool.OpenAsync(JournalEntry.SpoolNameFor(jobId, contentType));
+
+        try
+        {
+            return await File.ReadAllBytesAsync(plain);
+        }
+        finally
+        {
+            kit.Spool.Discard(plain);
+        }
     }
 }

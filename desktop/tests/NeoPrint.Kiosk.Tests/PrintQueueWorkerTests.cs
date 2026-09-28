@@ -50,6 +50,21 @@ public sealed class PrintQueueWorkerTests : IDisposable
     }
 
     [Fact]
+    public async Task An_original_file_reaches_the_printer_with_its_type()
+    {
+        var worker = Worker();
+        var id = Guid.NewGuid();
+        await _spool.PutAsync(JournalEntry.SpoolNameFor(id, PrintContentTypes.PostScript), new MemoryStream(Encoding.ASCII.GetBytes("%!PS-Adobe-3.0")));
+        worker.Accept(id, "654321", new JobOptions(), 1, DateTime.UtcNow, PrintContentTypes.PostScript);
+        _backend.Queue.Add(new QueueItem(id, "654321", 1, "Queued", 1, 1, null, "flyer.ps", DateTime.UtcNow));
+
+        await worker.StepAsync(CancellationToken.None);
+
+        _printer.Printed.Should().ContainSingle().Which.ContentType.Should().Be(PrintContentTypes.PostScript);
+        _spool.Exists(JournalEntry.SpoolNameFor(id, PrintContentTypes.PostScript)).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task A_queued_job_is_printed_reported_and_forgotten()
     {
         var worker = Worker();

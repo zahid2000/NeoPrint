@@ -294,6 +294,8 @@ internal static class Program
             return new ConverterPaths { LibreOffice = settings.LibreOfficePath, GhostscriptFolder = settings.GhostscriptFolder };
         });
         services.AddSingleton<DocumentPreparer>();
+        services.AddSingleton<IPrinterFormatSupport>(provider =>
+            provider.GetRequiredService<IPrinterService>() as IPrinterFormatSupport ?? NoNativeFormats.Instance);
         services.AddSingleton<KioskOrderService>();
     }
 

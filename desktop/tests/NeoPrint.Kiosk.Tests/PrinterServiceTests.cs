@@ -40,6 +40,36 @@ public sealed class PrinterServiceTests
     }
 
     [Fact]
+    public async Task The_native_formats_come_from_the_queues_ipp_attributes()
+    {
+        var cups = new FakeCups
+        {
+            ["ipptool"] = (0,
+                "\"get-printer-attributes.test\":\n    printer-name (nameWithoutLanguage) = HP_LaserJet\n" +
+                "    document-format-supported (1setOf mimeMediaType) = application/octet-stream,application/pdf,application/postscript,image/jpeg\n"),
+        };
+
+        var formats = await new LinuxPrinterService(cups).GetNativeFormatsAsync(Printer);
+
+        formats.Should().BeEquivalentTo(["application/octet-stream", PrintContentTypes.Pdf, PrintContentTypes.PostScript, PrintContentTypes.Jpeg]);
+        cups.Calls.Should().ContainSingle().Which.Should().Contain("ipp://localhost/printers/HP_LaserJet");
+    }
+
+    [Fact]
+    public async Task Without_ipptool_there_are_no_native_formats_and_every_job_goes_as_pdf()
+    {
+        var cups = new FakeCups { ["ipptool"] = (127, string.Empty) };
+
+        (await new LinuxPrinterService(cups).GetNativeFormatsAsync(Printer)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void An_original_file_is_named_to_cups_by_its_type()
+        => LinuxPrinterService.Arguments(
+                new PrintRequest(Printer, "/spool/work/job.ps", 1, false, false, "A4", "Job 1", PrintContentTypes.PostScript))
+            .Should().Contain("document-format=application/postscript");
+
+    [Fact]
     public async Task Discovery_reads_colour_duplex_and_A3_from_the_driver_options()
     {
         var cups = new FakeCups

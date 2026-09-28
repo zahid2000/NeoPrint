@@ -140,7 +140,7 @@ public sealed class FakeMachineFingerprintProvider : IMachineFingerprintProvider
 /// printer and in CI. Enabled by <c>Kiosk:UseFakePrinter</c>, which is always
 /// false in a release build.
 /// </remarks>
-public sealed class FakePrinterService : IPrinterService
+public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport
 {
     /// <summary>The name the fake printer is listed under (plan section 7.7).</summary>
     public const string FakePrinterName = "NeoPrint Fake Printer";
@@ -174,6 +174,13 @@ public sealed class FakePrinterService : IPrinterService
 
     /// <summary>A state to report, for tests; overrides the state file.</summary>
     public PrinterState? SimulatedState { get; set; }
+
+    /// <summary>What the fake printer takes as it is: PDF, like most office printers.</summary>
+    public HashSet<string> NativeFormats { get; } = [PrintContentTypes.Pdf];
+
+    public Task<IReadOnlySet<string>> GetNativeFormatsAsync(string printer, CancellationToken cancellationToken = default)
+        => Task.FromResult<IReadOnlySet<string>>(
+            _printers.Any(known => known.Name == printer) ? new HashSet<string>(NativeFormats) : new HashSet<string>());
 
     /// <summary>What was printed, in order.</summary>
     public List<PrintRequest> Printed { get; } = [];
@@ -231,7 +238,7 @@ public sealed class FakePrinterService : IPrinterService
             Directory.CreateDirectory(_outputDirectory);
             var target = Path.Combine(
                 _outputDirectory,
-                $"{request.JobName}-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-x{request.Copies}{(request.Duplex ? "-duplex" : "")}{(request.Color ? "-color" : "-gray")}-{request.Paper}.pdf");
+                $"{request.JobName}-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-x{request.Copies}{(request.Duplex ? "-duplex" : "")}{(request.Color ? "-color" : "-gray")}-{request.Paper}.{PrintContentTypes.ExtensionFor(request.ContentType)}");
 
             File.Copy(request.PdfPath, target, overwrite: false);
         }
