@@ -2,8 +2,10 @@
 
   <!--
     Rendering, editing and conversion, none of it platform-specific
-    (plan section 7.6). Filled in from step 3; the packages arrive with the
-    implementation.
+    (plan section 7.6): a flash file becomes a PDF, the customer's page choices
+    and N-up are applied to it, pages are drawn for the preview, and the test
+    page is made. PDFsharp for PDF structure, SkiaSharp for images, text and the
+    test page, PDFium (our own wrapper) for drawing pages.
   -->
 
   <PropertyGroup>
@@ -12,8 +14,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="PDFsharp" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Abstractions\NeoPrint.Kiosk.Platform.Abstractions.csproj" />
+    <ProjectReference Include="..\NeoPrint.Kiosk.Core\NeoPrint.Kiosk.Core.csproj" />
     <ProjectReference Include="..\..\..\backend\shared\NeoPrint.Layout\NeoPrint.Layout.csproj" />
+    <ProjectReference Include="..\..\..\backend\shared\NeoPrint.Documents\NeoPrint.Documents.csproj" />
   </ItemGroup>
 
 </Project>

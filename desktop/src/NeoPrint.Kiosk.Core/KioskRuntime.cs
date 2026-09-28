@@ -19,13 +19,15 @@ public sealed class KioskRuntime
     private readonly KioskApiClient _api;
     private readonly IClock _clock;
     private readonly ILogger<KioskRuntime> _logger;
+    private readonly ConfigurationCache? _cache;
 
     private KioskConfiguration? _configuration;
     private DateTime? _configurationFetchedAt;
     private DateTime? _configurationChangedAt;
 
-    public KioskRuntime(KioskApiClient api, IClock clock, ILogger<KioskRuntime> logger)
+    public KioskRuntime(KioskApiClient api, IClock clock, ILogger<KioskRuntime> logger, ConfigurationCache? cache = null)
     {
+        _cache = cache;
         _api = api;
         _clock = clock;
         _logger = logger;
@@ -36,6 +38,35 @@ public sealed class KioskRuntime
 
     /// <summary>Whether the last exchange with the backend succeeded.</summary>
     public bool IsBackendReachable { get; private set; }
+
+    /// <summary>A new configuration was loaded: the printer, limits or prices may have changed.</summary>
+    public event Action<KioskConfiguration>? ConfigurationChanged;
+
+    /// <summary>
+    /// Starts from the configuration cached on disk, when the backend cannot
+    /// be reached at start (plan section 7.7). Its age counts from when it was
+    /// fetched, so a stale cache still means Offline rather than Degraded.
+    /// </summary>
+    /// <returns>Whether there was one.</returns>
+    public bool LoadCachedConfiguration()
+    {
+        if (_cache?.Load() is not { } cached)
+        {
+            return false;
+        }
+
+        _configuration = cached.Configuration;
+        _configurationFetchedAt = cached.FetchedAt;
+        IsBackendReachable = false;
+
+        _logger.LogInformation("Started from the cached configuration of {FetchedAt:u}.", cached.FetchedAt);
+        ConfigurationChanged?.Invoke(cached.Configuration);
+
+        return true;
+    }
+
+    /// <summary>Reloads now: the hub said the printer or the configuration changed.</summary>
+    public Task RefreshAsync(CancellationToken cancellationToken) => LoadConfigurationAsync(cancellationToken);
 
     /// <summary>What the kiosk may do right now.</summary>
     public KioskAvailability Availability => KioskAvailabilityRules.Decide(
@@ -59,6 +90,10 @@ public sealed class KioskRuntime
         _configurationFetchedAt = _clock.UtcNow;
         _configurationChangedAt = null;
         IsBackendReachable = true;
+
+        _cache?.Save(configuration, _configurationFetchedAt.Value);
+
+        ConfigurationChanged?.Invoke(configuration);
 
         _logger.LogInformation(
             "Configuration loaded for kiosk {KioskCode}: printer {Printer}, cache valid {Hours} h.",

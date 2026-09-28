@@ -238,3 +238,34 @@ public static class PrinterErrors
         _ => "printer.error",
     };
 }
+
+/// <summary>
+/// Runs a converter (LibreOffice, Ghostscript) on a user's file: in a process
+/// of its own, with a time limit and a memory limit, killed with everything it
+/// started when either runs out (CLAUDE.md: user files are untrusted input).
+/// </summary>
+/// <remarks>
+/// Windows puts the process in a Job Object; Linux starts it under
+/// <c>prlimit</c>. A restricted user without network is plan step 8.
+/// </remarks>
+public interface IConverterProcessRunner
+{
+    Task<ConverterRun> RunAsync(
+        string executable,
+        IReadOnlyList<string> arguments,
+        string workingDirectory,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>How a converter run ended.</summary>
+public enum ConverterRunOutcome
+{
+    Exited = 0,
+    TimedOut = 1,
+
+    /// <summary>The program is not installed on this kiosk.</summary>
+    NotStarted = 2,
+}
+
+public sealed record ConverterRun(ConverterRunOutcome Outcome, int ExitCode, string StandardError);
