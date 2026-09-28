@@ -20,6 +20,7 @@ import {
   FeatureFlagDetails,
   KioskListItem,
 } from '../../core/api/admin-api.service';
+import { defaultLanguage, translations } from '../../core/i18n/translations';
 import { describeError } from '../login/login.component';
 
 /** One flag's unsaved state while the operator is changing it. */
@@ -62,6 +63,12 @@ export class FeatureFlagsComponent {
   private readonly translate = inject(TranslateService);
 
   readonly flags = signal<FeatureFlagDetails[]>([]);
+
+  /** Whether this build has a human name for the flag; otherwise the key shows. */
+  hasText(flag: FeatureFlagDetails): boolean {
+    return `features.flag.${flag.key}.name` in translations[defaultLanguage];
+  }
+
   readonly kiosks = signal<KioskListItem[]>([]);
   readonly drafts = signal<Record<string, FlagDraft>>({});
 

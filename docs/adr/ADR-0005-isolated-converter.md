@@ -91,8 +91,8 @@ alır, consumer asılı qalmır. Converter-in heartbeat-i yoxdursa, API health-i
   konteynerini (cgroup) və həmin konvertasiyanı (prlimit) vurur.
 - **Qalıq risk:** PDFium (səhifə sayı, səhifə şəkilləri, redaktə) və SkiaSharp
   (şəkil → PDF) hələ API prosesinin içindədir. Bunlar da untrusted faylı parse
-  edir; onların converter-ə köçürülməsi planın Addım 8-dəki converter
-  xidmətinin işidir və `docs/TASKS.md`-də ayrıca tapşırıqdır. İndiki qoruyucu:
+  edir; onların converter-ə köçürülməsi **Addım 7-də, pilotdan əvvəl** edilir
+  (`docs/TASKS.md` T-051, layihə sahibinin 2026-09-28 qərarı). İndiki qoruyucu:
   PDFium yalnız artıq çevrilmiş/yoxlanmış PDF-i açır, Skia piksel limiti
   (100 MP, header-dən) tətbiq edir.
 - Windows development maşınında (Docker-siz `dotnet run`) `Local` rejim işləyir:
@@ -120,7 +120,7 @@ Məlumat migrasiyası yoxdur. Lokal mühit: `docker compose up -d --build
 
 Addım 2 (məcburi kross-kəsən qayda, layihə sahibinin şərti); planın Addım 8-dəki
 "İzolyasiya olunmuş konvertasiya"nın backend hissəsi indi edilir, PDFium/Skia
-köçürülməsi Addım 8-də qalır.
+köçürülməsi Addım 7-də (pilotdan əvvəl) edilir.
 
 ### Date
 

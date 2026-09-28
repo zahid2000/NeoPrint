@@ -64,6 +64,8 @@
   "homeScanQr": "Сканировать QR-код",
   "homeActiveJobs": "Активные задания",
   "homeNoActiveJobs": "Активных заданий нет",
+  "homeFilesHint": "Загрузите файлы — они будут готовы к печати в киоске.",
+  "homeOpenFiles": "Мои файлы",
   "homeRecentReceipts": "Последние чеки",
 
   "profileLanguage": "Язык",

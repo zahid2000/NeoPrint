@@ -64,6 +64,8 @@
   "homeScanQr": "Scan a QR code",
   "homeActiveJobs": "Active print jobs",
   "homeNoActiveJobs": "No active print jobs",
+  "homeFilesHint": "Upload your files and they will be ready to print at a kiosk.",
+  "homeOpenFiles": "My files",
   "homeRecentReceipts": "Recent receipts",
 
   "profileLanguage": "Language",

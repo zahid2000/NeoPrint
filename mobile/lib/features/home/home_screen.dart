@@ -2,15 +2,18 @@ import '../../core/theme/tokens.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/features/readiness.dart';
+import '../../core/router/app_router.dart';
 import '../../l10n/app_localizations.dart';
 
 /// The home tab (plan section 8.2).
 ///
-/// The balance card, the QR scanner and the job list arrive with the wallet
-/// and print flows; what is settled here is the layout and that the signed-in
-/// user's own details are on screen.
+/// The balance, the QR scanner and the job list arrive with the wallet and
+/// print flows (step 4). Until then they are not drawn at all - a dash or a
+/// disabled button would look broken (Readiness).
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -18,7 +21,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final user = ref.watch(authControllerProvider).user;
+    final user = ref.watch(currentUserProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.appTitle)),
@@ -38,21 +41,12 @@ class HomeScreen extends ConsumerWidget {
                       color: theme.colorScheme.onPrimaryContainer,
                     ),
                   ),
-                  const SizedBox(height: Spacing.x4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _Metric(
-                          label: l10n.homeBalance,
-                          // The wallet arrives in step 4; a dash is honest,
-                          // a zero would not be.
-                          value: '—',
-                        ),
-                      ),
-                      Expanded(
-                        child: _Metric(label: l10n.homeBonusPages, value: '—'),
-                      ),
-                    ],
+                  const SizedBox(height: Spacing.x2),
+                  Text(
+                    l10n.homeFilesHint,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
                   ),
                 ],
               ),
@@ -60,61 +54,33 @@ class HomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: Spacing.x4),
 
+          // What works today: the files. The one primary action on the screen.
           FilledButton.icon(
-            onPressed: null,
-            icon: const Icon(Icons.qr_code_scanner),
-            label: Text(l10n.homeScanQr),
+            onPressed: () => context.go(Routes.files),
+            icon: const Icon(Icons.folder_outlined),
+            label: Text(l10n.homeOpenFiles),
           ),
-          const SizedBox(height: Spacing.x6),
 
-          Text(l10n.homeActiveJobs, style: theme.textTheme.titleMedium),
-          const SizedBox(height: Spacing.x2),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(Spacing.x6),
-              child: Center(
-                child: Text(
-                  l10n.homeNoActiveJobs,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.outline,
+          if (Readiness.printJobs) ...[
+            const SizedBox(height: Spacing.x6),
+            Text(l10n.homeActiveJobs, style: theme.textTheme.titleMedium),
+            const SizedBox(height: Spacing.x2),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(Spacing.x6),
+                child: Center(
+                  child: Text(
+                    l10n.homeNoActiveJobs,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
-    );
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
-          ),
-        ),
-        Text(
-          value,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onPrimaryContainer,
-          ),
-        ),
-      ],
     );
   }
 }

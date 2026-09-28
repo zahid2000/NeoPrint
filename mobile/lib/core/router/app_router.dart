@@ -18,6 +18,7 @@ import '../../features/schedule/schedule_screen.dart';
 import '../../shared/widgets/bottom_nav_shell.dart';
 import '../auth/auth_controller.dart';
 import '../auth/auth_models.dart';
+import '../features/readiness.dart';
 
 /// Route paths, in one place so a rename cannot leave a dangling link.
 abstract final class Routes {
@@ -113,14 +114,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: Routes.kiosks,
-                builder: (_, __) => const KioskSearchScreen(),
-              ),
-            ],
-          ),
+          if (Readiness.kioskSearch)
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: Routes.kiosks,
+                  builder: (_, __) => const KioskSearchScreen(),
+                ),
+              ],
+            ),
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -146,14 +148,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: Routes.scheduled,
-                builder: (_, __) => const ScheduleScreen(),
-              ),
-            ],
-          ),
+          if (Readiness.scheduledPrint)
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: Routes.scheduled,
+                  builder: (_, __) => const ScheduleScreen(),
+                ),
+              ],
+            ),
           StatefulShellBranch(
             routes: [
               GoRoute(

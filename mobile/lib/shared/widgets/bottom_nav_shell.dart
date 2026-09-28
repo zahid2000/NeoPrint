@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/features/readiness.dart';
 import '../../l10n/app_localizations.dart';
 
-/// The five-destination bottom navigation from plan section 8.1.
+/// The bottom navigation from plan section 8.1: five destinations once every
+/// one of them has its screen, fewer until then (Readiness).
 ///
 /// A stateful shell, so each tab keeps its scroll position and its loaded data
 /// when the user moves between them.
@@ -30,21 +32,25 @@ class BottomNavShell extends StatelessWidget {
             selectedIcon: const Icon(Icons.home),
             label: l10n.navHome,
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.place_outlined),
-            selectedIcon: const Icon(Icons.place),
-            label: l10n.navKiosks,
-          ),
+          // The same conditions as the branches in app_router.dart: the bar
+          // and the shell must list the same tabs in the same order.
+          if (Readiness.kioskSearch)
+            NavigationDestination(
+              icon: const Icon(Icons.place_outlined),
+              selectedIcon: const Icon(Icons.place),
+              label: l10n.navKiosks,
+            ),
           NavigationDestination(
             icon: const Icon(Icons.folder_outlined),
             selectedIcon: const Icon(Icons.folder),
             label: l10n.navFiles,
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.schedule_outlined),
-            selectedIcon: const Icon(Icons.schedule),
-            label: l10n.navScheduled,
-          ),
+          if (Readiness.scheduledPrint)
+            NavigationDestination(
+              icon: const Icon(Icons.schedule_outlined),
+              selectedIcon: const Icon(Icons.schedule),
+              label: l10n.navScheduled,
+            ),
           NavigationDestination(
             icon: const Icon(Icons.person_outline),
             selectedIcon: const Icon(Icons.person),

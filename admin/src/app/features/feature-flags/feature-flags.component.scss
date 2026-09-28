@@ -16,9 +16,36 @@
     }
   }
 
+  // The header grows with the name, the sentence and the key under it.
+  mat-expansion-panel-header {
+    height: auto;
+    padding-block: var(--space-3);
+  }
+
+  &__title {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  &__name {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+  }
+
+  &__summary {
+    color: var(--mat-sys-on-surface-variant);
+    font-size: var(--font-size-body-small);
+  }
+
+  &__key {
+    color: var(--mat-sys-on-surface-variant);
+    font-size: var(--font-size-caption);
+  }
+
   &__hint,
-  &__note,
-  &__description {
+  &__note {
     margin: 0 0 var(--space-3);
     color: var(--mat-sys-on-surface-variant);
   }

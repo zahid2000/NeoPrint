@@ -7,6 +7,7 @@
  * lives here; identifiers stay English (CLAUDE.md).
  */
 import { commonTranslations } from './common.i18n';
+import { featuresTranslations } from './features.i18n';
 import { formatsTranslations } from './formats.i18n';
 import { kiosksTranslations } from './kiosks.i18n';
 import { pricingTranslations } from './pricing.i18n';
@@ -220,7 +221,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'features.followsDefault': 'standart',
     'features.cycleHint': 'Açıq → bağlı → standart',
     'features.noKiosks': 'Kiosk siyahısı əlçatan deyil.',
-    'features.allowlist': 'Allowlist: {{count}} istifadəçi',
+    'features.allowlist': 'Seçilmiş istifadəçilər: {{count}}',
     'features.saved': 'Funksiya açarı yadda saxlanıldı.',
 
     'admins.new': 'Yeni hesab',
@@ -533,7 +534,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'features.followsDefault': 'default',
     'features.cycleHint': 'On → off → default',
     'features.noKiosks': 'The kiosk list is not available.',
-    'features.allowlist': 'Allowlist: {{count}} users',
+    'features.allowlist': 'Selected users: {{count}}',
     'features.saved': 'Flag saved.',
 
     'admins.new': 'New account',
@@ -843,12 +844,12 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'features.rolloutNote':
       'Процент применяется только к вошедшим пользователям; анонимная сессия киоска следует значению по умолчанию.',
     'features.platforms': 'Платформы',
-    'features.kioskOverrides': 'Override по киоскам',
+    'features.kioskOverrides': 'Настройки по киоскам',
     'features.overrideCount': 'Переопределений: {{count}}',
     'features.followsDefault': 'по умолчанию',
     'features.cycleHint': 'Вкл → выкл → по умолчанию',
     'features.noKiosks': 'Список киосков недоступен.',
-    'features.allowlist': 'Allowlist: {{count}} пользователей',
+    'features.allowlist': 'Выбранные пользователи: {{count}}',
     'features.saved': 'Флаг сохранён.',
 
     'admins.new': 'Новая учётная запись',
@@ -982,6 +983,7 @@ const pages: readonly PageTranslations[] = [
   pricingTranslations,
   storageTranslations,
   kiosksTranslations,
+  featuresTranslations,
 ];
 
 for (const language of supportedLanguages) {

@@ -26,12 +26,30 @@
       <mat-expansion-panel>
         <mat-expansion-panel-header>
           <mat-panel-title>
-            <code>{{ flag.key }}</code>
-            @if (isDirty(flag)) {
-              <mat-icon class="flags__dirty" [matTooltip]="'features.unsaved' | translate"
-                >edit</mat-icon
-              >
-            }
+            <span class="flags__title">
+              <span class="flags__name">
+                @if (hasText(flag)) {
+                  {{ 'features.flag.' + flag.key + '.name' | translate }}
+                } @else {
+                  {{ flag.key }}
+                }
+                @if (isDirty(flag)) {
+                  <mat-icon class="flags__dirty" [matTooltip]="'features.unsaved' | translate"
+                    >edit</mat-icon
+                  >
+                }
+              </span>
+              @if (hasText(flag)) {
+                <span class="flags__summary">{{
+                  'features.flag.' + flag.key + '.description' | translate
+                }}</span>
+              } @else if (flag.description) {
+                <span class="flags__summary">{{ flag.description }}</span>
+              }
+              <code class="flags__key" [attr.aria-label]="'features.technicalKey' | translate">{{
+                flag.key
+              }}</code>
+            </span>
           </mat-panel-title>
           <mat-panel-description>
             @if (draft(flag.key).defaultEnabled) {
@@ -50,10 +68,6 @@
             }
           </mat-panel-description>
         </mat-expansion-panel-header>
-
-        @if (flag.description) {
-          <p class="flags__description">{{ flag.description }}</p>
-        }
 
         <mat-slide-toggle
           [checked]="draft(flag.key).defaultEnabled"
@@ -81,7 +95,7 @@
           <p class="flags__note">
             {{ 'features.platforms' | translate }}:
             @for (platform of flag.platforms; track platform) {
-              <mat-chip>{{ platform }}</mat-chip>
+              <mat-chip>{{ 'features.platform.' + platform | translate }}</mat-chip>
             }
           </p>
         }

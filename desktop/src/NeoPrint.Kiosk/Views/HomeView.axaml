@@ -30,7 +30,10 @@
             </StackPanel>
         </Button>
 
-        <Button Classes="secondary"
+        <!-- Personal QR printing arrives in step 5 (user_qr_print); until then the
+             button is not on screen at all (docs/DESIGN_SYSTEM.md, "Hazır olmayan
+             funksiya"). -->
+        <Button Classes="secondary" IsVisible="False"
                 MinHeight="112" HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Left" Padding="{DynamicResource InsetX8}"
                 IsEnabled="False">

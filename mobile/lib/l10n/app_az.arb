@@ -64,6 +64,8 @@
   "homeScanQr": "QR oxut",
   "homeActiveJobs": "Aktiv çaplar",
   "homeNoActiveJobs": "Aktiv çap yoxdur",
+  "homeFilesHint": "Fayllarınızı yükləyin — kioskda çap üçün hazır olacaqlar.",
+  "homeOpenFiles": "Fayllarım",
   "homeRecentReceipts": "Son qəbzlər",
 
   "profileLanguage": "Dil",

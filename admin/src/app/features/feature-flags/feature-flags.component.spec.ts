@@ -6,6 +6,7 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { describe, beforeEach, afterEach, expect, it } from 'vitest';
 
 import { FeatureFlagDetails, KioskListItem } from '../../core/api/admin-api.service';
+import { supportedLanguages, translations } from '../../core/i18n/translations';
 import { FeatureFlagsComponent } from './feature-flags.component';
 
 const kioskA = '11111111-1111-1111-1111-111111111111';
@@ -192,4 +193,36 @@ describe('FeatureFlagsComponent', () => {
       '66666666-6666-6666-6666-666666666666',
     );
   });
+
+  it('falls back to the technical key for a flag this build has no name for', () => {
+    expect(component.hasText(flags[0])).toBe(false);
+    expect(component.hasText({ ...flags[0], key: 'referral' })).toBe(true);
+  });
+});
+
+// The MVP flags the backend seeds (FeatureFlag.MvpFlags): each needs a human name
+// and a one-sentence explanation in every language, or the page shows a bare key.
+const mvpFlagKeys = [
+  'mobile_payment_at_kiosk',
+  'user_qr_print',
+  'mobile_session_print',
+  'scheduled_print',
+  'file_sharing',
+  'referral',
+  'promo_codes',
+  'layout_editor',
+  'document_scan',
+  'txt_editor',
+  'data_export',
+];
+
+describe('feature flag names', () => {
+  for (const language of supportedLanguages) {
+    it(`names and explains every MVP flag in ${language}`, () => {
+      for (const key of mvpFlagKeys) {
+        expect(translations[language][`features.flag.${key}.name`], key).toBeTruthy();
+        expect(translations[language][`features.flag.${key}.description`], key).toBeTruthy();
+      }
+    });
+  }
 });

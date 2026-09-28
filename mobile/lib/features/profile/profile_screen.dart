@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/features/readiness.dart';
 import '../../l10n/app_localizations.dart';
 
 /// The profile tab (plan section 8.2).
@@ -18,7 +19,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final user = ref.watch(authControllerProvider).user;
+    final user = ref.watch(currentUserProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.navProfile)),
@@ -44,15 +45,18 @@ class ProfileScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        user?.fullName ?? '—',
+                        // A missing name falls back to the email rather
+                        // than a dash; the email line then stays away.
+                        _displayName(user?.fullName, user?.email),
                         style: theme.textTheme.titleLarge,
                       ),
-                      Text(
-                        user?.email ?? '',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.outline,
+                      if (_hasName(user?.fullName))
+                        Text(
+                          user?.email ?? '',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -63,7 +67,7 @@ class ProfileScreen extends ConsumerWidget {
           // The shareable code, which is how a file is sent to another user
           // (plan section 5). Tapping it copies it, because it is meant to be
           // passed on.
-          if (user != null)
+          if (user != null && Readiness.fileSharing)
             ListTile(
               leading: const Icon(Icons.badge_outlined),
               title: Text(l10n.profilePublicId),
@@ -80,18 +84,18 @@ class ProfileScreen extends ConsumerWidget {
               },
             ),
 
-          ListTile(
-            leading: const Icon(Icons.language_outlined),
-            title: Text(l10n.profileLanguage),
-            subtitle: Text(user?.language.toUpperCase() ?? 'AZ'),
-            enabled: false,
-          ),
+          if (Readiness.languageSetting)
+            ListTile(
+              leading: const Icon(Icons.language_outlined),
+              title: Text(l10n.profileLanguage),
+              subtitle: Text(user?.language.toUpperCase() ?? 'AZ'),
+            ),
 
-          ListTile(
-            leading: const Icon(Icons.description_outlined),
-            title: Text(l10n.profileLegal),
-            enabled: false,
-          ),
+          if (Readiness.legalDocuments)
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: Text(l10n.profileLegal),
+            ),
 
           const Divider(),
 
@@ -107,6 +111,12 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
   }
+
+  static bool _hasName(String? fullName) =>
+      fullName != null && fullName.trim().isNotEmpty;
+
+  static String _displayName(String? fullName, String? email) =>
+      _hasName(fullName) ? fullName! : (email ?? '');
 
   static String _initial(String? value) =>
       (value == null || value.isEmpty) ? '?' : value.trim()[0].toUpperCase();

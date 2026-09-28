@@ -47,6 +47,14 @@ final authControllerProvider = NotifierProvider<AuthController, AuthState>(
   AuthController.new,
 );
 
+/// The signed-in user, for the screens that only show who is signed in.
+///
+/// Separate from the controller so a screen can be rendered with a user of its
+/// own in a widget test without driving the sign-in flow.
+final currentUserProvider = Provider<UserProfile?>(
+  (ref) => ref.watch(authControllerProvider.select((state) => state.user)),
+);
+
 /// Drives registration, sign-in and consents (plan section 2.8).
 ///
 /// The router listens to this, so every gate the plan requires is enforced in

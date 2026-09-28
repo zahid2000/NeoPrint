@@ -115,6 +115,8 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 
 **Boş vəziyyət (empty state).** İkon + bir cümlə izah + əsas hərəkət düyməsi. "Məlumat yoxdur" tək başına yazılmır.
 
+**Hazır olmayan funksiya.** Backend-i hələ olmayan (sonrakı addımda gələn) funksiyanın elementi ekranda **göstərilmir**: dəyər yerinə "—", deaktiv düymə, deaktiv menyu sətri, "tezliklə" tabı və ya boş kart yoxdur — istifadəçi yarımçıq və ya "xarab kimi görünən" element görmür. Element ya tamamilə gizlədilir (mobil: `lib/core/features/readiness.dart`, kiosk: `IsVisible`), ya da feature flag ilə bağlanır; funksiyanı gətirən addımda açılır. Real dəyər məlumdursa (məs. yeni hesabın balansı) o göstərilə bilər. Yoxlama: mobil `test/readiness_test.dart` (ekranda "—", deaktiv düymə və deaktiv sətir yoxdur).
+
 **Yüklənmə.** Siyahı və kartlar üçün skeleton, tam ekran spinner yalnız ilk açılışda. 10 saniyədən uzun əməliyyatda mərhələ mətni göstərilir.
 
 **Xəritə (admin).** Leaflet + OpenStreetMap, sağ aşağıda atribusiya (`© OpenStreetMap`) həmişə görünür. Marker status tonunun rəngində dairədir (rəng token-dən oxunur) və yanında həmişə mətn olur: xəritənin altında status legendası (rəng + ikon + mətn) və marker-ə klikdə ad + kod + status chip. Xəritə siyahının alternatividir, onu əvəz etmir — eyni filtrlər hər ikisinə tətbiq olunur. Nöqtə seçimi (kiosk forması) klik ilə olur, seçilən koordinat input sahələrində də görünür və əl ilə yazıla bilir.
