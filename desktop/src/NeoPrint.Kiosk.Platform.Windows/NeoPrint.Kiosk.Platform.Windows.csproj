@@ -12,6 +12,10 @@
     <!-- System.Drawing.Printing for PrintDocument (plan section 7.4): part of the
          Windows Desktop runtime, not a package. -->
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- The Windows Desktop reference assemblies on Linux too: CI builds this
+         project there, and every evaluation - restore, build, dotnet list for
+         the licence check - must see the same references. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 

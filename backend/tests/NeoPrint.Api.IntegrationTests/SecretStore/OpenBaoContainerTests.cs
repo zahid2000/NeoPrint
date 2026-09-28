@@ -111,8 +111,24 @@ public sealed class OpenBaoContainerTests : IAsyncLifetime
 
     private async Task WriteSecretsAsync(string path, object data)
     {
-        (await Root.PostAsJsonAsync($"v1/neoprint/data/{path}", new { data }))
-            .EnsureSuccessStatusCode();
+        // A KV v2 mount upgrades itself to the versioned layout in the
+        // background after it is created, and a write that arrives first gets
+        // 400 ("upgrading from non-versioned to versioned data"). Seen in CI;
+        // the documented remedy is to wait for the upgrade.
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+
+        while (true)
+        {
+            var response = await Root.PostAsJsonAsync($"v1/neoprint/data/{path}", new { data });
+
+            if (response.StatusCode != System.Net.HttpStatusCode.BadRequest || DateTime.UtcNow > deadline)
+            {
+                response.EnsureSuccessStatusCode();
+                return;
+            }
+
+            await Task.Delay(200);
+        }
     }
 
     private OpenBaoOptions OptionsFor((string RoleId, string SecretId) credentials, params string[] paths) => new()
