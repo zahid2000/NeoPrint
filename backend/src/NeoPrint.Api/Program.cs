@@ -15,18 +15,18 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
 
 using Hangfire;
+using NeoPrint.Api;
 using NeoPrint.Api.Hubs;
 using NeoPrint.Api.Infrastructure;
-using NeoPrint.Api;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Application.PrintJobs;
 using NeoPrint.Domain.Settings;
+using NeoPrint.Infrastructure;
 using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Infrastructure.Persistence;
 using NeoPrint.Infrastructure.SecretStore;
 using NeoPrint.Infrastructure.Seeding;
-using NeoPrint.Infrastructure;
 
 using NeoPrint.Infrastructure.Conversion;
 using NeoPrint.Infrastructure.PrintJobs;

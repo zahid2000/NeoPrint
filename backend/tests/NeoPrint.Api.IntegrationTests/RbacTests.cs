@@ -5,9 +5,9 @@ using System.Text.Json;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using MongoDB.Driver;
 using NeoPrint.Application.Admin;
 using NeoPrint.Domain.Admin;
-using MongoDB.Driver;
 
 using NeoPrint.Infrastructure.Persistence;
 

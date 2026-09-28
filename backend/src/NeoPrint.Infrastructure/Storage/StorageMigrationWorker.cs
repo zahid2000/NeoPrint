@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 
-using Amazon.S3.Model;
 using Amazon.S3;
+using Amazon.S3.Model;
 
 using Microsoft.Extensions.Logging;
 

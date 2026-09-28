@@ -1,6 +1,6 @@
 using PdfSharp.Drawing;
-using PdfSharp.Pdf.IO;
 using PdfSharp.Pdf;
+using PdfSharp.Pdf.IO;
 
 namespace NeoPrint.Kiosk.Printing;
 

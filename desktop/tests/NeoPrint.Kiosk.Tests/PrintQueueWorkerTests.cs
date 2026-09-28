@@ -2,8 +2,8 @@ using System.Text;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
-using NeoPrint.Kiosk.Core.Printing;
 using NeoPrint.Kiosk.Core;
+using NeoPrint.Kiosk.Core.Printing;
 using NeoPrint.Kiosk.Platform.Abstractions;
 
 namespace NeoPrint.Kiosk.Tests;

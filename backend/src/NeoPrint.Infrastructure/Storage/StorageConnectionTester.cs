@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Text;
 
-using Amazon.S3.Model;
 using Amazon.S3;
+using Amazon.S3.Model;
 
 using Microsoft.Extensions.Logging;
 

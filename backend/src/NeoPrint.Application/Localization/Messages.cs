@@ -1,6 +1,6 @@
 using System.Collections.Frozen;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
 
 using NeoPrint.Domain.Common;
 
