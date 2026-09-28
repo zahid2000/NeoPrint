@@ -41,6 +41,8 @@ public static class ScreenConverters
 
     public static readonly IValueConverter IsOutOfService = Is(KioskScreen.OutOfService);
 
+    public static readonly IValueConverter IsSafeMode = Is(KioskScreen.SafeMode);
+
     public static readonly IValueConverter IsBrowse = Stage(FlowStage.Browse);
 
     public static readonly IValueConverter IsWorking = Stage(FlowStage.Working);

@@ -51,6 +51,19 @@ public sealed partial class App : Application
         _model = new MainWindowViewModel();
         _session = new KioskSession(Services, _model);
 
+        // Counted before anything else can crash (plan section 7.12): a UI
+        // that keeps falling over starts on the maintenance screen instead.
+        var crashes = Services.GetRequiredService<CrashLoopGuard>();
+
+        if (crashes.Start())
+        {
+            Services.GetRequiredService<ILogger<App>>()
+                .LogCritical("The kiosk UI crashed too often; starting in safe mode. It takes no orders until cleared on site.");
+
+            _model.EnterSafeMode();
+            Services.GetRequiredService<KioskRuntime>().SafeMode = true;
+        }
+
         var window = new MainWindow { DataContext = _model };
 
         // Any touch restarts the idle clock (plan section 2.4, idle reset).
@@ -64,6 +77,9 @@ public sealed partial class App : Application
         Services.GetRequiredService<IKioskLockdown>().Apply();
 
         desktop.ShutdownRequested += (_, _) => _stopping?.Cancel();
+
+        // Closing on purpose is not a crash.
+        desktop.Exit += (_, _) => crashes.Stop();
 
         // Enrollment runs in the background so the window paints immediately;
         // a kiosk that shows nothing for several seconds looks broken.

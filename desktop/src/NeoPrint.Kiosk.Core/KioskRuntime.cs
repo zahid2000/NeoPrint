@@ -116,6 +116,12 @@ public sealed class KioskRuntime
     /// <c>false</c> when the backend could not be reached, so the caller can
     /// show the right screen rather than treating it as a crash.
     /// </returns>
+    /// <summary>
+    /// The UI started in safe mode after a crash loop (plan section 7.12): the
+    /// heartbeat says so, and the backend takes the kiosk out of service.
+    /// </summary>
+    public bool SafeMode { get; set; }
+
     public async Task<bool> BeatAsync(bool printerOnline, CancellationToken cancellationToken = default)
     {
         try
@@ -125,7 +131,8 @@ public sealed class KioskRuntime
                     _configuration is null ? null : ThisAppVersion,
                     _configuration is null ? null : ThisAppVersion,
                     printerOnline,
-                    cancellationToken)
+                    cancellationToken,
+                    SafeMode)
                 .ConfigureAwait(false);
 
             IsBackendReachable = true;

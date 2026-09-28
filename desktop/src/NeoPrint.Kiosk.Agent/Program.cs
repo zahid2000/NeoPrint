@@ -14,8 +14,8 @@ using NeoPrint.Kiosk.Agent;
 // during an update.
 //
 // Windows Service as LocalSystem; systemd unit as the neoprint account with a
-// narrow sudoers rule. Step 1 establishes the service and the UI watchdog; the
-// updater and the remote commands land in step 3.
+// narrow sudoers rule. The service and the UI watchdog are here; the updater
+// and the remote commands are plan step 7.
 // ---------------------------------------------------------------------------
 
 var builder = Host.CreateApplicationBuilder(args);

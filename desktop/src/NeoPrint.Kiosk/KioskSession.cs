@@ -67,7 +67,16 @@ public sealed class KioskSession
 
         try
         {
-            await OnUiAsync(() => SetUpFlow(orders, drives, unsubscribe)).ConfigureAwait(false);
+            // Safe mode (plan section 7.12) runs the least that tells the
+            // backend where the kiosk stands: configuration, heartbeat and the
+            // queue on screen. No orders, no flash drive, no printing, no
+            // commands - whichever of them was crashing the UI stays off.
+            var safeMode = runtime.SafeMode;
+
+            if (!safeMode)
+            {
+                await OnUiAsync(() => SetUpFlow(orders, drives, unsubscribe)).ConfigureAwait(false);
+            }
 
             Action<KioskConfiguration> configurationChanged = configuration =>
                 Dispatcher.UIThread.Post(() => _model.ApplyConfiguration(configuration));
@@ -102,7 +111,7 @@ public sealed class KioskSession
                 return Task.CompletedTask;
             };
             Func<Task> configChanged = () => RefreshConfigurationAsync(runtime, token);
-            Func<Guid, string, Task> commandReceived = (id, type) => commands.HandleAsync(id, type, token);
+            Func<Guid, string, Task> commandReceived = (id, type) => safeMode ? Task.CompletedTask : commands.HandleAsync(id, type, token);
             Func<Task> reconnected = async () =>
             {
                 await CatchUpAsync(runtime, commands, api, token).ConfigureAwait(false);
@@ -137,8 +146,12 @@ public sealed class KioskSession
             await TryAsync("printer report", () => reporter.ReportAsync(force: true, token)).ConfigureAwait(false);
             await CatchUpAsync(runtime, commands, api, token).ConfigureAwait(false);
 
-            workerRun = RunGuardedAsync("print queue", () => worker.RunAsync(token), token);
-            _ = RunGuardedAsync("flash drive", () => WatchDrivesAsync(drives, orders, token), token);
+            if (!safeMode)
+            {
+                workerRun = RunGuardedAsync("print queue", () => worker.RunAsync(token), token);
+                _ = RunGuardedAsync("flash drive", () => WatchDrivesAsync(drives, orders, token), token);
+            }
+
             _ = RunGuardedAsync("printer reports", () => ReportPrintersAsync(reporter, token), token);
 
             await HeartbeatLoopAsync(runtime, printers, token).ConfigureAwait(false);
@@ -324,7 +337,12 @@ public sealed class KioskSession
     private async Task CatchUpAsync(KioskRuntime runtime, CommandProcessor commands, KioskApiClient api, CancellationToken cancellationToken)
     {
         await TryAsync("configuration", () => runtime.RefreshAsync(cancellationToken)).ConfigureAwait(false);
-        await TryAsync("open commands", () => commands.CatchUpAsync(cancellationToken)).ConfigureAwait(false);
+
+        if (!runtime.SafeMode)
+        {
+            await TryAsync("open commands", () => commands.CatchUpAsync(cancellationToken)).ConfigureAwait(false);
+        }
+
         await TryAsync("queue", async () =>
             {
                 var queue = await api.GetQueueAsync(cancellationToken).ConfigureAwait(false);

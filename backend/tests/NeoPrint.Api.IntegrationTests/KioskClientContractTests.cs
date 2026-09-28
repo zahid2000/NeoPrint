@@ -179,6 +179,37 @@ public sealed class KioskClientContractTests
     }
 
     [DockerFact]
+    public async Task A_kiosk_in_safe_mode_is_taken_out_of_service_and_back_by_its_heartbeat()
+    {
+        if (Skip) { return; }
+
+        var api = Client(new FakeAppPaths());
+        var registration = await RegisterAsync(api, "contract-safe-mode");
+        var kioskId = await ActivateAsync(registration.DeviceId, "Contract safe mode");
+        await LoadPaperAsync(kioskId);
+
+        var runtime = new KioskRuntime(api, new SystemClock(), NullLogger<KioskRuntime>.Instance) { SafeMode = true };
+        await runtime.LoadConfigurationAsync();
+
+        (await runtime.BeatAsync(printerOnline: true)).Should().BeTrue();
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        var detail = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kioskId}");
+        detail.GetProperty("status").GetString().Should().Be("Maintenance");
+        detail.GetProperty("safeModeSince").ValueKind.Should().Be(JsonValueKind.String);
+
+        var refused = () => api.CreatePrintJobAsync("hesabat.pdf", 1, new JobOptions(), skipPayment: true, "contract-safe-1");
+        (await refused.Should().ThrowAsync<KioskApiException>()).Which.Code.Should().Be("printJobs.kioskNotTakingOrders");
+
+        runtime.SafeMode = false;
+        await runtime.BeatAsync(printerOnline: true);
+
+        detail = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kioskId}");
+        detail.GetProperty("status").GetString().Should().Be("Online");
+        (await api.CreatePrintJobAsync("hesabat.pdf", 1, new JobOptions(), skipPayment: true, "contract-safe-2")).Status.Should().Be("Queued");
+    }
+
+    [DockerFact]
     public async Task The_cancel_screen_finds_an_order_by_its_code_and_cancels_it()
     {
         if (Skip) { return; }

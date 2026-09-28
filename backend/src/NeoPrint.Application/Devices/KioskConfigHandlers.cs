@@ -221,6 +221,19 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
                 now);
         }
 
+        // Safe mode is the kiosk's own report, so the heartbeat both sets and
+        // clears it (plan section 7.12).
+        var actor = ActorContext.Kiosk(device.Id, correlationId: _correlation.CorrelationId);
+
+        if (request.SafeMode)
+        {
+            kiosk.EnterSafeMode(actor, now);
+        }
+        else
+        {
+            kiosk.LeaveSafeMode(actor, now);
+        }
+
         await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
 
         return new KioskHeartbeatResult(

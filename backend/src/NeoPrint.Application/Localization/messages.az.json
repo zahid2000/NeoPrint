@@ -127,6 +127,8 @@
   "kiosks.codeFormat": "Kiosk kodu KSK-0000 formatında olmalıdır.",
   "kiosks.codeTaken": "Kiosk kodu '{code}' artıq istifadə olunur.",
   "kiosks.deleteHasHistory": "{code} kioskuna cihaz bağlanıb — onun tarixçəsi var və silinə bilməz. Yalnız heç vaxt aktivləşdirilməmiş kiosk silinir.",
+  "kiosks.safeMode": "Kiosk tətbiqi tez-tez çökdüyü üçün təhlükəsiz rejimdə açıldı və sifariş qəbul etmir.",
+  "kiosks.safeModeCleared": "Təhlükəsiz rejim kioskda söndürüldü; kiosk yenidən sifariş qəbul edir.",
   "kiosks.disabledNoDevice": "{code} kioskunu söndürülüb; ona cihaz aktivləşdirmək olmaz.",
   "kiosks.fiscalTerminalTooLong": "Fiskal terminal ID ən çox 64 simvol ola bilər.",
   "kiosks.latitudeRange": "Enlik -90 ilə 90 arasında olmalıdır.",

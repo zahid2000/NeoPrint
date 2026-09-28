@@ -139,12 +139,14 @@ public sealed class KiosksController : ControllerBase
                 request.AppVersion,
                 request.AgentVersion,
                 request.PrinterOnline,
-                _currentUser.Ip),
+                _currentUser.Ip,
+                request.SafeMode),
             cancellationToken));
     }
 
+    /// <param name="SafeMode">The kiosk UI started in safe mode after a crash loop (plan section 7.12).</param>
     public sealed record HeartbeatRequest(
-        string? AppVersion, string? AgentVersion, bool PrinterOnline);
+        string? AppVersion, string? AgentVersion, bool PrinterOnline, bool SafeMode = false);
 }
 
 public sealed record KioskPrintersRequest(IReadOnlyCollection<ReportedPrinterDto>? Printers);

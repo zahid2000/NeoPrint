@@ -127,6 +127,8 @@
   "kiosks.codeFormat": "The kiosk code must look like KSK-0000.",
   "kiosks.codeTaken": "The kiosk code '{code}' is already in use.",
   "kiosks.deleteHasHistory": "A device has been bound to {code}, so it has a history and cannot be deleted. Only a kiosk that was never activated can be deleted.",
+  "kiosks.safeMode": "The kiosk app kept crashing, so it started in safe mode and takes no orders.",
+  "kiosks.safeModeCleared": "Safe mode was cleared on the kiosk; it takes orders again.",
   "kiosks.disabledNoDevice": "Kiosk {code} is switched off; no device can be activated on it.",
   "kiosks.fiscalTerminalTooLong": "The fiscal terminal ID can be at most 64 characters long.",
   "kiosks.latitudeRange": "The latitude must be between -90 and 90.",

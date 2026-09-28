@@ -71,7 +71,8 @@ public sealed record KioskDetail(
     DateTime? LastHeartbeatAt,
     DateTime ConfigurationChangedAt,
     DateTime CreatedAt,
-    int Revision);
+    int Revision,
+    DateTime? SafeModeSince = null);
 
 /// <summary>A new kiosk, as the "Kiosk yarat" form sends it.</summary>
 /// <param name="Code">Empty: the next <c>KSK-XXXX</c> is generated.</param>
@@ -648,7 +649,8 @@ public sealed class KioskAdminHandlers :
             kiosk.LastHeartbeatAt,
             kiosk.ConfigurationChangedAt,
             kiosk.CreatedAt,
-            kiosk.RowVersion);
+            kiosk.RowVersion,
+            kiosk.SafeModeSince);
     }
 
     /// <summary>What the audit log keeps: never the PIN hash.</summary>

@@ -118,6 +118,10 @@
             <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsOutOfService}}">
                 <views:OutOfServiceView />
             </Panel>
+
+            <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsSafeMode}}">
+                <views:SafeModeView />
+            </Panel>
         </Panel>
 
         <!-- QUEUE PANEL: 280px on the right, present on every screen -->

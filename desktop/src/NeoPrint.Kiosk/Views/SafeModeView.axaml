@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+             x:Class="NeoPrint.Kiosk.Views.SafeModeView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <!-- Safe mode (plan section 7.12): the kiosk kept crashing. What happened,
+         that no order can be placed, and that a technician knows - no action
+         for the customer, and no order button. -->
+
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                Spacing="{DynamicResource Space6}" MaxWidth="820">
+        <Border Width="120" Height="120"
+                Background="{DynamicResource WarningBg}"
+                CornerRadius="60"
+                HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconSettings}"
+                      Width="60" Height="60"
+                      Foreground="{DynamicResource Warning500}" />
+        </Border>
+
+        <TextBlock Text="{Binding SafeModeTitle}" Classes="h1"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" />
+
+        <TextBlock Text="{Binding SafeModeBody}" Classes="muted"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

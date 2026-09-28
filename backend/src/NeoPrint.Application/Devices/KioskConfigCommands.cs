@@ -77,12 +77,14 @@ public sealed record GetKioskConfigQuery(Guid DeviceId) : IRequest<KioskConfigRe
 /// heartbeat stopped returns to service on the next one, without an operator
 /// having to do anything.
 /// </remarks>
+/// <param name="SafeMode">The UI started in safe mode after a crash loop (plan section 7.12).</param>
 public sealed record KioskHeartbeatCommand(
     Guid DeviceId,
     string? AppVersion,
     string? AgentVersion,
     bool PrinterOnline,
-    string? Ip) : IRequest<KioskHeartbeatResult>;
+    string? Ip,
+    bool SafeMode = false) : IRequest<KioskHeartbeatResult>;
 
 /// <param name="NextInSeconds">
 /// When to send the next one, so the interval can be changed from the panel

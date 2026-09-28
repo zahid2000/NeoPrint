@@ -408,6 +408,27 @@ sudo rm -rf /var/lib/neoprint
 Alternativ (daha düzgün yol): admin paneldə **Cihazlar → Cihazı ayır**. Kiosk
 növbəti sorğuda 403 alır və özü Activation ekranına qayıdır.
 
+### Təhlükəsiz rejim ("Texniki xidmət" ekranı)
+
+Kiosk tətbiqi 10 dəqiqədə 3 dəfə təmiz bağlanmadan dayanarsa (çöküş, prosesin
+öldürülməsi), növbəti açılışda **Texniki xidmət** ekranı göstərilir, sifariş
+qəbul olunmur və admin paneldə kiosk `Maintenance` olur. Reboot və elektrik
+kəsilməsi çöküş sayılmır. Development-də debugger-i 3 dəfə dayandırmaq da
+bu rejimi aça bilər.
+
+Hələlik (admin PIN menyusu M7-də gəlir) rejimi söndürmək üçün sayğac faylını
+silin və tətbiqi yenidən başladın:
+
+```powershell
+# Windows
+Remove-Item "$env:ProgramData\NeoPrint\state\runs.json" -ErrorAction SilentlyContinue
+```
+
+```bash
+# Linux
+sudo rm -f /var/lib/neoprint/state/runs.json
+```
+
 ### Linux-da işə salmaq
 
 ```bash

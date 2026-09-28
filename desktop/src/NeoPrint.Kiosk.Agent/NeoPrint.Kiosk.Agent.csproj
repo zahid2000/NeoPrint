@@ -23,4 +23,11 @@
     <ProjectReference Include="..\NeoPrint.Kiosk.Core\NeoPrint.Kiosk.Core.csproj" />
   </ItemGroup>
 
+  <!-- The watchdog's crash counting is internal; the tests drive it without launching processes. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>NeoPrint.Kiosk.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>

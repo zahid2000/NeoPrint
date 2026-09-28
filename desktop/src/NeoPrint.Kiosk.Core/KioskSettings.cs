@@ -17,6 +17,13 @@ namespace NeoPrint.Kiosk.Core;
 /// </remarks>
 public sealed class KioskSettings
 {
+    /// <summary>
+    /// UI crashes within ten minutes that start the kiosk in safe mode
+    /// (<c>Kiosk.CrashLoopThreshold</c>, plan section 2.4). Read before the
+    /// backend is reached, so it lives here rather than in the configuration.
+    /// </summary>
+    public int CrashLoopThreshold { get; set; } = 3;
+
     /// <summary>Backend address for this environment.</summary>
     public string ApiBaseUrl { get; set; } = "https://api.neoprint.az";
 

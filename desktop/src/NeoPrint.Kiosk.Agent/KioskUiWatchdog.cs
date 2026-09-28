@@ -32,6 +32,13 @@ public sealed class AgentOptions
 
     /// <summary>How often the watchdog looks at the UI.</summary>
     public int CheckIntervalSeconds { get; set; } = 5;
+
+    /// <summary>
+    /// The wait before each restart once the UI is crash-looping: long enough
+    /// not to spin the machine, short enough that the safe-mode screen is up
+    /// within a minute.
+    /// </summary>
+    public int CrashLoopRestartDelaySeconds { get; set; } = 60;
 }
 
 /// <summary>
@@ -45,9 +52,11 @@ public sealed class AgentOptions
 /// </para>
 /// <para>
 /// Repeated crashes in a short window mean something is wrong that restarting
-/// will not fix, so after <see cref="AgentOptions.CrashLoopThreshold"/> the
-/// kiosk is put into safe mode rather than looped forever. Safe mode itself,
-/// the updater and the remote commands land in step 3.
+/// quickly will not fix. The UI counts its own crashes and starts in safe mode
+/// ("Texniki xidmət", no orders) after <see cref="AgentOptions.CrashLoopThreshold"/>
+/// of them (plan section 7.12); the agent keeps restarting it, only more
+/// slowly, so the kiosk always ends up showing that screen rather than a bare
+/// desktop. The updater and the remote commands are plan step 7.
 /// </para>
 /// </remarks>
 public sealed class KioskUiWatchdog : BackgroundService
@@ -88,16 +97,6 @@ public sealed class KioskUiWatchdog : BackgroundService
         {
             try
             {
-                if (IsCrashLooping)
-                {
-                    _logger.LogCritical(
-                        "The kiosk UI has exited {Count} times within {Minutes} minutes; not restarting it again. " +
-                        "The kiosk needs attention on site.",
-                        _recentExits.Count, CrashWindow.TotalMinutes);
-
-                    return;
-                }
-
                 await RunUiAsync(stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -112,9 +111,7 @@ public sealed class KioskUiWatchdog : BackgroundService
 
             try
             {
-                await Task.Delay(
-                        TimeSpan.FromSeconds(Math.Max(1, _options.RestartDelaySeconds)), stoppingToken)
-                    .ConfigureAwait(false);
+                await Task.Delay(RestartDelay(), stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -149,6 +146,21 @@ public sealed class KioskUiWatchdog : BackgroundService
         // customer to look at, so it counts towards the crash loop either way.
         _logger.LogWarning("The kiosk UI exited with code {ExitCode}; restarting.", exitCode);
         RecordExit(DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>How long to wait before the next start: longer while the UI is crash-looping.</summary>
+    internal TimeSpan RestartDelay()
+    {
+        if (!IsCrashLooping)
+        {
+            return TimeSpan.FromSeconds(Math.Max(1, _options.RestartDelaySeconds));
+        }
+
+        _logger.LogCritical(
+            "The kiosk UI has exited {Count} times within {Minutes} minutes; it restarts in safe mode, more slowly.",
+            _recentExits.Count, CrashWindow.TotalMinutes);
+
+        return TimeSpan.FromSeconds(Math.Max(_options.RestartDelaySeconds, _options.CrashLoopRestartDelaySeconds));
     }
 
     /// <summary>

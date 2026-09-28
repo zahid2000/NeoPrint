@@ -535,8 +535,15 @@ Cihaz heç bir kioska bağlı deyilsə → `403`.
 
 ### `POST /api/kiosks/heartbeat`
 
-`{ "appVersion", "agentVersion", "printerOnline" }` →
+`{ "appVersion", "agentVersion", "printerOnline", "safeMode" }` →
 `{ "status", "nextInSeconds", "configurationChangedAt", "serverTime" }`
+
+`safeMode: true` — kiosk tətbiqi 10 dəqiqədə `Kiosk.CrashLoopThreshold` dəfə
+çökdüyü üçün təhlükəsiz rejimdə açılıb ("Texniki xidmət", sifariş yoxdur;
+Bölmə 7.12). `Online` kiosk `Maintenance`-ə keçir (səbəb `kiosks.safeMode`),
+admin kioskunda `safeModeSince` görünür, yeni sifariş `printJobs.kioskNotTakingOrders`
+ilə rədd olunur. `safeMode: false` gələndə yalnız təhlükəsiz rejimin gətirdiyi
+`Maintenance` `Online`-a qayıdır; adminin özünün qoyduğu `Maintenance` qalır.
 
 Kiosk bununla **geri qayıdır** da: heartbeat-i dayandığı üçün `Offline`
 işarələnmiş kiosk növbəti heartbeat-də xidmətə qayıdır, operator müdaxiləsi

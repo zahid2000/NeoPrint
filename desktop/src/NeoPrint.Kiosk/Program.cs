@@ -91,6 +91,10 @@ internal static class Program
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<DeviceEnrollmentService>();
         services.AddSingleton<ConfigurationCache>();
+        services.AddSingleton(provider => new CrashLoopGuard(
+            provider.GetRequiredService<IAppPaths>(),
+            provider.GetRequiredService<IClock>(),
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value.CrashLoopThreshold));
         services.AddSingleton(provider => new KioskRuntime(
             provider.GetRequiredService<KioskApiClient>(),
             provider.GetRequiredService<IClock>(),

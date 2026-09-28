@@ -37,6 +37,12 @@ public enum KioskScreen
 
     /// <summary>Screen 13 (plan section 7.3): the printer stopped; the queue waits.</summary>
     OutOfService = 7,
+
+    /// <summary>
+    /// The UI kept crashing (plan section 7.12): "Texniki xidmət", no orders,
+    /// until somebody looks at it.
+    /// </summary>
+    SafeMode = 8,
 }
 
 /// <summary>One line in the queue panel (plan section 7.2).</summary>
@@ -161,6 +167,21 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string? _printerProblem;
 
+    /// <summary>Whether this run started in safe mode; no other screen replaces it.</summary>
+    public bool IsSafeMode { get; private set; }
+
+    public string SafeModeTitle => T("safeMode.title");
+
+    public string SafeModeBody => T("safeMode.body");
+
+    /// <summary>The kiosk crashed too often: it shows the maintenance screen and takes no orders.</summary>
+    public void EnterSafeMode()
+    {
+        IsSafeMode = true;
+        CanPrintFromFlash = false;
+        Screen = KioskScreen.SafeMode;
+    }
+
     public string OutOfServiceTitle => T("outOfService.title");
 
     public string OutOfServiceBody => PrinterProblem is null ? string.Empty : T("outOfService.body", T(PrinterProblem));
@@ -185,6 +206,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         PrinterProblem = problemKey;
         OnPropertyChanged(nameof(OutOfServiceBody));
+
+        if (IsSafeMode)
+        {
+            return;
+        }
 
         if (problemKey is not null && Screen == KioskScreen.Home)
         {
@@ -252,6 +278,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         Activation.Apply(state);
 
+        if (IsSafeMode && state.Lifecycle == KioskLifecycle.Active)
+        {
+            Screen = KioskScreen.SafeMode;
+            KioskCode = state.KioskCode ?? KioskCode;
+            return;
+        }
+
         Screen = state.Lifecycle switch
         {
             KioskLifecycle.Active => KioskScreen.NotConfigured,
@@ -283,7 +316,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         // A kiosk with no printer chosen yet waits on screen 14 rather than
         // offering to print (plan section 7.3).
-        if (Screen is KioskScreen.Flow)
+        if (Screen is KioskScreen.Flow or KioskScreen.SafeMode)
         {
             // A new configuration (a price change, a printer change) does not
             // take the customer out of their order.
@@ -304,6 +337,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// </param>
     public void ApplyAvailability(KioskAvailability availability, bool hasConfiguration)
     {
+        if (IsSafeMode)
+        {
+            return;
+        }
+
         if (!hasConfiguration)
         {
             Screen = KioskScreen.Offline;

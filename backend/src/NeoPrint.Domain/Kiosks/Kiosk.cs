@@ -162,6 +162,16 @@ public sealed class Kiosk : Entity
     public DateTime? LastHeartbeatAt { get; set; }
 
     /// <summary>
+    /// Since when the kiosk UI runs in safe mode after a crash loop (plan
+    /// section 7.12); null when it does not. Set and cleared by the kiosk's
+    /// heartbeat, through <see cref="EnterSafeMode"/> and <see cref="LeaveSafeMode"/>.
+    /// </summary>
+    public DateTime? SafeModeSince { get; private set; }
+
+    /// <summary>Whether safe mode took the kiosk from Online to Maintenance, and so gives it back.</summary>
+    public bool SafeModeSetMaintenance { get; private set; }
+
+    /// <summary>
     /// When the kiosk's configuration last changed.
     /// </summary>
     /// <remarks>
@@ -266,6 +276,58 @@ public sealed class Kiosk : Entity
 
         ActiveDeviceId = null;
         Status = KioskStatus.NotActivated;
+    }
+
+    /// <summary>
+    /// The kiosk UI started in safe mode (plan section 7.12): it takes no
+    /// orders, so a kiosk that was Online shows Maintenance - on the map and
+    /// in the panel - rather than a kiosk that looks open and is not.
+    /// </summary>
+    /// <remarks>
+    /// Paused, NotConfigured and an administrator's Maintenance keep their
+    /// status; the flag still tells the panel why nothing is printing.
+    /// </remarks>
+    public void EnterSafeMode(ActorContext actor, DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        if (SafeModeSince is not null)
+        {
+            return;
+        }
+
+        SafeModeSince = utcNow;
+
+        if (Status == KioskStatus.Online)
+        {
+            MoveTo(KioskStatus.Maintenance, actor.Because("kiosks.safeMode"), utcNow);
+            SafeModeSetMaintenance = true;
+        }
+    }
+
+    /// <summary>
+    /// Safe mode was cleared on the kiosk: it takes orders again. Only the
+    /// Maintenance that safe mode brought is undone - one an administrator
+    /// chose stays until they lift it.
+    /// </summary>
+    public void LeaveSafeMode(ActorContext actor, DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        if (SafeModeSince is null)
+        {
+            return;
+        }
+
+        var ownMaintenance = SafeModeSetMaintenance && Status == KioskStatus.Maintenance;
+
+        SafeModeSince = null;
+        SafeModeSetMaintenance = false;
+
+        if (ownMaintenance)
+        {
+            MoveTo(KioskStatus.Online, actor.Because("kiosks.safeModeCleared"), utcNow);
+        }
     }
 
     /// <summary>
