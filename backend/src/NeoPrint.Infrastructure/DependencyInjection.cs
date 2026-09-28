@@ -23,6 +23,7 @@ using NeoPrint.Application.Auth;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Application.Devices;
 using NeoPrint.Application.Features;
+using NeoPrint.Application.Kiosks;
 using NeoPrint.Application.PrintJobs;
 using NeoPrint.Crypto;
 using NeoPrint.Infrastructure.Admin;
@@ -114,7 +115,8 @@ public static class DependencyInjection
         services.AddScoped<IEnrollmentTokenRepository, EnrollmentTokenRepository>();
         services.AddScoped<IKioskRepository, KioskRepository>();
 
-        // Print jobs and the queue (plan step 3)
+        // Print jobs, the queue and kiosk commands (plan step 3)
+        services.AddScoped<IKioskCommandRepository, KioskCommandRepository>();
         services.AddScoped<IPrintJobRepository, PrintJobRepository>();
         services.AddScoped<IPrintQueue, RedisPrintQueue>();
         services.AddScoped<ITransitionHistory, TransitionHistory>();

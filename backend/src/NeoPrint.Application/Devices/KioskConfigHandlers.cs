@@ -17,14 +17,17 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
     private readonly ISettingsReader _settings;
     private readonly IFeatureFlagEvaluator _features;
     private readonly IClock _clock;
+    private readonly Pricing.IPricingProfileRepository _profiles;
 
     public GetKioskConfigHandler(
         IKioskDeviceRepository devices,
         IKioskRepository kiosks,
         ISettingsReader settings,
         IFeatureFlagEvaluator features,
-        IClock clock)
+        IClock clock,
+        Pricing.IPricingProfileRepository profiles)
     {
+        _profiles = profiles;
         _devices = devices;
         _kiosks = kiosks;
         _settings = settings;
@@ -78,6 +81,15 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
             .EvaluateAllAsync(FeaturePlatform.Kiosk, kiosk.Id, userId: null, cancellationToken)
             .ConfigureAwait(false);
 
+        var profile = (kiosk.PricingProfileId is { } profileId
+                          ? await _profiles.FindByIdAsync(profileId, cancellationToken).ConfigureAwait(false)
+                          : null)
+                      ?? await _profiles.FindDefaultAsync(cancellationToken).ConfigureAwait(false);
+
+        var table = profile?.ToPriceTable();
+
+        var allowed = await _settings.GetAsync(SettingKeys.FilesAllowedFormats, cancellationToken).ConfigureAwait(false);
+
         return new KioskConfigResponse(
             kiosk.Id,
             kiosk.Code,
@@ -112,7 +124,23 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
             await _settings
                 .GetIntAsync(SettingKeys.KioskConfigCacheTtlHours, 24, cancellationToken)
                 .ConfigureAwait(false),
-            _clock.UtcNow);
+            _clock.UtcNow,
+            table is null
+                ? null
+                : new KioskPricesDto(
+                    profile!.Name,
+                    table.BwPerSide,
+                    table.ColorPerSide,
+                    table.PaperMultipliers,
+                    table.MinOrder,
+                    [.. table.Tiers.Select(tier => new KioskPriceTierDto(tier.MinSides, tier.DiscountPercent))],
+                    table.Currency),
+            // Empty means the whole catalogue, as on upload (plan section 2.2).
+            string.IsNullOrWhiteSpace(allowed)
+                ? null
+                : [.. allowed.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)],
+            await _settings.GetBoolAsync(SettingKeys.PaperBlockWhenInsufficient, true, cancellationToken).ConfigureAwait(false),
+            await _settings.GetIntAsync(SettingKeys.KioskIdleResetSeconds, 90, cancellationToken).ConfigureAwait(false));
     }
 }
 

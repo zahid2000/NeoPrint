@@ -67,6 +67,12 @@ public interface IAdminNotifier
     /// <summary>A migration or a mirror finished its copy: the wizard's last step.</summary>
     Task StorageSyncCompletedAsync(Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default);
 
+    /// <summary>A kiosk reported a different list of printers (plan section 7.7).</summary>
+    Task KioskPrintersUpdatedAsync(Guid kioskId, CancellationToken cancellationToken = default);
+
+    /// <summary>A kiosk answered a command (plan section 7.8).</summary>
+    Task CommandResultAsync(Guid kioskId, Kiosks.KioskCommandView command, CancellationToken cancellationToken = default);
+
     /// <summary>A kiosk's queue changed (plan section 8A.3, kiosk detail → Queue).</summary>
     Task QueueUpdatedAsync(
         Guid kioskId, IReadOnlyList<PrintJobs.QueueEntry> queue, CancellationToken cancellationToken = default);

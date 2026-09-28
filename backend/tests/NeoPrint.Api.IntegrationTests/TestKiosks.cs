@@ -60,7 +60,8 @@ internal static class TestKiosks
         bool color = true,
         bool duplex = true,
         bool a3 = false,
-        int paperA4 = 500)
+        int paperA4 = 500,
+        bool selectPrinter = true)
     {
         using var anonymous = fixture.CreateApiClient();
         using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
@@ -106,7 +107,7 @@ internal static class TestKiosks
                 paperCapacityA3 = 250,
                 adminPin = "135790",
             },
-            selectedPrinterName = "Test printer",
+            selectedPrinterName = selectPrinter ? "Test printer" : null,
         });
 
         activate.StatusCode.Should().Be(HttpStatusCode.OK, await activate.Content.ReadAsStringAsync());

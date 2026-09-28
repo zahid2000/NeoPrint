@@ -125,7 +125,52 @@ public sealed class AdminKiosksController : ControllerBase
     /// <summary>Signed in as an administrator: <see cref="HasPermissionAttribute"/> saw to that.</summary>
     private Guid AdminId => _currentUser.AdminUserId
         ?? throw new InvalidOperationException("An admin endpoint was reached without an admin user.");
+
+    // -----------------------------------------------------------------------
+    // Printers and commands (plan sections 7.7, 7.8)
+    // -----------------------------------------------------------------------
+
+    /// <summary>The printers tab: what the kiosk found, what is selected, what may be offered.</summary>
+    [HttpGet("{id:guid}/printers")]
+    [HasPermission(Permissions.PrintersView)]
+    public async Task<ActionResult<KioskPrintersView>> Printers(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new GetKioskPrintersQuery(AdminId, id), cancellationToken));
+
+    /// <summary>"Default et": the printer the kiosk prints on.</summary>
+    [HttpPut("{id:guid}/printer")]
+    [HasPermission(Permissions.PrintersSelect)]
+    public async Task<ActionResult<KioskPrintersView>> SelectPrinter(
+        Guid id, [FromBody] SelectPrinterRequest request, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SelectKioskPrinterCommand(AdminId, id, request?.Name ?? string.Empty), cancellationToken));
+
+    /// <summary>Switches capabilities off for the selected printer; null follows what was detected.</summary>
+    [HttpPut("{id:guid}/capabilities")]
+    [HasPermission(Permissions.PrinterCapabilitiesManage)]
+    public async Task<ActionResult<KioskPrintersView>> Capabilities(
+        Guid id, [FromBody] CapabilityOverridesDto request, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(
+            new SetCapabilityOverridesCommand(AdminId, id, request?.Color, request?.Duplex, request?.A3), cancellationToken));
+
+    /// <summary>Asks the kiosk to look for printers again.</summary>
+    [HttpPost("{id:guid}/printers/refresh")]
+    [HasPermission(Permissions.PrintersRefresh)]
+    public async Task<ActionResult<KioskCommandView>> RefreshPrinters(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RefreshPrinters), cancellationToken));
+
+    /// <summary>Prints the kiosk's test page; the result comes back as CommandResult.</summary>
+    [HttpPost("{id:guid}/test-print")]
+    [HasPermission(Permissions.PrintersTestPrint)]
+    public async Task<ActionResult<KioskCommandView>> TestPrint(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.TestPrint), cancellationToken));
+
+    [HttpGet("{id:guid}/commands")]
+    [HasPermission(Permissions.KiosksView)]
+    public async Task<ActionResult<IReadOnlyList<KioskCommandView>>> Commands(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new ListKioskCommandsQuery(AdminId, id), cancellationToken));
 }
+
+public sealed record SelectPrinterRequest(string? Name);
+
 
 public sealed record KioskLimitsRequest(int? MaxFileSizeMb, int? MaxPages);
 

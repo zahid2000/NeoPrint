@@ -116,6 +116,8 @@ public sealed class MongoContext
     public MongoSet<Domain.Files.StoredFile> Files => Set<Domain.Files.StoredFile>("files");
     public MongoSet<Domain.Storage.StorageSyncJob> StorageSyncJobs => Set<Domain.Storage.StorageSyncJob>("storage_sync_jobs");
     public MongoSet<Domain.Storage.StorageSyncFailure> StorageSyncFailures => Set<Domain.Storage.StorageSyncFailure>("storage_sync_failures");
+    public MongoSet<KioskCommand> KioskCommands => Set<KioskCommand>("kiosk_commands");
+
     public MongoSet<Domain.PrintJobs.PrintJob> PrintJobs => Set<Domain.PrintJobs.PrintJob>("print_jobs");
 
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
@@ -302,6 +304,11 @@ public sealed class MongoContext
             (Builders<Domain.Files.StoredFile>.IndexKeys
                 .Ascending(file => file.UserId).Descending(file => file.CreatedAt), Named("ix_files_user_created")),
             (Builders<Domain.Files.StoredFile>.IndexKeys.Ascending("Original.ProviderId"), Named("ix_files_original_provider")));
+
+        await CreateAsync(KioskCommands,
+            (Builders<KioskCommand>.IndexKeys
+                .Ascending(command => command.KioskId).Ascending(command => command.Status).Descending(command => command.CreatedAt),
+                Named("ix_kiosk_commands_kiosk_status_created")));
 
         await CreateAsync(PrintJobs,
             // The code is what a person types to find a job; one job per code.

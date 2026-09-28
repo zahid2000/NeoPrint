@@ -37,7 +37,27 @@ public sealed record KioskConfigResponse(
     IReadOnlyDictionary<string, bool> Features,
     int HeartbeatSeconds,
     int CacheTtlHours,
-    DateTime ServerTime);
+    DateTime ServerTime,
+    KioskPricesDto? Prices = null,
+    IReadOnlyList<string>? AllowedFormats = null,
+    bool PaperBlockWhenInsufficient = true,
+    int IdleResetSeconds = 90);
+
+/// <summary>
+/// The rates of the kiosk's pricing profile, so the options screen shows a
+/// live price - also while the backend is out of reach. The server prices the
+/// order again when it is placed; this is only the quote.
+/// </summary>
+public sealed record KioskPricesDto(
+    string ProfileName,
+    decimal BwPerSide,
+    decimal ColorPerSide,
+    IReadOnlyDictionary<string, decimal> PaperMultipliers,
+    decimal MinOrder,
+    IReadOnlyList<KioskPriceTierDto> Tiers,
+    string Currency);
+
+public sealed record KioskPriceTierDto(int MinSides, decimal DiscountPercent);
 
 public sealed record PrinterCapabilitiesDto(bool Color, bool Duplex, bool A3);
 

@@ -1040,6 +1040,26 @@ Növbə sırası ilə (`Queued` + `Printing`): `[{ jobId, jobCode, position, sta
 
 Növbə Redis sorted set-dədir (`queue:{kioskId}`, bal = növbəyə düşmə vaxtı); həqiqət mənbəyi MongoDB-dir. Redis cavab verməsə oxuma MongoDB-dən gedir, boş set MongoDB ilə yoxlanıb bərpa olunur, `print-queue-reconciliation` Hangfire işi hər dəqiqə bütün növbələri MongoDB-dən yenidən qurur.
 
+### Printerlər və əmrlər (Bölmə 7.7, 7.8)
+
+Kiosk (kiosk token):
+
+- `PUT /api/kiosks/me/printers` — `{ printers: [{ name, driverName, isOnline, color, duplex, a3 }] }`: işə düşəndə, siyahı dəyişəndə və `RefreshPrinters` əmri gələndə. Siyahı dəyişibsə panelə `KioskPrintersUpdated`.
+- `GET /api/kiosks/me/commands` — cavablanmamış əmrlər (kiosk offline olanda göndərilənlər). 24 saatdan köhnə əmr `Expired` olur və icra edilmir.
+- `POST /api/kiosks/me/commands/{id}/result` — `{ succeeded, messageKey, sheetsUsed }`; təkrar cavab heç nə dəyişmir. Uğurlu `TestPrint`: `NotConfigured` kiosk → `Online`; istifadə olunan vərəq A4 sayğacından çıxılır.
+- `GET /api/kiosks/me/config` indi `prices` (profil adı, ağ-qara/rəngli üz qiyməti, kağız əmsalları, minimum sifariş, pillələr — seçim ekranında canlı qiymət üçün; sifarişin əsl qiymətini server hesablayır), `allowedFormats` (boşdursa bütün kataloq), `paperBlockWhenInsufficient`, `idleResetSeconds` da qaytarır.
+
+Admin:
+
+| Endpoint | İcazə | |
+|---|---|---|
+| `GET /api/admin/kiosks/{id}/printers` | `printers.view` | Aşkarlanan printerlər, seçilən, aşkarlanan / override / effektiv imkanlar |
+| `PUT /api/admin/kiosks/{id}/printer` | `printers.select` | `{ name }` — yalnız kioskun bildirdiyi printer; override-lar sıfırlanır; kioska `PrinterConfigChanged` |
+| `PUT /api/admin/kiosks/{id}/capabilities` | `printers.capabilities.manage` | `{ color?, duplex?, a3? }` — yalnız söndürmək olar (`false`); printerin olmayan imkanını yandırmaq `400 printers.cannotEnable` |
+| `POST /api/admin/kiosks/{id}/printers/refresh` | `printers.refresh` | `RefreshPrinters` əmri |
+| `POST /api/admin/kiosks/{id}/test-print` | `printers.testprint` | `TestPrint` əmri; printer seçilməyibsə `409 printer.notSelected`; nəticə `/hubs/admin` `CommandResult` |
+| `GET /api/admin/kiosks/{id}/commands` | `kiosks.view` | Son 20 əmr |
+
 ### Admin (`/api/admin`)
 
 | Endpoint | İcazə | |
