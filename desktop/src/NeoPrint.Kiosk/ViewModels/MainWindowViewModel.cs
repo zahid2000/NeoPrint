@@ -196,6 +196,42 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    /// <summary>How long a customer's language choice outlives them (docs/DESIGN_SYSTEM.md 5.1).</summary>
+    public static readonly TimeSpan LanguageResetAfter = TimeSpan.FromSeconds(90);
+
+    /// <summary>
+    /// Nobody has touched the screen for <paramref name="idle"/>: an order left
+    /// half-way is dropped after <paramref name="orderLimit"/> (plan section
+    /// 2.4, <c>Kiosk.IdleResetSeconds</c>), and the language goes back to the
+    /// kiosk's default after 90 seconds, so the next person does not start in
+    /// the last one's language.
+    /// </summary>
+    /// <returns>Whether anything was reset.</returns>
+    public bool ResetIfIdle(TimeSpan idle, TimeSpan orderLimit, string? defaultLanguage)
+    {
+        var reset = false;
+
+        // A file being prepared or an order being placed is left to finish.
+        if (Screen == KioskScreen.Flow && Flow is { Stage: not FlowStage.Working } flow && idle > orderLimit)
+        {
+            flow.Reset();
+            Screen = PrinterProblem is null ? KioskScreen.Home : KioskScreen.OutOfService;
+            reset = true;
+        }
+
+        if (Screen != KioskScreen.Flow
+            && idle > LanguageResetAfter
+            && defaultLanguage is not null
+            && Strings.SupportedLanguages.Contains(defaultLanguage)
+            && Language != defaultLanguage)
+        {
+            Language = defaultLanguage;
+            reset = true;
+        }
+
+        return reset;
+    }
+
     /// <summary>The wall clock, rendered in Asia/Baku (plan section 2.1).</summary>
     public string ClockText => Localization.Formats.Time(Now);
 

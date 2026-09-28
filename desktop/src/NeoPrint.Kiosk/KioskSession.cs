@@ -268,13 +268,9 @@ public sealed class KioskSession
     {
         var limit = TimeSpan.FromSeconds(Math.Max(30, runtime.Configuration?.IdleResetSeconds ?? 90));
 
-        if (_model.Screen == KioskScreen.Flow
-            && _model.Flow is { Stage: not FlowStage.Working } flow
-            && DateTime.UtcNow - _lastTouch > limit)
+        if (_model.ResetIfIdle(DateTime.UtcNow - _lastTouch, limit, runtime.Configuration?.DefaultLanguage))
         {
-            _logger.LogInformation("Idle for {Seconds} s; back to the home screen.", limit.TotalSeconds);
-            flow.Reset();
-            _model.Screen = _model.PrinterProblem is null ? KioskScreen.Home : KioskScreen.OutOfService;
+            _logger.LogInformation("Nobody touched the screen; the order and the language were reset.");
         }
     }
 

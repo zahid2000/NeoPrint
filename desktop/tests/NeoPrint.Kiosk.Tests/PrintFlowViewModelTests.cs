@@ -197,6 +197,45 @@ public sealed class PrintFlowViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task An_order_left_half_way_is_dropped_and_the_language_goes_back_for_the_next_person()
+    {
+        var (flow, kit) = await FlowAsync();
+        kit.Pdf(2, _drive, "report.pdf");
+        var shell = new MainWindowViewModel { Flow = flow, Screen = KioskScreen.Flow, Language = "ru" };
+        await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
+        await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
+
+        try
+        {
+            shell.ResetIfIdle(TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(90), "az").Should().BeFalse("a minute is not long enough");
+            flow.Stage.Should().Be(FlowStage.Preview);
+
+            shell.ResetIfIdle(TimeSpan.FromSeconds(91), TimeSpan.FromSeconds(90), "az").Should().BeTrue();
+
+            shell.Screen.Should().Be(KioskScreen.Home);
+            flow.Pages.Should().BeEmpty();
+            Directory.GetFileSystemEntries(kit.Spool.WorkFolder).Should().BeEmpty("the copy of the customer's file goes with the order");
+            shell.Language.Should().Be("az");
+        }
+        finally
+        {
+            shell.Language = "az";
+        }
+    }
+
+    [Fact]
+    public async Task An_order_being_placed_is_not_interrupted_by_the_idle_reset()
+    {
+        var (flow, _) = await FlowAsync();
+        var shell = new MainWindowViewModel { Flow = flow, Screen = KioskScreen.Flow };
+        flow.Stage = FlowStage.Working;
+
+        shell.ResetIfIdle(TimeSpan.FromMinutes(10), TimeSpan.FromSeconds(90), "az").Should().BeFalse();
+
+        shell.Screen.Should().Be(KioskScreen.Flow);
+    }
+
+    [Fact]
     public async Task An_order_is_cancelled_by_its_code()
     {
         var (flow, kit) = await FlowAsync();
