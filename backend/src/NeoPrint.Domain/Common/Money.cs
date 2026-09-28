@@ -145,8 +145,8 @@ public readonly record struct Money : IComparable<Money>
     {
         if (!string.Equals(left.Currency, right.Currency, StringComparison.Ordinal))
         {
-            throw new DomainException(
-                $"Cannot combine {left.Currency} and {right.Currency} in one amount.");
+            throw new DomainException(UserMessage.Of(
+                "money.currencyMismatch", ("left", left.Currency), ("right", right.Currency)));
         }
     }
 

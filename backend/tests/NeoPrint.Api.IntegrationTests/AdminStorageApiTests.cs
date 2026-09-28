@@ -174,7 +174,7 @@ public sealed class AdminStorageApiTests
 
         // Leaving no primary would leave nowhere to write.
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("Primary");
+        (await response.Content.ReadAsStringAsync()).Should().Contain("storage.primaryOff");
     }
 
     [DockerFact]

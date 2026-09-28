@@ -160,9 +160,7 @@ public sealed class StorageProvider : Entity
     {
         if (next != StorageProviderRole.Inactive && !IsVerified)
         {
-            throw new DomainException(
-                $"'{Name}' has not passed a connection test, so it cannot be given a role. "
-                + "Run the connection test first (plan section 2.10).");
+            throw new DomainException(UserMessage.Of("storage.roleNeedsTest", ("name", Name)));
         }
 
         Record(Transitions.Transition(Id, Role, next, actor, now));

@@ -44,7 +44,7 @@ public sealed class AdminRole : Entity
 
         if (IsSystem)
         {
-            throw new DomainException($"The system role '{Name}' cannot be edited.");
+            throw new DomainException(UserMessage.Of("roles.systemReadOnly", ("name", Name)));
         }
 
         var requested = permissions.Distinct(StringComparer.Ordinal).ToList();
@@ -54,8 +54,8 @@ public sealed class AdminRole : Entity
         {
             // Catching this here rather than at the API boundary means a role
             // can never hold a permission that no check will ever look at.
-            throw new DomainException(
-                "Unknown permissions: " + string.Join(", ", unknown.Order(StringComparer.Ordinal)));
+            throw new DomainException(UserMessage.Of(
+                "roles.permissionsUnknown", ("permissions", string.Join(", ", unknown.Order(StringComparer.Ordinal)))));
         }
 
         Permissions = requested;

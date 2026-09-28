@@ -64,7 +64,7 @@ public sealed class UpdateFileFormatsCommandValidator : IValidator<UpdateFileFor
                 // Adding a format means a converter that has to exist; the
                 // catalogue is code, not configuration.
                 yield return new ValidationError(
-                    "enabled", $"Kataloqda olmayan format: {string.Join(", ", unknown)}.");
+                    "enabled", "formats.notInCatalogue", ("formats", string.Join(", ", unknown)));
             }
         }
 

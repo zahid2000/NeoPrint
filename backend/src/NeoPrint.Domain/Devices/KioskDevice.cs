@@ -192,8 +192,7 @@ public sealed class KioskDevice : Entity
 
         if (Status == DeviceStatus.Revoked)
         {
-            throw new DomainException("This device has been revoked and cannot be activated again. " +
-                                      "Reinstall the kiosk application so it registers a new key.");
+            throw new DomainException("devices.revokedReinstall");
         }
 
         if (Status == DeviceStatus.Active && KioskId == kioskId)

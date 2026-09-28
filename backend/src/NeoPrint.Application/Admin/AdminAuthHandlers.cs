@@ -98,7 +98,7 @@ public sealed class AdminLoginHandler : IRequestHandler<AdminLoginCommand, Admin
 
         if (!admin.IsActive)
         {
-            throw new ValidationException([new ValidationError("", "Bu hesab deaktiv edilib.")]);
+            throw new ValidationException([new ValidationError("", "adminAuth.deactivated")]);
         }
 
         if (verification == PasswordVerificationResult.SuccessRehashNeeded)

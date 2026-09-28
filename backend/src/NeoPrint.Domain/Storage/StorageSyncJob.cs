@@ -229,13 +229,14 @@ public sealed class StorageSyncJob : Entity
         ArgumentNullException.ThrowIfNull(actor);
 
         var allowedFrom = SourcePurgeAllowedFrom(retentionDays)
-            ?? throw new DomainException(
-                $"Storage sync job {Id} is not a completed migration; its source cannot be purged.");
+            ?? throw new DomainException("storage.purgeAfterMigration");
 
         if (now < allowedFrom)
         {
-            throw new DomainException(
-                $"The source of storage sync job {Id} is retained until {allowedFrom:O}.");
+            throw new DomainException(UserMessage.Of(
+                "storage.purgeTooEarly",
+                ("days", retentionDays),
+                ("from", allowedFrom.ToString("dd.MM.yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture))));
         }
 
         if (SourcePurgeRequestedAt is not null)
@@ -252,7 +253,7 @@ public sealed class StorageSyncJob : Entity
     {
         if (SourcePurgeRequestedAt is null)
         {
-            throw new DomainException($"No purge was requested for storage sync job {Id}.");
+            throw new DomainException("storage.purgeNotRequested");
         }
 
         SourcePurgedAt ??= now;

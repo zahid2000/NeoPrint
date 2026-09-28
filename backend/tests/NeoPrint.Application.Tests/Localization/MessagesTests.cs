@@ -264,6 +264,75 @@ public sealed partial class MessagesTests
         offenders.Should().BeEmpty("text for people belongs in Localization/messages.*.json");
     }
 
+    [Fact]
+    public void A_message_is_passed_as_a_key_never_as_a_sentence()
+    {
+        // A sentence without an Azerbaijani letter ("Bu hesab deaktiv edilib.",
+        // or an English one) slips past the letter check above; this one looks
+        // at what the message-carrying calls are given instead. Configuration
+        // errors at start-up are for the operator's log, not for a person.
+        string[] allowed = ["CorsOrigins.cs", "MoneySerializer.cs"];
+        var offenders = new List<string>();
+
+        foreach (var file in SourceFiles().Where(file => !allowed.Contains(Path.GetFileName(file))))
+        {
+            var text = File.ReadAllText(file);
+
+            foreach (Match call in MessageCall().Matches(text))
+            {
+                var arguments = ArgumentsOf(text, call.Index + call.Length - 1);
+
+                foreach (Match literal in StringLiteral().Matches(arguments))
+                {
+                    var value = literal.Value.TrimStart('$').Trim('"');
+
+                    if (value.Contains(' ', StringComparison.Ordinal)
+                        && value.Any(char.IsLetter)
+                        && !DateFormat().IsMatch(value))
+                    {
+                        var line = text[..call.Index].Count(character => character == '\n') + 1;
+                        offenders.Add($"{Path.GetFileName(file)}:{line}: {literal.Value}");
+                    }
+                }
+            }
+        }
+
+        offenders.Should().BeEmpty("a person's message goes through the catalogs as a key");
+    }
+
+    /// <summary>The text between a call's opening parenthesis and its matching close.</summary>
+    private static string ArgumentsOf(string text, int open)
+    {
+        var depth = 0;
+
+        for (var index = open; index < text.Length; index++)
+        {
+            switch (text[index])
+            {
+                case '"':
+                    index++;
+                    while (index < text.Length && text[index] != '"')
+                    {
+                        index += text[index] == '\\' ? 2 : 1;
+                    }
+
+                    break;
+                case '(':
+                    depth++;
+                    break;
+                case ')':
+                    if (--depth == 0)
+                    {
+                        return text[open..(index + 1)];
+                    }
+
+                    break;
+            }
+        }
+
+        return text[open..];
+    }
+
     /// <summary>Whether the literal is an argument of the statement that writes an audit entry.</summary>
     private static bool IsAuditAction(string text, int index)
     {
@@ -304,6 +373,12 @@ public sealed partial class MessagesTests
 
     [GeneratedRegex(@"\$?""(?:[^""\\]|\\.)*""")]
     private static partial Regex StringLiteral();
+
+    [GeneratedRegex(@"\b(?:DomainException|NotFoundException|ValidationError|AuthenticationException|FileEditException|PageRenderException|Unrecognised|Fail|Because|UserMessage|Failed|BucketTestResult|PricingException|Invalid)\s*\(")]
+    private static partial Regex MessageCall();
+
+    [GeneratedRegex(@"^[dMyHhmsf.:/\- ]+$")]
+    private static partial Regex DateFormat();
 
     [GeneratedRegex("[əğıöüşçƏĞİÖÜŞÇ]")]
     private static partial Regex AzerbaijaniLetter();

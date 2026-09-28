@@ -232,7 +232,7 @@ public sealed class Kiosk : Entity
 
         if (Status == KioskStatus.Disabled)
         {
-            throw new DomainException($"Kiosk {Code} is disabled and cannot have a device activated on it.");
+            throw new DomainException(UserMessage.Of("kiosks.disabledNoDevice", ("code", Code)));
         }
 
         // A printer still has to be chosen before the kiosk can take orders

@@ -295,7 +295,7 @@ public sealed class StorageAdministration : IStorageAdministration
             .Find(p => p.Role == StorageProviderRole.Primary)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false)
-            ?? throw Invalid("targetId", "Primary provayder yoxdur.");
+            ?? throw Invalid("targetId", "storage.noPrimary");
 
         var target = await LoadAsync(targetId, cancellationToken).ConfigureAwait(false);
 
@@ -357,7 +357,7 @@ public sealed class StorageAdministration : IStorageAdministration
         => TransitionAsync(jobId, job => job.Pause(Actor("storage.reason.paused"), _clock.UtcNow), enqueue: false, cancellationToken);
 
     public Task<StorageSyncJobResponse> ResumeJobAsync(Guid jobId, CancellationToken cancellationToken)
-        => TransitionAsync(jobId, job => job.Start(Actor("Sinxronizasiya davam etdirildi"), _clock.UtcNow), enqueue: true, cancellationToken);
+        => TransitionAsync(jobId, job => job.Start(Actor("storage.reason.resumed"), _clock.UtcNow), enqueue: true, cancellationToken);
 
     public Task<StorageSyncJobResponse> CancelJobAsync(Guid jobId, CancellationToken cancellationToken)
         => TransitionAsync(jobId, job => job.Cancel(Actor("storage.reason.cancelled"), _clock.UtcNow), enqueue: false, cancellationToken);

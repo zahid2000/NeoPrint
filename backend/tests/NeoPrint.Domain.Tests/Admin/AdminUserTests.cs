@@ -30,7 +30,9 @@ public sealed class AdminRoleTests
 
         var act = () => role.SetPermissions([Permissions.JobsView, "payments.steal"]);
 
-        act.Should().Throw<DomainException>().WithMessage("*payments.steal*");
+        act.Should().Throw<DomainException>()
+            .Which.Text.Should().Match<UserMessage>(text =>
+                text.Key == "roles.permissionsUnknown" && text.Arguments["permissions"].Contains("payments.steal"));
     }
 
     [Fact]
@@ -68,7 +70,7 @@ public sealed class AdminRoleTests
 
         var act = () => role.SetPermissions([Permissions.JobsView]);
 
-        act.Should().Throw<DomainException>().WithMessage("*cannot be edited*");
+        act.Should().Throw<DomainException>().Which.Text.Key.Should().Be("roles.systemReadOnly");
     }
 }
 
