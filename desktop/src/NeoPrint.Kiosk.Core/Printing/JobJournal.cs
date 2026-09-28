@@ -27,6 +27,13 @@ public enum JournalState
 /// <summary>One job as this kiosk remembers it.</summary>
 /// <param name="StatusReported">Whether the backend has heard the final state.</param>
 /// <param name="ContentType">What the spooled file is; null (older entries) is the prepared PDF.</param>
+/// <param name="Sides">Printed sides the job takes (copies × faces); 0 when not known.</param>
+/// <param name="Printer">The printer of the current attempt.</param>
+/// <param name="SpoolerJobId">The spooler's reference for the current attempt, once submitted.</param>
+/// <param name="StartedAt">When the current attempt started.</param>
+/// <param name="CounterBefore">The printer's counter before the current attempt, when it has one.</param>
+/// <param name="CounterAfter">The printer's counter after it.</param>
+/// <param name="Recovered">Whether the outcome was worked out after a restart rather than watched.</param>
 public sealed record JournalEntry(
     Guid JobId,
     string JobCode,
@@ -39,7 +46,14 @@ public sealed record JournalEntry(
     bool StatusReported,
     DateTime QueuedAt,
     DateTime UpdatedAt,
-    string? ContentType = null)
+    string? ContentType = null,
+    int Sides = 0,
+    string? Printer = null,
+    string? SpoolerJobId = null,
+    DateTime? StartedAt = null,
+    PageCount? CounterBefore = null,
+    PageCount? CounterAfter = null,
+    bool Recovered = false)
 {
     /// <summary>The spool name of the job's print file.</summary>
     public string SpoolName => SpoolNameFor(JobId, ContentType);

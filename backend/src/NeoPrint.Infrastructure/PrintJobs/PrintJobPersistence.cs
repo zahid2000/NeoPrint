@@ -11,6 +11,50 @@ using StackExchange.Redis;
 
 namespace NeoPrint.Infrastructure.PrintJobs;
 
+/// <inheritdoc cref="IPrintAttemptRepository" />
+public sealed class PrintAttemptRepository : IPrintAttemptRepository
+{
+    private readonly MongoContext _context;
+
+    public PrintAttemptRepository(MongoContext context) => _context = context;
+
+    public Task UpsertAsync(PrintAttempt attempt, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(attempt);
+
+        // Keyed by job and number; the id is set once, on the first report.
+        var update = Builders<PrintAttempt>.Update
+            .SetOnInsert(row => row.Id, attempt.Id)
+            .Set(row => row.KioskId, attempt.KioskId)
+            .Set(row => row.PrinterName, attempt.PrinterName)
+            .Set(row => row.StartedAt, attempt.StartedAt)
+            .Set(row => row.FinishedAt, attempt.FinishedAt)
+            .Set(row => row.SpoolerJobId, attempt.SpoolerJobId)
+            .Set(row => row.PrinterCounterBefore, attempt.PrinterCounterBefore)
+            .Set(row => row.PrinterCounterAfter, attempt.PrinterCounterAfter)
+            .Set(row => row.CounterUnit, attempt.CounterUnit)
+            .Set(row => row.ReportedSides, attempt.ReportedSides)
+            .Set(row => row.ReportedSheets, attempt.ReportedSheets)
+            .Set(row => row.Status, attempt.Status)
+            .Set(row => row.ErrorCode, attempt.ErrorCode)
+            .Set(row => row.Recovered, attempt.Recovered)
+            .Set(row => row.UpdatedAt, attempt.UpdatedAt);
+
+        return _context.PrintAttempts.UpdateOneAsync(
+            Builders<PrintAttempt>.Filter.Where(row => row.JobId == attempt.JobId && row.AttemptNo == attempt.AttemptNo),
+            update,
+            new UpdateOptions { IsUpsert = true },
+            cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<PrintAttempt>> ListForJobAsync(Guid jobId, CancellationToken cancellationToken = default)
+        => await _context.PrintAttempts
+            .Find(row => row.JobId == jobId)
+            .SortBy(row => row.AttemptNo)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+}
+
 /// <inheritdoc cref="IPrintJobRepository" />
 public sealed class PrintJobRepository : IPrintJobRepository
 {

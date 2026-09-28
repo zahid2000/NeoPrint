@@ -88,7 +88,7 @@ public sealed class PrintJobsController : ControllerBase
 
         return Ok(await _sender.Send(
             new ReportPrintJobStatusCommand(
-                DeviceId, id, request.Status ?? string.Empty, request.PrintedSides, request.PrintedSheets, request.ErrorCode),
+                DeviceId, id, request.Status ?? string.Empty, request.PrintedSides, request.PrintedSheets, request.ErrorCode, request.Attempt),
             cancellationToken));
     }
 }
@@ -96,7 +96,9 @@ public sealed class PrintJobsController : ControllerBase
 /// <param name="Dev">Development only: queue without a payment (plan step 3). Refused elsewhere.</param>
 public sealed record CreatePrintJobRequest(string? LocalFileName, int PageCount, PrintOptions? Options, bool Dev = false);
 
-public sealed record PrintJobStatusRequest(string? Status, int PrintedSides, int PrintedSheets, string? ErrorCode);
+/// <param name="Attempt">The try this report belongs to (plan section 2.5, <c>print_attempts</c>).</param>
+public sealed record PrintJobStatusRequest(
+    string? Status, int PrintedSides, int PrintedSheets, string? ErrorCode, PrintAttemptInput? Attempt = null);
 
 /// <summary>
 /// Print jobs in the admin panel (plan sections 6 "Admin Queue / Jobs", 8A.3).

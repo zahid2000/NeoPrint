@@ -37,7 +37,7 @@ public sealed class PrintQueueWorkerTests : IDisposable
     }
 
     private PrintQueueWorker Worker(JobJournal? journal = null)
-        => new(_backend, _printer, _spool, journal ?? _journal, () => FakePrinterService.FakePrinterName, NullLogger<PrintQueueWorker>.Instance);
+        => new(_backend, _printer, _spool, journal ?? _journal, () => FakePrinterService.FakePrinterName, NullLogger<PrintQueueWorker>.Instance, _printer);
 
     private async Task<Guid> PlaceAsync(PrintQueueWorker worker, string code = "123456", int sheets = 2)
     {
@@ -113,6 +113,99 @@ public sealed class PrintQueueWorkerTests : IDisposable
         _printer.Printed.Should().BeEmpty("nobody knows what came out, so nothing is sent again");
         _backend.Reports.Should().ContainSingle(report => report.JobId == id && report.Status == "Interrupted"
                                                             && report.ErrorCode == "printer.restarted");
+    }
+
+    /// <summary>The kiosk wrote "Printing", handed the job to the spooler, and then the power went.</summary>
+    private async Task<Guid> DiedWhilePrintingAsync(PageCount? counterBefore = null)
+    {
+        var id = await PlaceAsync(Worker(), sheets: 2);
+        _journal.Save(_journal.Find(id)! with
+        {
+            State = JournalState.Printing,
+            Attempts = 1,
+            Printer = FakePrinterService.FakePrinterName,
+            SpoolerJobId = "NeoPrint-123456",
+            StartedAt = DateTime.UtcNow.AddMinutes(-1),
+            CounterBefore = counterBefore,
+            Sides = 4,
+        });
+
+        return id;
+    }
+
+    [Fact]
+    public async Task A_job_still_in_the_spooler_after_a_restart_is_watched_and_nothing_else_starts()
+    {
+        var id = await DiedWhilePrintingAsync();
+        var second = await PlaceAsync(Worker(), code: "222222");
+        _printer.SpoolerStates["NeoPrint-123456"] = SpoolerJobState.Pending;
+
+        var restarted = Worker(new JobJournal(_paths));
+        await restarted.RecoverAsync(CancellationToken.None);
+        await restarted.StepAsync(CancellationToken.None);
+
+        _printer.Printed.Should().BeEmpty("the printer still has the job from before the restart");
+        new JobJournal(_paths).Find(id)!.State.Should().Be(JournalState.Printing);
+
+        _printer.SpoolerStates["NeoPrint-123456"] = SpoolerJobState.Completed;
+        await restarted.StepAsync(CancellationToken.None);
+
+        _backend.Reports.Should().Contain((id, "Completed", 4, 2, (string?)null));
+        _backend.Attempts[_backend.Reports.FindIndex(report => report.JobId == id && report.Status == "Completed")]!.Recovered.Should().BeTrue();
+        _printer.Printed.Should().ContainSingle().Which.JobName.Should().Be("NeoPrint-222222", "the next job goes once the printer is free");
+        second.Should().NotBe(id);
+    }
+
+    [Fact]
+    public async Task A_job_the_spooler_has_forgotten_is_completed_when_the_counter_shows_every_sheet()
+    {
+        var id = await DiedWhilePrintingAsync(new PageCount(1000, CountsSheets: true));
+        _printer.Counter = new PageCount(1002, CountsSheets: true);
+
+        var restarted = Worker(new JobJournal(_paths));
+        await restarted.RecoverAsync(CancellationToken.None);
+
+        _printer.Printed.Should().BeEmpty();
+        _backend.Reports.Should().ContainSingle(report => report.JobId == id && report.Status == "Completed" && report.Sheets == 2);
+
+        var attempt = _backend.Attempts.Single()!;
+        attempt.CounterBefore.Should().Be(1000);
+        attempt.CounterAfter.Should().Be(1002);
+        attempt.CounterUnit.Should().Be("sheets");
+    }
+
+    [Fact]
+    public async Task A_forgotten_job_with_a_counter_short_of_it_is_interrupted_with_what_came_out()
+    {
+        // Impressions: 4 sides wanted, 2 came out - one duplex sheet of two.
+        var id = await DiedWhilePrintingAsync(new PageCount(500, CountsSheets: false));
+        _journal.Save(_journal.Find(id)! with { Options = new JobOptions(Copies: 2, Duplex: true) });
+        _printer.Counter = new PageCount(502, CountsSheets: false);
+
+        var restarted = Worker(new JobJournal(_paths));
+        await restarted.RecoverAsync(CancellationToken.None);
+
+        _printer.Printed.Should().BeEmpty("never printed again");
+        _backend.Reports.Should().ContainSingle(report => report.JobId == id && report.Status == "Interrupted"
+                                                            && report.Sheets == 1 && report.ErrorCode == "printer.restarted");
+    }
+
+    [Fact]
+    public async Task Every_attempt_carries_the_printer_the_spooler_reference_and_the_counter()
+    {
+        _printer.Counter = new PageCount(70, CountsSheets: true);
+        var worker = Worker();
+        var id = await PlaceAsync(worker);
+
+        await worker.StepAsync(CancellationToken.None);
+
+        var completed = _backend.Attempts[_backend.Reports.FindIndex(report => report.JobId == id && report.Status == "Completed")]!;
+        completed.Number.Should().Be(1);
+        completed.Printer.Should().Be(FakePrinterService.FakePrinterName);
+        completed.SpoolerJobId.Should().Be("NeoPrint-123456");
+        completed.CounterBefore.Should().Be(70);
+        completed.Recovered.Should().BeFalse();
+        completed.FinishedAt.Should().NotBeNull();
     }
 
     [Fact]
@@ -203,12 +296,15 @@ public sealed class PrintQueueWorkerTests : IDisposable
 
         public List<(Guid JobId, string Status, int Sides, int Sheets, string? ErrorCode)> Reports { get; } = [];
 
+        public List<PrintAttemptReport?> Attempts { get; } = [];
+
         public bool Down { get; set; }
 
         public Task<IReadOnlyList<QueueItem>> GetQueueAsync(CancellationToken cancellationToken)
             => Down ? throw new HttpRequestException("down") : Task.FromResult<IReadOnlyList<QueueItem>>([.. Queue]);
 
-        public Task ReportAsync(Guid jobId, string status, int printedSides, int printedSheets, string? errorCode, CancellationToken cancellationToken)
+        public Task ReportAsync(
+            Guid jobId, string status, int printedSides, int printedSheets, string? errorCode, PrintAttemptReport? attempt, CancellationToken cancellationToken)
         {
             if (Down)
             {
@@ -216,6 +312,7 @@ public sealed class PrintQueueWorkerTests : IDisposable
             }
 
             Reports.Add((jobId, status, printedSides, printedSheets, errorCode));
+            Attempts.Add(attempt);
             return Task.CompletedTask;
         }
     }

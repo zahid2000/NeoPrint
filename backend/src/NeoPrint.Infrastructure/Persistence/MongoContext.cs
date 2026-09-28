@@ -119,6 +119,7 @@ public sealed class MongoContext
     public MongoSet<KioskCommand> KioskCommands => Set<KioskCommand>("kiosk_commands");
 
     public MongoSet<Domain.PrintJobs.PrintJob> PrintJobs => Set<Domain.PrintJobs.PrintJob>("print_jobs");
+    public MongoSet<Domain.PrintJobs.PrintAttempt> PrintAttempts => Set<Domain.PrintJobs.PrintAttempt>("print_attempts");
 
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
@@ -319,6 +320,12 @@ public sealed class MongoContext
                 Named("ix_print_jobs_kiosk_status_queued")),
             // The admin list, newest first.
             (Builders<Domain.PrintJobs.PrintJob>.IndexKeys.Descending(job => job.CreatedAt), Named("ix_print_jobs_created")));
+
+        // One row per job and attempt: a report sent again replaces it.
+        await CreateAsync(PrintAttempts,
+            (Builders<Domain.PrintJobs.PrintAttempt>.IndexKeys
+                .Ascending(attempt => attempt.JobId).Ascending(attempt => attempt.AttemptNo),
+                Unique("ux_print_attempts_job_attempt")));
 
         await CreateAsync(StorageSyncJobs,
             (Builders<Domain.Storage.StorageSyncJob>.IndexKeys.Ascending(job => job.Status), Named("ix_storage_sync_jobs_status")));

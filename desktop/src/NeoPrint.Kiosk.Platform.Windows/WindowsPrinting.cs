@@ -35,7 +35,7 @@ namespace NeoPrint.Kiosk.Platform.Windows;
 /// path would bypass the driver, and with it the copies, sides and grey the
 /// customer paid for (docs/DECISIONS.md, native formats on Windows).
 /// </remarks>
-public sealed class WindowsPrinterService : IPrinterService, IPrinterFormatSupport
+public sealed class WindowsPrinterService : IPrinterService, IPrinterFormatSupport, IPrintJobTracker, IPrinterAddressSource
 {
     private const string PdfPrinter = "Microsoft Print to PDF";
     private const int PrintDpi = 300;
@@ -110,6 +110,9 @@ public sealed class WindowsPrinterService : IPrinterService, IPrinterFormatSuppo
         {
             // The spooler call blocks until the pages are spooled; off the
             // caller's thread so the screen keeps moving.
+            // The document name is the spooler's handle on the job; kept
+            // before a page is spooled, so a restart part-way can find it.
+            request.Submitted?.Invoke(request.JobName);
             await Task.Run(() => Spool(request, pdf), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (exception is Win32Exception or InvalidPrinterException or ExternalException or PdfiumException)
@@ -201,8 +204,15 @@ public sealed class WindowsPrinterService : IPrinterService, IPrinterFormatSuppo
         {
             var job = FindJob(request.JobName);
 
-            if (job is null)
+            if (job is null || job.Value.Printed)
             {
+                // Gone from the queue, or kept there as printed (a queue with
+                // "keep printed documents" on): either way, finished.
+                if (job is not null)
+                {
+                    CancelJob(request.JobName);
+                }
+
                 var after = State(request.Printer);
                 return after is PrinterState.Online or PrinterState.TonerLow ? PrintOutcome.Done : PrintOutcome.Failed(PrinterErrors.For(after));
             }
@@ -253,7 +263,55 @@ public sealed class WindowsPrinterService : IPrinterService, IPrinterFormatSuppo
         }
     }
 
-    private static (bool Error, string Name)? FindJob(string document)
+    /// <summary>
+    /// A job the kiosk sent before it restarted, found by its document name
+    /// (plan section 7.12). The spooler forgets a printed job unless the queue
+    /// keeps printed documents, so "not found" is a question the page counter
+    /// answers.
+    /// </summary>
+    public Task<SpoolerJobState> GetJobStateAsync(string printer, string reference, CancellationToken cancellationToken = default)
+    {
+        var job = FindJob(reference);
+
+        return Task.FromResult(job switch
+        {
+            null => SpoolerJobState.NotFound,
+            { Printed: true } => SpoolerJobState.Completed,
+            { Error: true } => SpoolerJobState.Failed,
+            _ => SpoolerJobState.Pending,
+        });
+    }
+
+    /// <summary>The host of a network printer's Standard TCP/IP port; null for USB and virtual printers.</summary>
+    public Task<string?> GetNetworkAddressAsync(string printer, CancellationToken cancellationToken = default)
+    {
+        using var printers = new ManagementObjectSearcher($"SELECT PortName FROM Win32_Printer WHERE Name = '{Escape(printer)}'");
+        var port = printers.Get().Cast<ManagementObject>().Select(found =>
+        {
+            using (found)
+            {
+                return found["PortName"] as string;
+            }
+        }).FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(port))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        using var ports = new ManagementObjectSearcher($"SELECT HostAddress FROM Win32_TCPIPPrinterPort WHERE Name = '{Escape(port)}'");
+        var host = ports.Get().Cast<ManagementObject>().Select(found =>
+        {
+            using (found)
+            {
+                return found["HostAddress"] as string;
+            }
+        }).FirstOrDefault();
+
+        return Task.FromResult(string.IsNullOrWhiteSpace(host) ? null : host);
+    }
+
+    private static (bool Error, bool Printed, string Name)? FindJob(string document)
     {
         using var searcher = new ManagementObjectSearcher(
             $"SELECT Name, Status, StatusMask FROM Win32_PrintJob WHERE Document = '{Escape(document)}'");
@@ -264,8 +322,12 @@ public sealed class WindowsPrinterService : IPrinterService, IPrinterFormatSuppo
             {
                 var mask = Convert.ToUInt32(job["StatusMask"] ?? 0u);
 
-                // JOB_STATUS_ERROR (0x2), _OFFLINE (0x20), _PAPEROUT (0x40), _BLOCKED_DEVQ (0x200), _USER_INTERVENTION (0x400).
-                return ((mask & (0x2 | 0x20 | 0x40 | 0x200 | 0x400)) != 0, job["Name"] as string ?? string.Empty);
+                // JOB_STATUS_ERROR (0x2), _OFFLINE (0x20), _PAPEROUT (0x40), _BLOCKED_DEVQ (0x200), _USER_INTERVENTION (0x400);
+                // JOB_STATUS_PRINTED (0x80), _COMPLETE (0x1000).
+                return (
+                    (mask & (0x2 | 0x20 | 0x40 | 0x200 | 0x400)) != 0,
+                    (mask & (0x80 | 0x1000)) != 0,
+                    job["Name"] as string ?? string.Empty);
             }
         }
 

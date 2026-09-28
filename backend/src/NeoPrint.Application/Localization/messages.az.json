@@ -188,6 +188,7 @@
   "printJobs.copiesRange": "Nüsxə sayı 1 ilə {max} arasında olmalıdır.",
   "printJobs.countsInvalid": "Çap olunan üz və vərəq sayı düzgün deyil.",
   "printJobs.duplexUnavailable": "Bu kioskun printeri ikitərəfli çap etmir.",
+  "printJobs.attemptInvalid": "Çap cəhdinin məlumatı düzgün deyil.",
   "printJobs.errorCodeInvalid": "Xəta kodu düzgün deyil.",
   "printJobs.fileNameTooLong": "Fayl adı çox uzundur (ən çox 255 simvol).",
   "printJobs.kioskNotTakingOrders": "Kiosk hazırda sifariş qəbul etmir ({status}).",

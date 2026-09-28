@@ -64,6 +64,48 @@ public sealed class PrinterServiceTests
     }
 
     [Fact]
+    public async Task After_a_restart_cups_says_whether_a_request_is_still_printing_printed_or_failed()
+    {
+        const string history =
+            "HP_LaserJet-17  kiosk  1024  Mon 28 Sep 2026 10:00:00\n\tStatus: \n\tAlerts: job-completed-successfully\n\tqueued for HP_LaserJet\n" +
+            "HP_LaserJet-18  kiosk  2048  Mon 28 Sep 2026 10:05:00\n\tStatus: \n\tAlerts: job-canceled-by-user\n\tqueued for HP_LaserJet\n";
+
+        var cups = new FakeCups
+        {
+            [$"lpstat -W not-completed -o {Printer}"] = (0, "HP_LaserJet-19  kiosk  1024  Mon 28 Sep 2026 10:10:00\n"),
+            [$"lpstat -l -W completed -o {Printer}"] = (0, history),
+        };
+        var service = new LinuxPrinterService(cups);
+
+        (await service.GetJobStateAsync(Printer, "HP_LaserJet-19")).Should().Be(SpoolerJobState.Pending);
+        (await service.GetJobStateAsync(Printer, "HP_LaserJet-17")).Should().Be(SpoolerJobState.Completed);
+        (await service.GetJobStateAsync(Printer, "HP_LaserJet-18")).Should().Be(SpoolerJobState.Failed);
+        (await service.GetJobStateAsync(Printer, "HP_LaserJet-1")).Should().Be(SpoolerJobState.NotFound, "a prefix of another id is not that id");
+    }
+
+    [Theory]
+    [InlineData("device for HP_LaserJet: ipp://192.168.1.20/ipp/print", "192.168.1.20")]
+    [InlineData("device for HP_LaserJet: socket://printer.office.lan:9100", "printer.office.lan")]
+    [InlineData("device for HP_LaserJet: usb://HP/LaserJet?serial=123", null)]
+    [InlineData("device for PDF: cups-pdf:/", null)]
+    [InlineData("device for Local: ipp://localhost/printers/x", null)]
+    public void Only_a_network_printer_has_an_address_for_snmp(string output, string? host)
+        => LinuxPrinterService.ParseDeviceHost(output).Should().Be(host);
+
+    [Theory]
+    [InlineData("12345", "8", 12345L, true)]
+    [InlineData("67890", "7", 67890L, false)]
+    public void The_printer_counter_says_what_it_counts(string count, string unit, long value, bool sheets)
+        => SnmpPageCounter.Interpret(count, unit).Should().Be(new PageCount(value, sheets));
+
+    [Theory]
+    [InlineData("12345", "3")]
+    [InlineData("not a number", "8")]
+    [InlineData(null, null)]
+    public void A_counter_that_is_not_pages_is_no_counter(string? count, string? unit)
+        => SnmpPageCounter.Interpret(count, unit).Should().BeNull();
+
+    [Fact]
     public void An_original_file_is_named_to_cups_by_its_type()
         => LinuxPrinterService.Arguments(
                 new PrintRequest(Printer, "/spool/work/job.ps", 1, false, false, "A4", "Job 1", PrintContentTypes.PostScript))

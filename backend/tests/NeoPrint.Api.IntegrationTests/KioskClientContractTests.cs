@@ -169,13 +169,31 @@ public sealed class KioskClientContractTests
         (await heard.Task.WaitAsync(HubWait)).Should().Contain(item => item.JobId == job.Id);
         (await api.GetQueueAsync()).Should().ContainSingle(item => item.JobId == job.Id).Which.Position.Should().Be(1);
 
-        await api.ReportPrintJobStatusAsync(job.Id, "Printing", 0, 0, null);
-        await api.ReportPrintJobStatusAsync(job.Id, "Completed", 6, 4, null);
+        var started = DateTime.UtcNow;
+        var attempt = new PrintAttemptReport(1, "Test printer", "Test_printer-17", started, null, 1000, null, "sheets", Recovered: false);
+
+        await api.ReportPrintJobStatusAsync(job.Id, "Printing", 0, 0, null, attempt: attempt);
+        await api.ReportPrintJobStatusAsync(
+            job.Id, "Completed", 6, 4, null, attempt: attempt with { FinishedAt = started.AddMinutes(1), CounterAfter = 1004 });
+
+        // The same report again (a lost answer): one row, not two.
+        await api.ReportPrintJobStatusAsync(
+            job.Id, "Completed", 6, 4, null, attempt: attempt with { FinishedAt = started.AddMinutes(1), CounterAfter = 1004 });
 
         var done = await api.GetPrintJobAsync(job.Id);
         done.Status.Should().Be("Completed");
         done.PrintedSheets.Should().Be(4);
         (await api.GetQueueAsync()).Should().NotContain(item => item.JobId == job.Id);
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        var detail = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/print-jobs/{job.Id}");
+        var attempts = detail.GetProperty("attempts");
+
+        attempts.GetArrayLength().Should().Be(1);
+        attempts[0].GetProperty("spoolerJobId").GetString().Should().Be("Test_printer-17");
+        attempts[0].GetProperty("counterBefore").GetInt64().Should().Be(1000);
+        attempts[0].GetProperty("counterAfter").GetInt64().Should().Be(1004);
+        attempts[0].GetProperty("status").GetString().Should().Be("Completed");
     }
 
     [DockerFact]

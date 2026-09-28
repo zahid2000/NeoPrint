@@ -18,6 +18,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <PackageReference Include="QRCoder" />
+    <!-- Printer-MIB page counters over SNMP (plan section 7.10, print_attempts). -->
+    <PackageReference Include="Lextm.SharpSnmpLib" />
   </ItemGroup>
 
   <ItemGroup>

@@ -9,7 +9,8 @@ public interface IPrintBackend
 {
     Task<IReadOnlyList<QueueItem>> GetQueueAsync(CancellationToken cancellationToken);
 
-    Task ReportAsync(Guid jobId, string status, int printedSides, int printedSheets, string? errorCode, CancellationToken cancellationToken);
+    Task ReportAsync(
+        Guid jobId, string status, int printedSides, int printedSheets, string? errorCode, PrintAttemptReport? attempt, CancellationToken cancellationToken);
 }
 
 /// <summary>The backend calls of <see cref="PrintQueueWorker"/>, over the kiosk's API client.</summary>
@@ -21,8 +22,9 @@ public sealed class ApiPrintBackend : IPrintBackend
 
     public Task<IReadOnlyList<QueueItem>> GetQueueAsync(CancellationToken cancellationToken) => _api.GetQueueAsync(cancellationToken);
 
-    public Task ReportAsync(Guid jobId, string status, int printedSides, int printedSheets, string? errorCode, CancellationToken cancellationToken)
-        => _api.ReportPrintJobStatusAsync(jobId, status, printedSides, printedSheets, errorCode, cancellationToken);
+    public Task ReportAsync(
+        Guid jobId, string status, int printedSides, int printedSheets, string? errorCode, PrintAttemptReport? attempt, CancellationToken cancellationToken)
+        => _api.ReportPrintJobStatusAsync(jobId, status, printedSides, printedSheets, errorCode, cancellationToken, attempt);
 }
 
 /// <summary>What the worker is doing, for the screen.</summary>
@@ -53,6 +55,7 @@ public sealed class PrintQueueWorker
     private readonly SpoolStore _spool;
     private readonly JobJournal _journal;
     private readonly Func<string?> _selectedPrinter;
+    private readonly IPrinterPageCounter? _counter;
     private readonly ILogger<PrintQueueWorker> _logger;
     private readonly SemaphoreSlim _wake = new(0, int.MaxValue);
     private readonly SemaphoreSlim _printerLock = new(1, 1);
@@ -63,7 +66,8 @@ public sealed class PrintQueueWorker
         SpoolStore spool,
         JobJournal journal,
         Func<string?> selectedPrinter,
-        ILogger<PrintQueueWorker> logger)
+        ILogger<PrintQueueWorker> logger,
+        IPrinterPageCounter? counter = null)
     {
         _backend = backend;
         _printers = printers;
@@ -71,6 +75,7 @@ public sealed class PrintQueueWorker
         _journal = journal;
         _selectedPrinter = selectedPrinter;
         _logger = logger;
+        _counter = counter;
     }
 
     /// <summary>Stops taking new jobs (the kiosk is paused or out of service); the one at the printer finishes.</summary>
@@ -93,10 +98,12 @@ public sealed class PrintQueueWorker
     /// Recorded first, so the worker knows its options even without the backend.
     /// </summary>
     /// <param name="contentType">What was spooled: null for the prepared PDF, or the original's type.</param>
-    public void Accept(Guid jobId, string jobCode, JobOptions options, int requiredSheets, DateTime queuedAt, string? contentType = null)
+    /// <param name="sides">Printed sides the job takes; the printer's counter is checked against it after a restart.</param>
+    public void Accept(
+        Guid jobId, string jobCode, JobOptions options, int requiredSheets, DateTime queuedAt, string? contentType = null, int sides = 0)
     {
         _journal.Save(new JournalEntry(
-            jobId, jobCode, JournalState.Queued, options, requiredSheets, 0, 0, null, false, queuedAt, DateTime.UtcNow, contentType));
+            jobId, jobCode, JournalState.Queued, options, requiredSheets, 0, 0, null, false, queuedAt, DateTime.UtcNow, contentType, sides));
         Wake();
     }
 
@@ -109,22 +116,119 @@ public sealed class PrintQueueWorker
     {
         _spool.ClearWork();
 
+        await ResolveUnfinishedAsync(cancellationToken).ConfigureAwait(false);
+        await FlushReportsAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Works out what became of the jobs that were at the printer when the
+    /// kiosk stopped (plan section 7.12, step 4): still in the spooler -
+    /// watched until it leaves; printed - Completed; gone or failed - the
+    /// printer's counter decides between Completed and Interrupted. Never
+    /// printed again.
+    /// </summary>
+    /// <returns>Whether one is still at the printer, which then waits for it.</returns>
+    private async Task<bool> ResolveUnfinishedAsync(CancellationToken cancellationToken)
+    {
+        var busy = false;
+
         foreach (var entry in _journal.All().Where(entry => entry.State == JournalState.Printing))
         {
+            var spooler = await SpoolerStateAsync(entry, cancellationToken).ConfigureAwait(false);
+
+            if (spooler == SpoolerJobState.Pending)
+            {
+                _logger.LogInformation("Job {JobCode} is still with the printer after the restart; watching it.", entry.JobCode);
+                busy = true;
+                continue;
+            }
+
+            var after = await ReadCounterAsync(entry.Printer, cancellationToken).ConfigureAwait(false);
+            var printedSheets = spooler == SpoolerJobState.Completed ? entry.RequiredSheets : SheetsByCounter(entry, after);
+            var printed = printedSheets >= entry.RequiredSheets;
+
             _logger.LogWarning(
-                "Job {JobCode} was at the printer when the kiosk stopped; reporting it interrupted, not printing it again.",
-                entry.JobCode);
+                "Job {JobCode} was at the printer when the kiosk stopped; the spooler says {Spooler}, the counter {Sheets} sheet(s): {Outcome}. It is not printed again.",
+                entry.JobCode,
+                spooler,
+                printedSheets,
+                printed ? "printed" : "interrupted");
 
             _journal.Save(entry with
             {
-                State = JournalState.Interrupted,
-                ErrorCode = "printer.restarted",
+                State = printed ? JournalState.Printed : JournalState.Interrupted,
+                PrintedSheets = Math.Min(printedSheets, entry.RequiredSheets),
+                ErrorCode = printed ? null : "printer.restarted",
                 StatusReported = false,
+                CounterAfter = after,
+                Recovered = true,
                 UpdatedAt = DateTime.UtcNow,
             });
         }
 
-        await FlushReportsAsync(cancellationToken).ConfigureAwait(false);
+        return busy;
+    }
+
+    private async Task<SpoolerJobState> SpoolerStateAsync(JournalEntry entry, CancellationToken cancellationToken)
+    {
+        if (entry.SpoolerJobId is null || entry.Printer is null || _printers is not IPrintJobTracker tracker)
+        {
+            // Never submitted, or nothing to ask: the counter is all there is.
+            return SpoolerJobState.NotFound;
+        }
+
+        try
+        {
+            return await tracker.GetJobStateAsync(entry.Printer, entry.SpoolerJobId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning(exception, "The spooler could not be asked about job {JobCode}.", entry.JobCode);
+            return SpoolerJobState.NotFound;
+        }
+    }
+
+    /// <summary>
+    /// What the printer's counter says came out between the attempt's start
+    /// and now; 0 when there is no counter, so an unknown outcome is never
+    /// taken for a printed job.
+    /// </summary>
+    private static int SheetsByCounter(JournalEntry entry, PageCount? after)
+    {
+        if (entry.CounterBefore is not { } before || after is null || before.CountsSheets != after.CountsSheets)
+        {
+            return 0;
+        }
+
+        var delta = Math.Max(0, after.Value - before.Value);
+
+        if (before.CountsSheets)
+        {
+            return (int)Math.Min(delta, int.MaxValue);
+        }
+
+        // Impressions: every side the job takes has to be there.
+        var sides = entry.Sides > 0 ? entry.Sides : entry.RequiredSheets * (entry.Options.Duplex ? 2 : 1);
+
+        return delta >= sides ? entry.RequiredSheets : (int)(delta / (entry.Options.Duplex ? 2 : 1));
+    }
+
+    private async Task<PageCount?> ReadCounterAsync(string? printer, CancellationToken cancellationToken)
+    {
+        if (_counter is null || printer is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await _counter.ReadAsync(printer, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogWarning(exception, "The page counter of {Printer} could not be read.", printer);
+            return null;
+        }
     }
 
     /// <summary>Runs until cancelled.</summary>
@@ -185,6 +289,14 @@ public sealed class PrintQueueWorker
     /// <summary>One pass: send what is owed, sync with the queue, print the next job.</summary>
     public async Task StepAsync(CancellationToken cancellationToken)
     {
+        await FlushReportsAsync(cancellationToken).ConfigureAwait(false);
+
+        if (await ResolveUnfinishedAsync(cancellationToken).ConfigureAwait(false))
+        {
+            // The printer still has the job from before the restart.
+            return;
+        }
+
         await FlushReportsAsync(cancellationToken).ConfigureAwait(false);
 
         var next = await NextAsync(cancellationToken).ConfigureAwait(false);
@@ -273,8 +385,21 @@ public sealed class PrintQueueWorker
             return;
         }
 
+        var counterBefore = await ReadCounterAsync(printer, cancellationToken).ConfigureAwait(false);
+
         // Written before anything reaches the printer (see the class remarks).
-        var printing = entry with { State = JournalState.Printing, Attempts = entry.Attempts + 1, UpdatedAt = DateTime.UtcNow };
+        var printing = entry with
+        {
+            State = JournalState.Printing,
+            Attempts = entry.Attempts + 1,
+            Printer = printer,
+            SpoolerJobId = null,
+            StartedAt = DateTime.UtcNow,
+            CounterBefore = counterBefore,
+            CounterAfter = null,
+            Recovered = false,
+            UpdatedAt = DateTime.UtcNow,
+        };
         _journal.Save(printing);
         SetActivity(new PrinterActivity(entry.JobId, entry.JobCode, state, null));
 
@@ -296,7 +421,11 @@ public sealed class PrintQueueWorker
                         entry.Options.Color,
                         entry.Options.Paper,
                         $"NeoPrint-{entry.JobCode}",
-                        entry.ContentType ?? PrintContentTypes.Pdf),
+                        entry.ContentType ?? PrintContentTypes.Pdf)
+                    {
+                        // Kept at once: a restart from here on can find the job.
+                        Submitted = reference => _journal.Save(printing = printing with { SpoolerJobId = reference }),
+                    },
                     cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -310,9 +439,26 @@ public sealed class PrintQueueWorker
             _spool.Discard(working);
         }
 
+        var counterAfter = await ReadCounterAsync(printer, cancellationToken).ConfigureAwait(false);
+
         var finished = outcome.Succeeded
-            ? printing with { State = JournalState.Printed, PrintedSheets = entry.RequiredSheets, StatusReported = false, UpdatedAt = DateTime.UtcNow }
-            : printing with { State = JournalState.Interrupted, ErrorCode = outcome.ErrorCode ?? "printer.error", StatusReported = false, UpdatedAt = DateTime.UtcNow };
+            ? printing with
+            {
+                State = JournalState.Printed,
+                PrintedSheets = entry.RequiredSheets,
+                CounterAfter = counterAfter,
+                StatusReported = false,
+                UpdatedAt = DateTime.UtcNow,
+            }
+            : printing with
+            {
+                State = JournalState.Interrupted,
+                ErrorCode = outcome.ErrorCode ?? "printer.error",
+                PrintedSheets = Math.Min(SheetsByCounter(printing, counterAfter), entry.RequiredSheets),
+                CounterAfter = counterAfter,
+                StatusReported = false,
+                UpdatedAt = DateTime.UtcNow,
+            };
 
         _journal.Save(finished);
 
@@ -360,7 +506,7 @@ public sealed class PrintQueueWorker
     {
         try
         {
-            await _backend.ReportAsync(entry.JobId, status, sides, sheets, errorCode, cancellationToken).ConfigureAwait(false);
+            await _backend.ReportAsync(entry.JobId, status, sides, sheets, errorCode, AttemptOf(entry), cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (DeviceRevokedException)
@@ -382,8 +528,26 @@ public sealed class PrintQueueWorker
         }
     }
 
-    /// <summary>What was printed on: the job's sheets, both sides when duplex.</summary>
-    private static int SidesOf(JournalEntry entry) => entry.Options.Duplex ? entry.PrintedSheets * 2 : entry.PrintedSheets;
+    /// <summary>What was printed on: the job's sides when all of it printed, else both sides of each sheet when duplex.</summary>
+    private static int SidesOf(JournalEntry entry)
+        => entry.Sides > 0 && entry.PrintedSheets >= entry.RequiredSheets
+            ? entry.Sides
+            : entry.Options.Duplex ? entry.PrintedSheets * 2 : entry.PrintedSheets;
+
+    /// <summary>The attempt, for <c>print_attempts</c>; null before the job ever reached the printer.</summary>
+    private static PrintAttemptReport? AttemptOf(JournalEntry entry)
+        => entry.Attempts < 1
+            ? null
+            : new PrintAttemptReport(
+                entry.Attempts,
+                entry.Printer,
+                entry.SpoolerJobId,
+                entry.StartedAt,
+                entry.State is JournalState.Printed or JournalState.Interrupted ? entry.UpdatedAt : null,
+                entry.CounterBefore?.Value,
+                entry.CounterAfter?.Value,
+                entry.CounterBefore is { } counter ? (counter.CountsSheets ? "sheets" : "impressions") : null,
+                entry.Recovered);
 
     private void SetActivity(PrinterActivity activity)
     {

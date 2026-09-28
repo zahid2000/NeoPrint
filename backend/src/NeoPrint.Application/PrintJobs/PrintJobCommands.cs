@@ -37,13 +37,28 @@ public sealed record CancelKioskPrintJobCommand(Guid DeviceId, Guid JobId) : IRe
 /// </summary>
 /// <param name="Status">Printing, Completed or Interrupted.</param>
 /// <param name="ErrorCode">For Interrupted: a message key such as <c>printer.outOfPaper</c>.</param>
+/// <param name="Attempt">The try this report belongs to, kept in <c>print_attempts</c> (plan section 2.5).</param>
 public sealed record ReportPrintJobStatusCommand(
     Guid DeviceId,
     Guid JobId,
     string Status,
     int PrintedSides,
     int PrintedSheets,
-    string? ErrorCode) : IRequest<PrintJobResponse>;
+    string? ErrorCode,
+    PrintAttemptInput? Attempt = null) : IRequest<PrintJobResponse>;
+
+/// <summary>One try at printing, as the kiosk saw it.</summary>
+/// <param name="CounterUnit">"sheets" or "impressions".</param>
+public sealed record PrintAttemptInput(
+    int Number,
+    string? Printer,
+    string? SpoolerJobId,
+    DateTime? StartedAt,
+    DateTime? FinishedAt,
+    long? CounterBefore,
+    long? CounterAfter,
+    string? CounterUnit,
+    bool Recovered);
 
 /// <summary>The kiosk's own queue, for the panel and for picking the next job.</summary>
 public sealed record GetKioskQueueQuery(Guid DeviceId) : IRequest<IReadOnlyList<QueueEntry>>;
@@ -125,8 +140,28 @@ public sealed record PrintJobListItem(
     DateTime CreatedAt,
     DateTime? FinishedAt);
 
-/// <summary>A job and every status it went through.</summary>
-public sealed record PrintJobDetail(PrintJobResponse Job, string? KioskCode, IReadOnlyList<PrintJobTransitionView> History);
+/// <summary>A job, every status it went through, and every try at printing it.</summary>
+public sealed record PrintJobDetail(
+    PrintJobResponse Job,
+    string? KioskCode,
+    IReadOnlyList<PrintJobTransitionView> History,
+    IReadOnlyList<PrintAttemptView>? Attempts = null);
+
+/// <summary>A try at printing, for the "did it print?" question (plan section 8A.3).</summary>
+public sealed record PrintAttemptView(
+    int Number,
+    string? Printer,
+    string? SpoolerJobId,
+    DateTime? StartedAt,
+    DateTime? FinishedAt,
+    long? CounterBefore,
+    long? CounterAfter,
+    string? CounterUnit,
+    int ReportedSides,
+    int ReportedSheets,
+    string Status,
+    string? Error,
+    bool Recovered);
 
 /// <summary>One step of a job's history.</summary>
 public sealed record PrintJobTransitionView(string From, string To, string ActorType, string? Reason, DateTime At);
@@ -183,6 +218,17 @@ public sealed class ReportPrintJobStatusValidator : IValidator<ReportPrintJobSta
         if (request.ErrorCode is { } code && !Domain.Common.UserMessage.LooksLikeKey(code))
         {
             yield return new ValidationError("errorCode", "printJobs.errorCodeInvalid");
+        }
+
+        if (request.Attempt is { } attempt
+            && (attempt.Number is < 1 or > 1000
+                || attempt.Printer?.Length > 200
+                || attempt.SpoolerJobId?.Length > 200
+                || attempt.CounterBefore < 0
+                || attempt.CounterAfter < 0
+                || attempt.CounterUnit is not (null or "sheets" or "impressions")))
+        {
+            yield return new ValidationError("attempt", "printJobs.attemptInvalid");
         }
     }
 }

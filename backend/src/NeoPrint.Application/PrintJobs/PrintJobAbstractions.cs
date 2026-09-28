@@ -3,6 +3,15 @@ using NeoPrint.Domain.PrintJobs;
 namespace NeoPrint.Application.PrintJobs;
 
 /// <summary>The <c>print_jobs</c> collection (plan section 5).</summary>
+/// <summary>The kiosk's reports of each try at printing (plan section 2.5, <c>print_attempts</c>).</summary>
+public interface IPrintAttemptRepository
+{
+    /// <summary>Writes the attempt, replacing the row with the same job and number.</summary>
+    Task UpsertAsync(PrintAttempt attempt, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PrintAttempt>> ListForJobAsync(Guid jobId, CancellationToken cancellationToken = default);
+}
+
 public interface IPrintJobRepository
 {
     Task<PrintJob?> FindByIdAsync(Guid id, CancellationToken cancellationToken = default);

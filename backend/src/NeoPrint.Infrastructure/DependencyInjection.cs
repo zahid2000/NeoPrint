@@ -118,6 +118,7 @@ public static class DependencyInjection
         // Print jobs, the queue and kiosk commands (plan step 3)
         services.AddScoped<IKioskCommandRepository, KioskCommandRepository>();
         services.AddScoped<IPrintJobRepository, PrintJobRepository>();
+        services.AddScoped<IPrintAttemptRepository, PrintAttemptRepository>();
         services.AddScoped<IPrintQueue, RedisPrintQueue>();
         services.AddScoped<ITransitionHistory, TransitionHistory>();
         services.AddScoped<PrintQueueService>();

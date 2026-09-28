@@ -169,7 +169,7 @@ public sealed class KioskOrderService
                 await _spool.PutAsync(JournalEntry.SpoolNameFor(job.Id, original), stream, cancellationToken).ConfigureAwait(false);
             }
 
-            _worker.Accept(job.Id, job.JobCode, options, job.RequiredSheets, DateTime.UtcNow, original);
+            _worker.Accept(job.Id, job.JobCode, options, job.RequiredSheets, DateTime.UtcNow, original, job.Price.Sides);
 
             _logger.LogInformation(
                 "Order {JobCode} placed: {Pages} pages, {Sheets} sheets, sent as {ContentType}.",

@@ -188,6 +188,7 @@
   "printJobs.copiesRange": "The number of copies must be between 1 and {max}.",
   "printJobs.countsInvalid": "The printed side and sheet counts are not valid.",
   "printJobs.duplexUnavailable": "This kiosk's printer cannot print on both sides.",
+  "printJobs.attemptInvalid": "The print attempt details are not valid.",
   "printJobs.errorCodeInvalid": "The error code is not valid.",
   "printJobs.fileNameTooLong": "The file name is too long (at most 255 characters).",
   "printJobs.kioskNotTakingOrders": "The kiosk is not taking orders right now ({status}).",

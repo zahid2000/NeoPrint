@@ -140,7 +140,7 @@ public sealed class FakeMachineFingerprintProvider : IMachineFingerprintProvider
 /// printer and in CI. Enabled by <c>Kiosk:UseFakePrinter</c>, which is always
 /// false in a release build.
 /// </remarks>
-public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport
+public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport, IPrintJobTracker, IPrinterPageCounter
 {
     /// <summary>The name the fake printer is listed under (plan section 7.7).</summary>
     public const string FakePrinterName = "NeoPrint Fake Printer";
@@ -181,6 +181,20 @@ public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport
     public Task<IReadOnlySet<string>> GetNativeFormatsAsync(string printer, CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlySet<string>>(
             _printers.Any(known => known.Name == printer) ? new HashSet<string>(NativeFormats) : new HashSet<string>());
+
+    /// <summary>What the spooler says about a job, by reference; a printed job is Completed unless set here.</summary>
+    public Dictionary<string, SpoolerJobState> SpoolerStates { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>The printer's page counter; null is a printer without one (USB, or no SNMP).</summary>
+    public PageCount? Counter { get; set; }
+
+    public Task<SpoolerJobState> GetJobStateAsync(string printer, string reference, CancellationToken cancellationToken = default)
+        => Task.FromResult(
+            SpoolerStates.TryGetValue(reference, out var state) ? state
+            : Printed.Any(request => request.JobName == reference) ? SpoolerJobState.Completed
+            : SpoolerJobState.NotFound);
+
+    public Task<PageCount?> ReadAsync(string printer, CancellationToken cancellationToken = default) => Task.FromResult(Counter);
 
     /// <summary>What was printed, in order.</summary>
     public List<PrintRequest> Printed { get; } = [];
@@ -243,6 +257,7 @@ public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport
             File.Copy(request.PdfPath, target, overwrite: false);
         }
 
+        request.Submitted?.Invoke(request.JobName);
         Printed.Add(request);
 
         return PrintOutcome.Done;

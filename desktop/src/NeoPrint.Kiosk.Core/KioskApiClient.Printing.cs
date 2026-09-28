@@ -56,6 +56,22 @@ public sealed record PrintJobInfo(
     bool PaymentSkipped,
     DateTime CreatedAt);
 
+/// <summary>
+/// One try at printing a job, for the backend's <c>print_attempts</c> (plan
+/// section 2.5): what the admin looks at when nobody knows whether it printed.
+/// </summary>
+/// <param name="CounterUnit">"sheets" or "impressions": what the printer's counter counts.</param>
+public sealed record PrintAttemptReport(
+    int Number,
+    string? Printer,
+    string? SpoolerJobId,
+    DateTime? StartedAt,
+    DateTime? FinishedAt,
+    long? CounterBefore,
+    long? CounterAfter,
+    string? CounterUnit,
+    bool Recovered);
+
 /// <summary>One line of the queue panel (plan section 7.2).</summary>
 public sealed record QueueItem(
     Guid JobId,
@@ -181,12 +197,13 @@ public sealed partial class KioskApiClient
     /// </summary>
     public async Task<PrintJobInfo> ReportPrintJobStatusAsync(
         Guid jobId, string status, int printedSides, int printedSheets, string? errorCode,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        PrintAttemptReport? attempt = null)
     {
         using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, $"api/print-jobs/{jobId}/status", cancellationToken)
             .ConfigureAwait(false);
 
-        request.Content = JsonContent.Create(new { status, printedSides, printedSheets, errorCode }, options: JsonOptions);
+        request.Content = JsonContent.Create(new { status, printedSides, printedSheets, errorCode, attempt }, options: JsonOptions);
 
         return await ReadAsync<PrintJobInfo>(request, cancellationToken).ConfigureAwait(false);
     }

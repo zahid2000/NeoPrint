@@ -81,6 +81,21 @@ Səbəb: naməlum nəticədə avtomatik qaytarmaq çap olunmuş işi pulsuz verm
 avtomatik qaytarmamaq isə çap olmayıbsa müştərinin pulunu udmaqdır. Hər ikisi
 pul itkisidir. Sistem təxmin etmir — qərar məlumatı olan adama verilir.
 
+**Kioskun özündə bərpa (Addım 3).** Kiosk hər cəhddən əvvəl jurnala
+`Printing` + printer + başlama vaxtı + printer sayğacını (SNMP, varsa) yazır,
+spooler işi qəbul edən kimi onun istinadını (CUPS request id / Windows sənəd
+adı) əlavə edir. Restart-dan sonra `Printing` qalan iş üçün:
+
+-   spooler-də hələ var → izlənir, növbəti iş gözləyir;
+-   spooler "tamamlandı" deyir → `Completed`;
+-   spooler tapmır və ya "uğursuz" deyir → sayğac qərar verir: işin bütün
+    vərəqləri (sayğac vərəq sayırsa) və ya bütün üzləri (təəssürat sayırsa)
+    çıxıbsa → `Completed`, əks halda → `Interrupted` (`printer.restarted`,
+    çıxan vərəq sayı ilə). Sayğac yoxdursa → `Interrupted`.
+
+Heç bir halda iş yenidən çapa göndərilmir. Hər cəhd `print_attempts`-ə
+(sayğac əvvəl/sonra, `recovered`) gedir.
+
 **Bərpadan sonra avtomatik həll.** Kiosk qalxanda lokal jurnalı və
 `print_attempts` qeydlərini (printer sayğacının əvvəl/sonra dəyəri daxil)
 göndərir. `SuspectedJobResolutionConsumer`:

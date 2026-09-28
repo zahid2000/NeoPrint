@@ -188,6 +188,7 @@
   "printJobs.copiesRange": "Число копий — от 1 до {max}.",
   "printJobs.countsInvalid": "Число напечатанных сторон и листов указано неверно.",
   "printJobs.duplexUnavailable": "Принтер этого киоска не печатает с двух сторон.",
+  "printJobs.attemptInvalid": "Данные о попытке печати неверны.",
   "printJobs.errorCodeInvalid": "Неверный код ошибки.",
   "printJobs.fileNameTooLong": "Имя файла слишком длинное (не более 255 символов).",
   "printJobs.kioskNotTakingOrders": "Киоск сейчас не принимает заказы ({status}).",

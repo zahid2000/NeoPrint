@@ -38,6 +38,7 @@ public sealed class KioskPrintJobHandlers :
     private readonly IKioskRepository _kiosks;
     private readonly IPricingProfileRepository _profiles;
     private readonly IPrintJobRepository _jobs;
+    private readonly IPrintAttemptRepository _attempts;
     private readonly PrintQueueService _queue;
     private readonly IKioskNotifier _notifier;
     private readonly ISettingsReader _settings;
@@ -52,6 +53,7 @@ public sealed class KioskPrintJobHandlers :
         IKioskRepository kiosks,
         IPricingProfileRepository profiles,
         IPrintJobRepository jobs,
+        IPrintAttemptRepository attempts,
         PrintQueueService queue,
         IKioskNotifier notifier,
         ISettingsReader settings,
@@ -65,6 +67,7 @@ public sealed class KioskPrintJobHandlers :
         _kiosks = kiosks;
         _profiles = profiles;
         _jobs = jobs;
+        _attempts = attempts;
         _queue = queue;
         _notifier = notifier;
         _settings = settings;
@@ -206,6 +209,34 @@ public sealed class KioskPrintJobHandlers :
         var actor = ActorContext.Kiosk(request.DeviceId, correlationId: _correlation.CorrelationId);
         var now = _clock.UtcNow;
         var before = job.Status;
+
+        if (request.Attempt is { } attempt)
+        {
+            // Kept whatever happens to the job below: the evidence matters
+            // most when the report no longer changes anything.
+            await _attempts.UpsertAsync(
+                    new PrintAttempt
+                    {
+                        JobId = job.Id,
+                        AttemptNo = attempt.Number,
+                        KioskId = job.KioskId,
+                        PrinterName = attempt.Printer,
+                        StartedAt = attempt.StartedAt,
+                        FinishedAt = attempt.FinishedAt,
+                        SpoolerJobId = attempt.SpoolerJobId,
+                        PrinterCounterBefore = attempt.CounterBefore,
+                        PrinterCounterAfter = attempt.CounterAfter,
+                        CounterUnit = attempt.CounterUnit,
+                        ReportedSides = request.PrintedSides,
+                        ReportedSheets = request.PrintedSheets,
+                        Status = request.Status,
+                        ErrorCode = request.ErrorCode,
+                        Recovered = attempt.Recovered,
+                        UpdatedAt = now,
+                    },
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         switch (request.Status)
         {
@@ -474,6 +505,7 @@ public sealed class AdminPrintJobHandlers :
     private readonly IPermissionResolver _permissions;
     private readonly IKioskRepository _kiosks;
     private readonly IPrintJobRepository _jobs;
+    private readonly IPrintAttemptRepository _attempts;
     private readonly PrintQueueService _queue;
     private readonly IKioskNotifier _notifier;
     private readonly ITransitionHistory _history;
@@ -485,6 +517,7 @@ public sealed class AdminPrintJobHandlers :
         IPermissionResolver permissions,
         IKioskRepository kiosks,
         IPrintJobRepository jobs,
+        IPrintAttemptRepository attempts,
         PrintQueueService queue,
         IKioskNotifier notifier,
         ITransitionHistory history,
@@ -495,6 +528,7 @@ public sealed class AdminPrintJobHandlers :
         _permissions = permissions;
         _kiosks = kiosks;
         _jobs = jobs;
+        _attempts = attempts;
         _queue = queue;
         _notifier = notifier;
         _history = history;
@@ -562,6 +596,7 @@ public sealed class AdminPrintJobHandlers :
 
         var (job, kiosk) = await VisibleJobAsync(request.AdminUserId, request.JobId, cancellationToken).ConfigureAwait(false);
         var history = await _history.ListAsync(nameof(PrintJob), job.Id, cancellationToken).ConfigureAwait(false);
+        var attempts = await _attempts.ListForJobAsync(job.Id, cancellationToken).ConfigureAwait(false);
 
         return new PrintJobDetail(
             await _queue.ResponseAsync(job, cancellationToken).ConfigureAwait(false),
@@ -573,6 +608,22 @@ public sealed class AdminPrintJobHandlers :
                     step.ActorType.ToString(),
                     Messages.WriteStored(step.Reason),
                     step.CreatedAt)),
+            ],
+            [
+                .. attempts.OrderBy(attempt => attempt.AttemptNo).Select(attempt => new PrintAttemptView(
+                    attempt.AttemptNo,
+                    attempt.PrinterName,
+                    attempt.SpoolerJobId,
+                    attempt.StartedAt,
+                    attempt.FinishedAt,
+                    attempt.PrinterCounterBefore,
+                    attempt.PrinterCounterAfter,
+                    attempt.CounterUnit,
+                    attempt.ReportedSides,
+                    attempt.ReportedSheets,
+                    attempt.Status,
+                    attempt.ErrorCode is { } code && Messages.Has(code) ? Messages.Write(new UserMessage(code)) : null,
+                    attempt.Recovered)),
             ]);
     }
 

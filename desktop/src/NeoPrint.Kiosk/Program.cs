@@ -186,10 +186,21 @@ internal static class Program
             var fake = provider.GetRequiredService<FakePrinterService>();
 
             return machine is null ? fake
-                : useFakePrinter ? new CompositePrinterService(machine, fake)
+                : useFakePrinter ? new CompositePrinterService(machine, fake, MachineCounter(provider, machine))
                 : machine;
         });
+
+        // The page counter behind print_attempts (plan section 2.5): the fake
+        // printer counts for itself, network printers answer over SNMP.
+        services.AddSingleton<IPrinterPageCounter>(provider =>
+        {
+            var printers = provider.GetRequiredService<IPrinterService>();
+            return printers as IPrinterPageCounter ?? MachineCounter(provider, printers);
+        });
     }
+
+    private static SnmpPageCounter MachineCounter(IServiceProvider provider, IPrinterService machine)
+        => new(machine as IPrinterAddressSource, provider.GetRequiredService<ILogger<SnmpPageCounter>>());
 
     [SupportedOSPlatform("windows")]
     private static IPrinterService? WindowsPrinter(IServiceProvider provider)
@@ -274,7 +285,8 @@ internal static class Program
             provider.GetRequiredService<SpoolStore>(),
             provider.GetRequiredService<JobJournal>(),
             () => provider.GetRequiredService<KioskRuntime>().Configuration?.SelectedPrinter,
-            provider.GetRequiredService<ILogger<PrintQueueWorker>>()));
+            provider.GetRequiredService<ILogger<PrintQueueWorker>>(),
+            provider.GetRequiredService<IPrinterPageCounter>()));
         services.AddSingleton(provider => new PrinterReporter(
             provider.GetRequiredService<IPrinterService>(),
             (printers, cancellationToken) => provider.GetRequiredService<KioskApiClient>().ReportKioskPrintersAsync(printers, cancellationToken),

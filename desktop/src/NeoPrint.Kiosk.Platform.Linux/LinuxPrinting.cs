@@ -57,7 +57,7 @@ public sealed class ProcessCommandRunner : ICommandRunner
 /// The kiosk user is in <c>lpadmin</c> (plan section 7.6), so no elevation is
 /// needed. The job is named after the job code, never the file name.
 /// </remarks>
-public sealed partial class LinuxPrinterService : IPrinterService, IPrinterFormatSupport
+public sealed partial class LinuxPrinterService : IPrinterService, IPrinterFormatSupport, IPrintJobTracker, IPrinterAddressSource
 {
     private static readonly TimeSpan JobTimeout = TimeSpan.FromMinutes(15);
 
@@ -162,8 +162,83 @@ public sealed partial class LinuxPrinterService : IPrinterService, IPrinterForma
             return PrintOutcome.Failed("printer.error");
         }
 
-        return await WaitAsync(request.Printer, match.Groups["id"].Value, cancellationToken).ConfigureAwait(false);
+        var requestId = match.Groups["id"].Value;
+        request.Submitted?.Invoke(requestId);
+
+        return await WaitAsync(request.Printer, requestId, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Where a request stands after a restart: in the not-completed list it is
+    /// still printing; in CUPS's job history it finished - successfully only
+    /// when its reasons say so (CUPS keeps the history by default).
+    /// </summary>
+    public async Task<SpoolerJobState> GetJobStateAsync(string printer, string reference, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+
+        var (_, pending) = await _commands.RunAsync("lpstat", ["-W", "not-completed", "-o", printer], cancellationToken).ConfigureAwait(false);
+
+        if (ListsRequest(pending, reference))
+        {
+            return SpoolerJobState.Pending;
+        }
+
+        var (_, history) = await _commands.RunAsync("lpstat", ["-l", "-W", "completed", "-o", printer], cancellationToken).ConfigureAwait(false);
+
+        return ParseCompleted(history, reference);
+    }
+
+    /// <summary>Reads a request's block in <c>lpstat -l -W completed</c>.</summary>
+    public static SpoolerJobState ParseCompleted(string output, string reference)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+
+        var lines = output.Split('\n');
+        var start = Array.FindIndex(lines, line => line.StartsWith(reference + " ", StringComparison.Ordinal));
+
+        if (start < 0)
+        {
+            return SpoolerJobState.NotFound;
+        }
+
+        // The request's own lines are the indented ones under it.
+        var block = lines.Skip(start + 1).TakeWhile(line => line.StartsWith('\t') || line.StartsWith(' '));
+
+        return block.Any(line => line.Contains("job-completed-successfully", StringComparison.OrdinalIgnoreCase))
+            ? SpoolerJobState.Completed
+            : SpoolerJobState.Failed;
+    }
+
+    /// <summary>The printer's host from its CUPS device URI; null for USB, files and this machine.</summary>
+    public async Task<string?> GetNetworkAddressAsync(string printer, CancellationToken cancellationToken = default)
+    {
+        var (exit, output) = await _commands.RunAsync("lpstat", ["-v", printer], cancellationToken).ConfigureAwait(false);
+
+        return exit == 0 ? ParseDeviceHost(output) : null;
+    }
+
+    /// <summary>Reads <c>device for NAME: ipp://10.0.0.5/ipp/print</c>.</summary>
+    public static string? ParseDeviceHost(string output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+
+        var colon = output.IndexOf(": ", StringComparison.Ordinal);
+
+        if (colon < 0 || !Uri.TryCreate(output[(colon + 2)..].Trim(), UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        string[] network = ["ipp", "ipps", "http", "https", "socket", "lpd"];
+
+        return network.Contains(uri.Scheme, StringComparer.OrdinalIgnoreCase) && !uri.IsLoopback && uri.Host.Length > 0
+            ? uri.Host
+            : null;
+    }
+
+    private static bool ListsRequest(string output, string reference)
+        => output.Split('\n').Any(line => line.StartsWith(reference + " ", StringComparison.Ordinal));
 
     /// <summary>The <c>lp</c> command line (plan section 7.4).</summary>
     public static IReadOnlyList<string> Arguments(PrintRequest request)

@@ -182,7 +182,15 @@ public sealed record PrintRequest(
     bool Color,
     string Paper,
     string JobName,
-    string ContentType = PrintContentTypes.Pdf);
+    string ContentType = PrintContentTypes.Pdf)
+{
+    /// <summary>
+    /// Told the spooler's reference for the job the moment it is submitted
+    /// (the CUPS request id, the Windows document name), so a restart can find
+    /// it again (<see cref="IPrintJobTracker"/>).
+    /// </summary>
+    public Action<string>? Submitted { get; init; }
+}
 
 /// <summary>
 /// The page description languages a printer may take as they are (plan
@@ -236,6 +244,57 @@ public interface IPrinterFormatSupport
     /// <summary>MIME types (<see cref="PrintContentTypes"/>); empty when the printer is not known or cannot say.</summary>
     Task<IReadOnlySet<string>> GetNativeFormatsAsync(string printer, CancellationToken cancellationToken = default);
 }
+
+/// <summary>What the spooler knows about a job, asked after the kiosk restarted (plan section 7.12).</summary>
+public enum SpoolerJobState
+{
+    /// <summary>The spooler has no such job: never submitted, or gone without a trace.</summary>
+    NotFound = 0,
+
+    /// <summary>Still queued or printing.</summary>
+    Pending = 1,
+
+    /// <summary>Printed to the end.</summary>
+    Completed = 2,
+
+    /// <summary>Stopped, cancelled or aborted.</summary>
+    Failed = 3,
+}
+
+/// <summary>
+/// Finds a job the kiosk sent before it restarted (plan section 7.12, step 4:
+/// "sistem spooler-də həmin job axtarılır").
+/// </summary>
+public interface IPrintJobTracker
+{
+    /// <param name="reference">What the print reported through <see cref="PrintRequest.Submitted"/>.</param>
+    Task<SpoolerJobState> GetJobStateAsync(string printer, string reference, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Where a network printer is, for SNMP (plan section 7.10); null for a USB
+/// or local printer.
+/// </summary>
+public interface IPrinterAddressSource
+{
+    Task<string?> GetNetworkAddressAsync(string printer, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// The printer's own count of what it has printed (Printer-MIB,
+/// <c>prtMarkerLifeCount</c>) - the second witness to "did it print?"
+/// (plan section 2.5, <c>print_attempts</c>).
+/// </summary>
+public interface IPrinterPageCounter
+{
+    /// <returns>Null when the printer is not on the network or does not answer.</returns>
+    Task<PageCount?> ReadAsync(string printer, CancellationToken cancellationToken = default);
+}
+
+/// <summary>A reading of the printer's counter.</summary>
+/// <param name="Value">The lifetime count.</param>
+/// <param name="CountsSheets">True when the printer counts sheets; false when it counts impressions (sides).</param>
+public sealed record PageCount(long Value, bool CountsSheets);
 
 /// <summary>A platform that sends every job as the prepared PDF.</summary>
 public sealed class NoNativeFormats : IPrinterFormatSupport
