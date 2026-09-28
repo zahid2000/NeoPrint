@@ -24,6 +24,20 @@ public sealed class KioskSettings
     /// </summary>
     public int CrashLoopThreshold { get; set; } = 3;
 
+    /// <summary>
+    /// Whether the application locks the keyboard down itself (plan section
+    /// 7.12, the in-process layer). Off in Development, so a developer's
+    /// Windows key keeps working.
+    /// </summary>
+    public bool Lockdown { get; set; } = true;
+
+    /// <summary>
+    /// Linux: the account converters run as, without network
+    /// (<c>neoprint-convert</c>; set by the provisioning script, docs/TASKS.md
+    /// T-075). Empty runs them as the application, under prlimit only.
+    /// </summary>
+    public string ConverterUser { get; set; } = string.Empty;
+
     /// <summary>Backend address for this environment.</summary>
     public string ApiBaseUrl { get; set; } = "https://api.neoprint.az";
 

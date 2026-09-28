@@ -409,10 +409,45 @@ public sealed class LinuxConverterRunner : IConverterProcessRunner
     public const long MemoryBytes = 2L * 1024 * 1024 * 1024;
     public const int CpuSeconds = 120;
 
+    /// <summary>
+    /// The root-owned wrapper the provisioning script installs: it runs a
+    /// converter - and nothing else - under <c>timeout</c> and <c>prlimit</c>,
+    /// as the sandbox user.
+    /// </summary>
+    public const string SandboxWrapper = "/usr/local/lib/neoprint/neoprint-convert";
+
+    /// <summary>Time for the sandbox's own timeout to kill the converter and for sudo to return.</summary>
+    private static readonly TimeSpan SandboxGrace = TimeSpan.FromSeconds(15);
+
+    private readonly string? _sandboxUser;
+
+    /// <param name="sandboxUser">
+    /// The account converters run as, without network (<c>neoprint-convert</c>
+    /// on a provisioned kiosk; docs/TASKS.md T-075). Empty on a developer
+    /// machine: the converter runs as the application, under prlimit only.
+    /// </param>
+    public LinuxConverterRunner(string? sandboxUser = null)
+        => _sandboxUser = string.IsNullOrWhiteSpace(sandboxUser) ? null : sandboxUser;
+
     public Task<ConverterRun> RunAsync(
         string executable, IReadOnlyList<string> arguments, string workingDirectory, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(arguments);
+
+        if (_sandboxUser is { } user)
+        {
+            // The kiosk account cannot kill a process of another account, so
+            // the limits and the timeout are enforced inside the sandbox; the
+            // wait here only gives up on sudo itself.
+            var sandboxed = new ProcessStartInfo("sudo") { WorkingDirectory = workingDirectory };
+
+            foreach (var argument in Sandbox(user, (int)Math.Ceiling(timeout.TotalSeconds), workingDirectory, executable, arguments))
+            {
+                sandboxed.ArgumentList.Add(argument);
+            }
+
+            return RunCheckedAsync(sandboxed, executable, timeout + SandboxGrace, cancellationToken);
+        }
 
         var start = new ProcessStartInfo("prlimit") { WorkingDirectory = workingDirectory };
 
@@ -427,6 +462,11 @@ public sealed class LinuxConverterRunner : IConverterProcessRunner
     /// <summary>The prlimit command line.</summary>
     public static IReadOnlyList<string> Wrap(string executable, IReadOnlyList<string> arguments)
         => [$"--as={MemoryBytes}", $"--cpu={CpuSeconds}", "--", executable, .. arguments];
+
+    /// <summary>The sudo command line: the wrapper, as the sandbox user, never asking for a password.</summary>
+    public static IReadOnlyList<string> Sandbox(
+        string user, int timeoutSeconds, string workingDirectory, string executable, IReadOnlyList<string> arguments)
+        => ["-n", "-u", user, SandboxWrapper, timeoutSeconds.ToString(CultureInfo.InvariantCulture), workingDirectory, executable, .. arguments];
 
     private static async Task<ConverterRun> RunCheckedAsync(
         ProcessStartInfo start, string executable, TimeSpan timeout, CancellationToken cancellationToken)

@@ -107,6 +107,8 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 
 **Ekran klaviaturası (kiosk).** Kioskda fiziki klaviatura yoxdur (lockdown onu bağlayır), ona görə mətn və ya rəqəm istəyən hər ekranın öz ekran klaviaturası var: rəqəm üçün 3×4 klaviatura (`Button.key`, düymə ≥ `TouchTarget`), mətn üçün seçilmiş dilin hərfləri ilə tam klaviatura (az: ə, ğ, ı, ö, ş, ü, ç; ru: kiril). Klaviatura sahənin altında daim görünür; "Sil" düyməsi həmişə var.
 
+**Gizli admin menyusu (kiosk).** Müştəri üçün görünən heç bir element yoxdur: başlıqdakı loqoya 3 saniyə ərzində 5 toxunuş menyunu açır. Əvvəl PIN ekranı — başlıq, bir cümlə izah, PIN nöqtələrlə (rəqəmlər göstərilmir), rəqəm klaviaturası (`Button.key`), əsas düymə "Daxil ol", ikinci düymə "Ləğv et". Səhv PIN — qırmızı xəta bloku: nə oldu + neçə cəhd qalıb; 5 səhvdən sonra 5 dəqiqəlik kilid ekranı (ikon + mətn + nə vaxt açılacaq). Menyu: iri düymələr sütunu, hər əməliyyatın nəticəsi düymənin mətnindədir ("Tətbiqi yenidən başlat"); yalnız mümkün olan əməliyyat göstərilir (təhlükəsiz rejim yoxdursa "Təhlükəsiz rejimdən çıx" görünmür).
+
 **Addım göstəricisi (kiosk).** Sifariş axınının yuxarısında: nömrəli dairə + addımın adı. Keçilmiş addım — yaşıl ✓ ikonu + ad; cari addım — brend rəngli dairə + qalın ad; gələcək addım — neytral dairə + neytral ad (status rəng + ikon/nömrə + mətnlə verilir). Addımlar: Fayl → Baxış → Parametrlər → Ödəniş → Hazır; ödəniş hələ yoxdursa (Addım 4-ə qədər) "Ödəniş" addımı göstərilmir. Ləğv ekranında göstərici yoxdur.
 
 **Kartlar.** `--neutral-0` fon, `--neutral-200` kənar, `--radius-md`, daxili boşluq 16 (kiosk 24).

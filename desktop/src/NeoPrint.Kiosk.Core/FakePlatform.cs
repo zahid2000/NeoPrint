@@ -313,6 +313,14 @@ public sealed class FakeSystemControl : ISystemControl
 
     public int Reboots { get; private set; }
 
+    public int MaintenanceOpened { get; private set; }
+
+    public Task OpenMaintenanceAsync(CancellationToken cancellationToken = default)
+    {
+        MaintenanceOpened++;
+        return Task.CompletedTask;
+    }
+
     public Task RestartApplicationAsync(CancellationToken cancellationToken = default)
     {
         ApplicationRestarts++;

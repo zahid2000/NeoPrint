@@ -43,6 +43,16 @@ public static class ScreenConverters
 
     public static readonly IValueConverter IsSafeMode = Is(KioskScreen.SafeMode);
 
+    public static readonly IValueConverter IsAdmin = Is(KioskScreen.Admin);
+
+    public static readonly IValueConverter IsAdminPin = new FuncValueConverter<AdminStage, bool>(stage => stage == AdminStage.Pin);
+
+    public static readonly IValueConverter IsAdminMenu = new FuncValueConverter<AdminStage, bool>(stage => stage == AdminStage.Menu);
+
+    public static readonly IValueConverter IsAdminLocked = new FuncValueConverter<AdminStage, bool>(stage => stage == AdminStage.Locked);
+
+    public static readonly IValueConverter IsAdminNoPin = new FuncValueConverter<AdminStage, bool>(stage => stage == AdminStage.NoPin);
+
     public static readonly IValueConverter IsBrowse = Stage(FlowStage.Browse);
 
     public static readonly IValueConverter IsWorking = Stage(FlowStage.Working);

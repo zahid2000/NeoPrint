@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 
@@ -12,8 +13,8 @@ namespace NeoPrint.Kiosk.Views;
 /// <remarks>
 /// Full screen, always on top, no decorations, and it refuses to close. On a
 /// kiosk there is nowhere for the customer to go if this window is dismissed,
-/// so closing it is only possible through the hidden admin gesture, which
-/// arrives with the lockdown work in step 3.
+/// so closing it is only possible through the hidden admin menu
+/// (<see cref="AllowClose"/>).
 /// </remarks>
 public partial class MainWindow : Window
 {
@@ -27,6 +28,11 @@ public partial class MainWindow : Window
     }
 
     private MainWindowViewModel? Model => DataContext as MainWindowViewModel;
+
+    /// <summary>Set by the admin menu's actions just before the application goes.</summary>
+    public bool AllowClose { get; set; }
+
+    private void OnLogoPressed(object? sender, PointerPressedEventArgs e) => Model?.AdminTap(DateTime.UtcNow);
 
     protected override void OnLoaded(RoutedEventArgs e)
     {
@@ -45,7 +51,7 @@ public partial class MainWindow : Window
         // Plan section 7.1: closing is blocked. Shell Launcher and cage would
         // restart the application anyway, but refusing here avoids the flicker
         // and makes the intent explicit.
-        e.Cancel = true;
+        e.Cancel = !AllowClose;
 
         base.OnClosing(e);
     }

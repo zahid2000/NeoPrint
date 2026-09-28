@@ -260,7 +260,8 @@ internal static class Program
         services.AddSingleton<IRemovableDriveWatcher, Platform.Linux.LinuxRemovableDriveWatcher>();
         services.AddSingleton<IKioskLockdown, Platform.Linux.LinuxKioskLockdown>();
         services.AddSingleton<ISpoolKeyStore, Platform.Linux.LinuxSpoolKeyStore>();
-        services.AddSingleton<IConverterProcessRunner, Platform.Linux.LinuxConverterRunner>();
+        services.AddSingleton<IConverterProcessRunner>(provider => new Platform.Linux.LinuxConverterRunner(
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value.ConverterUser));
         services.AddSingleton<Platform.Linux.LinuxPrinterService>();
 #else
         services.AddSingleton<IAppPaths>(_ => new FakeAppPaths());

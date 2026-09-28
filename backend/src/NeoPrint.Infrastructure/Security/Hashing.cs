@@ -23,11 +23,6 @@ namespace NeoPrint.Infrastructure.Security;
 /// </remarks>
 public static class Hashing
 {
-    private const int SaltSize = 16;
-    private const int KeySize = 32;
-    private const int Iterations = 210_000;
-    private static readonly HashAlgorithmName Algorithm = HashAlgorithmName.SHA256;
-
     /// <summary>
     /// Hashes a value we generated with full entropy, for lookup by hash.
     /// </summary>
@@ -42,64 +37,10 @@ public static class Hashing
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token))).ToLowerInvariant();
     }
 
-    /// <summary>
-    /// Hashes a short, human-entered secret with PBKDF2 and a random salt.
-    /// </summary>
+    /// <summary>Hashes a short, human-entered secret with PBKDF2 and a random salt (<see cref="NeoPrint.Crypto.SecretHash"/>).</summary>
     /// <returns><c>pbkdf2$sha256$iterations$salt$hash</c>, all base64.</returns>
-    public static string HashSecret(string secret)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(secret);
+    public static string HashSecret(string secret) => NeoPrint.Crypto.SecretHash.Hash(secret);
 
-        var salt = RandomNumberGenerator.GetBytes(SaltSize);
-        var hash = Rfc2898DeriveBytes.Pbkdf2(
-            Encoding.UTF8.GetBytes(secret), salt, Iterations, Algorithm, KeySize);
-
-        return string.Join('$',
-            "pbkdf2", "sha256", Iterations.ToString(),
-            Convert.ToBase64String(salt), Convert.ToBase64String(hash));
-    }
-
-    /// <summary>
-    /// Verifies a short secret against a hash produced by <see cref="HashSecret"/>.
-    /// </summary>
-    /// <remarks>
-    /// The iteration count is read back from the stored value, so raising it
-    /// later does not invalidate existing hashes.
-    /// </remarks>
-    public static bool VerifySecret(string secret, string? storedHash)
-    {
-        if (string.IsNullOrWhiteSpace(secret) || string.IsNullOrWhiteSpace(storedHash))
-        {
-            return false;
-        }
-
-        var parts = storedHash.Split('$');
-        if (parts.Length != 5 || parts[0] != "pbkdf2" || parts[1] != "sha256")
-        {
-            return false;
-        }
-
-        if (!int.TryParse(parts[2], out var iterations) || iterations <= 0)
-        {
-            return false;
-        }
-
-        byte[] salt;
-        byte[] expected;
-        try
-        {
-            salt = Convert.FromBase64String(parts[3]);
-            expected = Convert.FromBase64String(parts[4]);
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
-
-        var actual = Rfc2898DeriveBytes.Pbkdf2(
-            Encoding.UTF8.GetBytes(secret), salt, iterations, Algorithm, expected.Length);
-
-        // Constant time: a timing difference would leak how much of the hash matched.
-        return CryptographicOperations.FixedTimeEquals(actual, expected);
-    }
+    /// <summary>Verifies a short secret against a hash produced by <see cref="HashSecret"/>.</summary>
+    public static bool VerifySecret(string secret, string? storedHash) => NeoPrint.Crypto.SecretHash.Verify(secret, storedHash);
 }

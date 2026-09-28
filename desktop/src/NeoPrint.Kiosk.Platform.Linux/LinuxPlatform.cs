@@ -249,18 +249,34 @@ public sealed class LinuxMachineFingerprintProvider : IMachineFingerprintProvide
 [SupportedOSPlatform("linux")]
 public sealed class LinuxSystemControl : ISystemControl
 {
+    /// <summary>
+    /// The kiosk service restarts the UI as soon as it exits (Restart=always),
+    /// so exiting is the restart - no privilege needed (docs/TASKS.md T-078).
+    /// </summary>
     public Task RestartApplicationAsync(CancellationToken cancellationToken = default)
-        => RunAsync("systemctl", "restart neoprint-kiosk", cancellationToken);
+    {
+        Environment.Exit(0);
+        return Task.CompletedTask;
+    }
 
+    /// <summary>Allowed to the kiosk account by the provisioning script's sudoers rule.</summary>
     public Task RebootAsync(CancellationToken cancellationToken = default)
         => RunAsync("systemctl", "reboot", cancellationToken);
+
+    /// <summary>
+    /// Stops the kiosk session and puts a login prompt on the screen
+    /// (<c>neoprint-maintenance.service</c>, installed by the provisioning
+    /// script); <c>systemctl start neoprint-kiosk</c> brings the kiosk back.
+    /// </summary>
+    public Task OpenMaintenanceAsync(CancellationToken cancellationToken = default)
+        => RunAsync("systemctl", "start neoprint-maintenance.service", cancellationToken);
 
     private static async Task RunAsync(string file, string arguments, CancellationToken cancellationToken)
     {
         using var process = Process.Start(new ProcessStartInfo
         {
             FileName = "sudo",
-            Arguments = $"{file} {arguments}",
+            Arguments = $"-n {file} {arguments}",
             UseShellExecute = false,
             RedirectStandardError = true,
         }) ?? throw new InvalidOperationException($"Could not start sudo {file} {arguments}.");
@@ -269,26 +285,164 @@ public sealed class LinuxSystemControl : ISystemControl
     }
 }
 
+/// <summary>Reads <c>lsblk -J</c>; plain parsing, testable on any platform.</summary>
+public static class RemovableBlockDevices
+{
+    /// <summary>
+    /// The removable filesystems <c>lsblk -J</c> lists without a mount point.
+    /// Encrypted volumes are left alone: the kiosk never asks for a password.
+    /// </summary>
+    public static IReadOnlyList<string> UnmountedRemovable(string lsblkJson)
+    {
+        ArgumentNullException.ThrowIfNull(lsblkJson);
+
+        var found = new List<string>();
+
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(lsblkJson);
+
+            if (document.RootElement.TryGetProperty("blockdevices", out var devices))
+            {
+                foreach (var device in devices.EnumerateArray())
+                {
+                    Collect(device, removable: false, found);
+                }
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Nothing readable, nothing to mount.
+        }
+
+        return found;
+    }
+
+    private static void Collect(System.Text.Json.JsonElement device, bool removable, List<string> found)
+    {
+        // A partition inherits "removable" from its disk.
+        removable |= Flag(device, "rm") || Flag(device, "hotplug");
+
+        var hasChildren = device.TryGetProperty("children", out var children) && children.GetArrayLength() > 0;
+        var fileSystem = device.TryGetProperty("fstype", out var fs) && fs.ValueKind == System.Text.Json.JsonValueKind.String ? fs.GetString() : null;
+
+        if (removable && !hasChildren && !string.IsNullOrEmpty(fileSystem) && fileSystem != "crypto_LUKS" && fileSystem != "swap"
+            && !IsMounted(device) && device.TryGetProperty("name", out var name) && name.GetString() is { } path)
+        {
+            found.Add(path);
+        }
+
+        if (hasChildren)
+        {
+            foreach (var child in children.EnumerateArray())
+            {
+                Collect(child, removable, found);
+            }
+        }
+    }
+
+    // lsblk writes "rm": true in newer versions and "rm": "1" in older ones.
+    private static bool Flag(System.Text.Json.JsonElement device, string name)
+        => device.TryGetProperty(name, out var value)
+           && (value.ValueKind == System.Text.Json.JsonValueKind.True
+               || (value.ValueKind == System.Text.Json.JsonValueKind.String && value.GetString() == "1"));
+
+    private static bool IsMounted(System.Text.Json.JsonElement device)
+    {
+        if (device.TryGetProperty("mountpoints", out var points) && points.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            return points.EnumerateArray().Any(point => point.ValueKind == System.Text.Json.JsonValueKind.String);
+        }
+
+        return device.TryGetProperty("mountpoint", out var point) && point.ValueKind == System.Text.Json.JsonValueKind.String;
+    }
+}
+
 /// <summary>
-/// Removable drives on Linux, read from <c>/proc/mounts</c>.
+/// Removable drives on Linux: mounted by the kiosk itself, then read from
+/// <c>/proc/mounts</c>.
 /// </summary>
 /// <remarks>
-/// udisks2 mounts a stick under <c>/media/kiosk</c> or <c>/run/media</c>, with
-/// noexec, under a polkit rule the provisioning script installs
-/// (plan sections 2.1, 7.12).
+/// <para>
+/// With no desktop there is no automounter, so a stick would never appear
+/// (docs/TASKS.md T-078): the kiosk finds unmounted removable filesystems with
+/// <c>lsblk</c> and asks udisks2 to mount them. The polkit rule the
+/// provisioning script installs lets only the kiosk account do that, and
+/// udisks2 mounts with noexec (plan sections 2.1, 7.12).
+/// </para>
+/// <para>
+/// A stick that would not mount (an unknown filesystem) is tried again after
+/// half a minute, not every two seconds.
+/// </para>
 /// </remarks>
 [SupportedOSPlatform("linux")]
 public sealed class LinuxRemovableDriveWatcher : IRemovableDriveWatcher
 {
     private static readonly string[] MountRoots = ["/media/", "/run/media/"];
+    private static readonly TimeSpan RetryAfter = TimeSpan.FromSeconds(30);
 
-    public Task<IReadOnlyList<RemovableDrive>> ListAsync(CancellationToken cancellationToken = default)
+    private readonly ICommandRunner _commands;
+    private readonly Dictionary<string, DateTime> _failed = new(StringComparer.Ordinal);
+
+    public LinuxRemovableDriveWatcher(ICommandRunner? commands = null) => _commands = commands ?? new ProcessCommandRunner();
+
+    public async Task<IReadOnlyList<RemovableDrive>> ListAsync(CancellationToken cancellationToken = default)
+    {
+        await MountNewAsync(cancellationToken).ConfigureAwait(false);
+
+        return Mounted();
+    }
+
+    /// <summary>Mounts what was plugged in since the last look.</summary>
+    public async Task MountNewAsync(CancellationToken cancellationToken)
+    {
+        (int ExitCode, string Output) listing;
+
+        try
+        {
+            listing = await _commands
+                .RunAsync("lsblk", ["-J", "-p", "-o", "NAME,RM,HOTPLUG,TYPE,FSTYPE,MOUNTPOINTS"], cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return;
+        }
+
+        if (listing.ExitCode != 0)
+        {
+            return;
+        }
+
+        foreach (var device in RemovableBlockDevices.UnmountedRemovable(listing.Output))
+        {
+            if (_failed.TryGetValue(device, out var at) && DateTime.UtcNow - at < RetryAfter)
+            {
+                continue;
+            }
+
+            var (exit, _) = await _commands
+                .RunAsync("udisksctl", ["mount", "--no-user-interaction", "-b", device], cancellationToken)
+                .ConfigureAwait(false);
+
+            if (exit == 0)
+            {
+                _failed.Remove(device);
+            }
+            else
+            {
+                _failed[device] = DateTime.UtcNow;
+            }
+        }
+    }
+
+    private static IReadOnlyList<RemovableDrive> Mounted()
     {
         var drives = new List<RemovableDrive>();
 
         if (!File.Exists("/proc/mounts"))
         {
-            return Task.FromResult<IReadOnlyList<RemovableDrive>>(drives);
+            return drives;
         }
 
         foreach (var line in File.ReadLines("/proc/mounts"))
@@ -322,7 +476,7 @@ public sealed class LinuxRemovableDriveWatcher : IRemovableDriveWatcher
             }
         }
 
-        return Task.FromResult<IReadOnlyList<RemovableDrive>>(drives);
+        return drives;
     }
 }
 

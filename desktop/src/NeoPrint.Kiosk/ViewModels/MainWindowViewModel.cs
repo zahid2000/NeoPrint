@@ -43,6 +43,9 @@ public enum KioskScreen
     /// until somebody looks at it.
     /// </summary>
     SafeMode = 8,
+
+    /// <summary>The hidden admin menu (plan section 7.12): PIN, then the service actions.</summary>
+    Admin = 9,
 }
 
 /// <summary>One line in the queue panel (plan section 7.2).</summary>
@@ -167,6 +170,42 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string? _printerProblem;
 
+    /// <summary>The hidden admin menu; set once the services are up.</summary>
+    [ObservableProperty]
+    private AdminMenuViewModel? _admin;
+
+    private readonly List<DateTime> _adminTaps = [];
+    private KioskScreen _beforeAdmin;
+
+    /// <summary>
+    /// A tap on the logo. Five within three seconds open the admin menu
+    /// (plan sections 7.1, 7.12); fewer do nothing a customer could notice.
+    /// </summary>
+    public void AdminTap(DateTime at)
+    {
+        _adminTaps.RemoveAll(tap => at - tap > TimeSpan.FromSeconds(3));
+        _adminTaps.Add(at);
+
+        if (_adminTaps.Count < 5 || Admin is null || Screen == KioskScreen.Admin)
+        {
+            return;
+        }
+
+        _adminTaps.Clear();
+        _beforeAdmin = Screen;
+        Admin.Open(IsSafeMode);
+        Screen = KioskScreen.Admin;
+    }
+
+    /// <summary>The admin menu was closed: back to where the kiosk was.</summary>
+    public void CloseAdmin()
+    {
+        if (Screen == KioskScreen.Admin)
+        {
+            Screen = IsSafeMode ? KioskScreen.SafeMode : _beforeAdmin;
+        }
+    }
+
     /// <summary>Whether this run started in safe mode; no other screen replaces it.</summary>
     public bool IsSafeMode { get; private set; }
 
@@ -207,7 +246,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         PrinterProblem = problemKey;
         OnPropertyChanged(nameof(OutOfServiceBody));
 
-        if (IsSafeMode)
+        if (IsSafeMode || Screen == KioskScreen.Admin)
         {
             return;
         }
@@ -316,7 +355,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         // A kiosk with no printer chosen yet waits on screen 14 rather than
         // offering to print (plan section 7.3).
-        if (Screen is KioskScreen.Flow or KioskScreen.SafeMode)
+        if (Screen is KioskScreen.Flow or KioskScreen.SafeMode or KioskScreen.Admin)
         {
             // A new configuration (a price change, a printer change) does not
             // take the customer out of their order.
@@ -337,7 +376,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// </param>
     public void ApplyAvailability(KioskAvailability availability, bool hasConfiguration)
     {
-        if (IsSafeMode)
+        if (IsSafeMode || Screen == KioskScreen.Admin)
         {
             return;
         }
@@ -384,6 +423,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     protected override void OnLanguageChanged()
     {
         Activation.Language = Language;
+
+        if (Admin is not null)
+        {
+            Admin.Language = Language;
+        }
 
         if (Flow is not null)
         {

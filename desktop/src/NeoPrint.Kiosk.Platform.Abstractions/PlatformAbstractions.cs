@@ -97,12 +97,45 @@ public interface IKioskLockdown
     void Release();
 }
 
+/// <summary>
+/// The key combinations a customer could leave the kiosk with (plan section
+/// 7.12, Keyboard Filter's list): the Windows keys, Alt+Tab, Alt+Esc,
+/// Alt+F4, Alt+Space and Ctrl+Esc. Kept apart from the hook so it is tested
+/// on every platform.
+/// </summary>
+public static class KeyboardLockdownRules
+{
+    public const int Tab = 0x09;
+    public const int Escape = 0x1B;
+    public const int Space = 0x20;
+    public const int LeftWindows = 0x5B;
+    public const int RightWindows = 0x5C;
+    public const int Applications = 0x5D;
+    public const int F4 = 0x73;
+
+    /// <param name="virtualKey">The Win32 virtual-key code.</param>
+    public static bool IsBlocked(int virtualKey, bool alt, bool control) => virtualKey switch
+    {
+        LeftWindows or RightWindows or Applications => true,
+        Tab or Escape or F4 or Space when alt => true,
+        Escape when control => true,
+        _ => false,
+    };
+}
+
 /// <summary>Restarting the application and the machine (plan section 7.6).</summary>
 public interface ISystemControl
 {
     Task RestartApplicationAsync(CancellationToken cancellationToken = default);
 
     Task RebootAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Hands the machine to a technician from the admin menu (plan section
+    /// 7.12): Windows signs the kiosk account out to the logon screen, Linux
+    /// stops the kiosk session and opens a console login.
+    /// </summary>
+    Task OpenMaintenanceAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>A connected printer, as the kiosk sees it (plan section 7.7).</summary>
@@ -378,7 +411,9 @@ public static class PrinterErrors
 /// </summary>
 /// <remarks>
 /// Windows puts the process in a Job Object; Linux starts it under
-/// <c>prlimit</c>. A restricted user without network is plan step 8.
+/// <c>prlimit</c>, as the <c>neoprint-convert</c> account whose traffic the
+/// firewall drops; Windows blocks the converters' outbound traffic by program
+/// (provisioning scripts, docs/TASKS.md T-075).
 /// </remarks>
 public interface IConverterProcessRunner
 {

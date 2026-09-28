@@ -32,8 +32,11 @@
                 BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="{DynamicResource InsetX8}">
 
+                <!-- The logo is also the hidden admin corner: five taps in three
+                     seconds (plan section 7.12). Nothing on it shows it. -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="{DynamicResource Space4}"
-                            VerticalAlignment="Center">
+                            VerticalAlignment="Center" Background="Transparent"
+                            PointerPressed="OnLogoPressed">
                     <Border Width="44" Height="44"
                             Background="{DynamicResource Brand600}"
                             CornerRadius="{DynamicResource RadiusSm}">
@@ -121,6 +124,10 @@
 
             <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsSafeMode}}">
                 <views:SafeModeView />
+            </Panel>
+
+            <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsAdmin}}">
+                <views:AdminView DataContext="{Binding Admin}" />
             </Panel>
         </Panel>
 

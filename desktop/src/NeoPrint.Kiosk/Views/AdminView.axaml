@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+             x:Class="NeoPrint.Kiosk.Views.AdminView"
+             x:DataType="vm:AdminMenuViewModel">
+
+    <!-- The hidden admin menu (docs/DESIGN_SYSTEM.md, "Gizli admin menyusu"):
+         the PIN on the screen's own keypad, then the service actions. -->
+
+    <Panel>
+        <!-- PIN -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}"
+                    IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsAdminPin}}">
+            <TextBlock Text="{Binding PinTitle}" Classes="h1" HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding PinBody}" Classes="muted" HorizontalAlignment="Center" />
+            <Border Background="{DynamicResource Brand50}" CornerRadius="{DynamicResource RadiusLg}" Padding="{DynamicResource CodeBoxPadding}"
+                    HorizontalAlignment="Center" MinWidth="480">
+                <TextBlock Text="{Binding PinDots}" FontSize="{DynamicResource FontSizeCode}" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Brand700}" HorizontalAlignment="Center" />
+            </Border>
+            <Border Classes="error" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" MaxWidth="720">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                    <PathIcon Data="{StaticResource IconError}" Width="28" Height="28" Foreground="{DynamicResource Danger500}" />
+                    <TextBlock Text="{Binding Error}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+            <UniformGrid Columns="3" HorizontalAlignment="Center">
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="1" Margin="{DynamicResource GapBelow4}"><TextBlock Text="1" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="2" Margin="{DynamicResource GapBelow4}"><TextBlock Text="2" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="3" Margin="{DynamicResource GapBelow4}"><TextBlock Text="3" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="4" Margin="{DynamicResource GapBelow4}"><TextBlock Text="4" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="5" Margin="{DynamicResource GapBelow4}"><TextBlock Text="5" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="6" Margin="{DynamicResource GapBelow4}"><TextBlock Text="6" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="7" Margin="{DynamicResource GapBelow4}"><TextBlock Text="7" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="8" Margin="{DynamicResource GapBelow4}"><TextBlock Text="8" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="9" Margin="{DynamicResource GapBelow4}"><TextBlock Text="9" /></Button>
+                <Panel />
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="0" Margin="{DynamicResource GapBelow4}"><TextBlock Text="0" /></Button>
+                <Button Classes="key" Command="{Binding EraseCommand}" Margin="{DynamicResource GapBelow4}"><TextBlock Text="{Binding EraseText}" /></Button>
+            </UniformGrid>
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" HorizontalAlignment="Center">
+                <Button Classes="secondary" Command="{Binding CloseCommand}"><TextBlock Text="{Binding CloseText}" /></Button>
+                <Button Classes="primary" Command="{Binding EnterCommand}"><TextBlock Text="{Binding EnterText}" /></Button>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Locked, or no PIN to check against -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="820">
+            <StackPanel.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                    <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsAdminLocked}" />
+                    <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsAdminNoPin}" />
+                </MultiBinding>
+            </StackPanel.IsVisible>
+            <Border Width="120" Height="120" Background="{DynamicResource WarningBg}" CornerRadius="60" HorizontalAlignment="Center">
+                <PathIcon Data="{StaticResource IconWarning}" Width="60" Height="60" Foreground="{DynamicResource Warning500}" />
+            </Border>
+            <TextBlock Text="{Binding LockedText}" Classes="h2" TextWrapping="Wrap" TextAlignment="Center"
+                       IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsAdminLocked}}" />
+            <TextBlock Text="{Binding NoPinText}" Classes="h2" TextWrapping="Wrap" TextAlignment="Center"
+                       IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsAdminNoPin}}" />
+            <Button Classes="primary" Command="{Binding CloseCommand}" HorizontalAlignment="Center"><TextBlock Text="{Binding CloseText}" /></Button>
+        </StackPanel>
+
+        <!-- The service actions -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MinWidth="720"
+                    IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsAdminMenu}}">
+            <TextBlock Text="{Binding MenuTitle}" Classes="h1" HorizontalAlignment="Center" />
+            <Button Classes="primary" HorizontalAlignment="Stretch" Command="{Binding LeaveSafeModeCommand}" IsVisible="{Binding IsSafeMode}">
+                <TextBlock Text="{Binding LeaveSafeModeText}" />
+            </Button>
+            <Button Classes="secondary" HorizontalAlignment="Stretch" Command="{Binding RestartCommand}">
+                <TextBlock Text="{Binding RestartText}" />
+            </Button>
+            <Button Classes="secondary" HorizontalAlignment="Stretch" Command="{Binding MaintenanceCommand}">
+                <TextBlock Text="{Binding MaintenanceText}" />
+            </Button>
+            <Button Classes="secondary" HorizontalAlignment="Stretch" Command="{Binding CloseCommand}">
+                <TextBlock Text="{Binding CloseText}" />
+            </Button>
+        </StackPanel>
+    </Panel>
+</UserControl>

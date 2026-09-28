@@ -1,5 +1,7 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Net.NetworkInformation;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.AccessControl;
 using System.Security.Cryptography;
@@ -257,7 +259,7 @@ public sealed class WindowsMachineFingerprintProvider : IMachineFingerprintProvi
 
 /// <summary>Restarting on Windows.</summary>
 [SupportedOSPlatform("windows")]
-public sealed class WindowsSystemControl : ISystemControl
+public sealed partial class WindowsSystemControl : ISystemControl
 {
     public Task RestartApplicationAsync(CancellationToken cancellationToken = default)
     {
@@ -279,6 +281,29 @@ public sealed class WindowsSystemControl : ISystemControl
 
         await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Signs the kiosk account out. The logon screen follows, where the
+    /// technician signs in with an administrator account - whose shell is the
+    /// ordinary desktop (Shell Launcher's default profile, plan section 7.12).
+    /// Autologon brings the kiosk back at the next start.
+    /// </summary>
+    public Task OpenMaintenanceAsync(CancellationToken cancellationToken = default)
+    {
+        const uint LogOff = 0x0;
+        const uint Force = 0x4;
+
+        if (!ExitWindowsEx(LogOff | Force, 0))
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
+
+        return Task.CompletedTask;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern bool ExitWindowsEx(uint flags, uint reason);
 }
 
 /// <summary>Removable drives on Windows.</summary>
@@ -325,18 +350,96 @@ public sealed class WindowsRemovableDriveWatcher : IRemovableDriveWatcher
 /// <remarks>
 /// The operating system level - Shell Launcher and Keyboard Filter - is the
 /// provisioning script's job, and those are the parts that actually hold. This
-/// is the belt-and-braces layer inside the process (plan sections 7.1, 7.12).
+/// is the belt-and-braces layer inside the process (plan sections 7.1, 7.12):
+/// a low-level keyboard hook that swallows the combinations of
+/// <see cref="KeyboardLockdownRules"/> while the kiosk runs. Ctrl+Alt+Del is
+/// beyond any hook; Keyboard Filter takes care of it.
 /// </remarks>
 [SupportedOSPlatform("windows")]
-public sealed class WindowsKioskLockdown : IKioskLockdown
+public sealed partial class WindowsKioskLockdown : IKioskLockdown
 {
+    private const int KeyboardLowLevel = 13;
+    private const int AltDown = 0x20;
+    private const int Control = 0x11;
+
+    private IntPtr _hook;
+
+    // Held so the delegate the hook calls is not collected while it is installed.
+    private LowLevelKeyboardProc? _callback;
+
+    private delegate IntPtr LowLevelKeyboardProc(int code, IntPtr message, IntPtr data);
+
+    /// <summary>Installs the hook; called on the UI thread, whose message loop runs it.</summary>
     public void Apply()
     {
-        // The low-level keyboard hook lands with the full lockdown in step 3;
-        // until then Shell Launcher and Keyboard Filter carry it.
+        if (_hook != IntPtr.Zero)
+        {
+            return;
+        }
+
+        _callback = OnKey;
+        _hook = SetWindowsHookEx(KeyboardLowLevel, _callback, GetModuleHandle(null), 0);
+
+        if (_hook == IntPtr.Zero)
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
     }
 
     public void Release()
     {
+        if (_hook != IntPtr.Zero)
+        {
+            UnhookWindowsHookEx(_hook);
+            _hook = IntPtr.Zero;
+            _callback = null;
+        }
     }
+
+    private IntPtr OnKey(int code, IntPtr message, IntPtr data)
+    {
+        if (code >= 0)
+        {
+            var key = Marshal.PtrToStructure<KeyInfo>(data);
+            var alt = (key.Flags & AltDown) != 0;
+            var control = (GetAsyncKeyState(Control) & 0x8000) != 0;
+
+            if (KeyboardLockdownRules.IsBlocked(key.VirtualKey, alt, control))
+            {
+                return 1;
+            }
+        }
+
+        return CallNextHookEx(_hook, code, message, data);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KeyInfo
+    {
+        public int VirtualKey;
+        public int ScanCode;
+        public int Flags;
+        public int Time;
+        public IntPtr ExtraInfo;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern IntPtr SetWindowsHookEx(int hook, LowLevelKeyboardProc callback, IntPtr module, uint thread);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern bool UnhookWindowsHookEx(IntPtr hook);
+
+    [DllImport("user32.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr message, IntPtr data);
+
+    [DllImport("user32.dll")]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern short GetAsyncKeyState(int key);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern IntPtr GetModuleHandle(string? name);
 }
