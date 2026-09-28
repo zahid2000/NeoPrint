@@ -46,6 +46,13 @@ timestamp - IP where specified - device ID where specified
 
 Published legal document versions must remain identifiable.
 
+## Analitika hadisələri
+
+`analytics_events` — MongoDB time-series kolleksiyası, `Analytics.RetentionDays`
+(default 180) keçəndən sonra MongoDB özü silir (`expireAfterSeconds`; ayar
+dəyişəndə növbəti başlanğıcda `collMod` ilə tətbiq olunur). Hadisələrdə fayl
+adı və şəxsi məlumat yoxdur — yalnız kataloqdakı sahələr saxlanılır.
+
 ## Financial data
 
 Do not apply generic user-file retention rules to payments/fiscal

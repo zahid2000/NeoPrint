@@ -533,6 +533,10 @@ nöqtəsidir.
 
 Cihaz heç bir kioska bağlı deyilsə → `403`.
 
+### `POST /api/kiosks/me/analytics`
+
+Kiosk token, `Idempotency-Key` — **paketin** açarı (itən cavabdan sonra eyni paket eyni açarla yenidən gəlir, bir dəfə saxlanılır). `{ "events": [{ "event", "sessionId", "at", "props": { … } }] }`, ən çox 200 hadisə → `202 { "accepted", "rejected" }`. Yalnız kataloqdakı hadisə və sahələr saxlanılır (plan 2.17): `screen_view {screen}`, `file_selected {format, sizeMb, pages}`, `conversion_failed {format, error}`, `options_set {copies, color, duplex, paper, pagesPerSheet, range}`, `price_shown {total, currency}`, `order_placed {sheets, jobCode}`, `print_completed {sheets, jobCode}`, `print_failed {sheets, error, jobCode}`, `flow_abandoned {lastScreen, seconds}`; başqa sahə (məs. fayl adı) və naməlum hadisə atılır, dəyər 64 simvola kəsilir. 7 gündən köhnə və ya 5 dəqiqədən çox gələcəkdə olan hadisə atılır. Pis hadisə bütün paketi rədd etmir. `analytics_events` — MongoDB time-series, `Analytics.RetentionDays` (180) sonra özü silinir.
+
 ### `POST /api/kiosks/heartbeat`
 
 `{ "appVersion", "agentVersion", "printerOnline", "safeMode" }` →

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Analytics;
 using NeoPrint.Application.Devices;
 using NeoPrint.Application.Kiosks;
 using NeoPrint.Application.PrintJobs;
@@ -56,6 +57,25 @@ public sealed class KiosksController : ControllerBase
         // A token whose device is no longer bound to a kiosk has nothing to
         // configure; the device returns to its activation screen.
         return config is null ? Forbid() : Ok(config);
+    }
+
+    /// <summary>
+    /// A batch of analytics events (plan section 2.17). The Idempotency-Key is
+    /// the batch's, so a batch resent after a lost answer is stored once.
+    /// </summary>
+    [HttpPost("me/analytics")]
+    [Authorize(Policy = AuthorizationPolicies.Kiosk)]
+    [Idempotent]
+    public async Task<ActionResult<AnalyticsBatchResult>> Analytics([FromBody] KioskAnalyticsRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (_currentUser.DeviceId is not { } deviceId)
+        {
+            return Forbid();
+        }
+
+        return Accepted(await _sender.Send(new RecordKioskAnalyticsCommand(deviceId, request.Events ?? []), cancellationToken));
     }
 
     /// <summary>The printers the kiosk can see: on start, when the list changes, on RefreshPrinters (plan section 7.7).</summary>
@@ -152,3 +172,5 @@ public sealed class KiosksController : ControllerBase
 public sealed record KioskPrintersRequest(IReadOnlyCollection<ReportedPrinterDto>? Printers);
 
 public sealed record KioskCommandResultRequest(bool Succeeded, string? MessageKey, int SheetsUsed);
+
+public sealed record KioskAnalyticsRequest(IReadOnlyList<AnalyticsEventInput>? Events);

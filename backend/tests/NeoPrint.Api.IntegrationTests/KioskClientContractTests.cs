@@ -228,6 +228,53 @@ public sealed class KioskClientContractTests
     }
 
     [DockerFact]
+    public async Task Analytics_from_the_kiosk_queue_are_stored_once_and_only_what_the_catalogue_allows()
+    {
+        if (Skip) { return; }
+
+        var paths = new FakeAppPaths();
+        var api = Client(paths);
+        var registration = await RegisterAsync(api, "contract-analytics");
+        var kioskId = await ActivateAsync(registration.DeviceId, "Contract analytics");
+
+        var queue = new AnalyticsQueue(paths, new SystemClock());
+        queue.NewSession();
+        queue.Track("file_selected", new Dictionary<string, string?> { ["format"] = "pdf", ["pages"] = "3", ["fileName"] = "Aliyev_passport.pdf" });
+        queue.Track("screen_view", new Dictionary<string, string?> { ["screen"] = "Options" });
+        queue.Track("keystroke_logger", new Dictionary<string, string?> { ["text"] = "secret" });
+
+        // The first answer is lost: the same batch goes again under its key.
+        string? sentKey = null;
+        IReadOnlyList<AnalyticsRecord>? sentEvents = null;
+        await queue.FlushAsync(
+            async (key, events, cancellationToken) =>
+            {
+                sentKey = key;
+                sentEvents = events;
+                await api.SendAnalyticsAsync(key, events, cancellationToken);
+            },
+            CancellationToken.None);
+        await api.SendAnalyticsAsync(sentKey!, sentEvents!);
+
+        using var scope = _fixture.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+        var stored = await context.AnalyticsEvents
+            .Find(Builders<NeoPrint.Domain.Analytics.AnalyticsEvent>.Filter.Eq(stored => stored.KioskId, kioskId))
+            .ToListAsync();
+
+        stored.Select(stored => stored.Event).Should().BeEquivalentTo(["file_selected", "screen_view"], "an unknown event is dropped, a batch sent twice is stored once");
+        stored.Single(stored => stored.Event == "file_selected").Props.Should().BeEquivalentTo(
+            new Dictionary<string, string> { ["format"] = "pdf", ["pages"] = "3" }, "a property the catalogue does not list never reaches the database");
+
+        // A time-series collection that expires by itself (plan section 2.17).
+        var options = (await (await context.Database.ListCollectionsAsync(
+                new ListCollectionsOptions { Filter = new MongoDB.Bson.BsonDocument("name", "analytics_events") })).SingleAsync())["options"]
+            .AsBsonDocument;
+        options.Contains("timeseries").Should().BeTrue();
+        options["expireAfterSeconds"].ToInt64().Should().Be((long)TimeSpan.FromDays(180).TotalSeconds);
+    }
+
+    [DockerFact]
     public async Task The_cancel_screen_finds_an_order_by_its_code_and_cancels_it()
     {
         if (Skip) { return; }

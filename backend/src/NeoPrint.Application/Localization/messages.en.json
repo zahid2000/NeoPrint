@@ -127,6 +127,7 @@
   "kiosks.codeFormat": "The kiosk code must look like KSK-0000.",
   "kiosks.codeTaken": "The kiosk code '{code}' is already in use.",
   "kiosks.deleteHasHistory": "A device has been bound to {code}, so it has a history and cannot be deleted. Only a kiosk that was never activated can be deleted.",
+  "analytics.batchInvalid": "The analytics batch is missing or too large (200 events at most).",
   "kiosks.paperNoTray": "This kiosk has no tray set up for {paper} paper. Set the tray capacity in the kiosk settings first.",
   "kiosks.paperRefillInvalid": "That does not fit the tray: capacity {capacity}, {current} sheets in it now.",
   "kiosks.paperRefillModeInvalid": "The refill method is not valid.",

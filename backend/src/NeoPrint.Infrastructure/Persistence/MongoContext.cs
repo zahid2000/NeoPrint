@@ -122,6 +122,9 @@ public sealed class MongoContext
     public MongoSet<Domain.PrintJobs.PrintAttempt> PrintAttempts => Set<Domain.PrintJobs.PrintAttempt>("print_attempts");
     public MongoSet<SupplyEvent> SupplyEvents => Set<SupplyEvent>("supply_events");
 
+    /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 2.17).</summary>
+    public MongoSet<Domain.Analytics.AnalyticsEvent> AnalyticsEvents => Set<Domain.Analytics.AnalyticsEvent>("analytics_events");
+
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
     public MongoSet<AuditLog> AuditLogs => Set<AuditLog>("audit_logs");
@@ -385,8 +388,10 @@ public sealed class MongoContext
     /// large collection recreating is not instant.
     /// </remarks>
     public async Task ApplyRetentionAsync(
-        TimeSpan stateTransitions, TimeSpan providerEvents, CancellationToken cancellationToken = default)
+        TimeSpan stateTransitions, TimeSpan providerEvents, TimeSpan analytics = default, CancellationToken cancellationToken = default)
     {
+        await EnsureAnalyticsAsync(analytics, cancellationToken).ConfigureAwait(false);
+
         await EnsureTtlAsync(
                 "state_transitions", nameof(StateTransition.CreatedAt),
                 "ttl_state_transitions", stateTransitions, cancellationToken)
@@ -395,6 +400,60 @@ public sealed class MongoContext
         await EnsureTtlAsync(
                 "provider_events", nameof(ProviderEvent.ProcessedAt),
                 "ttl_provider_events", providerEvents, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The analytics events: a time-series collection that expires by itself
+    /// after <c>Analytics.RetentionDays</c> (plan section 2.17). Created here,
+    /// before the first insert, because an insert into a missing collection
+    /// would make an ordinary one.
+    /// </summary>
+    private async Task EnsureAnalyticsAsync(TimeSpan expireAfter, CancellationToken cancellationToken)
+    {
+        const string Name = "analytics_events";
+
+        if (expireAfter <= TimeSpan.Zero)
+        {
+            return;
+        }
+
+        var existing = await (await _database
+                .ListCollectionNamesAsync(new ListCollectionNamesOptions { Filter = new BsonDocument("name", Name) }, cancellationToken)
+                .ConfigureAwait(false))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (existing.Count == 0)
+        {
+            try
+            {
+                await _database
+                    .CreateCollectionAsync(
+                        Name,
+                        new CreateCollectionOptions
+                        {
+                            TimeSeriesOptions = new TimeSeriesOptions(
+                                nameof(Domain.Analytics.AnalyticsEvent.Timestamp),
+                                nameof(Domain.Analytics.AnalyticsEvent.KioskId),
+                                TimeSeriesGranularity.Minutes),
+                            ExpireAfter = expireAfter,
+                        },
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                return;
+            }
+            catch (MongoCommandException exception) when (exception.Code == 48)
+            {
+                // NamespaceExists: another instance created it a moment ago.
+            }
+        }
+
+        await _database
+            .RunCommandAsync<BsonDocument>(
+                new BsonDocument { ["collMod"] = Name, ["expireAfterSeconds"] = (long)expireAfter.TotalSeconds },
+                cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }
 

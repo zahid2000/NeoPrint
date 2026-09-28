@@ -91,6 +91,8 @@ internal static class Program
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<DeviceEnrollmentService>();
         services.AddSingleton<ConfigurationCache>();
+        services.AddSingleton<AnalyticsQueue>();
+        services.AddSingleton<IKioskAnalytics>(provider => provider.GetRequiredService<AnalyticsQueue>());
         services.AddSingleton(provider => new CrashLoopGuard(
             provider.GetRequiredService<IAppPaths>(),
             provider.GetRequiredService<IClock>(),

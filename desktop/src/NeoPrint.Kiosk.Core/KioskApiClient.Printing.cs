@@ -139,6 +139,25 @@ public sealed partial class KioskApiClient
         await SendAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// A batch of analytics events (plan section 2.17); the key is the
+    /// batch's, so sending it again after a lost answer stores it once.
+    /// </summary>
+    public async Task SendAnalyticsAsync(string batchKey, IReadOnlyList<AnalyticsRecord> events, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(events);
+
+        using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, "api/kiosks/me/analytics", cancellationToken)
+            .ConfigureAwait(false);
+
+        request.Headers.Add("Idempotency-Key", batchKey);
+        request.Content = JsonContent.Create(
+            new { events = events.Select(record => new { @event = record.Event, sessionId = record.SessionId, at = record.At, props = record.Props }) },
+            options: JsonOptions);
+
+        await SendAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Commands sent while this kiosk was not listening.</summary>
     public Task<IReadOnlyList<KioskCommandInfo>> GetOpenCommandsAsync(CancellationToken cancellationToken = default)
         => GetAsync<IReadOnlyList<KioskCommandInfo>>("api/kiosks/me/commands", cancellationToken);

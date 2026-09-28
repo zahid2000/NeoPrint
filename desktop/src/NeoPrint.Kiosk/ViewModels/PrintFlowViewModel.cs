@@ -95,6 +95,15 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
     private readonly KioskOrderService _orders;
     private readonly IRemovableDriveWatcher _drives;
+    private readonly IKioskAnalytics _analytics;
+
+    // One customer's visit, for the pilot report (plan section 2.17): when it
+    // began, and whether it ended in an order (or a cancellation) rather
+    // than being walked away from.
+    private DateTime? _visitStartedAt;
+    private bool _visitDone;
+    private decimal? _quotedTotal;
+    private string? _quotedCurrency;
 
     private string? _driveRoot;
 
@@ -111,10 +120,11 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     // second job).
     private string? _orderKey;
 
-    public PrintFlowViewModel(KioskOrderService orders, IRemovableDriveWatcher drives)
+    public PrintFlowViewModel(KioskOrderService orders, IRemovableDriveWatcher drives, IKioskAnalytics? analytics = null)
     {
         _orders = orders;
         _drives = drives;
+        _analytics = analytics ?? NoAnalytics.Instance;
     }
 
     /// <summary>The customer is done or gave up: back to the home screen.</summary>
@@ -322,15 +332,54 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         ArgumentNullException.ThrowIfNull(drive);
 
         Reset();
+        BeginVisit();
         _driveRoot = drive.Path;
         await ShowFolderAsync(drive.Path).ConfigureAwait(true);
+        Track("screen_view", ("screen", nameof(FlowStage.Browse)));
     }
 
     /// <summary>The cancel-by-code screen (plan section 7.3, screen 11).</summary>
     public void StartCancel()
     {
         Reset();
+        BeginVisit();
         Stage = FlowStage.CancelLookup;
+    }
+
+    /// <summary>Nobody touched the screen for too long: the visit ends where it was (plan 2.4).</summary>
+    public void Abandon()
+    {
+        EndVisitUnfinished();
+        Reset();
+    }
+
+    private void BeginVisit()
+    {
+        _analytics.NewSession();
+        _visitStartedAt = DateTime.UtcNow;
+        _visitDone = false;
+    }
+
+    /// <summary>The customer left before ordering or cancelling: where, and after how long.</summary>
+    private void EndVisitUnfinished()
+    {
+        if (_visitStartedAt is { } started && !_visitDone)
+        {
+            Track(
+                "flow_abandoned",
+                ("lastScreen", Stage.ToString()),
+                ("seconds", ((int)(DateTime.UtcNow - started).TotalSeconds).ToString(CultureInfo.InvariantCulture)));
+        }
+
+        _visitStartedAt = null;
+    }
+
+    private void Track(string name, params (string Key, string? Value)[] props)
+    {
+        if (_visitStartedAt is not null)
+        {
+            _analytics.Track(name, props.ToDictionary(prop => prop.Key, prop => prop.Value, StringComparer.Ordinal));
+        }
     }
 
     /// <summary>The drive was pulled out: whatever was not ordered is dropped (plan 7.3).</summary>
@@ -341,6 +390,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
             return;
         }
 
+        EndVisitUnfinished();
         Reset();
         Error = T("browse.removed");
         Finished?.Invoke();
@@ -371,6 +421,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     [RelayCommand]
     private void Leave()
     {
+        EndVisitUnfinished();
         Reset();
         Finished?.Invoke();
     }
@@ -517,11 +568,22 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
             await LoadPagesAsync().ConfigureAwait(true);
             ResetOptions();
             Stage = FlowStage.Preview;
+
+            Track(
+                "file_selected",
+                ("format", _document.Format.Extension),
+                ("sizeMb", (new FileInfo(path).Length / 1024d / 1024d).ToString("0.##", CultureInfo.InvariantCulture)),
+                ("pages", _document.PageCount.ToString(CultureInfo.InvariantCulture)));
         }
         catch (PrintingException exception)
         {
             Error = T(exception.MessageKey);
             Stage = FlowStage.Browse;
+
+            Track(
+                "conversion_failed",
+                ("format", System.IO.Path.GetExtension(name).TrimStart('.').ToLowerInvariant()),
+                ("error", exception.MessageKey));
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -797,6 +859,11 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         Error = null;
         Stage = FlowStage.Options;
         Requote();
+
+        if (_quotedTotal is { } total)
+        {
+            Track("price_shown", ("total", total.ToString(CultureInfo.InvariantCulture)), ("currency", _quotedCurrency));
+        }
     }
 
     [RelayCommand]
@@ -869,6 +936,8 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         }
 
         PriceText = Formats.Money(quote.Price.FinalPrice, Language);
+        _quotedTotal = quote.Price.FinalPrice;
+        _quotedCurrency = quote.Price.Currency;
 
         var detail = T("options.summary", quote.SelectedPages, quote.Sheets);
 
@@ -924,6 +993,17 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
             PlacedCode = job.JobCode;
             PlacedPosition = job.QueuePosition is { } position ? T("placed.position", position) : null;
+
+            Track(
+                "options_set",
+                ("copies", options.Copies.ToString(CultureInfo.InvariantCulture)),
+                ("color", options.Color ? "true" : "false"),
+                ("duplex", options.Duplex ? "true" : "false"),
+                ("paper", options.Paper),
+                ("pagesPerSheet", options.PagesPerSheet.ToString(CultureInfo.InvariantCulture)),
+                ("range", options.PageRange is null ? "all" : "custom"));
+            Track("order_placed", ("sheets", job.RequiredSheets.ToString(CultureInfo.InvariantCulture)), ("jobCode", job.JobCode));
+            _visitDone = true;
 
             // The file is in the encrypted spool now; the working copy goes,
             // and the drive can come out.
@@ -1049,6 +1129,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         {
             await Task.Run(() => _orders.CancelAsync(job.Id, CancellationToken.None)).ConfigureAwait(true);
             Stage = FlowStage.CancelDone;
+            _visitDone = true;
         }
         catch (KioskApiException exception)
         {
@@ -1064,6 +1145,11 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
     partial void OnStageChanged(FlowStage value)
     {
+        if (value != FlowStage.Working)
+        {
+            Track("screen_view", ("screen", value.ToString()));
+        }
+
         // Working keeps the step it was started from: preparing a file is still
         // choosing one, placing an order is still the options.
         _step = value switch

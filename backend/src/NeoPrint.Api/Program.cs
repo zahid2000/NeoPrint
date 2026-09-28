@@ -390,7 +390,8 @@ await using (var scope = app.Services.CreateAsyncScope())
 
     await mongo.ApplyRetentionAsync(
         TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.RetentionStateTransitionDays, 365)),
-        TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.RetentionProviderEventDays, 180)));
+        TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.RetentionProviderEventDays, 180)),
+        TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.AnalyticsRetentionDays, 180)));
 
     if (app.Environment.IsDevelopment())
     {

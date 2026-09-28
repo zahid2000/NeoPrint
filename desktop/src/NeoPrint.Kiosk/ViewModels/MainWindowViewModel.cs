@@ -240,7 +240,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // A file being prepared or an order being placed is left to finish.
         if (Screen == KioskScreen.Flow && Flow is { Stage: not FlowStage.Working } flow && idle > orderLimit)
         {
-            flow.Reset();
+            flow.Abandon();
             Screen = PrinterProblem is null ? KioskScreen.Home : KioskScreen.OutOfService;
             reset = true;
         }

@@ -26,6 +26,7 @@ public sealed class KioskSession
 {
     private static readonly TimeSpan DrivePoll = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan PrinterReportInterval = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan AnalyticsInterval = TimeSpan.FromSeconds(60);
 
     private readonly IServiceProvider _services;
     private readonly MainWindowViewModel _model;
@@ -120,6 +121,19 @@ public sealed class KioskSession
             Action<PrinterActivity> activityChanged = activity =>
                 Dispatcher.UIThread.Post(() => _model.SetPrinterProblem(activity.LastErrorCode));
 
+            // How each job ended, for the pilot report (plan section 2.17);
+            // the order's own visit is over by then, so it goes under the job.
+            var analytics = _services.GetRequiredService<IKioskAnalytics>();
+            Action<JournalEntry> jobFinished = entry => analytics.Track(
+                entry.State == JournalState.Printed ? "print_completed" : "print_failed",
+                new Dictionary<string, string?>
+                {
+                    ["sheets"] = entry.PrintedSheets.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["error"] = entry.ErrorCode,
+                    ["jobCode"] = entry.JobCode,
+                },
+                sessionId: $"job-{entry.JobCode}");
+
             hub.QueueUpdated += queueUpdated;
             hub.JobAdded += jobChanged;
             hub.JobCancelled += jobChanged;
@@ -128,6 +142,7 @@ public sealed class KioskSession
             hub.CommandReceived += commandReceived;
             hub.Reconnected += reconnected;
             worker.ActivityChanged += activityChanged;
+            worker.JobFinished += jobFinished;
 
             unsubscribe.Add(() =>
             {
@@ -139,6 +154,7 @@ public sealed class KioskSession
                 hub.CommandReceived -= commandReceived;
                 hub.Reconnected -= reconnected;
                 worker.ActivityChanged -= activityChanged;
+                worker.JobFinished -= jobFinished;
             });
 
             _ = RunGuardedAsync("kiosk hub", () => hub.StartAsync(token), token);
@@ -153,6 +169,7 @@ public sealed class KioskSession
             }
 
             _ = RunGuardedAsync("printer reports", () => ReportPrintersAsync(reporter, token), token);
+            _ = RunGuardedAsync("analytics", () => SendAnalyticsAsync(api, token), token);
 
             await HeartbeatLoopAsync(runtime, printers, token).ConfigureAwait(false);
         }
@@ -188,7 +205,7 @@ public sealed class KioskSession
 
     private void SetUpFlow(KioskOrderService orders, IRemovableDriveWatcher drives, List<Action> unsubscribe)
     {
-        var flow = new PrintFlowViewModel(orders, drives) { Language = _model.Language };
+        var flow = new PrintFlowViewModel(orders, drives, _services.GetRequiredService<IKioskAnalytics>()) { Language = _model.Language };
 
         flow.Finished += () =>
         {
@@ -331,6 +348,18 @@ public sealed class KioskSession
         {
             await Task.Delay(PrinterReportInterval, cancellationToken).ConfigureAwait(false);
             await TryAsync("printer report", () => reporter.ReportAsync(force: false, cancellationToken)).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Sends the waiting analytics once a minute; offline they wait on disk.</summary>
+    private async Task SendAnalyticsAsync(KioskApiClient api, CancellationToken cancellationToken)
+    {
+        var queue = _services.GetRequiredService<AnalyticsQueue>();
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await Task.Delay(AnalyticsInterval, cancellationToken).ConfigureAwait(false);
+            await TryAsync("analytics", () => queue.FlushAsync(api.SendAnalyticsAsync, cancellationToken)).ConfigureAwait(false);
         }
     }
 
