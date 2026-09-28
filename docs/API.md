@@ -73,21 +73,30 @@ Aşağıdakı endpoint-lər `Idempotency-Key` header-ini qəbul edir:
 Açar çağırana və endpoint-ə görə unikaldır: bir istifadəçinin açarı başqasının
 cavabını qaytara bilməz. Maksimum 128 simvol, 24 saat saxlanılır.
 
+### Dil (`Accept-Language`)
+
+Serverin istifadəçiyə yazdığı hər mətn (xəta, validasiya, fayl emalı səbəbi, versiya qeydi, saxlama testi nəticəsi) `Accept-Language` başlığındakı dildə qaytarılır: `az` (standart), `en`, `ru`. Çəkili siyahı dəstəklənir (`de-DE,ru;q=0.5` → `ru`); dəstəklənməyən dil → `az`. Cavabda `Content-Language` başlığı seçilən dili göstərir. Mobil tətbiq, admin paneli və kiosk öz **interfeys** dilini göndərir (brauzerin dilini yox). Email isə həmişə alıcının öz dilində (`users.language`) gedir.
+
+Mətnlər `backend/src/NeoPrint.Application/Localization/messages.{az,en,ru}.json` kataloqlarındadır. Bazada saxlanan səbəblər (məs. `files.failureReason`) açar + arqument kimi saxlanır və oxuyanın dilində yazılır; Addım 2-dən qalan köhnə mətnlər olduğu kimi göstərilir.
+
 ### Xəta formatı
 
-RFC 7807 ProblemDetails:
+RFC 7807 ProblemDetails; `title` və `detail` sorğunun dilindədir, `code` isə mesajın dildən asılı olmayan açarıdır (müştəri mətni parse etmədən konkret qaydaya reaksiya verə bilər):
 
 ```json
 {
   "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-  "title": "Request rejected",
+  "title": "Sorğu rədd edildi",
   "status": 409,
-  "detail": "Bu cihaz ləğv edilib. Kiosk tətbiqini yenidən quraşdırın.",
+  "detail": "Bu cihaz ləğv edilib. Kiosk tətbiqini yenidən quraşdırın — yeni cihaz açarı yaradılacaq.",
+  "code": "devices.revokedReinstall",
   "instance": "/api/devices/register",
   "correlationId": "69068640f208405dbe922627cf9b1638",
   "traceId": "0HNOQ1TUTAQ9H"
 }
 ```
+
+Validasiya xətasında (`400`) `errors` sahə üzrə mətnlərdir; tək xəta olanda `code` da verilir.
 
 | Status | Nə vaxt |
 |---|---|

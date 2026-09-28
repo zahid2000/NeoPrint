@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
+using NeoPrint.Application.Localization;
+using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Users;
 
 namespace NeoPrint.Application.Auth;
@@ -155,13 +157,14 @@ public sealed class RegisterUserHandler : IRequestHandler<RegisterUserCommand, R
 
         await _email.SendAsync(
                 user.Email,
-                "NeoPrint — email təsdiqi",
-                $"""
-                 <p>NeoPrint hesabınızı təsdiqləmək üçün kod:</p>
-                 <p style="font-size:28px;letter-spacing:6px;font-weight:bold">{code}</p>
-                 <p>Kod {ConfirmationLifetime.TotalMinutes:0} dəqiqə ərzində etibarlıdır.</p>
-                 <p>Bu qeydiyyatı siz etməmisinizsə, bu məktubu nəzərə almayın.</p>
-                 """,
+                // The recipient's own language, whatever the request was in.
+                Messages.Write(new UserMessage("email.confirm.subject"), user.Language),
+                Messages.Write(
+                    UserMessage.Of(
+                        "email.confirm.body",
+                        ("code", code),
+                        ("minutes", (int)ConfirmationLifetime.TotalMinutes)),
+                    user.Language),
                 cancellationToken)
             .ConfigureAwait(false);
     }
@@ -169,12 +172,10 @@ public sealed class RegisterUserHandler : IRequestHandler<RegisterUserCommand, R
     private Task SendAlreadyRegisteredNoticeAsync(string email, CancellationToken cancellationToken)
         => _email.SendAsync(
             email,
-            "NeoPrint — qeydiyyat cəhdi",
-            """
-            <p>Bu email ünvanı ilə NeoPrint hesabı artıq mövcuddur.</p>
-            <p>Şifrənizi unutmusunuzsa, tətbiqdəki "Şifrəni unutdum" bölməsindən istifadə edin.</p>
-            <p>Bu cəhd sizə aid deyilsə, heç nə etmək lazım deyil.</p>
-            """,
+            // The language of the attempt: the account's own is not looked up,
+            // so the response time says nothing about the address.
+            Messages.Write(new UserMessage("email.alreadyRegistered.subject")),
+            Messages.Write(new UserMessage("email.alreadyRegistered.body")),
             cancellationToken);
 
     private async Task<string> GenerateUniquePublicIdAsync(CancellationToken cancellationToken)
@@ -241,7 +242,7 @@ public sealed class ConfirmEmailHandler : IRequestHandler<ConfirmEmailCommand, A
 
         // One message for every failure, so this cannot be used to discover
         // which addresses are registered.
-        var invalid = new ValidationException([new ValidationError("code", "Kod yanlışdır və ya vaxtı keçib.")]);
+        var invalid = new ValidationException([new ValidationError("code", "auth.codeInvalid")]);
 
         if (user is null)
         {
@@ -322,7 +323,7 @@ public sealed class LoginUserHandler : IRequestHandler<LoginUserCommand, AuthRes
         var user = await _users.FindByEmailAsync(email, cancellationToken).ConfigureAwait(false);
 
         var invalid = new ValidationException(
-            [new ValidationError("", "Email və ya şifrə yanlışdır.")]);
+            [new ValidationError("", "auth.credentialsInvalid")]);
 
         if (user is null)
         {
@@ -350,13 +351,13 @@ public sealed class LoginUserHandler : IRequestHandler<LoginUserCommand, AuthRes
         if (!user.CanSignIn)
         {
             throw new ValidationException(
-                [new ValidationError("", "Bu hesab bloklanıb. Dəstəklə əlaqə saxlayın.")]);
+                [new ValidationError("", "auth.accountBlocked")]);
         }
 
         if (!user.EmailConfirmed)
         {
             throw new ValidationException(
-                [new ValidationError("", "Email ünvanı hələ təsdiqlənməyib. Tətbiqdəki kodu daxil edin.")]);
+                [new ValidationError("", "auth.emailNotConfirmed")]);
         }
 
         if (!string.IsNullOrWhiteSpace(request.DeviceId) && !user.DeviceIds.Contains(request.DeviceId))
@@ -408,7 +409,7 @@ public sealed class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, A
         var stored = await _tokens.FindByHashAsync(hash, cancellationToken).ConfigureAwait(false);
 
         var invalid = new ValidationException(
-            [new ValidationError("refreshToken", "Sessiya bitib. Yenidən daxil olun.")]);
+            [new ValidationError("refreshToken", "auth.sessionEnded")]);
 
         if (stored is null)
         {

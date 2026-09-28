@@ -55,7 +55,7 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
 
         if (request.Values.Count == 0)
         {
-            yield return new ValidationError("values", "Dəyişdiriləcək parametr göstərilməyib.");
+            yield return new ValidationError("values", "settings.nothingToChange");
             yield break;
         }
 
@@ -65,30 +65,30 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
         {
             if (!catalogue.TryGetValue(key, out var definition))
             {
-                yield return new ValidationError(key, $"'{key}' tanınmayan parametrdir.");
+                yield return new ValidationError(key, "settings.unknownKey", ("key", key));
                 continue;
             }
 
             if (value is null)
             {
-                yield return new ValidationError(key, "Dəyər boş ola bilməz.");
+                yield return new ValidationError(key, "settings.valueEmpty");
                 continue;
             }
 
             switch (definition.ValueType)
             {
                 case SettingValueType.Integer when !int.TryParse(value, out _):
-                    yield return new ValidationError(key, "Dəyər tam ədəd olmalıdır.");
+                    yield return new ValidationError(key, "settings.valueInteger");
                     break;
 
                 case SettingValueType.Boolean when !bool.TryParse(value, out _):
-                    yield return new ValidationError(key, "Dəyər true və ya false olmalıdır.");
+                    yield return new ValidationError(key, "settings.valueBoolean");
                     break;
 
                 case SettingValueType.Decimal when !decimal.TryParse(
                     value, System.Globalization.NumberStyles.Number,
                     System.Globalization.CultureInfo.InvariantCulture, out _):
-                    yield return new ValidationError(key, "Dəyər onluq ədəd olmalıdır.");
+                    yield return new ValidationError(key, "settings.valueDecimal");
                     break;
 
                 default:

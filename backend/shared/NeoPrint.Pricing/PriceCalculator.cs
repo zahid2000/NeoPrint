@@ -66,12 +66,24 @@ public sealed record PriceBreakdown(
     string Currency);
 
 /// <summary>A price could not be computed from the input.</summary>
+/// <remarks>
+/// Carries a message key and its values, not text: the backend and the kiosk
+/// each write it out in their reader's language from their own catalogs.
+/// </remarks>
 public sealed class PricingException : Exception
 {
-    public PricingException(string message)
-        : base(message)
+    public PricingException(string code, params (string Name, object? Value)[] arguments)
+        : base(code)
     {
+        Code = code;
+        Arguments = arguments;
     }
+
+    /// <summary>The message key, <c>pricing.*</c>.</summary>
+    public string Code { get; }
+
+    /// <summary>The values for the message's placeholders.</summary>
+    public (string Name, object? Value)[] Arguments { get; }
 }
 
 /// <summary>
@@ -106,7 +118,7 @@ public static class PriceCalculator
 
         if (!table.PaperMultipliers.TryGetValue(spec.Paper, out var multiplier))
         {
-            throw new PricingException($"Bu profil '{spec.Paper}' kağızı üçün qiymət vermir.");
+            throw new PricingException("pricing.paperNotPriced", ("paper", spec.Paper));
         }
 
         var sidesPerCopy = (spec.SelectedPages + spec.PagesPerSheet - 1) / spec.PagesPerSheet;
@@ -156,22 +168,22 @@ public static class PriceCalculator
     {
         if (spec.SelectedPages < 1)
         {
-            throw new PricingException("Ən azı bir səhifə seçilməlidir.");
+            throw new PricingException("pricing.noPages");
         }
 
         if (spec.Copies is < 1 or > MaxCopies)
         {
-            throw new PricingException($"Nüsxə sayı 1 ilə {MaxCopies} arasında olmalıdır.");
+            throw new PricingException("pricing.copiesRange", ("max", MaxCopies));
         }
 
         if (spec.PagesPerSheet is < 1 or > MaxPagesPerSheet)
         {
-            throw new PricingException($"Səhifədə səhifə sayı 1 ilə {MaxPagesPerSheet} arasında olmalıdır.");
+            throw new PricingException("pricing.pagesPerSheetRange", ("max", MaxPagesPerSheet));
         }
 
         if (string.IsNullOrWhiteSpace(spec.Paper))
         {
-            throw new PricingException("Kağız ölçüsü göstərilməyib.");
+            throw new PricingException("pricing.paperRequired");
         }
     }
 }

@@ -104,7 +104,7 @@ internal static class AuthRules
     {
         if (string.IsNullOrWhiteSpace(email))
         {
-            yield return new ValidationError(field, "Email ünvanı tələb olunur.");
+            yield return new ValidationError(field, "auth.emailRequired");
             yield break;
         }
 
@@ -116,7 +116,7 @@ internal static class AuthRules
         if (at <= 0 || at != trimmed.LastIndexOf('@') || at == trimmed.Length - 1 ||
             !trimmed[(at + 1)..].Contains('.', StringComparison.Ordinal) || trimmed.Length > 254)
         {
-            yield return new ValidationError(field, "Email ünvanı düzgün deyil.");
+            yield return new ValidationError(field, "auth.emailInvalid");
         }
     }
 
@@ -124,19 +124,19 @@ internal static class AuthRules
     {
         if (string.IsNullOrEmpty(password))
         {
-            yield return new ValidationError(field, "Şifrə tələb olunur.");
+            yield return new ValidationError(field, "auth.passwordRequired");
             yield break;
         }
 
         if (password.Length < MinimumPasswordLength)
         {
             yield return new ValidationError(
-                field, $"Şifrə ən azı {MinimumPasswordLength} simvol olmalıdır.");
+                field, "auth.passwordTooShort", ("min", MinimumPasswordLength));
         }
 
         if (password.Length > 128)
         {
-            yield return new ValidationError(field, "Şifrə 128 simvoldan uzun ola bilməz.");
+            yield return new ValidationError(field, "auth.passwordTooLong");
         }
     }
 
@@ -145,7 +145,7 @@ internal static class AuthRules
         if (!string.IsNullOrWhiteSpace(language) && !SupportedLanguages.Contains(language))
         {
             yield return new ValidationError(
-                field, $"Dil {string.Join(", ", SupportedLanguages)} ola bilər.");
+                field, "common.languageInvalid");
         }
     }
 }
@@ -171,7 +171,7 @@ public sealed class RegisterUserCommandValidator : Abstractions.IValidator<Regis
 
         if (request.FullName is { Length: > 120 })
         {
-            yield return new ValidationError("fullName", "Ad 120 simvoldan uzun ola bilməz.");
+            yield return new ValidationError("fullName", "auth.nameTooLong");
         }
 
         // Plan section 2.8: the privacy policy and the terms are accepted at
@@ -181,17 +181,17 @@ public sealed class RegisterUserCommandValidator : Abstractions.IValidator<Regis
 
         if (!accepted.Contains(LegalDocumentType.Privacy))
         {
-            yield return new ValidationError("consents", "Məxfilik siyasəti qəbul edilməlidir.");
+            yield return new ValidationError("consents", "auth.privacyRequired");
         }
 
         if (!accepted.Contains(LegalDocumentType.Terms))
         {
-            yield return new ValidationError("consents", "İstifadə şərtləri qəbul edilməlidir.");
+            yield return new ValidationError("consents", "auth.termsRequired");
         }
 
         if (request.Consents.Any(consent => string.IsNullOrWhiteSpace(consent.Version)))
         {
-            yield return new ValidationError("consents", "Razılıq üçün sənəd versiyası göstərilməlidir.");
+            yield return new ValidationError("consents", "auth.consentVersionRequired");
         }
     }
 }
@@ -208,7 +208,7 @@ public sealed class ConfirmEmailCommandValidator : Abstractions.IValidator<Confi
         if (string.IsNullOrWhiteSpace(request.Code) || request.Code.Trim().Length != 6 ||
             !request.Code.Trim().All(char.IsAsciiDigit))
         {
-            yield return new ValidationError("code", "Təsdiq kodu 6 rəqəmdən ibarət olmalıdır.");
+            yield return new ValidationError("code", "auth.codeFormat");
         }
     }
 }
@@ -224,7 +224,7 @@ public sealed class LoginUserCommandValidator : Abstractions.IValidator<LoginUse
 
         if (string.IsNullOrEmpty(request.Password))
         {
-            yield return new ValidationError("password", "Şifrə tələb olunur.");
+            yield return new ValidationError("password", "auth.passwordRequired");
         }
     }
 }
@@ -235,7 +235,7 @@ public sealed class RefreshTokenCommandValidator : Abstractions.IValidator<Refre
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
         {
-            yield return new ValidationError("refreshToken", "Refresh token tələb olunur.");
+            yield return new ValidationError("refreshToken", "auth.sessionMissing");
         }
     }
 }

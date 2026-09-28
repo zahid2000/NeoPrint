@@ -147,11 +147,11 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
         var device = await _devices
             .FindByIdAsync(request.DeviceId, cancellationToken)
             .ConfigureAwait(false)
-            ?? throw new NotFoundException("Device");
+            ?? throw new NotFoundException("device");
 
         if (device.KioskId is null)
         {
-            throw new DomainException("Bu cihaz heç bir kioska bağlı deyil.");
+            throw new DomainException("devices.notBound");
         }
 
         device.LastSeenAt = now;
@@ -172,7 +172,7 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
         var kiosk = await _kiosks
             .FindByIdAsync(device.KioskId.Value, cancellationToken)
             .ConfigureAwait(false)
-            ?? throw new NotFoundException("Kiosk");
+            ?? throw new NotFoundException("kiosk");
 
         kiosk.LastHeartbeatAt = now;
         kiosk.AppVersion = device.AppVersion;

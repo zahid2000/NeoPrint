@@ -1,12 +1,13 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
+using System.Text;
 
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Localization;
 using NeoPrint.Domain.Common;
 
 namespace NeoPrint.Api.Infrastructure;
@@ -106,15 +107,15 @@ public sealed class IdempotencyFilter : IAsyncActionFilter
                 // this exists to prevent.
                 context.Result = Problem(
                     StatusCodes.Status409Conflict,
-                    "Request in progress",
-                    "Eyni açarla göndərilmiş sorğu hələ icra olunur. Bir azdan yenidən yoxlayın.");
+                    Messages.Write(new UserMessage("problem.inProgress")),
+                    Messages.Write(new UserMessage("idempotency.inProgress")));
                 return;
 
             case IdempotencyOutcome.Conflict:
                 context.Result = Problem(
                     StatusCodes.Status409Conflict,
-                    "Idempotency key reused",
-                    "Bu Idempotency-Key başqa məzmunlu sorğu üçün istifadə olunub.");
+                    Messages.Write(new UserMessage("problem.keyReused")),
+                    Messages.Write(new UserMessage("idempotency.keyReused")));
                 return;
 
             default:
@@ -178,7 +179,7 @@ public sealed class IdempotencyFilter : IAsyncActionFilter
 
         if (key.Length > MaxKeyLength)
         {
-            throw new DomainException($"Idempotency-Key {MaxKeyLength} simvoldan uzun ola bilməz.");
+            throw new DomainException(UserMessage.Of("idempotency.keyTooLong", ("max", MaxKeyLength)));
         }
 
         return key;

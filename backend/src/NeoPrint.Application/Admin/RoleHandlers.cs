@@ -88,7 +88,7 @@ public sealed class CreateRoleHandler : IRequestHandler<CreateRoleCommand, RoleR
 
         if (await _roles.FindByNameAsync(name, cancellationToken).ConfigureAwait(false) is not null)
         {
-            throw new DomainException($"'{request.Name}' adlı rol artıq mövcuddur.");
+            throw new DomainException(UserMessage.Of("roles.nameTaken", ("name", request.Name)));
         }
 
         var role = new AdminRole
@@ -146,7 +146,7 @@ public sealed class UpdateRoleHandler : IRequestHandler<UpdateRoleCommand, RoleR
 
         if (role.IsSystem)
         {
-            throw new DomainException($"'{role.Name}' sistem roludur və redaktə edilə bilməz.");
+            throw new DomainException(UserMessage.Of("roles.systemReadOnly", ("name", role.Name)));
         }
 
         var before = RoleMapping.Snapshot(role);
@@ -155,7 +155,7 @@ public sealed class UpdateRoleHandler : IRequestHandler<UpdateRoleCommand, RoleR
         if (!string.Equals(renamed, role.Name, StringComparison.Ordinal) &&
             await _roles.FindByNameAsync(renamed, cancellationToken).ConfigureAwait(false) is not null)
         {
-            throw new DomainException($"'{renamed}' adlı rol artıq mövcuddur.");
+            throw new DomainException(UserMessage.Of("roles.nameTaken", ("name", renamed)));
         }
 
         role.Name = renamed;
@@ -208,7 +208,7 @@ public sealed class CloneRoleHandler : IRequestHandler<CloneRoleCommand, RoleRes
 
         if (await _roles.FindByNameAsync(name, cancellationToken).ConfigureAwait(false) is not null)
         {
-            throw new DomainException($"'{request.Name}' adlı rol artıq mövcuddur.");
+            throw new DomainException(UserMessage.Of("roles.nameTaken", ("name", request.Name)));
         }
 
         var clone = new AdminRole
@@ -258,7 +258,7 @@ public sealed class DeleteRoleHandler : IRequestHandler<DeleteRoleCommand, Delet
 
         if (role.IsSystem)
         {
-            throw new DomainException($"'{role.Name}' sistem roludur və silinə bilməz.");
+            throw new DomainException(UserMessage.Of("roles.systemUndeletable", ("name", role.Name)));
         }
 
         // Every holder, not only the active ones: a deactivated account keeps
@@ -273,8 +273,7 @@ public sealed class DeleteRoleHandler : IRequestHandler<DeleteRoleCommand, Delet
         {
             // Deleting a role in use would silently strip permissions from
             // people who are working (plan section 8A.2).
-            throw new DomainException(
-                $"Bu rol {holders} istifadəçiyə verilib və silinə bilməz. Əvvəlcə rolu onlardan götürün.");
+            throw new DomainException(UserMessage.Of("roles.inUse", ("count", holders)));
         }
 
         var snapshot = RoleMapping.Snapshot(role);

@@ -13,6 +13,9 @@ public sealed class DockerFactAttribute : FactAttribute
 {
     private static readonly Lazy<bool> DockerAvailable = new(Probe, isThreadSafe: true);
 
+    /// <summary>Whether a Docker daemon endpoint is there; shared with <see cref="DockerTheoryAttribute"/>.</summary>
+    internal static bool Available => DockerAvailable.Value;
+
     public DockerFactAttribute()
     {
         if (!DockerAvailable.Value)
@@ -48,6 +51,18 @@ public sealed class DockerFactAttribute : FactAttribute
         catch
         {
             return false;
+        }
+    }
+}
+
+/// <summary>The <see cref="TheoryAttribute"/> form of <see cref="DockerFactAttribute"/>.</summary>
+public sealed class DockerTheoryAttribute : TheoryAttribute
+{
+    public DockerTheoryAttribute()
+    {
+        if (!DockerFactAttribute.Available)
+        {
+            Skip = "Docker is not available on this machine; container-backed tests are skipped.";
         }
     }
 }

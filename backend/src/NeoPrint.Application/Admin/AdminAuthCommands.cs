@@ -155,12 +155,12 @@ public sealed class AdminLoginCommandValidator : IValidator<AdminLoginCommand>
     {
         if (string.IsNullOrWhiteSpace(request.Email))
         {
-            yield return new ValidationError("email", "Email tələb olunur.");
+            yield return new ValidationError("email", "auth.emailRequired");
         }
 
         if (string.IsNullOrEmpty(request.Password))
         {
-            yield return new ValidationError("password", "Şifrə tələb olunur.");
+            yield return new ValidationError("password", "auth.passwordRequired");
         }
     }
 }
@@ -177,24 +177,24 @@ public sealed class ChangeAdminPasswordCommandValidator : IValidator<ChangeAdmin
     {
         if (string.IsNullOrEmpty(request.CurrentPassword))
         {
-            yield return new ValidationError("currentPassword", "Cari şifrə tələb olunur.");
+            yield return new ValidationError("currentPassword", "adminAuth.currentPasswordRequired");
         }
 
         if (string.IsNullOrEmpty(request.NewPassword) || request.NewPassword.Length < MinimumLength)
         {
             yield return new ValidationError(
-                "newPassword", $"Yeni şifrə ən azı {MinimumLength} simvol olmalıdır.");
+                "newPassword", "adminAuth.newPasswordTooShort", ("min", MinimumLength));
             yield break;
         }
 
         if (request.NewPassword.Length > 128)
         {
-            yield return new ValidationError("newPassword", "Şifrə 128 simvoldan uzun ola bilməz.");
+            yield return new ValidationError("newPassword", "auth.passwordTooLong");
         }
 
         if (string.Equals(request.CurrentPassword, request.NewPassword, StringComparison.Ordinal))
         {
-            yield return new ValidationError("newPassword", "Yeni şifrə cari şifrədən fərqli olmalıdır.");
+            yield return new ValidationError("newPassword", "adminAuth.newPasswordSame");
         }
     }
 }

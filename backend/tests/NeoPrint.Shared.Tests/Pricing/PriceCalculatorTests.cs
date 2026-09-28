@@ -116,7 +116,10 @@ public sealed class PriceCalculatorTests
     {
         var quote = () => PriceCalculator.Quote(Default(), Spec(1, paper: "Letter"));
 
-        quote.Should().Throw<PricingException>().WithMessage("*Letter*");
+        quote.Should().Throw<PricingException>()
+            .Which.Should().Match<PricingException>(exception =>
+                exception.Code == "pricing.paperNotPriced"
+                && exception.Arguments.Any(argument => Equals(argument.Value, "Letter")));
     }
 
     [Theory]

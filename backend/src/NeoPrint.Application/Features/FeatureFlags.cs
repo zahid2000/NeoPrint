@@ -78,19 +78,19 @@ public sealed class UpdateFeatureFlagCommandValidator : IValidator<UpdateFeature
     {
         if (string.IsNullOrWhiteSpace(request.Key))
         {
-            yield return new ValidationError("key", "Flag açarı tələb olunur.");
+            yield return new ValidationError("key", "features.keyRequired");
         }
 
         if (request.RolloutPercent is < 0 or > 100)
         {
-            yield return new ValidationError("rolloutPercent", "Rollout faizi 0 ilə 100 arasında olmalıdır.");
+            yield return new ValidationError("rolloutPercent", "features.rolloutRange");
         }
 
         foreach (var kioskId in request.KioskOverrides?.Keys ?? [])
         {
             if (!Guid.TryParse(kioskId, out _))
             {
-                yield return new ValidationError("kioskOverrides", $"'{kioskId}' düzgün kiosk identifikatoru deyil.");
+                yield return new ValidationError("kioskOverrides", "features.kioskIdInvalid", ("id", kioskId));
             }
         }
     }
@@ -159,7 +159,7 @@ public sealed class UpdateFeatureFlagHandler : IRequestHandler<UpdateFeatureFlag
         UpdateFeatureFlagCommand request, CancellationToken cancellationToken)
     {
         var flag = await _flags.FindByKeyAsync(request.Key, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("FeatureFlag");
+            ?? throw new NotFoundException("featureFlag");
 
         var before = System.Text.Json.JsonSerializer.Serialize(new
         {

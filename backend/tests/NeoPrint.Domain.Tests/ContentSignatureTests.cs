@@ -184,7 +184,7 @@ public sealed class ContentSignatureTests
         var result = Identify([], "empty.pdf");
 
         result.Recognised.Should().BeFalse();
-        result.Reason.Should().Contain("boş");
+        result.Reason.Should().Be("files.signature.empty");
     }
 
     [Fact]

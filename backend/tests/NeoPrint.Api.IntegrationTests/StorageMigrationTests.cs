@@ -1,8 +1,8 @@
 using System.Text;
 
 using Amazon.Runtime;
-using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.S3;
 
 using DotNet.Testcontainers.Containers;
 
@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using MongoDB.Driver;
 
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Localization;
 using NeoPrint.Crypto;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
@@ -277,7 +278,7 @@ public sealed class StorageMigrationTests : IClassFixture<StoragePair>, IAsyncLi
         var finished = await Worker("worker-1").RunAsync(job.Id);
 
         finished!.Status.Should().Be(StorageSyncStatus.Failed);
-        finished.FailureReason.Should().Contain("köçürülə bilmədi");
+        Messages.WriteStored(finished.FailureReason, "az").Should().Contain("köçürülə bilmədi");
 
         // The source is still the only complete copy, so nothing may point
         // away from it and it must still be the primary.

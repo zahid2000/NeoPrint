@@ -59,7 +59,7 @@ public sealed class AdminLoginHandler : IRequestHandler<AdminLoginCommand, Admin
         var email = User.NormalizeEmail(request.Email);
         var admin = await _admins.FindByEmailAsync(email, cancellationToken).ConfigureAwait(false);
 
-        var invalid = new ValidationException([new ValidationError("", "Email və ya şifrə yanlışdır.")]);
+        var invalid = new ValidationException([new ValidationError("", "auth.credentialsInvalid")]);
 
         if (admin is null)
         {
@@ -72,7 +72,7 @@ public sealed class AdminLoginHandler : IRequestHandler<AdminLoginCommand, Admin
         {
             var minutes = Math.Max(1, (int)Math.Ceiling((admin.LockedUntil!.Value - now).TotalMinutes));
             throw new ValidationException(
-                [new ValidationError("", $"Hesab müvəqqəti bloklanıb. {minutes} dəqiqə sonra yenidən cəhd edin.")]);
+                [new ValidationError("", "adminAuth.lockedOut", ("minutes", minutes))]);
         }
 
         var verification = _passwordHasher.VerifyHashedPassword(admin, admin.PasswordHash, request.Password);
@@ -162,7 +162,7 @@ public sealed class AdminRefreshHandler : IRequestHandler<AdminRefreshCommand, A
 
         // 401, not a validation problem: the request was well formed, the
         // session simply ended. The panel signs the person in again on a 401.
-        var invalid = new AuthenticationException("Sessiya bitib. Yenidən daxil olun.");
+        var invalid = new AuthenticationException("auth.sessionEnded");
 
         if (stored is null)
         {
@@ -274,14 +274,14 @@ public sealed class ChangeAdminPasswordHandler : IRequestHandler<ChangeAdminPass
     public async Task<Unit> Handle(ChangeAdminPasswordCommand request, CancellationToken cancellationToken)
     {
         var admin = await _admins.FindByIdAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("AdminUser");
+            ?? throw new NotFoundException("adminUser");
 
         var verification = _passwordHasher.VerifyHashedPassword(
             admin, admin.PasswordHash, request.CurrentPassword);
 
         if (verification == PasswordVerificationResult.Failed)
         {
-            throw new ValidationException([new ValidationError("currentPassword", "Cari şifrə yanlışdır.")]);
+            throw new ValidationException([new ValidationError("currentPassword", "adminAuth.currentPasswordWrong")]);
         }
 
         admin.PasswordHash = _passwordHasher.HashPassword(admin, request.NewPassword);

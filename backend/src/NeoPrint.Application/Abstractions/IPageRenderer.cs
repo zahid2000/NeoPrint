@@ -1,12 +1,18 @@
+using NeoPrint.Domain.Common;
+
 namespace NeoPrint.Application.Abstractions;
 
 /// <summary>A page that could not be drawn, in words the user can act on.</summary>
 public sealed class PageRenderException : Exception
 {
-    public PageRenderException(string userMessage, Exception? inner = null)
-        : base(userMessage, inner)
+    public PageRenderException(UserMessage text, Exception? inner = null)
+        : base(text.Key, inner)
     {
+        Text = text;
     }
+
+    /// <summary>What to tell the user.</summary>
+    public UserMessage Text { get; }
 }
 
 /// <summary>

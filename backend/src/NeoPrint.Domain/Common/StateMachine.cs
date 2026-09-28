@@ -99,7 +99,7 @@ public sealed class StateMachine<TStatus>
 public sealed class IllegalStateTransitionException : DomainException
 {
     public IllegalStateTransitionException(string entityType, string from, string to)
-        : base($"{entityType} cannot go from {from} to {to}.")
+        : base(UserMessage.Of("common.illegalTransition", ("from", from), ("to", to)))
     {
         EntityType = entityType;
         From = from;
@@ -111,4 +111,7 @@ public sealed class IllegalStateTransitionException : DomainException
     public string From { get; }
 
     public string To { get; }
+
+    /// <summary>For the log: which entity, from where, to where. The caller reads <see cref="DomainException.Text"/>.</summary>
+    public override string Message => $"{EntityType} cannot go from {From} to {To}.";
 }

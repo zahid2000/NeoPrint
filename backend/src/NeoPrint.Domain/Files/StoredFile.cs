@@ -189,7 +189,7 @@ public sealed class StoredFile : Entity
 
         if (Status != FileStatus.Ready)
         {
-            throw new DomainException($"'{FileName}' hələ hazır deyil; hazır olandan sonra redaktə edin.");
+            throw new DomainException(UserMessage.Of("files.notReadyNamed", ("name", FileName)));
         }
 
         Record(Transitions.Transition(Id, Status, FileStatus.Pending, actor, now));
@@ -219,7 +219,7 @@ public sealed class StoredFile : Entity
             // A zero-page PDF would be priced at the minimum order and printed
             // as nothing, so it is a failure rather than a result.
             throw new DomainException(
-                $"'{FileName}' konvertasiyadan sonra {pageCount} səhifə verdi; sənəd boş və ya zədəlidir.");
+                UserMessage.Of("files.emptyAfterConversion", ("name", FileName), ("count", pageCount)));
         }
 
         Record(Transitions.Transition(Id, Status, FileStatus.Ready, actor, now));
@@ -231,14 +231,18 @@ public sealed class StoredFile : Entity
     }
 
     /// <summary>Records that conversion failed, with a reason for the user.</summary>
-    public void Fail(string reason, ActorContext actor, DateTime now)
+    /// <remarks>
+    /// Kept encoded (<see cref="UserMessage.Encode"/>), so the reason reads in
+    /// the language of whoever looks at the file.
+    /// </remarks>
+    public void Fail(UserMessage reason, ActorContext actor, DateTime now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        ArgumentNullException.ThrowIfNull(reason);
 
         Record(Transitions.Transition(Id, Status, FileStatus.Failed, actor, now));
 
         Status = FileStatus.Failed;
-        FailureReason = reason;
+        FailureReason = reason.Encode();
     }
 
     /// <summary>Adds a saved revision, keeping at most <paramref name="keep"/>.</summary>

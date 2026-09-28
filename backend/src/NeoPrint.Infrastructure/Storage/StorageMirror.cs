@@ -1,5 +1,5 @@
-using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.S3;
 
 using MassTransit;
 
@@ -9,6 +9,7 @@ using MongoDB.Driver;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Contracts;
+using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Storage;
 using NeoPrint.Infrastructure.Persistence;
 
@@ -235,11 +236,11 @@ public sealed class StorageMirror
             }
             catch (AmazonS3Exception exception)
             {
-                problem = $"Provayder xəta qaytardı ({exception.ErrorCode ?? exception.StatusCode.ToString()}).";
+                problem = UserMessage.Of("storage.providerError", ("code", exception.ErrorCode ?? exception.StatusCode.ToString())).Encode();
             }
             catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
-                problem = "Provayderə qoşulmaq mümkün olmadı.";
+                problem = "storage.unreachable";
             }
 
             var healthy = problem is null;
@@ -319,7 +320,7 @@ public sealed class StorageMirror
 
         return response.IsSuccessStatusCode
             ? null
-            : $"Provayder hazır olmadığını bildirir (readiness: {(int)response.StatusCode}).";
+            : UserMessage.Of("storage.notReady", ("status", (int)response.StatusCode)).Encode();
     }
 
     private static async Task<Dictionary<string, long>> ListAsync(

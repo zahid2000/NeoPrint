@@ -100,7 +100,9 @@ internal static class Program
             // Every request carries a correlation id, so what the kiosk did and
             // what the backend logged can be read together
             // (docs/OBSERVABILITY.md).
-            .AddHttpMessageHandler(() => new CorrelationIdHandler());
+            .AddHttpMessageHandler(() => new CorrelationIdHandler())
+            // And the screen's language, so a refusal reads in it (T-043).
+            .AddHttpMessageHandler(() => new AcceptLanguageHandler());
 
         // One client, not a typed one: it holds this installation's device id
         // and its kiosk token, and AddHttpClient<T> registers T as transient.

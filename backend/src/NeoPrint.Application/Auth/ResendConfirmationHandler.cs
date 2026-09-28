@@ -3,6 +3,8 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Localization;
+using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Users;
 
 namespace NeoPrint.Application.Auth;
@@ -79,12 +81,13 @@ public sealed class ResendConfirmationHandler : IRequestHandler<ResendConfirmati
 
         await _email.SendAsync(
                 user.Email,
-                "NeoPrint — email təsdiqi",
-                $"""
-                 <p>NeoPrint hesabınızı təsdiqləmək üçün yeni kod:</p>
-                 <p style="font-size:28px;letter-spacing:6px;font-weight:bold">{code}</p>
-                 <p>Kod {RegisterUserHandler.ConfirmationLifetime.TotalMinutes:0} dəqiqə ərzində etibarlıdır.</p>
-                 """,
+                Messages.Write(new UserMessage("email.confirm.subject"), user.Language),
+                Messages.Write(
+                    UserMessage.Of(
+                        "email.confirmAgain.body",
+                        ("code", code),
+                        ("minutes", (int)RegisterUserHandler.ConfirmationLifetime.TotalMinutes)),
+                    user.Language),
                 cancellationToken)
             .ConfigureAwait(false);
 

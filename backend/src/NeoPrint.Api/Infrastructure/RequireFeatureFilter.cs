@@ -1,8 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Features;
+using NeoPrint.Application.Localization;
+using NeoPrint.Domain.Common;
 
 namespace NeoPrint.Api.Infrastructure;
 
@@ -57,8 +59,8 @@ public sealed class RequireFeatureFilter : IAsyncActionFilter
             // not forbidden.
             context.Result = new NotFoundObjectResult(new ProblemDetails
             {
-                Title = "Feature not available",
-                Detail = "Bu funksiya hazırda əlçatan deyil.",
+                Title = Messages.Write(new UserMessage("problem.featureOff")),
+                Detail = Messages.Write(new UserMessage("features.unavailable")),
                 Status = StatusCodes.Status404NotFound,
             });
 

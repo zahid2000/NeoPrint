@@ -5,34 +5,46 @@ namespace NeoPrint.Domain.Common;
 /// transition (plan section 5).
 /// </summary>
 /// <remarks>
-/// Surfaces to the API as an RFC 7807 problem with status 409, so the message
-/// is written to be shown to a caller and never contains internal detail.
+/// Surfaces to the API as an RFC 7807 problem with status 409. What the caller
+/// reads is <see cref="Text"/>, written out in the request's language; the
+/// exception message is the key alone, so a log line never carries the
+/// arguments (an email address, a file name).
 /// </remarks>
 public class DomainException : Exception
 {
-    public DomainException(string message)
-        : base(message)
+    public DomainException(string key)
+        : this(new UserMessage(key))
     {
     }
 
-    public DomainException(string message, Exception innerException)
-        : base(message, innerException)
+    public DomainException(UserMessage text)
+        : base(text.Key)
     {
+        Text = text;
     }
+
+    public DomainException(UserMessage text, Exception innerException)
+        : base(text.Key, innerException)
+    {
+        Text = text;
+    }
+
+    /// <summary>What to tell the caller.</summary>
+    public UserMessage Text { get; }
 }
 
 /// <summary>The requested entity does not exist, or is not visible to the caller.</summary>
 /// <remarks>
-/// The message reaches the caller as the problem detail, so it names the kind
-/// of thing that was not found and never the value that was looked up. Some of
-/// those values are short-lived secrets - a device pairing code, an enrollment
-/// token - and echoing one back would put it in response bodies and proxy logs
-/// (docs/SECURITY_THREAT_MODEL.md).
+/// The message names the kind of thing that was not found and never the value
+/// that was looked up. Some of those values are short-lived secrets - a device
+/// pairing code, an enrollment token - and echoing one back would put it in
+/// response bodies and proxy logs (docs/SECURITY_THREAT_MODEL.md).
 /// </remarks>
 public sealed class NotFoundException : DomainException
 {
-    public NotFoundException(string entity)
-        : base($"{entity} was not found.")
+    /// <param name="what">The kind of thing, as a catalog key segment: <c>device</c>, <c>file</c>.</param>
+    public NotFoundException(string what)
+        : base(new UserMessage($"notFound.{what}"))
     {
     }
 }
@@ -50,7 +62,7 @@ public sealed class NotFoundException : DomainException
 public sealed class ConcurrencyException : DomainException
 {
     public ConcurrencyException(string entityType, Guid id)
-        : base($"{entityType} was changed by somebody else. Reload it and try again.")
+        : base(new UserMessage("common.concurrentChange"))
     {
         EntityType = entityType;
         EntityId = id;

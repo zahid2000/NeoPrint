@@ -4,7 +4,7 @@ namespace NeoPrint.Domain.Files;
 
 /// <summary>What the bytes of a file say it is.</summary>
 /// <param name="Format">The format recognised, or null.</param>
-/// <param name="Reason">Why nothing was recognised, when that is the case.</param>
+/// <param name="Reason">Why nothing was recognised, when that is the case - a message key.</param>
 public sealed record SignatureResult(FileFormat? Format, string? Reason)
 {
     public bool Recognised => Format is not null;
@@ -53,7 +53,7 @@ public static class ContentSignature
     {
         if (header.Length == 0)
         {
-            return SignatureResult.Unrecognised("Fayl boşdur.");
+            return SignatureResult.Unrecognised("files.signature.empty");
         }
 
         var declared = FileFormats.Find(Path.GetExtension(fileName));
@@ -126,8 +126,7 @@ public static class ContentSignature
         {
             return declared is { Extension: "doc" or "xls" or "ppt" or "pps" or "dot" or "wps" }
                 ? SignatureResult.Of(declared)
-                : SignatureResult.Unrecognised(
-                    "Fayl köhnə Office formatındadır, lakin uzantısı hansı növ olduğunu göstərmir.");
+                : SignatureResult.Unrecognised("files.signature.legacyOffice");
         }
 
         // --- Text ---------------------------------------------------------
@@ -142,8 +141,7 @@ public static class ContentSignature
             return SignatureResult.Of(declared);
         }
 
-        return SignatureResult.Unrecognised(
-            "Faylın məzmunu tanınmadı. Dəstəklənən formatların siyahısına baxın.");
+        return SignatureResult.Unrecognised("files.signature.unknownContent");
     }
 
     /// <summary>
@@ -173,8 +171,7 @@ public static class ContentSignature
 
         if (family is null)
         {
-            return SignatureResult.Unrecognised(
-                "Fayl ZIP arxividir, lakin dəstəklənən sənəd formatlarından birinə uyğun gəlmir.");
+            return SignatureResult.Unrecognised("files.signature.zipUnknown");
         }
 
         // Within the family the extension decides: .docx and .xlsx are the
@@ -185,8 +182,7 @@ public static class ContentSignature
             return SignatureResult.Of(declared);
         }
 
-        return SignatureResult.Unrecognised(
-            "Faylın uzantısı onun daxili quruluşu ilə uyğun gəlmir.");
+        return SignatureResult.Unrecognised("files.signature.extensionMismatch");
     }
 
     /// <summary>
@@ -241,7 +237,7 @@ public static class ContentSignature
     private static SignatureResult Recognise(string extension)
         => FileFormats.Find(extension) is { } format
             ? SignatureResult.Of(format)
-            : SignatureResult.Unrecognised("Format kataloqda yoxdur.");
+            : SignatureResult.Unrecognised("files.signature.notInCatalogue");
 
     private static bool StartsWith(ReadOnlySpan<byte> header, ReadOnlySpan<byte> prefix)
         => header.Length >= prefix.Length && header[..prefix.Length].SequenceEqual(prefix);

@@ -9,15 +9,15 @@ namespace NeoPrint.Infrastructure.Conversion;
 /// <summary>What a conversion produced.</summary>
 /// <param name="Succeeded">Whether a PDF was written.</param>
 /// <param name="PdfPath">The PDF, inside the working directory.</param>
-/// <param name="UserMessage">
-/// Why it failed, in words the uploader can act on. Never a tool's stderr:
-/// that can echo a file path or part of the document.
+/// <param name="Failure">
+/// Why it failed, as a message key the uploader reads in their own language.
+/// Never a tool's stderr: that can echo a file path or part of the document.
 /// </param>
-public sealed record ConversionResult(bool Succeeded, string? PdfPath, string? UserMessage)
+public sealed record ConversionResult(bool Succeeded, string? PdfPath, string? Failure)
 {
     public static ConversionResult Ok(string pdfPath) => new(true, pdfPath, null);
 
-    public static ConversionResult Failed(string userMessage) => new(false, null, userMessage);
+    public static ConversionResult Failed(string failureKey) => new(false, null, failureKey);
 }
 
 /// <summary>Turns one family of formats into a PDF.</summary>
@@ -125,11 +125,9 @@ public sealed class LibreOfficeConverter : IDocumentConverter
 
     internal static string Describe(SandboxResult result) => result.Outcome switch
     {
-        SandboxOutcome.TimedOut =>
-            "Sənədin çevrilməsi çox uzun çəkdi. Fayl çox böyük və ya mürəkkəbdir.",
-        SandboxOutcome.NotStarted =>
-            "Çevirici proqram işə düşmədi. Bu texniki problemdir, bir az sonra yenidən cəhd edin.",
-        _ => "Sənədi PDF-ə çevirmək mümkün olmadı. Fayl zədələnib və ya şifrələnib ola bilər.",
+        SandboxOutcome.TimedOut => "conversion.timedOut",
+        SandboxOutcome.NotStarted => "conversion.notStarted",
+        _ => "conversion.failed",
     };
 
     private static string DefaultExecutable()
@@ -262,7 +260,7 @@ public sealed class ImageConverter : IDocumentConverter
             if (codec is null)
             {
                 return Task.FromResult(ConversionResult.Failed(
-                    "Şəkli oxumaq mümkün olmadı. Fayl zədələnib ola bilər."));
+                    "conversion.imageUnreadable"));
             }
 
             var info = codec.Info;
@@ -278,7 +276,7 @@ public sealed class ImageConverter : IDocumentConverter
                     MaxPixels);
 
                 return Task.FromResult(ConversionResult.Failed(
-                    "Şəkil həddindən artıq böyükdür. Daha kiçik ölçüdə yükləyin."));
+                    "conversion.imageTooLarge"));
             }
 
             using var bitmap = SKBitmap.Decode(inputPath);
@@ -286,7 +284,7 @@ public sealed class ImageConverter : IDocumentConverter
             if (bitmap is null)
             {
                 return Task.FromResult(ConversionResult.Failed(
-                    "Şəkli açmaq mümkün olmadı. Format dəstəklənmir və ya fayl zədələnib."));
+                    "conversion.imageUnsupported"));
             }
 
             var output = Path.Combine(limits.WorkingDirectory, "converted.pdf");
@@ -313,7 +311,7 @@ public sealed class ImageConverter : IDocumentConverter
             _logger.LogWarning(exception, "Converting {Input} to PDF failed.", Path.GetFileName(inputPath));
 
             return Task.FromResult(ConversionResult.Failed(
-                "Şəkli PDF-ə çevirmək mümkün olmadı."));
+                "conversion.imageToPdfFailed"));
         }
     }
 }

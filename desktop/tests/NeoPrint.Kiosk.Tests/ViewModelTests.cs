@@ -8,6 +8,9 @@ namespace NeoPrint.Kiosk.Tests;
 /// <summary>
 /// The shell and activation view models (plan sections 7.2, 7.3, 11).
 /// </summary>
+// With the handler tests: switching the screen language changes the
+// process-wide KioskLanguage those tests read.
+[Collection(KioskLanguageCollection.Name)]
 public sealed class MainWindowViewModelTests
 {
     [Fact]

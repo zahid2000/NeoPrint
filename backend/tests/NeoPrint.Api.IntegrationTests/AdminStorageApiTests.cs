@@ -1,6 +1,6 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Net;
 using System.Text.Json;
 
 namespace NeoPrint.Api.IntegrationTests;
@@ -95,7 +95,7 @@ public sealed class AdminStorageApiTests
         var badBody = await bad.Content.ReadFromJsonAsync<JsonElement>();
 
         badBody.GetProperty("succeeded").GetBoolean().Should().BeFalse();
-        badBody.GetProperty("message").GetString().Should().Contain("Secret key");
+        badBody.GetProperty("message").GetString().Should().Contain("secret key");
     }
 
     [DockerFact]
@@ -297,8 +297,8 @@ public sealed class AdminStorageApiTests
 
         foreach (var (path, expected) in new[]
                  {
-                     ($"/api/admin/storage/providers/{unknown}/set-primary", "Storage provayderi"),
-                     ($"/api/admin/storage/providers/{unknown}/set-secondary", "Storage provayderi"),
+                     ($"/api/admin/storage/providers/{unknown}/set-primary", "Saxlama provayderi"),
+                     ($"/api/admin/storage/providers/{unknown}/set-secondary", "Saxlama provayderi"),
                      ($"/api/admin/storage/sync-jobs/{unknown}/retry-failed", "Sinxronizasiya işi"),
                      ($"/api/admin/storage/sync-jobs/{unknown}/purge-source", "Sinxronizasiya işi"),
                  })

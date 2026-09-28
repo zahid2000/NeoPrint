@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Files;
+using NeoPrint.Application.Localization;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
 using NeoPrint.Infrastructure.Conversion;
@@ -251,7 +252,7 @@ public sealed class ConversionTests
             // The count is not knowable at upload - a 2 MB spreadsheet can be
             // four thousand pages - so the limit lands here.
             converted!.Status.Should().Be(FileStatus.Failed);
-            converted.FailureReason.Should().Contain("5 səhifə");
+            Messages.WriteStored(converted.FailureReason, "az").Should().Contain("5 səhifə");
         }
         finally
         {

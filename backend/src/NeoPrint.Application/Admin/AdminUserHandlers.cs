@@ -105,7 +105,7 @@ public sealed class CreateAdminUserHandler : IRequestHandler<CreateAdminUserComm
 
         if (await _admins.FindByEmailAsync(email, cancellationToken).ConfigureAwait(false) is not null)
         {
-            throw new DomainException($"'{request.Email}' ünvanı ilə admin hesabı artıq mövcuddur.");
+            throw new DomainException(UserMessage.Of("adminUsers.emailTaken", ("email", request.Email)));
         }
 
         var held = await AdminUserMapping
@@ -390,14 +390,14 @@ internal static class AdminUserMapping
         {
             // An account with no role can sign in and do nothing, which is a
             // confusing thing to create by accident.
-            throw new DomainException("Hesaba ən azı bir rol verilməlidir.");
+            throw new DomainException("adminUsers.roleRequired");
         }
 
         var held = await roles.FindByIdsAsync(roleIds, cancellationToken).ConfigureAwait(false);
 
         if (held.Count != roleIds.Distinct().Count())
         {
-            throw new DomainException("Göstərilən rollardan biri mövcud deyil.");
+            throw new DomainException("adminUsers.roleUnknown");
         }
 
         return held.ToDictionary(role => role.Id, role => role.Name);
@@ -444,9 +444,7 @@ internal static class AdminUserMapping
 
         if (holders <= 1)
         {
-            throw new DomainException(
-                "Bu, aktiv SuperAdmin hesablarından son biridir. " +
-                "Əvvəlcə başqa hesaba SuperAdmin rolu verin.");
+            throw new DomainException("adminUsers.lastSuperAdmin");
         }
     }
 

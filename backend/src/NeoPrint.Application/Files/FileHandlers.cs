@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
+using NeoPrint.Application.Localization;
 using NeoPrint.Contracts;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
@@ -65,7 +66,9 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         {
             throw Invalid(
                 "file",
-                $"Fayl {Megabytes(request.DeclaredLength)} MB-dır; icazə verilən maksimum {Megabytes(maxBytes)} MB.");
+                "files.tooLarge",
+                ("size", Megabytes(request.DeclaredLength)),
+                ("max", Megabytes(maxBytes)));
         }
 
         await EnsureQuotaAsync(request.UserId, request.DeclaredLength, cancellationToken)
@@ -81,7 +84,7 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
 
         if (!signature.Recognised)
         {
-            throw Invalid("file", signature.Reason ?? "Fayl formatı tanınmadı.");
+            throw Invalid("file", signature.Reason ?? "files.signature.unknown");
         }
 
         var format = signature.Format!;
@@ -120,7 +123,9 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
 
             throw Invalid(
                 "file",
-                $"Fayl {Megabytes(stored.PlaintextLength)} MB-dır; icazə verilən maksimum {Megabytes(maxBytes)} MB.");
+                "files.tooLarge",
+                ("size", Megabytes(stored.PlaintextLength)),
+                ("max", Megabytes(maxBytes)));
         }
 
         file.Original = ToFileObject(stored);
@@ -174,8 +179,9 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         {
             throw Invalid(
                 "file",
-                $"Saxlama kvotası dolub: {Megabytes(used)} MB / {quotaGb} GB. "
-                + "Yer boşaltmaq üçün köhnə faylları silin.");
+                "files.quotaFull",
+                ("used", Megabytes(used)),
+                ("quota", quotaGb));
         }
     }
 
@@ -196,7 +202,7 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
 
         if (!enabled.Contains(format.Extension, StringComparer.OrdinalIgnoreCase))
         {
-            throw Invalid("file", $"'{format.Extension}' formatı hazırda qəbul edilmir.");
+            throw Invalid("file", "files.formatDisabled", ("format", format.Extension));
         }
     }
 
@@ -280,7 +286,7 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         file.MediaType,
         file.Source.ToString(),
         file.Status.ToString(),
-        file.FailureReason,
+        Messages.WriteStored(file.FailureReason),
         file.Original.PlaintextLength,
         file.PageCount,
         file.IsSensitive,
@@ -290,8 +296,8 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
 
     private static long Megabytes(long bytes) => bytes / (1024 * 1024);
 
-    private static ValidationException Invalid(string field, string message)
-        => new([new ValidationError(field, message)]);
+    private static ValidationException Invalid(string field, string key, params (string Name, object? Value)[] arguments)
+        => new([new ValidationError(field, key, arguments)]);
 }
 
 /// <summary>
@@ -511,7 +517,7 @@ internal static class FileAccess
 
         if (file is null || file.UserId != userId || file.DeletedAt is not null)
         {
-            throw new NotFoundException("Fayl tapılmadı.");
+            throw new NotFoundException("file");
         }
 
         return file;

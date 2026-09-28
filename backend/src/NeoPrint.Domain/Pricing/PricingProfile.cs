@@ -82,46 +82,46 @@ public sealed class PricingProfile : Entity
     /// <summary>
     /// Checks the values an administrator entered.
     /// </summary>
-    /// <returns>Problems by field; empty when the profile is valid.</returns>
+    /// <returns>Problems by field, as message keys; empty when the profile is valid.</returns>
     public IReadOnlyList<(string Field, string Message)> Validate()
     {
         var problems = new List<(string, string)>();
 
         if (string.IsNullOrWhiteSpace(Name))
         {
-            problems.Add(("name", "Ad tələb olunur."));
+            problems.Add(("name", "pricing.nameRequired"));
         }
 
         if (BwPricePerSide.Amount < 0 || ColorPricePerSide.Amount < 0 || MinOrder.Amount < 0)
         {
-            problems.Add(("prices", "Qiymətlər mənfi ola bilməz."));
+            problems.Add(("prices", "pricing.pricesNegative"));
         }
 
         if (!PaperMultipliers.ContainsKey("A4"))
         {
             // Every order has a paper size; without A4 the most common order
             // could not be priced at all.
-            problems.Add(("paperMultipliers", "A4 əmsalı tələb olunur."));
+            problems.Add(("paperMultipliers", "pricing.a4Required"));
         }
 
         if (PaperMultipliers.Values.Any(m => m <= 0))
         {
-            problems.Add(("paperMultipliers", "Kağız əmsalı müsbət olmalıdır."));
+            problems.Add(("paperMultipliers", "pricing.multiplierPositive"));
         }
 
         if (VolumeTiers.Any(t => t.MinSides < 1))
         {
-            problems.Add(("volumeTiers", "Pillənin minimum üz sayı ən azı 1 olmalıdır."));
+            problems.Add(("volumeTiers", "pricing.tierMinimum"));
         }
 
         if (VolumeTiers.Any(t => t.DiscountPercent <= 0 || t.DiscountPercent >= 100))
         {
-            problems.Add(("volumeTiers", "Endirim faizi 0 ilə 100 arasında olmalıdır."));
+            problems.Add(("volumeTiers", "pricing.tierDiscountRange"));
         }
 
         if (VolumeTiers.GroupBy(t => t.MinSides).Any(g => g.Count() > 1))
         {
-            problems.Add(("volumeTiers", "Eyni minimum üz sayı ilə iki pillə ola bilməz."));
+            problems.Add(("volumeTiers", "pricing.tierDuplicate"));
         }
 
         return problems;

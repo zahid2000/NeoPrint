@@ -81,9 +81,7 @@ public sealed class PublishLegalDocumentHandler
         {
             // Republishing the same version with different text would change
             // what people already accepted, retrospectively.
-            throw new DomainException(
-                $"{request.DocType} sənədinin '{version}' versiyası bu dildə artıq dərc olunub. " +
-                "Yeni versiya nömrəsi verin.");
+            throw new DomainException(UserMessage.Of("legal.versionPublished", ("version", version)));
         }
 
         var document = new LegalDocument

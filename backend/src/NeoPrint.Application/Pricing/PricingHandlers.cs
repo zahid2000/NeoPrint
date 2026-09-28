@@ -62,7 +62,7 @@ public sealed class PricingHandlers :
         if (kioskId is { } id)
         {
             var kiosk = await _kiosks.FindByIdAsync(id, cancellationToken).ConfigureAwait(false)
-                ?? throw new NotFoundException("Kiosk");
+                ?? throw new NotFoundException("kiosk");
 
             if (kiosk.PricingProfileId is { } profileId
                 && await _profiles.FindByIdAsync(profileId, cancellationToken).ConfigureAwait(false) is { } own)
@@ -140,7 +140,7 @@ public sealed class PricingHandlers :
         if (profile.IsDefault)
         {
             // There is always exactly one default (plan section 2.3).
-            throw Invalid("id", "Default profil silinə bilməz. Əvvəlcə başqa profili default edin.");
+            throw Invalid("id", "pricing.defaultUndeletable");
         }
 
         var counts = await _profiles.CountKiosksAsync(cancellationToken).ConfigureAwait(false);
@@ -150,7 +150,7 @@ public sealed class PricingHandlers :
             // Deleting it would silently move those kiosks to the default
             // prices. That has to be a decision somebody makes, not a side
             // effect of a delete.
-            throw Invalid("id", $"Bu profil {kiosks} kioska bağlıdır. Əvvəlcə kioskları başqa profilə keçirin.");
+            throw Invalid("id", "pricing.profileInUse", ("count", kiosks));
         }
 
         await _profiles.DeleteAsync(profile.Id, cancellationToken).ConfigureAwait(false);
@@ -190,7 +190,7 @@ public sealed class PricingHandlers :
         foreach (var kioskId in request.KioskIds.Distinct())
         {
             var kiosk = await _kiosks.FindByIdAsync(kioskId, cancellationToken).ConfigureAwait(false)
-                ?? throw Invalid("kioskIds", "Kiosklardan biri tapılmadı.");
+                ?? throw Invalid("kioskIds", "pricing.kioskUnknown");
 
             if (kiosk.PricingProfileId == profile.Id)
             {
@@ -240,7 +240,7 @@ public sealed class PricingHandlers :
         }
         else
         {
-            throw Invalid("profileId", "Profil və ya forma dəyərləri göstərilməlidir.");
+            throw Invalid("profileId", "pricing.quoteInputRequired");
         }
 
         return Price(() => PriceCalculator.Quote(profile.ToPriceTable(), request.Options.ToSpec()));
@@ -252,7 +252,7 @@ public sealed class PricingHandlers :
 
     private async Task<PricingProfile> LoadAsync(Guid id, CancellationToken cancellationToken)
         => await _profiles.FindByIdAsync(id, cancellationToken).ConfigureAwait(false)
-           ?? throw new NotFoundException("Qiymət profili");
+           ?? throw new NotFoundException("pricingProfile");
 
     private async Task<PricingProfileDetail> DetailAsync(PricingProfile profile, CancellationToken cancellationToken)
     {
@@ -277,7 +277,7 @@ public sealed class PricingHandlers :
         if (!string.IsNullOrWhiteSpace(profile.Name)
             && await _profiles.NameTakenAsync(profile.Name, exceptId, cancellationToken).ConfigureAwait(false))
         {
-            problems.Add(new ValidationError("name", "Bu adda profil artıq var."));
+            problems.Add(new ValidationError("name", "pricing.nameTaken"));
         }
 
         if (problems.Count > 0)
@@ -309,7 +309,7 @@ public sealed class PricingHandlers :
         }
         catch (PricingException exception)
         {
-            throw new ValidationException([new ValidationError("options", exception.Message)]);
+            throw new ValidationException([new ValidationError("options", UserMessage.Of(exception.Code, exception.Arguments))]);
         }
     }
 
@@ -343,6 +343,6 @@ public sealed class PricingHandlers :
             new AuditEntry(adminUserId, action, "PricingProfile", profile.Id.ToString(), before, Snapshot(profile), ip, Reason: null),
             cancellationToken);
 
-    private static ValidationException Invalid(string field, string message)
-        => new([new ValidationError(field, message)]);
+    private static ValidationException Invalid(string field, string key, params (string Name, object? Value)[] arguments)
+        => new([new ValidationError(field, key, arguments)]);
 }

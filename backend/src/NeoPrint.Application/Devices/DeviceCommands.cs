@@ -207,16 +207,16 @@ public sealed class RegisterDeviceCommandValidator : IValidator<RegisterDeviceCo
     {
         if (string.IsNullOrWhiteSpace(request.PublicKey))
         {
-            yield return new ValidationError("publicKey", "Cihaz açarı tələb olunur.");
+            yield return new ValidationError("publicKey", "devices.keyRequired");
         }
         else if (!_verifier.IsValidPublicKey(request.PublicKey))
         {
-            yield return new ValidationError("publicKey", "Cihaz açarı ECDSA P-256 SPKI formatında olmalıdır.");
+            yield return new ValidationError("publicKey", "devices.keyFormat");
         }
 
         if (request.Platform == KioskPlatform.Unknown)
         {
-            yield return new ValidationError("platform", "Platforma Windows və ya Linux olmalıdır.");
+            yield return new ValidationError("platform", "devices.platformInvalid");
         }
     }
 }
@@ -231,14 +231,14 @@ public sealed class ActivateDeviceCommandValidator : IValidator<ActivateDeviceCo
         if (request.KioskId is null && request.NewKiosk is null)
         {
             yield return new ValidationError(
-                "", "Cihaz ya mövcud kioska bağlanmalı, ya da yeni kiosk kimi aktivləşdirilməlidir.");
+                "", "devices.activationTargetRequired");
             yield break;
         }
 
         if (request.KioskId is not null && request.NewKiosk is not null)
         {
             yield return new ValidationError(
-                "", "Eyni anda həm mövcud kiosk, həm də yeni kiosk göstərilə bilməz.");
+                "", "devices.activationTargetBoth");
             yield break;
         }
 
@@ -251,38 +251,38 @@ public sealed class ActivateDeviceCommandValidator : IValidator<ActivateDeviceCo
 
         if (string.IsNullOrWhiteSpace(kiosk.Name))
         {
-            yield return new ValidationError("newKiosk.name", "Kiosk adı tələb olunur.");
+            yield return new ValidationError("newKiosk.name", "kiosks.nameRequired");
         }
 
         if (string.IsNullOrWhiteSpace(kiosk.Address))
         {
-            yield return new ValidationError("newKiosk.address", "Ünvan tələb olunur.");
+            yield return new ValidationError("newKiosk.address", "kiosks.addressRequired");
         }
 
         if (kiosk.Lat is < -90 or > 90)
         {
-            yield return new ValidationError("newKiosk.lat", "Enlik -90 ilə 90 arasında olmalıdır.");
+            yield return new ValidationError("newKiosk.lat", "kiosks.latitudeRange");
         }
 
         if (kiosk.Lng is < -180 or > 180)
         {
-            yield return new ValidationError("newKiosk.lng", "Uzunluq -180 ilə 180 arasında olmalıdır.");
+            yield return new ValidationError("newKiosk.lng", "kiosks.longitudeRange");
         }
 
         if (string.IsNullOrWhiteSpace(kiosk.AdminPin) || kiosk.AdminPin.Trim().Length < MinimumPinLength)
         {
             yield return new ValidationError(
-                "newKiosk.adminPin", $"Admin PIN ən azı {MinimumPinLength} simvol olmalıdır.");
+                "newKiosk.adminPin", "kiosks.pinTooShort", ("min", MinimumPinLength));
         }
         else if (!kiosk.AdminPin.Trim().All(char.IsAsciiDigit))
         {
             // The kiosk on-screen keypad is numeric.
-            yield return new ValidationError("newKiosk.adminPin", "Admin PIN yalnız rəqəmlərdən ibarət olmalıdır.");
+            yield return new ValidationError("newKiosk.adminPin", "kiosks.pinDigits");
         }
 
         if (kiosk.Code is not null && !System.Text.RegularExpressions.Regex.IsMatch(kiosk.Code, "^KSK-[0-9]{4}$"))
         {
-            yield return new ValidationError("newKiosk.code", "Kiosk kodu KSK-0000 formatında olmalıdır.");
+            yield return new ValidationError("newKiosk.code", "kiosks.codeFormat");
         }
 
         foreach (var error in ValidateCapacity(kiosk.PaperCapacityA4, "newKiosk.paperCapacityA4"))
@@ -300,7 +300,7 @@ public sealed class ActivateDeviceCommandValidator : IValidator<ActivateDeviceCo
     {
         if (capacity is < 0 or > 100_000)
         {
-            yield return new ValidationError(field, "Kağız kapasiteti 0 ilə 100000 arasında olmalıdır.");
+            yield return new ValidationError(field, "kiosks.paperCapacityRange", ("max", 100000));
         }
     }
 }
@@ -311,7 +311,7 @@ public sealed class LookupDeviceCommandValidator : IValidator<LookupDeviceComman
     {
         if (string.IsNullOrWhiteSpace(request.CodeOrQr))
         {
-            yield return new ValidationError("codeOrQr", "Aktivləşdirmə kodu tələb olunur.");
+            yield return new ValidationError("codeOrQr", "devices.codeRequired");
         }
     }
 }

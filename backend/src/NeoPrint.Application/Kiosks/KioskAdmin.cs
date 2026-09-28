@@ -167,32 +167,32 @@ internal static class KioskRules
     {
         if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 100)
         {
-            yield return new ValidationError("name", "Kiosk adı tələb olunur (ən çox 100 simvol).");
+            yield return new ValidationError("name", "kiosks.nameRequiredMax");
         }
 
         if (string.IsNullOrWhiteSpace(address) || address.Trim().Length > 300)
         {
-            yield return new ValidationError("address", "Ünvan tələb olunur (ən çox 300 simvol).");
+            yield return new ValidationError("address", "kiosks.addressRequiredMax");
         }
 
         if (lat is < -90 or > 90 || double.IsNaN(lat))
         {
-            yield return new ValidationError("lat", "Enlik -90 ilə 90 arasında olmalıdır.");
+            yield return new ValidationError("lat", "kiosks.latitudeRange");
         }
 
         if (lng is < -180 or > 180 || double.IsNaN(lng))
         {
-            yield return new ValidationError("lng", "Uzunluq -180 ilə 180 arasında olmalıdır.");
+            yield return new ValidationError("lng", "kiosks.longitudeRange");
         }
 
         if (language is not null && !AuthRules.SupportedLanguages.Contains(language))
         {
-            yield return new ValidationError("defaultLanguage", "Dil az, en və ya ru olmalıdır.");
+            yield return new ValidationError("defaultLanguage", "common.languageInvalid");
         }
 
         if (queueDisplayLimit is not null && !QueueDisplayLimits.Contains(queueDisplayLimit.Value))
         {
-            yield return new ValidationError("queueDisplayLimit", "Queue göstərmə limiti 3 və ya 5 olmalıdır.");
+            yield return new ValidationError("queueDisplayLimit", "kiosks.queueLimitInvalid");
         }
     }
 
@@ -201,13 +201,13 @@ internal static class KioskRules
         if (maxFileSizeMb is < 1 or > MaxFileSizeMbLimit)
         {
             yield return new ValidationError(
-                "maxFileSizeMb", $"Maksimum fayl ölçüsü 1 ilə {MaxFileSizeMbLimit} MB arasında olmalıdır.");
+                "maxFileSizeMb", "files.maxSizeRange", ("max", MaxFileSizeMbLimit));
         }
 
         if (maxPages is < 1 or > MaxPagesLimit)
         {
             yield return new ValidationError(
-                "maxPages", $"Maksimum səhifə sayı 1 ilə {MaxPagesLimit} arasında olmalıdır.");
+                "maxPages", "files.maxPagesRange", ("max", MaxPagesLimit));
         }
     }
 
@@ -215,7 +215,7 @@ internal static class KioskRules
     {
         if (capacity is < 0 or > MaxPaperCapacity)
         {
-            yield return new ValidationError(field, $"Kağız kapasiteti 0 ilə {MaxPaperCapacity} arasında olmalıdır.");
+            yield return new ValidationError(field, "kiosks.paperCapacityRange", ("max", MaxPaperCapacity));
         }
     }
 
@@ -227,12 +227,13 @@ internal static class KioskRules
         {
             yield return new ValidationError(
                 "adminPin",
-                $"Admin PIN {ActivateDeviceCommandValidator.MinimumPinLength}–12 rəqəmdən ibarət olmalıdır.");
+                "kiosks.pinLength",
+                ("min", ActivateDeviceCommandValidator.MinimumPinLength));
         }
         else if (!trimmed.All(char.IsAsciiDigit))
         {
             // The kiosk's on-screen keypad is numeric.
-            yield return new ValidationError("adminPin", "Admin PIN yalnız rəqəmlərdən ibarət olmalıdır.");
+            yield return new ValidationError("adminPin", "kiosks.pinDigits");
         }
     }
 
@@ -240,7 +241,7 @@ internal static class KioskRules
     {
         if (id is not null && id.Trim().Length > 64)
         {
-            yield return new ValidationError("fiscalTerminalId", "Fiskal terminal ID ən çox 64 simvol ola bilər.");
+            yield return new ValidationError("fiscalTerminalId", "kiosks.fiscalTerminalTooLong");
         }
     }
 }
@@ -260,7 +261,7 @@ public sealed class CreateKioskCommandValidator : IValidator<CreateKioskCommand>
             .Concat(KioskRules.FiscalTerminal(input.FiscalTerminalId))
             .Concat(string.IsNullOrWhiteSpace(input.Code) || Regex.IsMatch(input.Code, "^KSK-[0-9]{4}$")
                 ? []
-                : [new ValidationError("code", "Kiosk kodu KSK-0000 formatında olmalıdır.")]);
+                : [new ValidationError("code", "kiosks.codeFormat")]);
     }
 }
 
@@ -407,7 +408,7 @@ public sealed class KioskAdminHandlers :
         }
         else if (await _kiosks.FindByCodeAsync(code, cancellationToken).ConfigureAwait(false) is not null)
         {
-            throw Invalid("code", $"Kiosk kodu '{code}' artıq istifadə olunur.");
+            throw Invalid("code", "kiosks.codeTaken", ("code", code));
         }
 
         await EnsureProfileExistsAsync(input.PricingProfileId, cancellationToken).ConfigureAwait(false);
@@ -551,8 +552,8 @@ public sealed class KioskAdminHandlers :
         {
             throw Invalid(
                 "kiosk",
-                $"{kiosk.Code} kioskuna cihaz bağlanıb — onun tarixçəsi var və silinə bilməz. " +
-                "Yalnız heç vaxt aktivləşdirilməmiş kiosk silinir.");
+                "kiosks.deleteHasHistory",
+                ("code", kiosk.Code));
         }
 
         await _kiosks.DeleteAsync(kiosk.Id, cancellationToken).ConfigureAwait(false);
@@ -595,7 +596,7 @@ public sealed class KioskAdminHandlers :
 
         if (kiosk is null || !effective.CanSee(kiosk.Id))
         {
-            throw new NotFoundException("Kiosk");
+            throw new NotFoundException("kiosk");
         }
 
         return kiosk;
@@ -605,7 +606,7 @@ public sealed class KioskAdminHandlers :
     {
         if (profileId is { } id && await _profiles.FindByIdAsync(id, cancellationToken).ConfigureAwait(false) is null)
         {
-            throw Invalid("pricingProfileId", "Belə qiymət profili yoxdur.");
+            throw Invalid("pricingProfileId", "pricing.profileUnknown");
         }
     }
 
@@ -680,5 +681,6 @@ public sealed class KioskAdminHandlers :
 
     private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static ValidationException Invalid(string field, string message) => new([new ValidationError(field, message)]);
+    private static ValidationException Invalid(string field, string key, params (string Name, object? Value)[] arguments)
+        => new([new ValidationError(field, key, arguments)]);
 }

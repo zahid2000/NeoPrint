@@ -51,7 +51,7 @@ public sealed class UpdateFileFormatsCommandValidator : IValidator<UpdateFileFor
         {
             // Nothing could be uploaded or printed at all, which is an outage,
             // not a configuration.
-            yield return new ValidationError("enabled", "Ən azı bir format aktiv olmalıdır.");
+            yield return new ValidationError("enabled", "formats.oneRequired");
         }
         else
         {
@@ -71,19 +71,19 @@ public sealed class UpdateFileFormatsCommandValidator : IValidator<UpdateFileFor
         if (request.DefaultMaxSizeMb is < 1 or > MaxSizeMbLimit)
         {
             yield return new ValidationError(
-                "defaultMaxSizeMb", $"Maksimum fayl ölçüsü 1 ilə {MaxSizeMbLimit} MB arasında olmalıdır.");
+                "defaultMaxSizeMb", "files.maxSizeRange", ("max", MaxSizeMbLimit));
         }
 
         if (request.DefaultMaxPages is < 1 or > MaxPagesLimit)
         {
             yield return new ValidationError(
-                "defaultMaxPages", $"Maksimum səhifə sayı 1 ilə {MaxPagesLimit} arasında olmalıdır.");
+                "defaultMaxPages", "files.maxPagesRange", ("max", MaxPagesLimit));
         }
 
         if (request.UserQuotaGb is < 1 or > MaxQuotaGb)
         {
             yield return new ValidationError(
-                "userQuotaGb", $"İstifadəçi kvotası 1 ilə {MaxQuotaGb} GB arasında olmalıdır.");
+                "userQuotaGb", "formats.quotaRange", ("max", MaxQuotaGb));
         }
     }
 }

@@ -109,7 +109,7 @@ public sealed class DocumentConversionService
         {
             _logger.LogError(exception, "Converting file {FileId} failed unexpectedly.", file.Id);
 
-            file.Fail("Faylı emal etmək mümkün olmadı. Bir az sonra yenidən cəhd edin.", actor, _clock.UtcNow);
+            file.Fail(new UserMessage("conversion.unexpected"), actor, _clock.UtcNow);
             await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
         }
         finally
@@ -129,7 +129,7 @@ public sealed class DocumentConversionService
 
         if (format is null)
         {
-            file.Fail($"'{extension}' formatı artıq dəstəklənmir.", actor, _clock.UtcNow);
+            file.Fail(UserMessage.Of("conversion.formatRetired", ("format", extension)), actor, _clock.UtcNow);
             await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
             return;
         }
@@ -154,7 +154,7 @@ public sealed class DocumentConversionService
         {
             if (!_converters.TryGetValue(format.Route, out var converter))
             {
-                file.Fail("Bu format üçün çevirici quraşdırılmayıb.", actor, _clock.UtcNow);
+                file.Fail(new UserMessage("conversion.noConverter"), actor, _clock.UtcNow);
                 await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
                 return;
             }
@@ -165,7 +165,7 @@ public sealed class DocumentConversionService
 
             if (!result.Succeeded)
             {
-                file.Fail(result.UserMessage ?? "Faylı çevirmək mümkün olmadı.", actor, _clock.UtcNow);
+                file.Fail(new UserMessage(result.Failure ?? "conversion.failed"), actor, _clock.UtcNow);
                 await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
                 return;
             }
@@ -187,7 +187,7 @@ public sealed class DocumentConversionService
             _logger.LogWarning(
                 exception, "PDFium refused the PDF produced for file {FileId}.", file.Id);
 
-            file.Fail(exception.UserMessage, actor, _clock.UtcNow);
+            file.Fail(new UserMessage(exception.MessageKey), actor, _clock.UtcNow);
             await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
             return;
         }
@@ -201,7 +201,7 @@ public sealed class DocumentConversionService
             // Enforced here because the count is not knowable at upload: a
             // 2 MB spreadsheet can be four thousand pages.
             file.Fail(
-                $"Sənəd {pageCount} səhifədir; icazə verilən maksimum {maxPages} səhifədir.",
+                UserMessage.Of("conversion.tooManyPages", ("count", pageCount), ("max", maxPages)),
                 actor,
                 _clock.UtcNow);
 

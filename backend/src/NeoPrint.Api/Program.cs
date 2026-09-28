@@ -14,21 +14,21 @@ using Microsoft.IdentityModel.Tokens;
 
 using Microsoft.AspNetCore.Authorization;
 
-using NeoPrint.Api;
+using Hangfire;
 using NeoPrint.Api.Hubs;
 using NeoPrint.Api.Infrastructure;
+using NeoPrint.Api;
 using NeoPrint.Application.Abstractions;
-using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Application.Behaviors;
-using NeoPrint.Infrastructure;
 using NeoPrint.Domain.Settings;
+using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Infrastructure.Persistence;
-using NeoPrint.Infrastructure.Seeding;
 using NeoPrint.Infrastructure.SecretStore;
-using Hangfire;
+using NeoPrint.Infrastructure.Seeding;
+using NeoPrint.Infrastructure;
 
-using NeoPrint.Infrastructure.Storage;
 using NeoPrint.Infrastructure.Conversion;
+using NeoPrint.Infrastructure.Storage;
 
 // ---------------------------------------------------------------------------
 // The converter container (docs/adr/ADR-0005-isolated-converter.md): the same
@@ -390,6 +390,10 @@ await using (var scope = app.Services.CreateAsyncScope())
 // First, so every line a request produces carries the correlation id -
 // including the ones the exception handler writes (docs/OBSERVABILITY.md).
 app.UseNeoPrintCorrelationId();
+
+// Before the exception handler, so a problem is written in the caller's
+// language: the language is ambient and flows inward only.
+app.UseNeoPrintRequestLanguage();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

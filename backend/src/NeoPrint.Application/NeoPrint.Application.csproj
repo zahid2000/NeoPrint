@@ -21,6 +21,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The message catalogs (Localization/Messages.cs), az, en and ru. Not
+         satellite assemblies: "az" in the name is a language, not a culture. -->
+    <EmbeddedResource Include="Localization/messages.*.json" LogicalName="NeoPrint.Application.Localization.%(Filename)%(Extension)" WithCulture="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\NeoPrint.Domain\NeoPrint.Domain.csproj" />
     <ProjectReference Include="..\NeoPrint.Contracts\NeoPrint.Contracts.csproj" />
     <ProjectReference Include="..\..\shared\NeoPrint.Pricing\NeoPrint.Pricing.csproj" />

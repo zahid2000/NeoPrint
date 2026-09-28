@@ -169,7 +169,7 @@ internal static class AdminUserValidation
     {
         if (string.IsNullOrWhiteSpace(email))
         {
-            yield return new ValidationError("email", "Email tələb olunur.");
+            yield return new ValidationError("email", "auth.emailRequired");
             yield break;
         }
 
@@ -180,12 +180,12 @@ internal static class AdminUserValidation
 
         if (at <= 0 || at == trimmed.Length - 1 || trimmed.Contains(' ', StringComparison.Ordinal))
         {
-            yield return new ValidationError("email", "Email düzgün formatda deyil.");
+            yield return new ValidationError("email", "auth.emailInvalid");
         }
 
         if (trimmed.Length > 254)
         {
-            yield return new ValidationError("email", "Email 254 simvoldan uzun ola bilməz.");
+            yield return new ValidationError("email", "adminUsers.emailTooLong");
         }
     }
 
@@ -193,11 +193,11 @@ internal static class AdminUserValidation
     {
         if (string.IsNullOrWhiteSpace(fullName))
         {
-            yield return new ValidationError("fullName", "Ad və soyad tələb olunur.");
+            yield return new ValidationError("fullName", "adminUsers.nameRequired");
         }
         else if (fullName.Trim().Length > 120)
         {
-            yield return new ValidationError("fullName", "Ad 120 simvoldan uzun ola bilməz.");
+            yield return new ValidationError("fullName", "auth.nameTooLong");
         }
     }
 
@@ -206,11 +206,11 @@ internal static class AdminUserValidation
         if (string.IsNullOrEmpty(password) || password.Length < MinimumPasswordLength)
         {
             yield return new ValidationError(
-                field, $"Şifrə ən azı {MinimumPasswordLength} simvol olmalıdır.");
+                field, "auth.passwordTooShort", ("min", MinimumPasswordLength));
         }
         else if (password.Length > 128)
         {
-            yield return new ValidationError(field, "Şifrə 128 simvoldan uzun ola bilməz.");
+            yield return new ValidationError(field, "auth.passwordTooLong");
         }
     }
 
@@ -221,7 +221,7 @@ internal static class AdminUserValidation
             // A scoped account with an empty scope sees nothing, which is not
             // a useful thing to create (plan section 8A.2).
             yield return new ValidationError(
-                "kioskIds", "Əhatəsi məhdud hesab üçün ən azı bir kiosk seçilməlidir.");
+                "kioskIds", "adminUsers.kioskScopeEmpty");
         }
     }
 }

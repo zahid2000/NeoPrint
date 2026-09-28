@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 
-using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.S3;
 
 using Microsoft.Extensions.Logging;
 
@@ -116,7 +116,7 @@ public sealed class StorageMigrationWorker
             return null;
         }
 
-        var actor = ActorContext.System("Storage sinxronizasiyası");
+        var actor = ActorContext.System("storage.reason.sync");
 
         try
         {
@@ -172,7 +172,7 @@ public sealed class StorageMigrationWorker
 
             if (latest.IsActive && latest.Status != StorageSyncStatus.Paused)
             {
-                latest.Fail("Sinxronizasiya gözlənilməz xəta ilə dayandı. Təfərrüat log-dadır.", actor, _clock.UtcNow);
+                latest.Fail(new UserMessage("storage.sync.unexpected").Encode(), actor, _clock.UtcNow);
                 await SaveAsync(latest, CancellationToken.None).ConfigureAwait(false);
                 _registry.Invalidate();
             }
@@ -390,8 +390,7 @@ public sealed class StorageMigrationWorker
             // and every file must keep pointing at it.
             job.FailedObjects = stillMissing.Count;
             job.Fail(
-                $"{stillMissing.Count} obyekt hədəfə köçürülə bilmədi. "
-                + "Uğursuzları təkrarlayın; o vaxta qədər fayllar mənbədən oxunur.",
+                UserMessage.Of("storage.sync.objectsMissing", ("count", stillMissing.Count)).Encode(),
                 actor,
                 _clock.UtcNow);
 
@@ -603,7 +602,7 @@ public sealed class StorageMigrationWorker
             }
         }
 
-        return (0, lastError ?? "Naməlum xəta");
+        return (0, lastError ?? "storage.sync.unknownError");
     }
 
     private async Task RecordFailureAsync(

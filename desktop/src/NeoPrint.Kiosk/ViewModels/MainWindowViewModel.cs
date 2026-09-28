@@ -243,6 +243,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     protected override void OnLanguageChanged()
     {
         Activation.Language = Language;
+        KioskLanguage.Current = Language;
         base.OnLanguageChanged();
 
         // The queue lines carry text of their own; word them again.

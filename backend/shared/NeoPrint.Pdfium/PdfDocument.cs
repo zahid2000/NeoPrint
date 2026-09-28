@@ -14,21 +14,20 @@ public sealed class PdfiumException : Exception
     public PdfiumError Error { get; }
 
     /// <summary>
-    /// A sentence for the person who uploaded the file.
+    /// The message key for the person who uploaded the file (<c>pdf.*</c>).
     /// </summary>
     /// <remarks>
     /// Separate from <see cref="Exception.Message"/>, which goes to the log:
-    /// the user is told what to do about it, not what PDFium called it.
+    /// the user is told what to do about it, not what PDFium called it. A key
+    /// rather than text, so the backend and the kiosk write it out in their
+    /// reader's language.
     /// </remarks>
-    public string UserMessage => Error switch
+    public string MessageKey => Error switch
     {
-        PdfiumError.PasswordRequired =>
-            "Fayl şifrələnib, açmaq mümkün deyil. Şifrəni çıxarıb yenidən yükləyin.",
-        PdfiumError.UnsupportedSecurityScheme =>
-            "Faylın qorunma üsulu dəstəklənmir. Şifrəni çıxarıb yenidən yükləyin.",
-        PdfiumError.FormatError =>
-            "Fayl zədələnib və ya düzgün PDF deyil.",
-        _ => "Faylı oxumaq mümkün olmadı.",
+        PdfiumError.PasswordRequired => "pdf.passwordRequired",
+        PdfiumError.UnsupportedSecurityScheme => "pdf.securityUnsupported",
+        PdfiumError.FormatError => "pdf.damaged",
+        _ => "pdf.unreadable",
     };
 }
 

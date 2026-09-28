@@ -59,19 +59,19 @@ public sealed class GetFilePageImageHandler : IRequestHandler<GetFilePageImageQu
         // not confirm it exists.
         if (file is null || file.UserId != request.UserId || file.DeletedAt is not null)
         {
-            throw new NotFoundException("Fayl");
+            throw new NotFoundException("file");
         }
 
         if (file.Status != FileStatus.Ready || file.Pdf is null)
         {
             throw Invalid(file.Status == FileStatus.Failed
-                ? file.FailureReason ?? "Fayl çevrilə bilmədi."
-                : "Fayl hələ hazırlanır. Bir az sonra yenidən cəhd edin.");
+                ? file.FailureReason is { } reason ? UserMessage.Decode(reason) : new UserMessage("files.conversionFailed")
+                : new UserMessage("files.notReadyRetry"));
         }
 
         if (request.Page < 1 || request.Page > file.PageCount)
         {
-            throw Invalid($"Sənəddə {file.PageCount} səhifə var; {request.Page}-ci səhifə yoxdur.");
+            throw Invalid(UserMessage.Of("files.pageMissing", ("count", file.PageCount), ("page", request.Page)));
         }
 
         var width = FilePageImage.Snap(request.Width);
@@ -87,7 +87,7 @@ public sealed class GetFilePageImageHandler : IRequestHandler<GetFilePageImageQu
 
         if (!_renderer.IsAvailable)
         {
-            throw Invalid("Səhifə önizləməsi hazırda mümkün deyil. Faylın özü əlçatandır.");
+            throw Invalid(new UserMessage("files.previewUnavailable"));
         }
 
         await using var pdf = await _storage.OpenReadAsync(
@@ -111,9 +111,9 @@ public sealed class GetFilePageImageHandler : IRequestHandler<GetFilePageImageQu
         }
         catch (PageRenderException exception)
         {
-            throw Invalid(exception.Message);
+            throw Invalid(exception.Text);
         }
     }
 
-    private static ValidationException Invalid(string message) => new([new ValidationError("page", message)]);
+    private static ValidationException Invalid(UserMessage message) => new([new ValidationError("page", message)]);
 }

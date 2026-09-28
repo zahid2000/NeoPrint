@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Pdfium;
 
+using NeoPrint.Domain.Common;
 using SkiaSharp;
 
 namespace NeoPrint.Infrastructure.Conversion;
@@ -56,7 +57,7 @@ public sealed class PdfiumPageRenderer : IPageRenderer
 
             if (pageIndex < 0 || pageIndex >= document.PageCount)
             {
-                throw new PageRenderException($"Sənəddə {document.PageCount} səhifə var.");
+                throw new PageRenderException(UserMessage.Of("preview.pageCount", ("count", document.PageCount)));
             }
 
             var (pixels, renderedWidth, height, stride) = document.RenderPage(pageIndex, width);
@@ -66,7 +67,7 @@ public sealed class PdfiumPageRenderer : IPageRenderer
         catch (PdfiumException exception)
         {
             _logger.LogWarning(exception, "Could not render page {Page}.", pageIndex + 1);
-            throw new PageRenderException(exception.UserMessage, exception);
+            throw new PageRenderException(new UserMessage(exception.MessageKey), exception);
         }
         finally
         {
@@ -81,9 +82,9 @@ public sealed class PdfiumPageRenderer : IPageRenderer
         var info = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Opaque);
 
         using var image = SKImage.FromPixelCopy(info, pixels, stride)
-                          ?? throw new PageRenderException("Səhifənin şəkli yaradıla bilmədi.");
+                          ?? throw new PageRenderException(new UserMessage("preview.failed"));
         using var data = image.Encode(SKEncodedImageFormat.Png, 100)
-                         ?? throw new PageRenderException("Səhifənin şəkli yaradıla bilmədi.");
+                         ?? throw new PageRenderException(new UserMessage("preview.failed"));
 
         return data.ToArray();
     }

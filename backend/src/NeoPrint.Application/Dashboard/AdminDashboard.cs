@@ -1,6 +1,7 @@
 using MediatR;
 
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Localization;
 using NeoPrint.Application.Storage;
 
 namespace NeoPrint.Application.Dashboard;
@@ -95,7 +96,7 @@ public sealed class GetAdminDashboardHandler : IRequestHandler<GetAdminDashboard
                     provider.Type,
                     provider.Role,
                     provider.HealthStatus,
-                    provider.HealthMessage,
+                    Messages.WriteStored(provider.HealthMessage),
                     provider.LastCheckedAt))
                 .ToList(),
             jobs.Where(job => ActiveStatuses.Contains(job.Status)).MaxBy(job => job.StartedAt ?? DateTime.MaxValue),

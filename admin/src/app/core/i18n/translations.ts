@@ -11,6 +11,7 @@ import { featuresTranslations } from './features.i18n';
 import { formatsTranslations } from './formats.i18n';
 import { kiosksTranslations } from './kiosks.i18n';
 import { pricingTranslations } from './pricing.i18n';
+import { settingsTranslations } from './settings.i18n';
 import { storageTranslations } from './storage.i18n';
 import type { PageTranslations } from './page-translations';
 
@@ -984,6 +985,7 @@ const pages: readonly PageTranslations[] = [
   storageTranslations,
   kiosksTranslations,
   featuresTranslations,
+  settingsTranslations,
 ];
 
 for (const language of supportedLanguages) {

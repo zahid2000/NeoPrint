@@ -1,7 +1,9 @@
 import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { Observable, catchError, shareReplay, switchMap, throwError } from 'rxjs';
 
+import { defaultLanguage } from '../i18n/translations';
 import { AuthService } from './auth.service';
 
 /** Endpoints that must never carry a token or trigger a refresh. */
@@ -29,6 +31,12 @@ export function authInterceptor(
   next: HttpHandlerFn,
 ): Observable<HttpEvent<unknown>> {
   const auth = inject(AuthService);
+
+  // The server writes its messages in the language the panel is showing,
+  // not the browser's: an Azerbaijani panel in an English browser still gets
+  // Azerbaijani errors (docs/TASKS.md T-043).
+  const language = inject(TranslateService).getCurrentLang() ?? defaultLanguage;
+  request = request.clone({ setHeaders: { 'Accept-Language': language } });
 
   const isAnonymous = anonymousPaths.some((path) => request.url.includes(path));
 

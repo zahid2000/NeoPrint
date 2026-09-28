@@ -1,6 +1,6 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Net;
 using System.Text.Json;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -165,7 +165,7 @@ public sealed class IdempotencyTests
         second.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         var problem = await second.Content.ReadFromJsonAsync<JsonElement>();
-        problem.GetProperty("title").GetString().Should().Be("Idempotency key reused");
+        problem.GetProperty("title").GetString().Should().Be("Sorğu açarı təkrar istifadə olunub");
     }
 
     [DockerFact]

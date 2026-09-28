@@ -2,6 +2,7 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { TranslateService, provideTranslateService } from '@ngx-translate/core';
 import { describe, beforeEach, afterEach, expect, it } from 'vitest';
 
 import { authInterceptor } from './auth.interceptor';
@@ -35,6 +36,7 @@ describe('authInterceptor', () => {
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
+        provideTranslateService({ fallbackLang: 'az', lang: 'az' }),
         provideRouter([
           { path: 'login', children: [] },
           { path: '', children: [] },
@@ -62,6 +64,17 @@ describe('authInterceptor', () => {
 
     expect(request.request.headers.get('Authorization')).toBe('Bearer first-token');
     expect(request.request.withCredentials).toBe(true);
+
+    request.flush([]);
+  });
+
+  it('asks for messages in the language the panel shows', () => {
+    TestBed.inject(TranslateService).use('ru');
+    http.get('/api/admin/devices').subscribe();
+
+    const request = backend.expectOne('/api/admin/devices');
+
+    expect(request.request.headers.get('Accept-Language')).toBe('ru');
 
     request.flush([]);
   });

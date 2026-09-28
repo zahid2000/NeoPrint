@@ -57,7 +57,11 @@
             <div class="settings__row" [class.settings__row--dirty]="isChanged(setting)">
               <div class="settings__meta">
                 <code class="settings__key">{{ setting.key }}</code>
-                <span class="settings__description">{{ setting.description }}</span>
+                <span class="settings__description">{{
+                  hasText(setting)
+                    ? ('settings.description.' + setting.key | translate)
+                    : setting.description
+                }}</span>
                 <span class="settings__default">
                   {{ 'settings.defaultIs' | translate }}
                   <code>{{ setting.defaultValue || '—' }}</code>

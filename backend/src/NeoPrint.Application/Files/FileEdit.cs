@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
+using NeoPrint.Application.Localization;
 using NeoPrint.Contracts;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
@@ -51,10 +52,14 @@ public sealed record FileVersionItem(
 /// <summary>A page, image or text operation that could not be carried out, in words the user can act on.</summary>
 public sealed class FileEditException : Exception
 {
-    public FileEditException(string userMessage, Exception? inner = null)
-        : base(userMessage, inner)
+    public FileEditException(UserMessage text, Exception? inner = null)
+        : base(text.Key, inner)
     {
+        Text = text;
     }
+
+    /// <summary>What to tell the user.</summary>
+    public UserMessage Text { get; }
 }
 
 /// <summary>
@@ -97,7 +102,7 @@ public sealed class EditFileCommandValidator : IValidator<EditFileCommand>
 
         if (given != 1)
         {
-            yield return new ValidationError("edit", "Bir redaktə göndərin: səhifələr, şəkil və ya mətn.");
+            yield return new ValidationError("edit", "files.edit.oneKind");
             yield break;
         }
 
@@ -105,22 +110,22 @@ public sealed class EditFileCommandValidator : IValidator<EditFileCommand>
         {
             if (pages.Count == 0)
             {
-                yield return new ValidationError("pages", "Ən azı bir səhifə qalmalıdır.");
+                yield return new ValidationError("pages", "files.edit.keepOnePage");
             }
 
             if (pages.Any(page => page.Page < 1))
             {
-                yield return new ValidationError("pages", "Səhifə nömrəsi 1-dən başlayır.");
+                yield return new ValidationError("pages", "files.edit.pageFromOne");
             }
 
             if (pages.Select(page => page.Page).Distinct().Count() != pages.Count)
             {
-                yield return new ValidationError("pages", "Hər səhifə bir dəfə göstərilə bilər.");
+                yield return new ValidationError("pages", "files.edit.pageOnce");
             }
 
             if (pages.Any(page => !Rotations.Contains(page.Rotate)))
             {
-                yield return new ValidationError("pages", "Fırlatma 0, 90, 180 və ya 270 dərəcə olmalıdır.");
+                yield return new ValidationError("pages", "files.edit.rotation");
             }
         }
 
@@ -128,25 +133,25 @@ public sealed class EditFileCommandValidator : IValidator<EditFileCommand>
         {
             if (!Rotations.Contains(image.Rotate))
             {
-                yield return new ValidationError("image.rotate", "Fırlatma 0, 90, 180 və ya 270 dərəcə olmalıdır.");
+                yield return new ValidationError("image.rotate", "files.edit.rotation");
             }
 
             if (image.Brightness is < -100 or > 100 || image.Contrast is < -100 or > 100)
             {
-                yield return new ValidationError("image", "Parlaqlıq və kontrast -100 ilə 100 arasında olmalıdır.");
+                yield return new ValidationError("image", "files.edit.brightnessRange");
             }
 
             if (image.Crop is { } crop
                 && (crop.X < 0 || crop.Y < 0 || crop.Width <= 0.01 || crop.Height <= 0.01
                     || crop.X + crop.Width > 1.0001 || crop.Y + crop.Height > 1.0001))
             {
-                yield return new ValidationError("image.crop", "Kəsmə sahəsi şəklin daxilində olmalıdır.");
+                yield return new ValidationError("image.crop", "files.edit.cropOutside");
             }
         }
 
         if (edit.Text is { Length: > MaxTextLength })
         {
-            yield return new ValidationError("text", "Mətn çox uzundur (ən çox 1 000 000 simvol).");
+            yield return new ValidationError("text", "files.edit.textTooLong");
         }
     }
 }
@@ -213,7 +218,7 @@ public sealed class EditFileHandler :
                 version.Extension ?? file.Extension,
                 version.Object.PlaintextLength,
                 version.CreatedAt,
-                version.Note,
+                Messages.WriteStored(version.Note),
                 version.Number == latest))];
     }
 
@@ -228,12 +233,12 @@ public sealed class EditFileHandler :
 
         if (original?.Group == FormatGroup.PageDescription)
         {
-            throw Invalid("edit", "PS, PCL və XPS faylları redaktə olunmur — çapda səhifə aralığı seçə bilərsiniz.");
+            throw Invalid("edit", "files.edit.pageDescription");
         }
 
         if (file.Status != FileStatus.Ready || file.Pdf is null)
         {
-            throw Invalid("edit", "Fayl hələ hazırlanır. Hazır olandan sonra redaktə edin.");
+            throw Invalid("edit", "files.edit.notReady");
         }
 
         var number = (file.LatestVersion?.Number ?? 0) + 1;
@@ -275,7 +280,7 @@ public sealed class EditFileHandler :
                 extension,
                 note,
                 Math.Max(1, keep),
-                ActorContext.User(request.UserId, "Fayl redaktə edildi"),
+                ActorContext.User(request.UserId, "files.reason.edited"),
                 _clock.UtcNow);
 
             await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
@@ -293,7 +298,7 @@ public sealed class EditFileHandler :
         }
         catch (FileEditException exception)
         {
-            throw Invalid("edit", exception.Message);
+            throw new ValidationException([new ValidationError("edit", exception.Text)]);
         }
         finally
         {
@@ -317,7 +322,7 @@ public sealed class EditFileHandler :
 
             if (outside is not null)
             {
-                throw Invalid("pages", $"Sənəddə {file.PageCount} səhifə var; {outside.Page}-ci səhifə yoxdur.");
+                throw Invalid("pages", "files.pageMissing", ("count", file.PageCount), ("page", outside.Page));
             }
 
             await using var pdf = await _storage.OpenReadAsync(ToStored(file.Pdf!), StorageBucket.Files, cancellationToken)
@@ -334,7 +339,7 @@ public sealed class EditFileHandler :
         {
             if (current?.Group != FormatGroup.Image)
             {
-                throw Invalid("image", "Şəkil redaktəsi yalnız şəkil faylları üçündür.");
+                throw Invalid("image", "files.edit.imageOnly");
             }
 
             await using var source = await _storage
@@ -344,44 +349,49 @@ public sealed class EditFileHandler :
             var extension = await _editor.EditImageAsync(source, image, output, cancellationToken)
                 .ConfigureAwait(false);
 
-            return (extension, "Şəkil redaktə edildi");
+            return (extension, new UserMessage("files.note.imageEdited").Encode());
         }
 
         if (current?.Extension != "txt")
         {
-            throw Invalid("text", "Mətn redaktəsi yalnız TXT faylları üçündür.");
+            throw Invalid("text", "files.edit.textOnly");
         }
 
         // UTF-8 without a byte order mark, as the upload's text detection expects.
         var bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(edit.Text!);
         await output.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
 
-        return ("txt", "Mətn redaktə edildi");
+        return ("txt", new UserMessage("files.note.textEdited").Encode());
     }
 
-    /// <summary>"3 səhifədən 2-si saxlanıldı, sıra dəyişdi, 1 səhifə fırlandı".</summary>
+    /// <summary>
+    /// "2 of 3 pages kept, order changed, 1 page rotated", kept as messages so
+    /// it reads in whoever's language looks at the history.
+    /// </summary>
     private static string PageNote(int before, IReadOnlyList<PageEdit> pages)
     {
-        var parts = new List<string>();
+        var parts = new List<UserMessage>();
 
         if (pages.Count != before)
         {
-            parts.Add($"{before} səhifədən {pages.Count}-i saxlanıldı");
+            parts.Add(UserMessage.Of("files.note.pagesKept", ("kept", pages.Count), ("total", before)));
         }
 
         if (!pages.Select(page => page.Page).SequenceEqual(pages.Select(page => page.Page).Order()))
         {
-            parts.Add("sıra dəyişdi");
+            parts.Add(new UserMessage("files.note.reordered"));
         }
 
         var rotated = pages.Count(page => page.Rotate != 0);
 
         if (rotated > 0)
         {
-            parts.Add($"{rotated} səhifə fırlandı");
+            parts.Add(UserMessage.Of("files.note.rotated", ("count", rotated)));
         }
 
-        return parts.Count == 0 ? "Səhifələr dəyişmədi" : string.Join(", ", parts);
+        return parts.Count == 0
+            ? new UserMessage("files.note.unchanged").Encode()
+            : UserMessage.EncodeAll(parts);
     }
 
     /// <summary>
@@ -414,5 +424,6 @@ public sealed class EditFileHandler :
     private static StoredObject ToStored(FileObject stored) => new(
         stored.ProviderId, stored.Key, stored.Sha256, stored.EncryptedLength, stored.PlaintextLength, stored.KekId);
 
-    private static ValidationException Invalid(string field, string message) => new([new ValidationError(field, message)]);
+    private static ValidationException Invalid(string field, string key, params (string Name, object? Value)[] arguments)
+        => new([new ValidationError(field, key, arguments)]);
 }

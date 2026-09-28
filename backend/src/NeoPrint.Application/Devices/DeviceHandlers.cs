@@ -64,8 +64,7 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
             var pending = await _devices.CountPendingAsync(cancellationToken).ConfigureAwait(false);
             if (pending >= MaxPendingDevices)
             {
-                throw new DomainException(
-                    "Aktivləşdirmə gözləyən cihazların sayı həddi keçib. Admin paneldən köhnə cihazları təmizləyin.");
+                throw new DomainException("devices.tooManyPending");
             }
 
             // A new device starts Pending, which is the status it is born with;
@@ -80,8 +79,7 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
         {
             // A revoked device must not talk its way back in. Reinstalling
             // generates a new key, which registers as a new device.
-            throw new DomainException(
-                "Bu cihaz ləğv edilib. Kiosk tətbiqini yenidən quraşdırın — yeni cihaz açarı yaradılacaq.");
+            throw new DomainException("devices.revokedReinstall");
         }
         else if (device.Fingerprint.MachineId is not null && !device.Fingerprint.LooksLikeSameMachine(fingerprint))
         {
@@ -221,7 +219,7 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
 
         previous.Revoke(
             ActorContext.System(
-                "Kiosk üçün yeni cihaz aktivləşdirildi.", _correlation.CorrelationId),
+                "devices.reason.replaced", _correlation.CorrelationId),
             now);
         await _devices.UpdateAsync(previous, cancellationToken).ConfigureAwait(false);
     }
@@ -334,11 +332,11 @@ public sealed class CreateDeviceChallengeHandler
         CreateDeviceChallengeCommand request, CancellationToken cancellationToken)
     {
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("Device");
+            ?? throw new NotFoundException("device");
 
         if (device.Status == DeviceStatus.Revoked)
         {
-            throw new DomainException("Bu cihaz ləğv edilib.");
+            throw new DomainException("devices.revoked");
         }
 
         var nonce = await _challenges.IssueAsync(device.Id, cancellationToken).ConfigureAwait(false);
@@ -382,7 +380,7 @@ public sealed class CreateDeviceTokenHandler : IRequestHandler<CreateDeviceToken
 
         // One message for every failure: a caller must not be able to tell an
         // unknown device from a bad signature.
-        var refused = new DomainException("Cihaz təsdiqlənmədi.");
+        var refused = new DomainException("devices.refused");
 
         if (device is null || device.Status == DeviceStatus.Revoked || device.Status == DeviceStatus.Expired)
         {
@@ -440,11 +438,11 @@ public sealed class RenewPairingCodeHandler : IRequestHandler<RenewPairingCodeCo
     public async Task<PairingCodeResult> Handle(RenewPairingCodeCommand request, CancellationToken cancellationToken)
     {
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("Device");
+            ?? throw new NotFoundException("device");
 
         if (device.Status != DeviceStatus.Pending)
         {
-            throw new DomainException("Yalnız aktivləşdirmə gözləyən cihazın kodu yenilənə bilər.");
+            throw new DomainException("devices.codeRefreshPendingOnly");
         }
 
         var code = KioskDevice.NewPairingCode();
@@ -520,7 +518,7 @@ public sealed class ReportDevicePrintersHandler : IRequestHandler<ReportDevicePr
     public async Task<Unit> Handle(ReportDevicePrintersCommand request, CancellationToken cancellationToken)
     {
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("Device");
+            ?? throw new NotFoundException("device");
 
         device.ReportedPrinters = [.. request.Printers.Select(RegisterDeviceHandler.Map)];
         device.LastSeenAt = _clock.UtcNow;

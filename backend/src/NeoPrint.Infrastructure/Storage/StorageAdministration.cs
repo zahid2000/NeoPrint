@@ -6,6 +6,7 @@ using MongoDB.Driver;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
+using NeoPrint.Application.Localization;
 using NeoPrint.Application.Storage;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Storage;
@@ -115,7 +116,7 @@ public sealed class StorageAdministration : IStorageAdministration
         {
             // Plan section 2.10: no activation without a passing test. Saving
             // it anyway would leave a provider nobody can give a role to.
-            throw Invalid("endpoint", $"Bağlantı testi keçmədi: {test.Message}");
+            throw Invalid("endpoint", "storage.testFailed", ("problemMessage", test.Message));
         }
 
         await EnsureUniqueNameAsync(input.Name, exceptId: null, cancellationToken).ConfigureAwait(false);
@@ -175,7 +176,8 @@ public sealed class StorageAdministration : IStorageAdministration
         {
             throw Invalid(
                 "endpoint",
-                $"Bu provayder istifadədədir və yeni parametrlərlə bağlantı testi keçmədi: {test.Message}");
+                "storage.testFailedInUse",
+                ("problemMessage", test.Message));
         }
 
         provider.Name = input.Name.Trim();
@@ -198,22 +200,22 @@ public sealed class StorageAdministration : IStorageAdministration
     {
         if (!Enum.TryParse<StorageProviderRole>(role, ignoreCase: true, out var next))
         {
-            throw Invalid("role", "Rol Primary, Secondary və ya Inactive olmalıdır.");
+            throw Invalid("role", "storage.roleInvalid");
         }
 
         if (await ActiveJobAsync(cancellationToken).ConfigureAwait(false) is not null)
         {
             // A migration relies on who is primary for its dual-write and its
             // switch; changing that under it would split the writes.
-            throw Invalid("role", "Aktiv sinxronizasiya işi var. Rolu dəyişmək üçün əvvəlcə onu bitirin və ya ləğv edin.");
+            throw Invalid("role", "storage.roleBusy");
         }
 
         var provider = await LoadAsync(providerId, cancellationToken).ConfigureAwait(false);
-        var actor = Actor($"Storage provayderinin rolu: {next}");
+        var actor = Actor(UserMessage.Of("storage.reason.role", ("role", next)).Encode());
 
         if (next == StorageProviderRole.Inactive && provider.Role == StorageProviderRole.Primary)
         {
-            throw Invalid("role", "Primary provayderi söndürmək olmaz — əvvəlcə başqa provayderi Primary edin.");
+            throw Invalid("role", "storage.primaryOff");
         }
 
         if (next != StorageProviderRole.Inactive)
@@ -281,12 +283,12 @@ public sealed class StorageAdministration : IStorageAdministration
     {
         if (!Enum.TryParse<StorageSyncMode>(mode, ignoreCase: true, out var syncMode))
         {
-            throw Invalid("mode", "Rejim Migration və ya Mirror olmalıdır.");
+            throw Invalid("mode", "storage.modeInvalid");
         }
 
         if (await ActiveJobAsync(cancellationToken).ConfigureAwait(false) is { } running)
         {
-            throw Invalid("mode", $"Artıq aktiv sinxronizasiya işi var ({running.Status}). Eyni anda yalnız biri ola bilər.");
+            throw Invalid("mode", "storage.syncRunning", ("status", running.Status));
         }
 
         var source = await _context.StorageProviders
@@ -299,15 +301,15 @@ public sealed class StorageAdministration : IStorageAdministration
 
         if (target.Id == source.Id)
         {
-            throw Invalid("targetId", "Hədəf mənbə ilə eyni ola bilməz.");
+            throw Invalid("targetId", "storage.targetIsSource");
         }
 
         if (!target.IsVerified)
         {
-            throw Invalid("targetId", "Hədəf provayder bağlantı testindən keçməyib.");
+            throw Invalid("targetId", "storage.targetUnverified");
         }
 
-        var actor = Actor($"Storage sinxronizasiyası: {syncMode}");
+        var actor = Actor(UserMessage.Of("storage.reason.syncMode", ("mode", syncMode)).Encode());
 
         if (syncMode == StorageSyncMode.Mirror)
         {
@@ -352,16 +354,16 @@ public sealed class StorageAdministration : IStorageAdministration
     }
 
     public Task<StorageSyncJobResponse> PauseJobAsync(Guid jobId, CancellationToken cancellationToken)
-        => TransitionAsync(jobId, job => job.Pause(Actor("Sinxronizasiya dayandırıldı"), _clock.UtcNow), enqueue: false, cancellationToken);
+        => TransitionAsync(jobId, job => job.Pause(Actor("storage.reason.paused"), _clock.UtcNow), enqueue: false, cancellationToken);
 
     public Task<StorageSyncJobResponse> ResumeJobAsync(Guid jobId, CancellationToken cancellationToken)
         => TransitionAsync(jobId, job => job.Start(Actor("Sinxronizasiya davam etdirildi"), _clock.UtcNow), enqueue: true, cancellationToken);
 
     public Task<StorageSyncJobResponse> CancelJobAsync(Guid jobId, CancellationToken cancellationToken)
-        => TransitionAsync(jobId, job => job.Cancel(Actor("Sinxronizasiya ləğv edildi"), _clock.UtcNow), enqueue: false, cancellationToken);
+        => TransitionAsync(jobId, job => job.Cancel(Actor("storage.reason.cancelled"), _clock.UtcNow), enqueue: false, cancellationToken);
 
     public Task<StorageSyncJobResponse> RetryFailuresAsync(Guid jobId, CancellationToken cancellationToken)
-        => TransitionAsync(jobId, job => job.RetryVerification(Actor("Uğursuzlar təkrarlanır"), _clock.UtcNow), enqueue: true, cancellationToken);
+        => TransitionAsync(jobId, job => job.RetryVerification(Actor("storage.reason.retry"), _clock.UtcNow), enqueue: true, cancellationToken);
 
     public async Task<IReadOnlyList<StorageSyncFailureResponse>> ListFailuresAsync(Guid jobId, CancellationToken cancellationToken)
     {
@@ -382,14 +384,15 @@ public sealed class StorageAdministration : IStorageAdministration
         var retentionDays = await RetentionDaysAsync(cancellationToken).ConfigureAwait(false);
 
         var allowedFrom = job.SourcePurgeAllowedFrom(retentionDays)
-            ?? throw Invalid("job", "Mənbəni yalnız tamamlanmış migrasiyadan sonra təmizləmək olar.");
+            ?? throw Invalid("job", "storage.purgeAfterMigration");
 
         if (_clock.UtcNow < allowedFrom)
         {
             throw Invalid(
                 "job",
-                $"Mənbədəki obyektlər {retentionDays} gün saxlanılır (Storage.SourceRetentionDays). " +
-                $"Təmizləmək {allowedFrom:yyyy-MM-dd HH:mm} UTC-dən sonra mümkün olacaq.");
+                "storage.purgeTooEarly",
+                ("days", retentionDays),
+                ("from", allowedFrom.ToString("dd.MM.yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture)));
         }
 
         var source = await LoadAsync(job.SourceId, cancellationToken).ConfigureAwait(false);
@@ -399,13 +402,14 @@ public sealed class StorageAdministration : IStorageAdministration
             // Primary is where new files go; a mirror's secondary is a live copy.
             throw Invalid(
                 "job",
-                $"Mənbə provayder ({source.Name}) hazırda {source.Role} rolundadır və istifadə olunur. " +
-                "Təmizləmək üçün əvvəlcə onu söndürün.");
+                "storage.purgeSourceInUse",
+                ("name", source.Name),
+                ("role", source.Role));
         }
 
         if (job.SourcePurgeRequestedAt is null)
         {
-            job.RequestSourcePurge(retentionDays, Actor("Mənbənin təmizlənməsi təsdiqləndi"), _clock.UtcNow);
+            job.RequestSourcePurge(retentionDays, Actor("storage.reason.purgeConfirmed"), _clock.UtcNow);
 
             await AggregateWriter.ReplaceAsync(_context, _context.StorageSyncJobs, job, cancellationToken)
                 .ConfigureAwait(false);
@@ -428,7 +432,7 @@ public sealed class StorageAdministration : IStorageAdministration
 
         if (provider.Role != StorageProviderRole.Inactive)
         {
-            throw Invalid("role", "Yalnız söndürülmüş (Inactive) provayder silinə bilər.");
+            throw Invalid("role", "storage.deleteActive");
         }
 
         var inJob = await _context.StorageSyncJobs
@@ -442,7 +446,7 @@ public sealed class StorageAdministration : IStorageAdministration
 
         if (inJob)
         {
-            throw Invalid("role", "Bu provayder aktiv sinxronizasiya işində iştirak edir.");
+            throw Invalid("role", "storage.deleteInSync");
         }
 
         var filter = Builders<Domain.Files.StoredFile>.Filter;
@@ -458,7 +462,7 @@ public sealed class StorageAdministration : IStorageAdministration
         {
             // Reads follow the recorded provider: deleting it would make those
             // files unreadable. A migration moves them off first.
-            throw Invalid("role", "Bu provayderdə hələ fayllar var. Əvvəlcə onları migrasiya ilə köçürün.");
+            throw Invalid("role", "storage.deleteHasFiles");
         }
 
         await _context.StorageProviders.DeleteOneAsync(p => p.Id == providerId, cancellationToken)
@@ -501,9 +505,9 @@ public sealed class StorageAdministration : IStorageAdministration
         {
             transition(job);
         }
-        catch (IllegalStateTransitionException exception)
+        catch (IllegalStateTransitionException)
         {
-            throw Invalid("action", $"Bu əməliyyat {job.Status} vəziyyətindəki iş üçün mümkün deyil. ({exception.Message})");
+            throw Invalid("action", "storage.actionNotNow", ("status", job.Status));
         }
 
         if (!job.IsActive)
@@ -555,11 +559,11 @@ public sealed class StorageAdministration : IStorageAdministration
 
     private async Task<StorageProvider> LoadAsync(Guid id, CancellationToken cancellationToken)
         => await _context.StorageProviders.Find(p => p.Id == id).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false)
-           ?? throw new NotFoundException("Storage provayderi");
+           ?? throw new NotFoundException("storageProvider");
 
     private async Task<StorageSyncJob> LoadJobAsync(Guid id, CancellationToken cancellationToken)
         => await _context.StorageSyncJobs.Find(j => j.Id == id).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false)
-           ?? throw new NotFoundException("Sinxronizasiya işi");
+           ?? throw new NotFoundException("syncJob");
 
     private Task SaveAsync(StorageProvider provider, CancellationToken cancellationToken)
         => AggregateWriter.ReplaceAsync(_context, _context.StorageProviders, provider, cancellationToken);
@@ -594,7 +598,7 @@ public sealed class StorageAdministration : IStorageAdministration
 
         if (taken)
         {
-            throw Invalid("name", "Bu adda provayder artıq var.");
+            throw Invalid("name", "storage.nameTaken");
         }
     }
 
@@ -606,30 +610,30 @@ public sealed class StorageAdministration : IStorageAdministration
 
         if (string.IsNullOrWhiteSpace(input.Name))
         {
-            errors.Add(new("name", "Ad tələb olunur."));
+            errors.Add(new("name", "storage.nameRequired"));
         }
 
         if (!Enum.TryParse<StorageProviderType>(input.Type, ignoreCase: true, out _))
         {
-            errors.Add(new("type", "Tip RustFS, Scality və ya MinIO olmalıdır."));
+            errors.Add(new("type", "storage.typeInvalid"));
         }
 
         if (!Uri.TryCreate(input.Endpoint?.Trim(), UriKind.Absolute, out var endpoint)
             || endpoint.Scheme is not ("http" or "https"))
         {
-            errors.Add(new("endpoint", "Endpoint http:// və ya https:// ilə başlayan tam ünvan olmalıdır."));
+            errors.Add(new("endpoint", "storage.endpointInvalid"));
         }
 
         // On an edit both keys may be left empty to keep the stored ones: the
         // panel shows neither, so it cannot send them back.
         if (requireSecret && string.IsNullOrWhiteSpace(input.AccessKey))
         {
-            errors.Add(new("accessKey", "Access key tələb olunur."));
+            errors.Add(new("accessKey", "storage.accessKeyRequired"));
         }
 
         if (requireSecret && string.IsNullOrEmpty(input.SecretKey))
         {
-            errors.Add(new("secretKey", "Secret key tələb olunur."));
+            errors.Add(new("secretKey", "storage.secretKeyRequired"));
         }
 
         if (input.Buckets is null
@@ -637,7 +641,7 @@ public sealed class StorageAdministration : IStorageAdministration
             || string.IsNullOrWhiteSpace(input.Buckets.Receipts)
             || string.IsNullOrWhiteSpace(input.Buckets.Temp))
         {
-            errors.Add(new("buckets", "Üç bucket adının hamısı tələb olunur."));
+            errors.Add(new("buckets", "storage.bucketsRequired"));
         }
 
         if (errors.Count > 0)
@@ -686,7 +690,7 @@ public sealed class StorageAdministration : IStorageAdministration
             new StorageBucketsDto(provider.Buckets.Files, provider.Buckets.Receipts, provider.Buckets.Temp),
             provider.Role.ToString(),
             provider.HealthStatus.ToString(),
-            provider.HealthMessage,
+            Messages.WriteStored(provider.HealthMessage),
             provider.LastCheckedAt,
             provider.IsVerified);
     }
@@ -709,7 +713,7 @@ public sealed class StorageAdministration : IStorageAdministration
         job.SwitchPrimaryOnComplete,
         job.StartedAt,
         job.FinishedAt,
-        job.FailureReason,
+        Messages.WriteStored(job.FailureReason),
         job.SourcePurgeAllowedFrom(retentionDays),
         job.SourcePurgeRequestedAt,
         job.SourcePurgedAt,
@@ -718,10 +722,10 @@ public sealed class StorageAdministration : IStorageAdministration
 
     private static StorageTestResponse Map(StorageTestResult result) => new(
         result.Succeeded,
-        result.Message,
-        [.. result.Buckets.Select(b => new StorageBucketTestDto(b.Bucket, b.Succeeded, b.Problem))],
+        Messages.WriteStored(result.Message)!,
+        [.. result.Buckets.Select(b => new StorageBucketTestDto(b.Bucket, b.Succeeded, Messages.WriteStored(b.Problem)))],
         (long)result.Elapsed.TotalMilliseconds);
 
-    private static ValidationException Invalid(string field, string message)
-        => new([new ValidationError(field, message)]);
+    private static ValidationException Invalid(string field, string key, params (string Name, object? Value)[] arguments)
+        => new([new ValidationError(field, key, arguments)]);
 }

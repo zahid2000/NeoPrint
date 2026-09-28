@@ -372,7 +372,7 @@ public sealed class StorageAdminHandlers :
             "cancel" => await _storage.CancelJobAsync(request.JobId, cancellationToken).ConfigureAwait(false),
             "retry-failed" => await _storage.RetryFailuresAsync(request.JobId, cancellationToken).ConfigureAwait(false),
             _ => throw new Common.ValidationException(
-                [new Common.ValidationError("action", "Naməlum əməliyyat: pause, resume, cancel və ya retry-failed.")]),
+                [new Common.ValidationError("action", "storage.actionUnknown")]),
         };
 
         await AuditAsync(

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Localization;
 using NeoPrint.Application.Storage;
 using NeoPrint.Contracts;
 using NeoPrint.Domain.Storage;
@@ -157,7 +158,7 @@ public sealed class AdminStorageSyncObserver : IStorageSyncObserver
                 job.FailedObjects,
                 job.TotalBytes,
                 job.CopiedBytes,
-                job.FailureReason,
+                Messages.WriteStored(job.FailureReason),
                 now);
 
             await _notifier.StorageSyncProgressAsync(progress, cancellationToken).ConfigureAwait(false);

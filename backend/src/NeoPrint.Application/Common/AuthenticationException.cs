@@ -1,3 +1,5 @@
+using NeoPrint.Domain.Common;
+
 namespace NeoPrint.Application.Common;
 
 /// <summary>
@@ -21,8 +23,12 @@ namespace NeoPrint.Application.Common;
 /// </remarks>
 public sealed class AuthenticationException : Exception
 {
-    public AuthenticationException(string message)
-        : base(message)
+    public AuthenticationException(string key)
+        : base(key)
     {
+        Text = new UserMessage(key);
     }
+
+    /// <summary>What to tell the caller.</summary>
+    public UserMessage Text { get; }
 }

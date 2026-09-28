@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Files;
+using NeoPrint.Application.Localization;
+using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
 
 namespace NeoPrint.Api.Controllers;
@@ -64,7 +66,7 @@ public sealed class FilesController : ControllerBase
     {
         if (file is null || file.Length == 0)
         {
-            return ValidationProblem("Fayl göndərilməyib.");
+            return ValidationProblem(new UserMessage("files.noFileSent"));
         }
 
         await using var content = file.OpenReadStream();
@@ -132,8 +134,8 @@ public sealed class FilesController : ControllerBase
         {
             return ValidationProblem(
                 file.Status == FileStatus.Failed
-                    ? file.FailureReason ?? "Fayl çevrilə bilmədi."
-                    : "Fayl hələ çevrilir. Bir az sonra yenidən cəhd edin.");
+                    ? file.FailureReason is { } reason ? UserMessage.Decode(reason) : new UserMessage("files.conversionFailed")
+                    : new UserMessage("files.stillConverting"));
         }
 
         var stream = await _storage.OpenReadAsync(
@@ -195,7 +197,7 @@ public sealed class FilesController : ControllerBase
         var file = await LoadOwnedAsync(id, cancellationToken);
 
         var version = file.Versions.FirstOrDefault(v => v.Number == number)
-                      ?? throw new NeoPrint.Domain.Common.NotFoundException("Versiya");
+                      ?? throw new NeoPrint.Domain.Common.NotFoundException("version");
 
         var extension = version.Extension ?? file.Extension;
 
@@ -217,7 +219,7 @@ public sealed class FilesController : ControllerBase
     {
         if (!Enum.TryParse<AutoDeleteRule>(request?.Rule, ignoreCase: true, out var rule))
         {
-            return ValidationProblem("Avtomatik silinmə qaydası tanınmadı.");
+            return ValidationProblem(new UserMessage("files.autoDeleteUnknown"));
         }
 
         return Ok(await _sender.Send(new SetAutoDeleteCommand(UserId, id, rule), cancellationToken));
@@ -255,7 +257,7 @@ public sealed class FilesController : ControllerBase
 
         if (file is null || file.UserId != UserId || file.DeletedAt is not null)
         {
-            throw new NeoPrint.Domain.Common.NotFoundException("Fayl");
+            throw new NeoPrint.Domain.Common.NotFoundException("file");
         }
 
         return file;
@@ -274,9 +276,12 @@ public sealed class FilesController : ControllerBase
             ? parsed
             : FileSource.Uploaded;
 
-    private ActionResult ValidationProblem(string message)
+    private ActionResult ValidationProblem(UserMessage message)
         => base.ValidationProblem(new ValidationProblemDetails(
-            new Dictionary<string, string[]> { ["file"] = [message] }));
+            new Dictionary<string, string[]> { ["file"] = [Messages.Write(message)] })
+        {
+            Title = Messages.Write(new UserMessage("problem.validation")),
+        });
 }
 
 /// <param name="Rule">One of Never, AfterPrint, AfterOneDay, AfterSevenDays, AfterThirtyDays.</param>

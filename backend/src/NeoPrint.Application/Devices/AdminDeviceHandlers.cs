@@ -65,7 +65,7 @@ public sealed class LookupDeviceHandler : IRequestHandler<LookupDeviceCommand, D
         {
             // Failed lookups are audited (plan section 7.11).
             _logger.LogWarning("A device lookup failed for the supplied activation code.");
-            throw new NotFoundException("Device");
+            throw new NotFoundException("device");
         }
 
         Kiosk? kiosk = null;
@@ -146,11 +146,11 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
         var actor = ActorContext.Admin(request.ActivatedBy, correlationId: _correlation.CorrelationId);
 
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("Device");
+            ?? throw new NotFoundException("device");
 
         var kiosk = request.KioskId is not null
             ? await _kiosks.FindByIdAsync(request.KioskId.Value, cancellationToken).ConfigureAwait(false)
-              ?? throw new NotFoundException("Kiosk")
+              ?? throw new NotFoundException("kiosk")
             : await CreateKioskAsync(request.NewKiosk!, now, cancellationToken).ConfigureAwait(false);
 
         // Binding to a kiosk that already has a device is how hardware is
@@ -160,7 +160,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
             var previous = await _devices.FindByIdAsync(previousId, cancellationToken).ConfigureAwait(false);
             if (previous is not null)
             {
-                previous.Revoke(actor.Because("Kiosk üçün yeni cihaz aktivləşdirildi."), now);
+                previous.Revoke(actor.Because("devices.reason.replaced"), now);
                 await _devices.UpdateAsync(previous, cancellationToken).ConfigureAwait(false);
                 await _notifier.DeviceRevokedAsync(previous.Id, cancellationToken).ConfigureAwait(false);
 
@@ -181,7 +181,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
             var former = await _kiosks.FindByIdAsync(formerKioskId, cancellationToken).ConfigureAwait(false);
             if (former is not null)
             {
-                former.UnbindDevice(actor.Because("Cihaz başqa kioska keçirildi."), now);
+                former.UnbindDevice(actor.Because("devices.reason.moved"), now);
                 await _kiosks.UpdateAsync(former, cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation(
@@ -241,7 +241,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
         }
         else if (await _kiosks.FindByCodeAsync(code, cancellationToken).ConfigureAwait(false) is not null)
         {
-            throw new DomainException($"Kiosk kodu '{code}' artıq istifadə olunur.");
+            throw new DomainException(UserMessage.Of("kiosks.codeTaken", ("code", code)));
         }
 
         var kiosk = new Kiosk
@@ -314,7 +314,7 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
         var now = _clock.UtcNow;
 
         var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("Device");
+            ?? throw new NotFoundException("device");
 
         var kioskId = device.KioskId;
 
@@ -390,8 +390,7 @@ public sealed class CreateEnrollmentTokenHandler
     {
         if (request.KioskId is null && request.NewKiosk is null)
         {
-            throw new DomainException(
-                "Enrollment token ya mövcud kiosk üçün, ya da yeni kiosk şablonu ilə yaradılmalıdır.");
+            throw new DomainException("devices.enrollmentTargetRequired");
         }
 
         Kiosk? kiosk = null;
@@ -400,7 +399,7 @@ public sealed class CreateEnrollmentTokenHandler
         if (request.KioskId is not null)
         {
             kiosk = await _kiosks.FindByIdAsync(request.KioskId.Value, cancellationToken).ConfigureAwait(false)
-                ?? throw new NotFoundException("Kiosk");
+                ?? throw new NotFoundException("kiosk");
         }
         else
         {
@@ -475,7 +474,7 @@ public sealed class RevokeEnrollmentTokenHandler : IRequestHandler<RevokeEnrollm
     {
         var tokens = await _tokens.ListAsync(cancellationToken).ConfigureAwait(false);
         var token = tokens.FirstOrDefault(candidate => candidate.Id == request.Id)
-            ?? throw new NotFoundException("EnrollmentToken");
+            ?? throw new NotFoundException("enrollmentToken");
 
         if (token.RevokedAt is null)
         {

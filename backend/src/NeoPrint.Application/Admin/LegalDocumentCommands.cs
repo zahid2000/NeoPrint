@@ -58,21 +58,21 @@ public sealed class PublishLegalDocumentCommandValidator : IValidator<PublishLeg
 
         if (string.IsNullOrWhiteSpace(request.Version))
         {
-            yield return new ValidationError("version", "Versiya tələb olunur.");
+            yield return new ValidationError("version", "legal.versionRequired");
         }
         else if (request.Version.Trim().Length > 40)
         {
-            yield return new ValidationError("version", "Versiya 40 simvoldan uzun ola bilməz.");
+            yield return new ValidationError("version", "legal.versionTooLong");
         }
 
         if (!Languages.Contains(request.Language, StringComparer.OrdinalIgnoreCase))
         {
-            yield return new ValidationError("language", "Dil az, en və ya ru olmalıdır.");
+            yield return new ValidationError("language", "common.languageInvalid");
         }
 
         if (string.IsNullOrWhiteSpace(request.Content))
         {
-            yield return new ValidationError("content", "Sənədin məzmunu tələb olunur.");
+            yield return new ValidationError("content", "legal.contentRequired");
         }
     }
 }

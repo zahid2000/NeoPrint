@@ -14,6 +14,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 import { AdminApiService, PlatformSetting } from '../../core/api/admin-api.service';
+import { defaultLanguage, translations } from '../../core/i18n/translations';
 import { describeError } from '../login/login.component';
 
 /** Settings grouped by the prefix of their key, as the panel shows them. */
@@ -49,6 +50,12 @@ interface SettingGroup {
 })
 export class SettingsComponent {
   private readonly api = inject(AdminApiService);
+
+  /** Whether this build explains the setting; otherwise the seeded description shows. */
+  hasText(setting: PlatformSetting): boolean {
+    return `settings.description.${setting.key}` in translations[defaultLanguage];
+  }
+
   private readonly snackBar = inject(MatSnackBar);
   private readonly translate = inject(TranslateService);
 

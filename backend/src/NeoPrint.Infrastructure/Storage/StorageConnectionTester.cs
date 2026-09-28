@@ -1,11 +1,12 @@
 using System.Diagnostics;
 using System.Text;
 
-using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.S3;
 
 using Microsoft.Extensions.Logging;
 
+using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Storage;
 
 namespace NeoPrint.Infrastructure.Storage;
@@ -90,7 +91,7 @@ public sealed class StorageConnectionTester
         {
             if (string.IsNullOrWhiteSpace(bucket))
             {
-                results.Add(new BucketTestResult(bucket, false, "Bucket adı boşdur."));
+                results.Add(new BucketTestResult(bucket, false, "storage.test.bucketNameEmpty"));
                 continue;
             }
 
@@ -101,9 +102,14 @@ public sealed class StorageConnectionTester
 
         var failed = results.Where(r => !r.Succeeded).ToList();
 
+        // Kept as messages (UserMessage.Encode): the provider's health line
+        // is read later, in whoever's language opens the page.
         var message = failed.Count == 0
-            ? $"Bağlantı uğurludur: {results.Count} bucket-in hamısında yazma, oxuma və silmə işləyir."
-            : $"{failed.Count} bucket-də problem var: {string.Join("; ", failed.Select(f => $"{f.Bucket} — {f.Problem}"))}";
+            ? UserMessage.Of("storage.test.passed", ("count", results.Count)).Encode()
+            : UserMessage.EncodeAll(
+                failed.Select(f => UserMessage.Of(
+                        "storage.test.bucketFailed", ("bucket", f.Bucket), ("problemMessage", f.Problem)))
+                    .Prepend(UserMessage.Of("storage.test.failed", ("count", failed.Count))));
 
         return new StorageTestResult(failed.Count == 0, message, results, stopwatch.Elapsed);
     }
@@ -140,7 +146,7 @@ public sealed class StorageConnectionTester
                 // Rare, but it has to be caught here rather than on a user's
                 // file: some gateways rewrite bodies.
                 return new BucketTestResult(
-                    bucket, false, "Oxunan məzmun yazılanla eyni deyil.");
+                    bucket, false, "storage.test.readMismatch");
             }
 
             return new BucketTestResult(bucket, true, null);
@@ -159,7 +165,7 @@ public sealed class StorageConnectionTester
         {
             _logger.LogWarning(exception, "The connection test failed for bucket {Bucket}.", bucket);
 
-            return new BucketTestResult(bucket, false, "Provayderə qoşulmaq mümkün olmadı.");
+            return new BucketTestResult(bucket, false, "storage.unreachable");
         }
         finally
         {
@@ -169,11 +175,11 @@ public sealed class StorageConnectionTester
 
     private static string Describe(AmazonS3Exception exception) => exception.ErrorCode switch
     {
-        "NoSuchBucket" => "Bucket mövcud deyil.",
-        "AccessDenied" => "Açarların bu bucket-ə icazəsi yoxdur.",
-        "InvalidAccessKeyId" => "Access key tanınmır.",
-        "SignatureDoesNotMatch" => "Secret key düzgün deyil.",
-        _ => $"Provayder xəta qaytardı ({exception.ErrorCode ?? "naməlum"}).",
+        "NoSuchBucket" => "storage.test.noBucket",
+        "AccessDenied" => "storage.test.accessDenied",
+        "InvalidAccessKeyId" => "storage.test.accessKeyUnknown",
+        "SignatureDoesNotMatch" => "storage.test.secretWrong",
+        _ => UserMessage.Of("storage.providerError", ("code", exception.ErrorCode ?? "?")).Encode(),
     };
 
     private static async Task TryDeleteAsync(

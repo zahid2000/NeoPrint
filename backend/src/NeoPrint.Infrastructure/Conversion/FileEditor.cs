@@ -4,6 +4,7 @@ using NeoPrint.Application.Files;
 
 using PdfSharp.Pdf.IO;
 
+using NeoPrint.Domain.Common;
 using SkiaSharp;
 
 namespace NeoPrint.Infrastructure.Conversion;
@@ -62,7 +63,7 @@ public sealed class FileEditor : IFileEditor
             {
                 if (edit.Page < 1 || edit.Page > input.PageCount)
                 {
-                    throw new FileEditException($"Sənəddə {input.PageCount} səhifə var; {edit.Page}-ci səhifə yoxdur.");
+                    throw new FileEditException(UserMessage.Of("files.pageMissing", ("count", input.PageCount), ("page", edit.Page)));
                 }
 
                 var page = result.AddPage(input.Pages[edit.Page - 1]);
@@ -81,8 +82,7 @@ public sealed class FileEditor : IFileEditor
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             _logger.LogWarning(exception, "A page edit could not be carried out.");
-            throw new FileEditException(
-                "Sənədin səhifələrini dəyişmək mümkün olmadı. Sənəd şifrələnib və ya zədələnib ola bilər.", exception);
+            throw new FileEditException(new UserMessage("edit.pagesFailed"), exception);
         }
         finally
         {
@@ -106,17 +106,17 @@ public sealed class FileEditor : IFileEditor
         buffer.Position = 0;
 
         using var codec = SKCodec.Create(buffer)
-                          ?? throw new FileEditException("Şəkli oxumaq mümkün olmadı. Fayl zədələnib ola bilər.");
+                          ?? throw new FileEditException(new UserMessage("conversion.imageUnreadable"));
 
         if ((long)codec.Info.Width * codec.Info.Height > ImageConverter.MaxPixels)
         {
-            throw new FileEditException("Şəkil həddindən artıq böyükdür.");
+            throw new FileEditException(new UserMessage("edit.imageTooLarge"));
         }
 
         var (format, extension) = OutputFormat(codec.EncodedFormat);
 
         using var decoded = SKBitmap.Decode(codec)
-                            ?? throw new FileEditException("Şəkli açmaq mümkün olmadı.");
+                            ?? throw new FileEditException(new UserMessage("edit.imageUnopenable"));
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -126,7 +126,7 @@ public sealed class FileEditor : IFileEditor
 
         using var encodedImage = SKImage.FromBitmap(finished ?? rotated ?? cropped ?? decoded);
         using var data = encodedImage.Encode(format, format == SKEncodedImageFormat.Jpeg ? 92 : 100)
-                         ?? throw new FileEditException("Redaktə olunmuş şəkli yazmaq mümkün olmadı.");
+                         ?? throw new FileEditException(new UserMessage("edit.imageUnwritable"));
 
         await output.WriteAsync(data.ToArray(), cancellationToken).ConfigureAwait(false);
 
@@ -165,7 +165,7 @@ public sealed class FileEditor : IFileEditor
         if (!source.ExtractSubset(result, rect))
         {
             result.Dispose();
-            throw new FileEditException("Şəkli kəsmək mümkün olmadı.");
+            throw new FileEditException(new UserMessage("edit.cropFailed"));
         }
 
         // ExtractSubset shares pixels with the source; a copy stands alone.
