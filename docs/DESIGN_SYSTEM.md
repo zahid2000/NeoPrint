@@ -131,6 +131,10 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 
 **Uzun əməliyyatın proqresi (admin).** Progress bar + faiz + "X / Y" sayğac (obyekt və ölçü) + sürət + təxmini qalan vaxt + mərhələ mətni ("Kopyalanır", "Yoxlanılır"). Yanında canlı göstərici və son yenilənmə vaxtı. İdarəetmə düymələri (Dayandır / Davam et / Ləğv et) kartın altında; ləğv təsdiq istəyir. Bitəndə kart nəticəni yazır (uğur / xəta + nə etmək olar).
 
+**Sərf səviyyəsi (admin, operator).** Hər lotok üçün kart: ad ("A4 kağızı") + iri mətnlə "X / Y vərəq" + nazik səviyyə zolağı (`--space-2` hündürlük, `--radius-sm`, fon `--neutral-100`). Zolaq `--success-500`, tutumun 20%-dən az qalanda `--warning-500`; say heç vaxt yalnız zolaqla verilmir — rəqəm həmişə yazılır. Kağız 0-dırsa zolağın altında xəta sətri (ikon + "nəyə təsir edir"). Tutumu 0 olan lotok üçün zolaq yox, izah cümləsi göstərilir (harada qurulur). Doldurma forması kartların altındadır: kağız ölçüsü və üsul (Əlavə et / Tam doldur / Dəqiq say) yan-yana seçim düymələri ilə, üsulun izahı altında, say sahəsi "Tam doldur"da gizlənir.
+
+**Diqqət siyahısı (admin dashboard).** "Kioskların vəziyyəti" kartı dashboard-da birincidir (kritik kart). Yuxarıda status üzrə saylar (status chip + "Status: N"), altında diqqət tələb edən kiosklar: hər sətirdə kiosk kodu və adı (detala link) + **bir** səbəb chip-i — ən təcili olanı (təhlükəsiz rejim → əlaqə yoxdur → printer seçilməyib → kağız qurtarıb → servisdə → dayandırılıb → kağız azdır). Təcili səbəblər `danger`, qalanları `warning` tonundadır. Diqqət tələb edən yoxdursa uğur chip-i ("Bütün kiosklar qaydasındadır") göstərilir; söndürülmüş və aktivləşdirilməmiş kiosklar siyahıya düşmür.
+
 **Xəta vəziyyəti.** Hər xəta üç şeyi deyir: nə baş verdi, nəyə təsir etdi, indi nə etmək olar. Texniki detal (stack trace, kod) istifadəçiyə göstərilmir; admin panelində detal "Ətraflı" altında gizlədilir və `CorrelationId` kopyalana bilir.
 
 ---

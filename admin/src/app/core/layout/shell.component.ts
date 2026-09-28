@@ -98,6 +98,12 @@ export class ShellComponent implements OnInit, OnDestroy {
       permissions: [Permissions.kiosksView],
     },
     {
+      path: '/print-jobs',
+      labelKey: 'nav.printJobs',
+      icon: 'receipt_long',
+      permissions: [Permissions.jobsView],
+    },
+    {
       path: '/devices',
       labelKey: 'nav.devices',
       icon: 'devices',

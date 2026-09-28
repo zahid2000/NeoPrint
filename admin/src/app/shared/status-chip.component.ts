@@ -36,6 +36,9 @@ const tones: Record<string, StatusTone> = {
   Verifying: 'info',
 
   // Jobs and payments
+  PendingPayment: 'warning',
+  Paid: 'info',
+  Expired: 'neutral',
   Completed: 'success',
   Succeeded: 'success',
   Pending: 'warning',
@@ -46,6 +49,10 @@ const tones: Record<string, StatusTone> = {
   Cancelled: 'neutral',
   Draft: 'neutral',
   Idle: 'neutral',
+
+  // Kiosk commands
+  Sent: 'info',
+  Acknowledged: 'info',
   Printing: 'info',
   Processing: 'info',
 };

@@ -81,6 +81,20 @@ export const routes: Routes = [
           import('./features/kiosks/kiosk-editor.component').then((m) => m.KioskEditorComponent),
       },
       {
+        path: 'print-jobs',
+        canActivate: [permissionGuard(Permissions.jobsView)],
+        loadComponent: () =>
+          import('./features/print-jobs/print-jobs.component').then((m) => m.PrintJobsComponent),
+      },
+      {
+        path: 'print-jobs/:id',
+        canActivate: [permissionGuard(Permissions.jobsView)],
+        loadComponent: () =>
+          import('./features/print-jobs/print-job-detail.component').then(
+            (m) => m.PrintJobDetailComponent,
+          ),
+      },
+      {
         path: 'pricing',
         canActivate: [permissionGuard(Permissions.pricingManage)],
         loadComponent: () =>

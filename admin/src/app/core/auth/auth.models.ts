@@ -71,4 +71,14 @@ export const Permissions = {
   auditView: 'audit.view',
 
   operatorPanel: 'operator.panel',
+
+  printersView: 'printers.view',
+  printersSelect: 'printers.select',
+  printerCapabilitiesManage: 'printers.capabilities.manage',
+  printersRefresh: 'printers.refresh',
+  printersTestPrint: 'printers.testprint',
+  jobsView: 'jobs.view',
+  jobsCancel: 'jobs.cancel',
+  suppliesView: 'supplies.view',
+  paperRefill: 'paper.refill',
 } as const;

@@ -9,6 +9,7 @@
 import { commonTranslations } from './common.i18n';
 import { featuresTranslations } from './features.i18n';
 import { formatsTranslations } from './formats.i18n';
+import { jobsTranslations } from './jobs.i18n';
 import { kiosksTranslations } from './kiosks.i18n';
 import { pricingTranslations } from './pricing.i18n';
 import { settingsTranslations } from './settings.i18n';
@@ -984,6 +985,7 @@ const pages: readonly PageTranslations[] = [
   pricingTranslations,
   storageTranslations,
   kiosksTranslations,
+  jobsTranslations,
   featuresTranslations,
   settingsTranslations,
 ];

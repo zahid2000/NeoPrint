@@ -254,6 +254,8 @@ export interface KioskDetail {
   readonly configurationChangedAt: string;
   readonly createdAt: string;
   readonly revision: number;
+  /** Since when the kiosk runs in safe mode after a crash loop (plan section 7.12). */
+  readonly safeModeSince?: string | null;
 }
 
 export interface CreateKioskInput {

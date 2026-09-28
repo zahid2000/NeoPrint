@@ -28,6 +28,21 @@
     color: var(--neutral-600);
   }
 
+  &__tile--wide {
+    grid-column: span 2;
+
+    @media (max-width: 700px) {
+      grid-column: auto;
+    }
+  }
+
+  &__statuses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
   &__scope {
     font-size: var(--font-size-h2);
     font-weight: var(--font-weight-semibold);

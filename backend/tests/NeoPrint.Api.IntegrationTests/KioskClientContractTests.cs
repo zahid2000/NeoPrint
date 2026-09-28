@@ -216,6 +216,13 @@ public sealed class KioskClientContractTests
         detail.GetProperty("status").GetString().Should().Be("Maintenance");
         detail.GetProperty("safeModeSince").ValueKind.Should().Be(JsonValueKind.String);
 
+        // The dashboard reads the list: safe mode and the paper level are on each row.
+        var row = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/kiosks"))
+            .EnumerateArray().Single(item => item.GetProperty("id").GetGuid() == kioskId);
+        row.GetProperty("safeModeSince").ValueKind.Should().Be(JsonValueKind.String);
+        row.GetProperty("paperA4Capacity").GetInt32().Should().BeGreaterThan(0);
+        row.GetProperty("paperA4Current").GetInt32().Should().BeGreaterThan(0);
+
         var refused = () => api.CreatePrintJobAsync("hesabat.pdf", 1, new JobOptions(), skipPayment: true, "contract-safe-1");
         (await refused.Should().ThrowAsync<KioskApiException>()).Which.Code.Should().Be("printJobs.kioskNotTakingOrders");
 

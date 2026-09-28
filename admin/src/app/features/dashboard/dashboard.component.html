@@ -9,6 +9,59 @@
 }
 
 <div class="dashboard__grid">
+  @if (canKiosks()) {
+    <mat-card class="dashboard__tile dashboard__tile--wide">
+      <mat-card-content>
+        <div class="dashboard__tile-head">
+          <mat-icon>storefront</mat-icon>
+          <span>{{ 'dashboard.kiosksTitle' | translate }}</span>
+        </div>
+
+        @if (kiosksFailed()) {
+          <p class="neo-field-error" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            {{ 'dashboard.kiosksFailed' | translate }}
+          </p>
+        } @else if (kiosks(); as list) {
+          @if (list.length === 0) {
+            <p class="dashboard__detail">{{ 'dashboard.kiosksEmpty' | translate }}</p>
+          } @else {
+            <div class="dashboard__statuses">
+              @for (entry of kioskCounts(); track entry.status) {
+                <app-status-chip
+                  [status]="entry.status"
+                  [text]="('kiosks.status.' + entry.status | translate) + ': ' + entry.count"
+                />
+              }
+            </div>
+
+            @if (attention().length === 0) {
+              <app-status-chip status="Completed" [text]="'dashboard.kiosksAllFine' | translate" />
+            } @else {
+              <p class="dashboard__detail">{{ 'dashboard.kiosksAttention' | translate }}</p>
+              <ul class="dashboard__list">
+                @for (item of attention(); track item.kiosk.id) {
+                  <li>
+                    <a class="dashboard__list-name" [routerLink]="['/kiosks', item.kiosk.id]">
+                      {{ item.kiosk.code }} — {{ item.kiosk.name }}
+                    </a>
+                    <app-status-chip
+                      [status]="item.reason"
+                      [toneOverride]="item.tone"
+                      [text]="'dashboard.attention.' + item.reason | translate: item.params"
+                    />
+                  </li>
+                }
+              </ul>
+            }
+          }
+        }
+
+        <a mat-button routerLink="/kiosks">{{ 'nav.kiosks' | translate }}</a>
+      </mat-card-content>
+    </mat-card>
+  }
+
   <mat-card *appHasPermission="permissions.devicesView" class="dashboard__tile">
     <mat-card-content>
       <div class="dashboard__tile-head">

@@ -30,6 +30,10 @@ import { NotifyService } from '../../shared/notify.service';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
+import { PrintJobsComponent } from '../print-jobs/print-jobs.component';
+import { KioskPrintersComponent } from './kiosk-printers.component';
+import { KioskQueueComponent } from './kiosk-queue.component';
+import { KioskSuppliesComponent } from './kiosk-supplies.component';
 
 /** The PIN rules the server enforces: 4 to 12 digits. */
 const pinPattern = /^[0-9]{4,12}$/;
@@ -40,8 +44,8 @@ const pinPattern = /^[0-9]{4,12}$/;
  * A new kiosk is one form, created without a device (NotActivated). An
  * existing one is shown in tabs, one per part of the form, because each part
  * has its own permission (plan section 8A.2) - a tab the administrator may not
- * change is shown read-only. Printers, commands and telemetry arrive with the
- * kiosk application in step 3.
+ * change is shown read-only. Printers, the queue, orders and paper each have a
+ * tab of their own, shown only with the permission to view them.
  */
 @Component({
   selector: 'app-kiosk-editor',
@@ -66,6 +70,10 @@ const pinPattern = /^[0-9]{4,12}$/;
     StatusChipComponent,
     KioskMapComponent,
     DateTimePipe,
+    KioskPrintersComponent,
+    KioskQueueComponent,
+    KioskSuppliesComponent,
+    PrintJobsComponent,
   ],
   templateUrl: './kiosk-editor.component.html',
   styleUrl: './kiosk-editor.component.scss',
@@ -122,6 +130,9 @@ export class KioskEditorComponent implements OnInit {
   readonly canPricing = computed(() => this.auth.canAny([Permissions.pricingManage]));
   readonly canFiscal = computed(() => this.auth.canAny([Permissions.fiscalManage]));
   readonly canDevices = computed(() => this.auth.canAny([Permissions.devicesView]));
+  readonly canPrinters = computed(() => this.auth.canAny([Permissions.printersView]));
+  readonly canJobs = computed(() => this.auth.canAny([Permissions.jobsView]));
+  readonly canSupplies = computed(() => this.auth.canAny([Permissions.suppliesView]));
   readonly canDelete = computed(
     () =>
       this.auth.canAny([Permissions.kiosksDelete]) &&

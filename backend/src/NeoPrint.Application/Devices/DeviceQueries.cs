@@ -63,7 +63,10 @@ public sealed record KioskListItem(
     DateTime? LastHeartbeatAt,
     double Lat,
     double Lng,
-    Guid? PricingProfileId);
+    Guid? PricingProfileId,
+    DateTime? SafeModeSince = null,
+    int? PaperA4Current = null,
+    int? PaperA4Capacity = null);
 
 /// <summary>
 /// The kiosks an administrator's scope covers (plan section 8A.2).

@@ -1,4 +1,4 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -24,6 +24,18 @@ import {
   UpdateKioskInput,
   AdminDashboard,
 } from './step2.models';
+import {
+  CapabilityOverrides,
+  KioskCommand,
+  KioskPrinters,
+  KioskSupplies,
+  PaperRefillMode,
+  PrintJob,
+  PrintJobDetail,
+  PrintJobFilter,
+  PrintJobPage,
+  QueueEntry,
+} from './step3.models';
 
 /**
  * A fresh Idempotency-Key for one action (docs/IDEMPOTENCY.md). The endpoints
@@ -81,6 +93,10 @@ export interface KioskListItem {
   readonly lat?: number;
   readonly lng?: number;
   readonly pricingProfileId?: string | null;
+  /** Since when the kiosk runs in safe mode after a crash loop (plan section 7.12). */
+  readonly safeModeSince?: string | null;
+  readonly paperA4Current?: number | null;
+  readonly paperA4Capacity?: number | null;
 }
 
 /** An administrator account as the panel lists it (plan section 8A.3). */
@@ -278,6 +294,93 @@ export interface FeatureFlagDetails {
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly http = inject(HttpClient);
+
+  // ---------------------------------------------------------------------
+  // Printers and commands (plan sections 7.7, 7.8; kiosk detail → Printers)
+  // ---------------------------------------------------------------------
+
+  kioskPrinters(kioskId: string): Observable<KioskPrinters> {
+    return this.http.get<KioskPrinters>(`/api/admin/kiosks/${kioskId}/printers`);
+  }
+
+  selectKioskPrinter(kioskId: string, name: string): Observable<KioskPrinters> {
+    return this.http.put<KioskPrinters>(`/api/admin/kiosks/${kioskId}/printer`, { name });
+  }
+
+  /** Only switches capabilities off: null follows what the printer reports. */
+  setKioskCapabilities(kioskId: string, overrides: CapabilityOverrides): Observable<KioskPrinters> {
+    return this.http.put<KioskPrinters>(`/api/admin/kiosks/${kioskId}/capabilities`, overrides);
+  }
+
+  refreshKioskPrinters(kioskId: string): Observable<KioskCommand> {
+    return this.http.post<KioskCommand>(`/api/admin/kiosks/${kioskId}/printers/refresh`, {});
+  }
+
+  testPrint(kioskId: string): Observable<KioskCommand> {
+    return this.http.post<KioskCommand>(`/api/admin/kiosks/${kioskId}/test-print`, {});
+  }
+
+  kioskCommands(kioskId: string): Observable<KioskCommand[]> {
+    return this.http.get<KioskCommand[]>(`/api/admin/kiosks/${kioskId}/commands`);
+  }
+
+  // ---------------------------------------------------------------------
+  // Print jobs and the queue (plan section 8A.3, "Print job-lar")
+  // ---------------------------------------------------------------------
+
+  listPrintJobs(filter: PrintJobFilter): Observable<PrintJobPage> {
+    let params = new HttpParams().set('page', filter.page).set('pageSize', filter.pageSize);
+
+    if (filter.kioskId) {
+      params = params.set('kioskId', filter.kioskId);
+    }
+
+    if (filter.statuses?.length) {
+      params = params.set('status', filter.statuses.join(','));
+    }
+
+    if (filter.from) {
+      params = params.set('from', filter.from);
+    }
+
+    if (filter.to) {
+      params = params.set('to', filter.to);
+    }
+
+    if (filter.code?.trim()) {
+      params = params.set('code', filter.code.trim());
+    }
+
+    return this.http.get<PrintJobPage>('/api/admin/print-jobs', { params });
+  }
+
+  getPrintJob(id: string): Observable<PrintJobDetail> {
+    return this.http.get<PrintJobDetail>(`/api/admin/print-jobs/${id}`);
+  }
+
+  cancelPrintJob(id: string, reason: string): Observable<PrintJob> {
+    return this.http.post<PrintJob>(`/api/admin/print-jobs/${id}/cancel`, { reason }, idempotent());
+  }
+
+  kioskQueue(kioskId: string): Observable<QueueEntry[]> {
+    return this.http.get<QueueEntry[]>(`/api/admin/kiosks/${kioskId}/queue`);
+  }
+
+  // ---------------------------------------------------------------------
+  // Paper (plan section 2.15; kiosk detail → Supplies)
+  // ---------------------------------------------------------------------
+
+  kioskSupplies(kioskId: string): Observable<KioskSupplies> {
+    return this.http.get<KioskSupplies>(`/api/admin/kiosks/${kioskId}/supplies`);
+  }
+
+  refillPaper(kioskId: string, paper: string, mode: PaperRefillMode, sheets: number): Observable<KioskSupplies> {
+    return this.http.post<KioskSupplies>(
+      `/api/admin/kiosks/${kioskId}/paper/refill`,
+      { paper, mode, sheets },
+      idempotent(),
+    );
+  }
 
   // ---------------------------------------------------------------------
   // Kiosks

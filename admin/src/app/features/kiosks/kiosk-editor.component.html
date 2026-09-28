@@ -28,6 +28,13 @@
     <app-error-banner [problem]="problem" effect="kiosks.loadOneFailedEffect" (retry)="load()" />
   }
 
+  @if (kiosk()?.safeModeSince; as since) {
+    <p class="neo-field-error editor__banner" role="status">
+      <mat-icon aria-hidden="true">report</mat-icon>
+      {{ 'kiosks.safeModeBanner' | translate: { since: (since | dateTime) } }}
+    </p>
+  }
+
   <!-- The general form, shared by "new" and the first tab. -->
   <ng-template #general let-readonly="readonly">
     <div class="editor__section">
@@ -336,7 +343,7 @@
         </button>
       </div>
     </section>
-  } @else if (kiosk()) {
+  } @else if (kiosk(); as current) {
     <mat-tab-group animationDuration="150ms">
       <mat-tab [label]="'kiosks.tabGeneral' | translate">
         <section class="neo-card editor__card editor__tab">
@@ -494,6 +501,44 @@
               </button>
             </div>
           </section>
+        </mat-tab>
+      }
+
+      @if (canPrinters()) {
+        <mat-tab [label]="'kiosks.tabPrinters' | translate">
+          <ng-template matTabContent>
+            <section class="editor__tab">
+              <app-kiosk-printers [kioskId]="current.id" />
+            </section>
+          </ng-template>
+        </mat-tab>
+      }
+
+      @if (canJobs()) {
+        <mat-tab [label]="'kiosks.tabQueue' | translate">
+          <ng-template matTabContent>
+            <section class="editor__tab">
+              <app-kiosk-queue [kioskId]="current.id" />
+            </section>
+          </ng-template>
+        </mat-tab>
+
+        <mat-tab [label]="'kiosks.tabJobs' | translate">
+          <ng-template matTabContent>
+            <section class="editor__tab">
+              <app-print-jobs [kioskId]="current.id" />
+            </section>
+          </ng-template>
+        </mat-tab>
+      }
+
+      @if (canSupplies()) {
+        <mat-tab [label]="'kiosks.tabSupplies' | translate">
+          <ng-template matTabContent>
+            <section class="editor__tab">
+              <app-kiosk-supplies [kioskId]="current.id" />
+            </section>
+          </ng-template>
         </mat-tab>
       }
 

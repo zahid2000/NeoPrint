@@ -7,22 +7,112 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
-import { AdminApiService } from '../../core/api/admin-api.service';
+import { AdminApiService, KioskListItem, KioskStatus } from '../../core/api/admin-api.service';
 import { AdminDashboard, StorageSyncJob } from '../../core/api/step2.models';
+import { lowPaperShare } from '../../core/api/step3.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { HasPermissionDirective } from '../../core/auth/has-permission.directive';
 import { AdminHubService } from '../../core/realtime/admin-hub.service';
 import { BytesPipe, CountPipe, DateTimePipe } from '../../shared/format.pipes';
-import { StatusChipComponent } from '../../shared/status-chip.component';
+import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
+
+/** Why a kiosk needs looking at, most urgent first. */
+export type AttentionReason =
+  | 'safeMode'
+  | 'offline'
+  | 'notConfigured'
+  | 'noPaper'
+  | 'maintenance'
+  | 'paused'
+  | 'lowPaper';
+
+export interface KioskAttention {
+  readonly kiosk: KioskListItem;
+  readonly reason: AttentionReason;
+  readonly tone: StatusTone;
+  readonly params: Record<string, unknown>;
+}
+
+/**
+ * The one reason a kiosk is listed for, or null when it needs nothing. A
+ * disabled or not yet activated kiosk is not expected to serve anyone.
+ */
+export function attentionFor(kiosk: KioskListItem): KioskAttention | null {
+  const make = (reason: AttentionReason, tone: StatusTone, params: Record<string, unknown> = {}) => ({
+    kiosk,
+    reason,
+    tone,
+    params,
+  });
+
+  if (kiosk.status === 'Disabled' || kiosk.status === 'NotActivated') {
+    return null;
+  }
+
+  if (kiosk.safeModeSince) {
+    return make('safeMode', 'danger');
+  }
+
+  switch (kiosk.status) {
+    case 'Offline':
+      return make('offline', 'danger');
+    case 'NotConfigured':
+      return make('notConfigured', 'warning');
+  }
+
+  const capacity = kiosk.paperA4Capacity ?? 0;
+  const current = kiosk.paperA4Current ?? 0;
+
+  if (capacity > 0 && current === 0) {
+    return make('noPaper', 'danger');
+  }
+
+  switch (kiosk.status) {
+    case 'Maintenance':
+      return make('maintenance', 'warning');
+    case 'Paused':
+      return make('paused', 'warning');
+  }
+
+  if (capacity > 0 && current < capacity * lowPaperShare) {
+    return make('lowPaper', 'warning', { current });
+  }
+
+  return null;
+}
+
+/**
+ * The kiosk list's status order. Kept here rather than imported from the
+ * kiosks page so the dashboard does not pull that page (and its map) in.
+ */
+const kioskStatuses: readonly KioskStatus[] = [
+  'Online',
+  'Paused',
+  'Offline',
+  'Maintenance',
+  'NotConfigured',
+  'NotActivated',
+  'Disabled',
+];
+
+const attentionOrder: readonly AttentionReason[] = [
+  'safeMode',
+  'offline',
+  'notConfigured',
+  'noPaper',
+  'maintenance',
+  'paused',
+  'lowPaper',
+];
 
 /**
  * The dashboard (plan section 8A.3).
  *
  * It fills up step by step as the features it reports on arrive: step 1 the
  * devices waiting for activation and the kiosk scope, step 2 files,
- * conversion failures, storage health and sync. Kiosk statuses, incidents and
- * revenue come with steps 3-5. What an account may do is its roles' business
+ * conversion failures, storage health and sync, step 3 the kiosk statuses and
+ * the kiosks that need looking at. What an account may do is its roles' business
  * and is shown on the admin users page, not here.
  */
 @Component({
@@ -55,6 +145,26 @@ export class DashboardComponent {
   readonly dashboard = signal<AdminDashboard | null>(null);
   readonly failed = signal(false);
 
+  readonly canKiosks = computed(() => this.auth.can(Permissions.kiosksView));
+  readonly kiosks = signal<KioskListItem[] | null>(null);
+  readonly kiosksFailed = signal(false);
+
+  /** How many kiosks are in each status, in the order the kiosk list uses; empty statuses left out. */
+  readonly kioskCounts = computed(() => {
+    const list = this.kiosks() ?? [];
+
+    return kioskStatuses
+      .map((status: KioskStatus) => ({ status, count: list.filter((kiosk) => kiosk.status === status).length }))
+      .filter((entry) => entry.count > 0);
+  });
+
+  readonly attention = computed(() =>
+    (this.kiosks() ?? [])
+      .map(attentionFor)
+      .filter((item): item is KioskAttention => item !== null)
+      .sort((a, b) => attentionOrder.indexOf(a.reason) - attentionOrder.indexOf(b.reason)),
+  );
+
   readonly kioskScopeLabel = computed(() => {
     const admin = this.admin();
 
@@ -77,6 +187,10 @@ export class DashboardComponent {
     // would produce a 403 in the console for no reason.
     if (this.auth.can(Permissions.devicesView)) {
       void this.loadPendingDevices();
+    }
+
+    if (this.canKiosks()) {
+      void this.loadKiosks();
     }
 
     if (this.auth.can(Permissions.dashboardView)) {
@@ -104,6 +218,15 @@ export class DashboardComponent {
     } catch {
       // The tiles say they could not load rather than showing stale zeros.
       this.failed.set(true);
+    }
+  }
+
+  private async loadKiosks(): Promise<void> {
+    try {
+      this.kiosks.set(await firstValueFrom(this.api.listKiosks()));
+      this.kiosksFailed.set(false);
+    } catch {
+      this.kiosksFailed.set(true);
     }
   }
 

@@ -1087,7 +1087,8 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
             FoundSummary = $"{job.JobCode} · {T("jobStatus." + job.Status)} · {Formats.Pages(job.SelectedPages, Language)} · {Formats.Money(job.Price.Total, Language)}";
 
-            if (job.Status is "Queued" or "PendingPayment" or "Paid" or "Draft" or "Interrupted")
+            // The statuses the job state machine lets go to Cancelled (docs/STATE_MACHINES.md).
+            if (job.Status is "Queued" or "PendingPayment" or "Draft" or "Interrupted")
             {
                 Stage = FlowStage.CancelConfirm;
             }
