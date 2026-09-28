@@ -24,17 +24,26 @@ public sealed class LinuxAppPaths : IAppPaths
 
     public string LogDirectory => "/var/log/neoprint";
 
+    /// <remarks>
+    /// The device directory holds the private key and is always owner only.
+    /// The others are owner only when the application creates them (a
+    /// developer machine); on a provisioned kiosk they already exist with the
+    /// modes the provisioning script gave them - the spool lets the converter
+    /// account into its work folder (docs/TASKS.md T-075) - and are left alone.
+    /// </remarks>
     public void EnsureCreated()
     {
         foreach (var directory in new[] { DeviceDirectory, SpoolDirectory, StateDirectory, LogDirectory })
         {
+            var existed = Directory.Exists(directory);
             Directory.CreateDirectory(directory);
 
-            // Owner only: the spool holds decrypted-on-demand documents and the
-            // device directory holds the private key (plan section 2.13).
-            File.SetUnixFileMode(
-                directory,
-                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            if (!existed || directory == DeviceDirectory)
+            {
+                File.SetUnixFileMode(
+                    directory,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
         }
     }
 }

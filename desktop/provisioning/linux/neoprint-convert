@@ -1,0 +1,59 @@
+#!/bin/sh
+# ---------------------------------------------------------------------------
+# NeoPrint converter sandbox (docs/TASKS.md T-075; CLAUDE.md: "konvertasiya
+# ayrıca prosesdə, şəbəkəsiz, timeout və resurs limiti ilə").
+#
+# Installed root-owned at /usr/local/lib/neoprint/neoprint-convert. The kiosk
+# account may run it - and only it - as neoprint-convert (sudoers), an account
+# whose every packet the firewall rejects. It runs one converter and nothing
+# else, inside a wall-clock timeout and a memory and CPU limit that the kiosk
+# cannot change, because they are set here rather than by the caller.
+#
+#   neoprint-convert <timeout-seconds> <work-folder> <converter> [arguments...]
+# ---------------------------------------------------------------------------
+set -eu
+
+if [ $# -lt 3 ]; then
+    echo "usage: neoprint-convert <timeout-seconds> <work-folder> <converter> [arguments...]" >&2
+    exit 64
+fi
+
+seconds="$1"
+work="$2"
+shift 2
+
+case "$seconds" in
+    ''|*[!0-9]*) echo "neoprint-convert: the timeout must be a number of seconds" >&2; exit 64 ;;
+esac
+
+if [ "$seconds" -gt 600 ]; then
+    seconds=600
+fi
+
+# Only the kiosk's own work area, never anywhere else on the machine.
+case "$work" in
+    /var/lib/neoprint/spool/work/*) ;;
+    *) echo "neoprint-convert: not a kiosk work folder: $work" >&2; exit 64 ;;
+esac
+
+case "$(basename "$1")" in
+    soffice|gs|gpcl6|gxps) ;;
+    *) echo "neoprint-convert: not a converter: $1" >&2; exit 126 ;;
+esac
+
+cd "$work"
+
+# LibreOffice keeps a profile under HOME; the account has no home of its own.
+export HOME="$work"
+
+# Files for the kiosk account to read and delete (group through the setgid work folder).
+umask 0007
+
+status=0
+timeout --kill-after=5 "$seconds" prlimit --as=2147483648 --cpu=120 -- "$@" || status=$?
+
+# LibreOffice makes its profile folders 0700 whatever the umask says; the
+# kiosk account has to read the result and delete the folder afterwards.
+chmod -R g+rwX "$work" 2>/dev/null || true
+
+exit "$status"

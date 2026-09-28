@@ -46,6 +46,17 @@ function Assert-Administrator {
 Assert-Administrator
 
 # ---------------------------------------------------------------------------
+# Access
+#
+# Provisioning leaves the data directory to SYSTEM and the kiosk account only
+# (plan section 7.12). Administrators take it back for the cleanup, and give
+# it up again at the end.
+# ---------------------------------------------------------------------------
+Write-Log "taking access to the data directory for the cleanup"
+& takeown /f $DataRoot /r /d y | Out-Null
+& icacls $DataRoot /grant "Administrators:(OI)(CI)F" /T /C /Q | Out-Null
+
+# ---------------------------------------------------------------------------
 # The device key
 #
 # On Windows the key is a non-exportable CNG key, not a file, so deleting the
@@ -77,12 +88,24 @@ foreach ($provider in @("Microsoft Platform Crypto Provider", "Microsoft Softwar
     }
 }
 
+# The key that wraps the spool key: clones must not share it either.
+Write-Log "removing the spool key container"
+
+$software = New-Object System.Security.Cryptography.CngProvider("Microsoft Software Key Storage Provider")
+if ([System.Security.Cryptography.CngKey]::Exists("NeoPrint.Spool", $software, [System.Security.Cryptography.CngKeyOpenOptions]::MachineKey)) {
+    $spoolKey = [System.Security.Cryptography.CngKey]::Open("NeoPrint.Spool", $software, [System.Security.Cryptography.CngKeyOpenOptions]::MachineKey)
+    $spoolKey.Delete()
+    $spoolKey.Dispose()
+}
+
 Write-Log "removing the device folder, the cached configuration and the spool"
 
 foreach ($directory in @("device", "spool", "state")) {
     $path = Join-Path $DataRoot $directory
     if (Test-Path $path) {
-        Remove-Item -Path (Join-Path $path "*") -Recurse -Force -ErrorAction SilentlyContinue
+        # The provisioning version stays with the image: it describes the OS set-up, not the kiosk.
+        Get-ChildItem -Path $path -Force | Where-Object { $_.Name -ne "provisioning-version" } |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -118,13 +141,21 @@ foreach ($provider in @("Microsoft Platform Crypto Provider", "Microsoft Softwar
     }
 }
 
-foreach ($leftover in @("device\key.json", "device\enrollment-token")) {
+if ([System.Security.Cryptography.CngKey]::Exists("NeoPrint.Spool", $software, [System.Security.Cryptography.CngKeyOpenOptions]::MachineKey)) {
+    Write-Error "  STILL PRESENT: the spool key"
+    $failed = $true
+}
+
+foreach ($leftover in @("device\key.json", "device\enrollment-token", "device\spool.key.wrapped")) {
     $path = Join-Path $DataRoot $leftover
     if (Test-Path $path) {
         Write-Error "  STILL PRESENT: $path"
         $failed = $true
     }
 }
+
+# Back to SYSTEM and the kiosk account only.
+& icacls $DataRoot /remove:g "Administrators" /T /C /Q | Out-Null
 
 if ($failed) {
     throw "prepare-image did NOT finish cleanly. Do not capture this image."

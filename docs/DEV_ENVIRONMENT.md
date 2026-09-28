@@ -433,8 +433,9 @@ qəbul olunmur və admin paneldə kiosk `Maintenance` olur. Reboot və elektrik
 kəsilməsi çöküş sayılmır. Development-də debugger-i 3 dəfə dayandırmaq da
 bu rejimi aça bilər.
 
-Hələlik (admin PIN menyusu M7-də gəlir) rejimi söndürmək üçün sayğac faylını
-silin və tətbiqi yenidən başladın:
+Söndürmək: admin menyusu (aşağıda) → **Təhlükəsiz rejimdən çıx və yenidən
+başlat**. Kiosk aktivləşdirilməyibsə (PIN yoxdur) sayğac faylını silib
+tətbiqi yenidən başladın:
 
 ```powershell
 # Windows
@@ -445,6 +446,16 @@ Remove-Item "$env:ProgramData\NeoPrint\state\runs.json" -ErrorAction SilentlyCon
 # Linux
 sudo rm -f /var/lib/neoprint/state/runs.json
 ```
+
+### Gizli admin menyusu
+
+Başlıqdakı **NeoPrint loqosuna 3 saniyə ərzində 5 dəfə** klikləyin → PIN
+klaviaturası → kioskun admin PIN-i (test kiosklarında `135790`). Menyu:
+təhlükəsiz rejimdən çıx, yenidən başlat, texniki giriş. Development-də
+`Kiosk:Lockdown` söndürülüb — Win düyməsi və Alt+Tab developer maşınında
+işləyir, menyunun hər əməliyyatı isə sadəcə tətbiqi bağlayır (kiosk
+maşınında "Texniki giriş" Windows hesabından çıxış edir — developer maşınında
+bu olmur).
 
 ### Linux-da işə salmaq
 

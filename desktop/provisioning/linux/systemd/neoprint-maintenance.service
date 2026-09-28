@@ -1,0 +1,13 @@
+# NeoPrint service access (plan section 7.12).
+#
+# Started from the kiosk's hidden admin menu after the admin PIN: the kiosk
+# session goes (neoprint-kiosk.service conflicts with getty@tty1) and a login
+# prompt takes the screen, for a technician's own account. The kiosk comes
+# back with "sudo systemctl start neoprint-kiosk" or a reboot.
+
+[Unit]
+Description=NeoPrint service access: a console login instead of the kiosk
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl start getty@tty1.service

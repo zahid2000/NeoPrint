@@ -26,5 +26,7 @@ Ziddiyyət görünürsə: dayan, uyğunsuzluğu göstər, təhlükəsiz variant�
 | `DOMAIN_RULES.md` | Money, pricing snapshot, wallet ledger, audit, kiosk/device ayrımı |
 | `DATA_RETENTION.md` | Fayl, hesab, razılıq və maliyyə məlumatlarının saxlanması |
 | `OBSERVABILITY.md` | CorrelationId, structured log, metrik və alert-lər |
+| `KIOSK_SETUP.md` | Kioskun sıfırdan quraşdırılması (texnik üçün): paket, provisioning, aktivləşdirmə, texniki giriş, golden image |
+| `KIOSK_PROVISIONING.md` | Provisioning skriptlərinin OS-də etdiyi hər dəyişiklik və səbəbi |
 | `CLAUDE_CODE_EXECUTION_RULES.md` | Task icrası, scope, definition of done |
 | `adr/TEMPLATE.md` | Arxitektura qərar şablonu |

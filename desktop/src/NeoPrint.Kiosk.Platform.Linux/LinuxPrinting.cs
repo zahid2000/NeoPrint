@@ -446,7 +446,7 @@ public sealed class LinuxConverterRunner : IConverterProcessRunner
                 sandboxed.ArgumentList.Add(argument);
             }
 
-            return RunCheckedAsync(sandboxed, executable, timeout + SandboxGrace, cancellationToken);
+            return RunCheckedAsync(sandboxed, executable, timeout + SandboxGrace, cancellationToken, inSandbox: true);
         }
 
         var start = new ProcessStartInfo("prlimit") { WorkingDirectory = workingDirectory };
@@ -469,7 +469,7 @@ public sealed class LinuxConverterRunner : IConverterProcessRunner
         => ["-n", "-u", user, SandboxWrapper, timeoutSeconds.ToString(CultureInfo.InvariantCulture), workingDirectory, executable, .. arguments];
 
     private static async Task<ConverterRun> RunCheckedAsync(
-        ProcessStartInfo start, string executable, TimeSpan timeout, CancellationToken cancellationToken)
+        ProcessStartInfo start, string executable, TimeSpan timeout, CancellationToken cancellationToken, bool inSandbox = false)
     {
         // prlimit starts even when the converter is missing, and then exits
         // 126/127; that is "not installed", not "the file is broken".
@@ -480,9 +480,29 @@ public sealed class LinuxConverterRunner : IConverterProcessRunner
 
         var run = await ConverterProcesses.RunAsync(start, timeout, onStarted: null, cancellationToken).ConfigureAwait(false);
 
-        return run.Outcome == ConverterRunOutcome.Exited && run.ExitCode is 126 or 127
-            ? run with { Outcome = ConverterRunOutcome.NotStarted }
-            : run;
+        return Interpret(run, inSandbox);
+    }
+
+    /// <summary>
+    /// What an exit code means: 126/127 - the converter is not there; in the
+    /// sandbox, 124/137 - its own <c>timeout</c> stopped it, which is a
+    /// timeout, not a broken file.
+    /// </summary>
+    public static ConverterRun Interpret(ConverterRun run, bool inSandbox)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+
+        if (run.Outcome != ConverterRunOutcome.Exited)
+        {
+            return run;
+        }
+
+        return run.ExitCode switch
+        {
+            126 or 127 => run with { Outcome = ConverterRunOutcome.NotStarted },
+            124 or 137 when inSandbox => run with { Outcome = ConverterRunOutcome.TimedOut },
+            _ => run,
+        };
     }
 
     private static bool IsOnPath(string executable)

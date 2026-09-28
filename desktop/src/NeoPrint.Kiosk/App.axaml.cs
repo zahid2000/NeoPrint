@@ -82,7 +82,7 @@ public sealed partial class App : Application
             lockdown.Apply();
         }
 
-        SetUpAdminMenu(window, crashes, lockdown);
+        SetUpAdminMenu(window, crashes, lockdown, settings.Lockdown ? null : desktop);
 
         desktop.ShutdownRequested += (_, _) => _stopping?.Cancel();
 
@@ -100,11 +100,24 @@ public sealed partial class App : Application
     /// The hidden admin menu's actions (plan section 7.12). Every one of them
     /// ends this run on purpose, so it is recorded as a clean stop, not a crash.
     /// </summary>
-    private void SetUpAdminMenu(MainWindow window, CrashLoopGuard crashes, IKioskLockdown lockdown)
+    /// <param name="developer">
+    /// Set when the lockdown is off (Development): every action just closes the
+    /// application - no restart manager would bring it back, and a sign-out
+    /// would end the developer's own Windows session.
+    /// </param>
+    private void SetUpAdminMenu(MainWindow window, CrashLoopGuard crashes, IKioskLockdown lockdown, IClassicDesktopStyleApplicationLifetime? developer)
     {
         var runtime = Services.GetRequiredService<KioskRuntime>();
         var system = Services.GetRequiredService<ISystemControl>();
         var logger = Services.GetRequiredService<ILogger<App>>();
+        Func<Task> Close(Func<Task> action) => developer is null
+            ? action
+            : () =>
+            {
+                developer.Shutdown();
+                return Task.CompletedTask;
+            };
+
         var admin = new AdminMenuViewModel(() => runtime.Configuration?.AdminPinHash) { Language = _model!.Language };
 
         async void Leave(string what, Func<Task> action)
@@ -127,13 +140,13 @@ public sealed partial class App : Application
         admin.LeaveSafeModeRequested += () =>
         {
             crashes.Clear();
-            Leave("leaving safe mode and restarting", () => system.RestartApplicationAsync());
+            Leave("leaving safe mode and restarting", Close(() => system.RestartApplicationAsync()));
         };
-        admin.RestartRequested += () => Leave("restarting the application", () => system.RestartApplicationAsync());
+        admin.RestartRequested += () => Leave("restarting the application", Close(() => system.RestartApplicationAsync()));
         admin.MaintenanceRequested += () =>
         {
             lockdown.Release();
-            Leave("handing the machine over for maintenance", () => system.OpenMaintenanceAsync());
+            Leave("handing the machine over for maintenance", Close(() => system.OpenMaintenanceAsync()));
         };
         admin.Closed += _model.CloseAdmin;
 

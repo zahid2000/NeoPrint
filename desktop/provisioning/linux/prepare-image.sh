@@ -26,12 +26,16 @@ log() { printf '[prepare-image] %s\n' "$*"; }
 
 log "removing the device identity"
 rm -f "$DATA_ROOT/device/key.pem"
+rm -f "$DATA_ROOT/device/spool.key"
 rm -f "$DATA_ROOT/device/enrollment-token"
 rm -f "$DATA_ROOT/device/"*.json
 
+# The work folder itself stays: provisioning gave it the setgid group the
+# converter account needs (docs/TASKS.md T-075); only what is in it goes.
 log "removing the cached configuration and the spool"
-rm -rf "$DATA_ROOT/spool/"*
-rm -rf "$DATA_ROOT/state/"*
+find "$DATA_ROOT/spool" -mindepth 1 -maxdepth 1 ! -name work -exec rm -rf {} +
+rm -rf "$DATA_ROOT/spool/work/"*
+find "$DATA_ROOT/state" -mindepth 1 -maxdepth 1 ! -name provisioning-version -exec rm -rf {} +
 
 log "removing the logs"
 rm -f "$LOG_ROOT/"*.log
@@ -66,6 +70,7 @@ check_absent() {
 }
 
 check_absent "$DATA_ROOT/device/key.pem"
+check_absent "$DATA_ROOT/device/spool.key"
 check_absent "$DATA_ROOT/device/enrollment-token"
 check_absent /etc/machine-id
 check_absent /var/lib/dbus/machine-id

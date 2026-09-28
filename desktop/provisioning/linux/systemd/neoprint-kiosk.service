@@ -3,6 +3,10 @@
 # cage gives the application the whole display: a Wayland compositor with no
 # desktop, no shortcuts and no notification daemon, so nothing but NeoPrint can
 # put anything on screen. If the UI exits, systemd starts it again.
+#
+# The session is the kiosk account's automatic login on tty1: PAMName=login
+# opens a logind session, which also creates its XDG_RUNTIME_DIR - whatever the
+# account's uid is (docs/TASKS.md T-078).
 
 [Unit]
 Description=NeoPrint kiosk UI
@@ -22,8 +26,11 @@ StandardInput=tty-fail
 StandardOutput=journal
 StandardError=journal
 
-Environment=XDG_RUNTIME_DIR=/run/user/1000
 Environment=XDG_SESSION_TYPE=wayland
+
+# Group access for the converter account in the work folder (setgid), none for
+# anyone else (docs/TASKS.md T-075).
+UMask=0007
 
 # -s: a single application, with no compositor keybindings at all.
 ExecStart=/usr/bin/cage -s -- /opt/neoprint/current/NeoPrint.Kiosk
@@ -32,4 +39,6 @@ Restart=always
 RestartSec=3
 
 [Install]
-WantedBy=graphical.target
+# multi-user.target: a server install boots to it, so the kiosk starts
+# without changing the default target.
+WantedBy=multi-user.target

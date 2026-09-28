@@ -192,6 +192,17 @@ public sealed class LockdownTests
         RemovableBlockDevices.UnmountedRemovable("not json").Should().BeEmpty();
     }
 
+    [Theory]
+    [InlineData(124, true, ConverterRunOutcome.TimedOut)]
+    [InlineData(137, true, ConverterRunOutcome.TimedOut)]
+    [InlineData(124, false, ConverterRunOutcome.Exited)]
+    [InlineData(127, true, ConverterRunOutcome.NotStarted)]
+    [InlineData(126, false, ConverterRunOutcome.NotStarted)]
+    [InlineData(1, true, ConverterRunOutcome.Exited)]
+    public void The_sandboxs_own_timeout_reads_as_a_timeout(int exitCode, bool sandboxed, ConverterRunOutcome outcome)
+        => LinuxConverterRunner.Interpret(new ConverterRun(ConverterRunOutcome.Exited, exitCode, string.Empty), sandboxed)
+            .Outcome.Should().Be(outcome);
+
     [Fact]
     public void A_provisioned_kiosk_runs_converters_through_the_sandbox_wrapper_as_its_own_user()
         => LinuxConverterRunner.Sandbox("neoprint-convert", 60, "/var/lib/neoprint/spool/work/abc", "soffice", ["--headless", "--convert-to", "pdf", "in.docx"])
