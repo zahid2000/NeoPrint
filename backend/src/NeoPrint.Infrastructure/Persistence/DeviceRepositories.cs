@@ -111,9 +111,11 @@ public sealed class KioskRepository : IKioskRepository
     public async Task<int> GetHighestCodeSequenceAsync(CancellationToken cancellationToken = default)
     {
         // Sorting by code descending gives the highest KSK-nnnn, since the
-        // numeric part is zero padded to a fixed width.
+        // numeric part is zero padded to a fixed width. Only codes of that
+        // shape: one like KSK-T12345 sorts above every number and would make
+        // the next code KSK-0001 again - a duplicate, and a failed activation.
         var codes = await _context.Kiosks
-            .Find(FilterDefinition<Kiosk>.Empty)
+            .Find(Builders<Kiosk>.Filter.Regex(kiosk => kiosk.Code, new MongoDB.Bson.BsonRegularExpression("^KSK-[0-9]{4}$")))
             .Project(kiosk => kiosk.Code)
             .SortByDescending(kiosk => kiosk.Code)
             .Limit(1)

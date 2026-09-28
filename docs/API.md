@@ -743,7 +743,8 @@ yenilənmiş flag.
 | Hub | Kim | Nə üçün |
 |---|---|---|
 | `/hubs/provisioning` | Provisioning token | Aktivləşdirmə anında cihaza xəbər verilir — cihaz kod ekranından özü keçir |
-| `/hubs/admin` | Admin token | `PermissionsChanged`, `DeviceRevoked` |
+| `/hubs/admin` | Admin token | `PermissionsChanged`, `DeviceRevoked`, `QueueUpdated` (yalnız hesabın əhatəsindəki kiosklar üçün) |
+| `/hubs/kiosk` | Kiosk token | Qrup `kiosk:{kioskId}` (token-dəki kiosk). `QueueUpdated` (`{kioskId, queue[]}`), `JobAdded`, `JobCancelled` (`{kioskId, jobId}`), `PrinterConfigChanged`, `KioskConfigChanged`, `KioskCommand` |
 
 Redis backplane ilə işləyir, ona görə bir necə API instansiyası eyni qrupları
 xidmət edə bilir.
@@ -998,10 +999,59 @@ dəyişmir.
 
 ---
 
+## Çap sifarişləri (`/api/print-jobs`, Addım 3)
+
+Kiosk token-i ilə. Hər endpoint yalnız token-dəki kioskun sifarişləri ilə işləyir; başqa kioskun sifarişi `404` qaytarır.
+
+### `POST /api/print-jobs` (`Idempotency-Key` məcburi)
+
+Flash-dan sifariş. Fayl kioskda qalır (şifrəli spool, Bölmə 7.5) — serverə yalnız ad, səhifə sayı və parametrlər gəlir.
+
+```json
+{
+  "localFileName": "hesabat.pdf",
+  "pageCount": 10,
+  "options": { "copies": 1, "pageRange": "1-3,5", "color": false, "duplex": false,
+               "paper": "A4", "orientation": "Auto", "pagesPerSheet": 1, "scaling": "Fit" },
+  "dev": true
+}
+```
+
+- Qiyməti server kioskun profilindən hesablayır və **snapshot** kimi saxlayır (`price`) — profil sonradan dəyişsə/silinsə də sifarişin qiyməti dəyişmir (T-047).
+- Yoxlamalar: kiosk `Online` olmalıdır (`409 printJobs.kioskNotTakingOrders`); səhifə sayı kioskun limitindən çox deyil (`printJobs.tooManyPages`); printerin effektiv imkanları (`printJobs.colorUnavailable` / `duplexUnavailable` / `a3Unavailable`); parametrlər (nüsxə 1–50, kağız A4/A3, vərəqdə 1/2/4 səhifə, aralıq `1-3,5,8-10`); kağız: `Paper.BlockWhenInsufficient` açıqdırsa, lotokdakı vərəq − hələ çap olunmamış sifarişlərə ayrılan vərəq < lazım olan → `409 printJobs.notEnoughPaper`. Lotok tutumu təyin olunmayıbsa (0) yoxlama edilmir.
+- `dev: true` — **yalnız Development**: ödəniş keçilir, sifariş dərhal `Queued` olur (`paymentSkipped: true`). Başqa mühitdə `400 printJobs.paymentSkipNotAllowed`. Bayraqsız sifariş `PendingPayment`-də gözləyir (ödəniş Addım 4-də).
+- `201` + sifariş: `id`, `jobCode` (6 rəqəm), `status`, `price {total, currency, basePrice, volumeDiscount, discountPercent, minimumApplied, sides, sheets, profileId, profileName, takenAt}`, `requiredSheets` (fiziki vərəq), `queuePosition`.
+
+### `GET /api/print-jobs/{id}`, `GET /api/print-jobs/by-code/{code}`
+
+Sifariş; kod ilə axtarış ləğv ekranı üçündür (Bölmə 7.3, ekran 11).
+
+### `POST /api/print-jobs/{id}/cancel` (`Idempotency-Key`)
+
+`Draft`, `PendingPayment`, `Queued`, `Interrupted` → `Cancelled`. Çap olunan sifariş ləğv olunmur (`409 printJobs.cancelWhilePrinting`). Ödənilmiş sifarişin geri qaytarılması Addım 4-dədir.
+
+### `POST /api/print-jobs/{id}/status`
+
+Kiosk çapın gedişini bildirir: `{ "status": "Printing" | "Completed" | "Interrupted", "printedSides": 8, "printedSheets": 4, "errorCode": "printer.outOfPaper" }`. Eyni hesabat təkrar gəlsə heç nə dəyişmir (idempotent). Printer sifarişdən çox vərəq bildirsə sayğac sifarişin həddinə qədər azalır. Tanınmayan `errorCode` → `printer.error`. Xəta kodları: `printer.offline`, `printer.outOfPaper`, `printer.paperJam`, `printer.notSelected`, `printer.notFound`, `printer.spoolFailed`, `printer.fileMissing`, `printer.restarted`, `printer.error`.
+
+### `GET /api/kiosks/me/queue`
+
+Növbə sırası ilə (`Queued` + `Printing`): `[{ jobId, jobCode, position, status, pages, copies, userInitial?, fileName?, queuedAt }]`. Qonaq sifarişində `userInitial` yoxdur.
+
+Növbə Redis sorted set-dədir (`queue:{kioskId}`, bal = növbəyə düşmə vaxtı); həqiqət mənbəyi MongoDB-dir. Redis cavab verməsə oxuma MongoDB-dən gedir, boş set MongoDB ilə yoxlanıb bərpa olunur, `print-queue-reconciliation` Hangfire işi hər dəqiqə bütün növbələri MongoDB-dən yenidən qurur.
+
+### Admin (`/api/admin`)
+
+| Endpoint | İcazə | |
+|---|---|---|
+| `GET /api/admin/print-jobs?kioskId=&status=Queued,Printing&from=&to=&code=&page=&pageSize=` | `jobs.view` | Ən yenilər əvvəl; yalnız hesabın kiosk əhatəsi |
+| `GET /api/admin/print-jobs/{id}` | `jobs.view` | Sifariş + `history[]` (`from`, `to`, `actorType`, `reason`, `at`) |
+| `POST /api/admin/print-jobs/{id}/cancel` | `jobs.cancel` | `Idempotency-Key`; səbəb audit-ə |
+| `GET /api/admin/kiosks/{kioskId}/queue` | `jobs.view` | Kioskun canlı növbəsi |
+
 ## Hələ mövcud olmayan endpoint-lər
 
-Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: print job-lar və
-queue (Addım 3), ödəniş / refund / wallet / fiskal (Addım 4), skan və paylaşım
+Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: ödəniş / refund / wallet / fiskal (Addım 4), skan və paylaşım
 (Addım 6), telemetriya və operator paneli (Addım 7).
 
 Addım 2-nin bütün endpoint-ləri (fayllar, redaktə və versiyalar, səhifə

@@ -29,6 +29,12 @@ public sealed class AdminHub : Hub
 
     public const string AllAdminsGroup = "admins";
 
+    /// <summary>
+    /// Accounts that see every kiosk. Kiosk events go here and to the kiosk's
+    /// own group, so a scoped operator hears only about their kiosks.
+    /// </summary>
+    public const string AllKiosksGroup = "admins:all-kiosks";
+
     public static string KioskGroup(Guid kioskId) => $"admin-kiosk:{kioskId}";
 
     public static string OperatorGroup(Guid adminUserId) => $"operator:{adminUserId}";
@@ -47,9 +53,13 @@ public sealed class AdminHub : Hub
 
         var effective = await _permissions.ResolveAsync(adminId.Value);
 
-        // An account scoped to specific kiosks joins only those groups. An
-        // account with full scope is added as kiosks appear, not up front.
-        if (!effective.AllKiosks)
+        // An account scoped to specific kiosks joins only those groups; one
+        // with full scope joins the group every kiosk's events also go to.
+        if (effective.AllKiosks)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, AllKiosksGroup);
+        }
+        else
         {
             foreach (var kioskId in effective.KioskIds)
             {
@@ -69,6 +79,11 @@ public sealed class SignalRAdminNotifier : IAdminNotifier
     private readonly IHubContext<AdminHub> _hub;
 
     public SignalRAdminNotifier(IHubContext<AdminHub> hub) => _hub = hub;
+
+    public Task QueueUpdatedAsync(
+        Guid kioskId, IReadOnlyList<Application.PrintJobs.QueueEntry> queue, CancellationToken cancellationToken = default)
+        => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(kioskId)])
+            .SendAsync("QueueUpdated", new { kioskId, queue }, cancellationToken);
 
     public Task PermissionsChangedAsync(Guid roleId, CancellationToken cancellationToken = default)
         // Broadcast rather than targeted: the panel reloads its own

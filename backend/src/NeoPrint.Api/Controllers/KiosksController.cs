@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Devices;
+using NeoPrint.Application.PrintJobs;
 
 namespace NeoPrint.Api.Controllers;
 
@@ -54,6 +55,20 @@ public sealed class KiosksController : ControllerBase
         // A token whose device is no longer bound to a kiosk has nothing to
         // configure; the device returns to its activation screen.
         return config is null ? Forbid() : Ok(config);
+    }
+
+    /// <summary>The kiosk's queue in order: the panel on screen and the next job to print (plan sections 7.2, 7.4).</summary>
+    [HttpGet("me/queue")]
+    [Authorize(Policy = AuthorizationPolicies.Kiosk)]
+    public async Task<ActionResult<IReadOnlyList<QueueEntry>>> Queue(CancellationToken cancellationToken)
+    {
+        var deviceId = _currentUser.DeviceId;
+        if (deviceId is null)
+        {
+            return Forbid();
+        }
+
+        return Ok(await _sender.Send(new GetKioskQueueQuery(deviceId.Value), cancellationToken));
     }
 
     /// <summary>

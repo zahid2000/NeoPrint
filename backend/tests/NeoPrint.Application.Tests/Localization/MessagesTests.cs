@@ -213,6 +213,34 @@ public sealed partial class MessagesTests
                 missing.Add($"{Path.GetFileName(file)}: {key}");
             }
 
+            // A key with a prefix the catalog has never seen (a new module)
+            // would pass the check above; inside a message call it is a key
+            // whatever its prefix.
+            foreach (Match call in MessageCall().Matches(text))
+            {
+                var arguments = TopLevelArguments(ArgumentsOf(text, call.Index + call.Length - 1));
+
+                // ValidationError(field, key) and Invalid(field, key): the first
+                // argument is a field name ("newKiosk.name"), not a message.
+                var skip = call.Value.StartsWith("ValidationError", StringComparison.Ordinal)
+                           || call.Value.StartsWith("Invalid", StringComparison.Ordinal)
+                    ? 1
+                    : 0;
+
+                foreach (Match literal in arguments.Skip(skip).SelectMany(argument => StringLiteral().Matches(argument)))
+                {
+                    var value = literal.Value.TrimStart('$').Trim('"');
+
+                    if (UserMessage.LooksLikeKey(value)
+                        && !catalog.ContainsKey(value)
+                        && !permissions.Contains(value)
+                        && !OtherCodes.Contains(value))
+                    {
+                        missing.Add($"{Path.GetFileName(file)}: {value}");
+                    }
+                }
+            }
+
             foreach (Match match in NotFoundLiteral().Matches(text))
             {
                 var key = $"notFound.{match.Groups[1].Value}";
@@ -224,7 +252,7 @@ public sealed partial class MessagesTests
             }
         }
 
-        missing.Should().BeEmpty("every message key in the code has a text in the catalogs");
+        missing.Should().BeEmpty($"every message key in the code has a text in the catalogs: {string.Join("; ", missing.Distinct())}");
     }
 
     [Fact]
@@ -333,6 +361,46 @@ public sealed partial class MessagesTests
         return text[open..];
     }
 
+    /// <summary>A call's arguments, split at the commas between them: "(a, f(b, c), d)" → a | f(b, c) | d.</summary>
+    private static List<string> TopLevelArguments(string call)
+    {
+        var arguments = new List<string>();
+        var depth = 0;
+        var start = 1;
+
+        for (var index = 0; index < call.Length; index++)
+        {
+            switch (call[index])
+            {
+                case '"':
+                    index++;
+                    while (index < call.Length && call[index] != '"')
+                    {
+                        index += call[index] == '\\' ? 2 : 1;
+                    }
+
+                    break;
+                case '(' or '[' or '{':
+                    depth++;
+                    break;
+                case ')' or ']' or '}':
+                    depth--;
+                    if (depth == 0)
+                    {
+                        arguments.Add(call[start..index]);
+                    }
+
+                    break;
+                case ',' when depth == 1:
+                    arguments.Add(call[start..index]);
+                    start = index + 1;
+                    break;
+            }
+        }
+
+        return arguments;
+    }
+
     /// <summary>Whether the literal is an argument of the statement that writes an audit entry.</summary>
     private static bool IsAuditAction(string text, int index)
     {
@@ -374,7 +442,7 @@ public sealed partial class MessagesTests
     [GeneratedRegex(@"\$?""(?:[^""\\]|\\.)*""")]
     private static partial Regex StringLiteral();
 
-    [GeneratedRegex(@"\b(?:DomainException|NotFoundException|ValidationError|AuthenticationException|FileEditException|PageRenderException|Unrecognised|Fail|Because|UserMessage|Failed|BucketTestResult|PricingException|Invalid)\s*\(")]
+    [GeneratedRegex(@"\b(?:DomainException|NotFoundException|ValidationError|AuthenticationException|FileEditException|PageRenderException|Unrecognised|Fail|Because|UserMessage|Failed|BucketTestResult|PricingException|Invalid|UserMessage.Of)\s*\(")]
     private static partial Regex MessageCall();
 
     [GeneratedRegex(@"^[dMyHhmsf.:/\- ]+$")]

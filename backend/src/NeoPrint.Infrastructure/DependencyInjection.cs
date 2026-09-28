@@ -1,17 +1,17 @@
 using System.Reflection;
 
-using Hangfire;
-using Hangfire.Mongo;
-using Hangfire.Mongo.Migration.Strategies;
 using Hangfire.Mongo.Migration.Strategies.Backup;
+using Hangfire.Mongo.Migration.Strategies;
+using Hangfire.Mongo;
+using Hangfire;
 
 using MassTransit;
 
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using MongoDB.Driver;
 
@@ -20,23 +20,25 @@ using Microsoft.AspNetCore.Identity;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Admin;
 using NeoPrint.Application.Auth;
+using NeoPrint.Application.Behaviors;
 using NeoPrint.Application.Devices;
 using NeoPrint.Application.Features;
-using NeoPrint.Application.Behaviors;
+using NeoPrint.Application.PrintJobs;
 using NeoPrint.Crypto;
-using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Infrastructure.Admin;
+using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Infrastructure.Conversion;
 using NeoPrint.Infrastructure.Crypto;
-using NeoPrint.Infrastructure.Storage;
 using NeoPrint.Infrastructure.Devices;
-using NeoPrint.Infrastructure.Features;
 using NeoPrint.Infrastructure.Email;
+using NeoPrint.Infrastructure.Features;
 using NeoPrint.Infrastructure.HealthChecks;
 using NeoPrint.Infrastructure.Observability;
 using NeoPrint.Infrastructure.Persistence;
+using NeoPrint.Infrastructure.PrintJobs;
 using NeoPrint.Infrastructure.SecretStore;
 using NeoPrint.Infrastructure.Settings;
+using NeoPrint.Infrastructure.Storage;
 
 using NeoPrint.Domain.Admin;
 using NeoPrint.Domain.Users;
@@ -111,6 +113,13 @@ public static class DependencyInjection
         services.AddScoped<IKioskDeviceRepository, KioskDeviceRepository>();
         services.AddScoped<IEnrollmentTokenRepository, EnrollmentTokenRepository>();
         services.AddScoped<IKioskRepository, KioskRepository>();
+
+        // Print jobs and the queue (plan step 3)
+        services.AddScoped<IPrintJobRepository, PrintJobRepository>();
+        services.AddScoped<IPrintQueue, RedisPrintQueue>();
+        services.AddScoped<ITransitionHistory, TransitionHistory>();
+        services.AddScoped<PrintQueueService>();
+        services.AddScoped<PrintQueueReconciliationJob>();
 
         // Administration and RBAC (plan section 8A.2)
         services.AddSingleton<IPasswordHasher<AdminUser>, PasswordHasher<AdminUser>>();

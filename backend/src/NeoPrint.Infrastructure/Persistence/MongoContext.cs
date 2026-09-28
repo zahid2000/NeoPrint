@@ -1,7 +1,7 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Conventions;
 using MongoDB.Bson.Serialization.Serializers;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 using NeoPrint.Domain.Admin;
@@ -116,6 +116,8 @@ public sealed class MongoContext
     public MongoSet<Domain.Files.StoredFile> Files => Set<Domain.Files.StoredFile>("files");
     public MongoSet<Domain.Storage.StorageSyncJob> StorageSyncJobs => Set<Domain.Storage.StorageSyncJob>("storage_sync_jobs");
     public MongoSet<Domain.Storage.StorageSyncFailure> StorageSyncFailures => Set<Domain.Storage.StorageSyncFailure>("storage_sync_failures");
+    public MongoSet<Domain.PrintJobs.PrintJob> PrintJobs => Set<Domain.PrintJobs.PrintJob>("print_jobs");
+
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
     public MongoSet<AuditLog> AuditLogs => Set<AuditLog>("audit_logs");
@@ -300,6 +302,16 @@ public sealed class MongoContext
             (Builders<Domain.Files.StoredFile>.IndexKeys
                 .Ascending(file => file.UserId).Descending(file => file.CreatedAt), Named("ix_files_user_created")),
             (Builders<Domain.Files.StoredFile>.IndexKeys.Ascending("Original.ProviderId"), Named("ix_files_original_provider")));
+
+        await CreateAsync(PrintJobs,
+            // The code is what a person types to find a job; one job per code.
+            (Builders<Domain.PrintJobs.PrintJob>.IndexKeys.Ascending(job => job.JobCode), Unique("ux_print_jobs_code")),
+            // The queue: a kiosk's jobs by status, in the order they joined.
+            (Builders<Domain.PrintJobs.PrintJob>.IndexKeys
+                .Ascending(job => job.KioskId).Ascending(job => job.Status).Ascending(job => job.QueuedAt),
+                Named("ix_print_jobs_kiosk_status_queued")),
+            // The admin list, newest first.
+            (Builders<Domain.PrintJobs.PrintJob>.IndexKeys.Descending(job => job.CreatedAt), Named("ix_print_jobs_created")));
 
         await CreateAsync(StorageSyncJobs,
             (Builders<Domain.Storage.StorageSyncJob>.IndexKeys.Ascending(job => job.Status), Named("ix_storage_sync_jobs_status")));

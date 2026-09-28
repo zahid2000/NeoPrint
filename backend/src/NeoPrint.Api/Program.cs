@@ -20,6 +20,7 @@ using NeoPrint.Api.Infrastructure;
 using NeoPrint.Api;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Behaviors;
+using NeoPrint.Application.PrintJobs;
 using NeoPrint.Domain.Settings;
 using NeoPrint.Infrastructure.Auth;
 using NeoPrint.Infrastructure.Persistence;
@@ -28,6 +29,7 @@ using NeoPrint.Infrastructure.Seeding;
 using NeoPrint.Infrastructure;
 
 using NeoPrint.Infrastructure.Conversion;
+using NeoPrint.Infrastructure.PrintJobs;
 using NeoPrint.Infrastructure.Storage;
 
 // ---------------------------------------------------------------------------
@@ -217,6 +219,12 @@ if (!string.IsNullOrWhiteSpace(redisConnection))
 
 builder.Services.AddScoped<IDeviceNotifier, SignalRDeviceNotifier>();
 builder.Services.AddScoped<IAdminNotifier, SignalRAdminNotifier>();
+builder.Services.AddScoped<IKioskNotifier, SignalRKioskNotifier>();
+
+// A job may skip its payment in Development only (plan step 3). From the
+// environment, not from configuration: no Production setting can turn it on.
+builder.Services.Configure<PrintJobOptions>(options =>
+    options.AllowPaymentSkip = builder.Environment.IsDevelopment());
 
 builder.Services.AddScoped<RequireFeatureFilter>();
 
@@ -350,6 +358,13 @@ await using (var scope = app.Services.CreateAsyncScope())
 
     var recurring = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
 
+    // Every minute: the Redis queues rebuilt from MongoDB, so a lost or
+    // stale Redis is never the truth for long (plan section 3).
+    recurring.AddOrUpdate<PrintQueueReconciliationJob>(
+        PrintQueueReconciliationJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Minutely());
+
     // Which providers answer: for the panel, and for noticing a primary that
     // has gone quiet (plan section 2.10).
     recurring.AddOrUpdate<StorageMirrorJobs>(
@@ -424,6 +439,7 @@ app.MapControllers();
 
 app.MapHub<ProvisioningHub>("/hubs/provisioning");
 app.MapHub<AdminHub>("/hubs/admin");
+app.MapHub<KioskHub>("/hubs/kiosk");
 
 // Liveness: the process is up. Used by the container health check, and must not
 // depend on anything external, or a brief database blip would restart the API.

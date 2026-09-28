@@ -67,6 +67,10 @@ public interface IAdminNotifier
     /// <summary>A migration or a mirror finished its copy: the wizard's last step.</summary>
     Task StorageSyncCompletedAsync(Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default);
 
+    /// <summary>A kiosk's queue changed (plan section 8A.3, kiosk detail → Queue).</summary>
+    Task QueueUpdatedAsync(
+        Guid kioskId, IReadOnlyList<PrintJobs.QueueEntry> queue, CancellationToken cancellationToken = default);
+
     /// <summary>A provider's health changed (every-minute check, plan section 2.10).</summary>
     Task StorageHealthChangedAsync(Storage.StorageHealthChanged change, CancellationToken cancellationToken = default);
 }
