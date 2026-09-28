@@ -1,3 +1,4 @@
+using NeoPrint.Documents;
 using NeoPrint.Domain.Common;
 using NeoPrint.Pricing;
 
@@ -78,7 +79,7 @@ public sealed record PrintOptions(
             problems.Add(("options", new UserMessage("printJobs.optionsInvalid")));
         }
 
-        if (!PrintJobs.PageRange.TryParse(PageRange, pageCount, out _))
+        if (!NeoPrint.Documents.PageRange.TryParse(PageRange, pageCount, out _))
         {
             problems.Add(("pageRange", UserMessage.Of("printJobs.pageRangeInvalid", ("count", pageCount))));
         }
@@ -89,85 +90,11 @@ public sealed record PrintOptions(
     /// <summary>The pages that will be printed, in order.</summary>
     /// <exception cref="DomainException">The range does not fit the document.</exception>
     public IReadOnlyList<int> SelectedPages(int pageCount)
-        => PrintJobs.PageRange.TryParse(PageRange, pageCount, out var pages)
+        => NeoPrint.Documents.PageRange.TryParse(PageRange, pageCount, out var pages)
             ? pages
             : throw new DomainException(UserMessage.Of("printJobs.pageRangeInvalid", ("count", pageCount)));
 
     /// <summary>The specification the price is computed from (plan section 2.3, formula).</summary>
     public PrintSpec ToSpec(int pageCount)
         => new(SelectedPages(pageCount).Count, PagesPerSheet, Copies, Duplex, Color, Paper);
-}
-
-/// <summary>
-/// A page range as a person types it: <c>1-3,5,8-10</c> (plan section 2.3).
-/// </summary>
-public static class PageRange
-{
-    /// <summary>
-    /// The pages a range selects, in the order written; null or blank means
-    /// every page. False for anything malformed, empty, reversed or outside
-    /// the document.
-    /// </summary>
-    public static bool TryParse(string? range, int pageCount, out IReadOnlyList<int> pages)
-    {
-        pages = [];
-
-        if (pageCount < 1)
-        {
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(range))
-        {
-            pages = Enumerable.Range(1, pageCount).ToList();
-            return true;
-        }
-
-        var selected = new List<int>();
-        var seen = new HashSet<int>();
-
-        foreach (var part in range.Split(',', StringSplitOptions.TrimEntries))
-        {
-            if (part.Length == 0)
-            {
-                return false;
-            }
-
-            var dash = part.IndexOf('-', StringComparison.Ordinal);
-            int from;
-            int to;
-
-            if (dash < 0)
-            {
-                if (!int.TryParse(part, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out from))
-                {
-                    return false;
-                }
-
-                to = from;
-            }
-            else if (!int.TryParse(part.AsSpan(0, dash).Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out from)
-                     || !int.TryParse(part.AsSpan(dash + 1).Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out to))
-            {
-                return false;
-            }
-
-            if (from < 1 || to > pageCount || from > to)
-            {
-                return false;
-            }
-
-            for (var page = from; page <= to; page++)
-            {
-                // A page named twice prints once: "1-3,2" is three pages, not four.
-                if (seen.Add(page))
-                {
-                    selected.Add(page);
-                }
-            }
-        }
-
-        pages = selected;
-        return selected.Count > 0;
-    }
 }

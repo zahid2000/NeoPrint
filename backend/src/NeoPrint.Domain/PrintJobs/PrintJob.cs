@@ -1,3 +1,4 @@
+using NeoPrint.Documents;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Pricing;
 
@@ -184,23 +185,11 @@ public sealed class PrintJob : Entity
         };
     }
 
-    /// <summary>
-    /// Sheets the printer actually uses: each copy starts on a fresh sheet, so
-    /// five pages on both sides take three sheets a copy, not two and a half.
-    /// </summary>
-    /// <remarks>
-    /// The plan's formula (<c>ceil(sides / 2)</c>, section 2.3) prices the job and
-    /// stays as it is; for the paper it would undercount every odd-paged
-    /// double-sided copy, and the counter would drift from the tray.
-    /// </remarks>
+    /// <summary>Sheets the printer actually uses (<see cref="PrintSheets.Physical"/>).</summary>
     public static int PhysicalSheets(PrintOptions options, int selectedPages)
     {
         ArgumentNullException.ThrowIfNull(options);
-
-        var faces = (selectedPages + options.PagesPerSheet - 1) / options.PagesPerSheet;
-        var perCopy = options.Duplex ? (faces + 1) / 2 : faces;
-
-        return perCopy * options.Copies;
+        return PrintSheets.Physical(selectedPages, options.PagesPerSheet, options.Copies, options.Duplex);
     }
 
     /// <summary>The order is placed and waits for its payment (plan section 7.3, screens 6–8).</summary>

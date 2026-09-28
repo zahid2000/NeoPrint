@@ -1,3 +1,4 @@
+using NeoPrint.Documents;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Pricing;
 using NeoPrint.Domain.PrintJobs;
