@@ -47,7 +47,7 @@ public sealed record GetOpenKioskCommandsQuery(Guid DeviceId) : IRequest<IReadOn
 /// <param name="MessageKey">What happened, as a message key: <c>printer.outOfPaper</c>.</param>
 /// <param name="SheetsUsed">Paper a test page took; it comes off the counter (plan section 2.15).</param>
 public sealed record CompleteKioskCommandCommand(
-    Guid DeviceId, Guid CommandId, bool Succeeded, string? MessageKey, int SheetsUsed) : IRequest<KioskCommandView>;
+    Guid DeviceId, Guid CommandId, bool Succeeded, string? MessageKey, int SheetsUsed) : IRequest<KioskCommandView>, Behaviors.ITransactionalRequest;
 
 /// <summary>The printers tab of the kiosk detail (plan section 8A.3).</summary>
 public sealed record GetKioskPrintersQuery(Guid AdminUserId, Guid KioskId) : IRequest<KioskPrintersView>;
@@ -102,6 +102,7 @@ public sealed class KioskPrinterHandlers :
     private readonly IKioskDeviceRepository _devices;
     private readonly IKioskRepository _kiosks;
     private readonly IKioskCommandRepository _commands;
+    private readonly ISupplyEventRepository _supplies;
     private readonly IPermissionResolver _permissions;
     private readonly IKioskNotifier _kiosk;
     private readonly IAdminNotifier _admins;
@@ -114,6 +115,7 @@ public sealed class KioskPrinterHandlers :
         IKioskDeviceRepository devices,
         IKioskRepository kiosks,
         IKioskCommandRepository commands,
+        ISupplyEventRepository supplies,
         IPermissionResolver permissions,
         IKioskNotifier kiosk,
         IAdminNotifier admins,
@@ -125,6 +127,7 @@ public sealed class KioskPrinterHandlers :
         _devices = devices;
         _kiosks = kiosks;
         _commands = commands;
+        _supplies = supplies;
         _permissions = permissions;
         _kiosk = kiosk;
         _admins = admins;
@@ -413,9 +416,10 @@ public sealed class KioskPrinterHandlers :
     {
         var changed = false;
 
-        if (request.SheetsUsed > 0 && kiosk.PaperStock.TryGetValue("A4", out var stock))
+        // A test page is one sheet or two; a report of more is capped.
+        if (kiosk.UsePaper("A4", Math.Min(request.SheetsUsed, 10), SupplyEventType.TestPrint, now, commandId: request.CommandId) is { } movement)
         {
-            stock.Current = Math.Max(0, stock.Current - Math.Min(request.SheetsUsed, 10));
+            await _supplies.AddAsync(movement, cancellationToken).ConfigureAwait(false);
             changed = true;
         }
 

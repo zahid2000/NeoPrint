@@ -163,6 +163,25 @@ public sealed class AdminKiosksController : ControllerBase
     public async Task<ActionResult<KioskCommandView>> TestPrint(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.TestPrint), cancellationToken));
 
+    /// <summary>The supplies tab: paper counters and their latest movements (plan section 2.15).</summary>
+    [HttpGet("{id:guid}/supplies")]
+    [HasPermission(Permissions.SuppliesView)]
+    public async Task<ActionResult<KioskSuppliesView>> Supplies(Guid id, [FromQuery] int limit = 50, CancellationToken cancellationToken = default)
+        => Ok(await _sender.Send(new GetKioskSuppliesQuery(AdminId, id, limit), cancellationToken));
+
+    /// <summary>"Kağız doldur": add sheets, fill the tray, or set the counted number.</summary>
+    [HttpPost("{id:guid}/paper/refill")]
+    [HasPermission(Permissions.PaperRefill)]
+    [Idempotent]
+    public async Task<ActionResult<KioskSuppliesView>> RefillPaper(
+        Guid id, [FromBody] PaperRefillRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return Ok(await _sender.Send(
+            new RefillKioskPaperCommand(AdminId, id, request.Paper ?? string.Empty, request.Mode, request.Sheets), cancellationToken));
+    }
+
     [HttpGet("{id:guid}/commands")]
     [HasPermission(Permissions.KiosksView)]
     public async Task<ActionResult<IReadOnlyList<KioskCommandView>>> Commands(Guid id, CancellationToken cancellationToken)
@@ -181,3 +200,6 @@ public sealed record KioskFiscalTerminalRequest(string? FiscalTerminalId);
 public sealed record KioskPaperCapacityRequest(int A4, int A3);
 
 public sealed record KioskAdminPinRequest(string? Pin);
+
+/// <param name="Mode">Add (sheets put in), Full (to capacity) or Exact (counted).</param>
+public sealed record PaperRefillRequest(string? Paper, Domain.Kiosks.PaperRefillMode Mode, int Sheets);

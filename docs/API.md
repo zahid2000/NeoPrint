@@ -1068,6 +1068,10 @@ Admin:
 | `POST /api/admin/kiosks/{id}/printers/refresh` | `printers.refresh` | `RefreshPrinters` əmri |
 | `POST /api/admin/kiosks/{id}/test-print` | `printers.testprint` | `TestPrint` əmri; printer seçilməyibsə `409 printer.notSelected`; nəticə `/hubs/admin` `CommandResult` |
 | `GET /api/admin/kiosks/{id}/commands` | `kiosks.view` | Son 20 əmr |
+| `GET /api/admin/kiosks/{id}/supplies?limit=50` | `supplies.view` | "Sərf" tabı: `paper` (ölçü üzrə `capacity`, `current`, `lastRefillAt`) + `events[]` (`resource` `PaperA4`/`PaperA3`, `type` `JobPrinted`/`TestPrint`/`Refill`/`Recount`, `delta`, `before`, `after`, `jobId`, `by`, `at`), ən yenilər əvvəl |
+| `POST /api/admin/kiosks/{id}/paper/refill` | `paper.refill` | `Idempotency-Key`. `{ "paper": "A4", "mode": "Add" \| "Full" \| "Exact", "sheets": 200 }` — əlavə edilən vərəq / tutuma qədər (sheets nəzərə alınmır) / sayılmış dəqiq say. Tutumdan çox → `409 kiosks.paperRefillInvalid`; lotok tutumu 0 → `409 kiosks.paperNoTray`. `supply_events` + audit (`paper.refill`); kioska `KioskConfigChanged`. Cavab: "Sərf" tabının özü |
+
+Kağız sayğacı (plan 2.15): job `Completed` və ya `Interrupted` olanda onun `printedSheets`-i (sifarişin `requiredSheets`-i ilə məhdud) kioskun həmin kağız ölçüsü sayğacından çıxılır — status hesabatı ilə **eyni tranzaksiyada**, bir dəfə (təkrar hesabat heç nə dəyişmir). Test səhifəsi də A4-dən çıxılır (`TestPrint`). Sayğac 0-dan aşağı düşmür.
 
 ### Admin (`/api/admin`)
 

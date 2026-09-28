@@ -119,6 +119,7 @@ public static class DependencyInjection
         services.AddScoped<IKioskCommandRepository, KioskCommandRepository>();
         services.AddScoped<IPrintJobRepository, PrintJobRepository>();
         services.AddScoped<IPrintAttemptRepository, PrintAttemptRepository>();
+        services.AddScoped<Application.Kiosks.ISupplyEventRepository, SupplyEventRepository>();
         services.AddScoped<IPrintQueue, RedisPrintQueue>();
         services.AddScoped<ITransitionHistory, TransitionHistory>();
         services.AddScoped<PrintQueueService>();

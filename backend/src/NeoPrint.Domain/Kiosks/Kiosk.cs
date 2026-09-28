@@ -279,6 +279,79 @@ public sealed class Kiosk : Entity
     }
 
     /// <summary>
+    /// Sheets came out of the tray: a job's or a test page's (plan section
+    /// 2.15). The counter does not go below zero - a counter that says less
+    /// than the tray holds is corrected by a recount, not by a negative number.
+    /// </summary>
+    /// <returns>The movement to record, or null when this paper size has no counter or nothing was used.</returns>
+    public SupplyEvent? UsePaper(string paper, int sheets, SupplyEventType type, DateTime utcNow, Guid? jobId = null, Guid? commandId = null)
+    {
+        if (sheets <= 0 || !PaperStock.TryGetValue(paper, out var stock))
+        {
+            return null;
+        }
+
+        var before = stock.Current;
+        stock.Current = Math.Max(0, stock.Current - sheets);
+        ConfigurationChangedAt = utcNow;
+
+        return new SupplyEvent
+        {
+            KioskId = Id,
+            Resource = SupplyEvent.PaperResource(paper),
+            Type = type,
+            Delta = stock.Current - before,
+            Before = before,
+            After = stock.Current,
+            JobId = jobId,
+            CommandId = commandId,
+            At = utcNow,
+            DedupKey = jobId is { } job ? $"job:{job:N}" : commandId is { } command ? $"command:{command:N}" : Guid.NewGuid().ToString("N"),
+        };
+    }
+
+    /// <summary>An operator put paper in the tray, or counted it (plan section 2.15).</summary>
+    /// <exception cref="DomainException">The size has no tray, or the number does not fit it.</exception>
+    public SupplyEvent RefillPaper(string paper, PaperRefillMode mode, int sheets, Guid by, DateTime utcNow)
+    {
+        if (!PaperStock.TryGetValue(paper, out var stock) || stock.Capacity <= 0)
+        {
+            throw new DomainException(UserMessage.Of("kiosks.paperNoTray", ("paper", paper)));
+        }
+
+        var after = mode switch
+        {
+            PaperRefillMode.Full => stock.Capacity,
+            PaperRefillMode.Add => stock.Current + sheets,
+            _ => sheets,
+        };
+
+        if ((mode != PaperRefillMode.Full && sheets < 0) || (mode == PaperRefillMode.Add && sheets == 0) || after > stock.Capacity)
+        {
+            throw new DomainException(UserMessage.Of("kiosks.paperRefillInvalid", ("capacity", stock.Capacity), ("current", stock.Current)));
+        }
+
+        var before = stock.Current;
+        stock.Current = after;
+        stock.LastRefillAt = utcNow;
+        stock.LastRefillBy = by;
+        ConfigurationChangedAt = utcNow;
+
+        return new SupplyEvent
+        {
+            KioskId = Id,
+            Resource = SupplyEvent.PaperResource(paper),
+            Type = mode == PaperRefillMode.Exact ? SupplyEventType.Recount : SupplyEventType.Refill,
+            Delta = after - before,
+            Before = before,
+            After = after,
+            By = by,
+            At = utcNow,
+            DedupKey = $"refill:{Guid.NewGuid():N}",
+        };
+    }
+
+    /// <summary>
     /// The kiosk UI started in safe mode (plan section 7.12): it takes no
     /// orders, so a kiosk that was Online shows Maintenance - on the map and
     /// in the panel - rather than a kiosk that looks open and is not.

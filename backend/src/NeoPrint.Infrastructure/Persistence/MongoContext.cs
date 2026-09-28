@@ -120,6 +120,7 @@ public sealed class MongoContext
 
     public MongoSet<Domain.PrintJobs.PrintJob> PrintJobs => Set<Domain.PrintJobs.PrintJob>("print_jobs");
     public MongoSet<Domain.PrintJobs.PrintAttempt> PrintAttempts => Set<Domain.PrintJobs.PrintAttempt>("print_attempts");
+    public MongoSet<SupplyEvent> SupplyEvents => Set<SupplyEvent>("supply_events");
 
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
@@ -320,6 +321,12 @@ public sealed class MongoContext
                 Named("ix_print_jobs_kiosk_status_queued")),
             // The admin list, newest first.
             (Builders<Domain.PrintJobs.PrintJob>.IndexKeys.Descending(job => job.CreatedAt), Named("ix_print_jobs_created")));
+
+        // A job or a test page moves a counter once; the tab reads a kiosk's newest first.
+        await CreateAsync(SupplyEvents,
+            (Builders<SupplyEvent>.IndexKeys.Ascending(movement => movement.DedupKey), Unique("ux_supply_events_dedup")),
+            (Builders<SupplyEvent>.IndexKeys.Ascending(movement => movement.KioskId).Descending(movement => movement.At),
+                Named("ix_supply_events_kiosk_at")));
 
         // One row per job and attempt: a report sent again replaces it.
         await CreateAsync(PrintAttempts,

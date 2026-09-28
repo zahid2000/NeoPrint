@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Admin;
 using NeoPrint.Application.Common;
+using NeoPrint.Application.Kiosks;
 using NeoPrint.Application.Localization;
 using NeoPrint.Application.Pricing;
 using NeoPrint.Contracts;
@@ -39,6 +40,7 @@ public sealed class KioskPrintJobHandlers :
     private readonly IPricingProfileRepository _profiles;
     private readonly IPrintJobRepository _jobs;
     private readonly IPrintAttemptRepository _attempts;
+    private readonly ISupplyEventRepository _supplies;
     private readonly PrintQueueService _queue;
     private readonly IKioskNotifier _notifier;
     private readonly ISettingsReader _settings;
@@ -54,6 +56,7 @@ public sealed class KioskPrintJobHandlers :
         IPricingProfileRepository profiles,
         IPrintJobRepository jobs,
         IPrintAttemptRepository attempts,
+        ISupplyEventRepository supplies,
         PrintQueueService queue,
         IKioskNotifier notifier,
         ISettingsReader settings,
@@ -68,6 +71,7 @@ public sealed class KioskPrintJobHandlers :
         _profiles = profiles;
         _jobs = jobs;
         _attempts = attempts;
+        _supplies = supplies;
         _queue = queue;
         _notifier = notifier;
         _settings = settings;
@@ -267,6 +271,12 @@ public sealed class KioskPrintJobHandlers :
         }
 
         await _jobs.UpdateAsync(job, cancellationToken).ConfigureAwait(false);
+
+        if (job.Status is PrintJobStatus.Completed or PrintJobStatus.Interrupted)
+        {
+            await UsePaperAsync(job, now, cancellationToken).ConfigureAwait(false);
+        }
+
         await _queue.SyncAsync(job, cancellationToken).ConfigureAwait(false);
 
         await _events.PublishAsync(
@@ -292,6 +302,24 @@ public sealed class KioskPrintJobHandlers :
         await _queue.AnnounceAsync(job.KioskId, cancellationToken).ConfigureAwait(false);
 
         return await _queue.ResponseAsync(job, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The sheets the job used come off the kiosk's counter (plan section
+    /// 2.15), in the same transaction as the job's final status - which the
+    /// state machine allows once, so a report sent twice cannot count twice.
+    /// </summary>
+    private async Task UsePaperAsync(PrintJob job, DateTime now, CancellationToken cancellationToken)
+    {
+        var kiosk = await _kiosks.FindByIdAsync(job.KioskId, cancellationToken).ConfigureAwait(false);
+
+        if (kiosk?.UsePaper(job.Options.Paper, job.PrintedSheets, SupplyEventType.JobPrinted, now, jobId: job.Id) is not { } movement)
+        {
+            return;
+        }
+
+        await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
+        await _supplies.AddAsync(movement, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc cref="GetKioskQueueQuery" />

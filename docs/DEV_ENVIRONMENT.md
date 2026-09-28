@@ -408,6 +408,23 @@ sudo rm -rf /var/lib/neoprint
 Alternativ (daha düzgün yol): admin paneldə **Cihazlar → Cihazı ayır**. Kiosk
 növbəti sorğuda 403 alır və özü Activation ekranına qayıdır.
 
+### Kioska kağız qoymaq (sayğac)
+
+Yeni aktivləşdirilmiş kioskun lotoku **boşdur** (`Current = 0`) və
+`Paper.BlockWhenInsufficient` açıqdırsa heç bir sifariş qəbul olunmur
+("Bu kioskda hazırda kifayət qədər kağız yoxdur"). Admin panelin "Sərf" tabı
+M8-də gəlir; o vaxta qədər API ilə doldurun (SuperAdmin tokeni ilə):
+
+```powershell
+$token = "<admin accessToken>"
+$kiosk = "<kioskId>"
+Invoke-RestMethod -Method Post "http://localhost:5080/api/admin/kiosks/$kiosk/paper/refill" `
+  -Headers @{ Authorization = "Bearer $token"; "Idempotency-Key" = [guid]::NewGuid().ToString("N") } `
+  -ContentType "application/json" -Body '{ "paper": "A4", "mode": "Full", "sheets": 0 }'
+```
+
+`mode`: `Full` — tutuma qədər, `Add` — `sheets` qədər əlavə, `Exact` — sayılmış dəqiq say.
+
 ### Təhlükəsiz rejim ("Texniki xidmət" ekranı)
 
 Kiosk tətbiqi 10 dəqiqədə 3 dəfə təmiz bağlanmadan dayanarsa (çöküş, prosesin

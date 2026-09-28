@@ -45,7 +45,7 @@ public sealed record ReportPrintJobStatusCommand(
     int PrintedSides,
     int PrintedSheets,
     string? ErrorCode,
-    PrintAttemptInput? Attempt = null) : IRequest<PrintJobResponse>;
+    PrintAttemptInput? Attempt = null) : IRequest<PrintJobResponse>, Behaviors.ITransactionalRequest;
 
 /// <summary>One try at printing, as the kiosk saw it.</summary>
 /// <param name="CounterUnit">"sheets" or "impressions".</param>
