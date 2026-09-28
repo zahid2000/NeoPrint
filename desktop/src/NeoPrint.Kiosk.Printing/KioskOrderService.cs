@@ -1,0 +1,191 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+using NeoPrint.Documents;
+using NeoPrint.Kiosk.Core;
+using NeoPrint.Kiosk.Core.Printing;
+using NeoPrint.Pricing;
+
+namespace NeoPrint.Kiosk.Printing;
+
+/// <summary>A quote as the options screen shows it.</summary>
+public sealed record OrderQuote(PriceBreakdown Price, int SelectedPages, int Sheets, bool PaperCovers);
+
+/// <summary>
+/// The flash order from the kiosk's side (plan sections 7.3 screens 2–5, 7.5,
+/// 9.1): open the file, quote it, place it, and hand it to the queue.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The quote is computed here from the kiosk's price table so it moves as the
+/// customer changes the options; the price that counts is the one the backend
+/// computes when the order is placed and keeps as a snapshot (T-047).
+/// </para>
+/// <para>
+/// Placing is four steps: the backend makes the job; the print PDF is built
+/// with the chosen pages and N-up; it is encrypted into the spool; the job
+/// goes into the journal and the worker is woken. If anything after the first
+/// step fails, the job is cancelled so it does not sit in the queue without a
+/// file to print.
+/// </para>
+/// </remarks>
+public sealed class KioskOrderService
+{
+    private readonly KioskApiClient _api;
+    private readonly PrintQueueWorker _worker;
+    private readonly SpoolStore _spool;
+    private readonly DocumentPreparer _preparer;
+    private readonly KioskRuntime _runtime;
+    private readonly KioskSettings _settings;
+    private readonly ILogger<KioskOrderService> _logger;
+
+    public KioskOrderService(
+        KioskApiClient api,
+        PrintQueueWorker worker,
+        SpoolStore spool,
+        DocumentPreparer preparer,
+        KioskRuntime runtime,
+        IOptions<KioskSettings> settings,
+        ILogger<KioskOrderService> logger)
+    {
+        _api = api;
+        _worker = worker;
+        _spool = spool;
+        _preparer = preparer;
+        _runtime = runtime;
+        _settings = settings.Value;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Whether this kiosk can take a flash order at all. Payment arrives in
+    /// step 4; until then only a Development kiosk (which skips it) offers
+    /// the flow, and no one sees a half-built one (T-060).
+    /// </summary>
+    public bool CanTakeOrders => _settings.SkipPayment;
+
+    public KioskConfiguration? Configuration => _runtime.Configuration;
+
+    public string NewWorkFolder() => _spool.NewWorkFolder();
+
+    public void Discard(string? folder) => _spool.Discard(folder);
+
+    /// <summary>Copies the file off the drive and makes a PDF of it.</summary>
+    /// <exception cref="PrintingException">It cannot be printed; the key says why.</exception>
+    public Task<PreparedDocument> OpenAsync(string path, string workFolder, CancellationToken cancellationToken)
+        => _preparer.PrepareAsync(path, workFolder, cancellationToken);
+
+    /// <summary>The price and the paper for these options, or null when the range does not fit the document.</summary>
+    public OrderQuote? Quote(JobOptions options, int pageCount)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var configuration = _runtime.Configuration;
+
+        if (configuration?.Prices is not { } prices
+            || !PageRange.TryParse(options.PageRange, pageCount, out var pages))
+        {
+            return null;
+        }
+
+        var table = new PriceTable(
+            prices.BwPerSide,
+            prices.ColorPerSide,
+            prices.PaperMultipliers,
+            prices.MinOrder,
+            [.. prices.Tiers.Select(tier => new PriceTier(tier.MinSides, tier.DiscountPercent))],
+            prices.Currency);
+
+        PriceBreakdown price;
+
+        try
+        {
+            price = PriceCalculator.Quote(
+                table, new PrintSpec(pages.Count, options.PagesPerSheet, options.Copies, options.Duplex, options.Color, options.Paper));
+        }
+        catch (PricingException)
+        {
+            return null;
+        }
+
+        var sheets = PrintSheets.Physical(pages.Count, options.PagesPerSheet, options.Copies, options.Duplex);
+
+        // The backend checks against what queued jobs already hold; the screen
+        // can only see the tray, which is enough to stop an order that plainly
+        // does not fit (plan section 2.15).
+        var covers = !configuration.PaperBlockWhenInsufficient
+                     || !configuration.PaperStock.TryGetValue(options.Paper, out var stock)
+                     || stock.Capacity <= 0
+                     || sheets <= stock.Current;
+
+        return new OrderQuote(price, pages.Count, sheets, covers);
+    }
+
+    /// <summary>Places the order and hands it to the printer queue.</summary>
+    /// <param name="idempotencyKey">
+    /// One per order attempt: the same key again (after a lost response) returns
+    /// the job already made instead of a second one.
+    /// </param>
+    /// <exception cref="KioskApiException">The backend refused it; the message says why, in the screen's language.</exception>
+    /// <exception cref="PrintingException">The print file could not be made.</exception>
+    public async Task<PrintJobInfo> PlaceAsync(
+        PreparedDocument document, string fileName, JobOptions options, string idempotencyKey, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (!PageRange.TryParse(options.PageRange, document.PageCount, out var pages))
+        {
+            throw new PrintingException("printJobs.pageRangeInvalid");
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(idempotencyKey);
+
+        var job = await _api
+            .CreatePrintJobAsync(fileName, document.PageCount, options, _settings.SkipPayment, idempotencyKey, cancellationToken)
+            .ConfigureAwait(false);
+
+        var folder = _spool.NewWorkFolder();
+
+        try
+        {
+            var printFile = Path.Combine(folder, "print.pdf");
+            PdfTools.BuildForPrint(document.PdfPath, printFile, pages, options.PagesPerSheet, options.Paper);
+
+            await using (var stream = File.OpenRead(printFile))
+            {
+                await _spool.PutAsync(JournalEntry.SpoolNameFor(job.Id), stream, cancellationToken).ConfigureAwait(false);
+            }
+
+            _worker.Accept(job.Id, job.JobCode, options, job.RequiredSheets, DateTime.UtcNow);
+
+            _logger.LogInformation("Order {JobCode} placed: {Pages} pages, {Sheets} sheets.", job.JobCode, job.SelectedPages, job.RequiredSheets);
+
+            return job;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            _logger.LogError(exception, "Order {JobCode} could not be spooled; cancelling it.", job.JobCode);
+
+            try
+            {
+                await _api.CancelPrintJobAsync(job.Id, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception cancel) when (cancel is not OperationCanceledException)
+            {
+                // The worker drops it too: a queued job without a file is never printed.
+                _logger.LogWarning(cancel, "Order {JobCode} could not be cancelled either.", job.JobCode);
+            }
+
+            throw;
+        }
+        finally
+        {
+            _spool.Discard(folder);
+        }
+    }
+
+    public Task<PrintJobInfo> FindAsync(string code, CancellationToken cancellationToken) => _api.FindPrintJobByCodeAsync(code, cancellationToken);
+
+    public Task<PrintJobInfo> CancelAsync(Guid jobId, CancellationToken cancellationToken) => _api.CancelPrintJobAsync(jobId, cancellationToken);
+}

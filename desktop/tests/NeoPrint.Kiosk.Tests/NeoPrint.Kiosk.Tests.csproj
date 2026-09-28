@@ -39,6 +39,7 @@
     <ProjectReference Include="..\..\src\NeoPrint.Kiosk.Core\NeoPrint.Kiosk.Core.csproj" />
     <ProjectReference Include="..\..\src\NeoPrint.Kiosk\NeoPrint.Kiosk.csproj" />
     <ProjectReference Include="..\..\src\NeoPrint.Kiosk.Agent\NeoPrint.Kiosk.Agent.csproj" />
+    <ProjectReference Include="..\..\src\NeoPrint.Kiosk.Platform.Linux\NeoPrint.Kiosk.Platform.Linux.csproj" />
   </ItemGroup>
 
 </Project>

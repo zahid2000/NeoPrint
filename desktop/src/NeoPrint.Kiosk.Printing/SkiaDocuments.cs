@@ -44,6 +44,50 @@ public static class SkiaDocuments
     }
 
     /// <summary>
+    /// A monospaced face that has every letter of the text (ə, ğ, kiril), so no
+    /// letter prints as an empty box; the first installed one when none has all.
+    /// </summary>
+    public static SKTypeface TypefaceFor(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        var letters = new string([.. text.Where(character => !char.IsControl(character) && !char.IsSurrogate(character)).Distinct()]);
+        SKTypeface? first = null;
+
+        foreach (var family in MonospacedFamilies)
+        {
+            var typeface = SKTypeface.FromFamilyName(family);
+
+            if (typeface is null || !string.Equals(typeface.FamilyName, family, StringComparison.OrdinalIgnoreCase))
+            {
+                // Skia falls back to some other face for a family it lacks.
+                typeface?.Dispose();
+                continue;
+            }
+
+            if (typeface.ContainsGlyphs(letters))
+            {
+                first?.Dispose();
+                return typeface;
+            }
+
+            if (first is null)
+            {
+                first = typeface;
+            }
+            else
+            {
+                typeface.Dispose();
+            }
+        }
+
+        return first ?? SKTypeface.Default;
+    }
+
+    private static readonly string[] MonospacedFamilies =
+        ["Consolas", "DejaVu Sans Mono", "Cascadia Mono", "Liberation Mono", "Noto Sans Mono", "Courier New"];
+
+    /// <summary>
     /// A text file on A4 pages in a monospaced face, wrapped at the margin.
     /// </summary>
     /// <remarks>
@@ -58,9 +102,7 @@ public static class SkiaDocuments
         const float Margin = 56;
         const float Size = 10.5f;
 
-        using var typeface = SKTypeface.FromFamilyName("Consolas") is { } consolas && consolas.FamilyName == "Consolas"
-            ? consolas
-            : SKTypeface.FromFamilyName("DejaVu Sans Mono") ?? SKTypeface.Default;
+        using var typeface = TypefaceFor(text);
         using var font = new SKFont(typeface, Size);
         using var paint = new SKPaint { Color = SKColors.Black, IsAntialias = true };
 

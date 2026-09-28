@@ -110,6 +110,14 @@
             <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsHome}}">
                 <views:HomeView />
             </Panel>
+
+            <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsFlow}}">
+                <views:FlowView DataContext="{Binding Flow}" />
+            </Panel>
+
+            <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsOutOfService}}">
+                <views:OutOfServiceView />
+            </Panel>
         </Panel>
 
         <!-- QUEUE PANEL: 280px on the right, present on every screen -->
@@ -150,9 +158,15 @@
                                         <TextBlock Text="{Binding PagesText}"
                                                    Classes="caption" />
                                     </StackPanel>
-                                    <Ellipse Grid.Column="2" Width="12" Height="12"
-                                             VerticalAlignment="Center"
-                                             Fill="{Binding IsPrinting, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
+                                    <StackPanel Grid.Column="2" Spacing="{DynamicResource Space4}" VerticalAlignment="Center">
+                                        <PathIcon Width="20" Height="20" HorizontalAlignment="Center"
+                                                  Data="{StaticResource IconPrint}" IsVisible="{Binding IsPrinting}"
+                                                  Foreground="{Binding IsPrinting, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
+                                        <PathIcon Width="20" Height="20" HorizontalAlignment="Center"
+                                                  Data="{StaticResource IconClock}" IsVisible="{Binding !IsPrinting}"
+                                                  Foreground="{Binding IsPrinting, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
+                                        <TextBlock Text="{Binding StatusText}" Classes="caption" HorizontalAlignment="Center" />
+                                    </StackPanel>
                                 </Grid>
                             </Border>
                         </DataTemplate>

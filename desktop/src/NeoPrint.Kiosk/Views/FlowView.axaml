@@ -1,0 +1,492 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+             x:Class="NeoPrint.Kiosk.Views.FlowView"
+             x:DataType="vm:PrintFlowViewModel">
+
+    <!--
+        The flash order and the cancel-by-code screen (plan section 7.3,
+        screens 2, 3, 4, 5, 9 and 11). One primary action per stage; the error
+        block says what happened, what it means and what to do; the USB badge
+        is on every stage of a flash order.
+    -->
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto">
+
+        <!-- The step indicator, the USB badge and the error, above every stage -->
+        <StackPanel Grid.Row="0" Spacing="{DynamicResource Space4}" Margin="{DynamicResource GapBelow4}">
+            <!-- Done: a green tick; current: a brand number; upcoming: a neutral
+                 number - and always the step's name (docs/DESIGN_SYSTEM.md). -->
+            <ItemsControl ItemsSource="{Binding Steps}" IsVisible="{Binding ShowSteps}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space8}" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FlowStep">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                            <PathIcon Width="32" Height="32" Data="{StaticResource IconSuccess}"
+                                      Foreground="{DynamicResource Success500}" IsVisible="{Binding IsDone}" />
+                            <Border Classes="step" Classes.current="{Binding IsCurrent}" IsVisible="{Binding !IsDone}">
+                                <TextBlock Text="{Binding Number}" Classes="step-number" Classes.current="{Binding IsCurrent}" />
+                            </Border>
+                            <TextBlock Text="{Binding Label}" Classes="step-label" Classes.current="{Binding IsCurrent}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Classes="usb" HorizontalAlignment="Left" IsVisible="{Binding IsFromDrive}">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                    <PathIcon Data="{StaticResource IconUsb}" Width="24" Height="24" Foreground="{DynamicResource Info500}" />
+                    <TextBlock Text="{Binding UsbText}" FontWeight="SemiBold" Foreground="{DynamicResource Info500}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding UsbHint}" Classes="body-small" VerticalAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Border Classes="error" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                    <PathIcon Data="{StaticResource IconError}" Width="28" Height="28" Foreground="{DynamicResource Danger500}" />
+                    <TextBlock Text="{Binding Error}" TextWrapping="Wrap" VerticalAlignment="Center" MaxWidth="1100" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <Panel Grid.Row="1">
+
+            <!-- ============ Screen 2: the files on the drive ============ -->
+            <Grid RowDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsBrowse}}">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" Margin="{DynamicResource GapBelow4}">
+                    <TextBlock Text="{Binding BrowseTitle}" Classes="h1" VerticalAlignment="Center" />
+                    <Button Classes="secondary" Command="{Binding UpCommand}" IsVisible="{Binding CanGoUp}">
+                        <TextBlock Text="{Binding UpText}" />
+                    </Button>
+                </StackPanel>
+
+                <!-- No drive: say how to start. -->
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="720"
+                            IsVisible="{Binding CurrentFolder, Converter={x:Static ObjectConverters.IsNull}}">
+                    <PathIcon Data="{StaticResource IconUsb}" Width="80" Height="80" Foreground="{DynamicResource Info500}" />
+                    <TextBlock Text="{Binding InsertTitle}" Classes="h1" HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding InsertBody}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+                </StackPanel>
+
+                <!-- An empty folder: the empty state (section 4). -->
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="720">
+                    <StackPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="CurrentFolder" Converter="{x:Static ObjectConverters.IsNotNull}" />
+                            <Binding Path="!Entries.Count" />
+                        </MultiBinding>
+                    </StackPanel.IsVisible>
+                    <PathIcon Data="{StaticResource IconInfo}" Width="64" Height="64" Foreground="{DynamicResource Neutral400}" />
+                    <TextBlock Text="{Binding EmptyText}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="1" IsVisible="{Binding Entries.Count}">
+                    <ItemsControl ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:DriveEntry">
+                                <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                        Margin="{DynamicResource GapBelow4}"
+                                        IsEnabled="{Binding IsSelectable}"
+                                        Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).OpenCommand}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                                        <PathIcon Width="32" Height="32" Foreground="{DynamicResource Brand600}"
+                                                  Data="{StaticResource IconPrint}" IsVisible="{Binding !IsFolder}" />
+                                        <PathIcon Width="32" Height="32" Foreground="{DynamicResource Brand600}"
+                                                  Data="{StaticResource IconFolder}" IsVisible="{Binding IsFolder}" />
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="900" />
+                                            <TextBlock Text="{Binding Detail}" Classes="caption" />
+                                            <TextBlock Text="{Binding Reason}" Classes="caption" Foreground="{DynamicResource Danger500}"
+                                                       IsVisible="{Binding Reason, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- ============ Working ============ -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsWorking}}">
+                <ProgressBar IsIndeterminate="True" Width="400" />
+                <TextBlock Text="{Binding WorkingText}" Classes="h2" HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <!-- ============ Screen 3: preview ============ -->
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
+                <TextBlock Grid.ColumnSpan="2" Text="{Binding FileName}" Classes="h1" TextTrimming="CharacterEllipsis" Margin="{DynamicResource GapBelow4}" />
+
+                <ScrollViewer Grid.Row="1" Width="240">
+                    <ItemsControl ItemsSource="{Binding Pages}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PageTile">
+                                <Button Classes="choice" Classes.selected="{Binding IsSelected}" Margin="{DynamicResource GapBelow4}"
+                                        HorizontalAlignment="Stretch"
+                                        Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).ShowPageCommand}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Spacing="{DynamicResource Space4}">
+                                        <Image Source="{Binding Image}" IsVisible="{Binding HasImage}" MaxHeight="220" />
+                                        <TextBlock Text="{Binding Label}" Classes="caption" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <Border Grid.Row="1" Grid.Column="1" Classes="card" Margin="{DynamicResource GapStart6}">
+                    <Image Source="{Binding LargePage}" Stretch="Uniform" />
+                </Border>
+            </Grid>
+
+            <!-- ============ Screen 4: the editor ============ -->
+            <Grid RowDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsEdit}}">
+                <TextBlock Text="{Binding EditTitle}" Classes="h1" Margin="{DynamicResource GapBelow4}" />
+
+                <!-- Pages of a document: turn, move, remove. -->
+                <ScrollViewer Grid.Row="1" IsVisible="{Binding IsPaged}">
+                    <ItemsControl ItemsSource="{Binding Pages}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PageTile">
+                                <Border Classes="card" Margin="{DynamicResource GapStart4}" Width="300">
+                                    <StackPanel Spacing="{DynamicResource Space4}">
+                                        <Panel Height="260">
+                                            <Image Source="{Binding Image}" RenderTransform="{Binding Rotate, Converter={x:Static vm:ScreenConverters.Rotation}}" />
+                                        </Panel>
+                                        <TextBlock Text="{Binding Label}" Classes="caption" HorizontalAlignment="Center" />
+                                        <UniformGrid Columns="2">
+                                            <Button Classes="secondary" Margin="{DynamicResource GapBelow4}"
+                                                    Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).RotatePageCommand}" CommandParameter="{Binding}">
+                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).RotateText}" />
+                                            </Button>
+                                            <Button Classes="secondary" Margin="{DynamicResource GapBelow4}"
+                                                    Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).DeletePageCommand}" CommandParameter="{Binding}">
+                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).DeleteText}" />
+                                            </Button>
+                                            <Button Classes="secondary"
+                                                    Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MovePageBackCommand}" CommandParameter="{Binding}">
+                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MoveBackText}" />
+                                            </Button>
+                                            <Button Classes="secondary"
+                                                    Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MovePageForwardCommand}" CommandParameter="{Binding}">
+                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MoveForwardText}" />
+                                            </Button>
+                                        </UniformGrid>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- An image: turn it, lighten or darken it. -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" IsVisible="{Binding IsImage}">
+                    <Border Classes="card">
+                        <Image Source="{Binding LargePage}" Stretch="Uniform"
+                               RenderTransform="{Binding Pages[0].Rotate, Converter={x:Static vm:ScreenConverters.Rotation}, FallbackValue={x:Null}}" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="{DynamicResource Space4}" Margin="{DynamicResource GapStart6}">
+                        <Button Classes="secondary" Command="{Binding RotateImageCommand}"><TextBlock Text="{Binding RotateText}" /></Button>
+                        <Button Classes="secondary" Command="{Binding BrighterCommand}"><TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).BrighterText}" /></Button>
+                        <Button Classes="secondary" Command="{Binding DarkerCommand}"><TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).DarkerText}" /></Button>
+                        <TextBlock Text="{Binding Brightness}" Classes="caption" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- A text file: the text and the on-screen keyboard. -->
+                <Grid Grid.Row="1" RowDefinitions="*,Auto" IsVisible="{Binding IsText}">
+                    <TextBox Text="{Binding TextContent}" AcceptsReturn="True" TextWrapping="Wrap" FontSize="{DynamicResource FontSizeBody}" />
+                    <StackPanel Grid.Row="1" Spacing="{DynamicResource Space4}" Margin="{DynamicResource GapBelow4}">
+                        <ItemsControl ItemsSource="{Binding KeyboardRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <ItemsControl ItemsSource="{Binding}" HorizontalAlignment="Center">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="x:String">
+                                                <Button Classes="key" Margin="{DynamicResource GapBelow4}"
+                                                        Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).TypeCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="{Binding}" />
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}" HorizontalAlignment="Center">
+                            <Button Classes="key" Command="{Binding ToggleCapitalsCommand}"><TextBlock Text="{Binding ShiftKeyText}" /></Button>
+                            <Button Classes="key" Width="480" Command="{Binding TypeSpaceCommand}"><TextBlock Text="{Binding SpaceKeyText}" /></Button>
+                            <Button Classes="key" Command="{Binding TypeNewLineCommand}"><TextBlock Text="{Binding EnterKeyText}" /></Button>
+                            <Button Classes="key" Command="{Binding TypeBackspaceCommand}"><TextBlock Text="{Binding BackspaceKeyText}" /></Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- ============ Screen 5: options and price ============ -->
+            <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsOptions}}">
+                <ScrollViewer>
+                    <StackPanel Spacing="{DynamicResource Space6}">
+                        <TextBlock Text="{Binding OptionsTitle}" Classes="h1" />
+
+                        <!-- Copies -->
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                            <TextBlock Text="{Binding CopiesLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <Button Classes="secondary" Command="{Binding FewerCopiesCommand}"><TextBlock Text="−" /></Button>
+                            <TextBlock Text="{Binding Copies}" Classes="h1" VerticalAlignment="Center" MinWidth="64" TextAlignment="Center" />
+                            <Button Classes="secondary" Command="{Binding MoreCopiesCommand}"><TextBlock Text="+" /></Button>
+                        </StackPanel>
+
+                        <!-- Pages: all, or a range typed on the keypad -->
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                            <TextBlock Text="{Binding PagesLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <Button Classes="choice" Classes.selected="{Binding AllPages}" Command="{Binding ChooseAllPagesCommand}">
+                                <TextBlock Text="{Binding AllPagesText}" />
+                            </Button>
+                            <Button Classes="choice" Classes.selected="{Binding !AllPages}" Command="{Binding ChooseRangeCommand}">
+                                <TextBlock Text="{Binding RangeLabel}" />
+                            </Button>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" IsVisible="{Binding !AllPages}" Margin="{DynamicResource GapStart12}">
+                            <StackPanel Spacing="{DynamicResource Space4}">
+                                <Border Classes="card" MinWidth="320">
+                                    <TextBlock Text="{Binding RangeText}" Classes="h2" />
+                                </Border>
+                                <TextBlock Text="{Binding RangeHint}" Classes="caption" />
+                            </StackPanel>
+                            <UniformGrid Columns="3">
+                                <ItemsControl ItemsSource="{Binding RangeKeys}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="3" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <Button Classes="key" Margin="{DynamicResource GapBelow4}"
+                                                    Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).RangeKeyCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="{Binding}" />
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </UniformGrid>
+                            <Button Classes="key" Command="{Binding RangeEraseCommand}" VerticalAlignment="Top">
+                                <TextBlock Text="{Binding BackspaceKeyText}" />
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Colour -->
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                            <TextBlock Text="{Binding ColourLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <Button Classes="choice" Classes.selected="{Binding !Color}" Command="{Binding ChooseColorCommand}" CommandParameter="false">
+                                <TextBlock Text="{Binding BwText}" />
+                            </Button>
+                            <Button Classes="choice" Classes.selected="{Binding Color}" Command="{Binding ChooseColorCommand}" CommandParameter="true"
+                                    IsEnabled="{Binding CanColor}">
+                                <TextBlock Text="{Binding ColorText}" />
+                            </Button>
+                            <TextBlock Text="{Binding UnavailableText}" Classes="caption" VerticalAlignment="Center" IsVisible="{Binding !CanColor}" />
+                        </StackPanel>
+
+                        <!-- Sides -->
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                            <TextBlock Text="{Binding SidesLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <Button Classes="choice" Classes.selected="{Binding !Duplex}" Command="{Binding ChooseDuplexCommand}" CommandParameter="false">
+                                <TextBlock Text="{Binding SimplexText}" />
+                            </Button>
+                            <Button Classes="choice" Classes.selected="{Binding Duplex}" Command="{Binding ChooseDuplexCommand}" CommandParameter="true"
+                                    IsEnabled="{Binding CanDuplex}">
+                                <TextBlock Text="{Binding DuplexText}" />
+                            </Button>
+                            <TextBlock Text="{Binding UnavailableText}" Classes="caption" VerticalAlignment="Center" IsVisible="{Binding !CanDuplex}" />
+                        </StackPanel>
+
+                        <!-- Paper -->
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                            <TextBlock Text="{Binding PaperLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <Button Classes="choice" Classes.selected="{Binding Paper, Converter={x:Static vm:ScreenConverters.IsA4}}"
+                                    Command="{Binding ChoosePaperCommand}" CommandParameter="A4">
+                                <TextBlock Text="A4" />
+                            </Button>
+                            <Button Classes="choice" Classes.selected="{Binding Paper, Converter={x:Static vm:ScreenConverters.IsA3}}"
+                                    Command="{Binding ChoosePaperCommand}" CommandParameter="A3" IsEnabled="{Binding CanA3}">
+                                <TextBlock Text="A3" />
+                            </Button>
+                            <TextBlock Text="{Binding UnavailableText}" Classes="caption" VerticalAlignment="Center" IsVisible="{Binding !CanA3}" />
+                        </StackPanel>
+
+                        <!-- Pages per sheet -->
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                            <TextBlock Text="{Binding PerSheetLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <Button Classes="choice" Classes.selected="{Binding PagesPerSheet, Converter={x:Static vm:ScreenConverters.IsOne}}"
+                                    Command="{Binding ChoosePerSheetCommand}" CommandParameter="1"><TextBlock Text="1" /></Button>
+                            <Button Classes="choice" Classes.selected="{Binding PagesPerSheet, Converter={x:Static vm:ScreenConverters.IsTwo}}"
+                                    Command="{Binding ChoosePerSheetCommand}" CommandParameter="2"><TextBlock Text="2" /></Button>
+                            <Button Classes="choice" Classes.selected="{Binding PagesPerSheet, Converter={x:Static vm:ScreenConverters.IsFour}}"
+                                    Command="{Binding ChoosePerSheetCommand}" CommandParameter="4"><TextBlock Text="4" /></Button>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- The live price: the kiosk's profile, volume discount included -->
+                <Border Grid.Column="1" Classes="card" Width="380" VerticalAlignment="Top" Margin="{DynamicResource GapStart8}">
+                    <StackPanel Spacing="{DynamicResource Space4}">
+                        <TextBlock Text="{Binding PriceLabel}" Classes="muted" />
+                        <TextBlock Text="{Binding PriceText}" Classes="display" />
+                        <TextBlock Text="{Binding QuoteDetail}" Classes="body-small" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- ============ Screen 9 (step 3 form): the order is queued ============ -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="820"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPlaced}}">
+                <Border Width="120" Height="120" Background="{DynamicResource SuccessBg}" CornerRadius="60" HorizontalAlignment="Center">
+                    <PathIcon Data="{StaticResource IconSuccess}" Width="60" Height="60" Foreground="{DynamicResource Success500}" />
+                </Border>
+                <TextBlock Text="{Binding PlacedTitle}" Classes="h1" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding PlacedCodeLabel}" Classes="muted" HorizontalAlignment="Center" />
+                <Border Background="{DynamicResource Brand50}" CornerRadius="{DynamicResource RadiusLg}" Padding="{DynamicResource CodeBoxPadding}" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding PlacedCode}" FontSize="{DynamicResource FontSizeCode}" FontWeight="SemiBold" Foreground="{DynamicResource Brand700}" />
+                </Border>
+                <TextBlock Text="{Binding PlacedPosition}" Classes="h2" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding KeepCodeText}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+            </StackPanel>
+
+            <!-- ============ Screen 11: cancel by code ============ -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsCancelLookup}}">
+                <TextBlock Text="{Binding CancelTitle}" Classes="h1" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding EnterCodeText}" Classes="muted" HorizontalAlignment="Center" />
+                <Border Background="{DynamicResource Brand50}" CornerRadius="{DynamicResource RadiusLg}" Padding="{DynamicResource CodeBoxPadding}"
+                        HorizontalAlignment="Center" MinWidth="480">
+                    <TextBlock Text="{Binding CodeInput}" FontSize="{DynamicResource FontSizeCode}" FontWeight="SemiBold"
+                               Foreground="{DynamicResource Brand700}" HorizontalAlignment="Center" />
+                </Border>
+                <UniformGrid Columns="3" HorizontalAlignment="Center">
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="1" Margin="{DynamicResource GapBelow4}"><TextBlock Text="1" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="2" Margin="{DynamicResource GapBelow4}"><TextBlock Text="2" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="3" Margin="{DynamicResource GapBelow4}"><TextBlock Text="3" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="4" Margin="{DynamicResource GapBelow4}"><TextBlock Text="4" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="5" Margin="{DynamicResource GapBelow4}"><TextBlock Text="5" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="6" Margin="{DynamicResource GapBelow4}"><TextBlock Text="6" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="7" Margin="{DynamicResource GapBelow4}"><TextBlock Text="7" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="8" Margin="{DynamicResource GapBelow4}"><TextBlock Text="8" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="9" Margin="{DynamicResource GapBelow4}"><TextBlock Text="9" /></Button>
+                    <Panel />
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="0" Margin="{DynamicResource GapBelow4}"><TextBlock Text="0" /></Button>
+                    <Button Classes="key" Command="{Binding EraseCommand}" Margin="{DynamicResource GapBelow4}"><TextBlock Text="{Binding BackspaceKeyText}" /></Button>
+                </UniformGrid>
+            </StackPanel>
+
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="820"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsCancelConfirm}}">
+                <Border Width="120" Height="120" Background="{DynamicResource WarningBg}" CornerRadius="60" HorizontalAlignment="Center">
+                    <PathIcon Data="{StaticResource IconWarning}" Width="60" Height="60" Foreground="{DynamicResource Warning500}" />
+                </Border>
+                <TextBlock Text="{Binding CancelTitle}" Classes="h1" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding FoundSummary}" Classes="h2" HorizontalAlignment="Center" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding ConfirmCancelBody}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+            </StackPanel>
+
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsCancelDone}}">
+                <Border Width="120" Height="120" Background="{DynamicResource SuccessBg}" CornerRadius="60" HorizontalAlignment="Center">
+                    <PathIcon Data="{StaticResource IconSuccess}" Width="60" Height="60" Foreground="{DynamicResource Success500}" />
+                </Border>
+                <TextBlock Text="{Binding CancelDoneText}" Classes="h1" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Panel>
+
+        <!-- The actions: secondary on the left, the one primary on the right -->
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="{DynamicResource GapBelow4}">
+
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                <!-- Browse / cancel lookup / placed: leave -->
+                <Button Classes="secondary" Command="{Binding LeaveCommand}">
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsBrowse}" />
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsCancelLookup}" />
+                        </MultiBinding>
+                    </Button.IsVisible>
+                    <TextBlock Text="{Binding BackText}" />
+                </Button>
+                <Button Classes="secondary" Command="{Binding BackToBrowseCommand}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
+                    <TextBlock Text="{Binding BackText}" />
+                </Button>
+                <Button Classes="secondary" Command="{Binding EditCommand}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
+                    <TextBlock Text="{Binding EditText}" />
+                </Button>
+                <Button Classes="secondary" Command="{Binding CancelEditCommand}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsEdit}}">
+                    <TextBlock Text="{Binding CancelText}" />
+                </Button>
+                <Button Classes="secondary" Command="{Binding ShowPreviewCommand}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsOptions}}">
+                    <TextBlock Text="{Binding BackText}" />
+                </Button>
+                <Button Classes="secondary" Command="{Binding StartCancelAgainCommand}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsCancelConfirm}}">
+                    <TextBlock Text="{Binding BackText}" />
+                </Button>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                <Button Classes="primary" Command="{Binding ContinueCommand}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
+                    <TextBlock Text="{Binding ContinueText}" Foreground="{DynamicResource Neutral0}" />
+                </Button>
+                <Button Classes="primary" Command="{Binding SaveEditCommand}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsEdit}}">
+                    <TextBlock Text="{Binding SaveText}" Foreground="{DynamicResource Neutral0}" />
+                </Button>
+                <Button Classes="primary" Command="{Binding PlaceCommand}" IsEnabled="{Binding CanPlace}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsOptions}}">
+                    <TextBlock Text="{Binding PlaceText}" Foreground="{DynamicResource Neutral0}" />
+                </Button>
+                <Button Classes="primary" Command="{Binding FindCommand}" IsEnabled="{Binding CanFind}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsCancelLookup}}">
+                    <TextBlock Text="{Binding FindText}" Foreground="{DynamicResource Neutral0}" />
+                </Button>
+                <Button Classes="danger" Command="{Binding ConfirmCancelCommand}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsCancelConfirm}}">
+                    <TextBlock Text="{Binding ConfirmCancelText}" Foreground="{DynamicResource Neutral0}" />
+                </Button>
+                <Button Classes="primary" Command="{Binding LeaveCommand}">
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsPlaced}" />
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsCancelDone}" />
+                        </MultiBinding>
+                    </Button.IsVisible>
+                    <TextBlock Text="{Binding DoneText}" Foreground="{DynamicResource Neutral0}" />
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

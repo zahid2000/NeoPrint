@@ -9,6 +9,10 @@
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <RootNamespace>NeoPrint.Kiosk.Platform.Windows</RootNamespace>
+    <!-- System.Drawing.Printing for PrintDocument (plan section 7.4): part of the
+         Windows Desktop runtime, not a package. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Abstractions\NeoPrint.Kiosk.Platform.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\backend\shared\NeoPrint.Pdfium\NeoPrint.Pdfium.csproj" />
   </ItemGroup>
 
 </Project>

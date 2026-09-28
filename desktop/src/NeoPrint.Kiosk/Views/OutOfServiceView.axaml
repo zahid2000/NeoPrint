@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+             x:Class="NeoPrint.Kiosk.Views.OutOfServiceView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <!-- Screen 13 (plan section 7.3): the printer stopped. What happened, what
+         it means for the queue, what happens next - and no new order. -->
+
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                Spacing="{DynamicResource Space6}" MaxWidth="820">
+        <Border Width="120" Height="120"
+                Background="{DynamicResource WarningBg}"
+                CornerRadius="60"
+                HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconWarning}"
+                      Width="60" Height="60"
+                      Foreground="{DynamicResource Warning500}" />
+        </Border>
+
+        <TextBlock Text="{Binding OutOfServiceTitle}" Classes="h1"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" />
+
+        <TextBlock Text="{Binding OutOfServiceBody}" Classes="muted"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

@@ -31,6 +31,12 @@ public enum KioskScreen
 
     /// <summary>Screen 16: no connection, or the cache has gone stale.</summary>
     Offline = 5,
+
+    /// <summary>A flash order or the cancel screen: <see cref="PrintFlowViewModel"/> decides which part.</summary>
+    Flow = 6,
+
+    /// <summary>Screen 13 (plan section 7.3): the printer stopped; the queue waits.</summary>
+    OutOfService = 7,
 }
 
 /// <summary>One line in the queue panel (plan section 7.2).</summary>
@@ -43,6 +49,9 @@ public sealed record QueueEntry(int Position, string JobCode, string OwnerInitia
 {
     /// <summary>"12 səhifə", in the kiosk's language (Localization.Formats).</summary>
     public string PagesText { get; init; } = string.Empty;
+
+    /// <summary>Queued or printing, in words: status is never colour alone (docs/DESIGN_SYSTEM.md).</summary>
+    public string StatusText { get; init; } = string.Empty;
 }
 
 /// <summary>
@@ -140,6 +149,53 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public string CancelByCodeText => T("home.cancelByCode");
 
+    /// <summary>The flash order and the cancel screen; set once the services are up.</summary>
+    [ObservableProperty]
+    private PrintFlowViewModel? _flow;
+
+    /// <summary>Whether this kiosk can complete a flash order (payment arrives in step 4).</summary>
+    [ObservableProperty]
+    private bool _canPrintFromFlash;
+
+    /// <summary>What stopped the printer, as a message key; null while it is fine.</summary>
+    [ObservableProperty]
+    private string? _printerProblem;
+
+    public string OutOfServiceTitle => T("outOfService.title");
+
+    public string OutOfServiceBody => PrinterProblem is null ? string.Empty : T("outOfService.body", T(PrinterProblem));
+
+    /// <summary>Asked for by the home screen's buttons; the application opens the flow.</summary>
+    public event Action? PrintFromUsbRequested;
+
+    public event Action? CancelByCodeRequested;
+
+    [RelayCommand]
+    private void PrintFromUsb() => PrintFromUsbRequested?.Invoke();
+
+    [RelayCommand]
+    private void CancelByCode() => CancelByCodeRequested?.Invoke();
+
+    /// <summary>
+    /// The printer stopped or recovered. A stopped printer takes the kiosk to
+    /// screen 13 - unless somebody is in the middle of an order, which they
+    /// may finish: it waits in the queue like the rest (plan section 7.4).
+    /// </summary>
+    public void SetPrinterProblem(string? problemKey)
+    {
+        PrinterProblem = problemKey;
+        OnPropertyChanged(nameof(OutOfServiceBody));
+
+        if (problemKey is not null && Screen == KioskScreen.Home)
+        {
+            Screen = KioskScreen.OutOfService;
+        }
+        else if (problemKey is null && Screen == KioskScreen.OutOfService)
+        {
+            Screen = KioskScreen.Home;
+        }
+    }
+
     /// <summary>The wall clock, rendered in Asia/Baku (plan section 2.1).</summary>
     public string ClockText => Localization.Formats.Time(Now);
 
@@ -191,9 +247,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         // A kiosk with no printer chosen yet waits on screen 14 rather than
         // offering to print (plan section 7.3).
+        if (Screen is KioskScreen.Flow)
+        {
+            // A new configuration (a price change, a printer change) does not
+            // take the customer out of their order.
+            return;
+        }
+
         Screen = configuration.SelectedPrinter is null
             ? KioskScreen.NotConfigured
-            : KioskScreen.Home;
+            : PrinterProblem is null ? KioskScreen.Home : KioskScreen.OutOfService;
     }
 
     /// <summary>
@@ -236,13 +299,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         foreach (var entry in entries.Take(QueueDisplayLimit))
         {
-            Queue.Add(entry with { PagesText = Localization.Formats.Pages(entry.Pages, Language) });
+            Queue.Add(entry with
+            {
+                PagesText = Localization.Formats.Pages(entry.Pages, Language),
+                StatusText = T(entry.IsPrinting ? "queue.statusPrinting" : "queue.statusQueued"),
+            });
         }
     }
 
     protected override void OnLanguageChanged()
     {
         Activation.Language = Language;
+
+        if (Flow is not null)
+        {
+            Flow.Language = Language;
+        }
+
         KioskLanguage.Current = Language;
         base.OnLanguageChanged();
 

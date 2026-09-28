@@ -59,6 +59,28 @@ public sealed class DocumentPreparerTests : IDisposable
     private static DocumentPreparer Preparer(IConverterProcessRunner? runner = null)
         => new(runner ?? new PlainConverterRunner(), new ConverterPaths { LibreOffice = "neoprint-no-such-soffice" }, NullLogger<DocumentPreparer>.Instance);
 
+    [Theory]
+    [InlineData("Salam, dünya! Əli Şəki", 65001)]
+    [InlineData("Çağırış bu gün saat onda başlayır; iştirak üçün qeydiyyat açıqdır.", 1254)]
+    [InlineData("Привет, мир! Счёт готов", 1251)]
+    public void A_text_file_is_read_in_the_encoding_it_was_saved_in(string text, int codePage)
+    {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        var bytes = Encoding.GetEncoding(codePage).GetBytes(text);
+
+        DocumentPreparer.DecodeText(bytes).Should().Be(text);
+    }
+
+    [Fact]
+    public void Text_is_set_in_a_face_that_has_its_letters()
+    {
+        const string text = "Əziz müştəri: ğ ı ö ş ü ç — Привет";
+
+        using var typeface = SkiaDocuments.TypefaceFor(text);
+
+        typeface.ContainsGlyphs(text).Should().BeTrue($"{typeface.FamilyName} should draw every letter, not boxes");
+    }
+
     [Fact]
     public async Task A_pdf_is_taken_as_it_is_and_counted()
     {

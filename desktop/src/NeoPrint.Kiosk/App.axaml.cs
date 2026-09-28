@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +28,7 @@ public sealed partial class App : Application
     private IServiceProvider? _services;
     private MainWindowViewModel? _model;
     private CancellationTokenSource? _stopping;
+    private KioskSession? _session;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -46,8 +49,15 @@ public sealed partial class App : Application
 
         _stopping = new CancellationTokenSource();
         _model = new MainWindowViewModel();
+        _session = new KioskSession(Services, _model);
 
-        desktop.MainWindow = new MainWindow { DataContext = _model };
+        var window = new MainWindow { DataContext = _model };
+
+        // Any touch restarts the idle clock (plan section 2.4, idle reset).
+        window.AddHandler(InputElement.PointerPressedEvent, (_, _) => _session.Touch(), RoutingStrategies.Tunnel, handledEventsToo: true);
+        window.AddHandler(InputElement.KeyDownEvent, (_, _) => _session.Touch(), RoutingStrategies.Tunnel, handledEventsToo: true);
+
+        desktop.MainWindow = window;
 
         // Application-level lockdown. The operating system level is the
         // provisioning script's job (plan section 7.12).
@@ -57,177 +67,162 @@ public sealed partial class App : Application
 
         // Enrollment runs in the background so the window paints immediately;
         // a kiosk that shows nothing for several seconds looks broken.
-        _ = RunEnrollmentLoopAsync(_model, _stopping.Token);
+        _ = RunAsync(_model, _session, _stopping.Token);
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Enrollment, then work, then enrollment again if the device is detached
+    /// (plan section 7.11) - until the application stops.
+    /// </summary>
+    private async Task RunAsync(MainWindowViewModel model, KioskSession session, CancellationToken cancellationToken)
+    {
+        var logger = Services.GetRequiredService<ILogger<App>>();
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (!await RunEnrollmentLoopAsync(model, cancellationToken).ConfigureAwait(false))
+                {
+                    return;
+                }
+
+                logger.LogInformation("Enrollment complete; the kiosk is activated.");
+
+                if (!await session.RunAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    return;
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            logger.LogCritical(exception, "The kiosk's main loop stopped.");
+        }
     }
 
     /// <summary>
     /// Keeps trying to advance the device's state until it is activated.
     /// </summary>
     /// <remarks>
-    /// Runs on a poll as well as reacting to the real-time notification,
-    /// because a kiosk left on the activation screen must still notice it has
-    /// been activated if the SignalR message never arrives (plan section 7.11).
+    /// Wakes at once on the provisioning hub's messages (activated, revoked, a
+    /// renewed code) and polls as well, because a kiosk left on the activation
+    /// screen must still notice it has been activated if the SignalR message
+    /// never arrives (plan section 7.11, docs/TASKS.md T-062).
     /// </remarks>
-    private async Task RunEnrollmentLoopAsync(MainWindowViewModel model, CancellationToken cancellationToken)
+    /// <returns>True once the device is active; false when the application stops.</returns>
+    private async Task<bool> RunEnrollmentLoopAsync(MainWindowViewModel model, CancellationToken cancellationToken)
     {
         var enrollment = Services.GetRequiredService<DeviceEnrollmentService>();
         var fingerprint = Services.GetRequiredService<IMachineFingerprintProvider>();
         var settings = Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value;
+        var hub = Services.GetRequiredService<ProvisioningHubClient>();
         var logger = Services.GetRequiredService<ILogger<App>>();
 
         model.Activation.Fingerprint = fingerprint.Collect();
 
-        while (!cancellationToken.IsCancellationRequested)
+        using var wake = new SemaphoreSlim(0, int.MaxValue);
+        using var listening = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        Func<Task> poke = () =>
         {
-            try
-            {
-                var state = await enrollment.AdvanceAsync(cancellationToken).ConfigureAwait(false);
+            wake.Release();
+            return Task.CompletedTask;
+        };
+        Func<string, DateTime, Task> codeRenewed = (_, _) => poke();
 
-                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-                {
-                    model.Activation.IsBackendReachable = true;
-                    model.Apply(state);
-                });
+        hub.DeviceActivated += poke;
+        hub.DeviceRevoked += poke;
+        hub.PairingCodeRenewed += codeRenewed;
+        hub.Reconnected += poke;
 
-                if (state.Lifecycle == KioskLifecycle.Active)
-                {
-                    logger.LogInformation("Enrollment complete; the kiosk is activated.");
-
-                    // From here the kiosk holds its own configuration and
-                    // reports in. The real-time queue connection lands in
-                    // step 3 with the printing flow.
-                    await RunActiveLoopAsync(model, cancellationToken).ConfigureAwait(false);
-                    return;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            catch (Exception exception)
-            {
-                // The backend being unreachable is an expected state on a kiosk
-                // that was just plugged in: report it on screen and keep trying.
-                logger.LogWarning(exception, "Advancing enrollment failed; retrying.");
-
-                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
-                    () => model.Activation.IsBackendReachable = false);
-            }
-
-            try
-            {
-                await Task.Delay(
-                        TimeSpan.FromSeconds(Math.Max(3, settings.ActivationPollSeconds)), cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-        }
-    }
-
-    /// <summary>
-    /// What an activated kiosk does until it is detached: hold its
-    /// configuration and report in (plan sections 7.3, 7.9).
-    /// </summary>
-    /// <remarks>
-    /// The screen follows what the kiosk may actually do. Losing the link is
-    /// not a fault - the kiosk keeps printing work already paid for while its
-    /// cached configuration is fresh, and stops taking orders once it is not
-    /// (docs/OFFLINE_BEHAVIOR.md).
-    /// </remarks>
-    private async Task RunActiveLoopAsync(MainWindowViewModel model, CancellationToken cancellationToken)
-    {
-        var runtime = Services.GetRequiredService<KioskRuntime>();
-        var printers = Services.GetRequiredService<IPrinterService>();
-        var logger = Services.GetRequiredService<ILogger<App>>();
+        var hubStarted = false;
 
         try
         {
-            var configuration = await runtime.LoadConfigurationAsync(cancellationToken).ConfigureAwait(false);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var state = await enrollment.AdvanceAsync(cancellationToken).ConfigureAwait(false);
 
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
-                () => model.ApplyConfiguration(configuration));
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        model.Activation.IsBackendReachable = true;
+                        model.Apply(state);
+                    });
+
+                    if (state.Lifecycle == KioskLifecycle.Active)
+                    {
+                        return true;
+                    }
+
+                    // Registered and waiting: from here the backend can tell
+                    // this device about itself directly.
+                    if (!hubStarted && state.Lifecycle != KioskLifecycle.Unregistered)
+                    {
+                        hubStarted = true;
+                        _ = StartQuietlyAsync(hub, logger, listening.Token);
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+                catch (Exception exception)
+                {
+                    // The backend being unreachable is an expected state on a kiosk
+                    // that was just plugged in: report it on screen and keep trying.
+                    logger.LogWarning(exception, "Advancing enrollment failed; retrying.");
+
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+                        () => model.Activation.IsBackendReachable = false);
+                }
+
+                try
+                {
+                    await wake.WaitAsync(
+                            TimeSpan.FromSeconds(Math.Max(3, settings.ActivationPollSeconds)), cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return false;
+                }
+            }
+
+            return false;
         }
-        catch (OperationCanceledException)
+        finally
         {
-            return;
+            hub.DeviceActivated -= poke;
+            hub.DeviceRevoked -= poke;
+            hub.PairingCodeRenewed -= codeRenewed;
+            hub.Reconnected -= poke;
+
+            await listening.CancelAsync().ConfigureAwait(false);
+            await hub.StopAsync().ConfigureAwait(false);
         }
-        catch (DeviceRevokedException)
+    }
+
+    private static async Task StartQuietlyAsync(ProvisioningHubClient hub, ILogger logger, CancellationToken cancellationToken)
+    {
+        try
         {
-            // Detached while this kiosk was starting up. Handled here as well
-            // as in the loop below, so the screen does not wait a whole
-            // heartbeat interval to say so.
-            logger.LogWarning("This device was detached; returning to activation.");
-
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
-                () => model.Screen = KioskScreen.Activation);
-
-            _ = RunEnrollmentLoopAsync(model, cancellationToken);
-            return;
+            await hub.StartAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception exception)
         {
-            // Activated but unable to fetch the configuration: the loop below
-            // retries, and until it succeeds the kiosk has nothing to work
-            // from, which is Offline.
-            logger.LogWarning(exception, "The kiosk configuration could not be loaded; retrying.");
-        }
-
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            bool printerOnline;
-
-            try
-            {
-                printerOnline = (await printers.DiscoverAsync(cancellationToken).ConfigureAwait(false))
-                    .Any(printer => printer.IsOnline);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            catch (Exception exception)
-            {
-                logger.LogWarning(exception, "Listing printers failed; reporting none online.");
-                printerOnline = false;
-            }
-
-            try
-            {
-                await runtime.BeatAsync(printerOnline, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            catch (DeviceRevokedException)
-            {
-                // Detached from the panel: back to the activation screen, with
-                // the cached identity cleared (plan section 7.11).
-                logger.LogWarning("This device was detached; returning to activation.");
-
-                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
-                    () => model.Screen = KioskScreen.Activation);
-
-                _ = RunEnrollmentLoopAsync(model, cancellationToken);
-                return;
-            }
-
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
-                () => model.ApplyAvailability(runtime.Availability, runtime.Configuration is not null));
-
-            try
-            {
-                await Task.Delay(runtime.HeartbeatInterval, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
+            // The poll still carries enrollment; the hub only makes it quicker.
+            logger.LogWarning(exception, "The provisioning hub could not be started; relying on the poll.");
         }
     }
 }

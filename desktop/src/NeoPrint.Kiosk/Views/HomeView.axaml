@@ -5,9 +5,8 @@
              x:DataType="vm:MainWindowViewModel">
 
     <!--
-        Screen 1 (plan section 7.3). The actions themselves land with the print
-        flow in step 3; what is settled here is the layout and the touch target
-        size - this is a finger on a kiosk, not a mouse.
+        Screen 1 (plan section 7.3): print from a flash drive, cancel an order by
+        its code. Card-sized targets - this is a finger on a kiosk, not a mouse.
     -->
 
     <StackPanel VerticalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="860">
@@ -16,10 +15,13 @@
         <!-- Each action is a card-sized button with its own icon: three
              identical grey bars would read as one block from standing
              distance (docs/DESIGN_SYSTEM.md section 5.1). -->
+        <!-- Shown only where an order can be completed: payment arrives in step
+             4, so today that is a Development kiosk (T-060). -->
         <Button Classes="primary"
                 MinHeight="112" HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Left" Padding="{DynamicResource InsetX8}"
-                IsEnabled="False">
+                Command="{Binding PrintFromUsbCommand}"
+                IsVisible="{Binding CanPrintFromFlash}">
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
                 <PathIcon Data="{StaticResource IconUsb}" Width="40" Height="40" />
                 <TextBlock Text="{Binding PrintFromUsbText}"
@@ -49,7 +51,7 @@
         <Button Classes="secondary"
                 MinHeight="112" HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Left" Padding="{DynamicResource InsetX8}"
-                IsEnabled="False">
+                Command="{Binding CancelByCodeCommand}">
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
                 <PathIcon Data="{StaticResource IconInfo}" Width="40" Height="40" />
                 <TextBlock Text="{Binding CancelByCodeText}"

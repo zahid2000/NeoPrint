@@ -43,6 +43,83 @@
         <Setter Property="BorderThickness" Value="2" />
     </Style>
 
+    <!-- A destructive action's confirmation: cancelling an order. -->
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="{DynamicResource Danger500}" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral0}" />
+    </Style>
+
+    <!-- One of several choices (colour, sides, paper): outlined, filled when chosen. -->
+    <Style Selector="Button.choice">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <Style Selector="Button.choice.selected">
+        <Setter Property="Background" Value="{DynamicResource Brand50}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brand600}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brand700}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- A key of the on-screen keyboard: square, a finger's width. -->
+    <Style Selector="Button.key">
+        <Setter Property="MinWidth" Value="{DynamicResource TouchTarget}" />
+        <Setter Property="Padding" Value="{DynamicResource Inset4}" />
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
+
+    <!-- The step indicator of a flash order (section 4): a numbered circle and a name. -->
+    <Style Selector="Border.step">
+        <Setter Property="Width" Value="{DynamicResource StatusChipHeight}" />
+        <Setter Property="Height" Value="{DynamicResource StatusChipHeight}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusLg}" />
+        <Setter Property="Background" Value="{DynamicResource Neutral100}" />
+    </Style>
+
+    <Style Selector="Border.step.current">
+        <Setter Property="Background" Value="{DynamicResource Brand600}" />
+    </Style>
+
+    <Style Selector="TextBlock.step-number">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral600}" />
+    </Style>
+
+    <Style Selector="TextBlock.step-number.current">
+        <Setter Property="Foreground" Value="{DynamicResource Neutral0}" />
+    </Style>
+
+    <Style Selector="TextBlock.step-label">
+        <Setter Property="Foreground" Value="{DynamicResource Neutral600}" />
+    </Style>
+
+    <Style Selector="TextBlock.step-label.current">
+        <Setter Property="Foreground" Value="{DynamicResource Brand700}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- An error: what happened, what it means, what to do (section 4). -->
+    <Style Selector="Border.error">
+        <Setter Property="Background" Value="{DynamicResource DangerBg}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Danger500}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Padding" Value="{DynamicResource Inset4}" />
+    </Style>
+
+    <!-- The "USB" badge on every screen of a flash order (plan section 7.3). -->
+    <Style Selector="Border.usb">
+        <Setter Property="Background" Value="{DynamicResource InfoBg}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Padding" Value="{DynamicResource InsetX4}" />
+    </Style>
+
     <!-- Text, at the design system's kiosk sizes. -->
     <Style Selector="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource Neutral800}" />

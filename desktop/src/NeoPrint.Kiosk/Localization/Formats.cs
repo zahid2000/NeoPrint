@@ -21,6 +21,9 @@ public static class Formats
     /// <summary><c>18:33</c>.</summary>
     public static string Time(DateTime value) => value.ToString("HH:mm", CultureInfo.InvariantCulture);
 
+    /// <summary><c>27.09.2026 18:33</c> always: for paper, which is read on another day.</summary>
+    public static string Absolute(DateTime value) => value.ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+
     /// <summary><c>27.09.2026 18:33</c>, or <c>Bu gün 18:33</c> / <c>Dünən 18:33</c>.</summary>
     public static string DateTime(DateTime value, string language, DateTime now)
     {
@@ -49,6 +52,20 @@ public static class Formats
         var text = Math.Abs(amount).ToString("N2", format);
 
         return $"{(amount < 0 ? "−" : string.Empty)}{text}{NoBreakSpace}₼";
+    }
+
+    /// <summary><c>1,2 MB</c> (az), <c>1.2 MB</c> (en), <c>1,2 МБ</c> (ru): a file size (DESIGN_SYSTEM.md section 6).</summary>
+    public static string Megabytes(double value, string language)
+        => $"{Number(value, language)}{NoBreakSpace}{(language == "ru" ? "МБ" : "MB")}";
+
+    /// <summary><c>340 KB</c> / <c>340 КБ</c>.</summary>
+    public static string Kilobytes(double value, string language)
+        => $"{Math.Round(value).ToString("0", CultureInfo.InvariantCulture)}{NoBreakSpace}{(language == "ru" ? "КБ" : "KB")}";
+
+    private static string Number(double value, string language)
+    {
+        var text = value.ToString(value >= 10 ? "0" : "0.#", CultureInfo.InvariantCulture);
+        return language == "en" ? text : text.Replace('.', ',');
     }
 
     /// <summary>

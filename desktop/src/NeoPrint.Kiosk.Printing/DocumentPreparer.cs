@@ -168,14 +168,43 @@ public sealed class DocumentPreparer
     {
         var bytes = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
 
+        return DecodeText(bytes);
+    }
+
+    /// <summary>
+    /// UTF-8 when the bytes are valid UTF-8; otherwise the Windows code page
+    /// the file was most likely saved in: 1251 (Cyrillic) or 1254 (Turkish,
+    /// which carries ç ğ ı ö ş ü - Azerbaijani files from older editors).
+    /// </summary>
+    /// <remarks>
+    /// Both pages put their letters in the upper half. In Russian text almost
+    /// every letter is there; in Azerbaijani only the few special ones are, so
+    /// the share of upper-half bytes among the letters tells them apart.
+    /// </remarks>
+    public static string DecodeText(byte[] bytes)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+
         try
         {
             return new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(bytes).TrimStart('\uFEFF');
         }
         catch (DecoderFallbackException)
         {
-            return Encoding.Latin1.GetString(bytes);
+            var upper = bytes.Count(value => value >= 0xC0);
+            var ascii = bytes.Count(value => value is (>= (byte)'A' and <= (byte)'Z') or (>= (byte)'a' and <= (byte)'z'));
+            var codePage = upper > 0 && upper >= (upper + ascii) * 0.3 ? 1251 : 1254;
+
+            return CodePages.GetEncoding(codePage).GetString(bytes);
         }
+    }
+
+    // The code pages ship with .NET but are off until a provider is registered.
+    private static class CodePages
+    {
+        static CodePages() => Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+        public static Encoding GetEncoding(int codePage) => Encoding.GetEncoding(codePage);
     }
 
     private async Task ConvertWithLibreOfficeAsync(string input, string workFolder, string pdf, CancellationToken cancellationToken)

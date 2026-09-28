@@ -103,6 +103,12 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 
 **Inputlar.** Admin paneldə bütün form sahələri eyni görünüşdədir (Material `outline`), mərkəzi olaraq `MAT_FORM_FIELD_DEFAULT_OPTIONS`-da təyin olunur — şablonda `appearance` yazılmır. Sahə ilə yanındakı düymə bir sətirdədirsə, hər ikisi `--control-height-lg` hündürlüyündədir. Yuxarıda etiket (placeholder etiket əvəzi deyil), altında köməkçi mətn. Xəta: qırmızı kənar + altında izah + ikon. Xəta yalnız sahə tərk ediləndə və ya göndərmə cəhdində göstərilir, hər hərfdə yox. Kioskda hər input fokuslananda ekran klaviaturası açılır.
 
+**Seçim düymələri (kiosk).** Bir-birini istisna edən seçimlər (rəngli / ağ-qara, A4 / A3, vərəqdə 1 / 2 / 4 səhifə) açılan siyahı ilə yox, yan-yana iri düymələrlə verilir (`Button.choice`). Seçilmiş düymə brend rəngli kənar + fon + qalın mətnlə fərqlənir (yalnız rənglə yox). Printerin bacarmadığı seçim (rəng, ikitərəfli, A3) deaktiv düymə kimi qalır və yanında səbəbi yazılır — bu, "Hazır olmayan funksiya" deyil, kioskun real imkanıdır: müştəri rəngli çapın niyə olmadığını görür.
+
+**Ekran klaviaturası (kiosk).** Kioskda fiziki klaviatura yoxdur (lockdown onu bağlayır), ona görə mətn və ya rəqəm istəyən hər ekranın öz ekran klaviaturası var: rəqəm üçün 3×4 klaviatura (`Button.key`, düymə ≥ `TouchTarget`), mətn üçün seçilmiş dilin hərfləri ilə tam klaviatura (az: ə, ğ, ı, ö, ş, ü, ç; ru: kiril). Klaviatura sahənin altında daim görünür; "Sil" düyməsi həmişə var.
+
+**Addım göstəricisi (kiosk).** Sifariş axınının yuxarısında: nömrəli dairə + addımın adı. Keçilmiş addım — yaşıl ✓ ikonu + ad; cari addım — brend rəngli dairə + qalın ad; gələcək addım — neytral dairə + neytral ad (status rəng + ikon/nömrə + mətnlə verilir). Addımlar: Fayl → Baxış → Parametrlər → Ödəniş → Hazır; ödəniş hələ yoxdursa (Addım 4-ə qədər) "Ödəniş" addımı göstərilmir. Ləğv ekranında göstərici yoxdur.
+
 **Kartlar.** `--neutral-0` fon, `--neutral-200` kənar, `--radius-md`, daxili boşluq 16 (kiosk 24).
 
 **Cədvəllər (admin).** Sətir hündürlüyü 48 px, başlıq sabit (sticky), sıralama və filtr yuxarıda, pagination aşağıda. Status sütunu chip ilə. Sətirə klik → detal. Boş nəticə üçün boş vəziyyət bloku.

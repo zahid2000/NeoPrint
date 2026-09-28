@@ -4,10 +4,13 @@ using Avalonia;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 using NeoPrint.Kiosk.Core;
+using NeoPrint.Kiosk.Core.Printing;
 using NeoPrint.Kiosk.Platform.Abstractions;
+using NeoPrint.Kiosk.Printing;
 
 namespace NeoPrint.Kiosk;
 
@@ -87,7 +90,14 @@ internal static class Program
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<DeviceEnrollmentService>();
-        services.AddSingleton<KioskRuntime>();
+        services.AddSingleton<ConfigurationCache>();
+        services.AddSingleton(provider => new KioskRuntime(
+            provider.GetRequiredService<KioskApiClient>(),
+            provider.GetRequiredService<IClock>(),
+            provider.GetRequiredService<ILogger<KioskRuntime>>(),
+            provider.GetRequiredService<ConfigurationCache>()));
+
+        RegisterPrinting(services);
 
         services.AddHttpClient(KioskApiClient.HttpClientName, (provider, client) =>
             {
@@ -151,21 +161,50 @@ internal static class Program
             useFakePrinter = true;
         }
 
-        // Prints into a folder, so the whole flow works on a machine with no
-        // printer and in CI (plan section 7.6).
-        //
-        // Registered even when it was not asked for, as long as nothing else
-        // provides IPrinterService: the real printer service arrives with the
-        // printing work in step 3, and until then the application could not be
-        // composed at all on a machine with Kiosk:UseFakePrinter left at its
-        // default - a kiosk that will not start cannot be activated either.
-        var hasPrinterService = services
-            .Any(registration => registration.ServiceType == typeof(IPrinterService));
+        // Anything the platform did not provide (macOS, a platform project not
+        // in this build): the fake implementations, so the application can be
+        // composed and worked on anywhere.
+        services.TryAddSingleton<ISpoolKeyStore, FakeSpoolKeyStore>();
+        services.TryAddSingleton<IConverterProcessRunner, PlainConverterRunner>();
 
-        if (useFakePrinter || !hasPrinterService)
+        // The fake printer prints into a folder, so the whole flow works on a
+        // machine with no printer and in CI (plan section 7.6); with
+        // Kiosk:UseFakePrinter it is listed next to the real ones (plan 7.7).
+        services.AddSingleton(provider => new FakePrinterService(
+            outputDirectory: Path.Combine(provider.GetRequiredService<IAppPaths>().SpoolDirectory, "printed")));
+
+        services.AddSingleton<IPrinterService>(provider =>
         {
-            services.AddSingleton<IPrinterService>(_ => new FakePrinterService());
-        }
+            IPrinterService? machine = OperatingSystem.IsWindows() ? WindowsPrinter(provider)
+                : OperatingSystem.IsLinux() ? LinuxPrinter(provider)
+                : null;
+
+            var fake = provider.GetRequiredService<FakePrinterService>();
+
+            return machine is null ? fake
+                : useFakePrinter ? new CompositePrinterService(machine, fake)
+                : machine;
+        });
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static IPrinterService? WindowsPrinter(IServiceProvider provider)
+    {
+#if WINDOWS
+        return provider.GetRequiredService<Platform.Windows.WindowsPrinterService>();
+#else
+        return null;
+#endif
+    }
+
+    [SupportedOSPlatform("linux")]
+    private static IPrinterService? LinuxPrinter(IServiceProvider provider)
+    {
+#if LINUX
+        return provider.GetRequiredService<Platform.Linux.LinuxPrinterService>();
+#else
+        return null;
+#endif
     }
 
     // Annotated so the analyzer accepts the Windows-only types. The call site
@@ -180,6 +219,9 @@ internal static class Program
         services.AddSingleton<ISystemControl, Platform.Windows.WindowsSystemControl>();
         services.AddSingleton<IRemovableDriveWatcher, Platform.Windows.WindowsRemovableDriveWatcher>();
         services.AddSingleton<IKioskLockdown, Platform.Windows.WindowsKioskLockdown>();
+        services.AddSingleton<ISpoolKeyStore, Platform.Windows.WindowsSpoolKeyStore>();
+        services.AddSingleton<IConverterProcessRunner, Platform.Windows.WindowsConverterRunner>();
+        services.AddSingleton<Platform.Windows.WindowsPrinterService>();
 #else
         services.AddSingleton<IAppPaths>(_ => new FakeAppPaths());
         services.AddSingleton<IDeviceKeyStore, FakeDeviceKeyStore>();
@@ -200,6 +242,9 @@ internal static class Program
         services.AddSingleton<ISystemControl, Platform.Linux.LinuxSystemControl>();
         services.AddSingleton<IRemovableDriveWatcher, Platform.Linux.LinuxRemovableDriveWatcher>();
         services.AddSingleton<IKioskLockdown, Platform.Linux.LinuxKioskLockdown>();
+        services.AddSingleton<ISpoolKeyStore, Platform.Linux.LinuxSpoolKeyStore>();
+        services.AddSingleton<IConverterProcessRunner, Platform.Linux.LinuxConverterRunner>();
+        services.AddSingleton<Platform.Linux.LinuxPrinterService>();
 #else
         services.AddSingleton<IAppPaths>(_ => new FakeAppPaths());
         services.AddSingleton<IDeviceKeyStore, FakeDeviceKeyStore>();
@@ -208,6 +253,64 @@ internal static class Program
         services.AddSingleton<IRemovableDriveWatcher, FakeRemovableDriveWatcher>();
         services.AddSingleton<IKioskLockdown, FakeKioskLockdown>();
 #endif
+    }
+
+    /// <summary>
+    /// The print flow: spool, journal, queue worker, printer reports, commands,
+    /// hubs and the document preparer (plan sections 7.4-7.8).
+    /// </summary>
+    private static void RegisterPrinting(IServiceCollection services)
+    {
+        services.AddSingleton<SpoolStore>();
+        services.AddSingleton<JobJournal>();
+        services.AddSingleton<IPrintBackend, ApiPrintBackend>();
+        services.AddSingleton(provider => new PrintQueueWorker(
+            provider.GetRequiredService<IPrintBackend>(),
+            provider.GetRequiredService<IPrinterService>(),
+            provider.GetRequiredService<SpoolStore>(),
+            provider.GetRequiredService<JobJournal>(),
+            () => provider.GetRequiredService<KioskRuntime>().Configuration?.SelectedPrinter,
+            provider.GetRequiredService<ILogger<PrintQueueWorker>>()));
+        services.AddSingleton(provider => new PrinterReporter(
+            provider.GetRequiredService<IPrinterService>(),
+            (printers, cancellationToken) => provider.GetRequiredService<KioskApiClient>().ReportKioskPrintersAsync(printers, cancellationToken),
+            provider.GetRequiredService<ILogger<PrinterReporter>>()));
+        services.AddSingleton<ITestPageSource, SkiaTestPageSource>();
+        services.AddSingleton(provider => new CommandProcessor(
+            provider.GetRequiredService<KioskApiClient>(),
+            provider.GetRequiredService<PrinterReporter>(),
+            provider.GetRequiredService<PrintQueueWorker>(),
+            provider.GetRequiredService<IPrinterService>(),
+            provider.GetRequiredService<ITestPageSource>(),
+            provider.GetRequiredService<SpoolStore>(),
+            () => provider.GetRequiredService<KioskRuntime>().Configuration,
+            TestPageText,
+            provider.GetRequiredService<ILogger<CommandProcessor>>()));
+        services.AddSingleton<KioskHubClient>();
+        services.AddSingleton<ProvisioningHubClient>();
+        services.AddSingleton(provider =>
+        {
+            var settings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value;
+            return new ConverterPaths { LibreOffice = settings.LibreOfficePath, GhostscriptFolder = settings.GhostscriptFolder };
+        });
+        services.AddSingleton<DocumentPreparer>();
+        services.AddSingleton<KioskOrderService>();
+    }
+
+    /// <summary>What the test page says, in the kiosk's default language (plan section 7.7).</summary>
+    private static IReadOnlyList<string> TestPageText(KioskConfiguration configuration, string printer, DateTime printedAt)
+    {
+        var language = configuration.DefaultLanguage;
+
+        return
+        [
+            Localization.Strings.Get(language, "testPage.title"),
+            $"{configuration.Name} ({configuration.Code})",
+            Localization.Strings.Get(language, "testPage.printer", printer),
+            Localization.Strings.Get(language, "testPage.time", Localization.Formats.Absolute(printedAt.ToLocalTime())),
+            Localization.Strings.Get(language, configuration.EffectiveCapabilities.Color ? "testPage.colorOn" : "testPage.colorOff"),
+            Localization.Strings.Get(language, configuration.EffectiveCapabilities.Duplex ? "testPage.duplexOn" : "testPage.duplexOff"),
+        ];
     }
 
     private static void TryLogFatal(IServiceProvider services, Exception exception)

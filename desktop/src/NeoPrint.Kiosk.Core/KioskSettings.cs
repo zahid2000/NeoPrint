@@ -41,4 +41,15 @@ public sealed class KioskSettings
 
     /// <summary>Interface language before the backend says otherwise.</summary>
     public string DefaultLanguage { get; set; } = "az";
+
+    /// <summary>The Ghostscript folder on Windows; empty searches PATH (plan section 7.6).</summary>
+    public string GhostscriptFolder { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Development only: orders are queued without a payment, which arrives in
+    /// step 4. The backend refuses it anywhere else; the flash flow is not
+    /// offered at all while this is off and there is no payment screen
+    /// (docs/DESIGN_SYSTEM.md, "Hazır olmayan funksiya").
+    /// </summary>
+    public bool SkipPayment { get; set; }
 }
