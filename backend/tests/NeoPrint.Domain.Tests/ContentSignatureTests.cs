@@ -1,6 +1,7 @@
 using System.Text;
 
-using NeoPrint.Domain.Files;
+using NeoPrint.Documents;
+
 
 namespace NeoPrint.Domain.Tests;
 

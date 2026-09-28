@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 
+using NeoPrint.Documents;
 using NeoPrint.Domain.Files;
 
 using SkiaSharp;

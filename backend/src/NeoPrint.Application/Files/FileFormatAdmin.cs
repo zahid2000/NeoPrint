@@ -3,6 +3,7 @@ using MediatR;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Application.Common;
+using NeoPrint.Documents;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
 using NeoPrint.Domain.Settings;

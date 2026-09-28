@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace NeoPrint.Domain.Files;
+namespace NeoPrint.Documents;
 
 /// <summary>What the bytes of a file say it is.</summary>
 /// <param name="Format">The format recognised, or null.</param>

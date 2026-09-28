@@ -6,6 +6,7 @@ using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
 using NeoPrint.Application.Localization;
 using NeoPrint.Contracts;
+using NeoPrint.Documents;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
 using NeoPrint.Domain.Kiosks;

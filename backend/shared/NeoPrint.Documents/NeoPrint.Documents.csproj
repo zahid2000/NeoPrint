@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The accepted file formats and how a file's first bytes are recognised
+    (plan section 2.2). Shared so that the kiosk's flash browser accepts and
+    refuses exactly what the backend does.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Documents</RootNamespace>
+  </PropertyGroup>
+
+</Project>

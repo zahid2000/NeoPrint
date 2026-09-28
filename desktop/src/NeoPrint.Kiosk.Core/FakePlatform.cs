@@ -142,30 +142,137 @@ public sealed class FakeMachineFingerprintProvider : IMachineFingerprintProvider
 /// </remarks>
 public sealed class FakePrinterService : IPrinterService
 {
-    private readonly List<DetectedPrinter> _printers;
+    /// <summary>The name the fake printer is listed under (plan section 7.7).</summary>
+    public const string FakePrinterName = "NeoPrint Fake Printer";
 
-    public FakePrinterService(IEnumerable<DetectedPrinter>? printers = null)
+    private readonly List<DetectedPrinter> _printers;
+    private readonly string? _outputDirectory;
+
+    /// <param name="outputDirectory">
+    /// Where printed PDFs land (<c>spool/printed</c>); a file named
+    /// <c>printer-state.txt</c> there holding a state name (<c>OutOfPaper</c>,
+    /// <c>PaperJam</c>, ...) makes the printer report it, to walk through the
+    /// error paths by hand.
+    /// </param>
+    public FakePrinterService(IEnumerable<DetectedPrinter>? printers = null, string? outputDirectory = null)
     {
         _printers = printers?.ToList() ??
         [
             new DetectedPrinter(
-                "NeoPrint Fake Printer",
+                FakePrinterName,
                 "neoprint-fake",
                 IsOnline: true,
                 SupportsColor: true,
                 SupportsDuplex: true,
                 SupportsA3: true),
         ];
+        _outputDirectory = outputDirectory;
     }
 
     /// <summary>Makes the queue report itself offline, to exercise that path.</summary>
     public bool SimulateOffline { get; set; }
+
+    /// <summary>A state to report, for tests; overrides the state file.</summary>
+    public PrinterState? SimulatedState { get; set; }
+
+    /// <summary>What was printed, in order.</summary>
+    public List<PrintRequest> Printed { get; } = [];
+
+    public string? OutputDirectory => _outputDirectory;
 
     public Task<IReadOnlyList<DetectedPrinter>> DiscoverAsync(CancellationToken cancellationToken = default)
         => Task.FromResult<IReadOnlyList<DetectedPrinter>>(
             SimulateOffline
                 ? [.. _printers.Select(printer => printer with { IsOnline = false })]
                 : _printers);
+
+    public Task<PrinterState> GetStateAsync(string printer, CancellationToken cancellationToken = default)
+    {
+        if (_printers.All(known => known.Name != printer))
+        {
+            return Task.FromResult(PrinterState.NotFound);
+        }
+
+        if (SimulateOffline)
+        {
+            return Task.FromResult(PrinterState.Offline);
+        }
+
+        if (SimulatedState is { } simulated)
+        {
+            return Task.FromResult(simulated);
+        }
+
+        var stateFile = _outputDirectory is null ? null : Path.Combine(_outputDirectory, "printer-state.txt");
+
+        if (stateFile is not null
+            && File.Exists(stateFile)
+            && Enum.TryParse<PrinterState>(File.ReadAllText(stateFile).Trim(), ignoreCase: true, out var fromFile))
+        {
+            return Task.FromResult(fromFile);
+        }
+
+        return Task.FromResult(PrinterState.Online);
+    }
+
+    public async Task<PrintOutcome> PrintAsync(PrintRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var state = await GetStateAsync(request.Printer, cancellationToken).ConfigureAwait(false);
+
+        if (state is not (PrinterState.Online or PrinterState.TonerLow))
+        {
+            return PrintOutcome.Failed(PrinterErrors.For(state));
+        }
+
+        if (_outputDirectory is not null)
+        {
+            Directory.CreateDirectory(_outputDirectory);
+            var target = Path.Combine(
+                _outputDirectory,
+                $"{request.JobName}-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-x{request.Copies}{(request.Duplex ? "-duplex" : "")}{(request.Color ? "-color" : "-gray")}-{request.Paper}.pdf");
+
+            File.Copy(request.PdfPath, target, overwrite: false);
+        }
+
+        Printed.Add(request);
+
+        return PrintOutcome.Done;
+    }
+}
+
+/// <summary>A spool key in a plain file, for tests and developer machines.</summary>
+public sealed class FakeSpoolKeyStore : ISpoolKeyStore
+{
+    private readonly IAppPaths _paths;
+
+    public FakeSpoolKeyStore(IAppPaths paths) => _paths = paths;
+
+    private string KeyPath => Path.Combine(_paths.DeviceDirectory, "spool.key");
+
+    public byte[] GetOrCreateKey()
+    {
+        _paths.EnsureCreated();
+
+        if (File.Exists(KeyPath))
+        {
+            return Convert.FromBase64String(File.ReadAllText(KeyPath));
+        }
+
+        var key = RandomNumberGenerator.GetBytes(32);
+        File.WriteAllText(KeyPath, Convert.ToBase64String(key));
+
+        return key;
+    }
+
+    public void Delete()
+    {
+        if (File.Exists(KeyPath))
+        {
+            File.Delete(KeyPath);
+        }
+    }
 }
 
 /// <summary>No removable drives, for tests.</summary>

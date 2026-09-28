@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Files;
+using NeoPrint.Documents;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
 using NeoPrint.Domain.Settings;

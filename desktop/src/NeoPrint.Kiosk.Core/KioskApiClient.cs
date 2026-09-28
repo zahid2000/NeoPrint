@@ -1,8 +1,8 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
+using System.Net;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 
@@ -80,7 +80,23 @@ public sealed record KioskConfiguration(
     IReadOnlyDictionary<string, bool> Features,
     int HeartbeatSeconds,
     int CacheTtlHours,
-    DateTime ServerTime);
+    DateTime ServerTime,
+    KioskPrices? Prices = null,
+    IReadOnlyList<string>? AllowedFormats = null,
+    bool PaperBlockWhenInsufficient = true,
+    int IdleResetSeconds = 90);
+
+/// <summary>The rates of the kiosk's profile: the live quote on the options screen (plan section 7.3, screen 5).</summary>
+public sealed record KioskPrices(
+    string ProfileName,
+    decimal BwPerSide,
+    decimal ColorPerSide,
+    IReadOnlyDictionary<string, decimal> PaperMultipliers,
+    decimal MinOrder,
+    IReadOnlyList<KioskPriceTier> Tiers,
+    string Currency);
+
+public sealed record KioskPriceTier(int MinSides, decimal DiscountPercent);
 
 public sealed record PrinterCapabilityFlags(bool Color, bool Duplex, bool A3);
 
@@ -124,7 +140,7 @@ public sealed class DeviceRevokedException : Exception
 /// no Refit or similar. It holds the kiosk token and renews it from the device
 /// key when it expires, so nothing above has to think about tokens.
 /// </remarks>
-public sealed class KioskApiClient
+public sealed partial class KioskApiClient
 {
     /// <summary>
     /// Name of the configured <see cref="HttpClient"/> this client is built on.

@@ -20,6 +20,7 @@
   -->
   <ItemGroup>
     <ProjectReference Include="..\..\shared\NeoPrint.Pricing\NeoPrint.Pricing.csproj" />
+    <ProjectReference Include="..\..\shared\NeoPrint.Documents\NeoPrint.Documents.csproj" />
   </ItemGroup>
 
 </Project>

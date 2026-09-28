@@ -1,4 +1,4 @@
-namespace NeoPrint.Domain.Files;
+namespace NeoPrint.Documents;
 
 /// <summary>How a file becomes a PDF (plan section 2.2).</summary>
 public enum ConversionRoute

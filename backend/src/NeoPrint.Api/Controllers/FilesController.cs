@@ -7,6 +7,7 @@ using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Files;
 using NeoPrint.Application.Localization;
+using NeoPrint.Documents;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
 

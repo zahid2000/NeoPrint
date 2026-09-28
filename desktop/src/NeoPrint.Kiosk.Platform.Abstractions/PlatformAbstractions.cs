@@ -131,6 +131,73 @@ public sealed record DetectedPrinter(
 public interface IPrinterService
 {
     Task<IReadOnlyList<DetectedPrinter>> DiscoverAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Where the printer stands, in the one vocabulary every platform maps to
+    /// (plan section 7.4: Online, Offline, OutOfPaper, PaperJam, TonerLow, Error).
+    /// </summary>
+    Task<PrinterState> GetStateAsync(string printer, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Prints a ready PDF and waits until the printer has taken it, or until it
+    /// fails. The page range, N-up and duplex layout are already in the PDF
+    /// (plan section 7.4); only copies, sides and colour travel with it.
+    /// </summary>
+    Task<PrintOutcome> PrintAsync(PrintRequest request, CancellationToken cancellationToken = default);
+}
+
+/// <summary>The printer's condition (plan section 7.4, <c>PrinterStatus</c>).</summary>
+public enum PrinterState
+{
+    Online = 0,
+    Offline = 1,
+    OutOfPaper = 2,
+    PaperJam = 3,
+
+    /// <summary>Still prints; worth a warning, not a stop.</summary>
+    TonerLow = 4,
+    Error = 5,
+
+    /// <summary>No queue by that name on this machine.</summary>
+    NotFound = 6,
+}
+
+/// <summary>One document for the printer.</summary>
+/// <param name="Printer">Queue name.</param>
+/// <param name="PdfPath">The prepared PDF, decrypted into a private working folder.</param>
+/// <param name="Copies">Copies of the whole document.</param>
+/// <param name="Duplex">Both sides of the sheet (long edge).</param>
+/// <param name="Color">Colour; false prints in grey.</param>
+/// <param name="Paper">A4 or A3.</param>
+/// <param name="JobName">What the spooler shows: the job code, never the file name.</param>
+public sealed record PrintRequest(
+    string Printer, string PdfPath, int Copies, bool Duplex, bool Color, string Paper, string JobName);
+
+/// <summary>How a print went.</summary>
+/// <param name="ErrorCode">A message key when it failed: <c>printer.outOfPaper</c>.</param>
+public sealed record PrintOutcome(bool Succeeded, string? ErrorCode = null)
+{
+    public static readonly PrintOutcome Done = new(true);
+
+    public static PrintOutcome Failed(string errorCode) => new(false, errorCode);
+}
+
+/// <summary>
+/// The key that encrypts the spool, kept so it never leaves the machine in
+/// the clear (plan sections 2.13, 7.5; docs/SECURITY_THREAT_MODEL.md).
+/// </summary>
+/// <remarks>
+/// Windows wraps it with a non-exportable CNG key of the machine; Linux keeps
+/// it in a file only the kiosk user can read. Deleted with the device key
+/// when the device is detached, which makes whatever is left in the spool
+/// unreadable.
+/// </remarks>
+public interface ISpoolKeyStore
+{
+    /// <summary>The 256-bit key, created on first use.</summary>
+    byte[] GetOrCreateKey();
+
+    void Delete();
 }
 
 /// <summary>Watches for removable drives (plan section 2.1).</summary>
@@ -158,3 +225,16 @@ public interface ISystemMetrics
 /// <param name="UptimeSeconds">How long the machine has been running.</param>
 public sealed record SystemSnapshot(
     double CpuPercent, double MemoryUsedPercent, long DiskFreeBytes, long UptimeSeconds);
+
+/// <summary>The message keys a printer state stops a job with (plan section 7.4).</summary>
+public static class PrinterErrors
+{
+    public static string For(PrinterState state) => state switch
+    {
+        PrinterState.Offline => "printer.offline",
+        PrinterState.OutOfPaper => "printer.outOfPaper",
+        PrinterState.PaperJam => "printer.paperJam",
+        PrinterState.NotFound => "printer.notFound",
+        _ => "printer.error",
+    };
+}

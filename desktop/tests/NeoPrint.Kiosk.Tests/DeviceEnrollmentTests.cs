@@ -1,8 +1,8 @@
-using System.Net;
 using System.Net.Http.Json;
+using System.Net;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
+using System.Text;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -498,6 +498,12 @@ public sealed class DeviceEnrollmentTests : IDisposable
     private sealed class ThrowingPrinterService : IPrinterService
     {
         public Task<IReadOnlyList<DetectedPrinter>> DiscoverAsync(CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("The print subsystem is not answering.");
+
+        public Task<PrinterState> GetStateAsync(string printer, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException("The print subsystem is not answering.");
+
+        public Task<PrintOutcome> PrintAsync(PrintRequest request, CancellationToken cancellationToken = default)
             => throw new InvalidOperationException("The print subsystem is not answering.");
     }
 }
