@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
+using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Admin;
 
@@ -18,14 +19,9 @@ namespace NeoPrint.Api.Hubs;
 [Authorize(Policy = AuthorizationPolicies.Admin)]
 public sealed class AdminHub : Hub
 {
-    private readonly ICurrentUser _currentUser;
     private readonly IPermissionResolver _permissions;
 
-    public AdminHub(ICurrentUser currentUser, IPermissionResolver permissions)
-    {
-        _currentUser = currentUser;
-        _permissions = permissions;
-    }
+    public AdminHub(IPermissionResolver permissions) => _permissions = permissions;
 
     public const string AllAdminsGroup = "admins";
 
@@ -41,7 +37,7 @@ public sealed class AdminHub : Hub
 
     public override async Task OnConnectedAsync()
     {
-        var adminId = _currentUser.AdminUserId;
+        var adminId = CallerClaims.AdminUserId(Context.User);
         if (adminId is null)
         {
             Context.Abort();

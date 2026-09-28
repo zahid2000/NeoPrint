@@ -20,18 +20,13 @@ public sealed class CurrentUser : ICurrentUser
 
     private ClaimsPrincipal? Principal => _accessor.HttpContext?.User;
 
-    public Guid? UserId => IsTokenType(TokenTypes.User)
-        ? ParseGuid(Principal?.FindFirstValue(ClaimTypes.NameIdentifier)
-                    ?? Principal?.FindFirstValue("sub"))
-        : null;
+    public Guid? UserId => CallerClaims.UserId(Principal);
 
-    public Guid? AdminUserId => IsTokenType(TokenTypes.Admin)
-        ? ParseGuid(Principal?.FindFirstValue(NeoPrintClaims.AdminUserId))
-        : null;
+    public Guid? AdminUserId => CallerClaims.AdminUserId(Principal);
 
-    public Guid? KioskId => ParseGuid(Principal?.FindFirstValue(NeoPrintClaims.KioskId));
+    public Guid? KioskId => CallerClaims.KioskId(Principal);
 
-    public Guid? DeviceId => ParseGuid(Principal?.FindFirstValue(NeoPrintClaims.DeviceId));
+    public Guid? DeviceId => CallerClaims.DeviceId(Principal);
 
     /// <summary>
     /// The caller's address, preferring the forwarded header because the API
@@ -98,8 +93,34 @@ public sealed class CurrentUser : ICurrentUser
         }
     }
 
-    private bool IsTokenType(string expected)
-        => string.Equals(Principal?.FindFirstValue(NeoPrintClaims.TokenType), expected, StringComparison.Ordinal);
+}
+
+/// <summary>
+/// The caller's identity from a principal: the HTTP request's
+/// (<see cref="CurrentUser"/>) or a hub connection's (<c>Context.User</c>).
+/// </summary>
+/// <remarks>
+/// A hub reads <c>Context.User</c>, never the HTTP context accessor: with
+/// long polling or server-sent events the hub runs outside the request that
+/// carried the token, the accessor sees no request, and the connection would
+/// be dropped as anonymous (docs/TASKS.md T-077).
+/// </remarks>
+public static class CallerClaims
+{
+    public static Guid? UserId(ClaimsPrincipal? principal) => IsTokenType(principal, TokenTypes.User)
+        ? ParseGuid(principal?.FindFirstValue(ClaimTypes.NameIdentifier) ?? principal?.FindFirstValue("sub"))
+        : null;
+
+    public static Guid? AdminUserId(ClaimsPrincipal? principal) => IsTokenType(principal, TokenTypes.Admin)
+        ? ParseGuid(principal?.FindFirstValue(NeoPrintClaims.AdminUserId))
+        : null;
+
+    public static Guid? KioskId(ClaimsPrincipal? principal) => ParseGuid(principal?.FindFirstValue(NeoPrintClaims.KioskId));
+
+    public static Guid? DeviceId(ClaimsPrincipal? principal) => ParseGuid(principal?.FindFirstValue(NeoPrintClaims.DeviceId));
+
+    private static bool IsTokenType(ClaimsPrincipal? principal, string expected)
+        => string.Equals(principal?.FindFirstValue(NeoPrintClaims.TokenType), expected, StringComparison.Ordinal);
 
     private static Guid? ParseGuid(string? value)
         => Guid.TryParse(value, out var parsed) ? parsed : null;

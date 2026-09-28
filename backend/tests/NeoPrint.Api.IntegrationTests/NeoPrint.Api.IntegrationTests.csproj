@@ -30,6 +30,13 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\NeoPrint.Api\NeoPrint.Api.csproj" />
     <ProjectReference Include="..\..\shared\NeoPrint.Pdfium\NeoPrint.Pdfium.csproj" />
+    <!--
+      The kiosk's own clients, for the contract tests (KioskClientContractTests).
+      Aliased: the NeoPrint.Kiosk namespace would otherwise hide the domain's
+      Kiosk type in every other test.
+    -->
+    <ProjectReference Include="..\..\..\desktop\src\NeoPrint.Kiosk.Core\NeoPrint.Kiosk.Core.csproj" Aliases="kiosk" />
+    <ProjectReference Include="..\..\..\desktop\src\NeoPrint.Kiosk.Platform.Abstractions\NeoPrint.Kiosk.Platform.Abstractions.csproj" Aliases="kiosk" />
   </ItemGroup>
 
   <ItemGroup>

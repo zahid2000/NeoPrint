@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
+using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 
 namespace NeoPrint.Api.Hubs;
@@ -17,16 +18,12 @@ namespace NeoPrint.Api.Hubs;
 [Authorize(Policy = AuthorizationPolicies.Device)]
 public sealed class ProvisioningHub : Hub
 {
-    private readonly ICurrentUser _currentUser;
-
-    public ProvisioningHub(ICurrentUser currentUser) => _currentUser = currentUser;
-
     /// <summary>The group a device listens on.</summary>
     public static string GroupFor(Guid deviceId) => $"device:{deviceId}";
 
     public override async Task OnConnectedAsync()
     {
-        var deviceId = _currentUser.DeviceId;
+        var deviceId = CallerClaims.DeviceId(Context.User);
 
         if (deviceId is null)
         {
@@ -42,7 +39,7 @@ public sealed class ProvisioningHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        if (_currentUser.DeviceId is { } deviceId)
+        if (CallerClaims.DeviceId(Context.User) is { } deviceId)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, GroupFor(deviceId));
         }

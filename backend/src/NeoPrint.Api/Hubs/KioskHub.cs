@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
+using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.PrintJobs;
 
@@ -18,15 +19,11 @@ namespace NeoPrint.Api.Hubs;
 [Authorize(Policy = AuthorizationPolicies.Kiosk)]
 public sealed class KioskHub : Hub
 {
-    private readonly ICurrentUser _currentUser;
-
-    public KioskHub(ICurrentUser currentUser) => _currentUser = currentUser;
-
     public static string GroupFor(Guid kioskId) => $"kiosk:{kioskId}";
 
     public override async Task OnConnectedAsync()
     {
-        if (_currentUser.KioskId is not { } kioskId)
+        if (CallerClaims.KioskId(Context.User) is not { } kioskId)
         {
             Context.Abort();
             return;
@@ -38,7 +35,7 @@ public sealed class KioskHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        if (_currentUser.KioskId is { } kioskId)
+        if (CallerClaims.KioskId(Context.User) is { } kioskId)
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, GroupFor(kioskId));
         }
