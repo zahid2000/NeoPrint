@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { KioskListItem } from '../../core/api/admin-api.service';
-import { attentionFor } from './dashboard.component';
+import { attentionFor, staleHeartbeatMs } from './dashboard.component';
 
 function kiosk(overrides: Partial<KioskListItem> = {}): KioskListItem {
   return {
@@ -13,6 +13,7 @@ function kiosk(overrides: Partial<KioskListItem> = {}): KioskListItem {
     paperA4Current: 400,
     paperA4Capacity: 500,
     safeModeSince: null,
+    lastHeartbeatAt: new Date().toISOString(),
     ...overrides,
   } as KioskListItem;
 }
@@ -41,5 +42,14 @@ describe('attentionFor', () => {
     expect(low?.params).toEqual({ current: 99 });
     expect(attentionFor(kiosk({ paperA4Current: 100 }))).toBeNull();
     expect(attentionFor(kiosk({ paperA4Current: 0, paperA4Capacity: 0 }))).toBeNull();
+  });
+
+  it('counts a kiosk whose heartbeat stopped as out of touch, whatever its stored status says', () => {
+    const now = Date.parse('2026-09-29T12:00:00Z');
+    const at = (ms: number) => new Date(now - ms).toISOString();
+
+    expect(attentionFor(kiosk({ lastHeartbeatAt: at(staleHeartbeatMs + 1000) }), now)?.reason).toBe('offline');
+    expect(attentionFor(kiosk({ lastHeartbeatAt: at(staleHeartbeatMs - 1000) }), now)).toBeNull();
+    expect(attentionFor(kiosk({ lastHeartbeatAt: null, status: 'NotConfigured' }), now)?.reason).toBe('notConfigured');
   });
 });

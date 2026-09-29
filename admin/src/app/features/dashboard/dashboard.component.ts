@@ -38,7 +38,14 @@ export interface KioskAttention {
  * The one reason a kiosk is listed for, or null when it needs nothing. A
  * disabled or not yet activated kiosk is not expected to serve anyone.
  */
-export function attentionFor(kiosk: KioskListItem): KioskAttention | null {
+/**
+ * A kiosk whose last heartbeat is older than this has lost its connection,
+ * whatever its stored status says: the monitor that turns the status Offline
+ * comes with step 7 (plan section 7, KioskHeartbeatMonitor; docs/TASKS.md T-083).
+ */
+export const staleHeartbeatMs = 5 * 60 * 1000;
+
+export function attentionFor(kiosk: KioskListItem, now = Date.now()): KioskAttention | null {
   const make = (reason: AttentionReason, tone: StatusTone, params: Record<string, unknown> = {}) => ({
     kiosk,
     reason,
@@ -48,6 +55,10 @@ export function attentionFor(kiosk: KioskListItem): KioskAttention | null {
 
   if (kiosk.status === 'Disabled' || kiosk.status === 'NotActivated') {
     return null;
+  }
+
+  if (kiosk.lastHeartbeatAt && now - new Date(kiosk.lastHeartbeatAt).getTime() > staleHeartbeatMs) {
+    return make('offline', 'danger');
   }
 
   if (kiosk.safeModeSince) {
@@ -160,7 +171,7 @@ export class DashboardComponent {
 
   readonly attention = computed(() =>
     (this.kiosks() ?? [])
-      .map(attentionFor)
+      .map((kiosk) => attentionFor(kiosk))
       .filter((item): item is KioskAttention => item !== null)
       .sort((a, b) => attentionOrder.indexOf(a.reason) - attentionOrder.indexOf(b.reason)),
   );

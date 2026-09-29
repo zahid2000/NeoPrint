@@ -167,4 +167,11 @@
         <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
     </Style>
 
+    <!-- The text of a filled button is always white. Last in the file on purpose:
+         Avalonia applies styles in order, not by specificity, so the TextBlock
+         style above would otherwise paint it Neutral800 on the brand or danger
+         fill, as it did on the admin screens (docs/TASKS.md T-082). -->
+    <Style Selector="Button.primary TextBlock, Button.danger TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource Neutral0}" />
+    </Style>
 </Styles>
