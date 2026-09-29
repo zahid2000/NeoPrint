@@ -23,6 +23,7 @@ Hər sessiyanın əvvəlində oxu: plandakı təlimat bölməsi, Bölmə 2.0 (ki
 
 ## Lokal mühit dəyişiklikləri
 - Compose-dan servis çıxarılanda, adı dəyişəndə və ya seed/konfiqurasiya strukturu dəyişəndə `docs/DEV_ENVIRONMENT.md`-də keçid addımları yazılır, addım hesabatında isə "Lokal mühitinizdə etməli olduğunuz" bölməsi olur.
+- Layihə sahibinə verilən hər faydalı əmr və ya skript söhbətdə qalmır: həmin işdə `docs/DEV_ENVIRONMENT.md`-yə yazılır, təkrar istifadə olunanlar isə `tools/` altında skript olur (məs. `tools/dev-kiosk/`).
 
 ## İş qaydası
 - Yalnız cari addım. Faza 2 və 3 (Addım 8–10) istifadəçi göstərişi olmadan başlanmır; gələcək işləri "hazır olsun" deyə əvvəlcədən yazma.

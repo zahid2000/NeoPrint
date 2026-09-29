@@ -368,10 +368,44 @@ docker logs neoprint-api 2>&1 | grep -A 8 "Development enrollment tokens"
 Cihaz açarı **machine-scoped CNG** açarıdır, ona görə **Administrator**
 sessiyası tələb olunur. Adi istifadəçi sessiyasında açar yaradılmır.
 
-PowerShell-i **"Run as administrator"** ilə açın:
+PowerShell-i **"Run as administrator"** ilə açın və skriptdən istifadə edin
+(`tools/dev-kiosk/`):
 
 ```powershell
 cd C:\Users\EFSO\source\zahid\Ai\NeoPrint
+
+# Build + işə salmaq (köhnə kiosk açıqdırsa əvvəl onu bağlayır)
+powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\start-kiosk.ps1
+
+# Kod ekranı olmadan, token ilə dərhal aktivləşdirmək
+powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\start-kiosk.ps1 -EnrollmentToken <TOKEN>
+
+# Başqa API-yə qarşı / Release build / build-siz
+powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\start-kiosk.ps1 -ApiUrl http://192.168.1.50:5080
+powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\start-kiosk.ps1 -Configuration Release
+powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\start-kiosk.ps1 -NoBuild
+
+# Dayandırmaq
+powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\stop-kiosk.ps1
+
+# Aktivləşdirmə ekranına qaytarmaq / yalnız təhlükəsiz rejim sayğacını silmək
+powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\reset-kiosk.ps1
+powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\reset-kiosk.ps1 -SafeModeOnly
+```
+
+| Skript | Nə edir |
+|---|---|
+| `start-kiosk.ps1` | Administrator yoxlayır → işləyən kiosku bağlayır → `dotnet build` → `NEOPRINT_KIOSK_ENVIRONMENT=Development` → seçilmiş konfiqurasiyanın ən son `NeoPrint.Kiosk.exe`-sini işə salır. Parametrlər: `-EnrollmentToken`, `-ApiUrl`, `-Configuration Debug\|Release`, `-NoBuild` |
+| `stop-kiosk.ps1` | İşləyən kiosku bağlayır; 5 saniyədə bağlanmasa dayandırır (çöküş kimi sayılır) |
+| `reset-kiosk.ps1` | Kiosku dayandırır, `%ProgramData%\NeoPrint`-i silir (cihaz kimliyi, keş, spool, jurnal). `-SafeModeOnly` — yalnız çöküş sayğacı; `-DeleteDeviceKey` — CNG cihaz açarı da |
+
+**Build `MSB3027 ... The file is locked by: "NeoPrint.Kiosk (…)"` ilə qırılırsa**,
+əvvəlki kiosk hələ açıqdır və DLL-ləri tutur: `stop-kiosk.ps1` işlədin (və ya
+`Stop-Process -Name NeoPrint.Kiosk`). `start-kiosk.ps1` bunu özü edir.
+
+Skriptsiz (eyni şey):
+
+```powershell
 $env:NEOPRINT_KIOSK_ENVIRONMENT = "Development"
 dotnet run --project desktop\src\NeoPrint.Kiosk
 ```
@@ -396,7 +430,7 @@ dotnet run --project desktop\src\NeoPrint.Kiosk -- --api-url http://192.168.1.50
 ### Cihaz kimliyini sıfırlamaq (yenidən Activation ekranı)
 
 ```powershell
-# Windows: cihaz faylları
+# Windows (administrator): tools\dev-kiosk\reset-kiosk.ps1 və ya əl ilə
 Remove-Item -Recurse -Force "$env:ProgramData\NeoPrint" -ErrorAction SilentlyContinue
 ```
 
