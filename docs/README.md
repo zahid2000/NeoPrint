@@ -28,5 +28,6 @@ Ziddiyyət görünürsə: dayan, uyğunsuzluğu göstər, təhlükəsiz variant�
 | `OBSERVABILITY.md` | CorrelationId, structured log, metrik və alert-lər |
 | `KIOSK_SETUP.md` | Kioskun sıfırdan quraşdırılması (texnik üçün): paket, provisioning, aktivləşdirmə, texniki giriş, golden image |
 | `KIOSK_PROVISIONING.md` | Provisioning skriptlərinin OS-də etdiyi hər dəyişiklik və səbəbi |
+| `MANUAL_TESTS.md` | Real printer / cihaz tələb edən əl ilə yoxlamalar (məs. çapın ortasında elektrik kəsilməsi): hazırlıq, addımlar, gözlənilən nəticə |
 | `CLAUDE_CODE_EXECUTION_RULES.md` | Task icrası, scope, definition of done |
 | `adr/TEMPLATE.md` | Arxitektura qərar şablonu |

@@ -649,6 +649,45 @@ Emulyatora test faylı atmaq: faylı emulyator pəncərəsinə sürükləyin (Do
 
 ---
 
+## 7b. Addım 3 funksiyalarını yoxlamaq
+
+Yeni kod üçün: `docker compose up --remove-orphans -d --build api admin`, kiosk üçün bölmə 5.
+
+**Kiosku işə salıb xidmətə açmaq (bir dəfə):**
+
+1. Admin paneli → **Cihazlar → Token yarat** (kiosk seçin) və ya bölmə 5-dəki `docker logs` tokenini götürün.
+2. Kiosku `--enrollment-token <TOKEN>` ilə başladın — kod ekranı olmadan aktivləşir.
+3. **Kiosklar → kiosk → Printerlər** → printeri **Əsas et** → **Test çap**. Əmr "Uğurlu" olanda kiosk `Online` olur, ekranda "Xoş gəlmisiniz" görünür.
+4. **Sərf** tabında A4 lotokunu doldurun (tutumu **Kağız** tabında təyin olunur).
+
+**Kioskda:**
+
+| Nəyi | Necə |
+|---|---|
+| Flaşdan sifariş | Flaş taxın (və ya "Flash kartdan çap et") → fayl → **Davam et** → parametrlər → **Sifariş et**. Kod və növbədəki yer göstərilir |
+| Səhifə aralığı | Parametrlərdə **Aralıq** → ekran klaviaturası. Yarımçıq yazı ("1-") xəta deyil; səhv aralıq sahənin altında yazılır |
+| TXT redaktəsi | `.txt` → **Redaktə et** → ekran klaviaturası (az hərfləri) → **Yadda saxla** |
+| Kodla ləğv | Ana ekran → **Sifariş kodu ilə ləğv et** → 6 rəqəm → **Tap**. Növbədəki sifariş ləğv olunur, çap olunmuş yox |
+| Admin menyusu | Loqoya 3 san-də 5 toxunuş → PIN (test kiosklarında `135790`) |
+| Təhlükəsiz rejim | Bölmə 5, "Təhlükəsiz rejim" |
+
+**Admin panelində:**
+
+| Səhifə | Ünvan | Nəyi yoxlamaq |
+|---|---|---|
+| İdarə paneli | `/` | "Kioskların vəziyyəti": status sayları, "Diqqət tələb edir" (təhlükəsiz rejim, əlaqə yoxdur, printer seçilməyib, kağız qurtarıb/azdır) |
+| Sifarişlər | `/print-jobs` | Filtr: kod, status, kiosk, tarix aralığı (`gg.aa.iiii` yazın və ya təqvimdən seçin); sətrə klik → detal |
+| Sifariş detalı | `/print-jobs/:id` | Parametrlər, qiymət snapshot-u (profil dəyişəndə dəyişmir), çap cəhdləri, status tarixçəsi; növbədəki sifariş üçün **Sifarişi ləğv et** (səbəb məcburidir) |
+| Kiosk → Printerlər | `/kiosks/:id` | Printer seçimi, imkanları söndürmək, **Printerləri yenilə**, **Test çap** — nəticə canlı gəlir |
+| Kiosk → Növbə / Sifarişlər | `/kiosks/:id` | Kioskun canlı növbəsi və yalnız həmin kioskun sifarişləri |
+| Kiosk → Sərf | `/kiosks/:id` | Lotok səviyyəsi, doldurma (Əlavə et / Tam doldur / Dəqiq say), hərəkətlər |
+
+Operator hesabı (`dev-operator@neoprint.local`) printerləri, sifarişləri və sərfi görür, kağız doldura bilir.
+
+Real printer və ya real cihaz tələb edən yoxlamalar (məs. çapın ortasında elektrik kəsilməsi): `docs/MANUAL_TESTS.md`.
+
+---
+
 ## 8. Build, test, lint
 
 ```bash

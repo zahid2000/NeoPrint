@@ -39,18 +39,22 @@ Windows kiosku (Shell Launcher, Keyboard Filter), real printer və real USB fla�
 
 | Fayl | Nə göstərir |
 |---|---|
-| `admin-01-dashboard.png` | "Kioskların vəziyyəti": status sayları və "Diqqət tələb edir" siyahısı. KSK-9002 təhlükəsiz rejimdədir; KSK-9004-ün heartbeat-i köhnədir → "Əlaqə yoxdur" (T-083) |
+| `admin-01-dashboard.png` | "Kioskların vəziyyəti": status sayları və "Diqqət tələb edir" siyahısı. KSK-9004-ün heartbeat-i köhnədir → siyahıda "Əlaqə yoxdur" (T-083), sayda da "Oflayn" (T-091). KSK-9002 (təhlükəsiz rejimdən çıxandan sonra) "Onlayn"-dadır |
 | `admin-02-kiosk-printers.png` | Kiosk → Printerlər: seçilmiş printer, imkanlar (yalnız söndürmək olar), əmrlər |
 | `admin-04-kiosk-safe-mode.png` | Kiosk redaktorunda təhlükəsiz rejim banner-i, status "Servisdə" |
-| `admin-05-print-jobs.png` | Sifarişlər səhifəsi: filtrlər, status chip-ləri, "Ödənişsiz (sınaq mühiti)" |
-| `admin-06-print-job-detail.png` | Sifariş detalı: parametrlər, qiymət snapshot-u, çap cəhdləri. Sayğac yoxdursa "Sayğac yoxdur" (T-084) |
-| `admin-07-kiosk-supplies.png` | Kiosk → Sərf: lotok səviyyələri, doldurma forması (operator hesabı ilə "Tam doldur"), hərəkətlər |
+| `admin-05-print-jobs.png` | Sifarişlər səhifəsi: filtrlər, "Tarix aralığı" `dd.MM.yyyy` ilə (T-090), status chip-ləri, "Ödənişsiz (sınaq mühiti)". Brauzer ingiliscədir — format yenə `28.09.2026` |
+| `admin-06-print-job-detail.png` | Sifariş detalı: parametrlər, qiymət snapshot-u, çap cəhdləri. Sayğac yoxdursa "Sayğac yoxdur" (T-084); "Sifarişlərə qayıt" solda (T-085) |
+| `admin-07-kiosk-supplies.png` | Kiosk → Sərf: lotok səviyyələri, doldurma forması (operator hesabı ilə "Tam doldur"), hərəkətlərdə kağız "A4 kağızı" (T-085) |
 | `admin-08-kiosk-queue.png` | Kiosk → Növbə (boş vəziyyət) |
 | `admin-09-kiosk-orders.png` | Kiosk → Sifarişlər (siyahı kiosk ilə süzülüb) |
 | `admin-10-feature-flags.png` | Funksiya açarları: insan dilində ad + izah, texniki açar kiçik şriftlə (T-059) |
+| `admin-11-date-invalid.png` | Tarix aralığına `2026-09-27` yazılıb: sahə qırmızı, altında nə olduğu və necə yazmaq lazım olduğu; filtr tətbiq olunmur, digər sahələr yerindən oynamır (T-090) |
+| `admin-12-date-calendar.png` | Təqvim Azərbaycan dilində: "Sentyabr 2026", həftə bazar ertəsindən (Be, Ça, Ç, Ca, C, Ş, B), seçilmiş aralıq 28–29 (T-090) |
 
 ## Mobil
 
 | Fayl | Nə göstərir |
 |---|---|
 | `mobile-01-home.png` | Chrome-da ana səhifə (`dev-user`). Balans kartı yoxdur, yarımçıq element görünmür (T-060) |
+
+`admin-01`, `admin-05` … `admin-08` T-085 / T-087 düzəlişləri real stack-ə yığılandan sonra yenidən çəkilib: sidebar-da "Sifarişlər" ikonu, boş vəziyyət ikonu və hərəkətlərdə "A4 kağızı" görünür.
