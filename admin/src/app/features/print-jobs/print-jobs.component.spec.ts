@@ -217,5 +217,10 @@ describe('PrintJobDetailComponent', () => {
     expect(component.counterText(attempt)).toBe('jobs.counter jobs.counterUnit.sheets');
     expect(component.counterText({ ...attempt, counterUnit: null })).toBe('jobs.counter');
     expect(component.counterText({ ...attempt, counterAfter: null })).toBe('jobs.noCounter');
+    // The API leaves null fields out of the JSON.
+    const withoutCounter: Partial<typeof attempt> = { ...attempt };
+    delete withoutCounter.counterBefore;
+    delete withoutCounter.counterAfter;
+    expect(component.counterText(withoutCounter as typeof attempt)).toBe('jobs.noCounter');
   });
 });

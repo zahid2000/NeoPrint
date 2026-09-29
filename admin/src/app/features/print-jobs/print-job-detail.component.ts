@@ -367,7 +367,8 @@ export class PrintJobDetailComponent {
   }
 
   counterText(attempt: PrintAttempt): string {
-    if (attempt.counterBefore === null || attempt.counterAfter === null) {
+    // == null: the API leaves out null fields, so a missing counter arrives as undefined.
+    if (attempt.counterBefore == null || attempt.counterAfter == null) {
       return this.t('jobs.noCounter');
     }
 
