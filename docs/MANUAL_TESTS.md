@@ -118,3 +118,56 @@ hesabatına) əlavə edin.
 
 Hər hansı yoxlama gözləniləndən fərqlidirsə: sifariş kodunu, vaxtı və kiosk
 jurnalını saxlayın, `TASKS.md`-yə tapıntı kimi yazın.
+
+## MT-02. Real printer (T-092)
+
+**Nə vaxt:** Addım 7, pilotdan əvvəl. MT-01-dən əvvəl.
+
+**Hazırlıq:** kiosk `KIOSK_SETUP.md` ilə quraşdırılıb, real printer USB və ya
+şəbəkə ilə qoşulub, OS-də quraşdırılıb (Windows — sürücü; Linux — CUPS).
+
+| # | Addım | Gözlənilən |
+|---|---|---|
+| 1 | Admin → kiosk → **Printerlər** | Real printer siyahıdadır. Fake printer yalnız `UseFakePrinter` açıqdırsa görünür. İmkanlar (rəng, ikitərəfli, A3) printerin real imkanlarına uyğundur |
+| 2 | Printeri **Əsas et** → **Test çap** | Test səhifəsi çıxır, əmr "Uğurlu", kiosk `Online`, A4 sayğacı 1 azalır |
+| 3 | Rəngli printerdə "Rəng"i söndürün (imkanı söndür) | Kioskun parametr ekranında rəngli seçim deaktivdir, yanında səbəb |
+| 4 | Flaşdan 3 səhifəlik PDF, ikitərəfli (printer bacarırsa) | Kağız sayı, üzlər və admin → sifariş → "Çap cəhdləri" uyğundur |
+| 5 | SNMP sayğacı olan printerdə sifariş | "Printer sayğacı" sütununda əvvəl → sonra, fərq çıxan vərəqlərə bərabərdir |
+| 6 | Çap zamanı kağız qutusunu boşaldın / qapağı açın | Job `Interrupted`, kiosk `Paused`, ekranda "printer dayandı" izahı; admin dashboard-da kiosk "Diqqət tələb edir"-də |
+| 7 | Printerin kabelini çıxarın, 1 dəq sonra taxın | Kiosk printerin itdiyini göstərir, qoşulanda özü `Online` olur, növbə davam edir |
+
+## MT-03. Windows kiosk provisioning (T-093)
+
+**Nə vaxt:** Addım 7, pilotdan əvvəl. **Harada:** Windows 11 IoT Enterprise
+LTSC virtual maşını (Hyper-V / VirtualBox), snapshot ilə — səhv olarsa geri
+qayıtmaq üçün.
+
+Quraşdırma: `KIOSK_SETUP.md` bölmə 3 (`-EnrollmentToken` ilə). Sonra:
+
+| # | Yoxlama | Gözlənilən |
+|---|---|---|
+| 1 | Restart-dan sonra | `kiosk` hesabı ilə avtomatik giriş, ekranda yalnız NeoPrint (Explorer, tapşırıq paneli yoxdur) |
+| 2 | Aktivləşdirmə | Kod ekranı olmadan admin paneldə kiosk aktivdir (token) |
+| 3 | Klaviatura: `Win`, `Alt+Tab`, `Alt+F4`, `Ctrl+Shift+Esc`, `Ctrl+Alt+Del` | Heç biri NeoPrint-dən çıxarmır (Keyboard Filter + hook) |
+| 4 | Texniki girişdə: `Get-Service -DisplayName "NeoPrint agent"`; sonra `Stop-Process -Name NeoPrint.Kiosk` | Agent `Running`; öldürülən tətbiqi Agent özü yenidən açır |
+| 5 | Konvertorun şəbəkəsi: texniki girişdə `Get-NetFirewallRule -Group "NeoPrint converters"` | LibreOffice / Ghostscript üçün "no network" qaydaları var; DOCX çapı yenə işləyir |
+| 6 | Gizli admin çıxışı (loqoya 5 toxunuş → PIN → "Texniki giriş") | Logon ekranı, administrator ilə Explorer açılır; restart → yenidən kiosk |
+| 7 | Skripti ikinci dəfə işə salın | Xətasız bitir, heç nəyi təkrarlamır (idempotent) |
+| 8 | `C:\ProgramData\NeoPrint` ACL-i | Yalnız `SYSTEM` və `kiosk`; adi istifadəçi `device`-i oxuya bilmir |
+
+## MT-04. Linux kiosk cihazı və real flaş (T-094)
+
+**Nə vaxt:** Addım 7, pilotdan əvvəl. **Harada:** Ubuntu 24.04 Server olan
+real kompüter və ya ekranlı VM (USB passthrough ilə).
+
+Quraşdırma: `KIOSK_SETUP.md` bölmə 4. Sonra:
+
+| # | Yoxlama | Gözlənilən |
+|---|---|---|
+| 1 | `sudo reboot` | `tty1`-də `cage` NeoPrint-i bütün ekrana açır, login soruşulmur |
+| 2 | FAT32 / exFAT / NTFS flaş taxın | 5 saniyə ərzində fayl siyahısı açılır ("USB" nişanı) |
+| 3 | Flaşı sifarişdən sonra, çapdan əvvəl çıxarın | Çap yenə olur (fayl şifrəli spool-dadır) |
+| 4 | Flaşı fayl siyahısında çıxarın | Ana ekrana qayıdır, xəta pəncərəsi yoxdur |
+| 5 | Gizli admin çıxışı → "Texniki giriş" | `tty1`-də konsol login; `sudo systemctl start neoprint-kiosk` kiosku qaytarır |
+| 6 | `sudo -u neoprint-convert curl -m 5 https://example.com` | Bağlantı rədd olunur (konvertorun şəbəkəsi yoxdur) |
+| 7 | `ls -l /var/lib/neoprint` | Sahiblər `KIOSK_PROVISIONING.md`-dəki kimi (`device` — `kiosk 700`) |
