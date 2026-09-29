@@ -30,7 +30,8 @@ function setUp(permissions: string[], dialog?: unknown): HttpTestingController {
         provide: AuthService,
         useValue: {
           can: (permission: string) => permissions.includes(permission),
-          canAny: (list: readonly string[]) => list.some((permission) => permissions.includes(permission)),
+          canAny: (list: readonly string[]) =>
+            list.some((permission) => permissions.includes(permission)),
         },
       },
       ...(dialog ? [{ provide: MatDialog, useValue: dialog }] : []),
@@ -142,6 +143,40 @@ describe('PrintJobsComponent', () => {
     component.search();
     backend.expectNone((call) => call.url === '/api/admin/print-jobs');
   });
+
+  it('asks for whole days of the chosen period and ignores a date it could not read', async () => {
+    backend = setUp([Permissions.jobsView]);
+
+    const fixture = TestBed.createComponent(PrintJobsComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    backend
+      .expectOne((call) => call.url === '/api/admin/print-jobs')
+      .flush({ items: [], total: 0, page: 1, pageSize: 20 });
+    await fixture.whenStable();
+
+    component.from.set(component.validDate(new Date(2026, 8, 27, 15, 30)));
+    component.to.set(component.validDate(new Date(2026, 8, 29)));
+    component.search();
+
+    const request = backend.expectOne((call) => call.url === '/api/admin/print-jobs');
+    expect(request.request.params.get('from')).toBe(new Date(2026, 8, 27).toISOString());
+    expect(request.request.params.get('to')).toBe(
+      new Date(2026, 8, 29, 23, 59, 59, 999).toISOString(),
+    );
+    request.flush({ items: [], total: 0, page: 1, pageSize: 20 });
+    await fixture.whenStable();
+
+    expect(component.validDate(new Date(Number.NaN))).toBeNull();
+    expect(component.filtersActive()).toBe(true);
+
+    component.clearFilters();
+    const cleared = backend.expectOne((call) => call.url === '/api/admin/print-jobs');
+    expect(cleared.request.params.has('from')).toBe(false);
+    expect(cleared.request.params.has('to')).toBe(false);
+    cleared.flush({ items: [], total: 0, page: 1, pageSize: 20 });
+  });
 });
 
 describe('PrintJobDetailComponent', () => {
@@ -156,7 +191,12 @@ describe('PrintJobDetailComponent', () => {
     fixture.componentRef.setInput('id', 'j1');
     fixture.detectChanges();
 
-    const detail: PrintJobDetail = { job: { ...job, status }, kioskCode: 'KSK-0001', history: [], attempts: [] };
+    const detail: PrintJobDetail = {
+      job: { ...job, status },
+      kioskCode: 'KSK-0001',
+      history: [],
+      attempts: [],
+    };
     backend.expectOne('/api/admin/print-jobs/j1').flush(detail);
     await fixture.whenStable();
 
@@ -164,11 +204,17 @@ describe('PrintJobDetailComponent', () => {
   }
 
   it('offers cancelling only for a job still waiting, and only with the permission', async () => {
-    expect((await open('Queued', [Permissions.jobsView, Permissions.jobsCancel])).canCancel()).toBe(true);
+    expect((await open('Queued', [Permissions.jobsView, Permissions.jobsCancel])).canCancel()).toBe(
+      true,
+    );
     TestBed.resetTestingModule();
-    expect((await open('Printing', [Permissions.jobsView, Permissions.jobsCancel])).canCancel()).toBe(false);
+    expect(
+      (await open('Printing', [Permissions.jobsView, Permissions.jobsCancel])).canCancel(),
+    ).toBe(false);
     TestBed.resetTestingModule();
-    expect((await open('Paid', [Permissions.jobsView, Permissions.jobsCancel])).canCancel()).toBe(false);
+    expect((await open('Paid', [Permissions.jobsView, Permissions.jobsCancel])).canCancel()).toBe(
+      false,
+    );
     TestBed.resetTestingModule();
     expect((await open('Queued', [Permissions.jobsView])).canCancel()).toBe(false);
   });
@@ -188,7 +234,12 @@ describe('PrintJobDetailComponent', () => {
 
     backend
       .expectOne('/api/admin/print-jobs/j1')
-      .flush({ job: { ...job, status: 'Cancelled' }, kioskCode: 'KSK-0001', history: [], attempts: [] });
+      .flush({
+        job: { ...job, status: 'Cancelled' },
+        kioskCode: 'KSK-0001',
+        history: [],
+        attempts: [],
+      });
     await cancelling;
 
     expect(component.detail()?.job.status).toBe('Cancelled');

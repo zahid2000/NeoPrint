@@ -1,6 +1,7 @@
 import { Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -18,6 +19,7 @@ import { AdminHubService } from '../../core/realtime/admin-hub.service';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
+import { provideNeoDates } from '../../shared/date-input';
 import { DateTimePipe, MoneyPipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
@@ -27,6 +29,16 @@ const pageSize = 20;
 
 /** How long the list waits after a queue change before it asks again, so a burst is one request. */
 const refreshDelayMs = 1000;
+
+/** The first moment of the chosen day in the viewer's time zone, as the API expects it. */
+const startOfDay = (date: Date | null): string | null =>
+  date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString() : null;
+
+/** The last moment of the chosen day, so "to 29.09" includes the whole of the 29th. */
+const endOfDay = (date: Date | null): string | null =>
+  date
+    ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).toISOString()
+    : null;
 
 /**
  * The "Print job-lar" page (plan section 8A.3): every order, newest first,
@@ -38,6 +50,7 @@ const refreshDelayMs = 1000;
   imports: [
     FormsModule,
     MatButtonModule,
+    MatDatepickerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -52,10 +65,15 @@ const refreshDelayMs = 1000;
     DateTimePipe,
     MoneyPipe,
   ],
+  // dd.MM.yyyy in every language, whatever the browser's own is (docs/DESIGN_SYSTEM.md, "Tarix sahəsi").
+  providers: [provideNeoDates()],
   template: `
     <div [class.neo-page]="!embedded()">
       @if (!embedded()) {
-        <app-page-header [title]="'jobs.title' | translate" [description]="'jobs.description' | translate" />
+        <app-page-header
+          [title]="'jobs.title' | translate"
+          [description]="'jobs.description' | translate"
+        />
       }
 
       @if (problem(); as problem) {
@@ -66,12 +84,22 @@ const refreshDelayMs = 1000;
         <mat-form-field>
           <mat-label>{{ 'jobs.filterCode' | translate }}</mat-label>
           <mat-icon matPrefix>search</mat-icon>
-          <input matInput [ngModel]="code()" (ngModelChange)="code.set($event)" (keyup.enter)="search()" (blur)="search()" />
+          <input
+            matInput
+            [ngModel]="code()"
+            (ngModelChange)="code.set($event)"
+            (keyup.enter)="search()"
+            (blur)="search()"
+          />
         </mat-form-field>
 
         <mat-form-field>
           <mat-label>{{ 'jobs.filterStatus' | translate }}</mat-label>
-          <mat-select multiple [ngModel]="statuses()" (ngModelChange)="statuses.set($event); search()">
+          <mat-select
+            multiple
+            [ngModel]="statuses()"
+            (ngModelChange)="statuses.set($event); search()"
+          >
             @for (option of statusOptions; track option) {
               <mat-option [value]="option">{{ 'jobs.status.' + option | translate }}</mat-option>
             }
@@ -90,14 +118,26 @@ const refreshDelayMs = 1000;
           </mat-form-field>
         }
 
-        <mat-form-field>
-          <mat-label>{{ 'jobs.filterFrom' | translate }}</mat-label>
-          <input matInput type="date" [ngModel]="from()" (ngModelChange)="from.set($event); search()" />
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>{{ 'jobs.filterTo' | translate }}</mat-label>
-          <input matInput type="date" [ngModel]="to()" (ngModelChange)="to.set($event); search()" />
+        <!-- The format is the placeholder: a filter row has no hint line (docs/DESIGN_SYSTEM.md, "Tarix sahəsi"). -->
+        <mat-form-field class="jobs__period" subscriptSizing="dynamic">
+          <mat-label>{{ 'jobs.filterPeriod' | translate }}</mat-label>
+          <mat-date-range-input [rangePicker]="period">
+            <input
+              matStartDate
+              [placeholder]="'date.hint' | translate"
+              [ngModel]="from()"
+              (ngModelChange)="from.set(validDate($event)); search()"
+            />
+            <input
+              matEndDate
+              [placeholder]="'date.hint' | translate"
+              [ngModel]="to()"
+              (ngModelChange)="to.set(validDate($event)); search()"
+            />
+          </mat-date-range-input>
+          <mat-datepicker-toggle matIconSuffix [for]="period" />
+          <mat-date-range-picker #period />
+          <mat-error>{{ 'date.invalid' | translate }}</mat-error>
         </mat-form-field>
       </app-filter-bar>
 
@@ -115,7 +155,11 @@ const refreshDelayMs = 1000;
             </button>
           </app-empty-state>
         } @else {
-          <app-empty-state icon="receipt_long" [message]="'jobs.empty' | translate" [hint]="'jobs.emptyHint' | translate" />
+          <app-empty-state
+            icon="receipt_long"
+            [message]="'jobs.empty' | translate"
+            [hint]="'jobs.emptyHint' | translate"
+          />
         }
       } @else if (jobs().length > 0) {
         <div class="neo-table-wrapper">
@@ -133,14 +177,19 @@ const refreshDelayMs = 1000;
             <ng-container matColumnDef="status">
               <th mat-header-cell *matHeaderCellDef>{{ 'jobs.colStatus' | translate }}</th>
               <td mat-cell *matCellDef="let job">
-                <app-status-chip [status]="job.status" [text]="'jobs.status.' + job.status | translate" />
+                <app-status-chip
+                  [status]="job.status"
+                  [text]="'jobs.status.' + job.status | translate"
+                />
               </td>
             </ng-container>
             <ng-container matColumnDef="file">
               <th mat-header-cell *matHeaderCellDef>{{ 'jobs.colFile' | translate }}</th>
               <td mat-cell *matCellDef="let job" class="jobs__file">
                 {{ job.fileName ?? ('jobs.noFile' | translate) }}
-                <span class="neo-caption jobs__block">{{ 'jobs.source.' + job.source | translate }}</span>
+                <span class="neo-caption jobs__block">{{
+                  'jobs.source.' + job.source | translate
+                }}</span>
               </td>
             </ng-container>
             <ng-container matColumnDef="pages">
@@ -188,8 +237,15 @@ const refreshDelayMs = 1000;
               <mat-icon>chevron_left</mat-icon>
               {{ 'jobs.previous' | translate }}
             </button>
-            <span class="neo-caption">{{ 'jobs.pageOf' | translate: { page: page(), pages: pages() } }}</span>
-            <button mat-button type="button" [disabled]="page() === pages()" (click)="go(page() + 1)">
+            <span class="neo-caption">{{
+              'jobs.pageOf' | translate: { page: page(), pages: pages() }
+            }}</span>
+            <button
+              mat-button
+              type="button"
+              [disabled]="page() === pages()"
+              (click)="go(page() + 1)"
+            >
               {{ 'jobs.next' | translate }}
               <mat-icon iconPositionEnd>chevron_right</mat-icon>
             </button>
@@ -201,6 +257,11 @@ const refreshDelayMs = 1000;
   styles: `
     .jobs__block {
       display: block;
+    }
+
+    /* Wide enough for two dates; an error wraps under the field instead of widening the row. */
+    .jobs__period {
+      width: 280px;
     }
 
     .jobs__file {
@@ -244,8 +305,8 @@ export class PrintJobsComponent implements OnInit {
   readonly code = signal('');
   readonly statuses = signal<string[]>([]);
   readonly kiosk = signal<string | null>(null);
-  readonly from = signal('');
-  readonly to = signal('');
+  readonly from = signal<Date | null>(null);
+  readonly to = signal<Date | null>(null);
 
   readonly embedded = computed(() => !!this.kioskId());
 
@@ -262,8 +323,8 @@ export class PrintJobsComponent implements OnInit {
       this.code().trim() !== '' ||
       this.statuses().length > 0 ||
       (!this.embedded() && this.kiosk() !== null) ||
-      this.from() !== '' ||
-      this.to() !== '',
+      this.from() !== null ||
+      this.to() !== null,
   );
 
   /** The filters the last request used, so an unchanged code field does not reload on blur. */
@@ -314,9 +375,14 @@ export class PrintJobsComponent implements OnInit {
     this.code.set('');
     this.statuses.set([]);
     this.kiosk.set(null);
-    this.from.set('');
-    this.to.set('');
+    this.from.set(null);
+    this.to.set(null);
     this.search();
+  }
+
+  /** A half-typed or wrong date is not a filter: the field shows why, the list ignores it. */
+  validDate(value: Date | null): Date | null {
+    return value && !Number.isNaN(value.getTime()) ? value : null;
   }
 
   open(job: PrintJobListItem): void {
@@ -328,8 +394,8 @@ export class PrintJobsComponent implements OnInit {
       kioskId: this.kioskId() ?? this.kiosk(),
       statuses: this.statuses(),
       code: this.code(),
-      from: this.from() ? new Date(`${this.from()}T00:00:00`).toISOString() : null,
-      to: this.to() ? new Date(`${this.to()}T23:59:59.999`).toISOString() : null,
+      from: startOfDay(this.from()),
+      to: endOfDay(this.to()),
       page: this.page(),
       pageSize,
     };

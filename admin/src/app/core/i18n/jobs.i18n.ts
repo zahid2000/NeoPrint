@@ -10,7 +10,8 @@ export const jobsTranslations: PageTranslations = {
     'nav.printJobs': 'Sifarişlər',
 
     'jobs.title': 'Sifarişlər',
-    'jobs.description': 'Bütün kiosklarda yaradılan çap sifarişləri, ən yenisi əvvəldə. Sətrə klikləyin — tarixçə və çap cəhdləri açılır.',
+    'jobs.description':
+      'Bütün kiosklarda yaradılan çap sifarişləri, ən yenisi əvvəldə. Sətrə klikləyin — tarixçə və çap cəhdləri açılır.',
     'jobs.loadFailedEffect': 'Sifarişlər göstərilə bilmir. Kiosklarda çap buna görə dayanmır.',
     'jobs.empty': 'Hələ sifariş yoxdur.',
     'jobs.emptyHint': 'Kioskda flaşdan sifariş veriləndə burada görünəcək.',
@@ -20,8 +21,7 @@ export const jobsTranslations: PageTranslations = {
     'jobs.filterKiosk': 'Kiosk',
     'jobs.filterAllKiosks': 'Bütün kiosklar',
     'jobs.filterCode': 'Sifariş kodu',
-    'jobs.filterFrom': 'Başlanğıc',
-    'jobs.filterTo': 'Son',
+    'jobs.filterPeriod': 'Tarix aralığı',
     'jobs.colCode': 'Kod',
     'jobs.colKiosk': 'Kiosk',
     'jobs.colStatus': 'Status',
@@ -55,7 +55,8 @@ export const jobsTranslations: PageTranslations = {
 
     'jobs.backToList': 'Sifarişlərə qayıt',
     'jobs.detailTitle': 'Sifariş {{code}}',
-    'jobs.loadOneFailedEffect': 'Sifariş göstərilə bilmir. Səhifəni yeniləyin və ya siyahıya qayıdın.',
+    'jobs.loadOneFailedEffect':
+      'Sifariş göstərilə bilmir. Səhifəni yeniləyin və ya siyahıya qayıdın.',
     'jobs.kiosk': 'Kiosk',
     'jobs.source': 'Mənbə',
     'jobs.file': 'Fayl',
@@ -96,7 +97,8 @@ export const jobsTranslations: PageTranslations = {
     'jobs.actor.Admin': 'Administrator',
     'jobs.actor.Kiosk': 'Kiosk',
     'jobs.attemptsTitle': 'Çap cəhdləri',
-    'jobs.attemptsHint': 'Çapın olub-olmadığını təsdiqləyən sübut: printer, spooler istinadı və printerin öz sayğacı.',
+    'jobs.attemptsHint':
+      'Çapın olub-olmadığını təsdiqləyən sübut: printer, spooler istinadı və printerin öz sayğacı.',
     'jobs.attemptsEmpty': 'Bu sifariş hələ printerə göndərilməyib.',
     'jobs.colAttempt': '№',
     'jobs.colPrinter': 'Printer',
@@ -112,10 +114,12 @@ export const jobsTranslations: PageTranslations = {
     'jobs.recovered': 'Restart-dan sonra müəyyən edilib',
     'jobs.cancel': 'Sifarişi ləğv et',
     'jobs.cancelTitle': '{{code}} sifarişi ləğv edilsin?',
-    'jobs.cancelExplanation': 'Sifariş növbədən çıxarılır və çap olunmayacaq. Printerdə olan sifarişi ləğv etmək mümkün deyil.',
+    'jobs.cancelExplanation':
+      'Sifariş növbədən çıxarılır və çap olunmayacaq. Printerdə olan sifarişi ləğv etmək mümkün deyil.',
     'jobs.cancelled': '{{code}} sifarişi ləğv edildi.',
 
-    'queue.tabDescription': 'Kioskun indiki növbəsi — kioskun ekranındakı ilə eyni, canlı yenilənir.',
+    'queue.tabDescription':
+      'Kioskun indiki növbəsi — kioskun ekranındakı ilə eyni, canlı yenilənir.',
     'queue.loadFailedEffect': 'Növbə göstərilə bilmir. Kiosk çapı davam edir.',
     'queue.empty': 'Növbə boşdur.',
     'queue.emptyHint': 'Yeni sifariş verilən kimi burada görünəcək.',
@@ -127,10 +131,12 @@ export const jobsTranslations: PageTranslations = {
     'queue.colQueued': 'Növbəyə düşüb',
     'queue.anonymous': 'Anonim',
 
-    'printers.tabDescription': 'Kioskun gördüyü printerlər. Birini "Əsas et" ilə seçin, sonra test səhifəsi çap edin — uğurlu test kiosku xidmətə açır.',
+    'printers.tabDescription':
+      'Kioskun gördüyü printerlər. Birini "Əsas et" ilə seçin, sonra test səhifəsi çap edin — uğurlu test kiosku xidmətə açır.',
     'printers.loadFailedEffect': 'Printerlər göstərilə bilmir. Kioskun çapı buna görə dayanmır.',
     'printers.empty': 'Kiosk hələ printer bildirməyib.',
-    'printers.emptyHint': 'Kiosk tətbiqi açılanda printerləri bildirir. "Printerləri yenilə" ilə yenidən soruşun.',
+    'printers.emptyHint':
+      'Kiosk tətbiqi açılanda printerləri bildirir. "Printerləri yenilə" ilə yenidən soruşun.',
     'printers.notSelected': 'Printer seçilməyib — kiosk sifariş qəbul etmir.',
     'printers.colName': 'Printer',
     'printers.colDriver': 'Drayver',
@@ -148,7 +154,8 @@ export const jobsTranslations: PageTranslations = {
     'printers.capDuplex': 'İkitərəfli',
     'printers.capA3': 'A3',
     'printers.capabilitiesTitle': 'Kioskda təklif olunan imkanlar',
-    'printers.capabilitiesHint': 'Printerin bacardığını söndürmək olar (məs. rəngli kartric yoxdursa); bacarmadığını yandırmaq olmaz.',
+    'printers.capabilitiesHint':
+      'Printerin bacardığını söndürmək olar (məs. rəngli kartric yoxdursa); bacarmadığını yandırmaq olmaz.',
     'printers.follow': 'Printerə uyğun',
     'printers.switchedOff': 'Söndürülüb',
     'printers.notSupported': 'Printer bacarmır',
@@ -166,7 +173,8 @@ export const jobsTranslations: PageTranslations = {
     'printers.commandStatus.Failed': 'Alınmadı',
     'printers.commandStatus.Expired': 'Vaxtı keçib',
 
-    'supplies.tabDescription': 'Lotokdakı kağız sayğacı: hər çap olunan vərəq çıxılır, doldurma burada qeyd olunur.',
+    'supplies.tabDescription':
+      'Lotokdakı kağız sayğacı: hər çap olunan vərəq çıxılır, doldurma burada qeyd olunur.',
     'supplies.loadFailedEffect': 'Sərf göstərilə bilmir. Kioskun çapı buna görə dayanmır.',
     'supplies.paperA4': 'A4 kağızı',
     'supplies.paperA3': 'A3 kağızı',
@@ -204,7 +212,8 @@ export const jobsTranslations: PageTranslations = {
     'kiosks.tabQueue': 'Növbə',
     'kiosks.tabJobs': 'Sifarişlər',
     'kiosks.tabSupplies': 'Sərf',
-    'kiosks.safeModeBanner': 'Kiosk {{since}}-dən təhlükəsiz rejimdədir: tətbiq tez-tez çökür və sifariş qəbul etmir. Yerində admin PIN menyusundan söndürün (KIOSK_SETUP, "Texniki giriş").',
+    'kiosks.safeModeBanner':
+      'Kiosk {{since}}-dən təhlükəsiz rejimdədir: tətbiq tez-tez çökür və sifariş qəbul etmir. Yerində admin PIN menyusundan söndürün (KIOSK_SETUP, "Texniki giriş").',
 
     'dashboard.kiosksTitle': 'Kioskların vəziyyəti',
     'dashboard.kiosksFailed': 'Kiosklar göstərilə bilmir. Kioskların işinə təsir etmir.',
@@ -223,7 +232,8 @@ export const jobsTranslations: PageTranslations = {
     'nav.printJobs': 'Orders',
 
     'jobs.title': 'Orders',
-    'jobs.description': 'Print orders placed at every kiosk, newest first. Click a row for its history and print attempts.',
+    'jobs.description':
+      'Print orders placed at every kiosk, newest first. Click a row for its history and print attempts.',
     'jobs.loadFailedEffect': 'Orders cannot be shown. Printing at the kiosks carries on.',
     'jobs.empty': 'No orders yet.',
     'jobs.emptyHint': 'An order placed from a flash drive at a kiosk shows up here.',
@@ -233,8 +243,7 @@ export const jobsTranslations: PageTranslations = {
     'jobs.filterKiosk': 'Kiosk',
     'jobs.filterAllKiosks': 'All kiosks',
     'jobs.filterCode': 'Order code',
-    'jobs.filterFrom': 'From',
-    'jobs.filterTo': 'To',
+    'jobs.filterPeriod': 'Period',
     'jobs.colCode': 'Code',
     'jobs.colKiosk': 'Kiosk',
     'jobs.colStatus': 'Status',
@@ -268,7 +277,8 @@ export const jobsTranslations: PageTranslations = {
 
     'jobs.backToList': 'Back to orders',
     'jobs.detailTitle': 'Order {{code}}',
-    'jobs.loadOneFailedEffect': 'The order cannot be shown. Reload the page or go back to the list.',
+    'jobs.loadOneFailedEffect':
+      'The order cannot be shown. Reload the page or go back to the list.',
     'jobs.kiosk': 'Kiosk',
     'jobs.source': 'Source',
     'jobs.file': 'File',
@@ -309,7 +319,8 @@ export const jobsTranslations: PageTranslations = {
     'jobs.actor.Admin': 'Admin',
     'jobs.actor.Kiosk': 'Kiosk',
     'jobs.attemptsTitle': 'Print attempts',
-    'jobs.attemptsHint': 'The evidence of whether it printed: the printer, the spooler reference and the printer\'s own counter.',
+    'jobs.attemptsHint':
+      "The evidence of whether it printed: the printer, the spooler reference and the printer's own counter.",
     'jobs.attemptsEmpty': 'This order has not been sent to the printer yet.',
     'jobs.colAttempt': 'No.',
     'jobs.colPrinter': 'Printer',
@@ -325,10 +336,12 @@ export const jobsTranslations: PageTranslations = {
     'jobs.recovered': 'Worked out after a restart',
     'jobs.cancel': 'Cancel the order',
     'jobs.cancelTitle': 'Cancel order {{code}}?',
-    'jobs.cancelExplanation': 'The order leaves the queue and will not print. An order at the printer cannot be cancelled.',
+    'jobs.cancelExplanation':
+      'The order leaves the queue and will not print. An order at the printer cannot be cancelled.',
     'jobs.cancelled': 'Order {{code}} was cancelled.',
 
-    'queue.tabDescription': 'The kiosk\'s queue right now - the same as on the kiosk\'s screen, updated live.',
+    'queue.tabDescription':
+      "The kiosk's queue right now - the same as on the kiosk's screen, updated live.",
     'queue.loadFailedEffect': 'The queue cannot be shown. The kiosk keeps printing.',
     'queue.empty': 'The queue is empty.',
     'queue.emptyHint': 'A new order shows up here as soon as it is placed.',
@@ -340,10 +353,12 @@ export const jobsTranslations: PageTranslations = {
     'queue.colQueued': 'Queued',
     'queue.anonymous': 'Anonymous',
 
-    'printers.tabDescription': 'The printers the kiosk can see. Choose one with "Make default", then print a test page - a good one opens the kiosk for service.',
+    'printers.tabDescription':
+      'The printers the kiosk can see. Choose one with "Make default", then print a test page - a good one opens the kiosk for service.',
     'printers.loadFailedEffect': 'Printers cannot be shown. The kiosk keeps printing.',
     'printers.empty': 'The kiosk has not reported any printer yet.',
-    'printers.emptyHint': 'The kiosk reports its printers when the application starts. Ask again with "Refresh printers".',
+    'printers.emptyHint':
+      'The kiosk reports its printers when the application starts. Ask again with "Refresh printers".',
     'printers.notSelected': 'No printer is chosen - the kiosk takes no orders.',
     'printers.colName': 'Printer',
     'printers.colDriver': 'Driver',
@@ -361,7 +376,8 @@ export const jobsTranslations: PageTranslations = {
     'printers.capDuplex': 'Double-sided',
     'printers.capA3': 'A3',
     'printers.capabilitiesTitle': 'What the kiosk offers',
-    'printers.capabilitiesHint': 'What the printer can do may be switched off (no colour cartridge, say); what it cannot do cannot be switched on.',
+    'printers.capabilitiesHint':
+      'What the printer can do may be switched off (no colour cartridge, say); what it cannot do cannot be switched on.',
     'printers.follow': 'As the printer',
     'printers.switchedOff': 'Switched off',
     'printers.notSupported': 'The printer cannot',
@@ -379,7 +395,8 @@ export const jobsTranslations: PageTranslations = {
     'printers.commandStatus.Failed': 'Did not work',
     'printers.commandStatus.Expired': 'Expired',
 
-    'supplies.tabDescription': 'The paper counter of the tray: every printed sheet comes off it, and refills are recorded here.',
+    'supplies.tabDescription':
+      'The paper counter of the tray: every printed sheet comes off it, and refills are recorded here.',
     'supplies.loadFailedEffect': 'Supplies cannot be shown. The kiosk keeps printing.',
     'supplies.paperA4': 'A4 paper',
     'supplies.paperA3': 'A3 paper',
@@ -396,7 +413,8 @@ export const jobsTranslations: PageTranslations = {
     'supplies.mode.Exact': 'Exact count',
     'supplies.modeHint.Add': 'The number of sheets you put in.',
     'supplies.modeHint.Full': 'The tray was filled to its capacity - no count needed.',
-    'supplies.modeHint.Exact': 'You counted the sheets in the tray: the counter becomes this number.',
+    'supplies.modeHint.Exact':
+      'You counted the sheets in the tray: the counter becomes this number.',
     'supplies.sheets': 'Sheets',
     'supplies.refill': 'Save',
     'supplies.refilled': 'The paper counter was updated.',
@@ -417,7 +435,8 @@ export const jobsTranslations: PageTranslations = {
     'kiosks.tabQueue': 'Queue',
     'kiosks.tabJobs': 'Orders',
     'kiosks.tabSupplies': 'Supplies',
-    'kiosks.safeModeBanner': 'The kiosk has been in safe mode since {{since}}: the application keeps crashing and takes no orders. Clear it on site from the admin PIN menu (KIOSK_SETUP, "Service access").',
+    'kiosks.safeModeBanner':
+      'The kiosk has been in safe mode since {{since}}: the application keeps crashing and takes no orders. Clear it on site from the admin PIN menu (KIOSK_SETUP, "Service access").',
 
     'dashboard.kiosksTitle': 'Kiosk status',
     'dashboard.kiosksFailed': 'Kiosks cannot be shown. The kiosks keep working.',
@@ -436,7 +455,8 @@ export const jobsTranslations: PageTranslations = {
     'nav.printJobs': 'Заказы',
 
     'jobs.title': 'Заказы',
-    'jobs.description': 'Заказы на печать со всех киосков, новые сверху. Нажмите на строку — откроются история и попытки печати.',
+    'jobs.description':
+      'Заказы на печать со всех киосков, новые сверху. Нажмите на строку — откроются история и попытки печати.',
     'jobs.loadFailedEffect': 'Заказы не удаётся показать. Печать на киосках не останавливается.',
     'jobs.empty': 'Заказов пока нет.',
     'jobs.emptyHint': 'Заказ с флешки на киоске появится здесь.',
@@ -446,8 +466,7 @@ export const jobsTranslations: PageTranslations = {
     'jobs.filterKiosk': 'Киоск',
     'jobs.filterAllKiosks': 'Все киоски',
     'jobs.filterCode': 'Код заказа',
-    'jobs.filterFrom': 'С',
-    'jobs.filterTo': 'По',
+    'jobs.filterPeriod': 'Период',
     'jobs.colCode': 'Код',
     'jobs.colKiosk': 'Киоск',
     'jobs.colStatus': 'Статус',
@@ -481,7 +500,8 @@ export const jobsTranslations: PageTranslations = {
 
     'jobs.backToList': 'К заказам',
     'jobs.detailTitle': 'Заказ {{code}}',
-    'jobs.loadOneFailedEffect': 'Заказ не удаётся показать. Обновите страницу или вернитесь к списку.',
+    'jobs.loadOneFailedEffect':
+      'Заказ не удаётся показать. Обновите страницу или вернитесь к списку.',
     'jobs.kiosk': 'Киоск',
     'jobs.source': 'Источник',
     'jobs.file': 'Файл',
@@ -522,7 +542,8 @@ export const jobsTranslations: PageTranslations = {
     'jobs.actor.Admin': 'Админ',
     'jobs.actor.Kiosk': 'Киоск',
     'jobs.attemptsTitle': 'Попытки печати',
-    'jobs.attemptsHint': 'Доказательство того, напечатан ли заказ: принтер, номер в спулере и собственный счётчик принтера.',
+    'jobs.attemptsHint':
+      'Доказательство того, напечатан ли заказ: принтер, номер в спулере и собственный счётчик принтера.',
     'jobs.attemptsEmpty': 'Заказ ещё не отправлялся на принтер.',
     'jobs.colAttempt': '№',
     'jobs.colPrinter': 'Принтер',
@@ -538,10 +559,12 @@ export const jobsTranslations: PageTranslations = {
     'jobs.recovered': 'Определено после перезапуска',
     'jobs.cancel': 'Отменить заказ',
     'jobs.cancelTitle': 'Отменить заказ {{code}}?',
-    'jobs.cancelExplanation': 'Заказ уйдёт из очереди и не будет напечатан. Заказ, который уже печатается, отменить нельзя.',
+    'jobs.cancelExplanation':
+      'Заказ уйдёт из очереди и не будет напечатан. Заказ, который уже печатается, отменить нельзя.',
     'jobs.cancelled': 'Заказ {{code}} отменён.',
 
-    'queue.tabDescription': 'Текущая очередь киоска — та же, что на экране киоска, обновляется в реальном времени.',
+    'queue.tabDescription':
+      'Текущая очередь киоска — та же, что на экране киоска, обновляется в реальном времени.',
     'queue.loadFailedEffect': 'Очередь не удаётся показать. Киоск продолжает печатать.',
     'queue.empty': 'Очередь пуста.',
     'queue.emptyHint': 'Новый заказ появится здесь сразу после оформления.',
@@ -553,10 +576,12 @@ export const jobsTranslations: PageTranslations = {
     'queue.colQueued': 'В очереди с',
     'queue.anonymous': 'Аноним',
 
-    'printers.tabDescription': 'Принтеры, которые видит киоск. Выберите один кнопкой «По умолчанию», затем напечатайте тестовую страницу — удачная печать открывает киоск для работы.',
+    'printers.tabDescription':
+      'Принтеры, которые видит киоск. Выберите один кнопкой «По умолчанию», затем напечатайте тестовую страницу — удачная печать открывает киоск для работы.',
     'printers.loadFailedEffect': 'Принтеры не удаётся показать. Киоск продолжает печатать.',
     'printers.empty': 'Киоск ещё не сообщил ни одного принтера.',
-    'printers.emptyHint': 'Киоск сообщает принтеры при запуске приложения. Запросите снова кнопкой «Обновить принтеры».',
+    'printers.emptyHint':
+      'Киоск сообщает принтеры при запуске приложения. Запросите снова кнопкой «Обновить принтеры».',
     'printers.notSelected': 'Принтер не выбран — киоск не принимает заказы.',
     'printers.colName': 'Принтер',
     'printers.colDriver': 'Драйвер',
@@ -574,7 +599,8 @@ export const jobsTranslations: PageTranslations = {
     'printers.capDuplex': 'Двусторонняя',
     'printers.capA3': 'A3',
     'printers.capabilitiesTitle': 'Что предлагает киоск',
-    'printers.capabilitiesHint': 'То, что принтер умеет, можно отключить (например, нет цветного картриджа); то, чего он не умеет, включить нельзя.',
+    'printers.capabilitiesHint':
+      'То, что принтер умеет, можно отключить (например, нет цветного картриджа); то, чего он не умеет, включить нельзя.',
     'printers.follow': 'Как у принтера',
     'printers.switchedOff': 'Отключено',
     'printers.notSupported': 'Принтер не умеет',
@@ -592,7 +618,8 @@ export const jobsTranslations: PageTranslations = {
     'printers.commandStatus.Failed': 'Не удалось',
     'printers.commandStatus.Expired': 'Истекла',
 
-    'supplies.tabDescription': 'Счётчик бумаги в лотке: каждый напечатанный лист вычитается, пополнение отмечается здесь.',
+    'supplies.tabDescription':
+      'Счётчик бумаги в лотке: каждый напечатанный лист вычитается, пополнение отмечается здесь.',
     'supplies.loadFailedEffect': 'Расходники не удаётся показать. Киоск продолжает печатать.',
     'supplies.paperA4': 'Бумага A4',
     'supplies.paperA3': 'Бумага A3',
@@ -630,7 +657,8 @@ export const jobsTranslations: PageTranslations = {
     'kiosks.tabQueue': 'Очередь',
     'kiosks.tabJobs': 'Заказы',
     'kiosks.tabSupplies': 'Расходники',
-    'kiosks.safeModeBanner': 'Киоск в безопасном режиме с {{since}}: приложение часто падает и не принимает заказы. Отключите на месте через меню с PIN администратора (KIOSK_SETUP, «Сервисный доступ»).',
+    'kiosks.safeModeBanner':
+      'Киоск в безопасном режиме с {{since}}: приложение часто падает и не принимает заказы. Отключите на месте через меню с PIN администратора (KIOSK_SETUP, «Сервисный доступ»).',
 
     'dashboard.kiosksTitle': 'Состояние киосков',
     'dashboard.kiosksFailed': 'Киоски не удаётся показать. На работу киосков это не влияет.',

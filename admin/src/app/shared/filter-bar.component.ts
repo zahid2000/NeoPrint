@@ -20,7 +20,8 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-3);
-      align-items: center;
+      /* Top, not centre: a field showing an error grows downwards without moving the others. */
+      align-items: flex-start;
       padding: var(--space-3) var(--space-4);
       border: 1px solid var(--neutral-200);
       border-radius: var(--radius-md);
@@ -30,9 +31,13 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
     /*
      * Material form fields carry a reserved line for their hint text. In a
      * filter row there is no hint, and the gap it leaves makes the row look
-     * misaligned against the buttons beside it.
+     * misaligned against the buttons beside it. A field that cannot read what
+     * was typed (a date) still says why underneath.
      */
-    .filters ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+    .filters
+      ::ng-deep
+      .mat-mdc-form-field:not(.mat-form-field-invalid)
+      .mat-mdc-form-field-subscript-wrapper {
       display: none;
     }
 
