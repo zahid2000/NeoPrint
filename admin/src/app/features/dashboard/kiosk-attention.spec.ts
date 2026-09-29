@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { KioskListItem } from '../../core/api/admin-api.service';
-import { attentionFor, staleHeartbeatMs } from './dashboard.component';
+import { attentionFor, shownStatus, staleHeartbeatMs } from './dashboard.component';
 
 function kiosk(overrides: Partial<KioskListItem> = {}): KioskListItem {
   return {
@@ -26,7 +26,9 @@ describe('attentionFor', () => {
   });
 
   it('names the most urgent reason only', () => {
-    expect(attentionFor(kiosk({ status: 'Offline', safeModeSince: '2026-09-28T10:00:00Z' }))?.reason).toBe('safeMode');
+    expect(
+      attentionFor(kiosk({ status: 'Offline', safeModeSince: '2026-09-28T10:00:00Z' }))?.reason,
+    ).toBe('safeMode');
     expect(attentionFor(kiosk({ status: 'Offline', paperA4Current: 0 }))?.reason).toBe('offline');
     expect(attentionFor(kiosk({ status: 'NotConfigured' }))?.reason).toBe('notConfigured');
     expect(attentionFor(kiosk({ status: 'Paused', paperA4Current: 0 }))?.reason).toBe('noPaper');
@@ -48,8 +50,30 @@ describe('attentionFor', () => {
     const now = Date.parse('2026-09-29T12:00:00Z');
     const at = (ms: number) => new Date(now - ms).toISOString();
 
-    expect(attentionFor(kiosk({ lastHeartbeatAt: at(staleHeartbeatMs + 1000) }), now)?.reason).toBe('offline');
+    expect(attentionFor(kiosk({ lastHeartbeatAt: at(staleHeartbeatMs + 1000) }), now)?.reason).toBe(
+      'offline',
+    );
     expect(attentionFor(kiosk({ lastHeartbeatAt: at(staleHeartbeatMs - 1000) }), now)).toBeNull();
-    expect(attentionFor(kiosk({ lastHeartbeatAt: null, status: 'NotConfigured' }), now)?.reason).toBe('notConfigured');
+    expect(
+      attentionFor(kiosk({ lastHeartbeatAt: null, status: 'NotConfigured' }), now)?.reason,
+    ).toBe('notConfigured');
+  });
+});
+
+describe('shownStatus', () => {
+  // The count above the attention list must not call "Online" a kiosk the list calls out of touch (T-091).
+  it('counts a silent kiosk as offline and leaves the rest as stored', () => {
+    const now = Date.parse('2026-09-29T12:00:00Z');
+    const silent = new Date(now - staleHeartbeatMs - 1000).toISOString();
+
+    expect(shownStatus(kiosk({ lastHeartbeatAt: silent }), now)).toBe('Offline');
+    expect(shownStatus(kiosk({ status: 'Paused', lastHeartbeatAt: silent }), now)).toBe('Offline');
+    expect(shownStatus(kiosk(), now)).toBe('Online');
+    expect(shownStatus(kiosk({ lastHeartbeatAt: null, status: 'NotConfigured' }), now)).toBe(
+      'NotConfigured',
+    );
+    expect(shownStatus(kiosk({ status: 'Disabled', lastHeartbeatAt: silent }), now)).toBe(
+      'Disabled',
+    );
   });
 });

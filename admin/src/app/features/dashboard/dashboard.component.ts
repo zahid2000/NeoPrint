@@ -35,18 +35,39 @@ export interface KioskAttention {
 }
 
 /**
- * The one reason a kiosk is listed for, or null when it needs nothing. A
- * disabled or not yet activated kiosk is not expected to serve anyone.
- */
-/**
  * A kiosk whose last heartbeat is older than this has lost its connection,
  * whatever its stored status says: the monitor that turns the status Offline
  * comes with step 7 (plan section 7, KioskHeartbeatMonitor; docs/TASKS.md T-083).
  */
 export const staleHeartbeatMs = 5 * 60 * 1000;
 
+const isSilent = (kiosk: KioskListItem, now: number): boolean =>
+  !!kiosk.lastHeartbeatAt && now - new Date(kiosk.lastHeartbeatAt).getTime() > staleHeartbeatMs;
+
+/**
+ * The status the dashboard counts a kiosk under: its stored status, except
+ * that a silent kiosk is Offline - so the counts and the attention list below
+ * them tell the same story (docs/TASKS.md T-091). A disabled or not yet
+ * activated kiosk is not expected to send anything.
+ */
+export function shownStatus(kiosk: KioskListItem, now = Date.now()): KioskStatus {
+  if (kiosk.status === 'Disabled' || kiosk.status === 'NotActivated') {
+    return kiosk.status;
+  }
+
+  return isSilent(kiosk, now) ? 'Offline' : kiosk.status;
+}
+
+/**
+ * The one reason a kiosk is listed for, or null when it needs nothing. A
+ * disabled or not yet activated kiosk is not expected to serve anyone.
+ */
 export function attentionFor(kiosk: KioskListItem, now = Date.now()): KioskAttention | null {
-  const make = (reason: AttentionReason, tone: StatusTone, params: Record<string, unknown> = {}) => ({
+  const make = (
+    reason: AttentionReason,
+    tone: StatusTone,
+    params: Record<string, unknown> = {},
+  ) => ({
     kiosk,
     reason,
     tone,
@@ -57,7 +78,7 @@ export function attentionFor(kiosk: KioskListItem, now = Date.now()): KioskAtten
     return null;
   }
 
-  if (kiosk.lastHeartbeatAt && now - new Date(kiosk.lastHeartbeatAt).getTime() > staleHeartbeatMs) {
+  if (isSilent(kiosk, now)) {
     return make('offline', 'danger');
   }
 
@@ -165,7 +186,10 @@ export class DashboardComponent {
     const list = this.kiosks() ?? [];
 
     return kioskStatuses
-      .map((status: KioskStatus) => ({ status, count: list.filter((kiosk) => kiosk.status === status).length }))
+      .map((status: KioskStatus) => ({
+        status,
+        count: list.filter((kiosk) => shownStatus(kiosk) === status).length,
+      }))
       .filter((entry) => entry.count > 0);
   });
 
