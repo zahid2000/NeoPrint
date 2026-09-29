@@ -72,6 +72,15 @@ $started = if ($arguments.Count -gt 0) {
     Start-Process -FilePath $exe.FullName -WorkingDirectory $exe.DirectoryName -PassThru
 }
 
+# PDF, images and text open on any machine (PDFium ships with the build);
+# Office and PS / PCL / XPS files need the converters the kiosk image has.
+if (-not (Test-Path 'C:\Program Files\LibreOffice\program\soffice.exe')) {
+    Write-Host 'Qeyd: LibreOffice quraşdırılmayıb — Word / Excel / PowerPoint faylları bu maşında açılmayacaq (kiosk "bu fayl növünü açan proqram işləmir" deyəcək). PDF, şəkil və TXT işləyir.' -ForegroundColor Yellow
+}
+if (-not (Get-Command 'gswin64c.exe' -ErrorAction SilentlyContinue)) {
+    Write-Host 'Qeyd: Ghostscript PATH-da yoxdur — PS / PCL / XPS faylları bu maşında açılmayacaq.' -ForegroundColor Yellow
+}
+
 Write-Host "Kiosk işə salındı (PID $($started.Id)): $($exe.FullName)" -ForegroundColor Green
 Write-Host "Qurulma vaxtı: $($exe.LastWriteTime)"
 if (-not $ApiUrl) { Write-Host 'API: appsettings.Development.json (http://localhost:5080)' }

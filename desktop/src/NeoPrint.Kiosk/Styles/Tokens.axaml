@@ -123,6 +123,10 @@
          A finger, not a mouse: the design system's kiosk minimum is 64, and
          a button is at least 72 tall.
     -->
+    <!-- The surface every kiosk screen is drawn for; another screen size or a
+         Windows scale (125 %, 150 %) scales the whole surface (T-097). -->
+    <sys:Double x:Key="DesignWidth">1920</sys:Double>
+    <sys:Double x:Key="DesignHeight">1080</sys:Double>
     <sys:Double x:Key="TouchTarget">64</sys:Double>
     <sys:Double x:Key="ButtonHeight">72</sys:Double>
     <sys:Double x:Key="HeaderHeight">88</sys:Double>

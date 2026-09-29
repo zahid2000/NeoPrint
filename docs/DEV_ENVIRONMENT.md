@@ -399,6 +399,14 @@ powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\reset-kiosk.ps1 -SafeMo
 | `stop-kiosk.ps1` | İşləyən kiosku bağlayır; 5 saniyədə bağlanmasa dayandırır (çöküş kimi sayılır) |
 | `reset-kiosk.ps1` | Kiosku dayandırır, `%ProgramData%\NeoPrint`-i silir (cihaz kimliyi, keş, spool, jurnal). `-SafeModeOnly` — yalnız çöküş sayğacı; `-DeleteDeviceKey` — CNG cihaz açarı da |
 
+**Hansı fayllar açılır.** PDF, şəkil (JPG/PNG/…) və TXT hər maşında açılır:
+PDFium kioskun build-inə özü düşür (ilk build onu internetdən götürür və
+SHA-256 ilə yoxlayır). Word / Excel / PowerPoint üçün maşında
+[LibreOffice](https://www.libreoffice.org/) (`C:\Program Files\LibreOffice`),
+PS / PCL / XPS üçün Ghostscript (`gswin64c.exe` PATH-da) lazımdır — yoxdursa
+kiosk "bu fayl növünü açan proqram işləmir" deyir, `start-kiosk.ps1` də
+başlayanda xəbərdarlıq edir.
+
 **Build `MSB3027 ... The file is locked by: "NeoPrint.Kiosk (…)"` ilə qırılırsa**,
 əvvəlki kiosk hələ açıqdır və DLL-ləri tutur: `stop-kiosk.ps1` işlədin (və ya
 `Stop-Process -Name NeoPrint.Kiosk`). `start-kiosk.ps1` bunu özü edir.
@@ -763,6 +771,7 @@ olunur (`PdfiumFact` səbəbini yazır). Lokalda da işlətmək istəsəniz:
 # Linux / WSL
 curl -fsSL -o /tmp/pdfium.tgz \
   "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8066/pdfium-linux-x64.tgz"
+echo "0b43f405477cf2cfc4dbff06905093c3309756c6bca1fb9da99234a2ca97fed2  /tmp/pdfium.tgz" | sha256sum -c -
 tar -xzf /tmp/pdfium.tgz -C /tmp
 sudo cp /tmp/lib/libpdfium.so /usr/local/lib/ && sudo ldconfig
 ```
@@ -772,6 +781,7 @@ Windows üçün (Git Bash):
 ```bash
 curl -fsSL -o pdfium.tgz \
   "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8066/pdfium-win-x64.tgz"
+echo "739a57d597d864297909cc40a2411eba728490c76a0fa25e3ea299c7f6b07020  pdfium.tgz" | sha256sum -c -
 mkdir -p pdfium && tar -xzf pdfium.tgz -C pdfium
 cp pdfium/bin/pdfium.dll backend/tests/NeoPrint.Api.IntegrationTests/bin/Debug/net8.0/
 ```

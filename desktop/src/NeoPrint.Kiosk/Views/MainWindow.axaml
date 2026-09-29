@@ -23,7 +23,13 @@
         (docs/DESIGN_SYSTEM.md section 8).
     -->
 
-    <Grid RowDefinitions="88,*,96" ColumnDefinitions="*,280">
+    <!-- Every screen is laid out for 1920x1080. A smaller screen, or Windows
+         scaling (125 % makes a 1080p screen 1536x864), would cut off whatever
+         does not fit - the bottom rows of a keypad (T-097). The whole surface
+         is scaled instead, so nothing is ever cut and nothing needs scrolling. -->
+    <Viewbox Stretch="Uniform">
+    <Grid RowDefinitions="88,*,96" ColumnDefinitions="*,280"
+          Width="{StaticResource DesignWidth}" Height="{StaticResource DesignHeight}">
 
         <!-- HEADER: logo, kiosk name, language, clock -->
         <Border Grid.Row="0" Grid.ColumnSpan="2"
@@ -218,4 +224,5 @@
             </Grid>
         </Border>
     </Grid>
+    </Viewbox>
 </Window>

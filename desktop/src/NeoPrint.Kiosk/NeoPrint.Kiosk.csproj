@@ -86,4 +86,44 @@
     <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Linux\NeoPrint.Kiosk.Platform.Linux.csproj" />
   </ItemGroup>
 
+  <!--
+    PDFium ships inside the build (T-096). The preview and the page count of
+    every converted file need it; without it every page was blank and only a
+    PDF opened. The same pinned release as the backend image (docs/THIRD_PARTY.md),
+    checked against its SHA-256 before anything is unpacked (T-100), cached in
+    obj/ so only the first build downloads it.
+  -->
+  <PropertyGroup>
+    <PdfiumRelease>chromium/8066</PdfiumRelease>
+    <PdfiumPackage Condition="'$(NeoPrintTargetsWindows)' == 'true'">pdfium-win-x64</PdfiumPackage>
+    <PdfiumSha256 Condition="'$(NeoPrintTargetsWindows)' == 'true'">739a57d597d864297909cc40a2411eba728490c76a0fa25e3ea299c7f6b07020</PdfiumSha256>
+    <PdfiumLibrary Condition="'$(NeoPrintTargetsWindows)' == 'true'">bin\pdfium.dll</PdfiumLibrary>
+    <PdfiumPackage Condition="'$(NeoPrintTargetsLinux)' == 'true'">pdfium-linux-x64</PdfiumPackage>
+    <PdfiumSha256 Condition="'$(NeoPrintTargetsLinux)' == 'true'">0b43f405477cf2cfc4dbff06905093c3309756c6bca1fb9da99234a2ca97fed2</PdfiumSha256>
+    <PdfiumLibrary Condition="'$(NeoPrintTargetsLinux)' == 'true'">lib\libpdfium.so</PdfiumLibrary>
+    <PdfiumCache>$(MSBuildProjectDirectory)\obj\pdfium\$(PdfiumPackage)\</PdfiumCache>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PdfiumPackage)' != ''">
+    <None Include="$(PdfiumCache)$(PdfiumLibrary)" Link="$([System.IO.Path]::GetFileName('$(PdfiumLibrary)'))"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+    <None Include="$(PdfiumCache)LICENSE" Link="pdfium-LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+  <Target Name="FetchPdfium" BeforeTargets="BeforeBuild"
+          Condition="'$(PdfiumPackage)' != '' And !Exists('$(PdfiumCache)$(PdfiumLibrary)')">
+    <DownloadFile SourceUrl="https://github.com/bblanchon/pdfium-binaries/releases/download/$(PdfiumRelease)/$(PdfiumPackage).tgz"
+                  DestinationFolder="$(PdfiumCache)" Retries="3" />
+    <GetFileHash Files="$(PdfiumCache)$(PdfiumPackage).tgz" Algorithm="SHA256">
+      <Output TaskParameter="Hash" PropertyName="_PdfiumActualSha256" />
+    </GetFileHash>
+    <!-- MSBuild compares strings case-insensitively; GetFileHash answers in upper case. -->
+    <Delete Files="$(PdfiumCache)$(PdfiumPackage).tgz" Condition="'$(_PdfiumActualSha256)' != '$(PdfiumSha256)'" />
+    <Error Condition="'$(_PdfiumActualSha256)' != '$(PdfiumSha256)'"
+           Text="PDFium $(PdfiumPackage) ($(PdfiumRelease)) has SHA-256 $(_PdfiumActualSha256), expected $(PdfiumSha256). The download was deleted and nothing was unpacked." />
+    <Exec Command="tar -xzf &quot;$(PdfiumPackage).tgz&quot;" WorkingDirectory="$(PdfiumCache)" />
+    <Error Condition="!Exists('$(PdfiumCache)$(PdfiumLibrary)')" Text="PDFium archive $(PdfiumPackage).tgz has no $(PdfiumLibrary)." />
+  </Target>
+
 </Project>

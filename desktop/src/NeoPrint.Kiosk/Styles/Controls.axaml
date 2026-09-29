@@ -73,6 +73,13 @@
         <Setter Property="BorderThickness" Value="1" />
     </Style>
 
+    <!-- A key whose glyph is smaller than a digit ("," "-"): no padding, so the
+         key stays as tall as the others with its glyph at display size (the
+         glyph's own style is at the end of the file). -->
+    <Style Selector="Button.key.symbol">
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
     <!-- The step indicator of a flash order (section 4): a numbered circle and a name. -->
     <Style Selector="Border.step">
         <Setter Property="Width" Value="{DynamicResource StatusChipHeight}" />
@@ -173,5 +180,12 @@
          fill, as it did on the admin screens (docs/TASKS.md T-082). -->
     <Style Selector="Button.primary TextBlock, Button.danger TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource Neutral0}" />
+    </Style>
+
+    <!-- "," and "-" on a keypad: at digit size they are a speck (T-097). After
+         the global TextBlock style for the same reason as above. -->
+    <Style Selector="Button.key.symbol TextBlock">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeDisplay}" />
+        <Setter Property="FontWeight" Value="Bold" />
     </Style>
 </Styles>

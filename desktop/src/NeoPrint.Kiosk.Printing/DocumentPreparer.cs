@@ -93,6 +93,14 @@ public sealed class DocumentPreparer
     /// <exception cref="PrintingException">It cannot be shown or printed; the key says why.</exception>
     public async Task<PreparedDocument> PrepareAsync(string sourcePath, string workFolder, CancellationToken cancellationToken)
     {
+        // Without PDFium the preview is blank and a Windows kiosk cannot print
+        // (T-096): refused here, before anyone orders - and after step 4, pays.
+        if (!PageRenderer.IsAvailable)
+        {
+            _logger.LogError("The PDFium native library is missing from this installation; files cannot be shown or printed.");
+            throw new PrintingException("preview.unavailable");
+        }
+
         var (format, refusal) = Identify(sourcePath);
 
         if (format is null)

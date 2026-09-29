@@ -291,7 +291,9 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="x:String">
+                                            <!-- "," and "-" are drawn large (Button.key.symbol): at digit size they are a speck. -->
                                             <Button Classes="key"
+                                                    Classes.symbol="{Binding Converter={x:Static vm:ScreenConverters.IsSymbolKey}}"
                                                     Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).RangeKeyCommand}"
                                                     CommandParameter="{Binding}">
                                                 <TextBlock Text="{Binding}" />

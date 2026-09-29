@@ -37,7 +37,8 @@ public sealed class PrintFlowViewModelTests : IDisposable
         var drives = new FakeRemovableDriveWatcher();
         drives.Drives.Add(new RemovableDrive(_drive, "USB", 1, 1));
 
-        return (new PrintFlowViewModel(kit.Orders, drives) { Language = "az" }, kit);
+        // Pages are drawn (PDFium ships with the build); a bitmap needs Avalonia's renderer, which is not started here.
+        return (new PrintFlowViewModel(kit.Orders, drives, pageImage: _ => null) { Language = "az" }, kit);
     }
 
     private static string T(string key, params object?[] arguments) => Strings.Get("az", key, arguments);

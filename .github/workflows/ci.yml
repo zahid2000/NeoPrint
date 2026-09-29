@@ -62,6 +62,8 @@ jobs:
           release=chromium/8066
           curl -fsSL -o /tmp/pdfium.tgz \
             "https://github.com/bblanchon/pdfium-binaries/releases/download/${release}/pdfium-linux-x64.tgz"
+          # Checked before it is unpacked, as in backend/Dockerfile (T-100).
+          echo "0b43f405477cf2cfc4dbff06905093c3309756c6bca1fb9da99234a2ca97fed2  /tmp/pdfium.tgz" | sha256sum -c -
           sudo mkdir -p /usr/local/lib
           sudo tar -xzf /tmp/pdfium.tgz -C /tmp
           sudo cp /tmp/lib/libpdfium.so /usr/local/lib/libpdfium.so

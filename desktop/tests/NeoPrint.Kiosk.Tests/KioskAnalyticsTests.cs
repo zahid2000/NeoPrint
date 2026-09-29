@@ -129,7 +129,7 @@ public sealed class KioskAnalyticsTests : IDisposable
         _kits.Add(kit);
         kit.Pdf(3, _drive, "Aliyev_passport.pdf");
 
-        var flow = new PrintFlowViewModel(kit.Orders, new FakeRemovableDriveWatcher(), recorder) { Language = "az" };
+        var flow = new PrintFlowViewModel(kit.Orders, new FakeRemovableDriveWatcher(), recorder, pageImage: _ => null) { Language = "az" };
         await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
         await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
         flow.ContinueCommand.Execute(null);
@@ -154,7 +154,7 @@ public sealed class KioskAnalyticsTests : IDisposable
         _kits.Add(kit);
         kit.Pdf(1, _drive, "a.pdf");
 
-        var flow = new PrintFlowViewModel(kit.Orders, new FakeRemovableDriveWatcher(), recorder) { Language = "az" };
+        var flow = new PrintFlowViewModel(kit.Orders, new FakeRemovableDriveWatcher(), recorder, pageImage: _ => null) { Language = "az" };
         await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
         await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
 

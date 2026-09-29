@@ -73,6 +73,9 @@ public static class ScreenConverters
 
     public static readonly IValueConverter IsA4 = new FuncValueConverter<string, bool>(paper => paper == "A4");
 
+    /// <summary>A keypad key whose glyph is smaller than a digit ("," and "-"); it is drawn larger (T-097).</summary>
+    public static readonly IValueConverter IsSymbolKey = new FuncValueConverter<string, bool>(key => key is "," or "-");
+
     public static readonly IValueConverter IsA3 = new FuncValueConverter<string, bool>(paper => paper == "A3");
 
     public static readonly IValueConverter IsOne = new FuncValueConverter<int, bool>(value => value == 1);

@@ -146,7 +146,7 @@ Bölmə 2.0 qaydası 1-ə görə aşağıdakılar üçün paket **əlavə edilmi
 | OpenBao | MPL-2.0 | Secret idarəsi (Linux Foundation) |
 | LibreOffice (headless) | MPL-2.0 | Office → PDF |
 | Ghostscript (+ GhostPCL, GhostXPS) | AGPL-3.0 | PS / EPS / PCL / PRN / XPS → PDF (ayrıca proses, dəyişdirilmədən) |
-| PDFium native kitabxanası (`bblanchon/pdfium-binaries`, `chromium/8066`, backend Dockerfile-da pinlənib) | BSD-3 / Apache-2.0 (Google PDFium) | Səhifə sayı və səhifə şəkilləri. Yalnız hazır binary götürülür; wrapper öz kodumuzdur (`NeoPrint.Pdfium`) |
+| PDFium native kitabxanası (`bblanchon/pdfium-binaries`, `chromium/8066`; backend Dockerfile-da, CI-də və kiosk build-ində (`NeoPrint.Kiosk.csproj`) pinlənib, hər yükləmə SHA-256 ilə yoxlanılır — T-100) | BSD-3 / Apache-2.0 (Google PDFium) | Səhifə sayı və səhifə şəkilləri. Yalnız hazır binary götürülür; wrapper öz kodumuzdur (`NeoPrint.Pdfium`) |
 | CUPS | Apache-2.0 | Linux çap |
 | Mailpit | MIT | Development-də email |
 

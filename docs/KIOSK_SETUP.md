@@ -35,8 +35,7 @@ publish olunur:
 dotnet publish desktop/src/NeoPrint.Kiosk -c Release -r win-x64 --self-contained -o out/neoprint-win
 dotnet publish desktop/src/NeoPrint.Kiosk.Agent -c Release -r win-x64 --self-contained -o out/neoprint-win
 Set-Content out/neoprint-win/VERSION "0.3.0"
-# PDF səhifə şəkilləri üçün PDFium (backend image-i ilə eyni buraxılış, chromium/8066):
-#   github.com/bblanchon/pdfium-binaries → pdfium-win-x64.tgz → bin/pdfium.dll → out/neoprint-win/
+# PDFium (pdfium.dll) publish-ə özü düşür: build onu pinli buraxılışdan SHA-256 ilə yoxlayıb götürür
 ```
 
 ```bash
@@ -44,12 +43,15 @@ Set-Content out/neoprint-win/VERSION "0.3.0"
 dotnet publish desktop/src/NeoPrint.Kiosk -c Release -r linux-x64 --self-contained -o out/neoprint-linux
 dotnet publish desktop/src/NeoPrint.Kiosk.Agent -c Release -r linux-x64 --self-contained -o out/neoprint-linux
 echo "0.3.0" > out/neoprint-linux/VERSION
-# PDFium: pdfium-linux-x64.tgz (chromium/8066) → lib/libpdfium.so → out/neoprint-linux/
+# PDFium (libpdfium.so) publish-ə özü düşür
 tar -czf neoprint-linux-0.3.0.tar.gz -C out/neoprint-linux .
 ```
 
-PDFium olmadan kiosk işləyir, amma baxış ekranında səhifə şəkilləri
-əvəzinə yalnız səhifə nömrələri görünür.
+PDFium kioskun build-inin hissəsidir (`NeoPrint.Kiosk.csproj`, `chromium/8066`, SHA-256
+yoxlaması; ilk build internet tələb edir). O olmadan baxış boş qalır və Windows-da
+çap alınmaz, ona görə belə quraşdırmada kiosk faylı açmır, müştəriyə "sifariş qəbul
+olunmur" izahı göstərir və loq-a səbəbini yazır (T-096). Paketdə `pdfium.dll` /
+`libpdfium.so` və `pdfium-LICENSE.txt` olmalıdır.
 
 Qovluğu (və ya `.zip` / `.tar.gz`-ni) flaşla kiosk maşınına köçürün.
 

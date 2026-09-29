@@ -120,11 +120,21 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     // second job).
     private string? _orderKey;
 
-    public PrintFlowViewModel(KioskOrderService orders, IRemovableDriveWatcher drives, IKioskAnalytics? analytics = null)
+    // Turns a drawn page into something the screen shows. A bitmap needs
+    // Avalonia's renderer, which a unit test does not start.
+    private readonly Func<RenderedPage, Bitmap?> _pageImage;
+
+    /// <param name="pageImage">How a drawn page becomes an image; the kiosk's bitmap by default.</param>
+    public PrintFlowViewModel(
+        KioskOrderService orders,
+        IRemovableDriveWatcher drives,
+        IKioskAnalytics? analytics = null,
+        Func<RenderedPage, Bitmap?>? pageImage = null)
     {
         _orders = orders;
         _drives = drives;
         _analytics = analytics ?? NoAnalytics.Instance;
+        _pageImage = pageImage ?? ToBitmap;
     }
 
     /// <summary>The customer is done or gave up: back to the home screen.</summary>
@@ -652,34 +662,37 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         }
     }
 
-    /// <summary>A page as a bitmap; null when PDFium is not installed, and the tile shows its number.</summary>
-    private static Bitmap? Render(byte[] pdf, int index, int width)
+    /// <summary>
+    /// A page as an image; null when this one page cannot be drawn, and its
+    /// tile shows the number. A kiosk without PDFium never gets here: the file
+    /// is refused when it is opened (T-096).
+    /// </summary>
+    private Bitmap? Render(byte[] pdf, int index, int width)
     {
-        if (!PageRenderer.IsAvailable)
-        {
-            return null;
-        }
-
         try
         {
-            var page = PageRenderer.Render(pdf, index, width);
-            var bitmap = new WriteableBitmap(new PixelSize(page.Width, page.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
-
-            using (var buffer = bitmap.Lock())
-            {
-                for (var row = 0; row < page.Height; row++)
-                {
-                    System.Runtime.InteropServices.Marshal.Copy(
-                        page.Pixels, row * page.Stride, buffer.Address + (row * buffer.RowBytes), Math.Min(page.Stride, buffer.RowBytes));
-                }
-            }
-
-            return bitmap;
+            return _pageImage(PageRenderer.Render(pdf, index, width));
         }
         catch (Exception exception) when (exception is NeoPrint.Pdfium.PdfiumException or ArgumentOutOfRangeException)
         {
             return null;
         }
+    }
+
+    private static Bitmap ToBitmap(RenderedPage page)
+    {
+        var bitmap = new WriteableBitmap(new PixelSize(page.Width, page.Height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+
+        using (var buffer = bitmap.Lock())
+        {
+            for (var row = 0; row < page.Height; row++)
+            {
+                System.Runtime.InteropServices.Marshal.Copy(
+                    page.Pixels, row * page.Stride, buffer.Address + (row * buffer.RowBytes), Math.Min(page.Stride, buffer.RowBytes));
+            }
+        }
+
+        return bitmap;
     }
 
     [RelayCommand]

@@ -68,6 +68,9 @@ RUN set -eux; \
 FROM debian:bookworm-slim AS pdfium
 
 ARG PDFIUM_RELEASE=chromium/8066
+# The archive is checked before it is unpacked (T-100); the kiosk build pins
+# the same value (desktop/src/NeoPrint.Kiosk/NeoPrint.Kiosk.csproj).
+ARG PDFIUM_SHA256=0b43f405477cf2cfc4dbff06905093c3309756c6bca1fb9da99234a2ca97fed2
 
 RUN set -eux; \
     apt-get update; \
@@ -76,6 +79,7 @@ RUN set -eux; \
     mkdir -p /pdfium; \
     curl -fsSL -o /tmp/pdfium.tgz \
         "https://github.com/bblanchon/pdfium-binaries/releases/download/${PDFIUM_RELEASE}/pdfium-linux-x64.tgz"; \
+    echo "${PDFIUM_SHA256}  /tmp/pdfium.tgz" | sha256sum -c -; \
     tar -xzf /tmp/pdfium.tgz -C /pdfium; \
     test -f /pdfium/lib/libpdfium.so
 

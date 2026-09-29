@@ -110,6 +110,61 @@ public sealed class DocumentPreparerTests : IDisposable
         prepared.PageCount.Should().BeGreaterThan(1, "150 lines do not fit on one A4 page");
     }
 
+    // T-096: the build carried no PDFium, so every preview page was blank and
+    // only a PDF opened. The library now comes with the build - this test runs
+    // from the same output and fails if it goes missing again.
+    [Fact]
+    public void The_kiosk_build_carries_pdfium()
+    {
+        PageRenderer.IsAvailable.Should().BeTrue("the preview and the Windows print path draw pages with PDFium");
+    }
+
+    [Fact]
+    public async Task An_image_and_a_text_file_are_drawn_on_the_preview_not_left_blank()
+    {
+        var image = await Preparer().PrepareAsync(Png(), Work(), CancellationToken.None);
+        var text = Path.Combine(_folder, "qeyd.txt");
+        await File.WriteAllTextAsync(text, "Salam! Bu mətn baxışda görünməlidir.");
+        var textPdf = await Preparer().PrepareAsync(text, Work(), CancellationToken.None);
+
+        var imagePage = PageRenderer.Render(await File.ReadAllBytesAsync(image.PdfPath), 0, 400);
+        var textPage = PageRenderer.Render(await File.ReadAllBytesAsync(textPdf.PdfPath), 0, 400);
+
+        InkShare(imagePage).Should().BeGreaterThan(0.1, "the blue photo fills much of its page");
+        InkShare(textPage).Should().BeGreaterThan(0, "the letters are drawn");
+    }
+
+    /// <summary>The share of pixels that are not paper white.</summary>
+    private static double InkShare(RenderedPage page)
+    {
+        var inked = 0;
+
+        for (var row = 0; row < page.Height; row++)
+        {
+            for (var column = 0; column < page.Width; column++)
+            {
+                var at = (row * page.Stride) + (column * 4);
+
+                if (page.Pixels[at] < 200 || page.Pixels[at + 1] < 200 || page.Pixels[at + 2] < 200)
+                {
+                    inked++;
+                }
+            }
+        }
+
+        return inked / (double)(page.Width * page.Height);
+    }
+
+    [Theory]
+    [InlineData("az", "sifariş qəbul olunmur")]
+    [InlineData("en", "takes no orders")]
+    [InlineData("ru", "заказы не принимаются")]
+    public void Without_pdfium_the_refusal_says_what_happened_and_what_to_do(string language, string effect)
+    {
+        // A missing library is refused with a reason (DocumentPreparer), never shown as a blank page.
+        Localization.Strings.Get(language, "preview.unavailable").Should().Contain(effect);
+    }
+
     [Fact]
     public async Task A_file_is_judged_by_its_bytes_not_its_name()
     {
