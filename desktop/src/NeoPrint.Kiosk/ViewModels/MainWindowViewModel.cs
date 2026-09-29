@@ -105,6 +105,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         Activation = new ActivationViewModel { Language = Language };
+        MarkSelectedLanguage();
     }
 
     /// <summary>The activation screen, kept alive so its countdown keeps running.</summary>
@@ -435,6 +436,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         KioskLanguage.Current = Language;
+        MarkSelectedLanguage();
         base.OnLanguageChanged();
 
         // The queue lines carry text of their own; word them again.
@@ -451,7 +453,25 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     partial void OnNowChanged(DateTime value) => OnPropertyChanged(nameof(ClockText));
 
-    /// <param name="Code">Language code.</param>
-    /// <param name="Name">Name as shown in the picker.</param>
-    public sealed record LanguageOption(string Code, string Name);
+    /// <summary>The header shows which language is on (docs/TASKS.md T-086).</summary>
+    private void MarkSelectedLanguage()
+    {
+        foreach (var option in Languages)
+        {
+            option.IsSelected = option.Code == Language;
+        }
+    }
+
+    /// <summary>One language in the header picker.</summary>
+    public sealed partial class LanguageOption(string code, string name) : ObservableObject
+    {
+        /// <summary>Language code.</summary>
+        public string Code { get; } = code;
+
+        /// <summary>Name as shown in the picker.</summary>
+        public string Name { get; } = name;
+
+        [ObservableProperty]
+        private bool _isSelected;
+    }
 }

@@ -77,6 +77,8 @@ public sealed class MainWindowViewModelTests
     {
         var model = new MainWindowViewModel();
 
+        model.Languages.Single(option => option.IsSelected).Code.Should().Be("az");
+
         var azerbaijani = model.QueueTitle;
         var azerbaijaniActivation = model.Activation.Title;
 
@@ -86,6 +88,8 @@ public sealed class MainWindowViewModelTests
         model.QueueTitle.Should().NotBe(azerbaijani);
         model.Activation.Title.Should().NotBe(azerbaijaniActivation,
             "the activation screen follows the header's language picker");
+        model.Languages.Where(option => option.IsSelected).Select(option => option.Code).Should().Equal(
+            ["en"], "the header shows which language is on (T-086)");
     }
 
     [Fact]

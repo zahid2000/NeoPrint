@@ -65,7 +65,8 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:MainWindowViewModel+LanguageOption">
                             <Button Content="{Binding Name}"
-                                    Classes="secondary"
+                                    Classes="choice"
+                                    Classes.selected="{Binding IsSelected}"
                                     Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectLanguageCommand}"
                                     CommandParameter="{Binding Code}"
                                     MinWidth="120"
