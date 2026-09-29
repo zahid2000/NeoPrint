@@ -262,6 +262,7 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
     }
 
     .detail__back {
+      align-self: flex-start;
       margin-block-end: var(--space-2);
     }
 

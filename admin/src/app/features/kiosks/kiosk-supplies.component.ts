@@ -175,7 +175,7 @@ const papers = ['A4', 'A3'] as const;
             </ng-container>
             <ng-container matColumnDef="paper">
               <th mat-header-cell *matHeaderCellDef>{{ 'supplies.colPaper' | translate }}</th>
-              <td mat-cell *matCellDef="let event">{{ event.resource }}</td>
+              <td mat-cell *matCellDef="let event">{{ resourceKey(event.resource) | translate }}</td>
             </ng-container>
             <ng-container matColumnDef="change">
               <th mat-header-cell *matHeaderCellDef>{{ 'supplies.colChange' | translate }}</th>
@@ -331,6 +331,11 @@ export class KioskSuppliesComponent implements OnInit {
 
     return sheets !== null && Number.isInteger(sheets) && sheets >= minimum && sheets <= this.maxSheets();
   });
+
+  /** The ledger names a tray PaperA4; the panel says "A4 kağızı" (supplies.paperA4). */
+  resourceKey(resource: string): string {
+    return `supplies.${resource.charAt(0).toLowerCase()}${resource.slice(1)}`;
+  }
 
   ngOnInit(): void {
     void this.load();

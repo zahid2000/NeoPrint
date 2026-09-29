@@ -209,6 +209,7 @@ describe('KioskSuppliesComponent', () => {
     const component = await load();
 
     expect(component.refillable()).toEqual(['A4']);
+    expect(component.resourceKey('PaperA4')).toBe('supplies.paperA4');
   });
 
   it('checks the count the way the server does', async () => {
