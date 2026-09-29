@@ -32,6 +32,7 @@ Windows kiosku (Shell Launcher, Keyboard Filter), real printer və real USB fla�
 | `kiosk-14-safe-mode.png` | Tətbiq 3 dəfə qəfil öldürüldükdən sonra "Texniki xidmət" (təhlükəsiz rejim) |
 | `kiosk-15-admin-menu-safe-mode.png` | Təhlükəsiz rejimdə menyu: "Təhlükəsiz rejimdən çıx və yenidən başlat" |
 | `kiosk-16-english.png` | İngilis dili |
+| `kiosk-17-paper-blocked.png` | Lotokda 1 vərəq qalıb, sifariş 3 vərəqdir: izah + "Sifariş et" bağlıdır (`Paper.BlockWhenInsufficient`). Kağız sonra geri dolduruldu |
 
 `kiosk-01`, `kiosk-09` … `kiosk-15` T-086 düzəlişindən əvvəl çəkilib. Onlarda başlıqdakı seçilmiş dil hələ fərqlənmir; qalan hər şey eynidir.
 

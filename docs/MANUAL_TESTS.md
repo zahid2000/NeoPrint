@@ -135,6 +135,7 @@ jurnalını saxlayın, `TASKS.md`-yə tapıntı kimi yazın.
 | 5 | SNMP sayğacı olan printerdə sifariş | "Printer sayğacı" sütununda əvvəl → sonra, fərq çıxan vərəqlərə bərabərdir |
 | 6 | Çap zamanı kağız qutusunu boşaldın / qapağı açın | Job `Interrupted`, kiosk `Paused`, ekranda "printer dayandı" izahı; admin dashboard-da kiosk "Diqqət tələb edir"-də |
 | 7 | Printerin kabelini çıxarın, 1 dəq sonra taxın | Kiosk printerin itdiyini göstərir, qoşulanda özü `Online` olur, növbə davam edir |
+| 8 | Real printer yoxdursa: Windows-da "Microsoft Print to PDF", Linux-da `cups-pdf` printerini seçin; flaşdan hər format qrupundan bir fayl (PDF, DOCX, XLSX, PPTX, JPG/PNG, TXT, PS) | Hər biri açılır, baxış və qiymət düzgündür, PDF faylı çıxır (plan Addım 3 DoD, "hər iki OS-də") |
 
 ## MT-03. Windows kiosk provisioning (T-093)
 
