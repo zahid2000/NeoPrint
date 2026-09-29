@@ -136,6 +136,14 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     [ObservableProperty]
     private string? _error;
 
+    /// <summary>
+    /// What is wrong with a finished page range, shown under the range itself
+    /// rather than in the banner: a banner pushed the keypad down under the
+    /// customer's finger on every key (docs/TASKS.md T-081).
+    /// </summary>
+    [ObservableProperty]
+    private string? _rangeProblem;
+
     [ObservableProperty]
     private string? _currentFolder;
 
@@ -928,12 +936,19 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
         if (quote is null)
         {
+            // A range still being typed ("1-", "1,") is not an error yet
+            // (docs/DESIGN_SYSTEM.md: an error is not shown on every key).
+            var typing = RangeText.TrimEnd() is "" || RangeText.TrimEnd()[^1] is '-' or ',';
+
             PriceText = null;
-            QuoteDetail = null;
+            QuoteDetail = AllPages ? null : T("options.rangeNeeded");
             CanPlace = false;
-            Error = AllPages ? null : T("options.rangeInvalid", _document.PageCount);
+            Error = null;
+            RangeProblem = AllPages || typing ? null : T("options.rangeInvalid", _document.PageCount);
             return;
         }
+
+        RangeProblem = null;
 
         PriceText = Formats.Money(quote.Price.FinalPrice, Language);
         _quotedTotal = quote.Price.FinalPrice;
@@ -961,6 +976,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         Copies = 1;
         AllPages = true;
         RangeText = string.Empty;
+        RangeProblem = null;
         Color = false;
         Duplex = false;
         Paper = "A4";

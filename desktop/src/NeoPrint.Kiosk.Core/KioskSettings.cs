@@ -38,6 +38,15 @@ public sealed class KioskSettings
     /// </summary>
     public string ConverterUser { get; set; } = string.Empty;
 
+    /// <summary>
+    /// An enrollment token given as <c>--enrollment-token</c>, for a developer
+    /// machine that was not provisioned. A provisioned kiosk finds its token in
+    /// a file the script leaves behind (readable by the kiosk user only), and
+    /// that file wins when both are present (plan section 7.11, docs/TASKS.md
+    /// T-080).
+    /// </summary>
+    public string? EnrollmentToken { get; set; }
+
     /// <summary>Backend address for this environment.</summary>
     public string ApiBaseUrl { get; set; } = "https://api.neoprint.az";
 

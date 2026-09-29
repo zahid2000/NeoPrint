@@ -66,6 +66,7 @@
     <!-- A key of the on-screen keyboard: square, a finger's width. -->
     <Style Selector="Button.key">
         <Setter Property="MinWidth" Value="{DynamicResource TouchTarget}" />
+        <Setter Property="Margin" Value="{DynamicResource KeyGap}" />
         <Setter Property="Padding" Value="{DynamicResource Inset4}" />
         <Setter Property="Background" Value="{DynamicResource Neutral0}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />

@@ -208,20 +208,23 @@
 
                 <!-- A text file: the text and the on-screen keyboard. -->
                 <Grid Grid.Row="1" RowDefinitions="*,Auto" IsVisible="{Binding IsText}">
-                    <TextBox Text="{Binding TextContent}" AcceptsReturn="True" TextWrapping="Wrap" FontSize="{DynamicResource FontSizeBody}" />
-                    <StackPanel Grid.Row="1" Spacing="{DynamicResource Space4}" Margin="{DynamicResource GapBelow4}">
+                    <!-- The keys carry their own gap (KeyGap), so the rows need none: every
+                         pixel saved goes to the text. -->
+                    <TextBox Text="{Binding TextContent}" AcceptsReturn="True" TextWrapping="Wrap" FontSize="{DynamicResource FontSizeBody}"
+                             Margin="{DynamicResource GapBelow4}" />
+                    <StackPanel Grid.Row="1">
                         <ItemsControl ItemsSource="{Binding KeyboardRows}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <ItemsControl ItemsSource="{Binding}" HorizontalAlignment="Center">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}" />
+                                                <StackPanel Orientation="Horizontal" />
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="x:String">
-                                                <Button Classes="key" Margin="{DynamicResource GapBelow4}"
+                                                <Button Classes="key"
                                                         Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).TypeCommand}"
                                                         CommandParameter="{Binding}">
                                                     <TextBlock Text="{Binding}" />
@@ -232,7 +235,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Button Classes="key" Command="{Binding ToggleCapitalsCommand}"><TextBlock Text="{Binding ShiftKeyText}" /></Button>
                             <Button Classes="key" Width="480" Command="{Binding TypeSpaceCommand}"><TextBlock Text="{Binding SpaceKeyText}" /></Button>
                             <Button Classes="key" Command="{Binding TypeNewLineCommand}"><TextBlock Text="{Binding EnterKeyText}" /></Button>
@@ -272,10 +275,15 @@
                                 <Border Classes="card" MinWidth="320">
                                     <TextBlock Text="{Binding RangeText}" Classes="h2" />
                                 </Border>
-                                <TextBlock Text="{Binding RangeHint}" Classes="caption" />
+                                <TextBlock Text="{Binding RangeHint}" Classes="caption"
+                                           IsVisible="{Binding RangeProblem, Converter={x:Static ObjectConverters.IsNull}}" />
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}" MaxWidth="320"
+                                            IsVisible="{Binding RangeProblem, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <PathIcon Data="{StaticResource IconError}" Width="28" Height="28" Foreground="{DynamicResource Danger500}" VerticalAlignment="Top" />
+                                    <TextBlock Text="{Binding RangeProblem}" Classes="caption" Foreground="{DynamicResource Danger500}" TextWrapping="Wrap" MaxWidth="276" />
+                                </StackPanel>
                             </StackPanel>
-                            <UniformGrid Columns="3">
-                                <ItemsControl ItemsSource="{Binding RangeKeys}">
+                            <ItemsControl ItemsSource="{Binding RangeKeys}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <UniformGrid Columns="3" />
@@ -283,7 +291,7 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="x:String">
-                                            <Button Classes="key" Margin="{DynamicResource GapBelow4}"
+                                            <Button Classes="key"
                                                     Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).RangeKeyCommand}"
                                                     CommandParameter="{Binding}">
                                                 <TextBlock Text="{Binding}" />
@@ -291,7 +299,6 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </UniformGrid>
                             <Button Classes="key" Command="{Binding RangeEraseCommand}" VerticalAlignment="Top">
                                 <TextBlock Text="{Binding BackspaceKeyText}" />
                             </Button>
@@ -354,7 +361,8 @@
                 <Border Grid.Column="1" Classes="card" Width="380" VerticalAlignment="Top" Margin="{DynamicResource GapStart8}">
                     <StackPanel Spacing="{DynamicResource Space4}">
                         <TextBlock Text="{Binding PriceLabel}" Classes="muted" />
-                        <TextBlock Text="{Binding PriceText}" Classes="display" />
+                        <TextBlock Text="{Binding PriceText}" Classes="display"
+                                   IsVisible="{Binding PriceText, Converter={x:Static ObjectConverters.IsNotNull}}" />
                         <TextBlock Text="{Binding QuoteDetail}" Classes="body-small" TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
@@ -386,18 +394,18 @@
                                Foreground="{DynamicResource Brand700}" HorizontalAlignment="Center" />
                 </Border>
                 <UniformGrid Columns="3" HorizontalAlignment="Center">
-                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="1" Margin="{DynamicResource GapBelow4}"><TextBlock Text="1" /></Button>
-                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="2" Margin="{DynamicResource GapBelow4}"><TextBlock Text="2" /></Button>
-                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="3" Margin="{DynamicResource GapBelow4}"><TextBlock Text="3" /></Button>
-                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="4" Margin="{DynamicResource GapBelow4}"><TextBlock Text="4" /></Button>
-                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="5" Margin="{DynamicResource GapBelow4}"><TextBlock Text="5" /></Button>
-                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="6" Margin="{DynamicResource GapBelow4}"><TextBlock Text="6" /></Button>
-                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="7" Margin="{DynamicResource GapBelow4}"><TextBlock Text="7" /></Button>
-                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="8" Margin="{DynamicResource GapBelow4}"><TextBlock Text="8" /></Button>
-                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="9" Margin="{DynamicResource GapBelow4}"><TextBlock Text="9" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="1"><TextBlock Text="1" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="2"><TextBlock Text="2" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="3"><TextBlock Text="3" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="4"><TextBlock Text="4" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="5"><TextBlock Text="5" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="6"><TextBlock Text="6" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="7"><TextBlock Text="7" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="8"><TextBlock Text="8" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="9"><TextBlock Text="9" /></Button>
                     <Panel />
-                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="0" Margin="{DynamicResource GapBelow4}"><TextBlock Text="0" /></Button>
-                    <Button Classes="key" Command="{Binding EraseCommand}" Margin="{DynamicResource GapBelow4}"><TextBlock Text="{Binding BackspaceKeyText}" /></Button>
+                    <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="0"><TextBlock Text="0" /></Button>
+                    <Button Classes="key" Command="{Binding EraseCommand}"><TextBlock Text="{Binding BackspaceKeyText}" /></Button>
                 </UniformGrid>
             </StackPanel>
 

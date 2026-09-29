@@ -110,7 +110,8 @@ describe('KioskPrintersComponent', () => {
   });
 
   it('puts a command result from the hub at the top, for this kiosk only', async () => {
-    const component = (await load()).componentInstance;
+    const fixture = await load();
+    const component = fixture.componentInstance;
     const command = {
       id: 'c1',
       kioskId,
@@ -124,8 +125,17 @@ describe('KioskPrintersComponent', () => {
     hub.fire('CommandResult', { ...command, kioskId: 'another' });
     expect(component.commands()).toEqual([]);
 
+    const statuses: string[] = [];
+    fixture.componentInstance.statusChange.subscribe((status) => statuses.push(status));
+
     hub.fire('CommandResult', command);
     expect(component.commands()).toEqual([command]);
+
+    // A passed test print takes the kiosk into service: the tab asks again and tells the page.
+    backend.expectOne(`/api/admin/kiosks/${kioskId}/printers`).flush(printers);
+    backend.expectOne(`/api/admin/kiosks/${kioskId}/commands`).flush([command]);
+    await fixture.whenStable();
+    expect(statuses).toEqual(['Online']);
 
     // The same command again replaces the row rather than adding one.
     hub.fire('CommandResult', { ...command, status: 'Failed' });

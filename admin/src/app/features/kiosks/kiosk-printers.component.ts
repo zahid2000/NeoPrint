@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -212,6 +212,14 @@ type OverrideChoice = 'follow' | 'off';
     }
   `,
   styles: `
+    h3 {
+      margin: var(--space-6) 0 var(--space-2);
+    }
+
+    .printers__capabilities {
+      margin-top: var(--space-4);
+    }
+
     .printers__actions,
     .printers__save {
       display: flex;
@@ -239,6 +247,9 @@ export class KioskPrintersComponent implements OnInit {
   private readonly translate = inject(TranslateService);
 
   readonly kioskId = input.required<string>();
+
+  /** The kiosk's status as the printers answer gave it: choosing a printer or a passed test print changes it. */
+  readonly statusChange = output<string>();
 
   readonly columns = ['name', 'driver', 'status', 'capabilities', 'choose'];
   readonly commandColumns = ['type', 'status', 'result', 'sent', 'completed'];
@@ -282,6 +293,11 @@ export class KioskPrintersComponent implements OnInit {
       this.hub.on<KioskCommand>('CommandResult', (command) => {
         if (command.kioskId === this.kioskId()) {
           this.commands.update((list) => [command, ...list.filter((item) => item.id !== command.id)]);
+
+          // A passed test print is what takes the kiosk into service.
+          if (command.type === 'TestPrint' && command.status === 'Succeeded') {
+            void this.load();
+          }
         }
       }),
     ];
@@ -368,6 +384,7 @@ export class KioskPrintersComponent implements OnInit {
 
   private apply(view: KioskPrinters): void {
     this.view.set(view);
+    this.statusChange.emit(view.status);
     this.choices.set({
       color: view.overrides.color === false ? 'off' : 'follow',
       duplex: view.overrides.duplex === false ? 'off' : 'follow',

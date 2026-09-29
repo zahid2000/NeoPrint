@@ -249,6 +249,18 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
     </div>
   `,
   styles: `
+    h2 {
+      margin: var(--space-6) 0 var(--space-2);
+    }
+
+    .detail__card h3 {
+      margin: var(--space-4) 0 var(--space-2);
+    }
+
+    .detail__card h3:first-child {
+      margin-top: 0;
+    }
+
     .detail__back {
       margin-block-end: var(--space-2);
     }

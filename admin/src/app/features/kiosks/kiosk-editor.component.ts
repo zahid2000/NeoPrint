@@ -220,6 +220,11 @@ export class KioskEditorComponent implements OnInit {
     void this.load();
   }
 
+  /** A tab learned that the kiosk's status changed (a printer was chosen, a test print passed). */
+  onStatus(status: string): void {
+    this.kiosk.update((kiosk) => (kiosk && kiosk.status !== status ? { ...kiosk, status } : kiosk));
+  }
+
   async load(): Promise<void> {
     this.loading.set(true);
     this.problem.set(null);

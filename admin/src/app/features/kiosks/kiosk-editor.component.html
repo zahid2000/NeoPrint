@@ -508,7 +508,7 @@
         <mat-tab [label]="'kiosks.tabPrinters' | translate">
           <ng-template matTabContent>
             <section class="editor__tab">
-              <app-kiosk-printers [kioskId]="current.id" />
+              <app-kiosk-printers [kioskId]="current.id" (statusChange)="onStatus($event)" />
             </section>
           </ng-template>
         </mat-tab>

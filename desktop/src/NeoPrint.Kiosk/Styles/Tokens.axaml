@@ -103,6 +103,8 @@
     <Thickness x:Key="GapStart8">32,0,0,0</Thickness>
     <Thickness x:Key="GapStart12">48,0,0,0</Thickness>
     <Thickness x:Key="GapBelow4">0,0,0,16</Thickness>
+    <!-- Right of and under an on-screen key, so neighbouring keys never touch. -->
+    <Thickness x:Key="KeyGap">0,0,16,16</Thickness>
 
     <!-- The activation code's box: roomy, so the code reads across a room. -->
     <Thickness x:Key="CodeBoxPadding">48,24</Thickness>

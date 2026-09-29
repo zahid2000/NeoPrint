@@ -198,6 +198,14 @@ const papers = ['A4', 'A3'] as const;
     }
   `,
   styles: `
+    h3 {
+      margin: var(--space-6) 0 var(--space-2);
+    }
+
+    .supplies__refill h3 {
+      margin-top: 0;
+    }
+
     .supplies__trays {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

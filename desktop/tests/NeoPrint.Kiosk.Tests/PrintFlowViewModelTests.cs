@@ -133,11 +133,27 @@ public sealed class PrintFlowViewModelTests : IDisposable
         flow.ContinueCommand.Execute(null);
 
         flow.ChooseRangeCommand.Execute(null);
+
+        // Half typed is not an error yet: nothing moves under the finger.
+        foreach (var typed in new[] { "2-", "2,", "1,2-" })
+        {
+            flow.RangeText = typed;
+
+            flow.Error.Should().BeNull();
+            flow.RangeProblem.Should().BeNull(typed);
+            flow.QuoteDetail.Should().Be(T("options.rangeNeeded"));
+        }
+
         flow.RangeText = "2-7";
 
         flow.CanPlace.Should().BeFalse();
         flow.PriceText.Should().BeNull();
-        flow.Error.Should().Be(T("options.rangeInvalid", 3));
+        flow.Error.Should().BeNull("the banner is for the order, the range says what is wrong with it");
+        flow.RangeProblem.Should().Be(T("options.rangeInvalid", 3));
+
+        flow.RangeText = "2-3";
+        flow.RangeProblem.Should().BeNull();
+        flow.CanPlace.Should().BeTrue();
     }
 
     [Fact]

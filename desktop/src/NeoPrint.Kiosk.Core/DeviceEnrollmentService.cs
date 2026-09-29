@@ -258,7 +258,8 @@ public sealed class DeviceEnrollmentService
             : $"neoprint://activate/{deviceId}?code={Uri.EscapeDataString(pairingCode)}";
 
     /// <summary>
-    /// Reads the enrollment token the provisioning script left behind, if any.
+    /// Reads the enrollment token the provisioning script left behind, or the
+    /// one given on the command line, if any.
     /// </summary>
     private string? ReadEnrollmentToken()
     {
@@ -266,7 +267,9 @@ public sealed class DeviceEnrollmentService
 
         if (!File.Exists(path))
         {
-            return null;
+            // --enrollment-token used to be accepted and then ignored, so a
+            // developer machine stayed on the code screen (T-080).
+            return string.IsNullOrWhiteSpace(_settings.EnrollmentToken) ? null : _settings.EnrollmentToken.Trim();
         }
 
         try

@@ -42,6 +42,8 @@ public sealed class DeviceEnrollmentTests : IDisposable
 
         public List<string> Requests { get; } = [];
 
+        public List<string> Bodies { get; } = [];
+
         public ScriptedHandler Respond(string path, HttpStatusCode status, string json)
         {
             if (!_responses.TryGetValue(path, out var queue))
@@ -66,6 +68,7 @@ public sealed class DeviceEnrollmentTests : IDisposable
         {
             var path = request.RequestUri!.AbsolutePath;
             Requests.Add($"{request.Method} {path}");
+            Bodies.Add(request.Content?.ReadAsStringAsync(cancellationToken).GetAwaiter().GetResult() ?? string.Empty);
 
             if (_responses.TryGetValue(path, out var queue) && queue.Count > 0)
             {
@@ -77,7 +80,7 @@ public sealed class DeviceEnrollmentTests : IDisposable
     }
 
     private (DeviceEnrollmentService Service, ScriptedHandler Handler, FakeDeviceKeyStore Keys) Build(
-        FakePrinterService? printers = null)
+        FakePrinterService? printers = null, string? enrollmentToken = null)
     {
         var handler = new ScriptedHandler();
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://backend.test/") };
@@ -91,7 +94,7 @@ public sealed class DeviceEnrollmentTests : IDisposable
             _paths,
             new FakeMachineFingerprintProvider(),
             printers ?? new FakePrinterService(),
-            Options.Create(new KioskSettings { ApiBaseUrl = "http://backend.test" }),
+            Options.Create(new KioskSettings { ApiBaseUrl = "http://backend.test", EnrollmentToken = enrollmentToken }),
             NullLogger<DeviceEnrollmentService>.Instance);
 
         return (service, handler, keys);
@@ -296,6 +299,44 @@ public sealed class DeviceEnrollmentTests : IDisposable
         state.Lifecycle.Should().Be(KioskLifecycle.Active);
         File.Exists(tokenPath).Should().BeFalse(
             "a spent token must not sit on disk where a later reinstall could reuse it");
+    }
+
+    [Fact]
+    public async Task An_enrollment_token_given_on_the_command_line_is_sent_when_no_file_was_left()
+    {
+        var (service, handler, _) = Build(enrollmentToken: " command-line-token ");
+
+        handler
+            .Respond("/api/devices/register", HttpStatusCode.OK, RegistrationJson(Guid.NewGuid(), true, null))
+            .Respond("/api/devices/challenge", HttpStatusCode.OK,
+                JsonSerializer.Serialize(new { nonce = "n", expiresAt = DateTime.UtcNow.AddMinutes(5) }))
+            .Respond("/api/devices/token", HttpStatusCode.OK, TokenJson("kiosk", "KSK-0042"));
+
+        (await service.AdvanceAsync()).Lifecycle.Should().Be(KioskLifecycle.Active);
+
+        handler.Bodies[handler.Requests.IndexOf("POST /api/devices/register")]
+            .Should().Contain("\"enrollmentToken\":\"command-line-token\"");
+    }
+
+    [Fact]
+    public async Task The_provisioned_token_file_wins_over_the_command_line()
+    {
+        var (service, handler, _) = Build(enrollmentToken: "command-line-token");
+
+        _paths.EnsureCreated();
+        await File.WriteAllTextAsync(
+            Path.Combine(_paths.DeviceDirectory, DeviceEnrollmentService.EnrollmentTokenFileName), "file-token");
+
+        handler
+            .Respond("/api/devices/register", HttpStatusCode.OK, RegistrationJson(Guid.NewGuid(), true, null))
+            .Respond("/api/devices/challenge", HttpStatusCode.OK,
+                JsonSerializer.Serialize(new { nonce = "n", expiresAt = DateTime.UtcNow.AddMinutes(5) }))
+            .Respond("/api/devices/token", HttpStatusCode.OK, TokenJson("kiosk", "KSK-0042"));
+
+        await service.AdvanceAsync();
+
+        handler.Bodies[handler.Requests.IndexOf("POST /api/devices/register")]
+            .Should().Contain("\"enrollmentToken\":\"file-token\"");
     }
 
     [Fact]

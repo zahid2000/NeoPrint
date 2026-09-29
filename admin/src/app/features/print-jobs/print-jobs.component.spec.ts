@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { PrintJob, PrintJobDetail } from '../../core/api/step3.models';
 import { Permissions } from '../../core/auth/auth.models';

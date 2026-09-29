@@ -25,18 +25,18 @@
                 </StackPanel>
             </Border>
             <UniformGrid Columns="3" HorizontalAlignment="Center">
-                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="1" Margin="{DynamicResource GapBelow4}"><TextBlock Text="1" /></Button>
-                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="2" Margin="{DynamicResource GapBelow4}"><TextBlock Text="2" /></Button>
-                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="3" Margin="{DynamicResource GapBelow4}"><TextBlock Text="3" /></Button>
-                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="4" Margin="{DynamicResource GapBelow4}"><TextBlock Text="4" /></Button>
-                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="5" Margin="{DynamicResource GapBelow4}"><TextBlock Text="5" /></Button>
-                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="6" Margin="{DynamicResource GapBelow4}"><TextBlock Text="6" /></Button>
-                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="7" Margin="{DynamicResource GapBelow4}"><TextBlock Text="7" /></Button>
-                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="8" Margin="{DynamicResource GapBelow4}"><TextBlock Text="8" /></Button>
-                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="9" Margin="{DynamicResource GapBelow4}"><TextBlock Text="9" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="1"><TextBlock Text="1" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="2"><TextBlock Text="2" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="3"><TextBlock Text="3" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="4"><TextBlock Text="4" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="5"><TextBlock Text="5" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="6"><TextBlock Text="6" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="7"><TextBlock Text="7" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="8"><TextBlock Text="8" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="9"><TextBlock Text="9" /></Button>
                 <Panel />
-                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="0" Margin="{DynamicResource GapBelow4}"><TextBlock Text="0" /></Button>
-                <Button Classes="key" Command="{Binding EraseCommand}" Margin="{DynamicResource GapBelow4}"><TextBlock Text="{Binding EraseText}" /></Button>
+                <Button Classes="key" Command="{Binding DigitCommand}" CommandParameter="0"><TextBlock Text="0" /></Button>
+                <Button Classes="key" Command="{Binding EraseCommand}"><TextBlock Text="{Binding EraseText}" /></Button>
             </UniformGrid>
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" HorizontalAlignment="Center">
                 <Button Classes="secondary" Command="{Binding CloseCommand}"><TextBlock Text="{Binding CloseText}" /></Button>

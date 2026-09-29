@@ -412,8 +412,15 @@ növbəti sorğuda 403 alır və özü Activation ekranına qayıdır.
 
 Yeni aktivləşdirilmiş kioskun lotoku **boşdur** (`Current = 0`) və
 `Paper.BlockWhenInsufficient` açıqdırsa heç bir sifariş qəbul olunmur
-("Bu kioskda hazırda kifayət qədər kağız yoxdur"). Admin panelin "Sərf" tabı
-M8-də gəlir; o vaxta qədər API ilə doldurun (SuperAdmin tokeni ilə):
+("Bu kioskda hazırda kifayət qədər kağız yoxdur").
+
+Admin paneldə: **Kiosklar → kiosk → Sərf** tabı → "Kağız doldur" → üsul
+(**Əlavə et** / **Tam doldur** / **Dəqiq say**) → **Yadda saxla**. Eyni tabda
+lotokun səviyyəsi və son hərəkətlər (çap olunan sifarişlər, test səhifəsi,
+doldurma) görünür. Kağız qurtaran və ya azalan kiosk dashboard-dakı
+"Kioskların vəziyyəti" kartında "Diqqət tələb edir" siyahısına düşür.
+
+Eyni əməliyyat API ilə (SuperAdmin tokeni ilə):
 
 ```powershell
 $token = "<admin accessToken>"
