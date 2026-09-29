@@ -4,6 +4,8 @@ arrow_back
 calculate
 cancel
 check_circle
+chevron_left
+chevron_right
 cloud
 content_copy
 dark_mode
@@ -17,8 +19,10 @@ edit_note
 error
 error_outline
 group
+history
 inbox
 info
+inventory_2
 key
 language
 light_mode
@@ -37,8 +41,11 @@ person_off
 play_arrow
 post_add
 print
+print_disabled
 progress_activity
+queue
 radio_button_unchecked
+receipt_long
 refresh
 report
 restart_alt
@@ -53,6 +60,7 @@ storage
 storefront
 sync
 sync_alt
+terminal
 timer_off
 toggle_on
 verified
