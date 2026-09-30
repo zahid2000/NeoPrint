@@ -49,10 +49,12 @@ public sealed class MockCardProvider : ICardPaymentProvider
     private readonly MongoSet<MockCardCharge> _charges;
     private readonly MongoSet<MockBankBehaviour> _behaviour;
     private readonly IClock _clock;
+    private readonly MockRefunds _refunds;
     private readonly ILogger<MockCardProvider> _logger;
 
-    public MockCardProvider(MongoContext context, IClock clock, ILogger<MockCardProvider> logger)
+    public MockCardProvider(MongoContext context, IClock clock, MockRefunds refunds, ILogger<MockCardProvider> logger)
     {
+        _refunds = refunds;
         ArgumentNullException.ThrowIfNull(context);
 
         _charges = context.MockCardCharges;
@@ -102,6 +104,17 @@ public sealed class MockCardProvider : ICardPaymentProvider
         // A charge the acquirer never saw was never taken.
         return charge is null ? new ProviderPaymentStatus(ProviderPaymentState.Failed, FailureCode: "unknownCharge") : StatusOf(charge);
     }
+
+    public async Task<ProviderRefundResult> RefundAsync(string providerRef, string refundKey, Money amount, CancellationToken cancellationToken = default)
+    {
+        var charge = await _charges.Find(c => c.Id == providerRef).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        var taken = charge is { State: ProviderPaymentState.Succeeded } ? charge.AmountQapik : 0;
+
+        return await _refunds.RefundAsync(ProviderName, providerRef, refundKey, amount, taken, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task<ProviderRefundResult> GetRefundStatusAsync(string refundKey, CancellationToken cancellationToken = default)
+        => _refunds.GetRefundStatusAsync(refundKey, cancellationToken);
 
     /// <summary>Sets how the next charges end.</summary>
     public Task SetOutcomeAsync(MockCardOutcome outcome, CancellationToken cancellationToken = default)

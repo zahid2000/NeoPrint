@@ -1149,6 +1149,84 @@ Qaydalar: balans və bonus hissəsi kart çıxılmazdan **əvvəl** ledger-də a
 kartın öz statusunu öyrənənə qədər saxlanılır. Balans çatmırsa `409 wallet.insufficient`,
 heç nə ayrılmır. Eyni ödəniş paralel iki dəfə göndərilsə pul bir dəfə çıxılır.
 
+## Qaytarmalar (refund)
+
+Qaytarma qərarı (`RefundRequested`) ödənişin **hər hissəsi üçün ayrıca** refund yaradır
+(kart/bank → `OriginalMethod` və ya `Wallet`, balans → yalnız `Wallet`, bonus → yalnız
+`Bonus`). Üç qoruyucu ikiqat qaytarmanı qeyri-mümkün edir: refund-un unikal `DedupKey`-i
+(eyni qərar bir refund), hər hissə üzrə cəm (bir ödənişin refund-ları heç vaxt onu keçmir,
+`Payment.ApplyRefund` də yoxlayır) və provayderə göndərilən açar (refund-un id-si — təkrar
+sorğu ilk nəticəni qaytarır).
+
+| Nə | Necə işləyir |
+|---|---|
+| A ssenarisi (printer xətası, kiosk əlaqədədir) | Kiosk `Interrupted` bildirəndə, ödəniş anonim **bank QR**-dırsa: çap olunmayan hissə sübutla hesablanır, job `Cancelled`, məbləğ avtomatik karta qaytarılır. Qeydiyyatlı istifadəçi üçün avtomatik refund yoxdur (təklif) |
+| Sübut ardıcıllığı | Printer sayğacı (`print_attempts` əvvəl/sonra) → spooler ("tamamlandı") → kiosk jurnalı (`PrintedSides`) → heç biri yoxdursa **tam məbləğ**. Mənbələr ziddiyyətlidirsə **ən az çap olunmuş** saya inanılır (müştərinin xeyrinə). Seçilən mənbə və bütün dəyərlər refund-da (`evidence`) saxlanır |
+| Job ləğvi | Kiosk (kodla), admin və ya sistem ləğv edəndə açıq intent-lər bankda bağlanır; ödənilmiş məbləğ qaytarılır (anonim — karta, qeydiyyatlı — balansa) |
+| Provayder uğursuzluğu | `Refund.ProviderMaxAttempts` cəhd, aralarında 1, 2, 4… dəqiqə; sonra refund `Failed`, ödəniş `RefundFailed`, incident (`RefundFailed`, High), admin qərar verir |
+| Voucher | Yalnız anonim müştərinin bank refund-u alınmayanda admin seçir: `RF-XXXX-XXXX`, `Refund.VoucherValidDays` gün; `POST /api/wallet/vouchers/redeem` ilə bir dəfə balansa köçür |
+
+### İctimai status
+
+`GET /api/refunds/{id}/public` (anonim) — kiosk ekranındakı / qəbzdəki QR bu səhifəni açır:
+`{ status, amount, currency, destination ("Card" | "Wallet" | "Voucher"), createdAt, completedAt, voucherCode? }`. Şəxsi məlumat yoxdur.
+
+### Admin
+
+| Endpoint | İcazə | Nə edir |
+|---|---|---|
+| `GET /api/admin/payments/{id}/refund-options` | `payments.refund` | Qaytarıla bilən: cəm, kart/bank, balans, bonus; kart hissəsinin mümkün istiqamətləri; job ləğv oluna bilərmi |
+| `POST /api/admin/payments/{id}/refund` (`Idempotency-Key`) | `payments.refund` | `{ amount?, destination?, reason, cancelJob }` — səbəb məcburi (`400`), qalan məbləğdən çox olmaz (`409`); refund-lar eyni tranzaksiyada yaranır və dərhal icra olunur; audit `payments.refund` |
+| `GET /api/admin/refunds?status=&reason=&paymentId=` · `GET /api/admin/refunds/{id}` | `refunds.view` | Siyahı və detal (cəhdlər, növbəti cəhd, xəta, sübut, voucher) |
+| `POST /api/admin/refunds/{id}/retry` (`Idempotency-Key`) | `refunds.retry` | `{ destination?, note? }` — yalnız `Failed` refund; yeni cəhd limiti; anonim → kart və ya voucher, qeydiyyatlı → kart və ya balans, balans hissəsi → yalnız balans; audit |
+
+### Development
+
+| Endpoint | Nə edir |
+|---|---|
+| `POST /api/dev/refunds/{id}/simulate-fail` | Bu refund hər cəhddə uğursuz olur |
+| `POST /api/dev/mock-bank/refunds-fail?fails=true\|false` | Bank bütün refund-ları rədd edir |
+
+## Nəticəsi naməlum sifarişlər (`Suspected`, B ssenarisi)
+
+`StuckJobWatchdogJob` (hər dəqiqə): `Queued` job-un növbəyə düşmə, `Printing` job-un çapa
+başlama vaxtı **və** kioskun son heartbeat-i `Job.SuspectedAfterMinutes`-dən (default 15)
+köhnədirsə job `Suspected` olur. Avtomatik ləğv və refund **yoxdur**, ödəniş `Succeeded`
+qalır; incident `JobSuspected` (High, `suspected:{jobId}` — bir dəfə). Uzun növbəsi olan,
+amma heartbeat göndərən kiosk toxunulmur. `Job.SuspectedAutoResolveHours` (default 72)
+keçəndə **bir dəfə** xatırlatma incident-i (`suspected-reminder:{jobId}`); başqa heç nə.
+
+| Kiosk nə bildirir (`POST /api/print-jobs/{id}/status`) | Nəticə |
+|---|---|
+| `Suspected` job üçün `Printing` | Heç nə dəyişmir (cəhd `print_attempts`-ə yazılır) — nəticə gözlənilir |
+| `Suspected` job üçün `Completed` | `Completed`, refund yoxdur; incident-lər avtomatik bağlanır |
+| `Suspected` job üçün `Interrupted` | `Interrupted` → A ssenarisi (anonim bank ödənişi avtomatik karta qaytarılır); incident-lər bağlanır |
+| Admin qərarından **sonra** gələn ziddiyyətli bildiriş | `200`, heç nə dəyişmir; cəhd saxlanılır, incident `suspected-late:{jobId}` (Medium) |
+
+### Admin
+
+| Endpoint | İcazə | |
+|---|---|---|
+| `GET /api/admin/print-jobs/suspected` | `jobs.view` | Ən köhnə əvvəl: `jobId`, `jobCode`, `kioskCode`, `suspectedAt`, `kioskLastHeartbeatAt`, `amount`, `paymentMethod`, `hasAccount`, `openClaims`, `overdue` (`SuspectedAutoResolveHours` keçib) |
+| `GET /api/admin/print-jobs/{id}/investigation` | `jobs.view` | Araşdırma kartı: `detail` (job + tarixçə + `attempts` sayğac əvvəl/sonra), `payment` (metod, status, provider istinadı, qaytarıla bilən, kart hissəsinin istiqamətləri), kioskun statusu və son heartbeat-i, müştəri müraciətləri, həmin kioskda ±2 saat ərzində incident-lər və digər sifarişlər |
+| `POST /api/admin/print-jobs/{id}/resolve` (`Idempotency-Key`) | `payments.refund` | `{ decision, amount?, destination?, reason, note }` — `reason` və `note` məcburi (`400`). `FullRefund` → `Cancelled` + bütün məbləğ (istiqamət matrisi və ya seçilən `destination`); `PartialRefund` (`amount` məcburi) → `Completed` + həmin məbləğ; `NoRefund` → `Completed`; `Reprint` → yenidən `Queued`, əlavə ödəniş yoxdur. Artıq həll olunubsa `409 printJobs.suspected.alreadyResolved`; ödənişsiz sifarişdə qaytarma qərarı `409 printJobs.suspected.nothingPaid`. Audit `printJobs.suspected.resolve`; incident-lər bağlanır |
+
+Admin qərarı kağız sayğacını dəyişmir — sayğac yalnız printerin bildirişinə tabedir.
+
+## Müştəri müraciətləri
+
+| Endpoint | Kim | |
+|---|---|---|
+| `POST /api/support/claims` (`Idempotency-Key`) | anonim, IP üzrə saatda 10 (`RateLimits:SupportClaimPerHour`) | `{ jobCode, kioskCode, text, contact? }` — hər iki kod uyğun gəlməlidir, əks halda `404` (hansının səhv olduğu deyilmir). Cavab: `{ id, status, createdAt }` |
+| `POST /api/me/claims` (`Idempotency-Key`) | `User` | `{ jobId, text }` — yalnız öz sifarişi (`404`). "Problem barədə bildir" |
+| `GET /api/me/claims` | `User` | Öz müraciətləri və cavablar (`contact` qaytarılmır) |
+| `GET /api/admin/support/claims?status=&jobId=&page=&pageSize=` | `jobs.view` | Siyahı; `contact` yalnız adminə görünür |
+| `POST /api/admin/support/claims/{id}/answer` · `.../close` (`Idempotency-Key`) | `payments.refund` | Cavab (1–1000 simvol) / bağlama; bağlı müraciətə cavab `409 support.closed`; audit |
+
+Mətn 1–1000 simvol (`400 support.textLength`); bir sifarişdə ən çox 5 açıq müraciət
+(`409 support.tooManyOpen`). Hər müraciət `audit_logs`-a düşür; mətn və əlaqə məlumatı
+audit-ə və loqa yazılmır.
+
 ## Balans (`/api/wallet`, `User` token)
 
 | Endpoint | Nə edir |

@@ -390,11 +390,19 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         // The mock bank calls back over HTTP; here the test server answers.
         builder.UseSetting("Payments:MockBank:CallbackBaseUrl", "http://localhost");
 
-        builder.ConfigureLogging(logging => logging
-            .ClearProviders()
-            // Warnings and above: the seeding and Hangfire chatter would bury
-            // the test output otherwise.
-            .SetMinimumLevel(LogLevel.Warning));
+        builder.ConfigureLogging(logging =>
+        {
+            logging
+                .ClearProviders()
+                // Warnings and above: the seeding and Hangfire chatter would bury
+                // the test output otherwise.
+                .SetMinimumLevel(LogLevel.Warning);
+
+            if (Environment.GetEnvironmentVariable(FileTestLoggerProvider.Variable) is { Length: > 0 } logPath)
+            {
+                logging.AddProvider(new FileTestLoggerProvider(logPath));
+            }
+        });
 
         builder.ConfigureTestServices(services =>
         {
@@ -422,6 +430,44 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
     {
         AllowAutoRedirect = false,
     });
+
+    /// <summary>
+    /// A second API with other settings, answering HTTP only. Its message bus
+    /// and job server are left out: they would share this fixture's queues,
+    /// take messages meant for it and, once the second host is disposed,
+    /// lose them in a consumer whose services are gone (a cancelled job's
+    /// refund never made). The fixture's own host does all background work.
+    /// </summary>
+    public WebApplicationFactory<Program> WithHttpOnlyHost(Action<IWebHostBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        return WithWebHostBuilder(builder =>
+        {
+            configure(builder);
+            builder.ConfigureTestServices(services =>
+            {
+                // The web host itself is a hosted service too; it stays.
+                var background = services
+                    .Where(descriptor => descriptor.ServiceType == typeof(IHostedService)
+                                         && descriptor.ImplementationType?.Name != "GenericWebHostService")
+                    .ToList();
+
+                foreach (var descriptor in background)
+                {
+                    services.Remove(descriptor);
+                }
+
+                // Hangfire's client would configure Hangfire process-wide with this
+                // host's logger, which is disposed with it (docs/DECISIONS.md).
+                services.RemoveAll<Hangfire.IBackgroundJobClient>();
+                services.RemoveAll<Hangfire.IRecurringJobManager>();
+                services.AddSingleton<NoBackgroundJobs>();
+                services.AddSingleton<Hangfire.IBackgroundJobClient>(provider => provider.GetRequiredService<NoBackgroundJobs>());
+                services.AddSingleton<Hangfire.IRecurringJobManager>(provider => provider.GetRequiredService<NoBackgroundJobs>());
+            });
+        });
+    }
 }
 
 /// <summary>

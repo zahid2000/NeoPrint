@@ -123,6 +123,12 @@ public sealed class PrintJob : Entity
 
     public DateTime? FinishedAt { get; private set; }
 
+    /// <summary>When the watchdog gave up on hearing from the kiosk (plan section 2.5, scenario B).</summary>
+    public DateTime? SuspectedAt { get; private set; }
+
+    /// <summary>When the admins were reminded of a suspected job nobody decided on; once per suspicion.</summary>
+    public DateTime? SuspectedReminderAt { get; private set; }
+
     /// <summary>How many times printing was started; above one means it was put back in the queue.</summary>
     public int Attempts { get; private set; }
 
@@ -322,7 +328,31 @@ public sealed class PrintJob : Entity
     }
 
     /// <summary>The kiosk went quiet with this job in hand; its outcome is unknown.</summary>
-    public void MarkSuspected(ActorContext actor, DateTime now) => Move(PrintJobStatus.Suspected, actor, now);
+    public void MarkSuspected(ActorContext actor, DateTime now)
+    {
+        var before = Status;
+        Move(PrintJobStatus.Suspected, actor, now);
+
+        if (before != PrintJobStatus.Suspected)
+        {
+            SuspectedAt = now;
+            SuspectedReminderAt = null;
+        }
+    }
+
+    /// <summary>The last time the kiosk did something with this job: queued it or started printing it.</summary>
+    public DateTime? LastKioskActivityAt => Status == PrintJobStatus.Printing ? StartedAt ?? QueuedAt : QueuedAt;
+
+    /// <summary>The admins were reminded that this suspected job still waits for a decision.</summary>
+    public void NoteSuspectedReminder(DateTime now)
+    {
+        if (Status != PrintJobStatus.Suspected)
+        {
+            throw new DomainException("printJobs.notSuspected");
+        }
+
+        SuspectedReminderAt ??= now;
+    }
 
     private void RecordCounts(int printedSides, int printedSheets)
     {

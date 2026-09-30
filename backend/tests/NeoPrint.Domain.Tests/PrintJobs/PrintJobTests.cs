@@ -130,6 +130,30 @@ public sealed class PrintJobTests
     }
 
     [Fact]
+    public void A_suspicion_keeps_its_start_and_reminds_once()
+    {
+        var job = Queued();
+        job.StartPrinting(Kiosk, Now);
+        job.LastKioskActivityAt.Should().Be(Now);
+
+        job.MarkSuspected(ActorContext.System(), Now.AddMinutes(20));
+        job.MarkSuspected(ActorContext.System(), Now.AddMinutes(40));
+        job.SuspectedAt.Should().Be(Now.AddMinutes(20), "the same suspicion noticed again");
+
+        job.NoteSuspectedReminder(Now.AddHours(73));
+        job.NoteSuspectedReminder(Now.AddHours(80));
+        job.SuspectedReminderAt.Should().Be(Now.AddHours(73));
+
+        // Reprinted and lost again: a new suspicion, a new reminder later.
+        job.Enqueue(ActorContext.System(), Now.AddHours(81));
+        ((Action)(() => job.NoteSuspectedReminder(Now.AddHours(82)))).Should().Throw<DomainException>()
+            .Which.Text.Key.Should().Be("printJobs.notSuspected");
+        job.MarkSuspected(ActorContext.System(), Now.AddHours(90));
+        job.SuspectedAt.Should().Be(Now.AddHours(90));
+        job.SuspectedReminderAt.Should().BeNull();
+    }
+
+    [Fact]
     public void A_printed_count_that_makes_no_sense_is_refused()
     {
         var job = Queued();

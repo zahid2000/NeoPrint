@@ -30,6 +30,12 @@ public sealed class RateLimitSettings
     /// </summary>
     public int RefreshPerMinute { get; init; } = 60;
 
+    /// <summary>
+    /// Anonymous support claims per hour per IP: the job and kiosk codes on a
+    /// receipt are short, so trying pairs is kept slow.
+    /// </summary>
+    public int SupportClaimPerHour { get; init; } = 10;
+
     /// <summary>Everything else: 120 per minute per caller.</summary>
     public int GlobalPerMinute { get; init; } = 120;
 
@@ -50,6 +56,7 @@ public sealed class RateLimitSettings
             AuthPerMinute = section.GetValue("AuthPerMinute", 10),
             DeviceRegisterPerHour = section.GetValue("DeviceRegisterPerHour", 10),
             RefreshPerMinute = section.GetValue("RefreshPerMinute", 60),
+            SupportClaimPerHour = section.GetValue("SupportClaimPerHour", 10),
             GlobalPerMinute = section.GetValue("GlobalPerMinute", 120),
             Disabled = section.GetValue("Disabled", false),
         };

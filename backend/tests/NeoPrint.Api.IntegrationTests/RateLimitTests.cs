@@ -20,7 +20,7 @@ public sealed class RateLimitTests
     [DockerFact]
     public async Task Guessing_a_password_is_stopped_but_refreshing_a_session_is_not()
     {
-        await using var limited = _fixture.WithWebHostBuilder(builder => builder
+        await using var limited = _fixture.WithHttpOnlyHost(builder => builder
             .UseSetting("RateLimits:Disabled", "false")
             .UseSetting("RateLimits:AuthPerMinute", "10")
             .UseSetting("RateLimits:RefreshPerMinute", "60"));

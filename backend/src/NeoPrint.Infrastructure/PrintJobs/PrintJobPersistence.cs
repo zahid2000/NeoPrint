@@ -147,6 +147,31 @@ public sealed class PrintJobRepository : IPrintJobRepository
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<PrintJob>> ListStuckCandidatesAsync(DateTime activityBefore, int take, CancellationToken cancellationToken = default)
+        => await _context.PrintJobs
+            .Find(job => (job.Status == PrintJobStatus.Queued && job.QueuedAt <= activityBefore)
+                         || (job.Status == PrintJobStatus.Printing && job.StartedAt <= activityBefore))
+            .SortBy(job => job.CreatedAt)
+            .Limit(take)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PrintJob>> ListSuspectedAsync(IReadOnlyCollection<Guid> kioskIds, int take, CancellationToken cancellationToken = default)
+        => await _context.PrintJobs
+            .Find(Builders<PrintJob>.Filter.Eq(job => job.Status, PrintJobStatus.Suspected) & Builders<PrintJob>.Filter.In(job => job.KioskId, kioskIds))
+            .SortBy(job => job.SuspectedAt)
+            .Limit(take)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PrintJob>> ListSuspectedForReminderAsync(DateTime suspectedBefore, int take, CancellationToken cancellationToken = default)
+        => await _context.PrintJobs
+            .Find(job => job.Status == PrintJobStatus.Suspected && job.SuspectedAt <= suspectedBefore && job.SuspectedReminderAt == null)
+            .SortBy(job => job.SuspectedAt)
+            .Limit(take)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<(IReadOnlyList<PrintJob> Items, long Total)> SearchAsync(
         PrintJobFilter filter, int skip, int take, CancellationToken cancellationToken = default)
     {

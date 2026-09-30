@@ -221,6 +221,7 @@ builder.Services.AddScoped<IDeviceNotifier, SignalRDeviceNotifier>();
 builder.Services.AddScoped<IAdminNotifier, SignalRAdminNotifier>();
 builder.Services.AddScoped<IKioskNotifier, SignalRKioskNotifier>();
 builder.Services.AddScoped<NeoPrint.Application.Payments.IPaymentNotifier, SignalRKioskNotifier>();
+builder.Services.AddScoped<NeoPrint.Application.Refunds.IPaymentsAdminNotifier, SignalRPaymentsAdminNotifier>();
 
 // The customer and the bank, played in Development only (plan section 6, "Dev").
 if (builder.Environment.IsDevelopment())
@@ -308,6 +309,18 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromHours(1),
             }));
 
+    // Anonymous support claims name a job by the short codes on a receipt:
+    // limited per IP per hour so the pairs cannot be tried at speed.
+    options.AddPolicy("support-claim", context => rateLimits.Disabled
+        ? RateLimitPartition.GetNoLimiter("all")
+        : RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimits.SupportClaimPerHour,
+                Window = TimeSpan.FromHours(1),
+            }));
+
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => rateLimits.Disabled
         ? RateLimitPartition.GetNoLimiter("all")
         : RateLimitPartition.GetFixedWindowLimiter(
@@ -379,8 +392,29 @@ await using (var scope = app.Services.CreateAsyncScope())
         jobs => jobs.ReconcileAsync(CancellationToken.None),
         "*/5 * * * *");
 
+    // Refunds: due retries every minute, provider refunds still open every
+    // five; the wallet ledger against its balances once a day (plan 6).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Refunds.RefundJobs>(
+        NeoPrint.Infrastructure.Refunds.RefundJobs.RetryJobId,
+        jobs => jobs.RetryDueAsync(CancellationToken.None),
+        Cron.Minutely());
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Refunds.RefundJobs>(
+        NeoPrint.Infrastructure.Refunds.RefundJobs.PollingJobId,
+        jobs => jobs.PollAsync(CancellationToken.None),
+        "*/5 * * * *");
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Refunds.WalletLedgerReconciliationJob>(
+        NeoPrint.Infrastructure.Refunds.WalletLedgerReconciliationJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Daily(4));
+
     recurring.AddOrUpdate<PrintQueueReconciliationJob>(
         PrintQueueReconciliationJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Minutely());
+
+    // Jobs whose kiosk went quiet: Suspected, never refunded automatically (plan section 2.5, scenario B).
+    recurring.AddOrUpdate<StuckJobWatchdogJob>(
+        StuckJobWatchdogJob.JobId,
         job => job.RunAsync(CancellationToken.None),
         Cron.Minutely());
 

@@ -761,6 +761,28 @@ node tools/design-lint --list
 cd tools/design-lint && npm test
 ```
 
+### İnteqrasiya testi yalnız tam dəstdə düşəndə
+
+Test konteynerdəki API-nin loqları default olaraq atılır. `NEOPRINT_IT_LOG`
+verilsə, API-nin xəbərdarlıq və xətaları həmin fayla yazılır (consumer xətaları,
+MassTransit retry-ları və s.):
+
+```bash
+# bash
+NEOPRINT_IT_LOG="$PWD/it-app.log" dotnet test backend/tests/NeoPrint.Api.IntegrationTests
+# yalnız bir sinif
+NEOPRINT_IT_LOG="$PWD/it-app.log" dotnet test backend/tests/NeoPrint.Api.IntegrationTests --filter "FullyQualifiedName~RefundTests"
+```
+
+```powershell
+# PowerShell
+$env:NEOPRINT_IT_LOG = "$PWD\it-app.log"; dotnet test backend/tests/NeoPrint.Api.IntegrationTests; Remove-Item Env:NEOPRINT_IT_LOG
+```
+
+Testdə ayrı ayarlarla ikinci API lazımdırsa `WithWebHostBuilder` yox,
+`_fixture.WithHttpOnlyHost(...)` istifadə edin — əks halda ikinci host-un mesaj
+bus-ı fixture-un mesajlarını götürüb itirir (`docs/DECISIONS.md`).
+
 ### Konvertasiya testləri (PDFium)
 
 Səhifə sayı və preview PDFium native kitabxanasını tələb edir. Backend Docker

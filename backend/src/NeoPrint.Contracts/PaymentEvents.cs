@@ -34,10 +34,23 @@ public sealed record PaymentExpired(Guid PaymentId, Guid? JobId, Guid? KioskId, 
 /// The same decision made twice (a duplicate event, a retried consumer) has
 /// the same key and makes one refund.
 /// </param>
+/// <param name="Destination">
+/// A <c>RefundDestination</c> name chosen by an admin for the payment's
+/// external part; null for the default matrix (plan section 2.5).
+/// </param>
+/// <param name="Evidence">For a partly printed job: which source decided the amount.</param>
 public sealed record RefundRequested(
     Guid PaymentId,
     Guid? JobId,
     string Reason,
     decimal? Amount,
     string DedupKey,
-    string? CorrelationId);
+    string? CorrelationId,
+    string? Destination = null,
+    string? Note = null,
+    Guid? InitiatorId = null,
+    string InitiatedBy = "System",
+    RefundEvidenceData? Evidence = null);
+
+/// <summary>What decided the amount of a partly printed job's refund.</summary>
+public sealed record RefundEvidenceData(string Source, int PrintedSides, int OrderedSides, string Detail);

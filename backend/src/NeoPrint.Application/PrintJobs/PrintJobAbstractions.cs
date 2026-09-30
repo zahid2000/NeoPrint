@@ -46,6 +46,18 @@ public interface IPrintJobRepository
     /// <summary>Jobs still waiting for a payment that were placed before <paramref name="createdBefore"/>, oldest first.</summary>
     Task<IReadOnlyList<PrintJob>> ListAwaitingPaymentAsync(DateTime createdBefore, int take, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Queued jobs queued, and printing jobs started, before <paramref name="activityBefore"/>:
+    /// the ones the watchdog checks against their kiosk's heartbeat (plan section 2.5, scenario B).
+    /// </summary>
+    Task<IReadOnlyList<PrintJob>> ListStuckCandidatesAsync(DateTime activityBefore, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>Suspected jobs at these kiosks, the longest-waiting first (plan section 8A.3, "Baxış gözləyən job-lar").</summary>
+    Task<IReadOnlyList<PrintJob>> ListSuspectedAsync(IReadOnlyCollection<Guid> kioskIds, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>Suspected jobs since before <paramref name="suspectedBefore"/> whose admins were not reminded yet.</summary>
+    Task<IReadOnlyList<PrintJob>> ListSuspectedForReminderAsync(DateTime suspectedBefore, int take, CancellationToken cancellationToken = default);
+
     /// <summary>The admin list, newest first.</summary>
     Task<(IReadOnlyList<PrintJob> Items, long Total)> SearchAsync(
         PrintJobFilter filter, int skip, int take, CancellationToken cancellationToken = default);

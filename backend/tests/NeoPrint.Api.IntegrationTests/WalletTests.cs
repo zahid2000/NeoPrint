@@ -270,6 +270,7 @@ public sealed class WalletTests
             "api/wallet",
             "api/wallet/transactions",
             "api/wallet/top-up",
+            "api/wallet/vouchers/redeem",
             "api/admin/wallets/{userId:guid}",
             "api/admin/wallets/{userId:guid}/transactions",
             "api/admin/wallets/{userId:guid}/adjust");

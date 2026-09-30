@@ -129,6 +129,7 @@ public static class DependencyInjection
         // Payments (plan section 2.5, step 4). The mock bank is the only bank
         // QR provider until a real one is contracted (docs/DECISIONS.md).
         services.AddScoped<Application.Payments.IPaymentRepository, Payments.PaymentRepository>();
+        services.AddScoped<Payments.MockRefunds>();
         services.AddScoped<Payments.MockBankProvider>();
         services.AddScoped<Application.Payments.IBankQrProvider>(provider => provider.GetRequiredService<Payments.MockBankProvider>());
         services.AddScoped<Payments.MockCardProvider>();
@@ -140,7 +141,21 @@ public static class DependencyInjection
         services.AddScoped<Application.Wallets.IWalletRepository, Wallets.WalletRepository>();
         services.AddScoped<Application.Wallets.IWalletTransactionRepository, Wallets.WalletTransactionRepository>();
         services.AddScoped<Application.Wallets.WalletLedger>();
+
+        // Refunds, vouchers and incidents (plan section 2.5).
+        services.AddScoped<Application.Refunds.IRefundRepository, Refunds.RefundRepository>();
+        services.AddScoped<Application.Refunds.IRefundVoucherRepository, Refunds.RefundVoucherRepository>();
+        services.AddScoped<Application.Refunds.IIncidentRepository, Refunds.IncidentRepository>();
+        services.AddScoped<Application.Refunds.IncidentReporter>();
+        services.AddScoped<Application.Refunds.RefundPlanner>();
+        services.AddScoped<Refunds.RefundJobs>();
+        services.AddScoped<Refunds.WalletLedgerReconciliationJob>();
         services.AddScoped<Payments.PaymentJobs>();
+
+        // Jobs whose outcome is unknown and customers' claims (plan section 2.5, scenario B).
+        services.AddScoped<Application.PrintJobs.SuspectedJobIncidents>();
+        services.AddScoped<Application.Support.ISupportClaimRepository, Support.SupportClaimRepository>();
+        services.AddScoped<StuckJobWatchdogJob>();
 
         // Administration and RBAC (plan section 8A.2)
         services.AddSingleton<IPasswordHasher<AdminUser>, PasswordHasher<AdminUser>>();
@@ -276,6 +291,9 @@ public static class DependencyInjection
 
             bus.AddConsumer<DocumentConversionConsumer>();
             bus.AddConsumer<StorageMirrorConsumer>();
+            bus.AddConsumer<Refunds.RefundRequestedConsumer>();
+            bus.AddConsumer<Refunds.AutoRefundOnKioskErrorConsumer>();
+            bus.AddConsumer<Refunds.PrintJobCancelledConsumer>();
 
             // Every process caches the storage providers, so every process needs
             // its own copy of this event: a queue per instance, deleted when the

@@ -48,6 +48,7 @@ public sealed class KioskPrintJobHandlers :
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly PrintJobOptions _options;
+    private readonly SuspectedJobIncidents _suspected;
     private readonly ILogger<KioskPrintJobHandlers> _logger;
 
     public KioskPrintJobHandlers(
@@ -64,6 +65,7 @@ public sealed class KioskPrintJobHandlers :
         ICorrelationContext correlation,
         IClock clock,
         IOptions<PrintJobOptions> options,
+        SuspectedJobIncidents suspected,
         ILogger<KioskPrintJobHandlers> logger)
     {
         _devices = devices;
@@ -79,6 +81,7 @@ public sealed class KioskPrintJobHandlers :
         _correlation = correlation;
         _clock = clock;
         _options = options.Value;
+        _suspected = suspected;
         _logger = logger;
     }
 
@@ -242,6 +245,11 @@ public sealed class KioskPrintJobHandlers :
                 .ConfigureAwait(false);
         }
 
+        if (await SettledBySuspicionRulesAsync(job, request.Status, cancellationToken).ConfigureAwait(false))
+        {
+            return await _queue.ResponseAsync(job, cancellationToken).ConfigureAwait(false);
+        }
+
         switch (request.Status)
         {
             case "Printing":
@@ -299,9 +307,57 @@ public sealed class KioskPrintJobHandlers :
                 .ConfigureAwait(false);
         }
 
+        if (before == PrintJobStatus.Suspected)
+        {
+            // The kiosk came back and said what happened: no admin decision
+            // is needed (plan section 2.5). Interrupted goes on to scenario A.
+            await _suspected
+                .CloseAsync(job.Id, null, UserMessage.Of("incidents.resolution.kioskReported", ("status", job.Status.ToString())), cancellationToken)
+                .ConfigureAwait(false);
+            _logger.LogInformation("Suspected job {JobId} settled by its kiosk's report: {Status}.", job.Id, job.Status);
+        }
+
         await _queue.AnnounceAsync(job.KioskId, cancellationToken).ConfigureAwait(false);
 
         return await _queue.ResponseAsync(job, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Reports about a job that is, or was, Suspected (plan section 2.5,
+    /// scenario B) that change nothing: "still printing" while it is
+    /// Suspected waits for the outcome, and anything an admin's decision has
+    /// overtaken is kept as evidence and shown to the admins, never undone.
+    /// </summary>
+    /// <returns>True when the report is settled without a transition.</returns>
+    private async Task<bool> SettledBySuspicionRulesAsync(PrintJob job, string reported, CancellationToken cancellationToken)
+    {
+        if (job.SuspectedAt is null)
+        {
+            return false;
+        }
+
+        if (job.Status == PrintJobStatus.Suspected)
+        {
+            return reported == "Printing";
+        }
+
+        var target = reported switch
+        {
+            "Printing" => PrintJobStatus.Printing,
+            "Completed" => PrintJobStatus.Completed,
+            "Interrupted" => PrintJobStatus.Interrupted,
+            _ => (PrintJobStatus?)null,
+        };
+
+        if (target is not { } next || next == job.Status || PrintJob.Transitions.IsAllowed(job.Status, next))
+        {
+            return false;
+        }
+
+        await _suspected.RaiseLateReportAsync(job, reported, cancellationToken).ConfigureAwait(false);
+        _logger.LogWarning("Kiosk reported {Reported} for job {JobId} after an admin decided it ({Status}); nothing changed.", reported, job.Id, job.Status);
+
+        return true;
     }
 
     /// <summary>
@@ -484,8 +540,8 @@ internal static class PrintJobCancellation
     /// <remarks>
     /// A job at the printer cannot be taken back - the paper is already moving
     /// - so Printing refuses; everything before it may go. A paid job's money
-    /// goes back through the refund module (step 4); until payments exist a
-    /// cancelled job has nothing to return.
+    /// goes back through the refund module: PrintJobCancelled carries who
+    /// cancelled it and why (plan section 2.5).
     /// </remarks>
     public static async Task CancelAsync(
         PrintJob job,
@@ -518,6 +574,13 @@ internal static class PrintJobCancellation
                 new PrintJobStatusChanged(job.Id, job.KioskId, before.ToString(), job.Status.ToString(), correlation.CorrelationId),
                 cancellationToken)
             .ConfigureAwait(false);
+
+        // The payments module closes open intents and sends back what was paid (plan section 2.5).
+        await events.PublishAsync(
+                new PrintJobCancelled(
+                    job.Id, job.KioskId, before.ToString(), job.PaymentId, actor.ActorType.ToString(), reason.Key, correlation.CorrelationId),
+                cancellationToken)
+            .ConfigureAwait(false);
         await notifier.JobCancelledAsync(job.KioskId, job.Id, cancellationToken).ConfigureAwait(false);
         await queue.AnnounceAsync(job.KioskId, cancellationToken).ConfigureAwait(false);
     }
@@ -540,6 +603,7 @@ public sealed class AdminPrintJobHandlers :
     private readonly IEventPublisher _events;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
+    private readonly SuspectedJobIncidents _suspected;
 
     public AdminPrintJobHandlers(
         IPermissionResolver permissions,
@@ -551,8 +615,10 @@ public sealed class AdminPrintJobHandlers :
         ITransitionHistory history,
         IEventPublisher events,
         ICorrelationContext correlation,
-        IClock clock)
+        IClock clock,
+        SuspectedJobIncidents suspected)
     {
+        _suspected = suspected;
         _permissions = permissions;
         _kiosks = kiosks;
         _jobs = jobs;
@@ -678,6 +744,7 @@ public sealed class AdminPrintJobHandlers :
 
         var (job, _) = await VisibleJobAsync(request.AdminUserId, request.JobId, cancellationToken).ConfigureAwait(false);
         var actor = ActorContext.Admin(request.AdminUserId, correlationId: _correlation.CorrelationId);
+        var wasSuspected = job.Status == PrintJobStatus.Suspected;
 
         await PrintJobCancellation.CancelAsync(
                 job,
@@ -691,6 +758,14 @@ public sealed class AdminPrintJobHandlers :
                 _correlation,
                 cancellationToken)
             .ConfigureAwait(false);
+
+        if (wasSuspected)
+        {
+            // Cancelled with the default refund: the investigation is over.
+            await _suspected
+                .CloseAsync(job.Id, request.AdminUserId, UserMessage.Of("incidents.resolution.suspectedDecided", ("decision", "Cancel")), cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         return await _queue.ResponseAsync(job, cancellationToken).ConfigureAwait(false);
     }

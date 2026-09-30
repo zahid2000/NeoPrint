@@ -349,7 +349,7 @@ public sealed class PrintJobTests
         (await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/queue")).GetArrayLength().Should().Be(0);
 
         // A host that is not Development refuses the flag.
-        using var production = _fixture.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        using var production = _fixture.WithHttpOnlyHost(builder => builder.ConfigureTestServices(services =>
             services.PostConfigure<PrintJobOptions>(options => options.AllowPaymentSkip = false)));
         using var client = production.CreateClient();
         client.DefaultRequestHeaders.Authorization = kiosk.Client.DefaultRequestHeaders.Authorization;

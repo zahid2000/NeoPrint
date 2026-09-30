@@ -49,6 +49,12 @@ public sealed class MockBankBehaviour
 
     /// <summary>How the mock card acquirer's next charges end.</summary>
     public MockCardOutcome CardOutcome { get; set; }
+
+    /// <summary>Every refund fails, as a bank that refuses them does.</summary>
+    public bool RefundsFail { get; set; }
+
+    /// <summary>These refunds fail on every try.</summary>
+    public List<string> FailingRefunds { get; set; } = [];
 }
 
 /// <summary>A callback as the mock bank sends it: the shape a real bank's webhook has.</summary>
@@ -83,10 +89,12 @@ public sealed class MockBankProvider : IBankQrProvider
     private readonly MongoSet<MockBankBehaviour> _behaviour;
     private readonly IConfiguration _configuration;
     private readonly IClock _clock;
+    private readonly MockRefunds _refunds;
     private readonly ILogger<MockBankProvider> _logger;
 
-    public MockBankProvider(MongoContext context, IConfiguration configuration, IClock clock, ILogger<MockBankProvider> logger)
+    public MockBankProvider(MongoContext context, IConfiguration configuration, IClock clock, MockRefunds refunds, ILogger<MockBankProvider> logger)
     {
+        _refunds = refunds;
         ArgumentNullException.ThrowIfNull(context);
         _transactions = context.MockBankTransactions;
         _behaviour = context.MockBankSettings;
@@ -145,6 +153,17 @@ public sealed class MockBankProvider : IBankQrProvider
 
         return await GetStatusAsync(providerRef, cancellationToken).ConfigureAwait(false);
     }
+
+    public async Task<ProviderRefundResult> RefundAsync(string providerRef, string refundKey, Money amount, CancellationToken cancellationToken = default)
+    {
+        var transaction = await _transactions.Find(t => t.Id == providerRef).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        var taken = transaction is { State: ProviderPaymentState.Succeeded } ? transaction.AmountQapik : 0;
+
+        return await _refunds.RefundAsync(ProviderName, providerRef, refundKey, amount, taken, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task<ProviderRefundResult> GetRefundStatusAsync(string refundKey, CancellationToken cancellationToken = default)
+        => _refunds.GetRefundStatusAsync(refundKey, cancellationToken);
 
     public ProviderCallback? ReadCallback(ReadOnlySpan<byte> body, string? signature)
     {

@@ -161,6 +161,46 @@ public sealed class AdminPrintJobsController : ControllerBase
     [HasPermission(Permissions.JobsView)]
     public async Task<ActionResult<IReadOnlyList<QueueEntry>>> Queue(Guid kioskId, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new GetAdminKioskQueueQuery(AdminId, kioskId), cancellationToken));
+
+    /// <summary>"Baxış gözləyən job-lar": suspected jobs, the longest-waiting first (plan section 8A.3).</summary>
+    [HttpGet("print-jobs/suspected")]
+    [HasPermission(Permissions.JobsView)]
+    public async Task<ActionResult<IReadOnlyList<SuspectedJobItem>>> Suspected(CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new ListSuspectedJobsQuery(AdminId), cancellationToken));
+
+    /// <summary>The investigation card: the job, its payment, the kiosk around that time and the customer's claims.</summary>
+    [HttpGet("print-jobs/{id:guid}/investigation")]
+    [HasPermission(Permissions.JobsView)]
+    public async Task<ActionResult<SuspectedJobInvestigation>> Investigation(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new GetSuspectedJobQuery(AdminId, id), cancellationToken));
+
+    /// <summary>
+    /// The decision on a suspected job: <c>FullRefund</c>, <c>PartialRefund</c>
+    /// (with an amount), <c>NoRefund</c> or <c>Reprint</c>; reason and note are
+    /// mandatory and audited. A money decision, so it needs <c>payments.refund</c>.
+    /// </summary>
+    [HttpPost("print-jobs/{id:guid}/resolve")]
+    [Idempotent]
+    [HasPermission(Permissions.PaymentsRefund)]
+    public async Task<ActionResult<SuspectedJobResolution>> Resolve(
+        Guid id, [FromBody] ResolveSuspectedJobRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return Ok(await _sender.Send(
+            new ResolveSuspectedJobCommand(
+                AdminId,
+                id,
+                request.Decision,
+                request.Amount,
+                request.Destination,
+                request.Reason,
+                request.Note,
+                HttpContext.Connection.RemoteIpAddress?.ToString()),
+            cancellationToken));
+    }
 }
 
 public sealed record AdminCancelRequest(string? Reason);
+
+public sealed record ResolveSuspectedJobRequest(string? Decision, decimal? Amount, string? Destination, string? Reason, string? Note);

@@ -30,6 +30,10 @@ export const settingsTranslations: PageTranslations = {
       'Anonim geri qaytarma vauçerinin etibarlılıq müddəti.',
     'settings.description.Refund.ProviderMaxAttempts':
       'Karta geri qaytarma uğursuz olanda neçə dəfə təkrarlanır.',
+    'settings.description.Job.SuspectedAfterMinutes':
+      'Kiosk bu qədər susanda çapdakı sifariş "Şübhəli" olur; avtomatik qaytarma yoxdur, admin qərar verir.',
+    'settings.description.Job.SuspectedAutoResolveHours':
+      'Bu qədər saat ərzində qərar verilməyən şübhəli sifariş üçün adminə təkrar xatırlatma gəlir.',
     'settings.description.Kiosk.HeartbeatSeconds':
       'Kiosk serverə bu intervalla "sağam" siqnalı göndərir.',
     'settings.description.Kiosk.OfflineAfterSeconds':
@@ -115,6 +119,10 @@ export const settingsTranslations: PageTranslations = {
       'How long an anonymous refund voucher stays valid.',
     'settings.description.Refund.ProviderMaxAttempts':
       'How many times a failed refund to a card is retried.',
+    'settings.description.Job.SuspectedAfterMinutes':
+      'When the kiosk is silent this long, its printing order becomes "Suspected"; no automatic refund, an admin decides.',
+    'settings.description.Job.SuspectedAutoResolveHours':
+      'A suspected order with no decision after this many hours reminds the admins again.',
     'settings.description.Kiosk.HeartbeatSeconds':
       'How often the kiosk tells the server it is alive.',
     'settings.description.Kiosk.OfflineAfterSeconds':
@@ -195,6 +203,10 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Refund.VoucherValidDays': 'Срок действия анонимного ваучера на возврат.',
     'settings.description.Refund.ProviderMaxAttempts':
       'Сколько раз повторяется неудачный возврат на карту.',
+    'settings.description.Job.SuspectedAfterMinutes':
+      'Если киоск молчит столько минут, печатающийся заказ становится «Подозрительным»; автоматического возврата нет, решает администратор.',
+    'settings.description.Job.SuspectedAutoResolveHours':
+      'Подозрительный заказ без решения через столько часов снова напоминает администраторам.',
     'settings.description.Kiosk.HeartbeatSeconds':
       'Как часто киоск сообщает серверу, что он работает.',
     'settings.description.Kiosk.OfflineAfterSeconds':

@@ -23,6 +23,7 @@ public sealed class PaymentHandlers :
     IRequestHandler<HandlePaymentCallbackCommand, PaymentCallbackOutcome>,
     IRequestHandler<ExpirePaymentCommand, Unit>,
     IRequestHandler<ExpireUnpaidJobCommand, Unit>,
+    IRequestHandler<CloseJobPaymentsCommand, Unit>,
     IRequestHandler<ReconcilePaymentCommand, Unit>
 {
     /// <summary>Bounds for <c>Payment.TimeoutMinutes</c>, whatever the panel holds.</summary>
@@ -287,6 +288,24 @@ public sealed class PaymentHandlers :
 
         var actor = ActorContext.System("payments.reason.timeout", _correlation.CorrelationId);
         await ExpireJobIfNothingPendingAsync(request.JobId, actor, _clock.UtcNow, cancellationToken).ConfigureAwait(false);
+
+        return Unit.Value;
+    }
+
+    /// <inheritdoc cref="CloseJobPaymentsCommand" />
+    /// <remarks>Runs inside the caller's transaction (the cancellation handler).</remarks>
+    public async Task<Unit> Handle(CloseJobPaymentsCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var now = _clock.UtcNow;
+        var actor = ActorContext.System("payments.reason.jobCancelled", _correlation.CorrelationId);
+
+        foreach (var open in (await _payments.ListForJobAsync(request.JobId, cancellationToken).ConfigureAwait(false))
+                     .Where(payment => payment.Status == PaymentStatus.Pending))
+        {
+            await CloseAsync(open, actor, now, cancellationToken).ConfigureAwait(false);
+        }
 
         return Unit.Value;
     }

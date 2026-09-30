@@ -47,6 +47,12 @@ public sealed record ExpirePaymentCommand(Guid PaymentId) : IRequest<Unit>, ITra
 /// <summary>A job left waiting for a payment nobody started (the customer walked away from the options screen).</summary>
 public sealed record ExpireUnpaidJobCommand(Guid JobId) : IRequest<Unit>, ITransactionalRequest;
 
+/// <summary>
+/// A job was cancelled: every intent still open for it is closed at the bank
+/// (a payment made in the meantime is kept and sent back, never lost).
+/// </summary>
+public sealed record CloseJobPaymentsCommand(Guid JobId) : IRequest<Unit>;
+
 /// <summary>One payment checked against the provider's own status (<c>PaymentReconciliationJob</c>).</summary>
 public sealed record ReconcilePaymentCommand(Guid PaymentId) : IRequest<Unit>, ITransactionalRequest;
 

@@ -128,3 +128,23 @@ public sealed class SignalRAdminNotifier : IAdminNotifier
         => _hub.Clients.Group(AdminHub.AllAdminsGroup)
             .SendAsync("StorageHealthChanged", change, cancellationToken);
 }
+
+/// <summary>Payments, refunds, fiscal receipts and incidents to the panels (plan section 6, <c>/hubs/admin</c>).</summary>
+public sealed class SignalRPaymentsAdminNotifier : NeoPrint.Application.Refunds.IPaymentsAdminNotifier
+{
+    private readonly IHubContext<AdminHub> _hub;
+
+    public SignalRPaymentsAdminNotifier(IHubContext<AdminHub> hub) => _hub = hub;
+
+    public Task IncidentRaisedAsync(Guid incidentId, string type, string severity, CancellationToken cancellationToken = default)
+        => _hub.Clients.Group(AdminHub.AllAdminsGroup).SendAsync("IncidentRaised", new { incidentId, type, severity }, cancellationToken);
+
+    public Task RefundStatusChangedAsync(Guid refundId, Guid paymentId, string status, CancellationToken cancellationToken = default)
+        => _hub.Clients.Group(AdminHub.AllAdminsGroup).SendAsync("RefundStatusChanged", new { refundId, paymentId, status }, cancellationToken);
+
+    public Task PaymentSucceededAsync(Guid paymentId, Guid? kioskId, decimal amount, CancellationToken cancellationToken = default)
+        => _hub.Clients.Group(AdminHub.AllAdminsGroup).SendAsync("PaymentSucceeded", new { paymentId, kioskId, amount }, cancellationToken);
+
+    public Task FiscalStatusChangedAsync(Guid receiptId, string status, CancellationToken cancellationToken = default)
+        => _hub.Clients.Group(AdminHub.AllAdminsGroup).SendAsync("FiscalStatusChanged", new { receiptId, status }, cancellationToken);
+}

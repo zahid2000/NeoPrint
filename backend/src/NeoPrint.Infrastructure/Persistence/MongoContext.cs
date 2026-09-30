@@ -122,6 +122,10 @@ public sealed class MongoContext
     public MongoSet<Domain.PrintJobs.PrintAttempt> PrintAttempts => Set<Domain.PrintJobs.PrintAttempt>("print_attempts");
     public MongoSet<Domain.Payments.Payment> Payments => Set<Domain.Payments.Payment>("payments");
     public MongoSet<Domain.Wallets.Wallet> Wallets => Set<Domain.Wallets.Wallet>("wallets");
+    public MongoSet<Domain.Refunds.Refund> Refunds => Set<Domain.Refunds.Refund>("refunds");
+    public MongoSet<Domain.Refunds.RefundVoucher> RefundVouchers => Set<Domain.Refunds.RefundVoucher>("refund_vouchers");
+    public MongoSet<Domain.Incidents.Incident> Incidents => Set<Domain.Incidents.Incident>("incidents");
+    public MongoSet<Domain.Support.SupportClaim> SupportClaims => Set<Domain.Support.SupportClaim>("support_claims");
     public MongoSet<Domain.Wallets.WalletTransaction> WalletTransactions => Set<Domain.Wallets.WalletTransaction>("wallet_transactions");
 
     // The mock bank's own books (Development and tests): through the same
@@ -130,6 +134,7 @@ public sealed class MongoContext
     public MongoSet<Payments.MockBankTransaction> MockBankTransactions => Set<Payments.MockBankTransaction>("mock_bank_transactions");
     public MongoSet<Payments.MockBankBehaviour> MockBankSettings => Set<Payments.MockBankBehaviour>("mock_bank_settings");
     public MongoSet<Payments.MockCardCharge> MockCardCharges => Set<Payments.MockCardCharge>("mock_card_charges");
+    public MongoSet<Payments.MockRefund> MockRefunds => Set<Payments.MockRefund>("mock_refunds");
     public MongoSet<SupplyEvent> SupplyEvents => Set<SupplyEvent>("supply_events");
 
     /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 2.17).</summary>
@@ -348,6 +353,42 @@ public sealed class MongoContext
             (Builders<Domain.Payments.Payment>.IndexKeys.Ascending(p => p.Status).Ascending(p => p.ExpiresAt),
                 Named("ix_payments_status_expires")),
             (Builders<Domain.Payments.Payment>.IndexKeys.Descending(p => p.CreatedAt), Named("ix_payments_created")));
+
+        await CreateAsync(Refunds,
+            // One refund per decision and part: a redelivered event, a retried
+            // consumer or two admins at once make one refund (no double refund).
+            (Builders<Domain.Refunds.Refund>.IndexKeys.Ascending(r => r.DedupKey), Unique("ux_refunds_dedup")),
+            (Builders<Domain.Refunds.Refund>.IndexKeys.Ascending(r => r.PaymentId), Named("ix_refunds_payment")),
+            (Builders<Domain.Refunds.Refund>.IndexKeys.Ascending(r => r.JobId), Named("ix_refunds_job")),
+            (Builders<Domain.Refunds.Refund>.IndexKeys.Ascending(r => r.Status).Ascending(r => r.NextAttemptAt),
+                Named("ix_refunds_status_next")),
+            (Builders<Domain.Refunds.Refund>.IndexKeys.Descending(r => r.CreatedAt), Named("ix_refunds_created")));
+
+        await CreateAsync(RefundVouchers,
+            (Builders<Domain.Refunds.RefundVoucher>.IndexKeys.Ascending(v => v.Code), Unique("ux_refund_vouchers_code")),
+            (Builders<Domain.Refunds.RefundVoucher>.IndexKeys.Ascending(v => v.RefundId), Unique("ux_refund_vouchers_refund")));
+
+        await CreateAsync(Incidents,
+            // One open incident per cause; a resolved one does not stop a new one.
+            (Builders<Domain.Incidents.Incident>.IndexKeys.Ascending(i => i.DedupKey),
+                new CreateIndexOptions<Domain.Incidents.Incident>
+                {
+                    Name = "ux_incidents_open_dedup",
+                    Unique = true,
+                    PartialFilterExpression = Builders<Domain.Incidents.Incident>.Filter.Eq(i => i.Open, true),
+                }),
+            (Builders<Domain.Incidents.Incident>.IndexKeys.Ascending(i => i.Status).Descending(i => i.CreatedAt),
+                Named("ix_incidents_status_created")),
+            // What else happened at a kiosk around a suspected job.
+            (Builders<Domain.Incidents.Incident>.IndexKeys.Ascending(i => i.KioskId).Descending(i => i.CreatedAt),
+                Named("ix_incidents_kiosk_created")));
+
+        await CreateAsync(SupportClaims,
+            (Builders<Domain.Support.SupportClaim>.IndexKeys.Ascending(c => c.JobId), Named("ix_support_claims_job")),
+            (Builders<Domain.Support.SupportClaim>.IndexKeys.Ascending(c => c.UserId).Descending(c => c.CreatedAt),
+                Named("ix_support_claims_user_created")),
+            (Builders<Domain.Support.SupportClaim>.IndexKeys.Ascending(c => c.Status).Descending(c => c.CreatedAt),
+                Named("ix_support_claims_status_created")));
 
         await CreateAsync(WalletTransactions,
             // The guard against a double credit or charge: one line per cause

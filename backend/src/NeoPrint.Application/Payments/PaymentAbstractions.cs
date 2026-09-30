@@ -85,15 +85,39 @@ public sealed class PaymentProviderUnavailableException : Exception
     public string Provider { get; }
 }
 
+public enum ProviderRefundState
+{
+    Succeeded = 0,
+    Failed = 1,
+
+    /// <summary>Accepted, not finished; <c>RefundStatusPollingJob</c> asks again.</summary>
+    Pending = 2,
+}
+
+/// <param name="RefundRef">The provider's reference for the refund.</param>
+public sealed record ProviderRefundResult(ProviderRefundState State, string? RefundRef = null, string? FailureCode = null);
+
+/// <summary>
+/// A provider that can give money back to where it came from (plan section
+/// 2.5: <c>RefundAsync</c>). Keyed by our refund's id: asking again after a
+/// lost answer returns the first result and never refunds twice.
+/// </summary>
+public interface IRefundingProvider
+{
+    string Name { get; }
+
+    /// <exception cref="PaymentProviderUnavailableException">No answer: the refund stays with us and is tried again.</exception>
+    Task<ProviderRefundResult> RefundAsync(string providerRef, string refundKey, Money amount, CancellationToken cancellationToken = default);
+
+    Task<ProviderRefundResult> GetRefundStatusAsync(string refundKey, CancellationToken cancellationToken = default);
+}
+
 /// <summary>
 /// A bank that takes payment by QR from its own app (plan section 2.9,
 /// <c>IBankQrProvider</c>). External, so always behind this interface.
 /// </summary>
-public interface IBankQrProvider
+public interface IBankQrProvider : IRefundingProvider
 {
-    /// <summary>The name stored with a payment and used in the callback URL, for example <c>MockBank</c>.</summary>
-    string Name { get; }
-
     /// <summary>The HTTP header the provider puts its callback signature in.</summary>
     string SignatureHeader { get; }
 
@@ -125,10 +149,8 @@ public interface IBankQrProvider
 /// returns the first charge rather than taking the money twice - which is
 /// what makes a retry after a lost answer safe.
 /// </remarks>
-public interface ICardPaymentProvider
+public interface ICardPaymentProvider : IRefundingProvider
 {
-    string Name { get; }
-
     /// <summary>Takes the amount; the state says whether it went through.</summary>
     /// <exception cref="PaymentProviderUnavailableException">No answer: the charge may or may not have happened; reconciliation finds out.</exception>
     Task<ProviderPaymentStatus> ChargeAsync(string providerRef, Money amount, CancellationToken cancellationToken = default);
@@ -145,6 +167,9 @@ public interface IPaymentProviders
     ICardPaymentProvider Card { get; }
 
     IBankQrProvider? Find(string name);
+
+    /// <summary>The provider that took a payment, to give it back.</summary>
+    IRefundingProvider? FindRefunding(string name);
 }
 
 /// <summary>Real-time payment messages to a kiosk (plan section 6, <c>/hubs/kiosk</c>).</summary>

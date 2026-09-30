@@ -28,6 +28,9 @@ public sealed class PaymentProviders : IPaymentProviders
 
     public IBankQrProvider? Find(string name)
         => _banks.FirstOrDefault(bank => string.Equals(bank.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    public IRefundingProvider? FindRefunding(string name)
+        => string.Equals(Card.Name, name, StringComparison.OrdinalIgnoreCase) ? Card : Find(name);
 }
 
 /// <summary>
