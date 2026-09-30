@@ -50,6 +50,12 @@ public sealed class PrintQueueWorker
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
 
+    /// <summary>How long an unpaid order's file is kept: well past the longest payment timeout (30 minutes).</summary>
+    private static readonly TimeSpan UnpaidLifetime = TimeSpan.FromHours(2);
+
+    /// <summary>How long a queued job may be missing from the backend's queue before its file goes.</summary>
+    private static readonly TimeSpan StaleGrace = TimeSpan.FromMinutes(2);
+
     private readonly IPrintBackend _backend;
     private readonly IPrinterService _printers;
     private readonly SpoolStore _spool;
@@ -99,12 +105,24 @@ public sealed class PrintQueueWorker
     /// </summary>
     /// <param name="contentType">What was spooled: null for the prepared PDF, or the original's type.</param>
     /// <param name="sides">Printed sides the job takes; the printer's counter is checked against it after a restart.</param>
+    /// <param name="paid">False for an order still to be paid: it waits until <see cref="MarkPaid"/> or the backend's queue says it is paid.</param>
     public void Accept(
-        Guid jobId, string jobCode, JobOptions options, int requiredSheets, DateTime queuedAt, string? contentType = null, int sides = 0)
+        Guid jobId, string jobCode, JobOptions options, int requiredSheets, DateTime queuedAt, string? contentType = null, int sides = 0, bool paid = true)
     {
         _journal.Save(new JournalEntry(
-            jobId, jobCode, JournalState.Queued, options, requiredSheets, 0, 0, null, false, queuedAt, DateTime.UtcNow, contentType, sides));
+            jobId, jobCode, paid ? JournalState.Queued : JournalState.AwaitingPayment, options, requiredSheets, 0, 0, null, false, queuedAt,
+            DateTime.UtcNow, contentType, sides));
         Wake();
+    }
+
+    /// <summary>The payment went through (<c>PaymentConfirmed</c>, or the payment screen saw it): the job may print.</summary>
+    public void MarkPaid(Guid jobId)
+    {
+        if (_journal.Find(jobId) is { State: JournalState.AwaitingPayment } entry)
+        {
+            _journal.Save(entry with { State = JournalState.Queued, UpdatedAt = DateTime.UtcNow });
+            Wake();
+        }
     }
 
     /// <summary>
@@ -340,11 +358,38 @@ public sealed class PrintQueueWorker
             // finished elsewhere): its print file goes.
             var live = queue.Select(item => item.JobId).ToHashSet();
 
-            foreach (var stale in _journal.All().Where(entry => entry.State == JournalState.Queued && !live.Contains(entry.JobId)))
+            // A job just marked paid may not be in the queue the backend answered
+            // with yet (its confirmation can arrive before the payment's
+            // transaction is visible): it gets a grace period, or a paid order
+            // would lose its file.
+            foreach (var stale in _journal.All().Where(entry => entry.State == JournalState.Queued
+                                                                && !live.Contains(entry.JobId)
+                                                                && DateTime.UtcNow - entry.UpdatedAt > StaleGrace))
             {
                 _logger.LogInformation("Job {JobCode} left the queue before it printed; removing its file.", stale.JobCode);
                 _spool.Delete(stale.SpoolName);
                 _journal.Remove(stale.JobId);
+            }
+
+            // Paid while nobody here was looking (the kiosk restarted, the event was
+            // lost): the backend's queue has it, so it may print now.
+            foreach (var item in queue.Where(item => item.Status == "Queued"))
+            {
+                if (_journal.Find(item.JobId) is { State: JournalState.AwaitingPayment } unpaid)
+                {
+                    _journal.Save(unpaid with { State = JournalState.Queued, UpdatedAt = DateTime.UtcNow });
+                }
+            }
+
+            // Never paid: the intent ran out long ago and the order with it.
+            foreach (var abandoned in _journal.All()
+                         .Where(entry => entry.State == JournalState.AwaitingPayment
+                                         && !live.Contains(entry.JobId)
+                                         && DateTime.UtcNow - entry.QueuedAt > UnpaidLifetime))
+            {
+                _logger.LogInformation("Job {JobCode} was never paid; removing its file.", abandoned.JobCode);
+                _spool.Delete(abandoned.SpoolName);
+                _journal.Remove(abandoned.JobId);
             }
 
             // In the backend's order: the first queued job whose file is here.

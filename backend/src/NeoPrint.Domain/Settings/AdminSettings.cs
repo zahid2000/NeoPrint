@@ -67,6 +67,7 @@ public static class SettingKeys
     public const string RefundProviderMaxAttempts = "Refund.ProviderMaxAttempts";
     public const string JobSuspectedAfterMinutes = "Job.SuspectedAfterMinutes";
     public const string JobSuspectedAutoResolveHours = "Job.SuspectedAutoResolveHours";
+    public const string PublicSiteUrl = "Public.SiteUrl";
     public const string KioskHeartbeatSeconds = "Kiosk.HeartbeatSeconds";
     public const string KioskOfflineAfterSeconds = "Kiosk.OfflineAfterSeconds";
     public const string KioskTelemetrySeconds = "Kiosk.TelemetrySeconds";
@@ -157,6 +158,7 @@ public static class SettingKeys
         new(RefundProviderMaxAttempts, "3", SettingValueType.Integer, "Bank/kart refund-unun təkrar cəhd sayı"),
         new(JobSuspectedAfterMinutes, "15", SettingValueType.Integer, "Kioskdan bu qədər dəqiqə xəbər gəlməsə çap/növbə job-u Suspected olur (avtomatik refund yoxdur)"),
         new(JobSuspectedAutoResolveHours, "72", SettingValueType.Integer, "Həll olunmamış Suspected job üçün adminə xatırlatma (avtomatik heç nə edilmir)"),
+        new(PublicSiteUrl, "https://neoprint.az", SettingValueType.String, "QR kodlardakı ictimai səhifələrin ünvanı (refund statusu)"),
         new(KioskHeartbeatSeconds, "15", SettingValueType.Integer, "Kiosk heartbeat intervalı"),
         new(KioskOfflineAfterSeconds, "60", SettingValueType.Integer, "Heartbeat gəlməzsə offline sayılır"),
         new(KioskTelemetrySeconds, "30", SettingValueType.Integer, "Telemetriya göndərmə intervalı"),

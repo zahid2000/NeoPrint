@@ -76,6 +76,20 @@ public sealed class PrintJob : Entity
     /// <summary>The server-side file, for a job made from the mobile app.</summary>
     public Guid? FileId { get; set; }
 
+    /// <summary>
+    /// A flash order paid with the app: the kiosk uploaded the file and it
+    /// joined the account's files (plan section 9.2, step 5). Once.
+    /// </summary>
+    public void KeepUploadedFile(Guid fileId)
+    {
+        if (Source != PrintJobSource.Flash || UserId is null)
+        {
+            throw new DomainException("printJobs.flashUploadNotForThis");
+        }
+
+        FileId ??= fileId;
+    }
+
     /// <summary>The file's name on the flash drive, for the queue panel and the history.</summary>
     public string? LocalFileName { get; set; }
 

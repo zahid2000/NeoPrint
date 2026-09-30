@@ -99,7 +99,10 @@ public sealed class DevelopmentSeeder
 
     private static string TestTerminal(string kioskCode) => $"TERM-{kioskCode}";
 
-    /// <summary>The online till, only while nobody has set one.</summary>
+    /// <summary>Where the refund status QR points locally: the API itself serves the page.</summary>
+    private const string TestSiteUrl = "http://localhost:5080";
+
+    /// <summary>The online till, only while nobody has set one; the site address, only while it is the production default.</summary>
     private async Task SeedFiscalAsync(CancellationToken cancellationToken)
     {
         var result = await _context.AdminSettings.UpdateOneAsync(
@@ -112,6 +115,12 @@ public sealed class DevelopmentSeeder
         {
             _logger.LogInformation("Set the development online fiscal terminal {Terminal}.", TestOnlineTerminal);
         }
+
+        await _context.AdminSettings.UpdateOneAsync(
+                Builders<AdminSetting>.Filter.Eq(s => s.Key, SettingKeys.PublicSiteUrl) & Builders<AdminSetting>.Filter.Eq(s => s.Value, "https://neoprint.az"),
+                Builders<AdminSetting>.Update.Set(s => s.Value, TestSiteUrl),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task SeedKiosksAsync(CancellationToken cancellationToken)

@@ -230,6 +230,9 @@ public sealed class KioskHubClient : HubClientBase
 
     public event Func<Guid, string, Task>? CommandReceived;
 
+    /// <summary>A payment this kiosk opened was paid (plan section 9.1, step 3): the payment and its job.</summary>
+    public event Func<Guid, Guid, Task>? PaymentConfirmed;
+
     protected override void Register(HubConnection connection)
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -237,6 +240,9 @@ public sealed class KioskHubClient : HubClientBase
         connection.On<QueueMessage>("QueueUpdated", message => Raise(QueueUpdated, message.Queue ?? []));
         connection.On<JobMessage>("JobAdded", message => Raise(JobAdded, message.JobId));
         connection.On<JobMessage>("JobCancelled", message => Raise(JobCancelled, message.JobId));
+        connection.On<PaymentMessage>("PaymentConfirmed", message => PaymentConfirmed is { } paid
+            ? paid(message.PaymentId, message.JobId)
+            : Task.CompletedTask);
         connection.On<KioskMessage>("PrinterConfigChanged", _ => Raise(PrinterConfigChanged));
         connection.On<KioskMessage>("KioskConfigChanged", _ => Raise(KioskConfigChanged));
         connection.On<CommandMessage>("KioskCommand", message => CommandReceived is { } handler
@@ -253,6 +259,8 @@ public sealed class KioskHubClient : HubClientBase
     private sealed record JobMessage(Guid KioskId, Guid JobId);
 
     private sealed record KioskMessage(Guid KioskId);
+
+    private sealed record PaymentMessage(Guid KioskId, Guid PaymentId, Guid JobId);
 
     private sealed record CommandMessage(Guid CommandId, string Type, string? Payload);
 }

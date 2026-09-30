@@ -226,6 +226,49 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public string OutOfServiceBody => PrinterProblem is null ? string.Empty : T("outOfService.body", T(PrinterProblem));
 
+    // ---- RefundInfo after the printer stopped a paid order (plan sections 2.5, 7.3)
+
+    private decimal _refundAmount;
+    private string? _refundDestination;
+
+    /// <summary>The status page's address for the QR; null when there is nothing to tell.</summary>
+    [ObservableProperty]
+    private string? _refundNoticeQr;
+
+    public bool HasRefundNotice => RefundNoticeQr is not null;
+
+    public string RefundNoticeTitle => T("refund.printerTitle");
+
+    public string RefundNoticeBody => _refundDestination switch
+    {
+        null => string.Empty,
+        "Wallet" => T("refund.walletBody", Localization.Formats.Money(_refundAmount, Language)),
+        "Voucher" => T("refund.voucherBody", Localization.Formats.Money(_refundAmount, Language)),
+        _ => T("refund.cardBody", Localization.Formats.Money(_refundAmount, Language)),
+    };
+
+    public string RefundNoticeScan => T("refund.scan");
+
+    public string RefundNoticeDone => T("common.done");
+
+    /// <summary>The backend refunded the order the printer stopped: the customer standing here sees it.</summary>
+    public void ShowRefund(decimal amount, string destination, string statusUrl)
+    {
+        _refundAmount = amount;
+        _refundDestination = destination;
+        RefundNoticeQr = statusUrl;
+        OnPropertyChanged(nameof(RefundNoticeBody));
+    }
+
+    [RelayCommand]
+    private void DismissRefund()
+    {
+        _refundDestination = null;
+        RefundNoticeQr = null;
+    }
+
+    partial void OnRefundNoticeQrChanged(string? value) => OnPropertyChanged(nameof(HasRefundNotice));
+
     /// <summary>Asked for by the home screen's buttons; the application opens the flow.</summary>
     public event Action? PrintFromUsbRequested;
 
@@ -265,6 +308,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// <summary>How long a customer's language choice outlives them (docs/DESIGN_SYSTEM.md 5.1).</summary>
     public static readonly TimeSpan LanguageResetAfter = TimeSpan.FromSeconds(90);
 
+    /// <summary>How long a refund notice stays for the customer who was here.</summary>
+    public static readonly TimeSpan RefundNoticeFor = TimeSpan.FromMinutes(3);
+
     /// <summary>
     /// Nobody has touched the screen for <paramref name="idle"/>: an order left
     /// half-way is dropped after <paramref name="orderLimit"/> (plan section
@@ -277,11 +323,19 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         var reset = false;
 
-        // A file being prepared or an order being placed is left to finish.
-        if (Screen == KioskScreen.Flow && Flow is { Stage: not FlowStage.Working } flow && idle > orderLimit)
+        // A file being prepared or an order being placed is left to finish; a
+        // QR being paid on a phone is not idleness - its own countdown ends it.
+        if (Screen == KioskScreen.Flow && Flow is { Stage: not (FlowStage.Working or FlowStage.QrPayment) } flow && idle > orderLimit)
         {
             flow.Abandon();
             Screen = PrinterProblem is null ? KioskScreen.Home : KioskScreen.OutOfService;
+            reset = true;
+        }
+
+        // The customer the refund notice was for has gone.
+        if (HasRefundNotice && idle > RefundNoticeFor)
+        {
+            DismissRefund();
             reset = true;
         }
 
@@ -449,7 +503,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowKioskQr));
     }
 
-    partial void OnScreenChanged(KioskScreen value) => OnPropertyChanged(nameof(ShowKioskQr));
+    partial void OnScreenChanged(KioskScreen value)
+    {
+        OnPropertyChanged(nameof(ShowKioskQr));
+
+        if (value == KioskScreen.Flow)
+        {
+            // A new customer: the last one's refund notice is not theirs.
+            DismissRefund();
+        }
+    }
 
     partial void OnNowChanged(DateTime value) => OnPropertyChanged(nameof(ClockText));
 

@@ -1047,6 +1047,14 @@ Kiosk çapın gedişini bildirir: `{ "status": "Printing" | "Completed" | "Inter
 
 İstəyə bağlı `attempt` — hesabatın aid olduğu çap cəhdi, `print_attempts`-ə yazılır (plan 2.5; "çap olubmu?" sualının sübutu): `{ "number": 1, "printer", "spoolerJobId", "startedAt", "finishedAt", "counterBefore", "counterAfter", "counterUnit": "sheets" | "impressions", "recovered" }`. `spoolerJobId` — CUPS request id və ya Windows sənəd adı; `counterBefore`/`counterAfter` — printerin SNMP sayğacı (şəbəkə printeri deyilsə `null`); `recovered: true` — nəticə kiosk restart-dan sonra spooler və sayğacla müəyyən edilib. Bir iş + nömrə = bir sətir: təkrar hesabat sətri yeniləyir. Yanlış məlumat → `400 printJobs.attemptInvalid`. Cəhd job-un statusu dəyişməsə də (məs. job artıq ləğv olunub) yazılır.
 
+### `GET /api/print-jobs/{id}/refunds` (Kiosk token)
+
+Kiosk ekranındakı refund kartı üçün: `[{ id, amount, currency, status, destination ("Card" | "Wallet" | "Voucher"), statusUrl, voucherCode? }]`. `statusUrl` — ictimai status səhifəsinin ünvanı (`{Public.SiteUrl}/refund/{refundId}`), kiosk onu QR kimi göstərir. Yalnız həmin kioskun sifarişi; başqa kioskun sifarişi → `404`.
+
+### `POST /api/print-jobs/{id}/flash-upload` (Kiosk token, `multipart/form-data`, sahə `file`)
+
+Fləşkadan gələn və **NeoPrint tətbiqi ilə ödənilən** sifarişin faylı müştərinin hesabına keçir (Bölmə 9.2, addım 5): `{ jobId, fileId, alreadyKept }`. Sifariş fləşkadan deyilsə və ya arxasında hesab yoxdursa → `409 printJobs.flashUploadNotForThis`; başqa kioskun sifarişi → `404`. Sifarişin artıq faylı varsa təkrar göndəriş onu qaytarır (`alreadyKept: true`, idempotent). Maksimum 200 MB. Kiosk faylı şifrəli spool-da saxlayır və şəbəkə yoxdursa sonra yenidən göndərir.
+
 ### `GET /api/kiosks/me/queue`
 
 Növbə sırası ilə (`Queued` + `Printing`): `[{ jobId, jobCode, position, status, pages, copies, userInitial?, fileName?, queuedAt }]`. Qonaq sifarişində `userInitial` yoxdur.
@@ -1170,6 +1178,8 @@ sorğu ilk nəticəni qaytarır).
 
 `GET /api/refunds/{id}/public` (anonim) — kiosk ekranındakı / qəbzdəki QR bu səhifəni açır:
 `{ status, amount, currency, destination ("Card" | "Wallet" | "Voucher"), createdAt, completedAt, voucherCode? }`. Şəxsi məlumat yoxdur.
+
+`GET /refund/{id}?lang=az|en|ru` (anonim, API tərəfindən verilən HTML səhifə) — QR-in açdığı səhifənin özü: məbləğ, hara qaytarıldığı, status və izah, dil keçidləri və "Problem barədə bildir" forması. Forma `POST /api/refunds/{id}/claim` göndərir (`Idempotency-Key`, `{ text, contact? }`, rate limit `RateLimit.SupportClaimPerHour`) — refund-a bağlı müştəri müraciəti açılır. Səhifənin ünvanının əsası `Public.SiteUrl` tənzimləməsidir (default `https://neoprint.az`).
 
 ### Admin
 

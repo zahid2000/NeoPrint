@@ -796,6 +796,32 @@ curl -X POST http://localhost:5080/api/support/claims -H "Content-Type: applicat
   -d '{"jobCode":"123456","kioskCode":"KSK-0001","text":"Pul çıxdı, kağız çıxmadı","contact":"+994 50 000 00 00"}'
 ```
 
+**Kioskda ödəniş axını.** Sifariş "Sifarişi təsdiqlə"dən sonra **Ödəniş** addımına keçir:
+"Bank kartı və ya bank tətbiqi" → bank QR-i (yuxarıdakı `simulate-success` ilə ödəyin),
+"NeoPrint tətbiqi" → tətbiqin QR-i (mobil tətbiqdə "QR oxut"). Ödəniş gələn kimi kiosk
+"Ödəniş uğurlu" ekranını, fiskal çekin QR-ini və email klaviaturasını göstərir; sifariş
+yalnız bundan sonra çap növbəsinə düşür. Ödəniş vaxtı (5 dəqiqə) bitəndə "Ödəniş vaxtı
+bitdi" ekranı çıxır. Promokod qiymət kartındakı **Promokod** düyməsi ilə yazılır.
+Development-də ödənişsiz axın (`Kiosk:SkipPayment`) söndürülüb — hər sifariş ödənilməlidir. Addım 3-dən qalan
+lokal `appsettings.Development.json` dəyişikliyiniz varsa, `"SkipPayment": false` olduğunu yoxlayın.
+
+**Qaytarmanın statusu səhifəsi (QR).** Çap alınmayanda kiosk refund kartını və QR-i
+göstərir; QR bu səhifəni açır:
+
+```text
+http://localhost:5080/refund/<refundId>          # dil: ?lang=az | en | ru
+```
+
+Səhifədəki "Problem barədə bildir" forması `POST /api/refunds/<refundId>/claim` göndərir
+(rate limit: `RateLimit.SupportClaimPerHour`). QR-dəki ünvanın əsası
+**Tənzimləmələr → Public → `Public.SiteUrl`**-dir (development seed-i
+`http://localhost:5080`, produksiyada `https://neoprint.az`). Telefondan açmaq üçün onu
+kompüterin LAN ünvanına dəyişin, məs. `http://192.168.1.50:5080`.
+
+**Fləşkadan gələn fayl tətbiqlə ödəniləndə** kiosk faylı şifrəli spool-da saxlayır və
+serverə yükləyir (`POST /api/print-jobs/<jobId>/flash-upload`, kiosk tokeni ilə) ki, fayl
+müştərinin hesabında qalsın. Şəbəkə yoxdursa kiosk hər 2 dəqiqədən bir yenidən cəhd edir.
+
 PowerShell-də `curl` əvəzinə `curl.exe` yazın (və ya `Invoke-RestMethod -Method Post <URL>`).
 
 ---
@@ -810,6 +836,9 @@ dotnet test  backend/NeoPrint.sln
 # Kiosk
 dotnet build desktop/NeoPrint.Kiosk.sln
 dotnet test  desktop/NeoPrint.Kiosk.sln
+
+# Kiosk — Linux build və testləri (yalnız Docker lazımdır; Windows bin/obj-a toxunmur)
+bash tools/dev-kiosk/linux-check.sh
 
 # Mobil
 cd mobile && flutter analyze && flutter test && dart format --set-exit-if-changed .

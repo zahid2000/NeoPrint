@@ -28,6 +28,15 @@ public enum FlowStage
     CancelLookup = 6,
     CancelConfirm = 7,
     CancelDone = 8,
+
+    /// <summary>Screen 6: bank QR or the NeoPrint app.</summary>
+    PaymentMethod = 9,
+
+    /// <summary>Screens 7–8: the QR, the amount and the countdown.</summary>
+    QrPayment = 10,
+
+    /// <summary>The time ran out, or the bank said no: nothing was taken.</summary>
+    PaymentExpired = 11,
 }
 
 /// <summary>A folder or a file on the flash drive.</summary>
@@ -324,6 +333,9 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
     public string PlacedTitle => T("placed.title");
 
+    /// <summary>"Ödəniş uğurlu" for a paid order, "Sifarişiniz növbədədir" for a Development one.</summary>
+    public string PlacedHeading => HasPayment ? T("paid.title") : T("placed.title");
+
     public string PlacedCodeLabel => T("placed.code");
 
     public string KeepCodeText => T("placed.keepCode");
@@ -403,7 +415,9 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     /// <summary>The drive was pulled out: whatever was not ordered is dropped (plan 7.3).</summary>
     public void DriveRemoved()
     {
-        if (_driveRoot is null || Stage is FlowStage.Placed or FlowStage.CancelLookup or FlowStage.CancelConfirm or FlowStage.CancelDone)
+        // Once the order is made the file is in the spool: paying goes on without the drive.
+        if (_driveRoot is null || Stage is FlowStage.Placed or FlowStage.CancelLookup or FlowStage.CancelConfirm or FlowStage.CancelDone
+                or FlowStage.PaymentMethod or FlowStage.QrPayment or FlowStage.PaymentExpired)
         {
             return;
         }
@@ -432,6 +446,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         FoundSummary = null;
         TextContent = string.Empty;
         ResetOptions();
+        ResetPayment();
         Stage = FlowStage.Browse;
         OnPropertyChanged(string.Empty);
     }
@@ -982,6 +997,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         QuoteDetail = detail;
         Error = quote.PaperCovers ? null : T("options.notEnoughPaper");
         CanPlace = quote.PaperCovers;
+        RequotePromo(quote.Price.FinalPrice);
     }
 
     private void ResetOptions()
@@ -1017,7 +1033,8 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         try
         {
             var key = _orderKey ??= Guid.NewGuid().ToString("N");
-            var job = await Task.Run(() => _orders.PlaceAsync(document, name, options, key, CancellationToken.None)).ConfigureAwait(true);
+            var promo = AppliedPromo;
+            var job = await Task.Run(() => _orders.PlaceAsync(document, name, options, key, CancellationToken.None, promo)).ConfigureAwait(true);
             _orderKey = null;
 
             PlacedCode = job.JobCode;
@@ -1032,6 +1049,16 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
                 ("pagesPerSheet", options.PagesPerSheet.ToString(CultureInfo.InvariantCulture)),
                 ("range", options.PageRange is null ? "all" : "custom"));
             Track("order_placed", ("sheets", job.RequiredSheets.ToString(CultureInfo.InvariantCulture)), ("jobCode", job.JobCode));
+
+            if (job.Status != "Queued")
+            {
+                // Step 4: it is paid before it prints. The working copy stays
+                // until then - an app payment sends the file to the account.
+                AwaitPayment(job);
+                return;
+            }
+
+            // A Development order, queued without a payment (plan step 3).
             _visitDone = true;
 
             // The file is in the encrypted spool now; the working copy goes,
@@ -1160,6 +1187,9 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
             await Task.Run(() => _orders.CancelAsync(job.Id, CancellationToken.None)).ConfigureAwait(true);
             Stage = FlowStage.CancelDone;
             _visitDone = true;
+
+            // A paid order goes back: where to, and the QR to follow it (RefundInfo).
+            _ = ShowRefundAsync(job.Id);
         }
         catch (KioskApiException exception)
         {
@@ -1187,7 +1217,8 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
             FlowStage.Browse => 0,
             FlowStage.Preview or FlowStage.Edit => 1,
             FlowStage.Options => 2,
-            FlowStage.Placed => 3,
+            FlowStage.PaymentMethod or FlowStage.QrPayment or FlowStage.PaymentExpired => 3,
+            FlowStage.Placed => 4,
             FlowStage.CancelLookup or FlowStage.CancelConfirm or FlowStage.CancelDone => -1,
             _ => _step,
         };
@@ -1200,15 +1231,12 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     /// <summary>The indicator is part of an order, not of the cancel screen.</summary>
     public bool ShowSteps => _step >= 0;
 
-    /// <summary>
-    /// File → Preview → Options → Done. The payment step joins in plan step 4,
-    /// when there is a payment; until then it is not shown (docs/DESIGN_SYSTEM.md).
-    /// </summary>
+    /// <summary>File → Preview → Options → Payment → Done (docs/DESIGN_SYSTEM.md, step indicator).</summary>
     public IReadOnlyList<FlowStep> Steps
     {
         get
         {
-            string[] keys = ["steps.file", "steps.preview", "steps.options", "steps.done"];
+            string[] keys = ["steps.file", "steps.preview", "steps.options", "steps.payment", "steps.done"];
 
             return
             [

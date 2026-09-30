@@ -256,12 +256,75 @@ public sealed class PrintQueueWorkerTests : IDisposable
         var id = await PlaceAsync(worker);
         _backend.Queue.Clear();
 
+        // Just queued: its payment may not be visible yet, so the file stays a while.
+        await worker.StepAsync(CancellationToken.None);
+        _spool.Exists(JournalEntry.SpoolNameFor(id)).Should().BeTrue();
+
+        Age(id, TimeSpan.FromMinutes(3));
         await worker.StepAsync(CancellationToken.None);
 
         _printer.Printed.Should().BeEmpty();
         _spool.Exists(JournalEntry.SpoolNameFor(id)).Should().BeFalse();
         _journal.Find(id).Should().BeNull();
     }
+
+    [Fact]
+    public async Task An_unpaid_order_never_prints_not_even_without_the_backend_and_keeps_its_file()
+    {
+        var worker = Worker();
+        var id = await PlaceUnpaidAsync(worker);
+
+        await worker.StepAsync(CancellationToken.None);
+        _backend.Down = true;
+        await worker.StepAsync(CancellationToken.None);
+
+        _printer.Printed.Should().BeEmpty("printing from the journal without the backend must never be a free print");
+        _journal.Find(id)!.State.Should().Be(JournalState.AwaitingPayment);
+        _spool.Exists(JournalEntry.SpoolNameFor(id)).Should().BeTrue("the payment may still come");
+    }
+
+    [Fact]
+    public async Task A_payment_seen_on_the_screen_or_in_the_backend_s_queue_lets_the_order_print()
+    {
+        var worker = Worker();
+
+        var confirmed = await PlaceUnpaidAsync(worker, "111111");
+        worker.MarkPaid(confirmed);
+        _backend.Queue.Add(new QueueItem(confirmed, "111111", 1, "Queued", 1, 1, null, "a.pdf", DateTime.UtcNow));
+        await worker.StepAsync(CancellationToken.None);
+
+        // Paid while the kiosk was not looking: the queue says so.
+        _backend.Queue.Clear();
+        var quiet = await PlaceUnpaidAsync(worker, "222222");
+        _backend.Queue.Add(new QueueItem(quiet, "222222", 1, "Queued", 1, 1, null, "b.pdf", DateTime.UtcNow));
+        await worker.StepAsync(CancellationToken.None);
+
+        _printer.Printed.Select(print => print.JobName).Should().Equal("NeoPrint-111111", "NeoPrint-222222");
+    }
+
+    [Fact]
+    public async Task An_order_never_paid_loses_its_file_after_a_while()
+    {
+        var worker = Worker();
+        var id = await PlaceUnpaidAsync(worker);
+
+        _journal.Save(_journal.Find(id)! with { QueuedAt = DateTime.UtcNow.AddHours(-3) });
+        await worker.StepAsync(CancellationToken.None);
+
+        _journal.Find(id).Should().BeNull();
+        _spool.Exists(JournalEntry.SpoolNameFor(id)).Should().BeFalse();
+    }
+
+    private async Task<Guid> PlaceUnpaidAsync(PrintQueueWorker worker, string code = "123456")
+    {
+        var id = Guid.NewGuid();
+        await _spool.PutAsync(JournalEntry.SpoolNameFor(id), new MemoryStream(Encoding.ASCII.GetBytes("%PDF-1.7 test")));
+        worker.Accept(id, code, new JobOptions(), 1, DateTime.UtcNow, paid: false);
+
+        return id;
+    }
+
+    private void Age(Guid id, TimeSpan by) => _journal.Save(_journal.Find(id)! with { UpdatedAt = DateTime.UtcNow - by });
 
     [Fact]
     public async Task Jobs_print_in_the_backend_s_order_one_at_a_time()

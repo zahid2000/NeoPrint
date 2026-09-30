@@ -46,6 +46,16 @@ public sealed partial class MessagesTests
     }
 
     [Fact]
+    public void Every_key_reads_as_a_key()
+    {
+        // A key whose segment starts with a capital ("page.refund.status.Succeeded")
+        // is taken for a finished sentence and shown to people as it is.
+        Messages.Catalog(Messages.DefaultLanguage).Keys
+            .Where(key => !NeoPrint.Domain.Common.UserMessage.LooksLikeKey(key))
+            .Should().BeEmpty("every segment of a key starts with a small letter");
+    }
+
+    [Fact]
     public void No_text_is_left_empty_or_untranslated()
     {
         foreach (var language in Messages.Languages)

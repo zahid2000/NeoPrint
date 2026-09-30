@@ -564,7 +564,7 @@ public sealed class SuspectedJobHandlers :
         var note = request.Note!.Trim();
         var now = _clock.UtcNow;
         var before = job.Status;
-        var decisionKey = $"printJobs.suspected.decision.{decision}";
+        var decisionKey = $"printJobs.suspected.decision.{char.ToLowerInvariant(decision.ToString()[0])}{decision.ToString()[1..]}";
         var actor = ActorContext.Admin(request.AdminUserId, decisionKey, _correlation.CorrelationId);
         IReadOnlyList<Guid> refundIds = [];
         Payment? payment = null;

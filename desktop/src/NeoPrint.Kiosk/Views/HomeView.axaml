@@ -10,13 +10,35 @@
     -->
 
     <StackPanel VerticalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="860">
+        <!-- RefundInfo (plan sections 2.5, 7.3): the printer stopped a paid order and
+             the backend is giving the money back - what, where, and how to follow it. -->
+        <Border Classes="card" IsVisible="{Binding HasRefundNotice}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                <Border Classes="qr">
+                    <Image Source="{Binding RefundNoticeQr, Converter={x:Static vm:ScreenConverters.QrImage}}"
+                           Width="{DynamicResource ReceiptQrSize}" Height="{DynamicResource ReceiptQrSize}" />
+                </Border>
+                <StackPanel Spacing="{DynamicResource Space4}" VerticalAlignment="Center" MaxWidth="520">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                        <PathIcon Data="{StaticResource IconInfo}" Width="32" Height="32" Foreground="{DynamicResource Info500}" />
+                        <TextBlock Text="{Binding RefundNoticeTitle}" Classes="h2" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding RefundNoticeBody}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding RefundNoticeScan}" Classes="muted" TextWrapping="Wrap" />
+                    <Button Classes="secondary" Command="{Binding DismissRefundCommand}" HorizontalAlignment="Left">
+                        <TextBlock Text="{Binding RefundNoticeDone}" />
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
         <TextBlock Text="{Binding HomeTitle}" Classes="h1" />
 
         <!-- Each action is a card-sized button with its own icon: three
              identical grey bars would read as one block from standing
              distance (docs/DESIGN_SYSTEM.md section 5.1). -->
-        <!-- Shown only where an order can be completed: payment arrives in step
-             4, so today that is a Development kiosk (T-060). -->
+        <!-- Shown wherever an order can be completed and paid (step 4; T-060
+             kept it off the screen until payments existed). -->
         <Button Classes="primary"
                 MinHeight="112" HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Left" Padding="{DynamicResource InsetX8}"

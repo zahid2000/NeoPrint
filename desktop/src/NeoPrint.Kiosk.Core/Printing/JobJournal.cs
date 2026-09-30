@@ -22,6 +22,13 @@ public enum JournalState
 
     /// <summary>Taken out of the queue before it printed.</summary>
     Cancelled = 4,
+
+    /// <summary>
+    /// Placed but not paid (step 4): the file is spooled, but nothing prints it
+    /// until the backend says it is paid - not even when the backend cannot be
+    /// reached, which would be a free print.
+    /// </summary>
+    AwaitingPayment = 5,
 }
 
 /// <summary>One job as this kiosk remembers it.</summary>

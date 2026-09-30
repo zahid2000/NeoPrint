@@ -42,6 +42,12 @@ public interface ISupportClaimRepository
 public sealed record OpenAnonymousClaimCommand(string? JobCode, string? KioskCode, string? Text, string? Contact)
     : IRequest<SupportClaimReceipt>, ITransactionalRequest;
 
+/// <summary>
+/// A claim from the public refund status page (plan section 2.5): the page
+/// knows its refund, and the refund its job - the customer types no codes.
+/// </summary>
+public sealed record OpenRefundClaimCommand(Guid RefundId, string? Text, string? Contact) : IRequest<SupportClaimReceipt>, ITransactionalRequest;
+
 /// <summary>"Problem barədə bildir" in the app: about one of the user's own jobs.</summary>
 public sealed record OpenAppClaimCommand(Guid UserId, Guid JobId, string? Text) : IRequest<SupportClaimView>, ITransactionalRequest;
 
@@ -97,6 +103,7 @@ public sealed record SupportClaimPage(IReadOnlyList<SupportClaimView> Items, lon
 
 public sealed class SupportClaimHandlers :
     IRequestHandler<OpenAnonymousClaimCommand, SupportClaimReceipt>,
+    IRequestHandler<OpenRefundClaimCommand, SupportClaimReceipt>,
     IRequestHandler<OpenAppClaimCommand, SupportClaimView>,
     IRequestHandler<ListMyClaimsQuery, IReadOnlyList<SupportClaimView>>,
     IRequestHandler<ListClaimsQuery, SupportClaimPage>,
@@ -111,6 +118,7 @@ public sealed class SupportClaimHandlers :
     private readonly ISupportClaimRepository _claims;
     private readonly IPrintJobRepository _jobs;
     private readonly IKioskRepository _kiosks;
+    private readonly Refunds.IRefundRepository _refunds;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly ILogger<SupportClaimHandlers> _logger;
@@ -119,6 +127,7 @@ public sealed class SupportClaimHandlers :
         ISupportClaimRepository claims,
         IPrintJobRepository jobs,
         IKioskRepository kiosks,
+        Refunds.IRefundRepository refunds,
         IAuditWriter audit,
         IClock clock,
         ILogger<SupportClaimHandlers> logger)
@@ -126,6 +135,7 @@ public sealed class SupportClaimHandlers :
         _claims = claims;
         _jobs = jobs;
         _kiosks = kiosks;
+        _refunds = refunds;
         _audit = audit;
         _clock = clock;
         _logger = logger;
@@ -153,6 +163,29 @@ public sealed class SupportClaimHandlers :
             // One answer for a wrong job code and a wrong kiosk code: the
             // endpoint does not tell a guesser which half was right.
             throw new NotFoundException("printJob");
+        }
+
+        var claim = await OpenAsync(ClaimChannel.Anonymous, job, userId: null, request.Text, request.Contact, cancellationToken).ConfigureAwait(false);
+
+        return new SupportClaimReceipt(claim.Id, claim.Status.ToString(), claim.CreatedAt);
+    }
+
+    /// <inheritdoc cref="OpenRefundClaimCommand" />
+    public async Task<SupportClaimReceipt> Handle(OpenRefundClaimCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.Contact is { Length: > MaxContactLength })
+        {
+            throw new ValidationException([new ValidationError("contact", "support.contactTooLong")]);
+        }
+
+        var refund = await _refunds.FindByIdAsync(request.RefundId, cancellationToken).ConfigureAwait(false);
+        var job = refund?.JobId is { } jobId ? await _jobs.FindByIdAsync(jobId, cancellationToken).ConfigureAwait(false) : null;
+
+        if (job is null)
+        {
+            throw new NotFoundException("refund");
         }
 
         var claim = await OpenAsync(ClaimChannel.Anonymous, job, userId: null, request.Text, request.Contact, cancellationToken).ConfigureAwait(false);

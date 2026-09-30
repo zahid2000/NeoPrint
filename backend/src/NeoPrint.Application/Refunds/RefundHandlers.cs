@@ -200,7 +200,7 @@ public sealed class RefundHandlers :
                         $"refund:{refund.Id}",
                         refund.InitiatorId,
                         now,
-                        new UserMessage($"refunds.reasons.{refund.Reason}").Encode(),
+                        new UserMessage($"refunds.reasons.{char.ToLowerInvariant(refund.Reason.ToString()[0])}{refund.Reason.ToString()[1..]}").Encode(),
                         cancellationToken)
                     .ConfigureAwait(false);
                 await CompleteAsync(refund, payment, null, actor, now, cancellationToken).ConfigureAwait(false);

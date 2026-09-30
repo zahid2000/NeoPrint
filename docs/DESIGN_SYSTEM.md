@@ -113,6 +113,16 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 
 **Addım göstəricisi (kiosk).** Sifariş axınının yuxarısında: nömrəli dairə + addımın adı. Keçilmiş addım — yaşıl ✓ ikonu + ad; cari addım — brend rəngli dairə + qalın ad; gələcək addım — neytral dairə + neytral ad (status rəng + ikon/nömrə + mətnlə verilir). Addımlar: Fayl → Baxış → Parametrlər → Ödəniş → Hazır; ödəniş hələ yoxdursa (Addım 4-ə qədər) "Ödəniş" addımı göstərilmir. Ləğv ekranında göstərici yoxdur.
 
+**Ödəniş ekranları (kiosk).** Sifariş verildikdən sonra addım göstəricisində "Ödəniş" cari addımdır.
+
+- *Ödəniş üsulu:* iki iri seçim kartı yan-yana (`Button.pay-method`, hündürlük ≥ 240): ikon + ad ("Bank kartı və ya bank tətbiqi (QR)", "NeoPrint tətbiqi") + bir sətir izah. Kartın özü düymədir; seçim dərhal növbəti ekrana keçir, ayrıca "Davam et" yoxdur. Yuxarıda ödəniləcək məbləğ iri (`display`) yazılır; promokod tətbiq olunubsa altında "Promokod X: −Y ₼".
+- *QR ilə ödəniş (bank və ya tətbiq):* solda QR (ağ fon + quiet zone, `QrBackground`/`QrQuietZone`, en ≥ 480), sağda məbləğ (`display`), bir cümlə təlimat ("Bank tətbiqinizlə QR-ı oxudun"), **geri sayım iri rəqəmlə və mətnlə** ("Ödəniş üçün 4:32 vaxtınız var"); son 60 saniyədə rəqəm `--warning-500` + xəbərdarlıq ikonu. Gözləmə göstəricisi (dönən halqa + "Ödəniş gözlənilir"). Əsas düymə yoxdur (ödəniş telefondadır); ikinci dərəcəli düymələr: "Başqa üsul" və "Ləğv et". Promokod tətbiq olunmadısa səbəbi ekranın yuxarısında `warning` blokunda (ikon + mətn) ödənişdən **əvvəl** görünür.
+- *Vaxt bitdi:* warning ikonlu tam blok — nə oldu ("Ödəniş vaxtı bitdi, məbləğ tutulmayıb"), nə etmək olar; əsas düymə "Yenidən cəhd et", ikinci "Ləğv et".
+- *Ödəniş uğurlu (qəbz):* yaşıl ✓ dairə + "Ödəniş uğurlu", sifariş kodu iri kod qutusunda, növbədəki yer; sağda fiskal çek QR-ı (hazırdırsa; hazır deyilsə "Fiskal çek hazırlanır" mətni + dönən halqa, boş kvadrat yox); "Qəbzi email-ə göndər" — email sahəsi + tam hərf klaviaturası (`@`, `.`, `-`, `_` düymələri ilə); göndərildikdən sonra sahənin altında uğur sətri (ikon + "Göndərildi: a***@..."). Əsas düymə "Bitir".
+- *Refund arayışı (RefundInfo):* printer xətasından və ya ödənilmiş sifarişin ləğvindən sonra: info ikonlu başlıq ("Çap tamamlanmadı" / "Sifariş ləğv edildi"), məbləğ iri, hara qaytarıldığı ("X ₼ kartınıza qaytarılır. Bankınızdan asılı olaraq 1–3 iş günü çəkə bilər."), status səhifəsinin QR-ı + altında qısa izah ("Statusu telefonunuzda izləyin"). Əsas düymə "Bitir".
+
+**Promokod sahəsi (kiosk).** Parametrlər ekranında, qiymət kartının altında: "Promokod" düyməsi (secondary) basılanda kod sahəsi + hərf-rəqəm klaviaturası (böyük hərflər, rəqəmlər, `-`) açılır, "Tətbiq et" (secondary) və "Sil". Uğurlu kod qiymət kartında ayrıca sətir kimi görünür ("Promokod X −Y ₼", `--success-500` ikonu ilə) və yekun məbləğ yenilənir; uyğun olmayan kod sahənin altında səbəbi ilə (ikon + mətn) göstərilir, sifarişi bloklamır — müştəri kodu silib davam edə bilər.
+
 **Kartlar.** `--neutral-0` fon, `--neutral-200` kənar, `--radius-md`, daxili boşluq 16 (kiosk 24).
 
 **Cədvəllər (admin).** Sətir hündürlüyü 48 px, başlıq sabit (sticky), sıralama və filtr yuxarıda, pagination aşağıda. Status sütunu chip ilə. Sətirə klik → detal. Boş nəticə üçün boş vəziyyət bloku.
@@ -180,6 +190,13 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 - **Quruluş (yuxarıdan aşağı):** loqo-mətn "NeoPrint" + "Qəbz" başlığı və nömrəsi → tarix, kiosk, sifariş kodu, fayl → xidmət sətirləri (izah + məbləğ) → **Cəm** (vurğu rəngi) → ödəniş üsulları (bonus səhifələr "0 AZN fiskal" izahı ilə) → fiskal blok: verilibsə nömrə, fiskal ID, terminal və yoxlama QR-ı (ağ fon, quiet zone), verilməyibsə xəbərdarlıq rəngində "Fiskal çek hazırlanır" → alt qeyd "Bu sənəd fiskal çek deyil".
 - Status yalnız rənglə verilmir: "Fiskal çek hazırlanır" mətn + işarə (`!`) ilə yazılır.
 - Pul formatı §6-dakı kimidir (dilə görə ayırıcı, `₼`). Mətnlər server kataloqundadır (`receipt.*` açarları), PDF qəbzin dilində yazılır (hesabın dili və ya kioskun standart dili).
+
+### 5.6 İctimai refund status səhifəsi (backend, `{site}/refund/{id}`)
+- Kiosk ekranındakı refund QR-ı bu səhifəni açır; müştəri telefondadır — **mobil-birinci**, tək sütun, maks. en 480 px, kənar boşluq 16.
+- **Token mənbəyi:** `backend/src/NeoPrint.Api/PublicPages/PublicPageTokens.cs` — bu sənədin light dəyərləri CSS custom property kimi (`--neutral-*`, `--brand-*`, `--success-*`, `--warning-*`, `--danger-*`, `--info-*`); səhifə şablonunda literal rəng/ölçü yoxdur. Şrift: `system-ui` yığını (Inter fallback-i, §2) — ictimai səhifə xarici şrift yükləmir.
+- **Quruluş:** "NeoPrint" + başlıq → **status kartı** (ikon + status mətni + semantik rəngli sol xətt; rəng tək başına deyil) → məbləğ (iri, tabular rəqəm), hara qaytarılır, tarixlər → statusa görə bir cümlə izah ("Bankınızdan asılı olaraq 1–3 iş günü" / voucher kodu iri və seçilə bilən) → "Problem barədə bildir" forması (mətn + istəyə görə əlaqə; bir əsas düymə) → dil keçidi (az / en / ru).
+- Şəxsi məlumat göstərilmir (kart nömrəsi, ad, email yoxdur). Səhifə keşlənmir. Mətnlər server kataloqundadır (`page.refund.*`), dil `?lang=` və ya brauzerin dilindən.
+- Xəta vəziyyətləri: tapılmayan refund — "Belə qaytarma tapılmadı" + QR-ı yenidən oxutmaq tövsiyəsi; form göndərilə bilmədisə nə baş verdiyi və nə etmək lazım olduğu yazılır.
 
 ---
 

@@ -315,6 +315,7 @@ internal static class Program
         services.AddSingleton<DocumentPreparer>();
         services.AddSingleton<IPrinterFormatSupport>(provider =>
             provider.GetRequiredService<IPrinterService>() as IPrinterFormatSupport ?? NoNativeFormats.Instance);
+        services.AddSingleton<FlashUploads>();
         services.AddSingleton<KioskOrderService>();
     }
 

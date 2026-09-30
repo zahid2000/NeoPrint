@@ -76,10 +76,10 @@ public sealed class KioskSettings
     public string GhostscriptFolder { get; set; } = string.Empty;
 
     /// <summary>
-    /// Development only: orders are queued without a payment, which arrives in
-    /// step 4. The backend refuses it anywhere else; the flash flow is not
-    /// offered at all while this is off and there is no payment screen
-    /// (docs/DESIGN_SYSTEM.md, "Hazır olmayan funksiya").
+    /// Development only, off by default: orders are queued without a payment,
+    /// skipping the payment screen. The backend refuses it anywhere else. Kept
+    /// for printer work that does not need the payment flow; the local stack
+    /// runs with it off so the real flow is what gets tested.
     /// </summary>
     public bool SkipPayment { get; set; }
 }

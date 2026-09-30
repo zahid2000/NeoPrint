@@ -20,8 +20,6 @@ public sealed class QuestPdfReceiptRenderer : IReceiptRenderer
 {
     private static readonly Lazy<bool> Initialised = new(Initialise, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    private static readonly TimeZoneInfo Baku = FindBaku();
-
     public byte[] Render(ReceiptContent content)
     {
         ArgumentNullException.ThrowIfNull(content);
@@ -57,7 +55,7 @@ public sealed class QuestPdfReceiptRenderer : IReceiptRenderer
                     {
                         facts.Spacing(ReceiptTokens.Space4);
                         Fact(facts, L("receipt.number"), content.Number);
-                        Fact(facts, L("receipt.date"), TimeZoneInfo.ConvertTimeFromUtc(content.PaidAt, Baku).ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture));
+                        Fact(facts, L("receipt.date"), Application.Common.BakuTime.From(content.PaidAt).ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture));
 
                         if (content.KioskCode is { } kiosk)
                         {
@@ -200,17 +198,5 @@ public sealed class QuestPdfReceiptRenderer : IReceiptRenderer
         QuestPDF.Drawing.FontManager.RegisterFontFromStream(font);
 
         return true;
-    }
-
-    private static TimeZoneInfo FindBaku()
-    {
-        try
-        {
-            return TimeZoneInfo.FindSystemTimeZoneById("Asia/Baku");
-        }
-        catch (TimeZoneNotFoundException)
-        {
-            return TimeZoneInfo.CreateCustomTimeZone("Asia/Baku", TimeSpan.FromHours(4), "Asia/Baku", "Asia/Baku");
-        }
     }
 }

@@ -130,6 +130,15 @@
     <sys:Double x:Key="TouchTarget">64</sys:Double>
     <sys:Double x:Key="ButtonHeight">72</sys:Double>
     <sys:Double x:Key="HeaderHeight">88</sys:Double>
+
+    <!-- Payment screens (docs/DESIGN_SYSTEM.md "Ödəniş ekranları"): a method
+         card a finger cannot miss, a QR a phone reads from arm's length. -->
+    <sys:Double x:Key="PayMethodMinHeight">240</sys:Double>
+    <sys:Double x:Key="PayMethodWidth">560</sys:Double>
+    <sys:Double x:Key="PaymentQrSize">480</sys:Double>
+    <sys:Double x:Key="ReceiptQrSize">280</sys:Double>
+    <sys:Double x:Key="StatusIconSize">120</sys:Double>
+    <CornerRadius x:Key="StatusIconRadius">60</CornerRadius>
     <sys:Double x:Key="FooterHeight">96</sys:Double>
     <sys:Double x:Key="QueuePanelWidth">280</sys:Double>
     <sys:Double x:Key="StatusChipHeight">40</sys:Double>

@@ -63,6 +63,41 @@
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
+    <!-- A way to pay (section 4, "Ödəniş ekranları"): a whole card is the button. -->
+    <Style Selector="Button.pay-method">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusLg}" />
+        <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
+        <Setter Property="MinHeight" Value="{DynamicResource PayMethodMinHeight}" />
+        <Setter Property="Width" Value="{DynamicResource PayMethodWidth}" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+
+    <Style Selector="Button.pay-method:pointerover /template/ ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brand600}" />
+        <Setter Property="Background" Value="{DynamicResource Brand50}" />
+    </Style>
+
+    <!-- A warning the customer must see before paying: a code that did not apply. -->
+    <Style Selector="Border.warning">
+        <Setter Property="Background" Value="{DynamicResource WarningBg}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Warning500}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Padding" Value="{DynamicResource Inset4}" />
+    </Style>
+
+    <!-- A QR to scan: white with a quiet zone whatever is around it. -->
+    <Style Selector="Border.qr">
+        <Setter Property="Background" Value="{DynamicResource QrBackground}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusLg}" />
+        <Setter Property="Padding" Value="{DynamicResource Inset6}" />
+    </Style>
+
     <!-- A key of the on-screen keyboard: square, a finger's width. -->
     <Style Selector="Button.key">
         <Setter Property="MinWidth" Value="{DynamicResource TouchTarget}" />
@@ -187,5 +222,11 @@
     <Style Selector="Button.key.symbol TextBlock">
         <Setter Property="FontSize" Value="{DynamicResource FontSizeDisplay}" />
         <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <!-- The last minute of a payment countdown: warning colour, with its icon beside it. After
+         the global TextBlock style for the same reason as above. -->
+    <Style Selector="TextBlock.warning">
+        <Setter Property="Foreground" Value="{DynamicResource Warning500}" />
     </Style>
 </Styles>

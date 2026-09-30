@@ -27,6 +27,7 @@ public sealed class KioskSession
     private static readonly TimeSpan DrivePoll = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan PrinterReportInterval = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan AnalyticsInterval = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan UploadRetryInterval = TimeSpan.FromMinutes(2);
 
     private readonly IServiceProvider _services;
     private readonly MainWindowViewModel _model;
@@ -118,21 +119,38 @@ public sealed class KioskSession
                 await CatchUpAsync(runtime, commands, api, token).ConfigureAwait(false);
                 worker.Wake();
             };
+            // A payment this kiosk opened went through: the order may print, and
+            // the payment screen moves on without waiting for its next poll.
+            Func<Guid, Guid, Task> paymentConfirmed = async (paymentId, jobId) =>
+            {
+                orders.MarkPaid(jobId);
+                await OnUiAsync(() => _ = _model.Flow?.PaymentConfirmed(paymentId)).ConfigureAwait(false);
+            };
             Action<PrinterActivity> activityChanged = activity =>
                 Dispatcher.UIThread.Post(() => _model.SetPrinterProblem(activity.LastErrorCode));
 
             // How each job ended, for the pilot report (plan section 2.17);
             // the order's own visit is over by then, so it goes under the job.
             var analytics = _services.GetRequiredService<IKioskAnalytics>();
-            Action<JournalEntry> jobFinished = entry => analytics.Track(
-                entry.State == JournalState.Printed ? "print_completed" : "print_failed",
-                new Dictionary<string, string?>
+            Action<JournalEntry> jobFinished = entry =>
+            {
+                analytics.Track(
+                    entry.State == JournalState.Printed ? "print_completed" : "print_failed",
+                    new Dictionary<string, string?>
+                    {
+                        ["sheets"] = entry.PrintedSheets.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ["error"] = entry.ErrorCode,
+                        ["jobCode"] = entry.JobCode,
+                    },
+                    sessionId: $"job-{entry.JobCode}");
+
+                if (entry.State == JournalState.Interrupted)
                 {
-                    ["sheets"] = entry.PrintedSheets.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    ["error"] = entry.ErrorCode,
-                    ["jobCode"] = entry.JobCode,
-                },
-                sessionId: $"job-{entry.JobCode}");
+                    // Scenario A (plan section 2.5): a bank-paid order the printer
+                    // stopped is refunded by the backend; the screen says so.
+                    _ = RunGuardedAsync("refund notice", () => ShowRefundNoticeAsync(orders, entry.JobId, token), token);
+                }
+            };
 
             hub.QueueUpdated += queueUpdated;
             hub.JobAdded += jobChanged;
@@ -141,6 +159,7 @@ public sealed class KioskSession
             hub.KioskConfigChanged += configChanged;
             hub.CommandReceived += commandReceived;
             hub.Reconnected += reconnected;
+            hub.PaymentConfirmed += paymentConfirmed;
             worker.ActivityChanged += activityChanged;
             worker.JobFinished += jobFinished;
 
@@ -153,6 +172,7 @@ public sealed class KioskSession
                 hub.KioskConfigChanged -= configChanged;
                 hub.CommandReceived -= commandReceived;
                 hub.Reconnected -= reconnected;
+                hub.PaymentConfirmed -= paymentConfirmed;
                 worker.ActivityChanged -= activityChanged;
                 worker.JobFinished -= jobFinished;
             });
@@ -170,6 +190,7 @@ public sealed class KioskSession
 
             _ = RunGuardedAsync("printer reports", () => ReportPrintersAsync(reporter, token), token);
             _ = RunGuardedAsync("analytics", () => SendAnalyticsAsync(api, token), token);
+            _ = RunGuardedAsync("flash uploads", () => SendUploadsAsync(orders, token), token);
 
             await HeartbeatLoopAsync(runtime, printers, token).ConfigureAwait(false);
         }
@@ -201,6 +222,45 @@ public sealed class KioskSession
         }
 
         return revoked;
+    }
+
+    /// <summary>Flash files of app-paid orders that could not be sent yet, again every few minutes.</summary>
+    private async Task SendUploadsAsync(KioskOrderService orders, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await Task.Delay(UploadRetryInterval, cancellationToken).ConfigureAwait(false);
+            await TryAsync("flash uploads", () => orders.SendPendingUploadsAsync(cancellationToken)).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// After the printer stopped an order: once the backend has made the refund
+    /// (scenario A), the screen shows what goes back and the QR to follow it.
+    /// </summary>
+    private async Task ShowRefundNoticeAsync(KioskOrderService orders, Guid jobId, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < 20 && !cancellationToken.IsCancellationRequested; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken).ConfigureAwait(false);
+
+            IReadOnlyList<RefundInfo> refunds;
+
+            try
+            {
+                refunds = await orders.GetRefundsAsync(jobId, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is HttpRequestException or KioskApiException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
+            {
+                continue;
+            }
+
+            if (refunds.Count > 0)
+            {
+                await OnUiAsync(() => _model.ShowRefund(refunds.Sum(r => r.Amount), refunds[0].Destination, refunds[0].StatusUrl)).ConfigureAwait(false);
+                return;
+            }
+        }
     }
 
     private void SetUpFlow(KioskOrderService orders, IRemovableDriveWatcher drives, List<Action> unsubscribe)

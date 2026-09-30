@@ -33,7 +33,10 @@ public sealed record JobPrice(
     bool MinimumApplied,
     int Sides,
     int Sheets,
-    string ProfileName);
+    string ProfileName,
+    string? PromoCode = null,
+    decimal PromoDiscount = 0,
+    decimal AmountDue = 0);
 
 /// <summary>A print job as the backend returns it.</summary>
 public sealed record PrintJobInfo(
@@ -181,14 +184,15 @@ public sealed partial class KioskApiClient
     /// </summary>
     public async Task<PrintJobInfo> CreatePrintJobAsync(
         string? fileName, int pageCount, JobOptions options, bool skipPayment, string idempotencyKey,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? promoCode = null)
     {
         using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, "api/print-jobs", cancellationToken)
             .ConfigureAwait(false);
 
         request.Headers.Add("Idempotency-Key", idempotencyKey);
         request.Content = JsonContent.Create(
-            new { localFileName = fileName, pageCount, options, dev = skipPayment }, options: JsonOptions);
+            new { localFileName = fileName, pageCount, options, dev = skipPayment, promoCode }, options: JsonOptions);
 
         return await ReadAsync<PrintJobInfo>(request, cancellationToken).ConfigureAwait(false);
     }

@@ -99,7 +99,7 @@ public sealed class PrintFlowViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task The_step_indicator_follows_the_order_and_shows_no_payment_step_yet()
+    public async Task The_step_indicator_follows_the_order_with_its_payment_step()
     {
         var (flow, kit) = await FlowAsync();
         kit.Pdf(1, _drive, "report.pdf");
@@ -108,17 +108,18 @@ public sealed class PrintFlowViewModelTests : IDisposable
         string States() => string.Join(' ', flow.Steps.Select(step => step.State.ToString()[0]));
 
         flow.ShowSteps.Should().BeTrue();
-        flow.Steps.Select(step => step.Label).Should().Equal(T("steps.file"), T("steps.preview"), T("steps.options"), T("steps.done"));
-        States().Should().Be("C U U U");
+        flow.Steps.Select(step => step.Label).Should().Equal(T("steps.file"), T("steps.preview"), T("steps.options"), T("steps.payment"), T("steps.done"));
+        States().Should().Be("C U U U U");
 
         await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
-        States().Should().Be("D C U U");
+        States().Should().Be("D C U U U");
 
         flow.ContinueCommand.Execute(null);
-        States().Should().Be("D D C U");
+        States().Should().Be("D D C U U");
 
+        // A Development order skips the payment (plan step 3): straight to done.
         await flow.PlaceCommand.ExecuteAsync(null);
-        States().Should().Be("D D D C");
+        States().Should().Be("D D D D C");
 
         flow.StartCancel();
         flow.ShowSteps.Should().BeFalse("cancelling is not part of an order");

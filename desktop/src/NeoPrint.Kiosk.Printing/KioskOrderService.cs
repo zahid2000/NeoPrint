@@ -39,6 +39,7 @@ public sealed class KioskOrderService
     private readonly KioskRuntime _runtime;
     private readonly IPrinterFormatSupport _formats;
     private readonly KioskSettings _settings;
+    private readonly FlashUploads _uploads;
     private readonly ILogger<KioskOrderService> _logger;
 
     public KioskOrderService(
@@ -49,6 +50,7 @@ public sealed class KioskOrderService
         KioskRuntime runtime,
         IPrinterFormatSupport formats,
         IOptions<KioskSettings> settings,
+        FlashUploads uploads,
         ILogger<KioskOrderService> logger)
     {
         _api = api;
@@ -58,15 +60,19 @@ public sealed class KioskOrderService
         _runtime = runtime;
         _formats = formats;
         _settings = settings.Value;
+        _uploads = uploads;
         _logger = logger;
     }
 
     /// <summary>
-    /// Whether this kiosk can take a flash order at all. Payment arrives in
-    /// step 4; until then only a Development kiosk (which skips it) offers
-    /// the flow, and no one sees a half-built one (T-060).
+    /// Whether this kiosk can take a flash order at all: since step 4 every
+    /// kiosk can, and the order is paid before it prints (T-060 hid the flow
+    /// until payments existed).
     /// </summary>
-    public bool CanTakeOrders => _settings.SkipPayment;
+    public bool CanTakeOrders => true;
+
+    /// <summary>A Development kiosk queues orders without a payment (plan step 3).</summary>
+    public bool SkipsPayment => _settings.SkipPayment;
 
     public KioskConfiguration? Configuration => _runtime.Configuration;
 
@@ -132,8 +138,9 @@ public sealed class KioskOrderService
     /// </param>
     /// <exception cref="KioskApiException">The backend refused it; the message says why, in the screen's language.</exception>
     /// <exception cref="PrintingException">The print file could not be made.</exception>
+    /// <param name="promoCode">Checked by the backend with the order (plan section 2.7); a code that does not apply refuses the order with the reason.</param>
     public async Task<PrintJobInfo> PlaceAsync(
-        PreparedDocument document, string fileName, JobOptions options, string idempotencyKey, CancellationToken cancellationToken)
+        PreparedDocument document, string fileName, JobOptions options, string idempotencyKey, CancellationToken cancellationToken, string? promoCode = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(options);
@@ -149,7 +156,7 @@ public sealed class KioskOrderService
         var original = await OriginalFormatAsync(document, options, cancellationToken).ConfigureAwait(false);
 
         var job = await _api
-            .CreatePrintJobAsync(fileName, document.PageCount, options, _settings.SkipPayment, idempotencyKey, cancellationToken)
+            .CreatePrintJobAsync(fileName, document.PageCount, options, _settings.SkipPayment, idempotencyKey, cancellationToken, promoCode)
             .ConfigureAwait(false);
 
         var folder = _spool.NewWorkFolder();
@@ -169,7 +176,8 @@ public sealed class KioskOrderService
                 await _spool.PutAsync(JournalEntry.SpoolNameFor(job.Id, original), stream, cancellationToken).ConfigureAwait(false);
             }
 
-            _worker.Accept(job.Id, job.JobCode, options, job.RequiredSheets, DateTime.UtcNow, original, job.Price.Sides);
+            // An order still to be paid waits in the journal: nothing prints it until it is paid.
+            _worker.Accept(job.Id, job.JobCode, options, job.RequiredSheets, DateTime.UtcNow, original, job.Price.Sides, paid: job.Status == "Queued");
 
             _logger.LogInformation(
                 "Order {JobCode} placed: {Pages} pages, {Sheets} sheets, sent as {ContentType}.",
@@ -241,4 +249,36 @@ public sealed class KioskOrderService
     public Task<PrintJobInfo> FindAsync(string code, CancellationToken cancellationToken) => _api.FindPrintJobByCodeAsync(code, cancellationToken);
 
     public Task<PrintJobInfo> CancelAsync(Guid jobId, CancellationToken cancellationToken) => _api.CancelPrintJobAsync(jobId, cancellationToken);
+
+    // ---- payment (plan sections 9.1, 9.2)
+
+    /// <summary>What a promo code takes off <paramref name="amount"/> here, or why not.</summary>
+    public Task<PromoValidation> ValidatePromoAsync(string code, decimal amount, CancellationToken cancellationToken)
+        => _api.ValidatePromoAsync(code, _runtime.Configuration?.KioskId, amount, cancellationToken);
+
+    /// <summary>Opens (or returns the open) payment for the job: <c>BankQr</c> or <c>MobileApp</c>.</summary>
+    public Task<PaymentInfo> OpenPaymentAsync(Guid jobId, string method, CancellationToken cancellationToken)
+        => _api.CreatePaymentIntentAsync(jobId, method, $"intent-{jobId:N}-{method}-{Guid.NewGuid():N}", cancellationToken);
+
+    public Task<PaymentInfo> GetPaymentAsync(Guid paymentId, CancellationToken cancellationToken) => _api.GetPaymentAsync(paymentId, cancellationToken);
+
+    /// <summary>The payment went through: the order may print now, without waiting for the next look at the queue.</summary>
+    public void MarkPaid(Guid jobId) => _worker.MarkPaid(jobId);
+
+    public Task<FiscalInfo?> GetFiscalAsync(Guid paymentId, CancellationToken cancellationToken) => _api.GetPaymentFiscalAsync(paymentId, cancellationToken);
+
+    public Task EmailReceiptAsync(Guid paymentId, string email, string idempotencyKey, CancellationToken cancellationToken)
+        => _api.EmailReceiptAsync(paymentId, email, idempotencyKey, cancellationToken);
+
+    public Task<IReadOnlyList<RefundInfo>> GetRefundsAsync(Guid jobId, CancellationToken cancellationToken) => _api.GetJobRefundsAsync(jobId, cancellationToken);
+
+    /// <summary>
+    /// A flash order paid with the app: its file joins the account (plan
+    /// section 9.2, step 5), sent now or, failing that, later from the spool.
+    /// </summary>
+    public Task KeepFlashFileAsync(Guid jobId, string sourcePath, string fileName, CancellationToken cancellationToken)
+        => _uploads.KeepAndSendAsync(jobId, sourcePath, fileName, cancellationToken);
+
+    /// <summary>Uploads that failed earlier, again.</summary>
+    public Task<int> SendPendingUploadsAsync(CancellationToken cancellationToken) => _uploads.SendPendingAsync(cancellationToken);
 }

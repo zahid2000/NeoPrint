@@ -71,6 +71,12 @@ public static class ScreenConverters
 
     public static readonly IValueConverter IsCancelDone = Stage(FlowStage.CancelDone);
 
+    public static readonly IValueConverter IsPaymentMethod = Stage(FlowStage.PaymentMethod);
+
+    public static readonly IValueConverter IsQrPayment = Stage(FlowStage.QrPayment);
+
+    public static readonly IValueConverter IsPaymentExpired = Stage(FlowStage.PaymentExpired);
+
     public static readonly IValueConverter IsA4 = new FuncValueConverter<string, bool>(paper => paper == "A4");
 
     /// <summary>A keypad key whose glyph is smaller than a digit ("," and "-"); it is drawn larger (T-097).</summary>

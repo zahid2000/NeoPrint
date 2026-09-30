@@ -78,6 +78,33 @@ public sealed class PrintJobsController : ControllerBase
         => Ok(await _sender.Send(new CancelKioskPrintJobCommand(DeviceId, id), cancellationToken));
 
     /// <summary>
+    /// What goes back for this job (RefundInfo, plan section 7.3): amount,
+    /// destination and the status page's address for the QR.
+    /// </summary>
+    [HttpGet("{id:guid}/refunds")]
+    public async Task<ActionResult<IReadOnlyList<Application.Refunds.KioskRefundView>>> Refunds(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new Application.Refunds.GetKioskJobRefundsQuery(DeviceId, id), cancellationToken));
+
+    /// <summary>
+    /// A flash order paid with the app: the file off the drive joins the
+    /// account's files (plan section 9.2, step 5). The same job again returns
+    /// the file already kept.
+    /// </summary>
+    [HttpPost("{id:guid}/flash-upload")]
+    [RequestSizeLimit(200L * 1024 * 1024)]
+    public async Task<ActionResult<FlashUploadResult>> FlashUpload(Guid id, IFormFile file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            throw new Application.Common.ValidationException([new Application.Common.ValidationError("file", "files.noFileSent")]);
+        }
+
+        await using var content = file.OpenReadStream();
+
+        return Ok(await _sender.Send(new FlashUploadCommand(DeviceId, id, file.FileName, content, file.Length), cancellationToken));
+    }
+
+    /// <summary>
     /// How printing went: Printing, Completed or Interrupted, with what the
     /// printer reported (plan section 7.4). Repeating a report changes nothing.
     /// </summary>

@@ -34,4 +34,9 @@
 
     <StreamGeometry x:Key="IconQrCode">M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm8-12v8h8V3h-8zm6 6h-4V5h4v4zm0 10h2v2h-2v-2zm-6-6h2v2h-2v-2zm2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm0-4h2v2h-2v-2zm2 2h2v2h-2v-2z</StreamGeometry>
 
+    <!-- Paying with a bank card or a bank app (docs/DESIGN_SYSTEM.md, "Ödəniş ekranları"). -->
+    <StreamGeometry x:Key="IconCard">M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z</StreamGeometry>
+
+    <!-- Paying with the NeoPrint app. -->
+    <StreamGeometry x:Key="IconPhone">M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z</StreamGeometry>
 </ResourceDictionary>
