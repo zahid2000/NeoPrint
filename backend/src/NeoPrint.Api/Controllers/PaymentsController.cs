@@ -36,6 +36,8 @@ public sealed class PaymentsController : ControllerBase
 
     private Guid DeviceId => _currentUser.DeviceId ?? throw new UnauthorizedAccessException();
 
+    private Guid UserId => _currentUser.UserId ?? throw new UnauthorizedAccessException();
+
     /// <summary>
     /// Opens a payment for a job the kiosk placed: <c>BankQr</c> or
     /// <c>MobileApp</c>. The answer carries the QR and the seconds left.
@@ -65,6 +67,29 @@ public sealed class PaymentsController : ControllerBase
     [Authorize(Policy = AuthorizationPolicies.Kiosk)]
     public async Task<ActionResult<PaymentResponse>> Get(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new GetKioskPaymentQuery(DeviceId, id), cancellationToken));
+
+    /// <summary>
+    /// The app scanned the kiosk's <c>neoprint://pay/{id}</c> QR: what is paid
+    /// for, and the user's balance and bonus pages (plan section 9.2, step 3).
+    /// </summary>
+    [HttpGet("{id:guid}/app")]
+    [Authorize(Policy = AuthorizationPolicies.User)]
+    public async Task<ActionResult<AppPaymentView>> ForApp(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new GetAppPaymentQuery(UserId, id), cancellationToken));
+
+    /// <summary>
+    /// Pays the kiosk's app payment: bonus pages first if asked, the rest from
+    /// the wallet or a card. The job, its receipt and the file join the user's account.
+    /// </summary>
+    [HttpPost("{id:guid}/pay-with-app")]
+    [Authorize(Policy = AuthorizationPolicies.User)]
+    [Idempotent]
+    public async Task<ActionResult<AppPaymentView>> PayWithApp(Guid id, [FromBody] PayWithAppRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return Ok(await _sender.Send(new PayWithAppCommand(UserId, id, request.Source ?? string.Empty, request.UseBonus), cancellationToken));
+    }
 
     /// <summary>
     /// A provider's callback. Anonymous by nature; trusted only when its
@@ -98,6 +123,9 @@ public sealed class PaymentsController : ControllerBase
 
 /// <param name="Method"><c>BankQr</c> or <c>MobileApp</c>.</param>
 public sealed record CreatePaymentIntentRequest(Guid JobId, string Method);
+
+/// <param name="Source"><c>Wallet</c> or <c>Card</c>.</param>
+public sealed record PayWithAppRequest(string? Source, bool UseBonus);
 
 /// <summary>
 /// The customer and the bank, played in Development (plan section 6,
@@ -134,6 +162,14 @@ public sealed class DevPaymentsController : ControllerBase
     {
         await Simulator().SetCreateFailsAsync(fails, cancellationToken);
         return Ok(new { createFails = fails });
+    }
+
+    /// <summary>How the mock card acquirer's next charges end: <c>Success</c>, <c>Decline</c> or <c>Timeout</c> (money taken, answer lost).</summary>
+    [HttpPost("mock-card/outcome")]
+    public async Task<IActionResult> CardOutcome([FromQuery] MockCardOutcome value, CancellationToken cancellationToken)
+    {
+        await HttpContext.RequestServices.GetRequiredService<MockCardProvider>().SetOutcomeAsync(value, cancellationToken);
+        return Ok(new { outcome = value.ToString() });
     }
 
     private MockBankSimulator Simulator() => HttpContext.RequestServices.GetRequiredService<MockBankSimulator>();

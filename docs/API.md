@@ -1135,6 +1135,41 @@ Bank pulu job artıq ödənilə bilməyəndə (vaxtı keçib, ləğv olunub, ba�
 ödənilib) təsdiqləsə ödəniş `Succeeded` yazılır və eyni tranzaksiyada qaytarma
 tələb olunur (`RefundRequested`, səbəb `LatePayment` / `DuplicatePayment`).
 
+### Tətbiqlə ödəniş (`User` token)
+
+| Endpoint | Nə edir |
+|---|---|
+| `GET /api/payments/{id}/app` | Kioskdakı `neoprint://pay/{id}` QR-ı skan edəndən sonra təsdiq ekranı: məbləğ, kiosk, sifariş (səhifə, nüsxə, rəng, kağız), balans, bonus səhifələr və bu sifarişdə istifadə oluna bilən bonus (`bonusPagesUsable`, `bonusValue`). Bank QR-ı və başqasının götürdüyü ödəniş `404` |
+| `POST /api/payments/{id}/pay-with-app` (`Idempotency-Key`) | `{ "source": "Wallet" \| "Card", "useBonus": true }` — əvvəl bonus səhifələr (1 səhifə = sifarişin bir üzünün qiyməti, ən çox `Referral.MaxBonusPagesPerJob`), qalanı balansdan və ya kartdan. Job, qəbz və flaş faylı istifadəçinin hesabına bağlanır |
+
+Qaydalar: balans və bonus hissəsi kart çıxılmazdan **əvvəl** ledger-də ayrılır
+(`payment:{id}:{cəhd}`); kart rədd etsə geri qaytarılır (`release:{id}:{cəhd}`) və
+ödəniş açıq qalır — istifadəçi balansla yenidən cəhd edə bilər. Kartın cavabı itibsə
+(`503`, `payments.outcomeUnknown` — "yenidən ödəməyin") ayrılan məbləğ uzlaşdırma
+kartın öz statusunu öyrənənə qədər saxlanılır. Balans çatmırsa `409 wallet.insufficient`,
+heç nə ayrılmır. Eyni ödəniş paralel iki dəfə göndərilsə pul bir dəfə çıxılır.
+
+## Balans (`/api/wallet`, `User` token)
+
+| Endpoint | Nə edir |
+|---|---|
+| `GET /api/wallet` | `{ "balance": 5.00, "bonusPages": 0, "currency": "AZN" }` |
+| `GET /api/wallet/transactions?page=&pageSize=` | Ledger, ən yenisi əvvəl: `type` (`TopUp`, `Payment`, `Refund`, `Bonus`, `VoucherRedeem`, `AdminAdjust`), `amount` (işarəli), `bonusPages`, `balanceAfter`, `createdAt`, `note` |
+| `POST /api/wallet/top-up` (`Idempotency-Key`) | `{ "amount": 5 }` (1–500 ₼, 2 onluq) → kartla artırma; cavab `{ paymentId, status, wallet }`. Kart rədd etsə `409 payments.declined`, heç nə yazılmır |
+
+**Balansı karta çıxarmaq, nağdlaşdırmaq və ya qaytarmaq üçün heç bir endpoint yoxdur** (plan 2.14) — test marşrutların tam siyahısını yoxlayır.
+
+Həqiqət mənbəyi `wallet_transactions` ledger-idir; `wallets.Balance` onun cəmidir və
+yalnız ledger sətri ilə eyni tranzaksiyada dəyişir. Hər sətrin unikal `DedupKey`-i var
+(`topup:{paymentId}`, `payment:{id}:{n}`, `release:{id}:{n}`, `refund:{refundId}`, `adjust:{açar}`) — eyni hərəkət ikinci dəfə yazıla bilmir.
+
+### Admin (`/api/admin/wallets`)
+
+| Endpoint | İcazə | Nə edir |
+|---|---|---|
+| `GET /api/admin/wallets/{userId}`, `GET …/transactions` | `users.view` | Balans və ledger |
+| `POST /api/admin/wallets/{userId}/adjust` (`Idempotency-Key`) | `wallets.adjust` | `{ "amount": 2.00, "bonusPages": 0, "reason": "…" }` — səbəb məcburidir (`400`), audit-ə düşür; balansı sıfırdan aşağı sala bilmir (`409 wallet.insufficient`), ona görə pulu heç yerə çıxara bilmir |
+
 ### Development (`/api/dev`, başqa mühitlərdə `404`)
 
 | Endpoint | Nə edir |
@@ -1142,6 +1177,7 @@ tələb olunur (`RefundRequested`, səbəb `LatePayment` / `DuplicatePayment`).
 | `POST /api/dev/payments/{id}/simulate-success?delaySeconds=&duplicate=&dropCallback=` | Müştəri bank tətbiqində ödəyir; callback gecikir / iki dəfə eyni anda gəlir / itir |
 | `POST /api/dev/payments/{id}/simulate-fail` | Bank rədd edir (`payment.failed` callback) |
 | `POST /api/dev/mock-bank/create-fails?fails=true\|false` | Bank "düşür": QR yaratmaq timeout verir |
+| `POST /api/dev/mock-card/outcome?value=Success\|Decline\|Timeout` | Mock kartın növbəti çıxışları: uğur / rədd / pul tutulur, amma cavab itir |
 
 Vaxtı keçmiş (bankda bağlanmış) QR-ı ödəmək `409 { "outcome": "QrNoLongerValid" }` qaytarır — bank tətbiqi də onu rədd edir.
 

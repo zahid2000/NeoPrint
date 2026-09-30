@@ -196,6 +196,21 @@ public sealed class PrintJob : Entity
     public void AwaitPayment(ActorContext actor, DateTime now)
         => Move(PrintJobStatus.PendingPayment, actor, now);
 
+    /// <summary>
+    /// The mobile app user who paid for it (plan section 9.2, step 4): the job,
+    /// its receipt and - for a flash file - the file join their account.
+    /// </summary>
+    /// <exception cref="DomainException">It already belongs to somebody else.</exception>
+    public void AssignOwner(Guid userId)
+    {
+        if (UserId is { } owner && owner != userId)
+        {
+            throw new DomainException("printJobs.belongsToAnotherUser");
+        }
+
+        UserId = userId;
+    }
+
     /// <summary>The payment went through.</summary>
     public void MarkPaid(Guid? paymentId, ActorContext actor, DateTime now)
     {

@@ -173,8 +173,9 @@ public sealed class PaymentHandlers :
             throw new NotFoundException("payment");
         }
 
-        var job = await _jobs.FindByIdAsync(payment.JobId, cancellationToken).ConfigureAwait(false)
-                  ?? throw new NotFoundException("printJob");
+        var job = payment.JobId is { } jobId
+            ? await _jobs.FindByIdAsync(jobId, cancellationToken).ConfigureAwait(false) ?? throw new NotFoundException("printJob")
+            : throw new NotFoundException("printJob");
 
         return Response(payment, job, _clock.UtcNow);
     }
@@ -270,7 +271,10 @@ public sealed class PaymentHandlers :
 
         if (!await CloseAsync(payment, actor, now, cancellationToken).ConfigureAwait(false))
         {
-            await ExpireJobIfNothingPendingAsync(payment.JobId, actor, now, cancellationToken).ConfigureAwait(false);
+            if (payment.JobId is { } jobId)
+            {
+                await ExpireJobIfNothingPendingAsync(jobId, actor, now, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         return Unit.Value;
@@ -343,6 +347,20 @@ public sealed class PaymentHandlers :
     /// <returns>True when the provider says it was paid after all; the success has been applied.</returns>
     private async Task<bool> CloseAsync(Payment payment, ActorContext actor, DateTime now, CancellationToken cancellationToken)
     {
+        if (payment.Reserved is { } reserved)
+        {
+            // An app payment set money aside: if its card was charged after
+            // all, it is paid; otherwise the wallet gets its part back.
+            if (payment.Provider == _providers.Card.Name && payment.ProviderRef is { } cardRef
+                && (await _providers.Card.GetStatusAsync(cardRef, cancellationToken).ConfigureAwait(false)) is { State: ProviderPaymentState.Succeeded } charged)
+            {
+                await _settlement.SucceedAsync(payment, reserved, payment.Method, charged.PaidAt ?? now, actor, now, cancellationToken).ConfigureAwait(false);
+                return true;
+            }
+
+            await _settlement.ReleaseReservationAsync(payment, now, cancellationToken).ConfigureAwait(false);
+        }
+
         if (payment.Provider is { } name && payment.ProviderRef is { } providerRef && _providers.Find(name) is { } provider)
         {
             var status = await provider.CancelAsync(providerRef, cancellationToken).ConfigureAwait(false);

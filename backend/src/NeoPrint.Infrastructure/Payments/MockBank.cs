@@ -46,6 +46,9 @@ public sealed class MockBankBehaviour
 
     /// <summary>Creating a QR times out, as a bank that is down does.</summary>
     public bool CreateFails { get; set; }
+
+    /// <summary>How the mock card acquirer's next charges end.</summary>
+    public MockCardOutcome CardOutcome { get; set; }
 }
 
 /// <summary>A callback as the mock bank sends it: the shape a real bank's webhook has.</summary>

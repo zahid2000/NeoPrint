@@ -31,6 +31,16 @@ public enum PaymentStatus
     RefundFailed = 6,
 }
 
+/// <summary>What the money is for.</summary>
+public enum PaymentPurpose
+{
+    /// <summary>A print job (plan section 9.1).</summary>
+    PrintJob = 0,
+
+    /// <summary>Money put on the wallet from a card (plan section 2.14); not tied to a job.</summary>
+    WalletTopUp = 1,
+}
+
 /// <summary>Where the customer paid from.</summary>
 public enum PaymentChannel
 {
@@ -51,11 +61,18 @@ public sealed record PaymentEvent(DateTime At, string Event, string? Details = n
 /// <param name="External">Taken by the bank or card provider.</param>
 /// <param name="Wallet">Taken from the user's wallet.</param>
 /// <param name="BonusPages">Sides paid with bonus pages; worth 0 AZN on the fiscal receipt.</param>
-public sealed record PaymentParts(Money External, Money Wallet, int BonusPages)
+/// <param name="BonusValue">What those sides were worth in the order's price; never charged, never refunded as money.</param>
+public sealed record PaymentParts(Money External, Money Wallet, int BonusPages, Money BonusValue)
 {
-    public static PaymentParts ExternalOnly(Money amount) => new(amount, Money.Zero, 0);
+    public static PaymentParts ExternalOnly(Money amount) => new(amount, Money.Zero, 0, Money.Zero);
 
-    public Money Total => External + Wallet;
+    public static PaymentParts WalletOnly(Money amount) => new(Money.Zero, amount, 0, Money.Zero);
+
+    /// <summary>The order's price, covered: money plus the value of the bonus pages.</summary>
+    public Money Total => External + Wallet + BonusValue;
+
+    /// <summary>The money actually paid: what a refund can give back as money and what a fiscal receipt shows.</summary>
+    public Money Money => External + Wallet;
 }
 
 /// <summary>
@@ -78,7 +95,10 @@ public sealed record PaymentParts(Money External, Money Wallet, int BonusPages)
 /// </remarks>
 public sealed class Payment : Entity
 {
-    public Guid JobId { get; set; }
+    /// <summary>The job paid for; null for a wallet top-up.</summary>
+    public Guid? JobId { get; set; }
+
+    public PaymentPurpose Purpose { get; set; } = PaymentPurpose.PrintJob;
 
     /// <summary>Null for an anonymous kiosk payment.</summary>
     public Guid? UserId { get; private set; }
@@ -94,6 +114,58 @@ public sealed class Payment : Entity
 
     /// <summary>How the amount was covered; set when the payment is made.</summary>
     public PaymentParts? Parts { get; private set; }
+
+    /// <summary>
+    /// What the app has taken from the wallet and bonus pages while the card
+    /// part is being charged (<see cref="Reserve"/>); released if the card is
+    /// declined or the payment expires unpaid. Null when nothing is set aside.
+    /// </summary>
+    public PaymentParts? Reserved { get; private set; }
+
+    /// <summary>
+    /// Which try at paying this is. Every try has its own ledger lines and
+    /// card reference (<c>payment:{id}:{n}</c>, <c>release:{id}:{n}</c>), so a
+    /// second try after a declined card really takes the money again.
+    /// </summary>
+    public int ReservationAttempt { get; private set; }
+
+    /// <summary>
+    /// The app user chose how to pay (plan section 9.2, step 3): the wallet and
+    /// bonus parts are set aside before the card is charged.
+    /// </summary>
+    /// <exception cref="DomainException">Not payable any more, or the parts do not cover the amount.</exception>
+    public void Reserve(PaymentParts parts, PaymentMethod method, DateTime now)
+    {
+        ArgumentNullException.ThrowIfNull(parts);
+
+        if (Status != PaymentStatus.Pending || Reserved is not null)
+        {
+            throw new DomainException("payments.notPayable");
+        }
+
+        ReservationAttempt++;
+
+        if (parts.Total != Amount)
+        {
+            throw new DomainException(UserMessage.Of("payments.amountMismatch", ("expected", Amount.Amount), ("actual", parts.Total.Amount)));
+        }
+
+        Reserved = parts;
+        Method = method;
+        Note(now, "reserved", method.ToString());
+    }
+
+    /// <summary>The reservation went back to the wallet (card declined, intent expired); another try may follow.</summary>
+    public void ReleaseReservation(DateTime now)
+    {
+        if (Reserved is null || WasPaid)
+        {
+            return;
+        }
+
+        Reserved = null;
+        Note(now, "reservationReleased", ReservationAttempt.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
 
     public Guid? PromoCodeId { get; set; }
 
@@ -131,8 +203,8 @@ public sealed class Payment : Entity
 
     public List<PaymentEvent> Timeline { get; set; } = [];
 
-    /// <summary>Money the customer could still get back.</summary>
-    public Money Refundable => Parts is null ? Money.Zero : Parts.Total - RefundedAmount;
+    /// <summary>Money the customer could still get back (bonus pages go back as pages, not money).</summary>
+    public Money Refundable => Parts is null ? Money.Zero : Parts.Money - RefundedAmount;
 
     /// <summary>Whether the provider has confirmed the money was taken, whatever happened after.</summary>
     public bool WasPaid => PaidAt is not null;
@@ -183,20 +255,34 @@ public sealed class Payment : Entity
         };
     }
 
+    /// <summary>A card top-up of the wallet (plan section 2.14): no job, paid by card from the app.</summary>
+    public static Payment OpenTopUp(Guid userId, Money amount, DateTime now, DateTime expiresAt, string? idempotencyKey = null)
+    {
+        var payment = Open(Guid.Empty, null, PaymentMethod.Card, PaymentChannel.Mobile, amount, now, expiresAt, idempotencyKey);
+        payment.JobId = null;
+        payment.Purpose = PaymentPurpose.WalletTopUp;
+        payment.UserId = userId;
+
+        return payment;
+    }
+
     /// <summary>The provider has made a QR (or card session) for it.</summary>
     public void AttachProvider(string provider, string providerRef, string? qrContent, DateTime now)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(provider);
         ArgumentException.ThrowIfNullOrWhiteSpace(providerRef);
 
-        if (ProviderRef is not null && ProviderRef != providerRef)
+        // A new card try after a decline gets a new reference; a paid payment
+        // is tied to its transaction for good.
+        if (ProviderRef is not null && ProviderRef != providerRef && (WasPaid || Purpose == PaymentPurpose.PrintJob && Method == PaymentMethod.BankQr))
         {
             throw new DomainException("payments.providerAlreadyAttached");
         }
 
         Provider = provider;
         ProviderRef = providerRef;
-        QrContent = qrContent;
+        // A card reference for an app payment keeps the kiosk's QR as it was.
+        QrContent = qrContent ?? QrContent;
         Note(now, "providerAttached", provider);
     }
 

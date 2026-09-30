@@ -60,6 +60,21 @@ public sealed record ProviderCallback(
     string? FailureCode,
     string PayloadHash);
 
+/// <summary>
+/// The provider did not answer after the money may already have been taken:
+/// the outcome is unknown until reconciliation asks again. Unlike
+/// <see cref="PaymentProviderUnavailableException"/>, the customer must not be
+/// told that nothing was charged.
+/// </summary>
+public sealed class PaymentOutcomeUnknownException : Exception
+{
+    public PaymentOutcomeUnknownException(string provider)
+        : base($"The payment provider {provider} did not say whether the charge went through.")
+        => Provider = provider;
+
+    public string Provider { get; }
+}
+
 /// <summary>The provider could not be reached or did not answer in time.</summary>
 public sealed class PaymentProviderUnavailableException : Exception
 {
@@ -101,10 +116,33 @@ public interface IBankQrProvider
     ProviderCallback? ReadCallback(ReadOnlySpan<byte> body, string? signature);
 }
 
-/// <summary>The bank QR providers the host has, by name.</summary>
+/// <summary>
+/// A card acquirer for payments in the mobile app: top-ups and card payments
+/// (plan section 8.2, "Kart (mock)"). External, so always behind this interface.
+/// </summary>
+/// <remarks>
+/// A charge is keyed by our reference: charging the same reference again
+/// returns the first charge rather than taking the money twice - which is
+/// what makes a retry after a lost answer safe.
+/// </remarks>
+public interface ICardPaymentProvider
+{
+    string Name { get; }
+
+    /// <summary>Takes the amount; the state says whether it went through.</summary>
+    /// <exception cref="PaymentProviderUnavailableException">No answer: the charge may or may not have happened; reconciliation finds out.</exception>
+    Task<ProviderPaymentStatus> ChargeAsync(string providerRef, Money amount, CancellationToken cancellationToken = default);
+
+    /// <exception cref="PaymentProviderUnavailableException">The acquirer did not answer.</exception>
+    Task<ProviderPaymentStatus> GetStatusAsync(string providerRef, CancellationToken cancellationToken = default);
+}
+
+/// <summary>The payment providers the host has, by name.</summary>
 public interface IPaymentProviders
 {
     IBankQrProvider BankQr { get; }
+
+    ICardPaymentProvider Card { get; }
 
     IBankQrProvider? Find(string name);
 }

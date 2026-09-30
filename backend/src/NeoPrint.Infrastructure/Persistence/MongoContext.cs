@@ -121,12 +121,15 @@ public sealed class MongoContext
     public MongoSet<Domain.PrintJobs.PrintJob> PrintJobs => Set<Domain.PrintJobs.PrintJob>("print_jobs");
     public MongoSet<Domain.PrintJobs.PrintAttempt> PrintAttempts => Set<Domain.PrintJobs.PrintAttempt>("print_attempts");
     public MongoSet<Domain.Payments.Payment> Payments => Set<Domain.Payments.Payment>("payments");
+    public MongoSet<Domain.Wallets.Wallet> Wallets => Set<Domain.Wallets.Wallet>("wallets");
+    public MongoSet<Domain.Wallets.WalletTransaction> WalletTransactions => Set<Domain.Wallets.WalletTransaction>("wallet_transactions");
 
     // The mock bank's own books (Development and tests): through the same
     // session as everything else, so an aborted transaction takes its write
     // back and the next attempt repeats it (ADR-0004).
     public MongoSet<Payments.MockBankTransaction> MockBankTransactions => Set<Payments.MockBankTransaction>("mock_bank_transactions");
     public MongoSet<Payments.MockBankBehaviour> MockBankSettings => Set<Payments.MockBankBehaviour>("mock_bank_settings");
+    public MongoSet<Payments.MockCardCharge> MockCardCharges => Set<Payments.MockCardCharge>("mock_card_charges");
     public MongoSet<SupplyEvent> SupplyEvents => Set<SupplyEvent>("supply_events");
 
     /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 2.17).</summary>
@@ -345,6 +348,14 @@ public sealed class MongoContext
             (Builders<Domain.Payments.Payment>.IndexKeys.Ascending(p => p.Status).Ascending(p => p.ExpiresAt),
                 Named("ix_payments_status_expires")),
             (Builders<Domain.Payments.Payment>.IndexKeys.Descending(p => p.CreatedAt), Named("ix_payments_created")));
+
+        await CreateAsync(WalletTransactions,
+            // The guard against a double credit or charge: one line per cause
+            // (topup:{paymentId}, payment:{paymentId}, refund:{refundId}, ...).
+            (Builders<Domain.Wallets.WalletTransaction>.IndexKeys.Ascending(t => t.DedupKey), Unique("ux_wallet_transactions_dedup")),
+            // A user's history, newest first.
+            (Builders<Domain.Wallets.WalletTransaction>.IndexKeys.Ascending(t => t.UserId).Descending(t => t.CreatedAt),
+                Named("ix_wallet_transactions_user_created")));
 
         // A job or a test page moves a counter once; the tab reads a kiosk's newest first.
         await CreateAsync(SupplyEvents,

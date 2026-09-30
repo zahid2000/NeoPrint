@@ -130,6 +130,15 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
                 Status = StatusCodes.Status500InternalServerError,
             },
 
+            // The charge may have gone through: the customer must not pay again
+            // before reconciliation has asked the provider.
+            PaymentOutcomeUnknownException => new ProblemDetails
+            {
+                Title = Title("problem.providerUnavailable"),
+                Detail = Messages.Write(new UserMessage("payments.outcomeUnknown")),
+                Status = StatusCodes.Status503ServiceUnavailable,
+            },
+
             // The bank or card provider did not answer: nothing was charged, the
             // customer can try again or pay another way.
             PaymentProviderUnavailableException => new ProblemDetails
@@ -158,6 +167,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             DomainException domain => domain.Text.Key,
             AuthenticationException authentication => authentication.Text.Key,
             PaymentProviderUnavailableException => "payments.providerUnavailable",
+            PaymentOutcomeUnknownException => "payments.outcomeUnknown",
             ValidationException { Errors.Count: 1 } validation => validation.Errors.First().Message.Key,
             _ => null,
         };

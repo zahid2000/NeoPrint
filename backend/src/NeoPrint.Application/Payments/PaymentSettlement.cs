@@ -2,10 +2,12 @@ using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.PrintJobs;
+using NeoPrint.Application.Wallets;
 using NeoPrint.Contracts;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Payments;
 using NeoPrint.Domain.PrintJobs;
+using NeoPrint.Domain.Wallets;
 
 namespace NeoPrint.Application.Payments;
 
@@ -47,6 +49,7 @@ public sealed class PaymentSettlement
     private readonly IPaymentNotifier _paymentNotifier;
     private readonly IEventPublisher _events;
     private readonly ICorrelationContext _correlation;
+    private readonly WalletLedger _wallet;
     private readonly ILogger<PaymentSettlement> _logger;
 
     public PaymentSettlement(
@@ -57,8 +60,10 @@ public sealed class PaymentSettlement
         IPaymentNotifier paymentNotifier,
         IEventPublisher events,
         ICorrelationContext correlation,
+        WalletLedger wallet,
         ILogger<PaymentSettlement> logger)
     {
+        _wallet = wallet;
         _payments = payments;
         _jobs = jobs;
         _queue = queue;
@@ -90,11 +95,22 @@ public sealed class PaymentSettlement
             return false;
         }
 
-        var job = await _jobs.FindByIdAsync(payment.JobId, cancellationToken).ConfigureAwait(false);
+        if (payment.Purpose == PaymentPurpose.WalletTopUp)
+        {
+            await TopUpAsync(payment, parts, now, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        var job = payment.JobId is { } jobId ? await _jobs.FindByIdAsync(jobId, cancellationToken).ConfigureAwait(false) : null;
         var jobPaid = false;
 
         if (job is { Status: PrintJobStatus.PendingPayment, PaymentId: null })
         {
+            if (payment.UserId is { } owner)
+            {
+                job.AssignOwner(owner);
+            }
+
             job.MarkPaid(payment.Id, actor, now);
             job.Enqueue(actor, now);
             await _jobs.UpdateAsync(job, cancellationToken).ConfigureAwait(false);
@@ -161,5 +177,68 @@ public sealed class PaymentSettlement
             jobPaid);
 
         return true;
+    }
+
+    /// <summary>
+    /// Gives back what the app set aside from the wallet and bonus pages for a
+    /// payment that did not go through (card declined, intent expired). Once:
+    /// the ledger line's key is <c>release:{paymentId}</c>.
+    /// </summary>
+    public async Task ReleaseReservationAsync(Payment payment, DateTime now, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(payment);
+
+        if (payment.Reserved is not { } reserved || payment.WasPaid)
+        {
+            return;
+        }
+
+        if ((reserved.Wallet.IsPositive || reserved.BonusPages > 0) && payment.UserId is { } owner)
+        {
+            await _wallet
+                .PostAsync(
+                    owner,
+                    WalletTransactionType.Refund,
+                    reserved.Wallet,
+                    reserved.BonusPages,
+                    payment.Id.ToString(),
+                    $"release:{payment.Id}:{payment.ReservationAttempt}",
+                    null,
+                    now,
+                    new UserMessage("payments.reason.reservationReleased").Encode(),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        payment.ReleaseReservation(now);
+        await _payments.UpdateAsync(payment, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>A card top-up lands on the wallet, once (dedup key <c>topup:{paymentId}</c>).</summary>
+    private async Task TopUpAsync(Payment payment, PaymentParts parts, DateTime now, CancellationToken cancellationToken)
+    {
+        var owner = payment.UserId ?? throw new DomainException("wallet.topUpWithoutUser");
+
+        await _wallet
+            .PostAsync(owner, WalletTransactionType.TopUp, parts.External, 0, payment.Id.ToString(), $"topup:{payment.Id}", owner, now, null, cancellationToken)
+            .ConfigureAwait(false);
+
+        await _payments.UpdateAsync(payment, cancellationToken).ConfigureAwait(false);
+
+        await _events.PublishAsync(
+                new PaymentSucceeded(
+                    payment.Id,
+                    null,
+                    null,
+                    owner,
+                    payment.Amount.Amount,
+                    payment.Method.ToString(),
+                    JobPaid: false,
+                    _correlation.CorrelationId,
+                    nameof(PaymentPurpose.WalletTopUp)),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        _logger.LogInformation("Wallet top-up {PaymentId} of {Amount} {Currency} credited.", payment.Id, payment.Amount.Amount, payment.Amount.Currency);
     }
 }

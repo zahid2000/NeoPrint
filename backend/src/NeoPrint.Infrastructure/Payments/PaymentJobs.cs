@@ -15,13 +15,16 @@ public sealed class PaymentProviders : IPaymentProviders
 {
     private readonly IReadOnlyList<IBankQrProvider> _banks;
 
-    public PaymentProviders(IEnumerable<IBankQrProvider> banks)
+    public PaymentProviders(IEnumerable<IBankQrProvider> banks, ICardPaymentProvider card)
     {
         _banks = banks.ToList();
         BankQr = _banks.FirstOrDefault() ?? throw new InvalidOperationException("No bank QR provider is registered.");
+        Card = card;
     }
 
     public IBankQrProvider BankQr { get; }
+
+    public ICardPaymentProvider Card { get; }
 
     public IBankQrProvider? Find(string name)
         => _banks.FirstOrDefault(bank => string.Equals(bank.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -103,7 +106,15 @@ public sealed class PaymentJobs
 
         foreach (var payment in due)
         {
-            await RunAsync(new ReconcilePaymentCommand(payment.Id), payment.Id, cancellationToken).ConfigureAwait(false);
+            // A card charge is settled from the acquirer's status; a bank QR is reconciled with the bank.
+            if (payment.Provider == MockCardProvider.ProviderName)
+            {
+                await RunAsync(new SettleCardPaymentCommand(payment.Id), payment.Id, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                await RunAsync(new ReconcilePaymentCommand(payment.Id), payment.Id, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 

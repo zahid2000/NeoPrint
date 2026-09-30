@@ -131,8 +131,15 @@ public static class DependencyInjection
         services.AddScoped<Application.Payments.IPaymentRepository, Payments.PaymentRepository>();
         services.AddScoped<Payments.MockBankProvider>();
         services.AddScoped<Application.Payments.IBankQrProvider>(provider => provider.GetRequiredService<Payments.MockBankProvider>());
+        services.AddScoped<Payments.MockCardProvider>();
+        services.AddScoped<Application.Payments.ICardPaymentProvider>(provider => provider.GetRequiredService<Payments.MockCardProvider>());
         services.AddScoped<Application.Payments.IPaymentProviders, Payments.PaymentProviders>();
         services.AddScoped<Application.Payments.PaymentSettlement>();
+
+        // The wallet: the ledger is the truth, the balance its sum (plan 2.14).
+        services.AddScoped<Application.Wallets.IWalletRepository, Wallets.WalletRepository>();
+        services.AddScoped<Application.Wallets.IWalletTransactionRepository, Wallets.WalletTransactionRepository>();
+        services.AddScoped<Application.Wallets.WalletLedger>();
         services.AddScoped<Payments.PaymentJobs>();
 
         // Administration and RBAC (plan section 8A.2)

@@ -9,18 +9,20 @@ namespace NeoPrint.Contracts;
 /// cancelled or paid by another payment. The money then goes back
 /// (<see cref="RefundRequested"/>) instead of into the queue.
 /// </param>
+/// <param name="JobId">Null for a wallet top-up.</param>
 public sealed record PaymentSucceeded(
     Guid PaymentId,
-    Guid JobId,
+    Guid? JobId,
     Guid? KioskId,
     Guid? UserId,
     decimal Amount,
     string Method,
     bool JobPaid,
-    string? CorrelationId);
+    string? CorrelationId,
+    string Purpose = "PrintJob");
 
 /// <summary>An intent nobody paid in time.</summary>
-public sealed record PaymentExpired(Guid PaymentId, Guid JobId, Guid? KioskId, string? CorrelationId);
+public sealed record PaymentExpired(Guid PaymentId, Guid? JobId, Guid? KioskId, string? CorrelationId);
 
 /// <summary>
 /// Money should go back to the customer (plan section 2.5). The refund
