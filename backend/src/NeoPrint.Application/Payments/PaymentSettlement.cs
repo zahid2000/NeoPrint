@@ -50,6 +50,7 @@ public sealed class PaymentSettlement
     private readonly IEventPublisher _events;
     private readonly ICorrelationContext _correlation;
     private readonly WalletLedger _wallet;
+    private readonly Promos.PromoService _promos;
     private readonly ILogger<PaymentSettlement> _logger;
 
     public PaymentSettlement(
@@ -61,9 +62,11 @@ public sealed class PaymentSettlement
         IEventPublisher events,
         ICorrelationContext correlation,
         WalletLedger wallet,
+        Promos.PromoService promos,
         ILogger<PaymentSettlement> logger)
     {
         _wallet = wallet;
+        _promos = promos;
         _payments = payments;
         _jobs = jobs;
         _queue = queue;
@@ -99,6 +102,12 @@ public sealed class PaymentSettlement
         {
             await TopUpAsync(payment, parts, now, cancellationToken).ConfigureAwait(false);
             return true;
+        }
+
+        if (payment.PromoCodeId is not null)
+        {
+            // Paid at the discounted price: the code's place is taken for good.
+            await _promos.ConfirmAsync(payment.Id, cancellationToken).ConfigureAwait(false);
         }
 
         var job = payment.JobId is { } jobId ? await _jobs.FindByIdAsync(jobId, cancellationToken).ConfigureAwait(false) : null;
@@ -212,6 +221,19 @@ public sealed class PaymentSettlement
 
         payment.ReleaseReservation(now);
         await _payments.UpdateAsync(payment, cancellationToken).ConfigureAwait(false);
+
+        // The next try works the promo out again for what it then pays.
+        await _promos.ReleaseAsync(payment.Id, refunded: false, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>An unpaid payment ended (declined, expired): a promo code it held is free again.</summary>
+    public Task ReleasePromoAsync(Payment payment, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(payment);
+
+        return payment.PromoCodeId is null
+            ? Task.CompletedTask
+            : _promos.ReleaseAsync(payment.Id, refunded: false, cancellationToken);
     }
 
     /// <summary>A card top-up lands on the wallet, once (dedup key <c>topup:{paymentId}</c>).</summary>

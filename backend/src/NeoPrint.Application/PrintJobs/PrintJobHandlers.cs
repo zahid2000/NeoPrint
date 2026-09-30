@@ -49,6 +49,7 @@ public sealed class KioskPrintJobHandlers :
     private readonly IClock _clock;
     private readonly PrintJobOptions _options;
     private readonly SuspectedJobIncidents _suspected;
+    private readonly Promos.PromoService _promos;
     private readonly ILogger<KioskPrintJobHandlers> _logger;
 
     public KioskPrintJobHandlers(
@@ -66,6 +67,7 @@ public sealed class KioskPrintJobHandlers :
         IClock clock,
         IOptions<PrintJobOptions> options,
         SuspectedJobIncidents suspected,
+        Promos.PromoService promos,
         ILogger<KioskPrintJobHandlers> logger)
     {
         _devices = devices;
@@ -82,6 +84,7 @@ public sealed class KioskPrintJobHandlers :
         _clock = clock;
         _options = options.Value;
         _suspected = suspected;
+        _promos = promos;
         _logger = logger;
     }
 
@@ -123,8 +126,27 @@ public sealed class KioskPrintJobHandlers :
 
         await EnsurePaperAsync(kiosk, request.Options.Paper, price.Price.Sheets, cancellationToken).ConfigureAwait(false);
 
+        Promos.PromoCheck? promo = null;
+
+        if (!string.IsNullOrWhiteSpace(request.PromoCode))
+        {
+            // Checked now so the customer knows before paying; the place is taken
+            // when the payment opens (plan section 2.7). No account here: no per-account limit.
+            promo = await _promos.CheckAsync(request.PromoCode, kiosk.Id, profile.Id, price.Total, userId: null, cancellationToken).ConfigureAwait(false);
+
+            if (promo.Refusal is { } refusal)
+            {
+                throw new ValidationException([new ValidationError("promoCode", refusal)]);
+            }
+        }
+
         var actor = ActorContext.Kiosk(request.DeviceId, correlationId: _correlation.CorrelationId);
         var job = await AddWithUniqueCodeAsync(kiosk, request, price, now, cancellationToken).ConfigureAwait(false);
+
+        if (promo is { Promo: { } code })
+        {
+            job.AttachPromo(code.Id, code.Code, promo.Discount.Amount);
+        }
 
         if (request.SkipPayment)
         {

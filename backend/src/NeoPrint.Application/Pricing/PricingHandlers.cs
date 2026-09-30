@@ -29,14 +29,16 @@ public sealed class PricingHandlers :
     private readonly IKioskRepository _kiosks;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
+    private readonly Promos.PromoService _promos;
 
     public PricingHandlers(
-        IPricingProfileRepository profiles, IKioskRepository kiosks, IAuditWriter audit, IClock clock)
+        IPricingProfileRepository profiles, IKioskRepository kiosks, IAuditWriter audit, IClock clock, Promos.PromoService promos)
     {
         _profiles = profiles;
         _kiosks = kiosks;
         _audit = audit;
         _clock = clock;
+        _promos = promos;
     }
 
     // -----------------------------------------------------------------------
@@ -53,7 +55,25 @@ public sealed class PricingHandlers :
         // the order is placed a minute later cannot disagree.
         var snapshot = Price(() => PriceSnapshot.Take(profile, request.Options.ToSpec(), _clock.UtcNow));
 
-        return new QuoteResponse(profile.Id, profile.Name, snapshot.Price);
+        if (string.IsNullOrWhiteSpace(request.PromoCode))
+        {
+            return new QuoteResponse(profile.Id, profile.Name, snapshot.Price, AmountDue: snapshot.Price.FinalPrice);
+        }
+
+        // Plan section 2.7: the code applies last. Bonus pages are chosen when
+        // paying in the app, which works the code out again on what is left.
+        var promo = await _promos
+            .CheckAsync(request.PromoCode, request.KioskId, profile.Id, snapshot.Total, userId: null, cancellationToken)
+            .ConfigureAwait(false);
+
+        return new QuoteResponse(
+            profile.Id,
+            profile.Name,
+            snapshot.Price,
+            promo.Promo?.Code,
+            promo.Discount.Amount,
+            (snapshot.Total - promo.Discount).Amount,
+            promo.Refusal is { } refusal ? Localization.Messages.Write(refusal) : null);
     }
 
     /// <summary>The kiosk's own profile, or the default one (plan section 2.3).</summary>

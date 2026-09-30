@@ -55,6 +55,7 @@ public sealed class RefundHandlers :
     private readonly IPrintAttemptRepository _attempts;
     private readonly IPaymentProviders _providers;
     private readonly WalletLedger _wallet;
+    private readonly Promos.PromoService _promos;
     private readonly IncidentReporter _incidents;
     private readonly IPaymentsAdminNotifier _panel;
     private readonly PrintQueueService _queue;
@@ -75,6 +76,7 @@ public sealed class RefundHandlers :
         IPrintAttemptRepository attempts,
         IPaymentProviders providers,
         WalletLedger wallet,
+        Promos.PromoService promos,
         IncidentReporter incidents,
         IPaymentsAdminNotifier panel,
         PrintQueueService queue,
@@ -94,6 +96,7 @@ public sealed class RefundHandlers :
         _attempts = attempts;
         _providers = providers;
         _wallet = wallet;
+        _promos = promos;
         _incidents = incidents;
         _panel = panel;
         _queue = queue;
@@ -279,6 +282,13 @@ public sealed class RefundHandlers :
             // Refuses more than was paid: the last guard against a double refund.
             payment.ApplyRefund(refund.Amount, actor, now);
             await _payments.UpdateAsync(payment, cancellationToken).ConfigureAwait(false);
+
+            if (payment is { Status: PaymentStatus.Refunded, PromoCodeId: not null })
+            {
+                // All of it came back: the promo code's use is cancelled (its place is free
+                // again); the discount itself is never paid out (plan section 2.5).
+                await _promos.ReleaseAsync(payment.Id, refunded: true, cancellationToken).ConfigureAwait(false);
+            }
         }
 
         await _refunds.UpdateAsync(refund, cancellationToken).ConfigureAwait(false);

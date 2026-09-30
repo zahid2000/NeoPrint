@@ -37,6 +37,7 @@ public sealed class PaymentHandlers :
     private readonly IPaymentProviders _providers;
     private readonly IProviderEventStore _providerEvents;
     private readonly PaymentSettlement _settlement;
+    private readonly Promos.PromoService _promos;
     private readonly PrintQueueService _queue;
     private readonly ISettingsReader _settings;
     private readonly IEventPublisher _events;
@@ -51,6 +52,7 @@ public sealed class PaymentHandlers :
         IPaymentProviders providers,
         IProviderEventStore providerEvents,
         PaymentSettlement settlement,
+        Promos.PromoService promos,
         PrintQueueService queue,
         ISettingsReader settings,
         IEventPublisher events,
@@ -64,6 +66,7 @@ public sealed class PaymentHandlers :
         _providers = providers;
         _providerEvents = providerEvents;
         _settlement = settlement;
+        _promos = promos;
         _queue = queue;
         _settings = settings;
         _events = events;
@@ -136,6 +139,40 @@ public sealed class PaymentHandlers :
             now.AddMinutes(minutes),
             request.IdempotencyKey);
 
+        string? promoRefusal = null;
+
+        if (request.Method == PaymentMethod.BankQr && job.PromoCodeId is { } promoId)
+        {
+            // An anonymous kiosk payment: no bonus pages, so the code applies to
+            // the whole price and no per-account limit counts (plan section 2.7).
+            // An app payment works it out when the user pays, after bonus pages.
+            try
+            {
+                var discount = await _promos
+                    .ClaimAsync(promoId, payment.Id, kioskId, job.Price.ProfileId, payment.Gross, userId: null, cancellationToken)
+                    .ConfigureAwait(false);
+                payment.ApplyDiscount(promoId, job.PromoCode, discount, now);
+            }
+            catch (DomainException exception)
+            {
+                // The code stopped applying since the order was placed (its last
+                // place went, it ran out): the full price, and the kiosk says why
+                // before anyone pays.
+                promoRefusal = Localization.Messages.Write(exception.Text);
+                _logger.LogInformation("Promo {Code} not applied to payment {PaymentId}: {Reason}.", job.PromoCode, payment.Id, exception.Text.Key);
+            }
+        }
+
+        if (payment.Amount.IsZero)
+        {
+            // The promo code covered all of it: nothing to take, nothing to ask the bank for.
+            await _payments.AddAsync(payment, cancellationToken).ConfigureAwait(false);
+            await _settlement
+                .SucceedAsync(payment, PaymentParts.ExternalOnly(Money.Zero), request.Method, now, actor.Because("payments.reason.coveredByPromo"), now, cancellationToken)
+                .ConfigureAwait(false);
+            return Response(payment, job, now, promoRefusal);
+        }
+
         if (request.Method == PaymentMethod.BankQr)
         {
             var bank = _providers.BankQr;
@@ -158,7 +195,7 @@ public sealed class PaymentHandlers :
             payment.Amount.Currency,
             minutes);
 
-        return Response(payment, job, now);
+        return Response(payment, job, now, promoRefusal);
     }
 
     /// <inheritdoc cref="GetKioskPaymentQuery" />
@@ -245,6 +282,7 @@ public sealed class PaymentHandlers :
                 {
                     payment.Fail("payments.declined", actor.Because(callback.FailureCode), now);
                     await _payments.UpdateAsync(payment, cancellationToken).ConfigureAwait(false);
+                    await _settlement.ReleasePromoAsync(payment, cancellationToken).ConfigureAwait(false);
                 }
 
                 return PaymentCallbackOutcome.Applied;
@@ -345,6 +383,7 @@ public sealed class PaymentHandlers :
                 payment.Fail("payments.declined", actor, now);
                 payment.MarkReconciled("failed", now);
                 await _payments.UpdateAsync(payment, cancellationToken).ConfigureAwait(false);
+                await _settlement.ReleasePromoAsync(payment, cancellationToken).ConfigureAwait(false);
                 break;
 
             case ProviderPaymentState.Pending when payment.Status == PaymentStatus.Pending:
@@ -395,6 +434,7 @@ public sealed class PaymentHandlers :
 
         payment.Expire(actor, now);
         await _payments.UpdateAsync(payment, cancellationToken).ConfigureAwait(false);
+        await _settlement.ReleasePromoAsync(payment, cancellationToken).ConfigureAwait(false);
         await _events.PublishAsync(new PaymentExpired(payment.Id, payment.JobId, payment.KioskId, _correlation.CorrelationId), cancellationToken)
             .ConfigureAwait(false);
 
@@ -436,7 +476,7 @@ public sealed class PaymentHandlers :
         return device?.KioskId ?? throw new DomainException("devices.notBound");
     }
 
-    private static PaymentResponse Response(Payment payment, PrintJob job, DateTime now)
+    private static PaymentResponse Response(Payment payment, PrintJob job, DateTime now, string? promoRefusal = null)
         => new(
             payment.Id,
             job.Id,
@@ -448,7 +488,10 @@ public sealed class PaymentHandlers :
             payment.Status == PaymentStatus.Pending ? payment.QrContent : null,
             payment.ExpiresAt,
             payment.Status == PaymentStatus.Pending ? Math.Max(0, (int)Math.Ceiling((payment.ExpiresAt - now).TotalSeconds)) : 0,
-            payment.PaidAt);
+            payment.PaidAt,
+            payment.Discount.Amount,
+            payment.PromoCode,
+            promoRefusal);
 }
 
 /// <summary>The callback types every provider adapter maps its own names to.</summary>

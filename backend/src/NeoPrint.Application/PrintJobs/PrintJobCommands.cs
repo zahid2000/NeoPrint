@@ -15,12 +15,14 @@ namespace NeoPrint.Application.PrintJobs;
 /// as a snapshot; the kiosk shows a quote but never sets the price.
 /// </remarks>
 /// <param name="SkipPayment">Development only: queue it without a payment (plan step 3).</param>
+/// <param name="PromoCode">Typed on the options screen (plan section 7.3, screen 5); refused with the reason when it does not apply here.</param>
 public sealed record CreateKioskPrintJobCommand(
     Guid DeviceId,
     string? LocalFileName,
     int PageCount,
     PrintOptions Options,
-    bool SkipPayment) : IRequest<PrintJobResponse>;
+    bool SkipPayment,
+    string? PromoCode = null) : IRequest<PrintJobResponse>;
 
 /// <summary>The kiosk looks up one of its own jobs.</summary>
 public sealed record GetKioskPrintJobQuery(Guid DeviceId, Guid JobId) : IRequest<PrintJobResponse>;
@@ -118,7 +120,10 @@ public sealed record PriceView(
     int Sheets,
     Guid ProfileId,
     string ProfileName,
-    DateTime TakenAt);
+    DateTime TakenAt,
+    string? PromoCode = null,
+    decimal PromoDiscount = 0,
+    decimal AmountDue = 0);
 
 /// <summary>A page of the admin list.</summary>
 public sealed record PrintJobPage(IReadOnlyList<PrintJobListItem> Items, long Total, int Page, int PageSize);

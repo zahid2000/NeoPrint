@@ -29,7 +29,7 @@ internal static class PaymentTestKit
     }
 
     /// <summary>A flash order of <paramref name="pages"/> black and white A4 pages (0,10 ₼ a side, 0,20 ₼ minimum).</summary>
-    public static async Task<JsonElement> PlaceAsync(HttpClient kiosk, int pages = 3)
+    public static async Task<JsonElement> PlaceAsync(HttpClient kiosk, int pages = 3, string? promoCode = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/print-jobs")
         {
@@ -39,6 +39,7 @@ internal static class PaymentTestKit
                 pageCount = pages,
                 options = new { copies = 1, color = false, duplex = false, paper = "A4", orientation = "Auto", pagesPerSheet = 1, scaling = "Fit" },
                 dev = false,
+                promoCode,
             }),
         };
 

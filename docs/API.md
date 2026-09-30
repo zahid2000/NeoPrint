@@ -1227,6 +1227,33 @@ Kiosk qəbz ekranı və tətbiq üçün: `{ receiptId, status (Pending/Issued/Fa
 
 Provayder `NEOPRINT_FISCAL_PROVIDER` ilə seçilir (default `mock`); başqa ad hələ yoxdur və API-nin başlamasını dayandırır.
 
+## Promokodlar
+
+Bir sifarişdə bir kod. Hesablama ardıcıllığı: profil qiyməti → həcm endirimi → **bonus
+səhifələr** → promokod (qalan məbləğə). Faiz və ya sabit məbləğ, qalan məbləğdən çox
+olmur. Endirim **ödəniş anında** hesablanır, çünki bonus yalnız tətbiqdə ödəyəndə seçilir;
+sifarişin qiymət snapshot-u dəyişmir (ödənişdə `gross` = snapshot, `discount`, `amount` =
+`gross − discount`).
+
+| Harada | Nə olur |
+|---|---|
+| Kiosk sifarişi (`POST /api/print-jobs` + `promoCode`) | Kod yoxlanır (anonim: istifadəçi limiti yoxdur); uyğun deyilsə `400` (`errors.promoCode`, səbəb oxuyanın dilində). Cavabda `price.promoCode`, `price.promoDiscount` (bütün qiymətə), `price.amountDue` |
+| Bank QR intent-i | Yer tutulur (şərti artım — limit iki paralel ödənişdə də keçilmir), bank endirimli məbləği görür. Kod artıq tətbiq olunmursa (son yer getdi, müddət bitdi) tam qiymət və `promoRefusal` — müştəri ödəmədən öncə görür. Endirim hamısını örtürsə ödəniş dərhal `Succeeded`, QR yoxdur |
+| Tətbiqlə ödəniş (`pay-with-app`) | Bonusdan sonra qalan məbləğə; istifadəçi limiti yoxlanır. `GET /api/payments/{id}/app`: `promoCode`, `promoDiscount` (bonussuz), `promoDiscountWithBonus`, `promoRefusal`. İstəyə görə `expectedAmount` — tətbiqin göstərdiyi pul hissəsi; fərqlidirsə `409 payments.priceChanged`, heç nə tutulmur |
+| Ödəniş baş tutmadı (vaxt bitdi, rədd, metod dəyişdi, kart rədd edildi) | Yer geri verilir (`Released`) |
+| Tam refund | İstifadə ləğv olunur (`Cancelled`), yer boşalır; **endirim pul kimi qaytarılmır** — refund ödənilən məbləğdəndir |
+| Gec gələn ödəniş (vaxtı bitmiş intent sonradan ödənildi) | İstifadə yenidən tutulur (limitdən asılı olmayaraq — pul endirimli alınıb) |
+
+Feature flag `promo_codes` söndürüləndə heç bir kod qəbul olunmur (`promos.disabled`).
+
+| Endpoint | Kim | |
+|---|---|---|
+| `POST /api/promos/validate` | istənilən giriş etmiş | `{ code, kioskId?, amount }` → `{ code, valid, discount, amountDue, reasonCode?, reason? }`; heç nə tutulmur |
+| `POST /api/pricing/quote` + `promoCode` | istənilən giriş etmiş | Əlavə sahələr: `promoCode`, `promoDiscount`, `amountDue`, `promoRefusal` |
+| `GET /api/admin/promos?code=&active=` · `GET /api/admin/promos/{id}` | `promos.manage` | Siyahı; `usedCount` (tutulan yerlər), `confirmedCount`, `totalDiscount` |
+| `POST /api/admin/promos` (`Idempotency-Key`) · `PUT /api/admin/promos/{id}` | `promos.manage` | `{ code, kind: Percent\|Fixed, value, startsAt?, endsAt?, totalLimit?, perUserLimit?, minAmount, kioskIds?, profileIds?, description? }`; kod dəyişmir; tutulmuş kod `409 promos.codeTaken`; audit |
+| `POST /api/admin/promos/{id}/activate` · `.../deactivate` | `promos.manage` | Silmə yoxdur — istifadə olunmuş kod ödənişlərin tarixçəsindədir |
+
 ## Qəbzlər (NeoPrint-in məlumat qəbzi)
 
 Hər uğurlu ödənişin (çap və balans artırılması) **bir** qəbzi var: qəbzin id-si ödənişin

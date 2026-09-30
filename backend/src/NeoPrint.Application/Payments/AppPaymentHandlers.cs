@@ -39,6 +39,7 @@ public sealed class AppPaymentHandlers :
     private readonly IPaymentProviders _providers;
     private readonly PaymentSettlement _settlement;
     private readonly WalletLedger _wallet;
+    private readonly Promos.PromoService _promos;
     private readonly ISettingsReader _settings;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
@@ -52,6 +53,7 @@ public sealed class AppPaymentHandlers :
         IPaymentProviders providers,
         PaymentSettlement settlement,
         WalletLedger wallet,
+        Promos.PromoService promos,
         ISettingsReader settings,
         ICorrelationContext correlation,
         IClock clock,
@@ -64,6 +66,7 @@ public sealed class AppPaymentHandlers :
         _providers = providers;
         _settlement = settlement;
         _wallet = wallet;
+        _promos = promos;
         _settings = settings;
         _correlation = correlation;
         _clock = clock;
@@ -86,7 +89,7 @@ public sealed class AppPaymentHandlers :
         ArgumentNullException.ThrowIfNull(request);
 
         var plan = await _sender
-            .Send(new ReserveAppPaymentCommand(request.UserId, request.PaymentId, request.Source, request.UseBonus), cancellationToken)
+            .Send(new ReserveAppPaymentCommand(request.UserId, request.PaymentId, request.Source, request.UseBonus, request.ExpectedAmount), cancellationToken)
             .ConfigureAwait(false);
 
         if (!plan.Settled && plan.CardReference is { } reference)
@@ -147,8 +150,34 @@ public sealed class AppPaymentHandlers :
             : (0, Money.Zero);
 
         // Plan section 2.7: profile price → volume discount → bonus pages →
-        // (promo code); whatever is left is paid in money.
+        // promo code on what is left; whatever remains is paid in money.
+        var afterBonus = payment.Gross - bonusValue;
+        var discount = Money.Zero;
+
+        if (job is { PromoCodeId: { } promoId, PromoCode: { } code } && afterBonus.IsPositive
+            && (await _promos.CheckAsync(code, payment.KioskId, job.Price.ProfileId, afterBonus, request.UserId, cancellationToken).ConfigureAwait(false))
+                .Refusal is null)
+        {
+            // The same check the app's preview made; a race for the last place is a 409.
+            discount = await _promos
+                .ClaimAsync(promoId, payment.Id, payment.KioskId, job.Price.ProfileId, afterBonus, request.UserId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            // Not for this account (used up, not here): the full price, as the preview said.
+            await _promos.ReleaseAsync(payment.Id, refunded: false, cancellationToken).ConfigureAwait(false);
+        }
+
+        payment.ApplyDiscount(job.PromoCodeId, job.PromoCode, discount, now);
+
         var rest = payment.Amount - bonusValue;
+
+        if (request.ExpectedAmount is { } expected && expected != rest.Amount)
+        {
+            // The price moved since the app showed it: say so rather than take a different sum.
+            throw new DomainException(UserMessage.Of("payments.priceChanged", ("expected", expected), ("actual", rest.Amount)));
+        }
         var parts = source == PaymentMethod.Wallet
             ? new PaymentParts(Money.Zero, rest, bonusPages, bonusValue)
             : new PaymentParts(rest, Money.Zero, bonusPages, bonusValue);
@@ -235,6 +264,7 @@ public sealed class AppPaymentHandlers :
                 if (payment.Purpose == PaymentPurpose.WalletTopUp && payment.Status == PaymentStatus.Pending)
                 {
                     payment.Fail("payments.declined", actor, now);
+                    await _settlement.ReleasePromoAsync(payment, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -269,7 +299,7 @@ public sealed class AppPaymentHandlers :
         var perSide = Money.FromAzn(job.Price.Price.PricePerSide * job.Price.Price.PaperMultiplier);
         var value = perSide * pages;
 
-        return (pages, value > payment.Amount ? payment.Amount : value);
+        return (pages, value > payment.Gross ? payment.Gross : value);
     }
 
     /// <summary>
@@ -303,11 +333,22 @@ public sealed class AppPaymentHandlers :
         var (usable, value) = await BonusAsync(payment, job, wallet, cancellationToken).ConfigureAwait(false);
         var now = _clock.UtcNow;
         var open = payment.Status == PaymentStatus.Pending;
+        Promos.PromoCheck? promo = null;
+        Promos.PromoCheck? promoWithBonus = null;
+
+        if (open && job.PromoCode is { } code)
+        {
+            // What the code takes off either way, so the app shows the price it will charge.
+            promo = await _promos.CheckAsync(code, payment.KioskId, job.Price.ProfileId, payment.Gross, userId, cancellationToken).ConfigureAwait(false);
+            promoWithBonus = await _promos
+                .CheckAsync(code, payment.KioskId, job.Price.ProfileId, payment.Gross - value, userId, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         return new AppPaymentView(
             payment.Id,
             payment.Status.ToString(),
-            payment.Amount.Amount,
+            (open ? payment.Gross : payment.Amount).Amount,
             payment.Amount.Currency,
             payment.ExpiresAt,
             open ? Math.Max(0, (int)Math.Ceiling((payment.ExpiresAt - now).TotalSeconds)) : 0,
@@ -325,6 +366,10 @@ public sealed class AppPaymentHandlers :
             usable,
             value.Amount,
             payment.WasPaid ? payment.Method.ToString() : null,
-            payment.PaidAt);
+            payment.PaidAt,
+            open ? job.PromoCode : payment.PromoCode,
+            open ? promo?.Discount.Amount ?? 0 : payment.Discount.Amount,
+            open ? promoWithBonus?.Discount.Amount ?? 0 : payment.Discount.Amount,
+            promo?.Refusal is { } refusal ? Localization.Messages.Write(refusal) : null);
     }
 }

@@ -129,6 +129,8 @@ public sealed class MongoContext
     public MongoSet<Domain.Fiscal.FiscalReceipt> FiscalReceipts => Set<Domain.Fiscal.FiscalReceipt>("fiscal_receipts");
     public MongoSet<Domain.Receipts.Receipt> Receipts => Set<Domain.Receipts.Receipt>("receipts");
     public MongoSet<Receipts.Counter> Counters => Set<Receipts.Counter>("counters");
+    public MongoSet<Domain.Promos.PromoCode> PromoCodes => Set<Domain.Promos.PromoCode>("promo_codes");
+    public MongoSet<Domain.Promos.PromoUsage> PromoUsages => Set<Domain.Promos.PromoUsage>("promo_usages");
     public MongoSet<Domain.Wallets.WalletTransaction> WalletTransactions => Set<Domain.Wallets.WalletTransaction>("wallet_transactions");
 
     // The mock bank's own books (Development and tests): through the same
@@ -403,6 +405,16 @@ public sealed class MongoContext
             (Builders<Domain.Receipts.Receipt>.IndexKeys.Ascending(r => r.Number), Unique("ux_receipts_number")),
             (Builders<Domain.Receipts.Receipt>.IndexKeys.Ascending(r => r.UserId).Descending(r => r.CreatedAt), Named("ix_receipts_user_created")),
             (Builders<Domain.Receipts.Receipt>.IndexKeys.Ascending(r => r.FiscalShown).Ascending(r => r.CreatedAt), Named("ix_receipts_fiscal_created")));
+
+        await CreateAsync(PromoCodes,
+            (Builders<Domain.Promos.PromoCode>.IndexKeys.Ascending(p => p.Code), Unique("ux_promo_codes_code")));
+
+        await CreateAsync(PromoUsages,
+            // One usage per payment: a retried claim updates it, never adds a second.
+            (Builders<Domain.Promos.PromoUsage>.IndexKeys.Ascending(u => u.PaymentId), Unique("ux_promo_usages_payment")),
+            // The per-account limit and the statistics.
+            (Builders<Domain.Promos.PromoUsage>.IndexKeys.Ascending(u => u.PromoCodeId).Ascending(u => u.UserId).Ascending(u => u.Status),
+                Named("ix_promo_usages_code_user_status")));
 
         await CreateAsync(SupportClaims,
             (Builders<Domain.Support.SupportClaim>.IndexKeys.Ascending(c => c.JobId), Named("ix_support_claims_job")),

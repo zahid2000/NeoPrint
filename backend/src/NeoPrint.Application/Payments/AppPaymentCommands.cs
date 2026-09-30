@@ -17,14 +17,15 @@ public sealed record GetAppPaymentQuery(Guid UserId, Guid PaymentId) : IRequest<
 /// rest from the wallet or a card.
 /// </summary>
 /// <param name="Source"><c>Wallet</c> or <c>Card</c>: what pays whatever the bonus pages do not.</param>
-public sealed record PayWithAppCommand(Guid UserId, Guid PaymentId, string Source, bool UseBonus) : IRequest<AppPaymentView>;
+/// <param name="ExpectedAmount">What the app showed as the money part; a different price (a promo that stopped applying) is refused, never charged silently.</param>
+public sealed record PayWithAppCommand(Guid UserId, Guid PaymentId, string Source, bool UseBonus, decimal? ExpectedAmount = null) : IRequest<AppPaymentView>;
 
 /// <summary>
 /// Step one of <see cref="PayWithAppCommand"/>: the wallet and bonus parts are
 /// taken (reserved) and, when nothing is left for the card, the payment is
 /// settled in the same transaction.
 /// </summary>
-public sealed record ReserveAppPaymentCommand(Guid UserId, Guid PaymentId, string Source, bool UseBonus)
+public sealed record ReserveAppPaymentCommand(Guid UserId, Guid PaymentId, string Source, bool UseBonus, decimal? ExpectedAmount = null)
     : IRequest<AppPaymentPlan>, ITransactionalRequest;
 
 /// <summary>
@@ -70,4 +71,8 @@ public sealed record AppPaymentView(
     int BonusPagesUsable,
     decimal BonusValue,
     string? Method,
-    DateTime? PaidAt);
+    DateTime? PaidAt,
+    string? PromoCode = null,
+    decimal PromoDiscount = 0,
+    decimal PromoDiscountWithBonus = 0,
+    string? PromoRefusal = null);

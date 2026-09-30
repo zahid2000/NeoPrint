@@ -89,6 +89,29 @@ public sealed class PrintJob : Entity
     /// <summary>The price as it was when the job was made; never recomputed.</summary>
     public PriceSnapshot Price { get; set; } = null!;
 
+    /// <summary>The promo code typed with the order (plan section 2.7); its discount is worked out when it is paid.</summary>
+    public Guid? PromoCodeId { get; private set; }
+
+    public string? PromoCode { get; private set; }
+
+    /// <summary>What the code takes off the whole price: shown on the kiosk; the payment has the real figure.</summary>
+    public decimal PromoQuote { get; private set; }
+
+    /// <summary>One code per order, typed before it is paid.</summary>
+    public void AttachPromo(Guid promoCodeId, string code, decimal quote)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+
+        if (Status is not (PrintJobStatus.Draft or PrintJobStatus.PendingPayment) || PaymentId is not null)
+        {
+            throw new DomainException("printJobs.promoTooLate");
+        }
+
+        PromoCodeId = promoCodeId;
+        PromoCode = code;
+        PromoQuote = quote;
+    }
+
     /// <summary>Sheets of paper the job takes, for the paper check and the counter (plan section 2.15).</summary>
     public int RequiredSheets { get; set; }
 

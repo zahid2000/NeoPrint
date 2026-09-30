@@ -489,6 +489,12 @@ public sealed class ReceiptHandlers :
                 // The minimum price lifted the total.
                 lines.Add(new ReceiptLine(Text("receipt.line.minimum"), -discount));
             }
+
+            if (payment.Discount.IsPositive)
+            {
+                // After bonus pages (plan section 2.7); not given back by a refund.
+                lines.Add(new ReceiptLine(Text("receipt.line.promo", ("code", payment.PromoCode)), -payment.Discount.Amount));
+            }
         }
 
         var paidWith = new List<ReceiptLine>();
@@ -545,7 +551,8 @@ public sealed class ReceiptHandlers :
             job?.LocalFileName,
             summary,
             lines,
-            parts.Money.Amount,
+            // What the order came to: money and bonus pages together, as the lines add up.
+            payment.Amount.Amount,
             payment.Amount.Currency,
             paidWith,
             parts.BonusPages,

@@ -75,7 +75,16 @@ public sealed record PrintOptionsDto(
 }
 
 /// <summary>A quote: the price, how it was arrived at, and which profile produced it.</summary>
-public sealed record QuoteResponse(Guid ProfileId, string ProfileName, PriceBreakdown Price);
+/// <param name="AmountDue">What is paid: the price less the promo code, before any bonus pages.</param>
+/// <param name="PromoRefusal">Why the code does not apply, in the caller's language.</param>
+public sealed record QuoteResponse(
+    Guid ProfileId,
+    string ProfileName,
+    PriceBreakdown Price,
+    string? PromoCode = null,
+    decimal PromoDiscount = 0,
+    decimal AmountDue = 0,
+    string? PromoRefusal = null);
 
 // ---------------------------------------------------------------------------
 // Requests

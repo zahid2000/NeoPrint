@@ -378,6 +378,11 @@ public static class DependencyInjection
         services.AddScoped<Application.Receipts.IReceiptNumbers, Receipts.ReceiptNumbers>();
         services.AddSingleton<Application.Receipts.IReceiptRenderer, Receipts.QuestPdfReceiptRenderer>();
         services.AddScoped<Receipts.ReceiptJobs>();
+
+        // Promo codes (plan section 2.7).
+        services.AddScoped<Application.Promos.IPromoCodeRepository, Promos.PromoCodeRepository>();
+        services.AddScoped<Application.Promos.IPromoUsageRepository, Promos.PromoUsageRepository>();
+        services.AddScoped<Application.Promos.PromoService>();
     }
 
     private static void AddHealthChecks(IServiceCollection services, IConfiguration configuration)

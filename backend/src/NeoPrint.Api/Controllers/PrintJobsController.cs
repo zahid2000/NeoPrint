@@ -56,7 +56,8 @@ public sealed class PrintJobsController : ControllerBase
                 request.LocalFileName,
                 request.PageCount,
                 request.Options ?? PrintOptions.Default,
-                request.Dev),
+                request.Dev,
+                request.PromoCode),
             cancellationToken);
 
         return CreatedAtAction(nameof(Get), new { id = job.Id }, job);
@@ -94,7 +95,8 @@ public sealed class PrintJobsController : ControllerBase
 }
 
 /// <param name="Dev">Development only: queue without a payment (plan step 3). Refused elsewhere.</param>
-public sealed record CreatePrintJobRequest(string? LocalFileName, int PageCount, PrintOptions? Options, bool Dev = false);
+/// <param name="PromoCode">Optional; one per order (plan section 2.7).</param>
+public sealed record CreatePrintJobRequest(string? LocalFileName, int PageCount, PrintOptions? Options, bool Dev = false, string? PromoCode = null);
 
 /// <param name="Attempt">The try this report belongs to (plan section 2.5, <c>print_attempts</c>).</param>
 public sealed record PrintJobStatusRequest(

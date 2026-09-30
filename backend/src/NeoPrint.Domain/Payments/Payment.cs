@@ -109,8 +109,45 @@ public sealed class Payment : Entity
 
     public PaymentChannel Channel { get; set; }
 
-    /// <summary>What the customer pays, from the job's price snapshot.</summary>
+    /// <summary>What the customer pays: the job's price snapshot less the promo discount.</summary>
     public Money Amount { get; set; }
+
+    /// <summary>What the promo code took off (plan section 2.7); never given back by a refund.</summary>
+    public Money Discount { get; private set; } = Money.Zero;
+
+    public Guid? PromoCodeId { get; private set; }
+
+    public string? PromoCode { get; private set; }
+
+    /// <summary>The price before the promo code: the job's snapshot, never recomputed.</summary>
+    public Money Gross => Amount + Discount;
+
+    /// <summary>
+    /// The promo code's discount, worked out on what is left after bonus pages
+    /// (plan section 2.7: profile → volume → bonus → promo). Set again on a new
+    /// try, before anything is set aside; zero takes the code off.
+    /// </summary>
+    /// <exception cref="DomainException">Already paid or being paid, or more than the price.</exception>
+    public void ApplyDiscount(Guid? promoCodeId, string? promoCode, Money discount, DateTime now)
+    {
+        if (WasPaid || Reserved is not null || Status != PaymentStatus.Pending)
+        {
+            throw new DomainException("payments.notPayable");
+        }
+
+        var gross = Gross;
+
+        if (discount.IsNegative || discount > gross)
+        {
+            throw new DomainException(UserMessage.Of("payments.amountMismatch", ("expected", gross.Amount), ("actual", discount.Amount)));
+        }
+
+        Discount = discount;
+        Amount = gross - discount;
+        PromoCodeId = discount.IsZero ? null : promoCodeId;
+        PromoCode = discount.IsZero ? null : promoCode;
+        Note(now, "promo", discount.IsZero ? "none" : $"{promoCode}: -{discount.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+    }
 
     /// <summary>How the amount was covered; set when the payment is made.</summary>
     public PaymentParts? Parts { get; private set; }
@@ -166,11 +203,6 @@ public sealed class Payment : Entity
         Reserved = null;
         Note(now, "reservationReleased", ReservationAttempt.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
-
-    public Guid? PromoCodeId { get; set; }
-
-    /// <summary>The promo discount already taken off <see cref="Amount"/>.</summary>
-    public Money Discount { get; set; }
 
     public PaymentStatus Status { get; private set; } = PaymentStatus.Pending;
 

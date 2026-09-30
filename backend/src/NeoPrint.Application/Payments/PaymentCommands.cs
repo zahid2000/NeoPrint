@@ -70,4 +70,7 @@ public sealed record PaymentResponse(
     string? QrContent,
     DateTime ExpiresAt,
     int SecondsLeft,
-    DateTime? PaidAt);
+    DateTime? PaidAt,
+    decimal Discount = 0,
+    string? PromoCode = null,
+    string? PromoRefusal = null);
