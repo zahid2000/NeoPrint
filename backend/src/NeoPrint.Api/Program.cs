@@ -418,6 +418,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         jobs => jobs.RunAsync(CancellationToken.None),
         Cron.Minutely());
 
+    // Receipts rendered before their fiscal receipt arrived, in case the event was lost.
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Receipts.ReceiptJobs>(
+        NeoPrint.Infrastructure.Receipts.ReceiptJobs.CatchUpJobId,
+        jobs => jobs.CatchUpAsync(CancellationToken.None),
+        "*/5 * * * *");
+
     // Jobs whose kiosk went quiet: Suspected, never refunded automatically (plan section 2.5, scenario B).
     recurring.AddOrUpdate<StuckJobWatchdogJob>(
         StuckJobWatchdogJob.JobId,

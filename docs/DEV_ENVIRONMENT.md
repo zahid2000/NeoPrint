@@ -779,6 +779,16 @@ gözləməmək üçün admin → **Tənzimləmələr → Sifarişlər → `Job.S
 avtomatik refund olmur, incident açılır. Kiosku yenidən başladanda o, nəticəni bildirir
 və sifariş özü həll olunur.
 
+**Qəbz (PDF) və email:** hər ödənişdən sonra qəbz avtomatik yaranır (`NP-2026-000001`).
+Kiosk qəbzi email-ə göndərəndə (və ya tətbiqdə "Email-ə göndər") məktub PDF əlavəsi ilə
+**Mailpit**-ə düşür: http://localhost:8025. E-kassa "Down" rejimindədirsə PDF-də "Fiskal çek
+hazırlanır" yazılır; rejimi `Ok` edib çeki təkrarlayanda (admin → Fiskal çeklər → Təkrarla)
+yenilənmiş qəbz eyni ünvana ikinci məktub kimi gəlir. Admin tokeni ilə PDF-i birbaşa yükləmək:
+
+```bash
+curl -H "Authorization: Bearer <ADMIN_TOKEN>" -o qebz.pdf http://localhost:5080/api/admin/receipts/<paymentId>/pdf
+```
+
 **Müştəri müraciəti (anonim, qəbzdəki kodlarla):**
 
 ```bash

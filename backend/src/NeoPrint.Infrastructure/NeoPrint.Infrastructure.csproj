@@ -30,6 +30,8 @@
   <ItemGroup Label="Providers">
     <PackageReference Include="MailKit" />
     <PackageReference Include="QRCoder" />
+    <!-- Receipt PDFs. Community licence: see docs/THIRD_PARTY.md. -->
+    <PackageReference Include="QuestPDF" />
     <PackageReference Include="PDFsharp" />
     <PackageReference Include="SkiaSharp" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
@@ -43,6 +45,12 @@
     <PackageReference Include="Microsoft.Extensions.Identity.Core" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup Label="Receipt font">
+    <!-- Inter (SIL OFL 1.1), the same file as the mobile app's: docs/THIRD_PARTY.md. -->
+    <EmbeddedResource Include="Receipts\Fonts\Inter-Variable.ttf" LogicalName="NeoPrint.Receipts.Inter.ttf" />
+    <None Include="Receipts\Fonts\OFL.txt" CopyToOutputDirectory="PreserveNewest" Link="licenses\Inter-OFL.txt" />
   </ItemGroup>
 
   <ItemGroup>

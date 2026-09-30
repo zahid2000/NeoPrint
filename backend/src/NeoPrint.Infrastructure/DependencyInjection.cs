@@ -297,6 +297,8 @@ public static class DependencyInjection
             bus.AddConsumer<Refunds.PrintJobCancelledConsumer>();
             bus.AddConsumer<Fiscal.PaymentFiscalizationConsumer>();
             bus.AddConsumer<Fiscal.RefundFiscalizationConsumer>();
+            bus.AddConsumer<Receipts.ReceiptConsumer>();
+            bus.AddConsumer<Receipts.ReceiptFiscalConsumer>();
 
             // Every process caches the storage providers, so every process needs
             // its own copy of this event: a queue per instance, deleted when the
@@ -370,6 +372,12 @@ public static class DependencyInjection
         services.AddScoped<Fiscal.MockFiscalProvider>();
         services.AddScoped<Application.Fiscal.IFiscalProvider>(sp => sp.GetRequiredService<Fiscal.MockFiscalProvider>());
         services.AddScoped<Fiscal.FiscalJobs>();
+
+        // NeoPrint's own receipts (plan section 2.12): numbered, rendered with QuestPDF, stored encrypted.
+        services.AddScoped<Application.Receipts.IReceiptRepository, Receipts.ReceiptRepository>();
+        services.AddScoped<Application.Receipts.IReceiptNumbers, Receipts.ReceiptNumbers>();
+        services.AddSingleton<Application.Receipts.IReceiptRenderer, Receipts.QuestPdfReceiptRenderer>();
+        services.AddScoped<Receipts.ReceiptJobs>();
     }
 
     private static void AddHealthChecks(IServiceCollection services, IConfiguration configuration)

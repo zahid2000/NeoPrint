@@ -28,6 +28,15 @@ public sealed class CapturedEmails : IEmailSender
         return Task.CompletedTask;
     }
 
+    public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        _sent.Enqueue(new SentEmail(message.To, message.Subject, message.HtmlBody, message.Attachments));
+
+        return Task.CompletedTask;
+    }
+
     /// <summary>The most recent message to an address, or null.</summary>
     public SentEmail? Latest(string to)
         => _sent
@@ -54,4 +63,5 @@ public sealed class CapturedEmails : IEmailSender
 /// <param name="To">Recipient.</param>
 /// <param name="Subject">Subject line.</param>
 /// <param name="HtmlBody">Body, as the API rendered it.</param>
-public sealed record SentEmail(string To, string Subject, string HtmlBody);
+/// <param name="Attachments">Files it carried: a receipt's PDF.</param>
+public sealed record SentEmail(string To, string Subject, string HtmlBody, IReadOnlyList<EmailAttachment>? Attachments = null);

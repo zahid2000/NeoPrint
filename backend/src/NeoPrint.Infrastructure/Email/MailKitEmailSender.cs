@@ -5,7 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using MimeKit;
-using MimeKit.Text;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
@@ -30,9 +29,15 @@ public sealed class MailKitEmailSender : IEmailSender
         _logger = logger;
     }
 
-    public async Task SendAsync(
+    public Task SendAsync(
         string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
+        => SendAsync(new EmailMessage(to, subject, htmlBody, []), cancellationToken);
+
+    public async Task SendAsync(EmailMessage email, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(email);
+
+        var (to, subject, htmlBody) = (email.To, email.Subject, email.HtmlBody);
         ArgumentException.ThrowIfNullOrWhiteSpace(to);
 
         var host = _configuration["NEOPRINT_SMTP_HOST"];
@@ -58,7 +63,14 @@ public sealed class MailKitEmailSender : IEmailSender
         message.From.Add(new MailboxAddress(fromName, from));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
-        message.Body = new TextPart(TextFormat.Html) { Text = htmlBody };
+        var body = new BodyBuilder { HtmlBody = htmlBody };
+
+        foreach (var attachment in email.Attachments)
+        {
+            body.Attachments.Add(attachment.FileName, attachment.Content, ContentType.Parse(attachment.ContentType));
+        }
+
+        message.Body = body.ToMessageBody();
 
         using var client = new SmtpClient();
 

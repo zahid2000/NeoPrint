@@ -1227,6 +1227,29 @@ Kiosk qəbz ekranı və tətbiq üçün: `{ receiptId, status (Pending/Issued/Fa
 
 Provayder `NEOPRINT_FISCAL_PROVIDER` ilə seçilir (default `mock`); başqa ad hələ yoxdur və API-nin başlamasını dayandırır.
 
+## Qəbzlər (NeoPrint-in məlumat qəbzi)
+
+Hər uğurlu ödənişin (çap və balans artırılması) **bir** qəbzi var: qəbzin id-si ödənişin
+id-sidir, ona görə təkrar hadisə ikinci qəbz yarada bilməz və kiosk qəbzi ödəniş id-si ilə
+tanıyır. Nömrə `NP-{il}-{000001}` — il üzrə ardıcıl, boşluqsuz (sayğac qəbzlə eyni
+tranzaksiyadadır). PDF QuestPDF ilə hazırlanır (`docs/DESIGN_SYSTEM.md` §5.5), storage-da
+şifrəli saxlanılır; PDF yalnız görünüşdür — oxuna bilməsə ödəniş və fiskal məlumatdan yenidən
+qurulur. Fiskal çek hələ yoxdursa PDF-də "Fiskal çek hazırlanır" yazılır; çek veriləndə
+(`FiscalReceiptIssued`) qəbz yenidən qurulur və göndərildiyi bütün ünvanlara təkrar gedir
+(itən hadisə üçün 5 dəqiqəlik ehtiyat işi). Qəbzin dili: hesabın dili, anonimdə kioskun standart dili.
+
+| Endpoint | Kim | |
+|---|---|---|
+| `GET /api/receipts` | `User` | Öz qəbzləri (ən yeni əvvəl): `id` (= ödəniş), `number`, `amount`, `purpose`, `fiscalStatus`, `fiscalShown`, `emailedCount`, `createdAt` |
+| `GET /api/receipts/{id}/pdf` | `User` | Yalnız öz qəbzi (`404`) |
+| `POST /api/receipts/{id}/email` (`Idempotency-Key`) | `User` | `{ email? }` — verilməsə hesabın təsdiqlənmiş ünvanına |
+| `POST /api/kiosks/me/receipts/{paymentId}/email` (`Idempotency-Key`) | `Kiosk` | `{ email }` — yalnız həmin kioskun ödənişi və ödənişdən sonra 30 dəqiqə ərzində (`404`); kiosk tokeni poçt göndərən kimi istifadə oluna bilməz |
+| `GET /api/admin/receipts?number=&paymentId=&page=&pageSize=` · `GET /api/admin/receipts/{id}/pdf` | `receipts.view` | Siyahı və PDF |
+| `POST /api/admin/receipts/{id}/resend` (`Idempotency-Key`) | `receipts.view` | Yalnız əvvəl göndərildiyi ünvanlara (admin yeni ünvan əlavə edə bilməz); audit ünvanları yox, sayı yazır |
+
+Email: PDF əlavə kimi; səhv ünvan `400 receipts.emailInvalid`; bir qəbz ən çox 5 ünvana
+(`409 receipts.tooManyEmails`). Ünvanlar şəxsi məlumatdır — loqa maskalanmış yazılır.
+
 ## Nəticəsi naməlum sifarişlər (`Suspected`, B ssenarisi)
 
 `StuckJobWatchdogJob` (hər dəqiqə): `Queued` job-un növbəyə düşmə, `Printing` job-un çapa

@@ -127,6 +127,8 @@ public sealed class MongoContext
     public MongoSet<Domain.Incidents.Incident> Incidents => Set<Domain.Incidents.Incident>("incidents");
     public MongoSet<Domain.Support.SupportClaim> SupportClaims => Set<Domain.Support.SupportClaim>("support_claims");
     public MongoSet<Domain.Fiscal.FiscalReceipt> FiscalReceipts => Set<Domain.Fiscal.FiscalReceipt>("fiscal_receipts");
+    public MongoSet<Domain.Receipts.Receipt> Receipts => Set<Domain.Receipts.Receipt>("receipts");
+    public MongoSet<Receipts.Counter> Counters => Set<Receipts.Counter>("counters");
     public MongoSet<Domain.Wallets.WalletTransaction> WalletTransactions => Set<Domain.Wallets.WalletTransaction>("wallet_transactions");
 
     // The mock bank's own books (Development and tests): through the same
@@ -395,6 +397,12 @@ public sealed class MongoContext
             (Builders<Domain.Fiscal.FiscalReceipt>.IndexKeys.Ascending(r => r.Status).Ascending(r => r.NextAttemptAt),
                 Named("ix_fiscal_receipts_status_next")),
             (Builders<Domain.Fiscal.FiscalReceipt>.IndexKeys.Descending(r => r.CreatedAt), Named("ix_fiscal_receipts_created")));
+
+        await CreateAsync(Receipts,
+            // The id is the payment's, so one receipt per payment is the primary key itself.
+            (Builders<Domain.Receipts.Receipt>.IndexKeys.Ascending(r => r.Number), Unique("ux_receipts_number")),
+            (Builders<Domain.Receipts.Receipt>.IndexKeys.Ascending(r => r.UserId).Descending(r => r.CreatedAt), Named("ix_receipts_user_created")),
+            (Builders<Domain.Receipts.Receipt>.IndexKeys.Ascending(r => r.FiscalShown).Ascending(r => r.CreatedAt), Named("ix_receipts_fiscal_created")));
 
         await CreateAsync(SupportClaims,
             (Builders<Domain.Support.SupportClaim>.IndexKeys.Ascending(c => c.JobId), Named("ix_support_claims_job")),

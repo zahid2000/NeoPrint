@@ -173,6 +173,14 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 - Ən çox 2 toxunuşla əsas əməliyyat tamamlanır.
 - Zəif internetdə keşdən göstərilən məlumat "Son yenilənmə: HH:mm" etiketi ilə işarələnir.
 
+### 5.5 Qəbz PDF-i (backend, QuestPDF)
+- **Token mənbəyi:** `backend/src/NeoPrint.Infrastructure/Receipts/ReceiptTokens.cs` — bu sənədin **light** dəyərləri (kağız həmişə ağdır): mətn `--neutral-900`, ikinci dərəcəli mətn `--neutral-600`, ayırıcı `--neutral-200`, sətir fonu `--neutral-50`, vurğu (başlıq xətti, cəm) `--brand-600`, "Fiskal çek hazırlanır" `--warning-500`. Renderer rəngi, ölçünü, boşluğu yalnız oradan götürür.
+- **Şrift:** Inter (mobil tətbiqin eyni faylı, resurs kimi daxil edilir). Ölçülər çap üçün pt ilə: başlıq 16, bölmə başlığı 11 (600), mətn 10, köməkçi 8 (heç bir mətn 8 pt-dən kiçik deyil). Rəqəmlər sağa düzülür.
+- **Səhifə:** A4, kənarlar 32 pt; boşluqlar 4 əsaslı şkala (4, 8, 12, 16, 24, 32).
+- **Quruluş (yuxarıdan aşağı):** loqo-mətn "NeoPrint" + "Qəbz" başlığı və nömrəsi → tarix, kiosk, sifariş kodu, fayl → xidmət sətirləri (izah + məbləğ) → **Cəm** (vurğu rəngi) → ödəniş üsulları (bonus səhifələr "0 AZN fiskal" izahı ilə) → fiskal blok: verilibsə nömrə, fiskal ID, terminal və yoxlama QR-ı (ağ fon, quiet zone), verilməyibsə xəbərdarlıq rəngində "Fiskal çek hazırlanır" → alt qeyd "Bu sənəd fiskal çek deyil".
+- Status yalnız rənglə verilmir: "Fiskal çek hazırlanır" mətn + işarə (`!`) ilə yazılır.
+- Pul formatı §6-dakı kimidir (dilə görə ayırıcı, `₼`). Mətnlər server kataloqundadır (`receipt.*` açarları), PDF qəbzin dilində yazılır (hesabın dili və ya kioskun standart dili).
+
 ---
 
 ## 6. Məzmun və format qaydaları
@@ -212,7 +220,7 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 
 ## 8. Tətbiq qaydası (Claude Code üçün)
 
-- Token-lər bir mənbədən: `admin/src/styles/tokens.css`, `mobile/lib/core/theme/tokens.dart`, `desktop/src/NeoPrint.Kiosk/Styles/Tokens.axaml`. Dəyər dəyişəndə üçü də yenilənir (mənbə: bu sənəd).
+- Token-lər bir mənbədən: `admin/src/styles/tokens.css`, `mobile/lib/core/theme/tokens.dart`, `desktop/src/NeoPrint.Kiosk/Styles/Tokens.axaml`. Dəyər dəyişəndə üçü də yenilənir (mənbə: bu sənəd). Qəbz PDF-i light dəyərləri `backend/src/NeoPrint.Infrastructure/Receipts/ReceiptTokens.cs`-dən götürür (§5.5) — light rəng dəyişəndə o da yenilənir.
 - Hardcoded rəng, şrift ölçüsü və boşluq qadağandır; kod review-da bu yoxlanılır.
 - Angular Material teması token-lərdən qurulur (`mat.define-theme`), komponentlər ayrıca stillə əzilmir.
 - Flutter-də `ThemeData` + `ThemeExtension<NeoPrintTokens>`; widget-lərdə birbaşa `Color(0x...)` yazılmır.

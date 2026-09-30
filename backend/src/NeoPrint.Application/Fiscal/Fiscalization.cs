@@ -143,6 +143,7 @@ public sealed class FiscalizationHandlers :
     private readonly IPaymentsAdminNotifier _notifier;
     private readonly ISettingsReader _settings;
     private readonly IAuditWriter _audit;
+    private readonly IEventPublisher _events;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly ILogger<FiscalizationHandlers> _logger;
@@ -160,6 +161,7 @@ public sealed class FiscalizationHandlers :
         IPaymentsAdminNotifier notifier,
         ISettingsReader settings,
         IAuditWriter audit,
+        IEventPublisher events,
         ICorrelationContext correlation,
         IClock clock,
         ILogger<FiscalizationHandlers> logger)
@@ -176,6 +178,7 @@ public sealed class FiscalizationHandlers :
         _notifier = notifier;
         _settings = settings;
         _audit = audit;
+        _events = events;
         _correlation = correlation;
         _clock = clock;
         _logger = logger;
@@ -427,6 +430,10 @@ public sealed class FiscalizationHandlers :
                 receipt.Issue(number, fiscalId, result.VerificationUrl, System, now);
                 await _receipts.UpdateAsync(receipt, cancellationToken).ConfigureAwait(false);
                 await CloseIncidentsAsync(receipt, cancellationToken).ConfigureAwait(false);
+                await _events.PublishAsync(
+                        new FiscalReceiptIssued(receipt.Id, receipt.Type.ToString(), receipt.PaymentId, receipt.RefundId, _correlation.CorrelationId),
+                        cancellationToken)
+                    .ConfigureAwait(false);
                 _logger.LogInformation("Fiscal receipt {ReceiptId} ({Type}) issued as {Number}.", receipt.Id, receipt.Type, number);
                 break;
 
