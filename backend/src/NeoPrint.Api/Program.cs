@@ -220,6 +220,14 @@ if (!string.IsNullOrWhiteSpace(redisConnection))
 builder.Services.AddScoped<IDeviceNotifier, SignalRDeviceNotifier>();
 builder.Services.AddScoped<IAdminNotifier, SignalRAdminNotifier>();
 builder.Services.AddScoped<IKioskNotifier, SignalRKioskNotifier>();
+builder.Services.AddScoped<NeoPrint.Application.Payments.IPaymentNotifier, SignalRKioskNotifier>();
+
+// The customer and the bank, played in Development only (plan section 6, "Dev").
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddScoped<NeoPrint.Infrastructure.Payments.MockBankSimulator>();
+    builder.Services.AddHttpClient(NeoPrint.Infrastructure.Payments.MockBankSimulator.HttpClientName);
+}
 
 // A job may skip its payment in Development only (plan step 3). From the
 // environment, not from configuration: no Production setting can turn it on.
@@ -360,6 +368,17 @@ await using (var scope = app.Services.CreateAsyncScope())
 
     // Every minute: the Redis queues rebuilt from MongoDB, so a lost or
     // stale Redis is never the truth for long (plan section 3).
+    // Payments: overdue intents expire every minute; payments whose bank
+    // answer never came are checked against the bank every five (plan 6).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Payments.PaymentJobs>(
+        NeoPrint.Infrastructure.Payments.PaymentJobs.ExpirationJobId,
+        jobs => jobs.ExpireAsync(CancellationToken.None),
+        Cron.Minutely());
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Payments.PaymentJobs>(
+        NeoPrint.Infrastructure.Payments.PaymentJobs.ReconciliationJobId,
+        jobs => jobs.ReconcileAsync(CancellationToken.None),
+        "*/5 * * * *");
+
     recurring.AddOrUpdate<PrintQueueReconciliationJob>(
         PrintQueueReconciliationJob.RecurringId,
         job => job.RunAsync(CancellationToken.None),

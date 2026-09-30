@@ -45,7 +45,7 @@ public sealed class KioskHub : Hub
 }
 
 /// <summary>Sends the kiosk events (plan section 6).</summary>
-public sealed class SignalRKioskNotifier : IKioskNotifier
+public sealed class SignalRKioskNotifier : IKioskNotifier, NeoPrint.Application.Payments.IPaymentNotifier
 {
     private readonly IHubContext<KioskHub> _hub;
 
@@ -65,6 +65,10 @@ public sealed class SignalRKioskNotifier : IKioskNotifier
 
     public Task KioskConfigChangedAsync(Guid kioskId, CancellationToken cancellationToken = default)
         => Send(kioskId, "KioskConfigChanged", new { kioskId }, cancellationToken);
+
+    /// <summary>The customer at this kiosk paid (plan section 7.3, screen 7: SignalR plus a polling fallback).</summary>
+    public Task PaymentConfirmedAsync(Guid kioskId, Guid paymentId, Guid jobId, CancellationToken cancellationToken = default)
+        => Send(kioskId, "PaymentConfirmed", new { kioskId, paymentId, jobId }, cancellationToken);
 
     public Task KioskCommandAsync(Guid kioskId, KioskCommandMessage command, CancellationToken cancellationToken = default)
         => Send(kioskId, "KioskCommand", command, cancellationToken);

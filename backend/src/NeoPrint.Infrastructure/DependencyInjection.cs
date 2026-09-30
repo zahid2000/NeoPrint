@@ -126,6 +126,15 @@ public static class DependencyInjection
         services.AddScoped<PrintQueueService>();
         services.AddScoped<PrintQueueReconciliationJob>();
 
+        // Payments (plan section 2.5, step 4). The mock bank is the only bank
+        // QR provider until a real one is contracted (docs/DECISIONS.md).
+        services.AddScoped<Application.Payments.IPaymentRepository, Payments.PaymentRepository>();
+        services.AddScoped<Payments.MockBankProvider>();
+        services.AddScoped<Application.Payments.IBankQrProvider>(provider => provider.GetRequiredService<Payments.MockBankProvider>());
+        services.AddScoped<Application.Payments.IPaymentProviders, Payments.PaymentProviders>();
+        services.AddScoped<Application.Payments.PaymentSettlement>();
+        services.AddScoped<Payments.PaymentJobs>();
+
         // Administration and RBAC (plan section 8A.2)
         services.AddSingleton<IPasswordHasher<AdminUser>, PasswordHasher<AdminUser>>();
         services.AddScoped<IAdminUserRepository, AdminUserRepository>();

@@ -1086,6 +1086,65 @@ Kağız sayğacı (plan 2.15): job `Completed` və ya `Interrupted` olanda onun 
 | `POST /api/admin/print-jobs/{id}/cancel` | `jobs.cancel` | `Idempotency-Key`; səbəb audit-ə |
 | `GET /api/admin/kiosks/{kioskId}/queue` | `jobs.view` | Kioskun canlı növbəsi |
 
+## Ödənişlər (`/api/payments`, Addım 4)
+
+Kioskda ödənişin gedişi (plan Bölmə 9.1): kiosk job-u yaradır (`PendingPayment`)
+→ intent açır → müştəri ödəyir → bank imzalı callback göndərir → job `Paid` →
+`Queued`, kioska SignalR `PaymentConfirmed`. Məbləğ job-un qiymət
+snapshot-undan götürülür, sonradan yenidən hesablanmır.
+
+### `POST /api/payments/intents` (Kiosk token, `Idempotency-Key` məcburi)
+
+`{ "jobId": "…", "method": "BankQr" | "MobileApp" }` → `200`:
+
+```json
+{ "id": "…", "jobId": "…", "jobCode": "565946", "method": "BankQr", "status": "Pending",
+  "amount": 0.20, "currency": "AZN", "qrContent": "MOCKBANK:…", "expiresAt": "…", "secondsLeft": 300 }
+```
+
+- `secondsLeft` serverin saatı ilədir, kiosk geri sayımı bundan başlayır; müddət
+  `Payment.TimeoutMinutes`-dir (paneldə dəyişəndə növbəti intent yeni dəyərlə açılır).
+- Eyni job və metod üçün hələ ödənilə bilən intent varsa **eyni** intent qaytarılır —
+  iki ödənilə bilən QR heç vaxt olmur. Metod dəyişəndə əvvəlki QR bankda bağlanır; müştəri
+  onu artıq ödəyibsə həmin ödəniş qəbul olunur və qaytarılır (ikinci ödəniş açılmır).
+- `MobileApp` → `qrContent` = `neoprint://pay/{id}`.
+- Bank cavab vermirsə `503` (`code: payments.providerUnavailable`) — heç nə tutulmayıb, job ödəniş gözləməyə davam edir.
+- Job ödəniş gözləmirsə `409` (`payments.jobNotAwaitingPayment`).
+- Ödənilmiş, vaxtı keçmiş və ya rədd olunmuş ödənişdə `qrContent` qaytarılmır.
+
+### `GET /api/payments/{id}` (Kiosk token)
+
+Yuxarıdakı cavab; kiosk `PaymentConfirmed` gəlmədikdə bununla yoxlayır (polling).
+
+### `POST /api/payments/callback/{provider}` (anonim, imzalı)
+
+Provayderin webhook-u. İmza gövdənin **dəqiq baytları** üzərindədir (mock bank:
+`X-MockBank-Signature` = HMAC-SHA256, açar `NEOPRINT_BANK_CALLBACK_SECRET`).
+İmza yanlışdırsa `401`, tanınmayan provayder `404`. Eyni hadisə (`provider_events`
+unikal indeksi) ikinci dəfə gələndə `200 { "outcome": "Duplicate" }` — heç nə dəyişmir.
+Bankın bildirdiyi məbləğ ödənişlə üst-üstə düşmürsə tətbiq edilmir (Critical log).
+
+### Fon işləri
+
+| İş | Tezlik | Nə edir |
+|---|---|---|
+| `PaymentExpirationJob` | 1 dəq | Vaxtı keçmiş intent-i bankda bağlayır (bank "ödənilib" deyirsə ödəniş qəbul olunur), sonra `Expired`; job-un başqa açıq intent-i yoxdursa job da `Expired`. Intent açılmadan qalmış job-lar da `Payment.TimeoutMinutes` sonra `Expired` |
+| `PaymentReconciliationJob` | 5 dəq | `Payment.ReconcileAfterMinutes`-dən köhnə, cavabı gəlməmiş (`Pending` / `Expired`) ödənişlərin statusunu bankdan soruşur — itmiş və ya gec callback |
+
+Bank pulu job artıq ödənilə bilməyəndə (vaxtı keçib, ləğv olunub, başqa ödənişlə
+ödənilib) təsdiqləsə ödəniş `Succeeded` yazılır və eyni tranzaksiyada qaytarma
+tələb olunur (`RefundRequested`, səbəb `LatePayment` / `DuplicatePayment`).
+
+### Development (`/api/dev`, başqa mühitlərdə `404`)
+
+| Endpoint | Nə edir |
+|---|---|
+| `POST /api/dev/payments/{id}/simulate-success?delaySeconds=&duplicate=&dropCallback=` | Müştəri bank tətbiqində ödəyir; callback gecikir / iki dəfə eyni anda gəlir / itir |
+| `POST /api/dev/payments/{id}/simulate-fail` | Bank rədd edir (`payment.failed` callback) |
+| `POST /api/dev/mock-bank/create-fails?fails=true\|false` | Bank "düşür": QR yaratmaq timeout verir |
+
+Vaxtı keçmiş (bankda bağlanmış) QR-ı ödəmək `409 { "outcome": "QrNoLongerValid" }` qaytarır — bank tətbiqi də onu rədd edir.
+
 ## Hələ mövcud olmayan endpoint-lər
 
 Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: ödəniş / refund / wallet / fiskal (Addım 4), skan və paylaşım

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
 using NeoPrint.Application.Localization;
+using NeoPrint.Application.Payments;
 using NeoPrint.Crypto;
 using NeoPrint.Domain.Common;
 
@@ -129,6 +130,15 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
                 Status = StatusCodes.Status500InternalServerError,
             },
 
+            // The bank or card provider did not answer: nothing was charged, the
+            // customer can try again or pay another way.
+            PaymentProviderUnavailableException => new ProblemDetails
+            {
+                Title = Title("problem.providerUnavailable"),
+                Detail = Messages.Write(new UserMessage("payments.providerUnavailable")),
+                Status = StatusCodes.Status503ServiceUnavailable,
+            },
+
             OperationCanceledException => new ProblemDetails
             {
                 Title = Title("problem.cancelled"),
@@ -147,6 +157,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
         {
             DomainException domain => domain.Text.Key,
             AuthenticationException authentication => authentication.Text.Key,
+            PaymentProviderUnavailableException => "payments.providerUnavailable",
             ValidationException { Errors.Count: 1 } validation => validation.Errors.First().Message.Key,
             _ => null,
         };

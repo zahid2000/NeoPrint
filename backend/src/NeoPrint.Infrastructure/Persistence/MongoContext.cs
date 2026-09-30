@@ -120,6 +120,13 @@ public sealed class MongoContext
 
     public MongoSet<Domain.PrintJobs.PrintJob> PrintJobs => Set<Domain.PrintJobs.PrintJob>("print_jobs");
     public MongoSet<Domain.PrintJobs.PrintAttempt> PrintAttempts => Set<Domain.PrintJobs.PrintAttempt>("print_attempts");
+    public MongoSet<Domain.Payments.Payment> Payments => Set<Domain.Payments.Payment>("payments");
+
+    // The mock bank's own books (Development and tests): through the same
+    // session as everything else, so an aborted transaction takes its write
+    // back and the next attempt repeats it (ADR-0004).
+    public MongoSet<Payments.MockBankTransaction> MockBankTransactions => Set<Payments.MockBankTransaction>("mock_bank_transactions");
+    public MongoSet<Payments.MockBankBehaviour> MockBankSettings => Set<Payments.MockBankBehaviour>("mock_bank_settings");
     public MongoSet<SupplyEvent> SupplyEvents => Set<SupplyEvent>("supply_events");
 
     /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 2.17).</summary>
@@ -323,7 +330,21 @@ public sealed class MongoContext
                 .Ascending(job => job.KioskId).Ascending(job => job.Status).Ascending(job => job.QueuedAt),
                 Named("ix_print_jobs_kiosk_status_queued")),
             // The admin list, newest first.
-            (Builders<Domain.PrintJobs.PrintJob>.IndexKeys.Descending(job => job.CreatedAt), Named("ix_print_jobs_created")));
+            (Builders<Domain.PrintJobs.PrintJob>.IndexKeys.Descending(job => job.CreatedAt), Named("ix_print_jobs_created")),
+            // Jobs left waiting for a payment, for the expiry job.
+            (Builders<Domain.PrintJobs.PrintJob>.IndexKeys.Ascending(job => job.Status).Ascending(job => job.CreatedAt),
+                Named("ix_print_jobs_status_created")));
+
+        await CreateAsync(Payments,
+            // One bank transaction is one payment: a callback can never pay a
+            // second payment. Sparse, since app payments have no provider.
+            (Builders<Domain.Payments.Payment>.IndexKeys.Ascending(p => p.Provider).Ascending(p => p.ProviderRef),
+                new CreateIndexOptions { Name = "ux_payments_provider_ref", Unique = true, Sparse = true }),
+            (Builders<Domain.Payments.Payment>.IndexKeys.Ascending(p => p.JobId), Named("ix_payments_job")),
+            // The expiry and reconciliation jobs.
+            (Builders<Domain.Payments.Payment>.IndexKeys.Ascending(p => p.Status).Ascending(p => p.ExpiresAt),
+                Named("ix_payments_status_expires")),
+            (Builders<Domain.Payments.Payment>.IndexKeys.Descending(p => p.CreatedAt), Named("ix_payments_created")));
 
         // A job or a test page moves a counter once; the tab reads a kiosk's newest first.
         await CreateAsync(SupplyEvents,

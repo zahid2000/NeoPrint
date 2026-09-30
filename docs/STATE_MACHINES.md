@@ -76,9 +76,15 @@ Timeout:
 
 `Pending → Expired`
 
+Gec təsdiq (bank pulu intent-in vaxtı keçəndən sonra təsdiqləyir — gec və ya itmiş callback, uzlaşdırma):
+
+`Expired → Succeeded` — pul tutulub, ona görə uçotda belə yazılır; job artıq ödənilə bilmədiyi üçün ödəniş eyni tranzaksiyada avtomatik qaytarılır (`docs/DECISIONS.md`, 2026-09-30).
+
 Refund nəticəsi:
 
 `Succeeded → PartiallyRefunded | Refunded | RefundFailed`
+
+`PartiallyRefunded → Refunded | RefundFailed`, `RefundFailed → PartiallyRefunded | Refunded` (admin təkrar cəhdi və ya istiqamət dəyişikliyi ilə)
 
 ## Kiosk Device
 

@@ -192,6 +192,9 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
             // No SMTP host: the email sender logs a warning instead of sending,
             // which is what these tests want.
             ["NEOPRINT_SMTP_HOST"] = string.Empty,
+
+            // The mock bank signs its callbacks with this (plan section 10).
+            ["NEOPRINT_BANK_CALLBACK_SECRET"] = BankCallbackSecret,
         });
 
         await WriteAsync(bao, "backend/seed", new Dictionary<string, string>
@@ -233,6 +236,9 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
 
     private static async Task WriteAsync(HttpClient bao, string path, Dictionary<string, string> data)
         => (await bao.PostAsJsonAsync($"v1/neoprint/data/{path}", new { data })).EnsureSuccessStatusCode();
+
+    /// <summary>The shared secret the mock bank signs callbacks with.</summary>
+    public const string BankCallbackSecret = "test-bank-callback-secret";
 
     /// <summary>The seeded SuperAdmin, which must change its password at first sign-in.</summary>
     public const string SeedAdminEmail = "admin@neoprint.test";
@@ -381,6 +387,9 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         // limiter itself is covered by its own test, which turns it back on.
         builder.UseSetting("RateLimits:Disabled", "true");
 
+        // The mock bank calls back over HTTP; here the test server answers.
+        builder.UseSetting("Payments:MockBank:CallbackBaseUrl", "http://localhost");
+
         builder.ConfigureLogging(logging => logging
             .ClearProviders()
             // Warnings and above: the seeding and Hangfire chatter would bury
@@ -397,6 +406,11 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
             services.AddSingleton<CapturedEmails>();
             services.AddSingleton<IEmailSender>(
                 provider => provider.GetRequiredService<CapturedEmails>());
+
+            // The mock bank's callbacks reach the in-memory server, exactly
+            // as they reach the API over the network in Development.
+            services.AddHttpClient(NeoPrint.Infrastructure.Payments.MockBankSimulator.HttpClientName)
+                .ConfigurePrimaryHttpMessageHandler(() => Server.CreateHandler());
         });
     }
 
