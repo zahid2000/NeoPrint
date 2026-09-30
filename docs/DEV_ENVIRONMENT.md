@@ -730,6 +730,66 @@ Real printer və ya real cihaz tələb edən yoxlamalar (məs. çapın ortasınd
 
 ---
 
+## 7c. Addım 4 — ödəniş, refund, fiskal (dev əmrləri)
+
+Yeni kod üçün: `docker compose up --remove-orphans -d --build api admin`. Aşağıdakı
+`/api/dev/*` endpoint-ləri **yalnız Development-də** var (başqa mühitdə `404`),
+token tələb etmir. Bütün ID-ləri admin panelindən və ya Swagger-dən götürün.
+
+**Fiskal terminallar.** Kiosk satışının fiskal çeki yalnız həmin kioskun terminalı ilə
+verilir; terminal yoxdursa çek "gözləyir" (`fiscal.noTerminal`) və 15 dəqiqədən sonra
+incident açılır. Development seed-i test kiosklarına `TERM-KSK-9001` / `TERM-KSK-9002`,
+onlayn terminala (tətbiq satışları və balans artırılması) `ONLINE-DEV-01` yazır — API
+yenidən başlayanda boş olanları doldurur. Başqa kiosk yaratsanız: Admin paneli →
+**Kiosklar → kiosk → Redaktə et → Fiskal terminal ID**. Onlayn terminalı dəyişmək:
+
+```bash
+# admin token-i ilə (Swagger-də "Authorize" və ya panelin Network tabından)
+curl -X PUT http://localhost:5080/api/admin/fiscal/settings \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" -H "Content-Type: application/json" \
+  -d '{"values":{"Fiscal.OnlineTerminalId":"ONLINE-DEV-01"}}'
+```
+
+**Bank QR ödənişi (kiosk "Bank QR" ekranında gözləyir):**
+
+```bash
+P=<paymentId>   # kiosk ekranındakı ödəniş və ya admin → Ödənişlər
+curl -X POST "http://localhost:5080/api/dev/payments/$P/simulate-success"                    # ödənildi
+curl -X POST "http://localhost:5080/api/dev/payments/$P/simulate-success?delaySeconds=90"    # gec gələn callback
+curl -X POST "http://localhost:5080/api/dev/payments/$P/simulate-success?duplicate=true"     # dublikat callback
+curl -X POST "http://localhost:5080/api/dev/payments/$P/simulate-success?dropCallback=true"  # callback itir → reconciliation (5 dəq) tapır
+curl -X POST "http://localhost:5080/api/dev/payments/$P/simulate-fail"                       # bank rədd etdi
+curl -X POST "http://localhost:5080/api/dev/mock-bank/create-fails?fails=true"               # bank QR yaratmır (timeout); false ilə qaytarın
+curl -X POST "http://localhost:5080/api/dev/mock-card/outcome?value=Decline"                 # tətbiqdə kart: Success | Decline | Timeout
+```
+
+**Refund və fiskal uğursuzluqları:**
+
+```bash
+curl -X POST "http://localhost:5080/api/dev/mock-bank/refunds-fail?fails=true"   # bank heç bir refund qəbul etmir (false ilə qaytarın)
+curl -X POST "http://localhost:5080/api/dev/refunds/<refundId>/simulate-fail"    # yalnız bu refund
+curl -X POST "http://localhost:5080/api/dev/mock-fiscal/mode?mode=Down"          # e-kassa cavab vermir: Ok | Down | Reject
+curl -X POST "http://localhost:5080/api/dev/fiscal/<receiptId>/simulate-fail"    # yalnız bu çek (?fails=false ilə qaytarın)
+```
+
+**"Kiosk susdu" (`Suspected`) ssenarisini tez görmək:** kiosk bir sifarişi çap edərkən
+kiosku dayandırın (`tools/dev-kiosk/stop-kiosk.ps1`) və ya şəbəkəni kəsin. 15 dəqiqə
+gözləməmək üçün admin → **Tənzimləmələr → Sifarişlər → `Job.SuspectedAfterMinutes` = 1**
+(yoxlamadan sonra 15-ə qaytarın). Bir-iki dəqiqədən sonra sifariş `Suspected` olur,
+avtomatik refund olmur, incident açılır. Kiosku yenidən başladanda o, nəticəni bildirir
+və sifariş özü həll olunur.
+
+**Müştəri müraciəti (anonim, qəbzdəki kodlarla):**
+
+```bash
+curl -X POST http://localhost:5080/api/support/claims -H "Content-Type: application/json" \
+  -d '{"jobCode":"123456","kioskCode":"KSK-0001","text":"Pul çıxdı, kağız çıxmadı","contact":"+994 50 000 00 00"}'
+```
+
+PowerShell-də `curl` əvəzinə `curl.exe` yazın (və ya `Invoke-RestMethod -Method Post <URL>`).
+
+---
+
 ## 8. Build, test, lint
 
 ```bash

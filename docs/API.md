@@ -1187,6 +1187,46 @@ sorğu ilk nəticəni qaytarır).
 | `POST /api/dev/refunds/{id}/simulate-fail` | Bu refund hər cəhddə uğursuz olur |
 | `POST /api/dev/mock-bank/refunds-fail?fails=true\|false` | Bank bütün refund-ları rədd edir |
 
+## Fiskal çeklər (e-kassa)
+
+Fiskallaşdırma **asinxrondur**: ödəniş və refund e-kassanı gözləmir. `PaymentSucceeded` →
+satış çeki (`Sale`) və ya balans artırılmasında avans çeki (`TopUp`, yalnız
+`Fiscal.TopUpReceiptMode = OnTopUp`); `RefundCompleted` → qaytarma çeki (`Refund`, satış
+çekinin fiskal ID-sinə istinadla — satış çeki hələ verilməyibsə gözləyir). Hər biri bir dəfə:
+unikal `DedupKey` (`sale:{paymentId}`, `topup:{paymentId}`, `refund:{refundId}`), provayderə
+çekin öz id-si ilə müraciət olunur (təkrar sorğu eyni sənədi qaytarır).
+
+| Qayda | |
+|---|---|
+| Məbləğ | Pulla ödənilən hissə (kart / bank + balans). **Bonus səhifələr 0 AZN, çekə düşmür**; yalnız bonusla ödənişə çek yoxdur |
+| Ödəniş növü (`paidWith`) | `BankQr` / `Card`; balans hissəsi `Advance` (`OnTopUp` rejimində) və ya `Wallet` (`OnService`) |
+| Terminal | Kiosk satışı → kioskun `FiscalTerminalId`-si; tətbiq satışı və top-up → `Fiscal.OnlineTerminalId`. Kioskun terminalı yoxdursa çek **gözləyir** (`fiscal.noTerminal`), başqa terminal götürülmür. Qaytarma satışın terminalından keçir |
+| Uğursuzluq | E-kassa cavab vermir → 1, 2, 4… (ən çox 30) dəqiqədən sonra təkrar; rədd edir → `Failed` + incident `FiscalFailed` (High). `Fiscal.MaxPendingMinutes` keçən gözləyən çek → incident (High, bir dəfə). Çek veriləndə incident-lər avtomatik bağlanır |
+| `Fiscal.Enabled = false` | Çeklər yaranır, amma göndərilmir (`fiscal.disabled`); yandırılan kimi verilir, heç nə itmir; bu müddətdə gecikmə incident-i açılmır |
+
+### `GET /api/payments/{id}/fiscal` (anonim)
+
+Kiosk qəbz ekranı və tətbiq üçün: `{ receiptId, status (Pending/Issued/Failed), fiscalDocumentNumber?, fiscalId?, verificationUrl?, issuedAt? }`.
+Çek hələ yoxdursa `404 notFound.fiscalReceipt`. Şəxsi məlumat yoxdur.
+
+### Admin
+
+| Endpoint | İcazə | |
+|---|---|---|
+| `GET /api/admin/fiscal-receipts?status=&type=&paymentId=&page=&pageSize=` | `fiscal.view` | Ən yenilər əvvəl; sətirlər, ödəniş növləri, terminal, cəhdlər, növbəti cəhd, son xəta (oxuyanın dilində) |
+| `GET /api/admin/fiscal-receipts/{id}` | `fiscal.view` | Detal |
+| `POST /api/admin/fiscal-receipts/{id}/retry` (`Idempotency-Key`) | `fiscal.manage` | `Failed` və ya gözləyən çek dərhal, yeni cəhd sayı ilə; verilmiş çek `409 fiscal.alreadyIssued`; audit `fiscal.receipts.retry` |
+| `GET` · `PUT /api/admin/fiscal/settings` | `fiscal.manage` | Yalnız `Fiscal.*` tənzimləmələri (`{ values: { "Fiscal.OnlineTerminalId": "..." } }`); başqa açar `400 fiscal.settingNotFiscal`; tip yoxlaması və audit ümumi tənzimləmələrdəki kimi |
+
+### Development
+
+| Endpoint | Nə edir |
+|---|---|
+| `POST /api/dev/mock-fiscal/mode?mode=Ok\|Down\|Reject` | Mock e-kassa: işləyir / cavab vermir (timeout) / hər çeki rədd edir |
+| `POST /api/dev/fiscal/{receiptId}/simulate-fail?fails=true\|false` | Bu çek hər cəhddə timeout olur |
+
+Provayder `NEOPRINT_FISCAL_PROVIDER` ilə seçilir (default `mock`); başqa ad hələ yoxdur və API-nin başlamasını dayandırır.
+
 ## Nəticəsi naməlum sifarişlər (`Suspected`, B ssenarisi)
 
 `StuckJobWatchdogJob` (hər dəqiqə): `Queued` job-un növbəyə düşmə, `Printing` job-un çapa

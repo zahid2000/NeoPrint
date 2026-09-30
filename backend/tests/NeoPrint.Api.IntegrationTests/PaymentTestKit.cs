@@ -20,7 +20,10 @@ internal static class PaymentTestKit
         using var scope = fixture.Services.CreateScope();
         await scope.ServiceProvider.GetRequiredService<MongoContext>().Kiosks.UpdateOneAsync(
             Builders<NeoPrint.Domain.Kiosks.Kiosk>.Filter.Eq(k => k.Id, kiosk.KioskId),
-            Builders<NeoPrint.Domain.Kiosks.Kiosk>.Update.Set("PaperStock.A4.Current", 500));
+            Builders<NeoPrint.Domain.Kiosks.Kiosk>.Update
+                .Set("PaperStock.A4.Current", 500)
+                // Its own fiscal till, as a real kiosk has (plan section 2.12).
+                .Set(k => k.FiscalTerminalId, $"TERM-{kiosk.KioskId.ToString("N")[..8]}"));
 
         return kiosk;
     }

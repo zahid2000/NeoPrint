@@ -65,7 +65,8 @@ export const kiosksTranslations: PageTranslations = {
     'kiosks.pricingProfile': 'Qiymət profili',
     'kiosks.defaultProfile': 'Standart profil',
     'kiosks.fiscalTerminal': 'Fiskal terminal ID',
-    'kiosks.fiscalHint': 'E-kassa terminalının identifikatoru; boş ola bilər',
+    'kiosks.fiscalHint':
+      'E-kassa terminalının identifikatoru. Boş qalsa, bu kioskun satışlarına fiskal çek verilmir — çeklər gözləyir.',
     'kiosks.paperHint':
       'Lotokların tutumu. Yüklənmiş vərəq sayı doldurma və çaplarla hesablanır; tutum azaldılanda sayğac ona endirilir.',
     'kiosks.capacityA4': 'A4 tutumu',
@@ -167,7 +168,8 @@ export const kiosksTranslations: PageTranslations = {
     'kiosks.pricingProfile': 'Pricing profile',
     'kiosks.defaultProfile': 'Default profile',
     'kiosks.fiscalTerminal': 'Fiscal terminal ID',
-    'kiosks.fiscalHint': 'The e-kassa terminal identifier; may be empty',
+    'kiosks.fiscalHint':
+      'The e-kassa terminal identifier. While it is empty, the sales of this kiosk get no fiscal receipt — they wait.',
     'kiosks.paperHint':
       'Tray capacities. Sheets loaded are counted from refills and prints; lowering a capacity brings the counter down to it.',
     'kiosks.capacityA4': 'A4 capacity',
@@ -270,7 +272,8 @@ export const kiosksTranslations: PageTranslations = {
     'kiosks.pricingProfile': 'Ценовой профиль',
     'kiosks.defaultProfile': 'Профиль по умолчанию',
     'kiosks.fiscalTerminal': 'ID фискального терминала',
-    'kiosks.fiscalHint': 'Идентификатор терминала e-kassa; может быть пустым',
+    'kiosks.fiscalHint':
+      'Идентификатор терминала e-kassa. Пока он пуст, продажи этого киоска не получают фискальный чек — чеки ждут.',
     'kiosks.paperHint':
       'Вместимость лотков. Загруженные листы считаются по заправкам и печати; при уменьшении вместимости счётчик опускается до неё.',
     'kiosks.capacityA4': 'Вместимость A4',

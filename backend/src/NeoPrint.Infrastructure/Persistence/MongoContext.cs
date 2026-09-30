@@ -126,6 +126,7 @@ public sealed class MongoContext
     public MongoSet<Domain.Refunds.RefundVoucher> RefundVouchers => Set<Domain.Refunds.RefundVoucher>("refund_vouchers");
     public MongoSet<Domain.Incidents.Incident> Incidents => Set<Domain.Incidents.Incident>("incidents");
     public MongoSet<Domain.Support.SupportClaim> SupportClaims => Set<Domain.Support.SupportClaim>("support_claims");
+    public MongoSet<Domain.Fiscal.FiscalReceipt> FiscalReceipts => Set<Domain.Fiscal.FiscalReceipt>("fiscal_receipts");
     public MongoSet<Domain.Wallets.WalletTransaction> WalletTransactions => Set<Domain.Wallets.WalletTransaction>("wallet_transactions");
 
     // The mock bank's own books (Development and tests): through the same
@@ -135,6 +136,8 @@ public sealed class MongoContext
     public MongoSet<Payments.MockBankBehaviour> MockBankSettings => Set<Payments.MockBankBehaviour>("mock_bank_settings");
     public MongoSet<Payments.MockCardCharge> MockCardCharges => Set<Payments.MockCardCharge>("mock_card_charges");
     public MongoSet<Payments.MockRefund> MockRefunds => Set<Payments.MockRefund>("mock_refunds");
+    public MongoSet<Fiscal.MockFiscalDocument> MockFiscalDocuments => Set<Fiscal.MockFiscalDocument>("mock_fiscal_documents");
+    public MongoSet<Fiscal.MockFiscalBehaviour> MockFiscalSettings => Set<Fiscal.MockFiscalBehaviour>("mock_fiscal_settings");
     public MongoSet<SupplyEvent> SupplyEvents => Set<SupplyEvent>("supply_events");
 
     /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 2.17).</summary>
@@ -382,6 +385,16 @@ public sealed class MongoContext
             // What else happened at a kiosk around a suspected job.
             (Builders<Domain.Incidents.Incident>.IndexKeys.Ascending(i => i.KioskId).Descending(i => i.CreatedAt),
                 Named("ix_incidents_kiosk_created")));
+
+        await CreateAsync(FiscalReceipts,
+            // One receipt per sale, refund or top-up: a redelivered event or a
+            // retried consumer never makes a second one (no double fiscal).
+            (Builders<Domain.Fiscal.FiscalReceipt>.IndexKeys.Ascending(r => r.DedupKey), Unique("ux_fiscal_receipts_dedup")),
+            (Builders<Domain.Fiscal.FiscalReceipt>.IndexKeys.Ascending(r => r.PaymentId), Named("ix_fiscal_receipts_payment")),
+            // The retry job and the late-receipt incident.
+            (Builders<Domain.Fiscal.FiscalReceipt>.IndexKeys.Ascending(r => r.Status).Ascending(r => r.NextAttemptAt),
+                Named("ix_fiscal_receipts_status_next")),
+            (Builders<Domain.Fiscal.FiscalReceipt>.IndexKeys.Descending(r => r.CreatedAt), Named("ix_fiscal_receipts_created")));
 
         await CreateAsync(SupportClaims,
             (Builders<Domain.Support.SupportClaim>.IndexKeys.Ascending(c => c.JobId), Named("ix_support_claims_job")),

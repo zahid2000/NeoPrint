@@ -69,6 +69,19 @@ public sealed class PaymentsController : ControllerBase
         => Ok(await _sender.Send(new GetKioskPaymentQuery(DeviceId, id), cancellationToken));
 
     /// <summary>
+    /// The payment's fiscal receipt (plan section 2.12): status, number and the
+    /// verification link for the QR on the kiosk's receipt screen and in the
+    /// app. The id is a random GUID; the answer carries no personal data.
+    /// <c>404</c> until the receipt exists (nothing paid in money has none).
+    /// </summary>
+    [HttpGet("{id:guid}/fiscal")]
+    [AllowAnonymous]
+    public async Task<ActionResult<Application.Fiscal.FiscalSummary>> Fiscal(Guid id, CancellationToken cancellationToken)
+        => await _sender.Send(new Application.Fiscal.GetPaymentFiscalQuery(id), cancellationToken) is { } summary
+            ? Ok(summary)
+            : throw new Domain.Common.NotFoundException("fiscalReceipt");
+
+    /// <summary>
     /// The app scanned the kiosk's <c>neoprint://pay/{id}</c> QR: what is paid
     /// for, and the user's balance and bonus pages (plan section 9.2, step 3).
     /// </summary>

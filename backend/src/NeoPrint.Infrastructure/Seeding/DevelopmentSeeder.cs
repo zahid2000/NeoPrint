@@ -87,10 +87,31 @@ public sealed class DevelopmentSeeder
     /// <summary>The PIN the hidden admin exit accepts on the test kiosks.</summary>
     private const string TestAdminPin = "135790";
 
+    /// <summary>The online till app sales and top-ups go through locally (plan section 2.12).</summary>
+    private const string TestOnlineTerminal = "ONLINE-DEV-01";
+
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
         await SeedTestAccountsAsync(cancellationToken).ConfigureAwait(false);
         await SeedKiosksAsync(cancellationToken).ConfigureAwait(false);
+        await SeedFiscalAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string TestTerminal(string kioskCode) => $"TERM-{kioskCode}";
+
+    /// <summary>The online till, only while nobody has set one.</summary>
+    private async Task SeedFiscalAsync(CancellationToken cancellationToken)
+    {
+        var result = await _context.AdminSettings.UpdateOneAsync(
+                Builders<AdminSetting>.Filter.Eq(s => s.Key, SettingKeys.FiscalOnlineTerminalId) & Builders<AdminSetting>.Filter.Eq(s => s.Value, string.Empty),
+                Builders<AdminSetting>.Update.Set(s => s.Value, TestOnlineTerminal),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result.ModifiedCount > 0)
+        {
+            _logger.LogInformation("Set the development online fiscal terminal {Terminal}.", TestOnlineTerminal);
+        }
     }
 
     private async Task SeedKiosksAsync(CancellationToken cancellationToken)
@@ -113,6 +134,7 @@ public sealed class DevelopmentSeeder
                     Name = name,
                     Location = new KioskLocation { Address = address, Lat = lat, Lng = lng },
                     AdminPinHash = Hashing.HashSecret(TestAdminPin),
+                    FiscalTerminalId = TestTerminal(code),
                     PaperStock =
                     {
                         ["A4"] = new PaperStock { Capacity = 500, Current = 500 },
@@ -124,6 +146,15 @@ public sealed class DevelopmentSeeder
                     .ConfigureAwait(false);
 
                 _logger.LogInformation("Seeded development kiosk {Code}.", code);
+            }
+            else if (string.IsNullOrEmpty(kiosk.FiscalTerminalId))
+            {
+                // Seeded before fiscal receipts existed (step 4): its sales would wait for a till.
+                await _context.Kiosks.UpdateOneAsync(
+                        Builders<Kiosk>.Filter.Eq(k => k.Id, kiosk.Id),
+                        Builders<Kiosk>.Update.Set(k => k.FiscalTerminalId, TestTerminal(code)),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             // A device may already be bound from an earlier run; do not hand out

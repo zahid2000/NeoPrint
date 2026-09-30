@@ -87,6 +87,7 @@ public static class DependencyInjection
         AddStorage(services, configuration);
         AddMessaging(services, configuration);
         AddBackgroundJobs(services, configuration);
+        AddFiscal(services, configuration);
         AddHealthChecks(services, configuration);
         AddAuth(services);
 
@@ -294,6 +295,8 @@ public static class DependencyInjection
             bus.AddConsumer<Refunds.RefundRequestedConsumer>();
             bus.AddConsumer<Refunds.AutoRefundOnKioskErrorConsumer>();
             bus.AddConsumer<Refunds.PrintJobCancelledConsumer>();
+            bus.AddConsumer<Fiscal.PaymentFiscalizationConsumer>();
+            bus.AddConsumer<Fiscal.RefundFiscalizationConsumer>();
 
             // Every process caches the storage providers, so every process needs
             // its own copy of this event: a queue per instance, deleted when the
@@ -347,6 +350,26 @@ public static class DependencyInjection
             }));
 
         services.AddHangfireServer(options => options.ServerName = $"neoprint-{Environment.MachineName}");
+    }
+
+    /// <summary>
+    /// Fiscal receipts (plan section 2.12). Only the mock e-kassa exists until a
+    /// provider is contracted (plan section 14); any other name stops the start
+    /// rather than silently issuing nothing.
+    /// </summary>
+    private static void AddFiscal(IServiceCollection services, IConfiguration configuration)
+    {
+        var provider = configuration["NEOPRINT_FISCAL_PROVIDER"] is { Length: > 0 } name ? name : Fiscal.MockFiscalProvider.ProviderName;
+
+        if (!string.Equals(provider, Fiscal.MockFiscalProvider.ProviderName, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"NEOPRINT_FISCAL_PROVIDER '{provider}' is not available; only '{Fiscal.MockFiscalProvider.ProviderName}' is.");
+        }
+
+        services.AddScoped<Application.Fiscal.IFiscalReceiptRepository, Fiscal.FiscalReceiptRepository>();
+        services.AddScoped<Fiscal.MockFiscalProvider>();
+        services.AddScoped<Application.Fiscal.IFiscalProvider>(sp => sp.GetRequiredService<Fiscal.MockFiscalProvider>());
+        services.AddScoped<Fiscal.FiscalJobs>();
     }
 
     private static void AddHealthChecks(IServiceCollection services, IConfiguration configuration)

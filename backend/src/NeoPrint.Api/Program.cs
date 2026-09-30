@@ -412,6 +412,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         job => job.RunAsync(CancellationToken.None),
         Cron.Minutely());
 
+    // Fiscal receipts: due tries every minute, and the incident for late ones (plan section 2.12).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Fiscal.FiscalJobs>(
+        NeoPrint.Infrastructure.Fiscal.FiscalJobs.RetryJobId,
+        jobs => jobs.RunAsync(CancellationToken.None),
+        Cron.Minutely());
+
     // Jobs whose kiosk went quiet: Suspected, never refunded automatically (plan section 2.5, scenario B).
     recurring.AddOrUpdate<StuckJobWatchdogJob>(
         StuckJobWatchdogJob.JobId,
