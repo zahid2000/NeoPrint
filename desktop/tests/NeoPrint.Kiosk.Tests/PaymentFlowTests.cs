@@ -181,6 +181,8 @@ public sealed class PaymentFlowTests : IDisposable
         flow.ContinueCommand.Execute(null);
 
         flow.EditPromoCommand.Execute(null);
+        flow.IsTyping.Should().BeTrue("the keyboard opens on a sheet that hides the action row");
+
         foreach (var key in "NOPE")
         {
             flow.PromoKeyCommand.Execute(key.ToString());
@@ -190,6 +192,13 @@ public sealed class PaymentFlowTests : IDisposable
         flow.PromoProblem.Should().Be("Belə promokod yoxdur. Kodu yoxlayın.");
         flow.AppliedPromo.Should().BeNull();
         flow.CanPlace.Should().BeTrue("the customer may go on without it");
+        flow.PromoEditing.Should().BeTrue("a refused code keeps the sheet open, with its reason");
+
+        flow.CloseKeyboardCommand.Execute(null);
+        flow.IsTyping.Should().BeFalse();
+        flow.PromoProblem.Should().BeNull();
+        flow.PromoInput.Should().Be("NOPE", "closing the sheet keeps what was typed");
+        flow.EditPromoCommand.Execute(null);
 
         for (var i = 0; i < 4; i++)
         {
@@ -204,6 +213,7 @@ public sealed class PaymentFlowTests : IDisposable
         await flow.ApplyPromoCommand.ExecuteAsync(null);
         flow.AppliedPromo.Should().Be("YAY-10");
         flow.PromoLine.Should().Be(T("pay.promoLine", "YAY-10", Formats.Money(0.05m, "az")));
+        flow.IsTyping.Should().BeFalse("an accepted code closes the sheet and brings back Sifariş et");
 
         await flow.PlaceCommand.ExecuteAsync(null);
         kit.Backend.Bodies[^1].Should().Contain("\"promoCode\":\"YAY-10\"");
@@ -218,6 +228,10 @@ public sealed class PaymentFlowTests : IDisposable
         var payment = kit.Backend.Payments.Values.Single();
         kit.Backend.Payments[payment.Id] = payment with { Status = "Succeeded" };
         await flow.RefreshPaymentAsync();
+        flow.IsTyping.Should().BeFalse("the receipt shows Bitir until the customer asks to type");
+
+        flow.OpenEmailCommand.Execute(null);
+        flow.IsTyping.Should().BeTrue();
 
         foreach (var key in "ad@")
         {
@@ -238,6 +252,22 @@ public sealed class PaymentFlowTests : IDisposable
         kit.Backend.Emails.Should().ContainSingle().Which.Should().Be((payment.Id, "ad@example.com"));
         flow.EmailSent.Should().Be(T("paid.emailSent", "a***@example.com"));
         flow.EmailInput.Should().BeEmpty();
+        flow.EmailEditing.Should().BeFalse("a sent receipt closes the sheet; the card shows where it went");
+        flow.IsTyping.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_typing_sheet_never_stays_open_over_another_screen()
+    {
+        var (flow, _) = await PlacedAsync();
+        flow.Stage.Should().Be(FlowStage.PaymentMethod);
+        flow.IsTyping.Should().BeFalse("the promo sheet of the options screen closed with it");
+
+        flow.EmailEditing = true;
+        flow.LeaveCommand.Execute(null);
+
+        flow.EmailEditing.Should().BeFalse();
+        flow.IsTyping.Should().BeFalse("the next customer sees the actions of their screen");
     }
 
     [Fact]

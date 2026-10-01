@@ -161,29 +161,33 @@
                                     BorderThickness="1"
                                     CornerRadius="{DynamicResource RadiusSm}"
                                     Padding="{DynamicResource Inset4}" Margin="{DynamicResource GapBelow4}">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                <!-- One column under the position: code, pages, status - side by side
+                                     they do not fit 280px and run into each other (T-122). -->
+                                <Grid ColumnDefinitions="Auto,*">
                                     <TextBlock Grid.Column="0"
                                                Text="{Binding Position, StringFormat=#{0}}"
                                                Classes="body-small"
                                                FontWeight="SemiBold"
                                                Foreground="{DynamicResource Brand600}"
-                                               VerticalAlignment="Center" />
+                                               VerticalAlignment="Top" />
                                     <StackPanel Grid.Column="1" Margin="{DynamicResource GapStart4}">
                                         <TextBlock Text="{Binding JobCode}"
                                                    Classes="body-small"
                                                    FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource Neutral900}" />
+                                                   Foreground="{DynamicResource Neutral900}"
+                                                   TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding PagesText}"
-                                                   Classes="caption" />
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2" Spacing="{DynamicResource Space4}" VerticalAlignment="Center">
-                                        <PathIcon Width="20" Height="20" HorizontalAlignment="Center"
-                                                  Data="{StaticResource IconPrint}" IsVisible="{Binding IsPrinting}"
-                                                  Foreground="{Binding IsPrinting, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
-                                        <PathIcon Width="20" Height="20" HorizontalAlignment="Center"
-                                                  Data="{StaticResource IconClock}" IsVisible="{Binding !IsPrinting}"
-                                                  Foreground="{Binding IsPrinting, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
-                                        <TextBlock Text="{Binding StatusText}" Classes="caption" HorizontalAlignment="Center" />
+                                                   Classes="caption"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                                            <PathIcon Width="20" Height="20" VerticalAlignment="Center"
+                                                      Data="{StaticResource IconPrint}" IsVisible="{Binding IsPrinting}"
+                                                      Foreground="{Binding IsPrinting, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
+                                            <PathIcon Width="20" Height="20" VerticalAlignment="Center"
+                                                      Data="{StaticResource IconClock}" IsVisible="{Binding !IsPrinting}"
+                                                      Foreground="{Binding IsPrinting, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
+                                            <TextBlock Text="{Binding StatusText}" Classes="caption" VerticalAlignment="Center" />
+                                        </StackPanel>
                                     </StackPanel>
                                 </Grid>
                             </Border>

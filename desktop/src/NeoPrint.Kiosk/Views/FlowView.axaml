@@ -386,49 +386,6 @@
                             <TextBlock Text="{Binding PromoRemoveText}" />
                         </Button>
                     </StackPanel>
-
-                    <!-- The code and its keyboard: capitals, digits and the dash. -->
-                    <StackPanel Spacing="{DynamicResource Space4}" IsVisible="{Binding PromoEditing}">
-                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                            <Border Classes="card" MinWidth="320">
-                                <TextBlock Text="{Binding PromoInput}" Classes="h2" />
-                            </Border>
-                            <Button Classes="secondary" Command="{Binding ApplyPromoCommand}">
-                                <TextBlock Text="{Binding PromoApplyText}" />
-                            </Button>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}"
-                                    IsVisible="{Binding PromoProblem, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <PathIcon Data="{StaticResource IconError}" Width="28" Height="28" Foreground="{DynamicResource Danger500}" VerticalAlignment="Top" />
-                            <TextBlock Text="{Binding PromoProblem}" Classes="caption" Foreground="{DynamicResource Danger500}" TextWrapping="Wrap" MaxWidth="480" />
-                        </StackPanel>
-                        <ItemsControl ItemsSource="{Binding PromoKeys}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <ItemsControl ItemsSource="{Binding}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="x:String">
-                                                <Button Classes="key"
-                                                        Classes.symbol="{Binding Converter={x:Static vm:ScreenConverters.IsSymbolKey}}"
-                                                        Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).PromoKeyCommand}"
-                                                        CommandParameter="{Binding}">
-                                                    <TextBlock Text="{Binding}" />
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Button Classes="key" Command="{Binding PromoEraseCommand}">
-                            <TextBlock Text="{Binding BackspaceKeyText}" />
-                        </Button>
-                    </StackPanel>
                 </StackPanel>
             </Grid>
 
@@ -542,50 +499,15 @@
                     <Border Classes="card">
                         <StackPanel Spacing="{DynamicResource Space4}">
                             <TextBlock Text="{Binding EmailTitle}" Classes="h2" />
-                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                                <Border Classes="card" MinWidth="360">
-                                    <TextBlock Text="{Binding EmailInput}" TextTrimming="CharacterEllipsis" MaxWidth="340" />
-                                </Border>
-                                <Button Classes="secondary" Command="{Binding SendEmailCommand}">
-                                    <TextBlock Text="{Binding EmailSendText}" />
-                                </Button>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}"
-                                        IsVisible="{Binding EmailProblem, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                <PathIcon Data="{StaticResource IconError}" Width="28" Height="28" Foreground="{DynamicResource Danger500}" VerticalAlignment="Top" />
-                                <TextBlock Text="{Binding EmailProblem}" Classes="caption" Foreground="{DynamicResource Danger500}" TextWrapping="Wrap" MaxWidth="460" />
-                            </StackPanel>
+                            <!-- The keyboard opens on its own sheet: it does not fit this column. -->
+                            <Button Classes="secondary" Command="{Binding OpenEmailCommand}" HorizontalAlignment="Stretch">
+                                <TextBlock Text="{Binding EmailOpenText}" />
+                            </Button>
                             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}"
                                         IsVisible="{Binding EmailSent, Converter={x:Static ObjectConverters.IsNotNull}}">
                                 <PathIcon Data="{StaticResource IconSuccess}" Width="28" Height="28" Foreground="{DynamicResource Success500}" />
                                 <TextBlock Text="{Binding EmailSent}" Classes="caption" Foreground="{DynamicResource Success500}" TextWrapping="Wrap" MaxWidth="460" />
                             </StackPanel>
-                            <ItemsControl ItemsSource="{Binding EmailKeys}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <ItemsControl ItemsSource="{Binding}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="x:String">
-                                                    <Button Classes="key"
-                                                            Classes.symbol="{Binding Converter={x:Static vm:ScreenConverters.IsSymbolKey}}"
-                                                            Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).EmailKeyCommand}"
-                                                            CommandParameter="{Binding}">
-                                                        <TextBlock Text="{Binding}" />
-                                                    </Button>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Button Classes="key" Command="{Binding EmailEraseCommand}">
-                                <TextBlock Text="{Binding BackspaceKeyText}" />
-                            </Button>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -651,10 +573,124 @@
                     </StackPanel>
                 </Border>
             </StackPanel>
+
+            <!-- ============ Typing sheets (docs/DESIGN_SYSTEM.md, "Yazma paneli") ============
+                 A full keyboard is wider than a side column, so the promo code and the
+                 receipt email are typed on a sheet over the whole content area; the
+                 action row below is hidden meanwhile (IsTyping). -->
+            <Border Background="{DynamicResource Neutral50}" IsVisible="{Binding PromoEditing}">
+                <Grid RowDefinitions="*,Auto">
+                    <StackPanel Spacing="{DynamicResource Space6}">
+                        <TextBlock Text="{Binding PromoButtonText}" Classes="h1" />
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                            <Border Classes="card" Width="{DynamicResource PayMethodWidth}" MinHeight="{DynamicResource TouchTarget}">
+                                <TextBlock Text="{Binding PromoInput}" Classes="h2" />
+                            </Border>
+                            <Button Classes="primary" Command="{Binding ApplyPromoCommand}" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding PromoApplyText}" Foreground="{DynamicResource Neutral0}" />
+                            </Button>
+                            <!-- Beside the field, not under it: the keys stay where the finger is. -->
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}" VerticalAlignment="Center"
+                                        IsVisible="{Binding PromoProblem, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <PathIcon Data="{StaticResource IconError}" Width="28" Height="28" Foreground="{DynamicResource Danger500}" VerticalAlignment="Top" />
+                                <TextBlock Text="{Binding PromoProblem}" Classes="caption" Foreground="{DynamicResource Danger500}" TextWrapping="Wrap" MaxWidth="560" />
+                            </StackPanel>
+                        </StackPanel>
+                        <!-- Capitals, digits and the dash; "Sil" beside the keys. -->
+                        <StackPanel Orientation="Horizontal">
+                            <ItemsControl ItemsSource="{Binding PromoKeys}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <ItemsControl ItemsSource="{Binding}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="x:String">
+                                                    <Button Classes="key"
+                                                            Classes.symbol="{Binding Converter={x:Static vm:ScreenConverters.IsSymbolKey}}"
+                                                            Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).PromoKeyCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <TextBlock Text="{Binding}" />
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Classes="key" Command="{Binding PromoEraseCommand}" VerticalAlignment="Top">
+                                <TextBlock Text="{Binding BackspaceKeyText}" />
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Row="1" Classes="secondary" HorizontalAlignment="Left" Margin="{DynamicResource GapBelow4}"
+                            Command="{Binding CloseKeyboardCommand}">
+                        <TextBlock Text="{Binding CloseKeyboardText}" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <Border Background="{DynamicResource Neutral50}" IsVisible="{Binding EmailEditing}">
+                <Grid RowDefinitions="*,Auto">
+                    <StackPanel Spacing="{DynamicResource Space6}">
+                        <TextBlock Text="{Binding EmailTitle}" Classes="h1" />
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                            <Border Classes="card" Width="{DynamicResource PayMethodWidth}" MinHeight="{DynamicResource TouchTarget}">
+                                <TextBlock Text="{Binding EmailInput}" Classes="h2" TextTrimming="CharacterEllipsis" />
+                            </Border>
+                            <Button Classes="primary" Command="{Binding SendEmailCommand}" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding EmailSendText}" Foreground="{DynamicResource Neutral0}" />
+                            </Button>
+                            <!-- Beside the field, not under it: the keys stay where the finger is. -->
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}" VerticalAlignment="Center"
+                                        IsVisible="{Binding EmailProblem, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <PathIcon Data="{StaticResource IconError}" Width="28" Height="28" Foreground="{DynamicResource Danger500}" VerticalAlignment="Top" />
+                                <TextBlock Text="{Binding EmailProblem}" Classes="caption" Foreground="{DynamicResource Danger500}" TextWrapping="Wrap" MaxWidth="560" />
+                            </StackPanel>
+                        </StackPanel>
+                        <!-- What an address is made of, with "@", ".", "-" and "_"; "Sil" beside the keys. -->
+                        <StackPanel Orientation="Horizontal">
+                            <ItemsControl ItemsSource="{Binding EmailKeys}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <ItemsControl ItemsSource="{Binding}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="x:String">
+                                                    <Button Classes="key"
+                                                            Classes.symbol="{Binding Converter={x:Static vm:ScreenConverters.IsSymbolKey}}"
+                                                            Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).EmailKeyCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <TextBlock Text="{Binding}" />
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Classes="key" Command="{Binding EmailEraseCommand}" VerticalAlignment="Top">
+                                <TextBlock Text="{Binding BackspaceKeyText}" />
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Row="1" Classes="secondary" HorizontalAlignment="Left" Margin="{DynamicResource GapBelow4}"
+                            Command="{Binding CloseKeyboardCommand}">
+                        <TextBlock Text="{Binding CloseKeyboardText}" />
+                    </Button>
+                </Grid>
+            </Border>
         </Panel>
 
         <!-- The actions: secondary on the left, the one primary on the right -->
-        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="{DynamicResource GapBelow4}">
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="{DynamicResource GapBelow4}" IsVisible="{Binding !IsTyping}">
 
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
                 <!-- Browse / cancel lookup / placed: leave -->

@@ -1210,6 +1210,18 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
             Track("screen_view", ("screen", value.ToString()));
         }
 
+        // A typing sheet belongs to its screen: it never stays open over another
+        // one, where it would also hide that screen's actions (IsTyping).
+        if (value != FlowStage.Options)
+        {
+            PromoEditing = false;
+        }
+
+        if (value != FlowStage.Placed)
+        {
+            EmailEditing = false;
+        }
+
         // Working keeps the step it was started from: preparing a file is still
         // choosing one, placing an order is still the options.
         _step = value switch

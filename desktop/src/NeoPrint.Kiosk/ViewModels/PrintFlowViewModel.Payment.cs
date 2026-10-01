@@ -98,6 +98,10 @@ public sealed partial class PrintFlowViewModel
     [ObservableProperty]
     private string? _emailSent;
 
+    /// <summary>The email typing sheet is open (docs/DESIGN_SYSTEM.md, "Yazma paneli").</summary>
+    [ObservableProperty]
+    private bool _emailEditing;
+
     [ObservableProperty]
     private bool _paidWithApp;
 
@@ -154,6 +158,16 @@ public sealed partial class PrintFlowViewModel
     public string EmailTitle => T("paid.emailTitle");
 
     public string EmailSendText => T("paid.emailSend");
+
+    public string EmailOpenText => T("paid.emailOpen");
+
+    public string CloseKeyboardText => T("keyboard.close");
+
+    /// <summary>
+    /// A typing sheet (promo code or email) fills the screen: the action row
+    /// under it is hidden, so the sheet's own button is the one primary.
+    /// </summary>
+    public bool IsTyping => PromoEditing || EmailEditing;
 
     public string AppNoteText => T("paid.appNote");
 
@@ -516,6 +530,7 @@ public sealed partial class PrintFlowViewModel
         EmailInput = string.Empty;
         EmailProblem = null;
         EmailSent = null;
+        EmailEditing = false;
         FiscalQr = null;
         FiscalPending = true;
         PaidWithApp = payment.Method is not "BankQr";
@@ -582,6 +597,23 @@ public sealed partial class PrintFlowViewModel
     }
 
     [RelayCommand]
+    private void OpenEmail()
+    {
+        EmailEditing = true;
+        EmailProblem = null;
+    }
+
+    /// <summary>"Bağla" on a typing sheet: it closes, what was typed stays.</summary>
+    [RelayCommand]
+    private void CloseKeyboard()
+    {
+        PromoEditing = false;
+        PromoProblem = null;
+        EmailEditing = false;
+        EmailProblem = null;
+    }
+
+    [RelayCommand]
     private void EmailKey(string? key)
     {
         if (key is { Length: 1 } && EmailInput.Length < 254)
@@ -626,6 +658,7 @@ public sealed partial class PrintFlowViewModel
             _emailKey = null;
             EmailSent = T("paid.emailSent", Mask(address));
             EmailInput = string.Empty;
+            EmailEditing = false;
             Track("receipt_emailed");
         }
         catch (KioskApiException exception)
@@ -701,6 +734,10 @@ public sealed partial class PrintFlowViewModel
         }
     }
 
+    partial void OnPromoEditingChanged(bool value) => OnPropertyChanged(nameof(IsTyping));
+
+    partial void OnEmailEditingChanged(bool value) => OnPropertyChanged(nameof(IsTyping));
+
     partial void OnFiscalQrChanged(string? value) => OnPropertyChanged(nameof(HasFiscalQr));
 
     partial void OnRefundTextChanged(string? value) => OnPropertyChanged(nameof(HasRefund));
@@ -731,6 +768,7 @@ public sealed partial class PrintFlowViewModel
         EmailInput = string.Empty;
         EmailProblem = null;
         EmailSent = null;
+        EmailEditing = false;
         PaidWithApp = false;
         RefundText = null;
         RefundQr = null;
