@@ -39,6 +39,10 @@ Real bank, real fiskal provayder (e-kassa), real printer və Windows kiosku əl 
 | `admin-15-refund-wallet-dialog.png` | Manual qaytarma: hesabı olan müştərinin ödənişi — "Balansa" və ya "Karta" |
 | `admin-16-refund-wallet-done.png` | Balansa qaytarılıb ("Balansa · Admin qərarı"), qaytarma fiskal çeki verilib |
 | `admin-17-refund-card-done.png` | Anonim bank QR ödənişi karta qaytarılıb |
+| `admin-18-refund-failed.png` | Bank refund-u 3 dəfə rədd edib (`mock-bank/refunds-fail`), ödəniş "Qaytarma alınmadı"; e-kassa `Down`, satış çeki "Hazırlanır" |
+| `admin-19-refund-to-voucher.png` | Uğursuz refund anonim müştəri üçün voucher-ə yönəldilir |
+| `admin-20-refund-voucher-done.png` | Voucher `RF-…` verilib, refund "Qaytarılıb"; tarixçədə "Qaytarma alınmadı" → "Qaytarıldı" |
+| `admin-21-fiscal-pending.png` | Fiskal çeklər: qaytarma çeki satış çekini gözləyir. E-kassa bərpa olunandan sonra hər iki çek avtomatik verilib (backoff ilə) |
 
 ## Mobil tətbiq
 

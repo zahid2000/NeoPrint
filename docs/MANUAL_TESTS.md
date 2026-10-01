@@ -207,6 +207,9 @@ Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-də
 | 11 | Admin → anonim bank QR ödənişi → **Qaytar** | Yalnız "Karta" seçimi; ödəniş `Qaytarılıb`, qaytarma fiskal çeki verilir |
 | 12 | Admin → **Qəbzlər** → PDF | PDF açılır: Azərbaycan hərfləri, ₼, fiskal QR (QuestPDF Linux image-də) |
 | 13 | Eyni `simulate-success`-i `?duplicate=true` ilə göndərin | Bir ödəniş, bir çap, bir fiskal çek (idempotency) |
+| 14 | `mock-bank/refunds-fail?fails=true` və `mock-fiscal/mode?mode=Down`, sonra №5 (ssenari A) | Refund `Refund.ProviderMaxAttempts` cəhddən sonra `Failed`, ödəniş "Qaytarma alınmadı", xəta mətni panelin dilində (T-127); satış çeki "Hazırlanır", xətası oxunaqlı |
+| 15 | Ödəniş səhifəsində uğursuz refund → təyinat "Voucher kodu" → **Yenidən göndər** | Voucher `RF-XXXX-XXXX`, refund "Qaytarılıb" |
+| 16 | `mock-fiscal/mode?mode=Ok`, `mock-bank/refunds-fail?fails=false` | Növbəti planlaşdırılmış cəhddə (backoff, ən çox 30 dəq) satış, sonra qaytarma çeki verilir; e-kassa rədd edən çek (`mode=Reject`) Fiskal çeklər-də **Yenidən göndər** ilə təkrarlanır |
 
 ## MT-06. Addım 4 — real provayderlər və telefon (T-099)
 
