@@ -247,6 +247,22 @@ public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport,
             return PrintOutcome.Failed(PrinterErrors.For(state));
         }
 
+        // printer-fail-next.txt: the next job breaks at the printer (it was
+        // ready when the job started), once - the "printer error while printing"
+        // path that printer-state.txt cannot reach, since a printer already in
+        // error leaves the job waiting instead.
+        var failNext = _outputDirectory is null ? null : Path.Combine(_outputDirectory, "printer-fail-next.txt");
+
+        if (failNext is not null && File.Exists(failNext))
+        {
+            var failure = Enum.TryParse<PrinterState>(File.ReadAllText(failNext).Trim(), ignoreCase: true, out var named)
+                ? named
+                : PrinterState.Error;
+            File.Delete(failNext);
+            request.Submitted?.Invoke(request.JobName);
+            return PrintOutcome.Failed(PrinterErrors.For(failure));
+        }
+
         if (_outputDirectory is not null)
         {
             Directory.CreateDirectory(_outputDirectory);

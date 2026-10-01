@@ -325,18 +325,24 @@ public sealed class PrintQueueWorker
         }
 
         await _printerLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        bool sent;
 
         try
         {
-            await PrintAsync(next, cancellationToken).ConfigureAwait(false);
+            sent = await PrintAsync(next, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
             _printerLock.Release();
         }
 
-        // There may be more; do not wait for the tick.
-        Wake();
+        // There may be more; do not wait for the tick. A job that waits for the
+        // printer waits for the tick too: going round at once would ask the
+        // backend for the queue without a pause and use up the kiosk's rate limit.
+        if (sent)
+        {
+            Wake();
+        }
     }
 
     private async Task<JournalEntry?> NextAsync(CancellationToken cancellationToken)
@@ -410,14 +416,15 @@ public sealed class PrintQueueWorker
             .FirstOrDefault();
     }
 
-    private async Task PrintAsync(JournalEntry entry, CancellationToken cancellationToken)
+    /// <returns>Whether the job went to the printer; false when it waits for one.</returns>
+    private async Task<bool> PrintAsync(JournalEntry entry, CancellationToken cancellationToken)
     {
         var printer = _selectedPrinter();
 
         if (string.IsNullOrWhiteSpace(printer))
         {
             _logger.LogWarning("No printer is selected; job {JobCode} waits.", entry.JobCode);
-            return;
+            return false;
         }
 
         var state = await _printers.GetStateAsync(printer, cancellationToken).ConfigureAwait(false);
@@ -427,7 +434,7 @@ public sealed class PrintQueueWorker
             // Not started: the job keeps its place and waits for the printer.
             SetActivity(new PrinterActivity(null, null, state, PrinterErrors.For(state)));
             _logger.LogWarning("Printer {Printer} is {State}; job {JobCode} waits.", printer, state, entry.JobCode);
-            return;
+            return false;
         }
 
         var counterBefore = await ReadCounterAsync(printer, cancellationToken).ConfigureAwait(false);
@@ -518,6 +525,7 @@ public sealed class PrintQueueWorker
         JobFinished?.Invoke(finished);
 
         await FlushReportsAsync(cancellationToken).ConfigureAwait(false);
+        return true;
     }
 
     /// <summary>Sends every final state the backend has not heard; each is safe to repeat.</summary>

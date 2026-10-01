@@ -250,6 +250,46 @@ public sealed class PrintQueueWorkerTests : IDisposable
     }
 
     [Fact]
+    public async Task The_fake_printer_can_break_the_next_job_once_to_walk_the_refund_path_by_hand()
+    {
+        // T-123: printer-state.txt only makes a job wait; printer-fail-next.txt
+        // breaks a job at the printer, which is what a refund follows (scenario A).
+        var worker = Worker();
+        var broken = await PlaceAsync(worker, "111111");
+        var failNext = Path.Combine(_paths.SpoolDirectory, "printed", "printer-fail-next.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(failNext)!);
+        await File.WriteAllTextAsync(failNext, "PaperJam");
+
+        await worker.StepAsync(CancellationToken.None);
+
+        _backend.Reports[^1].Should().Be((broken, "Interrupted", 0, 0, "printer.paperJam"));
+        File.Exists(failNext).Should().BeFalse("it breaks one job, not every one after it");
+
+        _backend.Queue.RemoveAll(item => item.JobId == broken);
+        await PlaceAsync(worker, "222222");
+        await worker.StepAsync(CancellationToken.None);
+
+        _printer.Printed.Select(print => print.JobName).Should().Equal("NeoPrint-222222");
+    }
+
+    [Fact]
+    public async Task A_job_waiting_for_the_printer_waits_for_the_tick_and_does_not_flood_the_backend()
+    {
+        // T-121: a jammed printer made the worker go round at once, asking for the
+        // queue without a pause until the backend rate-limited the kiosk (429) and
+        // its heartbeats stopped reaching it.
+        var worker = Worker();
+        await PlaceAsync(worker);
+        _printer.SimulatedState = PrinterState.PaperJam;
+
+        using var run = new CancellationTokenSource(TimeSpan.FromMilliseconds(600));
+        await worker.RunAsync(run.Token);
+
+        _printer.Printed.Should().BeEmpty();
+        _backend.QueueReads.Should().BeLessThanOrEqualTo(2, "the next look is on the poll interval, not at once");
+    }
+
+    [Fact]
     public async Task A_job_cancelled_on_the_backend_loses_its_file_and_does_not_print()
     {
         var worker = Worker();
@@ -363,8 +403,13 @@ public sealed class PrintQueueWorkerTests : IDisposable
 
         public bool Down { get; set; }
 
+        public int QueueReads { get; private set; }
+
         public Task<IReadOnlyList<QueueItem>> GetQueueAsync(CancellationToken cancellationToken)
-            => Down ? throw new HttpRequestException("down") : Task.FromResult<IReadOnlyList<QueueItem>>([.. Queue]);
+        {
+            QueueReads++;
+            return Down ? throw new HttpRequestException("down") : Task.FromResult<IReadOnlyList<QueueItem>>([.. Queue]);
+        }
 
         public Task ReportAsync(
             Guid jobId, string status, int printedSides, int printedSheets, string? errorCode, PrintAttemptReport? attempt, CancellationToken cancellationToken)
