@@ -130,6 +130,32 @@ public sealed record PrintJobStatusRequest(
     string? Status, int PrintedSides, int PrintedSheets, string? ErrorCode, PrintAttemptInput? Attempt = null);
 
 /// <summary>
+/// The customer's own jobs in the app (plan section 6: <c>GET print-jobs/my</c>).
+/// </summary>
+/// <remarks>
+/// Its own class because the kiosk controller above takes kiosk tokens only;
+/// "my" never matches the kiosk's <c>{id:guid}</c> routes.
+/// </remarks>
+[ApiController]
+[Route("api/print-jobs")]
+[Authorize(Policy = AuthorizationPolicies.User)]
+public sealed class MyPrintJobsController : ControllerBase
+{
+    private readonly ISender _sender;
+    private readonly ICurrentUser _currentUser;
+
+    public MyPrintJobsController(ISender sender, ICurrentUser currentUser)
+    {
+        _sender = sender;
+        _currentUser = currentUser;
+    }
+
+    [HttpGet("my")]
+    public async Task<ActionResult<IReadOnlyList<MyPrintJobView>>> Mine(CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new ListMyPrintJobsQuery(_currentUser.UserId ?? throw new UnauthorizedAccessException()), cancellationToken));
+}
+
+/// <summary>
 /// Print jobs in the admin panel (plan sections 6 "Admin Queue / Jobs", 8A.3).
 /// </summary>
 [ApiController]

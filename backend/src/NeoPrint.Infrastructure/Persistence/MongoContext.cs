@@ -346,6 +346,9 @@ public sealed class MongoContext
                 Named("ix_print_jobs_kiosk_status_queued")),
             // The admin list, newest first.
             (Builders<Domain.PrintJobs.PrintJob>.IndexKeys.Descending(job => job.CreatedAt), Named("ix_print_jobs_created")),
+            // A customer's own jobs in the app, newest first.
+            (Builders<Domain.PrintJobs.PrintJob>.IndexKeys.Ascending(job => job.UserId).Descending(job => job.CreatedAt),
+                Named("ix_print_jobs_user_created")),
             // Jobs left waiting for a payment, for the expiry job.
             (Builders<Domain.PrintJobs.PrintJob>.IndexKeys.Ascending(job => job.Status).Ascending(job => job.CreatedAt),
                 Named("ix_print_jobs_status_created")));

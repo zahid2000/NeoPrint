@@ -222,6 +222,7 @@ builder.Services.AddScoped<IAdminNotifier, SignalRAdminNotifier>();
 builder.Services.AddScoped<IKioskNotifier, SignalRKioskNotifier>();
 builder.Services.AddScoped<NeoPrint.Application.Payments.IPaymentNotifier, SignalRKioskNotifier>();
 builder.Services.AddScoped<NeoPrint.Application.Refunds.IPaymentsAdminNotifier, SignalRPaymentsAdminNotifier>();
+builder.Services.AddScoped<NeoPrint.Application.Notifications.IUserNotifier, SignalRUserNotifier>();
 
 // The customer and the bank, played in Development only (plan section 6, "Dev").
 if (builder.Environment.IsDevelopment())
@@ -506,6 +507,7 @@ app.MapControllers();
 app.MapHub<ProvisioningHub>("/hubs/provisioning");
 app.MapHub<AdminHub>("/hubs/admin");
 app.MapHub<KioskHub>("/hubs/kiosk");
+app.MapHub<UserHub>("/hubs/user");
 
 // Liveness: the process is up. Used by the container health check, and must not
 // depend on anything external, or a brief database blip would restart the API.

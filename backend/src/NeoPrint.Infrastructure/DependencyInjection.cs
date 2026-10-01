@@ -299,6 +299,7 @@ public static class DependencyInjection
             bus.AddConsumer<Fiscal.RefundFiscalizationConsumer>();
             bus.AddConsumer<Receipts.ReceiptConsumer>();
             bus.AddConsumer<Receipts.ReceiptFiscalConsumer>();
+            bus.AddConsumer<Notifications.UserNotificationConsumer>();
 
             // Every process caches the storage providers, so every process needs
             // its own copy of this event: a queue per instance, deleted when the

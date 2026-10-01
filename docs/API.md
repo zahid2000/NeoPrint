@@ -755,7 +755,8 @@ yenilənmiş flag.
 |---|---|---|
 | `/hubs/provisioning` | Provisioning token | Aktivləşdirmə anında cihaza xəbər verilir — cihaz kod ekranından özü keçir |
 | `/hubs/admin` | Admin token | `PermissionsChanged`, `DeviceRevoked`, `QueueUpdated` (yalnız hesabın əhatəsindəki kiosklar üçün) |
-| `/hubs/kiosk` | Kiosk token | Qrup `kiosk:{kioskId}` (token-dəki kiosk). `QueueUpdated` (`{kioskId, queue[]}`), `JobAdded`, `JobCancelled` (`{kioskId, jobId}`), `PrinterConfigChanged`, `KioskConfigChanged`, `KioskCommand` |
+| `/hubs/kiosk` | Kiosk token | Qrup `kiosk:{kioskId}` (token-dəki kiosk). `QueueUpdated` (`{kioskId, queue[]}`), `JobAdded`, `JobCancelled` (`{kioskId, jobId}`), `PrinterConfigChanged`, `KioskConfigChanged`, `KioskCommand`, `PaymentConfirmed` (`{kioskId, paymentId, jobId}`) |
+| `/hubs/user` | User token | Qrup `user:{userId}` (token-dəki istifadəçi; başqasının hadisəsi heç vaxt gəlmir). `JobStatusChanged` (`{jobId, jobCode, status}` — `Suspected` daxil), `PaymentStatusChanged` (`{paymentId, jobId, status}`), `RefundStatusChanged` (`{refundId, paymentId, jobId, status, amount, destination}`). Mesaj yalnız xəbərdir: cari statusu daşıyır, təfərrüat API-dən oxunur; itən və ya təkrar gələn mesaj heç nəyi pozmur |
 
 Redis backplane ilə işləyir, ona görə bir necə API instansiyası eyni qrupları
 xidmət edə bilir.
@@ -1046,6 +1047,12 @@ Sifariş; kod ilə axtarış ləğv ekranı üçündür (Bölmə 7.3, ekran 11).
 Kiosk çapın gedişini bildirir: `{ "status": "Printing" | "Completed" | "Interrupted", "printedSides": 8, "printedSheets": 4, "errorCode": "printer.outOfPaper" }`. Eyni hesabat təkrar gəlsə heç nə dəyişmir (idempotent). Printer sifarişdən çox vərəq bildirsə sayğac sifarişin həddinə qədər azalır. Tanınmayan `errorCode` → `printer.error`. Xəta kodları: `printer.offline`, `printer.outOfPaper`, `printer.paperJam`, `printer.notSelected`, `printer.notFound`, `printer.spoolFailed`, `printer.fileMissing`, `printer.restarted`, `printer.error`.
 
 İstəyə bağlı `attempt` — hesabatın aid olduğu çap cəhdi, `print_attempts`-ə yazılır (plan 2.5; "çap olubmu?" sualının sübutu): `{ "number": 1, "printer", "spoolerJobId", "startedAt", "finishedAt", "counterBefore", "counterAfter", "counterUnit": "sheets" | "impressions", "recovered" }`. `spoolerJobId` — CUPS request id və ya Windows sənəd adı; `counterBefore`/`counterAfter` — printerin SNMP sayğacı (şəbəkə printeri deyilsə `null`); `recovered: true` — nəticə kiosk restart-dan sonra spooler və sayğacla müəyyən edilib. Bir iş + nömrə = bir sətir: təkrar hesabat sətri yeniləyir. Yanlış məlumat → `400 printJobs.attemptInvalid`. Cəhd job-un statusu dəyişməsə də (məs. job artıq ləğv olunub) yazılır.
+
+### `GET /api/print-jobs/my` (User token)
+
+Tətbiqdə "Sifarişlərim": hesabın son 100 sifarişi, ən yenisi əvvəl —
+`[{ id, jobCode, status, kioskId, kioskCode, kioskName, fileName, pages, copies, color, paper, amount, currency, printedSides, reason, paymentId, createdAt, finishedAt }]`.
+Tətbiqlə ödənilən kiosk sifarişi ödəniş anında hesaba bağlanır və burada görünür; bank QR ilə ödənilən anonim sifariş görünmür. `amount` — kioskda göstərilən qiymət (promokod daxil); faktiki tutulan məbləğ qəbzdədir. `reason` — dayanma və ya ləğv səbəbi oxuyanın dilində.
 
 ### `GET /api/print-jobs/{id}/refunds` (Kiosk token)
 

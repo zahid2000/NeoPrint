@@ -138,6 +138,14 @@ public sealed class PrintJobRepository : IPrintJobRepository
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<PrintJob>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default)
+        => await _context.PrintJobs
+            .Find(job => job.UserId == userId)
+            .SortByDescending(job => job.CreatedAt)
+            .Limit(take)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<IReadOnlyList<PrintJob>> ListAwaitingPaymentAsync(
         DateTime createdBefore, int take, CancellationToken cancellationToken = default)
         => await _context.PrintJobs

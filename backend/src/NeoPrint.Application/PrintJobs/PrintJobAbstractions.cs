@@ -43,6 +43,9 @@ public interface IPrintJobRepository
 
     Task<IReadOnlyList<PrintJob>> ListByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
 
+    /// <summary>A customer's own jobs, newest first (plan section 6: <c>GET print-jobs/my</c>).</summary>
+    Task<IReadOnlyList<PrintJob>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default);
+
     /// <summary>Jobs still waiting for a payment that were placed before <paramref name="createdBefore"/>, oldest first.</summary>
     Task<IReadOnlyList<PrintJob>> ListAwaitingPaymentAsync(DateTime createdBefore, int take, CancellationToken cancellationToken = default);
 
