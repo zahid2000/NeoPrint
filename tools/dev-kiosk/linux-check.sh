@@ -28,7 +28,7 @@ MSYS_NO_PATHCONV=1 docker run --rm \
     apt-get install -y -qq libfontconfig1 fonts-dejavu-core >/dev/null
     mkdir -p /w
     cd /src
-    tar --exclude=bin --exclude=obj -cf - global.json Directory.Build.props Directory.Packages.props desktop backend/shared | tar -xf - -C /w
+    tar --exclude=bin --exclude=obj -cf - global.json Directory.Build.props Directory.Packages.props desktop backend/shared backend/src/NeoPrint.Contracts | tar -xf - -C /w
     cd /w
     dotnet build desktop/NeoPrint.Kiosk.sln -c Release -p:EnableWindowsTargeting=true -v q
     dotnet test desktop/NeoPrint.Kiosk.sln -c Release --no-build -p:EnableWindowsTargeting=true
