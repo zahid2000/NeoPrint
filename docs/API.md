@@ -1339,7 +1339,7 @@ audit-ə və loqa yazılmır.
 | Endpoint | Nə edir |
 |---|---|
 | `GET /api/wallet` | `{ "balance": 5.00, "bonusPages": 0, "currency": "AZN" }` |
-| `GET /api/wallet/transactions?page=&pageSize=` | Ledger, ən yenisi əvvəl: `type` (`TopUp`, `Payment`, `Refund`, `Bonus`, `VoucherRedeem`, `AdminAdjust`), `amount` (işarəli), `bonusPages`, `balanceAfter`, `createdAt`, `note` |
+| `GET /api/wallet/transactions?page=&pageSize=` | Ledger, ən yenisi əvvəl: `type` (`TopUp`, `Payment`, `Refund`, `Bonus`, `VoucherRedeem`, `AdminAdjust`), `amount` (işarəli), `bonusPages`, `balanceAfter`, `createdAt`, `note` (refund səbəbi sorğunun `Accept-Language` dilində; admin düzəlişinin qeydi yazıldığı kimi) |
 | `POST /api/wallet/top-up` (`Idempotency-Key`) | `{ "amount": 5 }` (1–500 ₼, 2 onluq) → kartla artırma; cavab `{ paymentId, status, wallet }`. Kart rədd etsə `409 payments.declined`, heç nə yazılmır |
 
 **Balansı karta çıxarmaq, nağdlaşdırmaq və ya qaytarmaq üçün heç bir endpoint yoxdur** (plan 2.14) — test marşrutların tam siyahısını yoxlayır.
