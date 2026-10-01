@@ -310,6 +310,13 @@ public sealed class RefundTests
 
         await EventuallyAsync(() => PaymentAsync(paymentId), p => p.Status == PaymentStatus.Refunded, "the wallet refund");
         (await user.Client.GetFromJsonAsync<JsonElement>("/api/wallet")).GetProperty("balance").GetDecimal().Should().Be(5m);
+
+        // T-125: the ledger keeps the reason as a message key; the reader gets it in their language.
+        using var history = new HttpRequestMessage(HttpMethod.Get, "/api/wallet/transactions?page=1&pageSize=10");
+        history.Headers.AcceptLanguage.ParseAdd("az");
+        var entries = (await (await user.Client.SendAsync(history)).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items");
+        entries.EnumerateArray().Single(e => e.GetProperty("type").GetString() == "Refund")
+            .GetProperty("note").GetString().Should().Be("Admin qaytarması");
     }
 
     private async Task CreateAsync(RefundRequested decision)

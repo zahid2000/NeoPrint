@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Application.Common;
+using NeoPrint.Application.Localization;
 using NeoPrint.Application.Payments;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Payments;
@@ -93,7 +94,10 @@ public sealed class WalletHandlers :
                     entry.BalanceAfter.Amount,
                     entry.BonusPagesAfter,
                     entry.CreatedAt,
-                    entry.Note))
+
+                    // A refund keeps its reason as a message key (T-125); an
+                    // admin's correction is plain text and reads as itself.
+                    Messages.WriteStored(entry.Note)))
                 .ToList(),
             total,
             page,
