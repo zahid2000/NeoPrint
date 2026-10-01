@@ -101,7 +101,7 @@ public sealed class PaymentsController : ControllerBase
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return Ok(await _sender.Send(new PayWithAppCommand(UserId, id, request.Source ?? string.Empty, request.UseBonus, request.ExpectedAmount), cancellationToken));
+        return Ok(await _sender.Send(new PayWithAppCommand(UserId, id, request.Source ?? string.Empty, request.UseBonus, request.ExpectedAmount, request.PromoCode), cancellationToken));
     }
 
     /// <summary>
@@ -139,7 +139,7 @@ public sealed record CreatePaymentIntentRequest(Guid JobId, string Method);
 
 /// <param name="Source"><c>Wallet</c> or <c>Card</c>.</param>
 /// <param name="ExpectedAmount">The money part the app showed (after bonus pages and the promo code); optional.</param>
-public sealed record PayWithAppRequest(string? Source, bool UseBonus, decimal? ExpectedAmount = null);
+public sealed record PayWithAppRequest(string? Source, bool UseBonus, decimal? ExpectedAmount = null, string? PromoCode = null);
 
 /// <summary>
 /// The customer and the bank, played in Development (plan section 6,

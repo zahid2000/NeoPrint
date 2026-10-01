@@ -89,7 +89,7 @@ public sealed class AppPaymentHandlers :
         ArgumentNullException.ThrowIfNull(request);
 
         var plan = await _sender
-            .Send(new ReserveAppPaymentCommand(request.UserId, request.PaymentId, request.Source, request.UseBonus, request.ExpectedAmount), cancellationToken)
+            .Send(new ReserveAppPaymentCommand(request.UserId, request.PaymentId, request.Source, request.UseBonus, request.ExpectedAmount, request.PromoCode), cancellationToken)
             .ConfigureAwait(false);
 
         if (!plan.Settled && plan.CardReference is { } reference)
@@ -153,6 +153,23 @@ public sealed class AppPaymentHandlers :
         // promo code on what is left; whatever remains is paid in money.
         var afterBonus = payment.Gross - bonusValue;
         var discount = Money.Zero;
+
+        if (!string.IsNullOrWhiteSpace(request.PromoCode) && job.PromoCodeId is null && afterBonus.IsPositive)
+        {
+            // Typed in the app because none was given at the kiosk (one code per
+            // order). Refused codes stop here, before any money is set aside.
+            var typed = await _promos
+                .CheckAsync(request.PromoCode, payment.KioskId, job.Price.ProfileId, afterBonus, request.UserId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (typed.Refusal is { } refusal)
+            {
+                throw new ValidationException([new ValidationError("promoCode", refusal)]);
+            }
+
+            job.AttachPromo(typed.Promo!.Id, typed.Promo.Code, typed.Discount.Amount);
+            await _jobs.UpdateAsync(job, cancellationToken).ConfigureAwait(false);
+        }
 
         if (job is { PromoCodeId: { } promoId, PromoCode: { } code } && afterBonus.IsPositive
             && (await _promos.CheckAsync(code, payment.KioskId, job.Price.ProfileId, afterBonus, request.UserId, cancellationToken).ConfigureAwait(false))

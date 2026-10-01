@@ -18,14 +18,16 @@ public sealed record GetAppPaymentQuery(Guid UserId, Guid PaymentId) : IRequest<
 /// </summary>
 /// <param name="Source"><c>Wallet</c> or <c>Card</c>: what pays whatever the bonus pages do not.</param>
 /// <param name="ExpectedAmount">What the app showed as the money part; a different price (a promo that stopped applying) is refused, never charged silently.</param>
-public sealed record PayWithAppCommand(Guid UserId, Guid PaymentId, string Source, bool UseBonus, decimal? ExpectedAmount = null) : IRequest<AppPaymentView>;
+/// <param name="PromoCode">A code typed in the app when the kiosk order has none (plan section 2.7: one per order); a code that does not apply is a 400 on <c>promoCode</c> and nothing is taken.</param>
+public sealed record PayWithAppCommand(Guid UserId, Guid PaymentId, string Source, bool UseBonus, decimal? ExpectedAmount = null, string? PromoCode = null)
+    : IRequest<AppPaymentView>;
 
 /// <summary>
 /// Step one of <see cref="PayWithAppCommand"/>: the wallet and bonus parts are
 /// taken (reserved) and, when nothing is left for the card, the payment is
 /// settled in the same transaction.
 /// </summary>
-public sealed record ReserveAppPaymentCommand(Guid UserId, Guid PaymentId, string Source, bool UseBonus, decimal? ExpectedAmount = null)
+public sealed record ReserveAppPaymentCommand(Guid UserId, Guid PaymentId, string Source, bool UseBonus, decimal? ExpectedAmount = null, string? PromoCode = null)
     : IRequest<AppPaymentPlan>, ITransactionalRequest;
 
 /// <summary>

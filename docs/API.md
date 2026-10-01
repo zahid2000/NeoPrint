@@ -1155,7 +1155,7 @@ tələb olunur (`RefundRequested`, səbəb `LatePayment` / `DuplicatePayment`).
 | Endpoint | Nə edir |
 |---|---|
 | `GET /api/payments/{id}/app` | Kioskdakı `neoprint://pay/{id}` QR-ı skan edəndən sonra təsdiq ekranı: məbləğ, kiosk, sifariş (səhifə, nüsxə, rəng, kağız), balans, bonus səhifələr və bu sifarişdə istifadə oluna bilən bonus (`bonusPagesUsable`, `bonusValue`). Bank QR-ı və başqasının götürdüyü ödəniş `404` |
-| `POST /api/payments/{id}/pay-with-app` (`Idempotency-Key`) | `{ "source": "Wallet" \| "Card", "useBonus": true }` — əvvəl bonus səhifələr (1 səhifə = sifarişin bir üzünün qiyməti, ən çox `Referral.MaxBonusPagesPerJob`), qalanı balansdan və ya kartdan. Job, qəbz və flaş faylı istifadəçinin hesabına bağlanır |
+| `POST /api/payments/{id}/pay-with-app` (`Idempotency-Key`) | `{ "source": "Wallet" \| "Card", "useBonus": true, "expectedAmount"?: 0.15, "promoCode"?: "YAZ10" }` — `promoCode` yalnız kioskda kod verilməyibsə nəzərə alınır (sifarişdə bir kod), uyğun deyilsə `400` (`errors.promoCode`) və heç nə tutulmur; əvvəl bonus səhifələr (1 səhifə = sifarişin bir üzünün qiyməti, ən çox `Referral.MaxBonusPagesPerJob`), qalanı balansdan və ya kartdan. Job, qəbz və flaş faylı istifadəçinin hesabına bağlanır |
 
 Qaydalar: balans və bonus hissəsi kart çıxılmazdan **əvvəl** ledger-də ayrılır
 (`payment:{id}:{cəhd}`); kart rədd etsə geri qaytarılır (`release:{id}:{cəhd}`) və
@@ -1256,7 +1256,7 @@ sifarişin qiymət snapshot-u dəyişmir (ödənişdə `gross` = snapshot, `disc
 |---|---|
 | Kiosk sifarişi (`POST /api/print-jobs` + `promoCode`) | Kod yoxlanır (anonim: istifadəçi limiti yoxdur); uyğun deyilsə `400` (`errors.promoCode`, səbəb oxuyanın dilində). Cavabda `price.promoCode`, `price.promoDiscount` (bütün qiymətə), `price.amountDue` |
 | Bank QR intent-i | Yer tutulur (şərti artım — limit iki paralel ödənişdə də keçilmir), bank endirimli məbləği görür. Kod artıq tətbiq olunmursa (son yer getdi, müddət bitdi) tam qiymət və `promoRefusal` — müştəri ödəmədən öncə görür. Endirim hamısını örtürsə ödəniş dərhal `Succeeded`, QR yoxdur |
-| Tətbiqlə ödəniş (`pay-with-app`) | Bonusdan sonra qalan məbləğə; istifadəçi limiti yoxlanır. `GET /api/payments/{id}/app`: `promoCode`, `promoDiscount` (bonussuz), `promoDiscountWithBonus`, `promoRefusal`. İstəyə görə `expectedAmount` — tətbiqin göstərdiyi pul hissəsi; fərqlidirsə `409 payments.priceChanged`, heç nə tutulmur |
+| Tətbiqlə ödəniş (`pay-with-app`) | Bonusdan sonra qalan məbləğə; istifadəçi limiti yoxlanır. Kioskda kod verilməyibsə istifadəçi onu tətbiqdə yaza bilər (`promoCode`; önizləmə `POST promos/validate` + `kioskId` + bonusdan sonrakı məbləğ ilə). `GET /api/payments/{id}/app`: `promoCode`, `promoDiscount` (bonussuz), `promoDiscountWithBonus`, `promoRefusal`. İstəyə görə `expectedAmount` — tətbiqin göstərdiyi pul hissəsi; fərqlidirsə `409 payments.priceChanged`, heç nə tutulmur |
 | Ödəniş baş tutmadı (vaxt bitdi, rədd, metod dəyişdi, kart rədd edildi) | Yer geri verilir (`Released`) |
 | Tam refund | İstifadə ləğv olunur (`Cancelled`), yer boşalır; **endirim pul kimi qaytarılmır** — refund ödənilən məbləğdəndir |
 | Gec gələn ödəniş (vaxtı bitmiş intent sonradan ödənildi) | İstifadə yenidən tutulur (limitdən asılı olmayaraq — pul endirimli alınıb) |

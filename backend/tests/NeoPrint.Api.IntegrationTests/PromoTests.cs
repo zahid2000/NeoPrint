@@ -224,6 +224,47 @@ public sealed class PromoTests
         (await FiscalAsync(intent.GetProperty("id").GetGuid())).Should().BeNull("nothing paid in money is not fiscalized");
     }
 
+    [DockerFact]
+    public async Task A_code_typed_in_the_app_applies_when_the_kiosk_order_has_none_and_a_wrong_one_takes_nothing()
+    {
+        if (Skip)
+        {
+            return;
+        }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        var code = await CreateAsync(admin, "Percent", 50m);
+        using var user = await TestUsers.ConfirmedAsync(_fixture);
+        await AdjustAsync(admin, user.Id, 5m, 0);
+
+        using var kiosk = await ReadyKioskAsync(_fixture, "promo-typed");
+        var jobId = (await PlaceAsync(kiosk.Client, 3)).GetProperty("id").GetGuid();
+        var paymentId = (await IntentAsync(kiosk.Client, jobId, "MobileApp")).GetProperty("id").GetGuid();
+
+        // A code that does not exist: refused on the field, nothing set aside.
+        var wrong = await PayAsync(user, paymentId, useBonus: false, expected: 0.15m, promoCode: "NOPE-1234");
+        wrong.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await wrong.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors").TryGetProperty("promoCode", out _).Should().BeTrue();
+        (await user.Client.GetFromJsonAsync<JsonElement>("/api/wallet")).GetProperty("balance").GetDecimal().Should().Be(5m);
+
+        // The real one: half of 0,30.
+        var paid = await PayAsync(user, paymentId, useBonus: false, expected: 0.15m, promoCode: code.ToLowerInvariant());
+        paid.StatusCode.Should().Be(HttpStatusCode.OK, await paid.Content.ReadAsStringAsync());
+
+        var payment = await PaymentAsync(paymentId);
+        payment.PromoCode.Should().Be(code);
+        payment.Discount.Amount.Should().Be(0.15m);
+        payment.Parts!.Wallet.Amount.Should().Be(0.15m);
+        await EventuallyAsync(() => UsageAsync(paymentId), u => u?.Status == PromoUsageStatus.Confirmed, "the confirmed usage");
+
+        // A kiosk order that already has a code keeps it: one code per order.
+        var other = await CreateAsync(admin, "Fixed", 0.05m);
+        var withCode = (await PlaceAsync(kiosk.Client, 3, code)).GetProperty("id").GetGuid();
+        var second = (await IntentAsync(kiosk.Client, withCode, "MobileApp")).GetProperty("id").GetGuid();
+        (await PayAsync(user, second, useBonus: false, expected: 0.15m, promoCode: other)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await PaymentAsync(second)).PromoCode.Should().Be(code);
+    }
+
     private static string NewCode() => $"T{Guid.NewGuid():N}"[..12].ToUpperInvariant();
 
     private static async Task<string> CreateAsync(HttpClient admin, string kind, decimal value, int? totalLimit = null, int? perUserLimit = null)
@@ -264,11 +305,11 @@ public sealed class PromoTests
         (await admin.SendAsync(request)).EnsureSuccessStatusCode();
     }
 
-    private static async Task<HttpResponseMessage> PayAsync(TestUser user, Guid paymentId, bool useBonus, decimal expected)
+    private static async Task<HttpResponseMessage> PayAsync(TestUser user, Guid paymentId, bool useBonus, decimal expected, string? promoCode = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/payments/{paymentId}/pay-with-app")
         {
-            Content = JsonContent.Create(new { source = "Wallet", useBonus, expectedAmount = expected }),
+            Content = JsonContent.Create(new { source = "Wallet", useBonus, expectedAmount = expected, promoCode }),
         };
         request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
 
