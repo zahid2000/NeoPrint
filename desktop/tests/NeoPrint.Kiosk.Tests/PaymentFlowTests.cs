@@ -129,10 +129,9 @@ public sealed class PaymentFlowTests : IDisposable
 
         flow.Stage.Should().Be(FlowStage.Placed);
         flow.PaidWithApp.Should().BeTrue();
-        await UntilAsync(
-            () => Directory.Exists(Path.Combine(kit.Paths.SpoolDirectory, "jobs"))
-                  && Directory.GetFiles(Path.Combine(kit.Paths.SpoolDirectory, "jobs")).Any(file => file.Contains("upload-", StringComparison.Ordinal)),
-            "the kept upload");
+        // Kept means on the waiting list, not just a file appearing in the spool:
+        // the file is written before it is listed (T-118).
+        await UntilAsync(() => kit.FlashUploads.Pending == 1, "the kept upload");
 
         // Back on the network: the next retry sends it, once.
         kit.Backend.UploadsDown = false;

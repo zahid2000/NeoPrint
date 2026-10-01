@@ -18,6 +18,14 @@ namespace NeoPrint.Kiosk.Printing;
 /// </summary>
 public sealed class FlashUploads
 {
+    /// <summary>
+    /// How long a file that cannot reach the account is tried for (plan section
+    /// 2.2: "24 saat ərzində təkrar cəhd edir"). After that it leaves the kiosk:
+    /// a customer's file is not kept on a public device longer than the plan
+    /// allows, and the print never waited for it.
+    /// </summary>
+    public static readonly TimeSpan Lifetime = TimeSpan.FromHours(24);
+
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private readonly KioskApiClient _api;
@@ -25,6 +33,7 @@ public sealed class FlashUploads
     private readonly string _listPath;
     private readonly ILogger<FlashUploads> _logger;
     private readonly SemaphoreSlim _lock = new(1, 1);
+    private int _pending;
 
     public FlashUploads(KioskApiClient api, SpoolStore spool, IAppPaths paths, ILogger<FlashUploads> logger)
     {
@@ -34,10 +43,18 @@ public sealed class FlashUploads
         _spool = spool;
         _listPath = Path.Combine(paths.SpoolDirectory, "uploads.json");
         _logger = logger;
+        _pending = Load().Count;
     }
 
-    /// <summary>Uploads waiting to be sent.</summary>
-    public int Pending => Load().Count;
+    /// <summary>The clock; tests move it past <see cref="Lifetime"/>.</summary>
+    public Func<DateTime> Now { get; set; } = () => DateTime.UtcNow;
+
+    /// <summary>
+    /// Uploads waiting to be sent. Kept in memory and updated with every save
+    /// under the lock: reading the list file here would race the save that
+    /// replaces it (T-118).
+    /// </summary>
+    public int Pending => Volatile.Read(ref _pending);
 
     /// <summary>Keeps the file for the job and sends it; a failure leaves it for <see cref="SendPendingAsync"/>.</summary>
     public async Task KeepAndSendAsync(Guid jobId, string sourcePath, string fileName, CancellationToken cancellationToken)
@@ -53,7 +70,7 @@ public sealed class FlashUploads
         {
             var list = Load();
             list.RemoveAll(item => item.JobId == jobId);
-            list.Add(new PendingUpload(jobId, fileName, DateTime.UtcNow));
+            list.Add(new PendingUpload(jobId, fileName, Now()));
             Save(list);
         }
         finally
@@ -78,6 +95,13 @@ public sealed class FlashUploads
                 if (!_spool.Exists(SpoolName(item.JobId)))
                 {
                     list.Remove(item);
+                    continue;
+                }
+
+                if (Now() - item.Since > Lifetime)
+                {
+                    Forget(list, item);
+                    _logger.LogWarning("The flash file of job {JobId} could not be sent for 24 hours; removed from the kiosk.", item.JobId);
                     continue;
                 }
 
@@ -146,6 +170,7 @@ public sealed class FlashUploads
         var temporary = _listPath + ".partial";
         File.WriteAllText(temporary, JsonSerializer.Serialize(list, Json));
         File.Move(temporary, _listPath, overwrite: true);
+        Volatile.Write(ref _pending, list.Count);
     }
 
     private sealed record PendingUpload(Guid JobId, string FileName, DateTime Since);

@@ -39,6 +39,8 @@ internal sealed class OrderTestKit : IDisposable
 
     public SpoolStore Spool { get; }
 
+    public FlashUploads FlashUploads { get; private init; } = null!;
+
     public JobJournal Journal { get; }
 
     public KioskOrderService Orders { get; }
@@ -75,6 +77,7 @@ internal sealed class OrderTestKit : IDisposable
         var runtime = new KioskRuntime(api, new SystemClock(), NullLogger<KioskRuntime>.Instance, cache);
         runtime.LoadCachedConfiguration().Should().BeTrue();
 
+        var uploads = new FlashUploads(api, spool, paths, NullLogger<FlashUploads>.Instance);
         var printer = new FakePrinterService();
         var worker = new PrintQueueWorker(
             new ApiPrintBackend(api), printer, spool, journal, () => FakePrinterService.FakePrinterName,
@@ -88,10 +91,10 @@ internal sealed class OrderTestKit : IDisposable
             runtime,
             printer,
             Options.Create(new KioskSettings { SkipPayment = skipPayment }),
-            new FlashUploads(api, spool, paths, NullLogger<FlashUploads>.Instance),
+            uploads,
             NullLogger<KioskOrderService>.Instance);
 
-        return new OrderTestKit(paths, backend, spool, journal, printer, orders, worker);
+        return new OrderTestKit(paths, backend, spool, journal, printer, orders, worker) { FlashUploads = uploads };
     }
 
     public void Dispose()
