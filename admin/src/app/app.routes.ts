@@ -94,6 +94,62 @@ export const routes: Routes = [
             (m) => m.PrintJobDetailComponent,
           ),
       },
+      // Step 4: money and customers (plan section 8A.3).
+      {
+        path: 'payments',
+        canActivate: [permissionGuard(Permissions.paymentsView)],
+        loadComponent: () => import('./features/money/payments.component').then((m) => m.PaymentsComponent),
+      },
+      {
+        path: 'payments/:id',
+        canActivate: [permissionGuard(Permissions.paymentsView)],
+        loadComponent: () => import('./features/money/payment-detail.component').then((m) => m.PaymentDetailComponent),
+      },
+      {
+        path: 'refunds',
+        canActivate: [permissionGuard(Permissions.refundsView)],
+        loadComponent: () => import('./features/money/refunds.component').then((m) => m.RefundsComponent),
+      },
+      {
+        path: 'fiscal',
+        canActivate: [permissionGuard(Permissions.fiscalView)],
+        loadComponent: () => import('./features/money/fiscal.component').then((m) => m.FiscalComponent),
+      },
+      {
+        path: 'receipts',
+        canActivate: [permissionGuard(Permissions.receiptsView)],
+        loadComponent: () => import('./features/money/receipts.component').then((m) => m.ReceiptsComponent),
+      },
+      {
+        path: 'vouchers',
+        canActivate: [permissionGuard(Permissions.vouchersView)],
+        loadComponent: () => import('./features/money/vouchers.component').then((m) => m.VouchersComponent),
+      },
+      {
+        path: 'promos',
+        canActivate: [permissionGuard(Permissions.promosManage)],
+        loadComponent: () => import('./features/money/promos.component').then((m) => m.PromosComponent),
+      },
+      {
+        path: 'customers',
+        canActivate: [permissionGuard(Permissions.usersView)],
+        loadComponent: () => import('./features/money/customers.component').then((m) => m.CustomersComponent),
+      },
+      {
+        path: 'customers/:id',
+        canActivate: [permissionGuard(Permissions.usersView)],
+        loadComponent: () => import('./features/money/customer-detail.component').then((m) => m.CustomerDetailComponent),
+      },
+      {
+        path: 'suspected',
+        canActivate: [permissionGuard(Permissions.jobsView)],
+        loadComponent: () => import('./features/money/suspected.component').then((m) => m.SuspectedComponent),
+      },
+      {
+        path: 'revenue',
+        canActivate: [permissionGuard(Permissions.reportsView)],
+        loadComponent: () => import('./features/money/revenue.component').then((m) => m.RevenueComponent),
+      },
       {
         path: 'pricing',
         canActivate: [permissionGuard(Permissions.pricingManage)],

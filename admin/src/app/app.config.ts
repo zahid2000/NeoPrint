@@ -15,7 +15,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthService } from './core/auth/auth.service';
 import { ThemeService } from './core/theme/theme.service';
-import { defaultLanguage, supportedLanguages, translations } from './core/i18n/translations';
+import { defaultLanguage, supportedLanguages } from './core/i18n/languages';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -56,6 +56,9 @@ export const appConfig: ApplicationConfig = {
       // Before the first render, or the panel would flash light and then
       // switch to the theme the person chose.
       inject(ThemeService).initialise();
+
+      // The dictionary is a chunk of its own: the first download stays small.
+      const { translations } = await import('./core/i18n/translations');
 
       for (const language of supportedLanguages) {
         translate.setTranslation(language, translations[language]);

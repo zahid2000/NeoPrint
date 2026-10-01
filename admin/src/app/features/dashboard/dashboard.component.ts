@@ -1,3 +1,4 @@
+import { MoneyCardComponent } from '../money/money-card.component';
 import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -158,6 +159,7 @@ const attentionOrder: readonly AttentionReason[] = [
     TranslatePipe,
     HasPermissionDirective,
     StatusChipComponent,
+    MoneyCardComponent,
     BytesPipe,
     CountPipe,
     DateTimePipe,
@@ -178,6 +180,7 @@ export class DashboardComponent {
   readonly failed = signal(false);
 
   readonly canKiosks = computed(() => this.auth.can(Permissions.kiosksView));
+  readonly canMoney = computed(() => this.auth.can(Permissions.paymentsView));
   readonly kiosks = signal<KioskListItem[] | null>(null);
   readonly kiosksFailed = signal(false);
 

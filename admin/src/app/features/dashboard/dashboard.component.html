@@ -62,6 +62,11 @@
     </mat-card>
   }
 
+  <!-- Money right after the kiosks: failed refunds and fiscal receipts are critical (plan section 8A.3). -->
+  @if (canMoney()) {
+    <app-money-card class="dashboard__tile dashboard__tile--wide" />
+  }
+
   <mat-card *appHasPermission="permissions.devicesView" class="dashboard__tile">
     <mat-card-content>
       <div class="dashboard__tile-head">

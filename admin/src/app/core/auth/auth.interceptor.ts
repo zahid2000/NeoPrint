@@ -3,7 +3,7 @@ import { inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { Observable, catchError, shareReplay, switchMap, throwError } from 'rxjs';
 
-import { defaultLanguage } from '../i18n/translations';
+import { defaultLanguage } from '../i18n/languages';
 import { AuthService } from './auth.service';
 
 /** Endpoints that must never carry a token or trigger a refresh. */

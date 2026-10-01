@@ -134,6 +134,16 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 - *Qəbzlər:* sətir — nömrə (`NP-2026-000001`), tarix, nə üçün (çap / balans artırılması), məbləğ, fiskal chip (verildi — success, hazırlanır — warning); hər sətirdə "Email-ə göndər" (ghost). Boşdursa empty state.
 - *Canlı bildirişlər (`/hubs/user`):* aşağıda snackbar — sifariş `Suspected` olanda "Çapınızın nəticəsi dəqiqləşdirilir", qaytarma uğurlu olanda "X ₼ balansınıza / kartınıza qaytarıldı"; siyahılar özü yenilənir, istifadəçi "yenilə" basmır.
 
+**Admin: pul səhifələri (Addım 4).**
+
+- *Siyahılar* (Ödənişlər, Refund-lar, Fiskal çeklər, Qəbzlər, Voucher-lər, Promokodlar, İstifadəçilər, Baxış gözləyən sifarişlər): standart səhifə şablonu (başlıq + izah → filtr sətri → cədvəl → səhifələmə), məbləğ sütunu sağa düzülür və tabular rəqəmlə yazılır, status həmişə chip ilə. Boş siyahı və "filtrə uyğun heç nə yoxdur" ayrı empty state-dir (ikincisində "Filtrləri təmizlə").
+- *Tab-lı siyahı:* "Refund-lar" səhifəsində "Hamısı" və "Uğursuzlar" tab-ları; uğursuzlar tab-ının başlığında say (badge) var, sıfırdırsa badge göstərilmir.
+- *Ödəniş detalı:* yuxarıda məbləğ (`H1`) + status chip + əsas əməliyyat ("Qaytar", `danger` deyil — `primary`, çünki pul müştəriyə qayıdır); altında kartlar: **Məbləğ bölgüsü** (sətir-sətir: qiymət, həcm endirimi, promokod, bonus səhifələr, balansdan, kart/bankdan — sıfır olan sətir göstərilmir; cəm qalın), **Sifariş** (kod, status, fayl, parametrlər — sifariş səhifəsinə link), **Müştəri** (anonimdirsə "Anonim müştəri" mətni), **Qəbz və fiskal çek** (nömrə, fiskal status chip), **Refund-lar** (hər biri: məbləğ, istiqamət, status chip, xəta mətni; uğursuzda "Təkrarla" və istiqamət seçimi), **Tarixçə** (timeline: vaxt sol sütunda tabular, hadisə adı tərcümə olunur, izah boz).
+- *"Qaytar" dialoqu:* başlıq "Ödənişi qaytar"; məbləğ — "Tam (X ₼)" / "Hissəvi" radio, hissəvidə məbləğ sahəsi (maksimum qaytarıla bilən göstərilir); istiqamət radio-ları yalnız mümkün olanlardır (hesab varsa "Balansa" / "Karta", anonimdə "Karta" / "Voucher"); "Sifarişi də ləğv et" checkbox-u yalnız sifariş ləğv oluna bilirsə; səbəb sahəsi məcburi. Təsdiq düyməsi "X ₼ qaytar".
+- *Bloklama dialoqu (İstifadəçilər):* `danger` təsdiq düyməsi "Blokla", səbəb məcburi, izah: "Hesab dərhal çıxış edir, balans saxlanılır."
+- *Gəlir qrafiki* (dashboard kartı və hesabat): sütun qrafiki (chart.js), rənglər token-lərdən oxunur (`--brand-500` satış, `--danger-500` qaytarma; heç bir hex kodda yazılmır), oxlarda pul formatı (§6), tooltip-də gün + məbləğ. Qrafikin altında eyni rəqəmlər cədvəl kimi də var (rəng tək başına məna daşımır, ekran oxuyucu cədvəli oxuyur). Məlumat yoxdursa qrafik yerinə empty state.
+- *Gəlir hesabatı:* yuxarıda 4 rəqəm kartı (Satış, Qaytarma, Net, Balans artırılması — sonuncunun altında "gəlir deyil" izahı), sonra qrafik, sonra "Üsullara görə" və "Kiosklara görə" cədvəlləri; "CSV yüklə" ikinci dərəcəli düymə.
+
 **Kartlar.** `--neutral-0` fon, `--neutral-200` kənar, `--radius-md`, daxili boşluq 16 (kiosk 24).
 
 **Cədvəllər (admin).** Sətir hündürlüyü 48 px, başlıq sabit (sticky), sıralama və filtr yuxarıda, pagination aşağıda. Status sütunu chip ilə. Sətirə klik → detal. Boş nəticə üçün boş vəziyyət bloku.

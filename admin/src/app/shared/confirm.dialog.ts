@@ -31,6 +31,12 @@ export interface ConfirmRequest {
 
   /** The label above the reason box, when one is collected. */
   readonly reasonLabel?: string;
+
+  /**
+   * Collects a mandatory reason without the danger styling: undoing a block,
+   * for instance, is audited but destroys nothing.
+   */
+  readonly requireReason?: boolean;
 }
 
 /** Nothing when it was cancelled; the reason (possibly empty) when confirmed. */
@@ -52,7 +58,7 @@ export type ConfirmResult = { readonly reason: string } | undefined;
     <mat-dialog-content class="neo-dialog">
       <p class="neo-dialog__explanation">{{ data.explanation }}</p>
 
-      @if (data.destructive) {
+      @if (data.destructive || data.requireReason) {
         <mat-form-field class="neo-form__field">
           <mat-label>{{ data.reasonLabel }}</mat-label>
           <textarea
@@ -100,7 +106,7 @@ export class ConfirmDialogComponent {
 
   /** A destructive action needs its reason before it can be confirmed. */
   canConfirm(): boolean {
-    return !this.data.destructive || this.reason().trim().length > 0;
+    return !(this.data.destructive || this.data.requireReason) || this.reason().trim().length > 0;
   }
 
   confirm(): void {

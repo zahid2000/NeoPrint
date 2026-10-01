@@ -50,6 +50,18 @@ const tones: Record<string, StatusTone> = {
   Draft: 'neutral',
   Idle: 'neutral',
 
+  // Payments, refunds, fiscal receipts, vouchers, customers and claims (step 4)
+  Refunded: 'neutral',
+  PartiallyRefunded: 'warning',
+  RefundFailed: 'danger',
+  Issued: 'success',
+  Redeemed: 'neutral',
+  Blocked: 'danger',
+  Open: 'info',
+  Answered: 'success',
+  Closed: 'neutral',
+  Inactive: 'neutral',
+
   // Kiosk commands
   Sent: 'info',
   Acknowledged: 'info',

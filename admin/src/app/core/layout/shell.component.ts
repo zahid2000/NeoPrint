@@ -15,7 +15,7 @@ import { AuthService } from '../auth/auth.service';
 import { AdminHubService } from '../realtime/admin-hub.service';
 import { ThemeService } from '../theme/theme.service';
 import { LiveIndicatorComponent } from '../../shared/live-indicator.component';
-import { SupportedLanguage, languageNames, supportedLanguages } from '../i18n/translations';
+import { SupportedLanguage, languageNames, supportedLanguages } from '../i18n/languages';
 
 /** One entry in the sidebar. */
 interface NavItem {
@@ -102,6 +102,60 @@ export class ShellComponent implements OnInit, OnDestroy {
       labelKey: 'nav.printJobs',
       icon: 'receipt_long',
       permissions: [Permissions.jobsView],
+    },
+    {
+      path: '/suspected',
+      labelKey: 'nav.suspected',
+      icon: 'manage_search',
+      permissions: [Permissions.jobsView],
+    },
+    {
+      path: '/payments',
+      labelKey: 'nav.payments',
+      icon: 'payments',
+      permissions: [Permissions.paymentsView],
+    },
+    {
+      path: '/refunds',
+      labelKey: 'nav.refunds',
+      icon: 'undo',
+      permissions: [Permissions.refundsView],
+    },
+    {
+      path: '/fiscal',
+      labelKey: 'nav.fiscal',
+      icon: 'receipt',
+      permissions: [Permissions.fiscalView],
+    },
+    {
+      path: '/receipts',
+      labelKey: 'nav.receipts',
+      icon: 'description',
+      permissions: [Permissions.receiptsView],
+    },
+    {
+      path: '/vouchers',
+      labelKey: 'nav.vouchers',
+      icon: 'confirmation_number',
+      permissions: [Permissions.vouchersView],
+    },
+    {
+      path: '/promos',
+      labelKey: 'nav.promos',
+      icon: 'local_offer',
+      permissions: [Permissions.promosManage],
+    },
+    {
+      path: '/customers',
+      labelKey: 'nav.customers',
+      icon: 'people',
+      permissions: [Permissions.usersView],
+    },
+    {
+      path: '/revenue',
+      labelKey: 'nav.revenue',
+      icon: 'query_stats',
+      permissions: [Permissions.reportsView],
     },
     {
       path: '/devices',

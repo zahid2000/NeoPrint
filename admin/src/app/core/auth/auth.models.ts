@@ -81,4 +81,18 @@ export const Permissions = {
   jobsCancel: 'jobs.cancel',
   suppliesView: 'supplies.view',
   paperRefill: 'paper.refill',
+
+  // Step 4: money and customers (plan section 8A.2).
+  reportsView: 'reports.view',
+  paymentsView: 'payments.view',
+  paymentsRefund: 'payments.refund',
+  refundsView: 'refunds.view',
+  refundsRetry: 'refunds.retry',
+  receiptsView: 'receipts.view',
+  vouchersView: 'vouchers.view',
+  fiscalView: 'fiscal.view',
+  usersView: 'users.view',
+  usersBlock: 'users.block',
+  walletsAdjust: 'wallets.adjust',
+  promosManage: 'promos.manage',
 } as const;

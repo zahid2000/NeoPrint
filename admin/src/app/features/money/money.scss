@@ -1,0 +1,160 @@
+// The step 4 money pages share one stylesheet: list, detail and report
+// (docs/DESIGN_SYSTEM.md section 4, "Admin: pul səhifələri"). Tokens only.
+
+app-filter-bar {
+  display: block;
+  margin-block-end: var(--space-4);
+}
+
+.money__block {
+  display: block;
+}
+
+// Amounts line up on the right in tabular figures.
+.money__number {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.money__period {
+  width: 280px;
+}
+
+.money__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-4);
+  margin-block: var(--space-4);
+}
+
+.money__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--space-4);
+}
+
+.money__headline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.money__amount {
+  margin: 0;
+  font-size: var(--font-size-h1);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.money__card-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-h2);
+  font-weight: 600;
+}
+
+// Label left, value right: the split, the job, the customer.
+.money__rows {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+
+  dt {
+    color: var(--neutral-600);
+  }
+
+  dd {
+    margin: 0;
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.money__total {
+  font-weight: 600;
+}
+
+.money__item {
+  padding-block: var(--space-3);
+  border-block-end: 1px solid var(--neutral-200);
+
+  &:last-child {
+    border-block-end: none;
+  }
+}
+
+.money__item-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.money__error {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-block-start: var(--space-2);
+  color: var(--danger-500);
+  font-size: var(--font-size-body-small);
+}
+
+.money__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+}
+
+// The timeline: time in its own column, the event, the detail in grey.
+.money__timeline {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+
+  dt {
+    color: var(--neutral-600);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.money__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-block: var(--space-4);
+}
+
+.money__stat-value {
+  display: block;
+  margin-block: var(--space-1);
+  font-size: var(--font-size-h1);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.money__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 320px;
+}
+
+.money__radio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+}

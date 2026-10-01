@@ -13,20 +13,14 @@ import { jobsTranslations } from './jobs.i18n';
 import { kiosksTranslations } from './kiosks.i18n';
 import { pricingTranslations } from './pricing.i18n';
 import { settingsTranslations } from './settings.i18n';
+import { moneyTranslations } from './money.i18n';
 import { storageTranslations } from './storage.i18n';
 import type { PageTranslations } from './page-translations';
 
-export const supportedLanguages = ['az', 'en', 'ru'] as const;
+import { SupportedLanguage, supportedLanguages } from './languages';
 
-export type SupportedLanguage = (typeof supportedLanguages)[number];
-
-export const defaultLanguage: SupportedLanguage = 'az';
-
-export const languageNames: Record<SupportedLanguage, string> = {
-  az: 'Azərbaycan',
-  en: 'English',
-  ru: 'Русский',
-};
+export { defaultLanguage, languageNames, supportedLanguages } from './languages';
+export type { SupportedLanguage } from './languages';
 
 export const translations: Record<SupportedLanguage, Record<string, string>> = {
   az: {
@@ -994,6 +988,7 @@ const pages: readonly PageTranslations[] = [
   jobsTranslations,
   featuresTranslations,
   settingsTranslations,
+  moneyTranslations,
 ];
 
 for (const language of supportedLanguages) {
