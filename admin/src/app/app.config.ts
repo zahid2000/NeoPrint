@@ -17,6 +17,41 @@ import { AuthService } from './core/auth/auth.service';
 import { ThemeService } from './core/theme/theme.service';
 import { defaultLanguage, supportedLanguages } from './core/i18n/languages';
 
+/**
+ * Loads the translations and restores the session before the first route
+ * renders, so the panel never flashes the sign-in screen at somebody who is
+ * already signed in.
+ *
+ * Every `inject()` comes before the first `await`: after it there is no
+ * injection context, the initializer throws NG0203 and the panel stays a
+ * blank page (T-124).
+ */
+export async function initialiseApp(): Promise<void> {
+  const translate = inject(TranslateService);
+  const theme = inject(ThemeService);
+  const auth = inject(AuthService);
+
+  // Before the first render, or the panel would flash light and then switch
+  // to the theme the person chose.
+  theme.initialise();
+
+  // The dictionary is a chunk of its own: the first download stays small.
+  const { translations } = await import('./core/i18n/translations');
+
+  for (const language of supportedLanguages) {
+    translate.setTranslation(language, translations[language]);
+  }
+
+  const stored = localStorage.getItem('neoprint.language');
+  const language = supportedLanguages.includes(stored as (typeof supportedLanguages)[number])
+    ? stored!
+    : defaultLanguage;
+
+  translate.use(language);
+
+  await auth.restore();
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     // One look for every form field, set here rather than per template, so a
@@ -45,33 +80,6 @@ export const appConfig: ApplicationConfig = {
       useValue: { fontSet: 'material-symbols-rounded' },
     },
 
-    /**
-     * Loads the translations and restores the session before the first route
-     * renders, so the panel never flashes the sign-in screen at somebody who
-     * is already signed in.
-     */
-    provideAppInitializer(async () => {
-      const translate = inject(TranslateService);
-
-      // Before the first render, or the panel would flash light and then
-      // switch to the theme the person chose.
-      inject(ThemeService).initialise();
-
-      // The dictionary is a chunk of its own: the first download stays small.
-      const { translations } = await import('./core/i18n/translations');
-
-      for (const language of supportedLanguages) {
-        translate.setTranslation(language, translations[language]);
-      }
-
-      const stored = localStorage.getItem('neoprint.language');
-      const language = supportedLanguages.includes(stored as (typeof supportedLanguages)[number])
-        ? stored!
-        : defaultLanguage;
-
-      translate.use(language);
-
-      await inject(AuthService).restore();
-    }),
+    provideAppInitializer(initialiseApp),
   ],
 };
