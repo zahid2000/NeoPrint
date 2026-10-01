@@ -23,6 +23,14 @@ public interface IRefundRepository
 
     Task<IReadOnlyList<Refund>> ListForJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 
+    /// <summary>Payments with a refund still on its way (pending or with the provider), newest first.</summary>
+    Task<IReadOnlyList<Guid>> ListOpenPaymentIdsAsync(int take, CancellationToken cancellationToken = default);
+
+    Task<long> CountAsync(RefundStatus status, CancellationToken cancellationToken = default);
+
+    /// <summary>Refunds that went through in a period, for the revenue figures.</summary>
+    Task<IReadOnlyList<Refund>> ListCompletedAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Refunds with work due: created but not started (a consumer that died),
     /// or waiting for their next provider try.

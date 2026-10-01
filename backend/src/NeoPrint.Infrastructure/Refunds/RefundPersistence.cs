@@ -40,6 +40,26 @@ public sealed class RefundRepository : IRefundRepository
     public async Task<IReadOnlyList<Refund>> ListForPaymentAsync(Guid paymentId, CancellationToken cancellationToken = default)
         => await _context.Refunds.Find(r => r.PaymentId == paymentId).SortBy(r => r.CreatedAt).ToListAsync(cancellationToken).ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<Guid>> ListOpenPaymentIdsAsync(int take, CancellationToken cancellationToken = default)
+        => (await _context.Refunds
+                .Find(r => r.Status == RefundStatus.Pending || r.Status == RefundStatus.Processing)
+                .SortByDescending(r => r.CreatedAt)
+                .Limit(take)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false))
+            .Select(r => r.PaymentId)
+            .Distinct()
+            .ToList();
+
+    public Task<long> CountAsync(RefundStatus status, CancellationToken cancellationToken = default)
+        => _context.Refunds.CountDocumentsAsync(r => r.Status == status, cancellationToken);
+
+    public async Task<IReadOnlyList<Refund>> ListCompletedAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default)
+        => await _context.Refunds
+            .Find(r => r.Status == RefundStatus.Succeeded && r.CompletedAt >= from && r.CompletedAt < to)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<IReadOnlyList<Refund>> ListForJobAsync(Guid jobId, CancellationToken cancellationToken = default)
         => await _context.Refunds.Find(r => r.JobId == jobId).SortBy(r => r.CreatedAt).ToListAsync(cancellationToken).ConfigureAwait(false);
 

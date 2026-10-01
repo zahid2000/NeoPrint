@@ -38,9 +38,12 @@ public static class AuthorizationPolicies
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        // Also confirms the customer has not been blocked since the token was
+        // issued (plan section 8A.3).
         options.AddPolicy(User, policy => policy
             .RequireAuthenticatedUser()
-            .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.User));
+            .RequireClaim(NeoPrintClaims.TokenType, TokenTypes.User)
+            .AddRequirements(new UserIsActiveRequirement()));
 
         // Also confirms the account is still active, so a deactivated one is
         // refused even on the endpoints that need no particular permission -

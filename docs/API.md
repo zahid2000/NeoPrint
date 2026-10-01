@@ -1366,10 +1366,26 @@ yalnız ledger sətri ilə eyni tranzaksiyada dəyişir. Hər sətrin unikal `De
 
 Vaxtı keçmiş (bankda bağlanmış) QR-ı ödəmək `409 { "outcome": "QrNoLongerValid" }` qaytarır — bank tətbiqi də onu rədd edir.
 
+## Admin: ödənişlər, gəlir, müştərilər (Addım 4, M10)
+
+Hamısı admin tokeni ilə; siyahılar adminin **kiosk əhatəsinə** daraldılır (əhatədən kənar ödəniş `404`). Balans artırılması (kiosksuz ödəniş) yalnız bütün kiosklara baxan adminə görünür.
+
+| Endpoint | İcazə | Nə edir |
+|---|---|---|
+| `GET /api/admin/payments?status=&method=&channel=&purpose=&kioskId=&from=&to=&hadError=&refund=pending\|failed&search=&page=&pageSize=` | `payments.view` | Ən yenisi əvvəl. `status`/`method` təkrarlana bilər. `search` — ödəniş ID-si, 6 rəqəmli sifariş kodu və ya provayder istinadı. `refund=pending` — yolda olan refund-u olanlar, `failed` — `RefundFailed`. `hadError=true` — xəta səbəbi olan və ya `Failed`/`RefundFailed`. Sətir: `{ id, status, method, channel, purpose, amount (pul hissəsi), refunded, currency, kioskId, kioskCode, jobId, jobCode, userId, failureReason, createdAt, paidAt }` |
+| `GET /api/admin/payments/{id}` | `payments.view` | Ödəniş detalı: `payment` (yuxarıdakı sətir), `split` (`gross`, `volumeDiscount`, `promoDiscount`, `promoCode`, `external`, `wallet`, `bonusPages`, `bonusValue`), `refundable`, `provider`, `providerRef`, `expiresAt`, `kioskName`, `job`, `user` (`publicId`, `email`), `receiptNumber`, `fiscal[]` (növ, status, fiskal ID, terminal, xəta), `refunds[]` (məbləğ, istiqamət `OriginalMethod`/`Wallet`/`Voucher`, status, səbəb, kim başladıb, cəhdlər, xəta, voucher kodu, qeyd), `timeline[]`. Əməliyyatlar mövcud endpoint-lərlədir: `GET …/refund-options`, `POST …/refund`, `POST /api/admin/refunds/{id}/retry` |
+| `GET /api/admin/vouchers?page=&pageSize=` | `vouchers.view` | `{ code, amount, status (Active\|Redeemed\|Expired), paymentId, refundId, createdAt, expiresAt, redeemedBy, redeemedAt }` |
+| `GET /api/admin/reports/revenue?from=yyyy-MM-dd&to=yyyy-MM-dd&kioskId=` | `reports.view` | Bakı günləri, hər ikisi daxil, ən çox 366 gün (`400 reports.periodInvalid`). `totals` — `sales` (çap ödənişlərinin pul hissəsi: kart/bank + balans), `payments`, `refunds` (dövrdə tamamlanan qaytarmalar), `net`, `discounts` (promokod), `topUps` (balans artırılması — gəlir deyil, müştərinin pulu); `days[]`, `methods[]`, `kiosks[]`. Bonus səhifələr pul deyil, sayılmır |
+| `GET /api/admin/dashboard/payments` | `payments.view` | Dashboard-un pul kartı: `today`, `lastSevenDays[]` (7 gün), `failedRefunds`, `failedFiscal`, `openMoneyIncidents` (uğursuz refund, fiskal çek, `Suspected`) |
+| `GET /api/admin/users?search=&status=Active\|Blocked&page=&pageSize=` | `users.view` | Tətbiq müştəriləri (adminlər `api/admin/admins`-dir). `search` — email-in bir hissəsi və ya dəqiq `NP-XXXXXX`; silinmiş hesablar yoxdur |
+| `GET /api/admin/users/{id}` | `users.view` | `profile`, `language`, `wallet`, `recentJobs[]` (son 20), `fileCount`, `fileBytes` (fayl məzmunu yox), `referred`, `consents[]` |
+| `POST /api/admin/users/{id}/block` · `.../unblock` (`Idempotency-Key`) | `users.block` | `{ reason }` məcburi (1–500, `400 users.reasonRequired`), audit-ə düşür. Blok: bütün refresh token-lər ləğv olunur və istifadəçi Redis blocklist-ə düşür — əlindəki access token **dərhal** `403` alır (Redis cavab vermirsə yoxlama MongoDB-dəki statusa keçir). Balansa toxunulmur. Təkrar blok / aktiv hesabı blokdan çıxarmaq heç nə dəyişmir |
+
 ## Hələ mövcud olmayan endpoint-lər
 
-Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: ödəniş / refund / wallet / fiskal (Addım 4), skan və paylaşım
-(Addım 6), telemetriya və operator paneli (Addım 7).
+Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: mobil çap sessiyası, kiosk axtarışı, push və məxfilik
+(Addım 5), skan və paylaşım (Addım 6), telemetriya, incident səhifəsi və operator paneli (Addım 7). Addım 4-ün ödəniş,
+refund, wallet, fiskal çek, qəbz, promokod, istifadəçi hub-ı və admin pul səhifələri yuxarıdakı bölmələrdədir.
 
 Addım 2-nin bütün endpoint-ləri (fayllar, redaktə və versiyalar, səhifə
 şəkilləri, formatlar, storage provayderləri və sinxronizasiya, kiosk idarəsi,

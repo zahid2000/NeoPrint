@@ -13,6 +13,14 @@ public interface IPaymentRepository
     /// <summary>Every payment made for a job, newest first.</summary>
     Task<IReadOnlyList<Payment>> ListForJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 
+    /// <summary>The admin list, newest first (plan section 8A.3, "Ödənişlər").</summary>
+    Task<(IReadOnlyList<Payment> Items, long Total)> SearchAsync(
+        PaymentFilter filter, int skip, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>Succeeded money in a period, for the revenue figures (plan section 8A.3, Dashboard).</summary>
+    Task<IReadOnlyList<Payment>> ListPaidAsync(
+        DateTime from, DateTime to, IReadOnlyCollection<Guid>? kioskIds, CancellationToken cancellationToken = default);
+
     Task AddAsync(Payment payment, CancellationToken cancellationToken = default);
 
     /// <exception cref="ConcurrencyException">Somebody else saved it first.</exception>

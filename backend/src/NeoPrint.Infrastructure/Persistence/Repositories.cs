@@ -36,6 +36,44 @@ public sealed class UserRepository : IUserRepository
     public Task UpdateAsync(User user, CancellationToken cancellationToken = default)
         => _context.Users.ReplaceOneAsync(
             existing => existing.Id == user.Id, user, cancellationToken: cancellationToken);
+
+    public async Task<(IReadOnlyList<User> Items, long Total)> SearchAsync(
+        Application.Customers.CustomerFilter filter, int skip, int take, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+
+        var builder = Builders<User>.Filter;
+        var where = builder.Ne(user => user.Status, UserStatus.Deleted);
+
+        if (filter.Status is { } status)
+        {
+            where &= builder.Eq(user => user.Status, status);
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var search = filter.Search.Trim();
+
+            // The text is the admin's, so it is matched literally - never run
+            // as a pattern of its own.
+            where &= builder.Or(
+                builder.Regex(user => user.Email, new MongoDB.Bson.BsonRegularExpression(System.Text.RegularExpressions.Regex.Escape(search.ToLowerInvariant()))),
+                builder.Eq(user => user.PublicId, search.ToUpperInvariant()));
+        }
+
+        var total = await _context.Users.CountDocumentsAsync(where, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var items = await _context.Users.Find(where)
+            .SortByDescending(user => user.CreatedAt)
+            .Skip(skip)
+            .Limit(take)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return (items, total);
+    }
+
+    public Task<long> CountReferredAsync(Guid userId, CancellationToken cancellationToken = default)
+        => _context.Users.CountDocumentsAsync(user => user.ReferredBy == userId, cancellationToken: cancellationToken);
 }
 
 /// <inheritdoc cref="IEmailConfirmationRepository" />

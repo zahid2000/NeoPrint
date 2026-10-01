@@ -362,7 +362,9 @@ public sealed class MongoContext
             // The expiry and reconciliation jobs.
             (Builders<Domain.Payments.Payment>.IndexKeys.Ascending(p => p.Status).Ascending(p => p.ExpiresAt),
                 Named("ix_payments_status_expires")),
-            (Builders<Domain.Payments.Payment>.IndexKeys.Descending(p => p.CreatedAt), Named("ix_payments_created")));
+            (Builders<Domain.Payments.Payment>.IndexKeys.Descending(p => p.CreatedAt), Named("ix_payments_created")),
+            // Revenue figures: money that came in, by when it came in.
+            (Builders<Domain.Payments.Payment>.IndexKeys.Ascending(p => p.PaidAt), Named("ix_payments_paid")));
 
         await CreateAsync(Refunds,
             // One refund per decision and part: a redelivered event, a retried

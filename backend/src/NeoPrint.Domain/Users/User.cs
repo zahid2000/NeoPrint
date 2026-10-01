@@ -80,6 +80,44 @@ public sealed class User : Entity
 
     /// <summary>Whether this account may sign in and place orders.</summary>
     public bool CanSignIn => Status == UserStatus.Active;
+
+    /// <summary>When an admin blocked the account; null while it is not blocked.</summary>
+    public DateTime? BlockedAt { get; set; }
+
+    /// <summary>
+    /// An admin stops the account (plan section 8A.3, "İstifadəçilər"). The
+    /// wallet is kept as it is - blocking takes no money - and unblocking
+    /// gives everything back.
+    /// </summary>
+    /// <returns>False when it was already blocked: nothing changed.</returns>
+    /// <exception cref="DomainException">A deleted account cannot be blocked.</exception>
+    public bool Block(DateTime now)
+    {
+        switch (Status)
+        {
+            case UserStatus.Blocked:
+                return false;
+            case UserStatus.Deleted:
+                throw new DomainException("users.deleted");
+        }
+
+        Status = UserStatus.Blocked;
+        BlockedAt = now;
+        return true;
+    }
+
+    /// <returns>False when it was not blocked: nothing changed.</returns>
+    public bool Unblock()
+    {
+        if (Status != UserStatus.Blocked)
+        {
+            return false;
+        }
+
+        Status = UserStatus.Active;
+        BlockedAt = null;
+        return true;
+    }
 }
 
 /// <summary>

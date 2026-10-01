@@ -27,6 +27,13 @@ public interface IUserRepository
     Task AddAsync(User user, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(User user, CancellationToken cancellationToken = default);
+
+    /// <summary>The admin list of customers, newest first; deleted accounts are left out.</summary>
+    Task<(IReadOnlyList<User> Items, long Total)> SearchAsync(
+        Customers.CustomerFilter filter, int skip, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>How many accounts this user invited (plan section 2.6).</summary>
+    Task<long> CountReferredAsync(Guid userId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Persistence for email confirmation codes.</summary>

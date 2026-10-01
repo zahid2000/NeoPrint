@@ -111,6 +111,7 @@ public static class DependencyInjection
         services.AddSingleton<IDeviceSignatureVerifier, DeviceSignatureVerifier>();
         services.AddScoped<IDeviceChallengeStore, RedisDeviceChallengeStore>();
         services.AddScoped<IKioskTokenBlocklist, RedisKioskTokenBlocklist>();
+        services.AddScoped<Application.Customers.IUserBlocklist, Auth.RedisUserBlocklist>();
         services.AddScoped<IDeviceAccessChecker, DeviceAccessChecker>();
         services.AddScoped<IKioskDeviceRepository, KioskDeviceRepository>();
         services.AddScoped<IEnrollmentTokenRepository, EnrollmentTokenRepository>();

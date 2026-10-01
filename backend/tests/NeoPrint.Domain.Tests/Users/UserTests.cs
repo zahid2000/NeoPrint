@@ -130,4 +130,31 @@ public sealed class SettingDefaultsTests
 
     private static string Default(string key)
         => SettingKeys.Defaults.Single(setting => setting.Key == key).DefaultValue;
+
+    [Fact]
+    public void Blocking_stops_sign_in_once_and_unblocking_gives_it_back()
+    {
+        var user = new User();
+        var now = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc);
+
+        user.Block(now).Should().BeTrue();
+        user.CanSignIn.Should().BeFalse();
+        user.BlockedAt.Should().Be(now);
+        user.Block(now.AddMinutes(1)).Should().BeFalse("blocking twice changes nothing");
+        user.BlockedAt.Should().Be(now);
+
+        user.Unblock().Should().BeTrue();
+        user.CanSignIn.Should().BeTrue();
+        user.BlockedAt.Should().BeNull();
+        user.Unblock().Should().BeFalse();
+    }
+
+    [Fact]
+    public void A_deleted_account_cannot_be_blocked()
+    {
+        var user = new User { Status = UserStatus.Deleted };
+
+        user.Invoking(u => u.Block(DateTime.UtcNow)).Should().Throw<NeoPrint.Domain.Common.DomainException>();
+        user.Unblock().Should().BeFalse();
+    }
 }

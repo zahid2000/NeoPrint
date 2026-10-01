@@ -14,12 +14,14 @@ internal sealed class TestUser : IDisposable
 
     public required string Email { get; init; }
 
+    public string RefreshToken { get; init; } = string.Empty;
+
     public void Dispose() => Client.Dispose();
 }
 
 internal static class TestUsers
 {
-    private const string Password = "Wallet!Test2026";
+    public const string Password = "Wallet!Test2026";
 
     /// <summary>Registers, confirms with the emailed code and signs in (plan section 9.0 flow for the app).</summary>
     public static async Task<TestUser> ConfirmedAsync(NeoPrintApiFixture fixture)
@@ -55,6 +57,7 @@ internal static class TestUsers
             Client = client,
             Id = session.GetProperty("user").GetProperty("id").GetGuid(),
             Email = email,
+            RefreshToken = session.GetProperty("refreshToken").GetString()!,
         };
     }
 }

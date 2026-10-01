@@ -206,6 +206,7 @@ builder.Services.AddScoped<IAuthorizationHandler, DeviceAuthorizationHandler>();
 
 // Same for an admin token: a deactivated account is refused at once.
 builder.Services.AddScoped<IAuthorizationHandler, AdminAuthorizationHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, UserAuthorizationHandler>();
 
 // SignalR with the Redis backplane, so several API instances can serve the
 // same hub groups (plan section 6).
