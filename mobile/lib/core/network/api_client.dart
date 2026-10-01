@@ -257,6 +257,19 @@ final class ApiClient {
     return parse(reply.data);
   }
 
+  /// The access token for a connection that cannot refresh on a 401 by
+  /// itself - the user hub's WebSocket (plan section 6). Refreshed first when
+  /// it is about to run out; null when there is no session.
+  Future<String?> freshAccessToken() async {
+    if (!_tokens.hasToken || _tokens.isNearExpiry) {
+      if (!await _refreshOnce()) {
+        return null;
+      }
+    }
+
+    return _tokens.token;
+  }
+
   /// Runs at most one refresh at a time and hands the result to every waiter.
   Future<bool> _refreshOnce() {
     return _refreshing ??= _performRefresh().whenComplete(() {

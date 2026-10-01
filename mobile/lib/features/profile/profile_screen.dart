@@ -3,9 +3,11 @@ import '../../core/theme/tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/features/readiness.dart';
+import '../../core/router/app_router.dart';
 import '../../l10n/app_localizations.dart';
 
 /// The profile tab (plan section 8.2).
@@ -82,6 +84,22 @@ class ProfileScreen extends ConsumerWidget {
                   ).showSnackBar(SnackBar(content: Text(l10n.profileCopied)));
                 }
               },
+            ),
+
+          if (Readiness.wallet)
+            ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: Text(l10n.profileReceipts),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.receipts),
+            ),
+
+          if (Readiness.printJobs)
+            ListTile(
+              leading: const Icon(Icons.support_agent_outlined),
+              title: Text(l10n.profileClaims),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.claims),
             ),
 
           if (Readiness.languageSetting)

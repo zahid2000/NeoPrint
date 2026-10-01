@@ -8,13 +8,13 @@
 /// then decide per user on top of this.
 abstract final class Readiness {
   /// Wallet balance and bonus pages on the home card - step 4.
-  static const bool wallet = false;
+  static const bool wallet = true;
 
   /// Paying at a kiosk by scanning its QR code - step 4.
-  static const bool kioskPayment = false;
+  static const bool kioskPayment = true;
 
   /// The user's own print jobs on the home tab - step 4.
-  static const bool printJobs = false;
+  static const bool printJobs = true;
 
   /// Kiosk search and the map - step 5.
   static const bool kioskSearch = false;

@@ -9,7 +9,10 @@ import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:neoprint/features/home/home_screen.dart';
 import 'package:neoprint/features/profile/profile_screen.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
+import 'package:neoprint/core/realtime/user_hub_provider.dart';
 import 'package:neoprint/shared/widgets/bottom_nav_shell.dart';
+
+import 'payments_kit.dart';
 
 /// A signed-in user without a name, so the fallbacks are on screen too.
 const user = UserProfile(
@@ -21,7 +24,8 @@ const user = UserProfile(
 );
 
 Widget app(Widget home) => ProviderScope(
-  overrides: [currentUserProvider.overrideWithValue(user)],
+  // A signed-in user with an empty wallet and no jobs, and no hub.
+  overrides: step4Overrides(wallet: walletOf(0)),
   child: MaterialApp(
     theme: AppTheme.light(),
     locale: const Locale('az'),
@@ -53,10 +57,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expectNothingUnfinished(tester);
-    expect(find.text('dev-user@neoprint.local'), findsOneWidget);
     expect(find.text('Fayllarım'), findsOneWidget);
 
-    // The wallet and the scanner come in step 4; until then not even a label.
+    // A new account's balance is a real value, so it is shown (Readiness);
+    // the scanner is there on a phone that can scan.
     expect(
       find.text('Balans'),
       Readiness.wallet ? findsOneWidget : findsNothing,
@@ -97,12 +101,18 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp.router(
-        theme: AppTheme.light(),
-        locale: const Locale('az'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        routerConfig: router,
+      ProviderScope(
+        overrides: [
+          currentUserProvider.overrideWithValue(null),
+          userHubProvider.overrideWithValue(null),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          locale: const Locale('az'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: router,
+        ),
       ),
     );
     await tester.pumpAndSettle();

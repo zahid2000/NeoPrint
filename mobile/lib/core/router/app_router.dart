@@ -12,6 +12,12 @@ import '../../features/files/file_models.dart';
 import '../../features/files/file_preview_screen.dart';
 import '../../features/files/files_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/jobs/claims_screen.dart';
+import '../../features/payments/pay_screen.dart';
+import '../../features/payments/payment_models.dart';
+import '../../features/payments/scan_screen.dart';
+import '../../features/receipts/receipts_screen.dart';
+import '../../features/wallet/wallet_screen.dart';
 import '../../features/kiosk_search/kiosk_search_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
@@ -35,6 +41,12 @@ abstract final class Routes {
   static String filePreview(String id) => '/files/$id';
   static const scheduled = '/scheduled';
   static const profile = '/profile';
+
+  static const scan = '/scan';
+  static String pay(String paymentId) => '/pay/$paymentId';
+  static const wallet = '/wallet';
+  static const receipts = '/receipts';
+  static const claims = '/claims';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -55,6 +67,14 @@ final routerProvider = Provider<GoRouter>((ref) {
     /// Deep links land here too, so a link into the app cannot skip email
     /// confirmation or an outstanding consent (plan section 8.3).
     redirect: (context, state) {
+      // The kiosk's "pay with the app" QR read by another scanner arrives as
+      // neoprint://pay/{id}; it becomes the app's own route, and the gates
+      // below still apply to it (plan section 8.3).
+      final payLink = payLinkLocation(state.uri);
+      if (payLink != null) {
+        return payLink;
+      }
+
       final status = ref.read(authControllerProvider).status;
       final location = state.matchedLocation;
 
@@ -100,6 +120,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.consents,
         builder: (_, __) => const ConsentsScreen(),
       ),
+
+      // Full screen, above the tabs: paying and the money screens are a task
+      // of their own with a way back, not a tab (plan section 8.2).
+      if (Readiness.kioskPayment) ...[
+        GoRoute(path: Routes.scan, builder: (_, __) => const ScanScreen()),
+        GoRoute(
+          path: '/pay/:id',
+          builder: (_, state) =>
+              PayScreen(paymentId: state.pathParameters['id']!),
+        ),
+      ],
+      if (Readiness.wallet) ...[
+        GoRoute(path: Routes.wallet, builder: (_, __) => const WalletScreen()),
+        GoRoute(
+          path: Routes.receipts,
+          builder: (_, __) => const ReceiptsScreen(),
+        ),
+      ],
+      if (Readiness.printJobs)
+        GoRoute(path: Routes.claims, builder: (_, __) => const ClaimsScreen()),
 
       // The five bottom-nav destinations from plan section 8.1, in a shell so
       // the bar keeps its state as the tabs change.

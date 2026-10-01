@@ -3,7 +3,18 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Sənədin şəklini çəkib çap üçün yükləmək üçün kamera lazımdır.</string>
+	<string>Sənədin şəklini çəkmək və kioskdakı ödəniş QR kodunu oxumaq üçün kamera lazımdır.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>az.neoprint.pay</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>neoprint</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Çap etmək istədiyiniz şəkli seçmək üçün foto kitabxanasına giriş lazımdır.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

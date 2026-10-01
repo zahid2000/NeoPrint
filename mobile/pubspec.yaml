@@ -37,6 +37,11 @@ dependencies:
   # Taking a photo to upload (BSD-3, Flutter team).
   camera: 0.12.1
 
+  # Reading the kiosk's payment QR from the camera stream, on the phone
+  # itself (MIT; plan section 2.0). Android and iOS only - the web build
+  # opens the same payment from the neoprint://pay link instead.
+  google_mlkit_barcode_scanning: 0.16.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

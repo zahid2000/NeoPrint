@@ -805,6 +805,24 @@ bitdi" ekranı çıxır. Promokod qiymət kartındakı **Promokod** düyməsi il
 Development-də ödənişsiz axın (`Kiosk:SkipPayment`) söndürülüb — hər sifariş ödənilməlidir. Addım 3-dən qalan
 lokal `appsettings.Development.json` dəyişikliyiniz varsa, `"SkipPayment": false` olduğunu yoxlayın.
 
+**Mobil tətbiqlə ödəniş.** Kioskda "NeoPrint tətbiqi" seçin — ekranda `neoprint://pay/<paymentId>`
+QR-ı çıxır.
+
+- *Android telefon / emulyator:* ana səhifədə **QR oxut** → QR-ı kameraya göstərin (emulyatorda
+  kamera kimi kompüterin veb-kamerası seçilə bilər: AVD → Advanced → Camera). Telefonun öz kamerası
+  QR-ı oxusa da tətbiq `neoprint://pay` linki ilə açılır.
+- *Chrome (Flutter web):* skaner yoxdur; ödənişi URL ilə açın — `paymentId` kiosk ekranındakı QR-ın
+  sonundakı GUID-dir (və ya admin → Ödənişlər):
+
+  ```text
+  http://localhost:<flutter portu>/#/pay/<paymentId>
+  ```
+
+- Balansı test üçün artırmaq: tətbiqdə **Balans → Balansı artır** (mock kart həmişə uğurlu; rədd
+  ssenarisi üçün `curl -X POST "http://localhost:5080/api/dev/mock-card/outcome?value=Decline"`).
+- Ödənişdən sonra sifariş ana səhifədə "Aktiv çaplar"-da görünür, statusu `/hubs/user` ilə özü
+  yenilənir; qəbz **Profil → Qəbzlər**-də, "Problem barədə bildir" mesajları **Profil → Müraciətlərim**-dədir.
+
 **Qaytarmanın statusu səhifəsi (QR).** Çap alınmayanda kiosk refund kartını və QR-i
 göstərir; QR bu səhifəni açır:
 

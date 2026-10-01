@@ -150,5 +150,214 @@
   "cameraCapture": "Çək",
   "cameraNoCamera": "Bu cihazda kamera tapılmadı.",
   "cameraPermission": "Kameraya icazə verilməyib. Telefonun ayarlarından icazə verib yenidən cəhd edin.",
-  "cameraFailed": "Kamera açılmadı. Yenidən cəhd edin."
+  "cameraFailed": "Kamera açılmadı. Yenidən cəhd edin.",
+
+  "homeBonusPagesCount": "{count} bonus səhifə",
+  "@homeBonusPagesCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "homeRecentJobs": "Son sifarişlər",
+  "homeNoJobs": "Hələ sifarişiniz yoxdur",
+  "homeNoJobsHint": "Kioskda QR oxudub ödədiyiniz sifarişlər burada görünəcək.",
+  "homeJobsFailed": "Sifarişləri yükləmək alınmadı: {reason}",
+  "@homeJobsFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "jobPagesCopies": "{pages} səhifə × {copies} nüsxə",
+  "@jobPagesCopies": {
+    "placeholders": {
+      "pages": { "type": "int" },
+      "copies": { "type": "int" }
+    }
+  },
+  "jobStatusDraft": "Hazırlanır",
+  "jobStatusPendingPayment": "Ödəniş gözləyir",
+  "jobStatusPaid": "Ödənildi",
+  "jobStatusQueued": "Növbədə",
+  "jobStatusPrinting": "Çap olunur",
+  "jobStatusCompleted": "Tamamlandı",
+  "jobStatusInterrupted": "Dayandı",
+  "jobStatusSuspected": "Nəticə dəqiqləşdirilir",
+  "jobStatusCancelled": "Ləğv edildi",
+  "jobStatusExpired": "Vaxtı bitdi",
+  "jobSuspectedNote": "Çapınızın nəticəsi dəqiqləşdirilir. Pulunuz itməyib — nəticə bilinən kimi sizə bildiriləcək.",
+  "jobReport": "Problem barədə bildir",
+  "reportHint": "Nə baş verdiyini yazın: neçə səhifə çıxdı, printer nə göstərdi.",
+  "reportField": "Mesajınız",
+  "reportSend": "Göndər",
+  "reportSent": "Müraciətiniz göndərildi. Cavabı “Müraciətlərim” bölməsində görəcəksiniz.",
+  "reportEmpty": "Mesaj boş ola bilməz.",
+  "scanTitle": "Kioskda ödə",
+  "scanInstruction": "Kioskdakı “NeoPrint tətbiqi” QR kodunu çərçivəyə salın.",
+  "scanForeign": "Bu QR NeoPrint ödənişi deyil. Bank QR kodunu bank tətbiqinizlə oxudun.",
+  "scanNoPermission": "Kameraya icazə verilməyib, ona görə QR kodu oxuna bilmir. Telefonun tənzimləmələrində NeoPrint-ə kamera icazəsi verin.",
+  "scanNoCamera": "Bu cihazda kamera tapılmadı, ona görə QR kodu oxuna bilmir.",
+  "payTitle": "Ödəniş",
+  "payTimeLeft": "Ödəniş üçün {time} vaxtınız var",
+  "@payTimeLeft": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "payKiosk": "Kiosk",
+  "payColor": "Rəngli",
+  "payBlackWhite": "Ağ-qara",
+  "payUseBonus": "{count} bonus səhifə istifadə et (−{amount})",
+  "@payUseBonus": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "amount": { "type": "String" }
+    }
+  },
+  "payPromoApplied": "Promokod {code}: −{amount}",
+  "@payPromoApplied": {
+    "placeholders": {
+      "code": { "type": "String" },
+      "amount": { "type": "String" }
+    }
+  },
+  "payPromoRefused": "Promokod tətbiq olunmur: {reason} Məbləğ promokodsuz göstərilib.",
+  "@payPromoRefused": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "paySourceTitle": "Necə ödəyirsiniz?",
+  "payFromWallet": "Balansdan",
+  "payWalletBalance": "Balans: {amount}",
+  "@payWalletBalance": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "payWalletShort": "Balans çatmır — bank kartını seçin və ya balansı artırın.",
+  "payByCard": "Bank kartı",
+  "payByCardHint": "Məbləğ kartınızdan birbaşa tutulur.",
+  "payButton": "{amount} ödə",
+  "@payButton": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "payWithBonusOnly": "Bonus səhifələrlə ödə",
+  "paySuccessTitle": "Ödəniş uğurlu",
+  "paySuccessBody": "Sifariş {code} kioskda növbəyə düşdü. Çap tezliklə başlayacaq; qəbz hesabınızdadır.",
+  "@paySuccessBody": {
+    "placeholders": {
+      "code": { "type": "String" }
+    }
+  },
+  "payBackHome": "Ana səhifəyə qayıt",
+  "payExpiredTitle": "Ödəniş vaxtı bitdi",
+  "payExpiredBody": "Məbləğ tutulmayıb. Kioskda sifarişi yenidən ödəməyə açın və QR kodu təkrar oxudun.",
+  "payNotFound": "Bu ödəniş tapılmadı. Kioskdakı “NeoPrint tətbiqi” QR kodunu yenidən oxudun.",
+  "walletTitle": "Balans",
+  "walletNoRefundNote": "Balansa yüklənən məbləğ geri qaytarılmır və karta çıxarıla bilməz.",
+  "walletTopUp": "Balansı artır",
+  "walletTopUpTitle": "Balansı artırın",
+  "walletTopUpOther": "Başqa məbləğ (₼)",
+  "walletTopUpRange": "Məbləğ 1 ilə 500 ₼ arasında olmalıdır.",
+  "walletTopUpPay": "{amount} kartla ödə",
+  "@walletTopUpPay": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "walletTopUpDone": "Balans artırıldı: +{amount}",
+  "@walletTopUpDone": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "walletVoucher": "Voucher kodu",
+  "walletVoucherTitle": "Voucher kodunu daxil edin",
+  "walletVoucherHint": "Kod qaytarma zamanı verilir, məsələn RF-AB12-CD34.",
+  "walletVoucherRedeem": "Balansa köçür",
+  "walletVoucherDone": "Voucher balansınıza köçürüldü.",
+  "walletVoucherEmpty": "Kodu yazın.",
+  "walletHistory": "Hərəkətlər",
+  "walletNoHistory": "Hələ hərəkət yoxdur",
+  "walletNoHistoryHint": "Balans artırma, ödəniş və qaytarmalar burada görünəcək.",
+  "walletBalanceAfter": "Sonra: {amount}",
+  "@walletBalanceAfter": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "walletLoadFailed": "Balansı yükləmək alınmadı: {reason}",
+  "@walletLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "walletTypeTopUp": "Balans artırıldı",
+  "walletTypePayment": "Ödəniş",
+  "walletTypeRefund": "Qaytarma",
+  "walletTypeBonus": "Bonus səhifələr",
+  "walletTypeVoucherRedeem": "Voucher köçürüldü",
+  "walletTypeAdminAdjust": "Düzəliş",
+  "receiptsTitle": "Qəbzlər",
+  "receiptsEmpty": "Hələ qəbziniz yoxdur",
+  "receiptsEmptyHint": "Hər ödənişdən sonra qəbz burada görünür.",
+  "receiptsLoadFailed": "Qəbzləri yükləmək alınmadı: {reason}",
+  "@receiptsLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "receiptPrint": "Çap sifarişi",
+  "receiptTopUp": "Balans artırılması",
+  "receiptFiscalIssued": "Fiskal çek verildi",
+  "receiptFiscalPending": "Fiskal çek hazırlanır",
+  "receiptEmail": "Email-ə göndər",
+  "receiptEmailed": "Qəbz email ünvanınıza göndərildi.",
+  "claimsTitle": "Müraciətlərim",
+  "claimsEmpty": "Hələ müraciətiniz yoxdur",
+  "claimsEmptyHint": "Sifarişdə problem olanda sifariş kartından “Problem barədə bildir” seçin.",
+  "claimsLoadFailed": "Müraciətləri yükləmək alınmadı: {reason}",
+  "@claimsLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "claimStatusOpen": "Baxılır",
+  "claimStatusAnswered": "Cavablandı",
+  "claimStatusClosed": "Bağlandı",
+  "claimReplyLabel": "NeoPrint-in cavabı",
+  "profileReceipts": "Qəbzlər",
+  "profileClaims": "Müraciətlərim",
+  "noticeSuspected": "Çapınızın nəticəsi dəqiqləşdirilir. Pulunuz itməyib.",
+  "noticeRefundWallet": "{amount} balansınıza qaytarıldı.",
+  "@noticeRefundWallet": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "noticeRefundCard": "{amount} kartınıza qaytarılır.",
+  "@noticeRefundCard": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "noticeRefundVoucher": "{amount} voucher kodu ilə qaytarıldı.",
+  "@noticeRefundVoucher": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+
+  "payPromoAdd": "Promokodunuz var?",
+  "payPromoField": "Promokod",
+  "payPromoApply": "Tətbiq et",
+  "payPromoRemove": "Promokodu sil",
+  "payPromoNotApplied": "Promokod tətbiq olunmadı: {reason}",
+  "@payPromoNotApplied": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  }
 }

@@ -35,6 +35,7 @@ void main() {
     'USB',
     'PIN',
     'OK',
+    'Kiosk',
     'Azərbaycan',
     'English',
     'Русский',

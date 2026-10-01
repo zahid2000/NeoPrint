@@ -75,7 +75,8 @@ düzəldildi (`DECISIONS.md`).
 | `web_socket_channel` | 3.0.1 | BSD-3-Clause (Dart komandası) | Öz SignalR klientimizin nəqliyyatı |
 | `intl` | 0.20.3 | BSD-3-Clause (Dart komandası) | Lokalizasiya |
 | `file_picker` | 13.1.0 | MIT | Fayllarım: yüklənəcək faylın seçimi (Addım 2) |
-| `camera` | 0.12.1 | BSD-3-Clause (Flutter komandası) | Fayllarım: şəkil çəkib yükləmə (Addım 2) |
+| `camera` | 0.12.1 | BSD-3-Clause (Flutter komandası) | Fayllarım: şəkil çəkib yükləmə (Addım 2); kioskun ödəniş QR-ını oxumaq üçün kamera axını (Addım 4) |
+| `google_mlkit_barcode_scanning` | 0.16.1 (+ `google_mlkit_commons` 0.13.0) | MIT | Kioskun ödəniş QR-ını telefonun özündə oxumaq — Google ML Kit, şəbəkəsiz (Addım 4, plan Bölmə 2.0). Yalnız Android və iOS; web-də ödəniş `neoprint://pay/{id}` linki ilə açılır |
 | `flutter_lints` | 5.0.0 | BSD-3-Clause | Lint qaydaları (dev) |
 
 HEIC → JPEG çevrilməsi paket deyil — platformanın öz API-si (Android `ImageDecoder`, iOS `UIImage`), `MainActivity.kt` və `AppDelegate.swift`-də.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/features/readiness.dart';
+import '../../features/notices/hub_notices.dart';
 import '../../l10n/app_localizations.dart';
 
 /// The bottom navigation from plan section 8.1: five destinations once every
@@ -19,7 +20,8 @@ class BottomNavShell extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      body: shell,
+      // Inside the scaffold, so a notice sits above the navigation bar.
+      body: HubNotices(child: shell),
       bottomNavigationBar: NavigationBar(
         selectedIndex: shell.currentIndex,
         // goBranch with initialLocation restores a tab to its root when it is
