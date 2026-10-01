@@ -878,6 +878,13 @@ NEOPRINT_IT_LOG="$PWD/it-app.log" dotnet test backend/tests/NeoPrint.Api.Integra
 $env:NEOPRINT_IT_LOG = "$PWD\it-app.log"; dotnet test backend/tests/NeoPrint.Api.IntegrationTests; Remove-Item Env:NEOPRINT_IT_LOG
 ```
 
+**İnteqrasiya dəstini başqa ağır işlə eyni anda işlətməyin.** Ödəniş → refund →
+fiskal çek kimi zəncirlər 4–5 asinxron addımdır (outbox, RabbitMQ, Hangfire) və
+testlər nəticəni 30 saniyə gözləyir. Eyni anda `flutter test`, `flutter pub get`,
+kiosk testləri və ya build gedəndə dəst 6 dəqiqədən 9+ dəqiqəyə uzanır və bir-iki
+test vaxt aşımı ilə düşə bilər (`Waited 30 s for ...`). Belə düşmədə əvvəl dəsti tək
+işlədin; tək işləyəndə də düşürsə, bu real xətadır (T-116).
+
 Testdə ayrı ayarlarla ikinci API lazımdırsa `WithWebHostBuilder` yox,
 `_fixture.WithHttpOnlyHost(...)` istifadə edin — əks halda ikinci host-un mesaj
 bus-ı fixture-un mesajlarını götürüb itirir (`docs/DECISIONS.md`).
