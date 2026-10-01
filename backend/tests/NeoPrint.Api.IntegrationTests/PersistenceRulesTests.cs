@@ -95,14 +95,20 @@ public sealed class PersistenceRulesTests
             Path.Combine(InfrastructureRoot(), "Persistence", "MongoTransactionRunner.cs"));
 
         runner.Should().Contain(
-            "_context.Enlist(_outbox.Session",
+            "_context.Enlist(outbox.Session",
             "starting a transaction whose session nothing uses is the bug this replaced");
 
         // And the transaction is the outbox's own: committing a session of our
         // own left the published events buffered and never written.
-        runner.Should().Contain("_outbox.BeginTransaction(")
-            .And.Contain("_outbox.CommitTransaction(")
+        runner.Should().Contain("outbox.BeginTransaction(")
+            .And.Contain("outbox.CommitTransaction(")
             .And.NotContain("StartSessionAsync", "a second session would not carry the outbox");
+
+        // The outbox and the publish endpoint come from a scope of the attempt's
+        // own: in a consumer the request scope's endpoint is the ConsumeContext,
+        // which sent events before the commit (T-119, ADR-0006).
+        runner.Should().Contain("CreateAsyncScope()")
+            .And.Contain("TransactionOutbox.Use(publish)");
     }
 
     private static IEnumerable<string> InfrastructureSources()
