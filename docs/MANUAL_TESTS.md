@@ -172,3 +172,53 @@ Quraşdırma: `KIOSK_SETUP.md` bölmə 4. Sonra:
 | 5 | Gizli admin çıxışı → "Texniki giriş" | `tty1`-də konsol login; `sudo systemctl start neoprint-kiosk` kiosku qaytarır |
 | 6 | `sudo -u neoprint-convert curl -m 5 https://example.com` | Bağlantı rədd olunur (konvertorun şəbəkəsi yoxdur) |
 | 7 | `ls -l /var/lib/neoprint` | Sahiblər `KIOSK_PROVISIONING.md`-dəki kimi (`device` — `kiosk 700`) |
+
+## MT-05. Addım 4 — ödəniş və qaytarma, lokal stack (T-099)
+
+**Nə vaxt:** hər ödəniş / refund dəyişikliyindən sonra və addım bağlananda.
+**Harada:** lokal stack (`docker compose up -d`). Lazım olanlar:
+
+- kiosk: `UseFakePrinter`, `SkipPayment: false`;
+- admin paneli;
+- mobil tətbiq: Chrome-da (`flutter run -d chrome`) və ya telefonda.
+
+Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-dədir. Son keçid: 2026-10-01, ekran görüntüləri `docs/screenshots/step-4/`.
+
+**Hazırlıq:**
+
+1. Admin → **Tənzimləmələr**-də `Payment.TimeoutMinutes = 3` və `Job.SuspectedAfterMinutes = 1` qoyun. Sonda 5 və 15-ə qaytarın.
+2. Flaşa 3 səhifəlik PDF qoyun.
+3. Fake printerin qovluğu `<spool>/printed`-dir:
+   - Windows: `%ProgramData%\NeoPrint\spool\printed`;
+   - Linux: `/var/lib/neoprint/spool/printed`.
+
+| # | Addım | Gözlənilən |
+|---|---|---|
+| 1 | Kioskda sifariş → "Bank kartı və ya bank tətbiqi" | QR və geri sayım **3:00**-dan (paneldəki dəyər); son 60 saniyədə rəqəm sarı + ikon |
+| 2 | `curl -X POST http://localhost:5080/api/dev/payments/<id>/simulate-success` | Kioskda "Ödəniş uğurlu", sifariş kodu, bir neçə saniyədə fiskal çekin QR-ı; fayl `printed`-də; admin → Ödənişlər-də `Ödənilib`, satış çeki `Verilib` |
+| 3 | Qəbz ekranında "Email ünvanını yazın" → ünvan → **Göndər** | Klaviatura ayrıca paneldə, kəsilmədən; göndəriləndən sonra panel bağlanır, kartda "Göndərildi: a***@..."; məktub Mailpit-də (http://localhost:8025) |
+| 4 | Parametrlər ekranında **Promokod** → səhv kod → **Tətbiq et** | Yazma paneli; səbəb sahənin sağında, klaviatura yerindən oynamır; **Bağla** yazılanı saxlayır |
+| 5 | `printed` qovluğuna `PaperJam` yazılmış `printer-fail-next.txt` qoyun, sonra sifariş edib ödəyin (ssenari A) | Kiosk loqunda `Interrupted`; ödəniş `Qaytarılıb` (karta, `SystemError`), qaytarma fiskal çeki verilir; "Bitir"-dən sonra kioskun ana ekranında "Çap tamamlanmadı", məbləğ və status QR-ı |
+| 6 | `printed` qovluğuna `PaperJam` yazılmış `printer-state.txt` qoyun, sifariş edib ödəyin | Sifariş **gözləyir** (refund yoxdur), kiosk heartbeat göndərməyə davam edir — loqda `429` yoxdur (T-121); faylı silin → çap olunur |
+| 7 | Kioskun şəbəkəsini kəsin (kabel / `docker network disconnect`) ödənilmiş, çap olunmamış sifarişlə, 1+ dəqiqə gözləyin (ssenari B) | Sifariş admin → **Baxış gözləyən sifarişlər**-də; avtomatik refund **yoxdur**; araşdırma kartında çap cəhdləri və kiosk hadisələri |
+| 8 | Həmin sifarişdə **Qərar ver** → "Tam qaytar", səbəb + qeyd | "Qərar qeydə alındı", siyahı boşalır; ödəniş `AdminManual` ilə karta qaytarılıb |
+| 9 | Kioskda "NeoPrint tətbiqi" → mobil tətbiqdə QR-ı oxudun (Chrome-da `#/pay/<paymentId>`) → kartla ödəyin | Mobil "Ödəniş uğurlu"; kioskda qəbz ekranı, fayl çap olunur; mobil **Profil → Qəbzlər**-də yeni qəbz, fiskal çek "verildi" |
+| 10 | Admin → həmin ödəniş → **Qaytar** → "Balansa" | Ödəniş `Qaytarılıb`, qaytarma "Balansa · Admin qərarı"; mobil **Balans**-da qaytarma sətri |
+| 11 | Admin → anonim bank QR ödənişi → **Qaytar** | Yalnız "Karta" seçimi; ödəniş `Qaytarılıb`, qaytarma fiskal çeki verilir |
+| 12 | Admin → **Qəbzlər** → PDF | PDF açılır: Azərbaycan hərfləri, ₼, fiskal QR (QuestPDF Linux image-də) |
+| 13 | Eyni `simulate-success`-i `?duplicate=true` ilə göndərin | Bir ödəniş, bir çap, bir fiskal çek (idempotency) |
+
+## MT-06. Addım 4 — real provayderlər və telefon (T-099)
+
+**Nə vaxt:** Addım 7, pilotdan əvvəl, real bank / e-kassa müqaviləsindən sonra.
+**Harada:** staging + real kiosk + real Android / iOS telefon.
+
+| # | Addım | Gözlənilən |
+|---|---|---|
+| 1 | Real bank tətbiqi ilə kioskdakı QR-ı ödəyin | Callback imzası yoxlanılır, kiosk 5 saniyə ərzində "Ödəniş uğurlu"; bankdakı məbləğ kioskdakı ilə eynidir |
+| 2 | Callback-i bloklayın (staging firewall) və ödəyin | `Payment.ReconcileAfterMinutes`-dan sonra reconciliation ödənişi tapır, sifariş çap olunur |
+| 3 | Real printerdə çapın ortasında kağızı çıxarın (MT-02 №6) | Ssenari A: avtomatik karta qaytarma, bankda refund görünür (1–3 iş günü), qaytarma fiskal çeki e-kassada |
+| 4 | Telefonun öz kamerası ilə "NeoPrint tətbiqi" QR-ı | Tətbiq `neoprint://pay/...` linki ilə ödəniş ekranında açılır (Android və iOS) |
+| 5 | Tətbiqdə **QR oxut** (ML Kit) | QR 2 saniyə ərzində tanınır, ödəniş ekranı açılır |
+| 6 | Fiskal çekin QR-ını telefonla oxudun | e-kassa saytında çek açılır, məbləğ və tarix düzgündür |
+| 7 | Balansdan və bonus səhifələrlə ödəniş | Fiskal çekdə bonus hissəsi 0 ₼, yalnız pulla ödənilən hissə; balans heç vaxt karta çıxarılmır |

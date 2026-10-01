@@ -66,7 +66,15 @@ PowerShell versiyası ~10 san çəkir.
 ### OpenBao restart-dan sonra möhürlənir (sealed)
 
 `docker compose restart openbao` və ya maşını söndürdükdən sonra OpenBao
-**sealed** vəziyyətdə qalxır və API secret oxuya bilmir. Açmaq üçün:
+**sealed** vəziyyətdə qalxır və API secret oxuya bilmir.
+
+Simptomlar:
+
+- nə kiosk, nə admin paneli serverə qoşula bilmir;
+- `docker compose ps`-də `neoprint-api` `Restarting` görünür;
+- `docker compose logs api`-də AppRole girişi `503` alır, sonra `NEOPRINT_MONGO_URI` tapılmır.
+
+Açmaq üçün:
 
 ```bash
 # Unseal açarı openbao-init tərəfindən yazılıb (bu fayl .gitignore-dadır)
@@ -840,6 +848,27 @@ kompüterin LAN ünvanına dəyişin, məs. `http://192.168.1.50:5080`.
 serverə yükləyir (`POST /api/print-jobs/<jobId>/flash-upload`, kiosk tokeni ilə) ki, fayl
 müştərinin hesabında qalsın. Şəbəkə yoxdursa kiosk hər 2 dəqiqədən bir yenidən cəhd edir.
 
+**Printer xətasını simulyasiya etmək (fake printer, T-123).** Fake printerin çıxış qovluğunda
+(`<spool>/printed`) iki fayl işləyir:
+
+- Windows: `%ProgramData%\NeoPrint\spool\printed`;
+- Linux: `/var/lib/neoprint/spool/printed`.
+
+| Fayl (məzmunu vəziyyət adıdır) | Nə edir | Nəticə |
+|---|---|---|
+| `printer-state.txt` — `PaperJam`, `OutOfPaper`, `Offline` | Printer **çapdan əvvəl** xətadadır | Sifariş növbədə gözləyir, refund olmur; faylı silin → çap olunur |
+| `printer-fail-next.txt` — `PaperJam` və s. | **Növbəti** iş printerdə qırılır, fayl özü silinir (birdəfəlik) | Ssenari A: iş `Interrupted` → avtomatik karta qaytarma, kioskda "Çap tamamlanmadı" |
+
+```bash
+# Linux kiosk (konteyner və ya cihaz)
+echo PaperJam > /var/lib/neoprint/spool/printed/printer-fail-next.txt
+```
+
+```powershell
+# Windows kiosk
+Set-Content "$env:ProgramData\NeoPrint\spool\printed\printer-fail-next.txt" PaperJam
+```
+
 PowerShell-də `curl` əvəzinə `curl.exe` yazın (və ya `Invoke-RestMethod -Method Post <URL>`).
 
 ---
@@ -861,6 +890,8 @@ bash tools/dev-kiosk/linux-check.sh
 # Mobil
 cd mobile && flutter analyze && flutter test && dart format --set-exit-if-changed .
 flutter build web          # lokalda; Android build CI-da (Android SDK 36 lazımdır)
+# Hazır web build-i lokal API ilə açmaq üçün (release build default olaraq api.neoprint.az-a gedir):
+flutter build web --dart-define=NEOPRINT_API_URL=http://localhost:5080/
 
 # Admin
 cd admin && npm run lint && npm test && npm run build
