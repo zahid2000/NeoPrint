@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Application.Common;
+using NeoPrint.Application.Localization;
 using NeoPrint.Application.Payments;
 using NeoPrint.Application.PrintJobs;
 using NeoPrint.Application.Wallets;
@@ -430,7 +431,7 @@ public sealed class RefundAdminHandlers :
             refund.Status.ToString(),
             refund.Attempts,
             refund.NextAttemptAt,
-            refund.LastError,
+            Messages.WriteStored(refund.LastError),
             refund.Note,
             refund.ProviderRefundRef,
             refund.VoucherCode,

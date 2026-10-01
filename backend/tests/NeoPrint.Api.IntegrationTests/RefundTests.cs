@@ -182,6 +182,14 @@ public sealed class RefundTests
 
             // An anonymous card cannot take it; the admin gives a voucher instead.
             using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+
+            // T-127: the refunds page reads the kept error in the admin's language, not as its key.
+            using var list = new HttpRequestMessage(HttpMethod.Get, "/api/admin/refunds?page=1&pageSize=50&status=Failed");
+            list.Headers.AcceptLanguage.ParseAdd("az");
+            var rows = (await (await admin.SendAsync(list)).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items");
+            rows.EnumerateArray().Single(r => r.GetProperty("id").GetGuid() == refund.Id)
+                .GetProperty("lastError").GetString().Should().Be("Bank qaytarmanı rədd etdi");
+
             var retry = await RetryAsync(admin, refund.Id, "Voucher");
             retry.StatusCode.Should().Be(HttpStatusCode.OK, await retry.Content.ReadAsStringAsync());
 

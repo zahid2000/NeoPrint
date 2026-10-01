@@ -93,6 +93,14 @@ public sealed class FiscalTests
             pending.LastError.Should().Be("fiscal.provider.unavailable");
             pending.NextAttemptAt.Should().BeAfter(DateTime.UtcNow);
 
+            // T-127: the payment page reads the kept error in the admin's language, not as its key.
+            using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+            using var detail = new HttpRequestMessage(HttpMethod.Get, $"/api/admin/payments/{paymentId}");
+            detail.Headers.AcceptLanguage.ParseAdd("az");
+            var page = await (await admin.SendAsync(detail)).Content.ReadFromJsonAsync<JsonElement>();
+            page.GetProperty("fiscal")[0].GetProperty("lastError").GetString()
+                .Should().Be("E-kassa cavab vermədi; çek avtomatik yenidən göndəriləcək.");
+
             // Older than Fiscal.MaxPendingMinutes: one incident, however often it is checked.
             await AgeAsync(pending.Id, minutes: 30);
             await SendAsync(new ReportLateFiscalReceiptsCommand());

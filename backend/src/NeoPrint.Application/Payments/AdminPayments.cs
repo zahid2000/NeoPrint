@@ -260,7 +260,8 @@ public sealed class AdminPaymentHandlers :
             receipt?.Number,
             [
                 .. fiscal.OrderBy(f => f.CreatedAt).Select(f => new PaymentFiscalSummary(
-                    f.Id, f.Type.ToString(), f.Status.ToString(), f.Amount.Amount, f.FiscalId, f.TerminalId, f.LastError, f.IssuedAt)),
+                    f.Id, f.Type.ToString(), f.Status.ToString(), f.Amount.Amount, f.FiscalId, f.TerminalId,
+                    Messages.WriteStored(f.LastError), f.IssuedAt)),
             ],
             [
                 .. refunds.OrderBy(r => r.CreatedAt).Select(r => new PaymentRefundSummary(
