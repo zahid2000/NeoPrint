@@ -969,6 +969,27 @@ LibreOffice və Ghostscript marşrutları yalnız backend image-ində işləyir;
 olmayanda konvertasiya faylı `Failed` edir və səbəbini yazır — sorğu xəta
 atmır.
 
+### Windows-da "2 skip" nədir
+
+Windows-da inteqrasiya dəsti `419/421, 2 skip` göstərir. Skip olunan iki test
+`SandboxedProcessTests`-dəki resurs limiti testləridir:
+
+- `A_program_that_spins_is_stopped_by_the_cpu_limit_long_before_its_timeout`;
+- `A_program_that_allocates_without_bound_is_stopped_by_the_memory_limit`.
+
+Konvertasiya prosesinin CPU və yaddaş limiti Linux-un `prlimit` əmri ilə
+qoyulur. Bu yalnız backend image-ində (Linux) işləyir, ona görə testlər
+`LinuxFact` ilə işarələnib və Windows-da skip olunur. Bu xəta deyil. CI
+(`ubuntu-latest`) hər iki testi işlədir: `421/421, Skipped: 0`. Lokalda
+işlətmək üçün dəsti WSL-də və ya Linux-da işə salın.
+
+PDFium testləri (yuxarıda) DLL olmayanda skip olunur, onda skip sayı artır.
+Sayı yoxlamaq üçün:
+
+```bash
+dotnet test backend/tests/NeoPrint.Api.IntegrationTests --logger "console;verbosity=normal" | grep "\[SKIP\]"
+```
+
 > Kiosk build-i "file is locked" xətası verirsə, işləyən kiosk tətbiqi DLL-ləri
 > tutub saxlayır: `Stop-Process -Name NeoPrint.Kiosk -Force`.
 
