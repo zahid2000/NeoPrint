@@ -355,6 +355,57 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// <summary>The wall clock, rendered in Asia/Baku (plan section 2.1).</summary>
     public string ClockText => Localization.Formats.Time(Now);
 
+    // ---- phones joined in a session (plan section 9.3; docs/DESIGN_SYSTEM.md "Telefon qoşulub")
+
+    /// <summary>Open sessions at this kiosk and when each ends; never whose.</summary>
+    private readonly Dictionary<Guid, DateTime> _sessions = [];
+
+    public int ConnectedPhones => _sessions.Count;
+
+    public bool HasConnectedPhones => _sessions.Count > 0;
+
+    public string ConnectedPhonesText => _sessions.Count > 1 ? T("session.phones", _sessions.Count) : T("session.phone");
+
+    /// <summary>A phone opened (or extended) a session here.</summary>
+    public void SessionOpened(Guid sessionId, DateTime expiresAt)
+    {
+        _sessions[sessionId] = expiresAt.ToUniversalTime();
+        SessionsChanged();
+    }
+
+    /// <summary>The phone left: closed, replaced or expired.</summary>
+    public void SessionClosed(Guid sessionId)
+    {
+        if (_sessions.Remove(sessionId))
+        {
+            SessionsChanged();
+        }
+    }
+
+    /// <summary>A missed "closed" message does not leave the badge on: past its end, a session is gone.</summary>
+    private void ForgetEndedSessions()
+    {
+        var now = DateTime.UtcNow;
+        var ended = _sessions.Where(pair => pair.Value <= now).Select(pair => pair.Key).ToList();
+
+        foreach (var sessionId in ended)
+        {
+            _sessions.Remove(sessionId);
+        }
+
+        if (ended.Count > 0)
+        {
+            SessionsChanged();
+        }
+    }
+
+    private void SessionsChanged()
+    {
+        OnPropertyChanged(nameof(ConnectedPhones));
+        OnPropertyChanged(nameof(HasConnectedPhones));
+        OnPropertyChanged(nameof(ConnectedPhonesText));
+    }
+
     /// <summary>Switches the interface language from the header.</summary>
     [RelayCommand]
     private void SelectLanguage(string? code)
@@ -514,7 +565,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    partial void OnNowChanged(DateTime value) => OnPropertyChanged(nameof(ClockText));
+    partial void OnNowChanged(DateTime value)
+    {
+        OnPropertyChanged(nameof(ClockText));
+        ForgetEndedSessions();
+    }
 
     /// <summary>The header shows which language is on (docs/TASKS.md T-086).</summary>
     private void MarkSelectedLanguage()

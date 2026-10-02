@@ -69,6 +69,8 @@ public static class Strings
                 ["format.pages.few"] = "{0} səhifə",
                 ["format.pages.many"] = "{0} səhifə",
 
+                ["session.phone"] = "Telefon qoşulub",
+                ["session.phones"] = "{0} telefon qoşulub",
                 ["queue.title"] = "Növbə",
                 ["queue.empty"] = "Növbə boşdur",
                 ["queue.guest"] = "Qonaq",
@@ -294,6 +296,8 @@ public static class Strings
                 ["format.pages.few"] = "{0} pages",
                 ["format.pages.many"] = "{0} pages",
 
+                ["session.phone"] = "Phone connected",
+                ["session.phones"] = "{0} phones connected",
                 ["queue.title"] = "Queue",
                 ["queue.empty"] = "The queue is empty",
                 ["queue.guest"] = "Guest",
@@ -524,6 +528,8 @@ public static class Strings
                 ["format.pages.many"] = "{0} страниц",
 
 
+                ["session.phone"] = "Телефон подключён",
+                ["session.phones"] = "Подключено телефонов: {0}",
                 ["queue.title"] = "Очередь",
                 ["queue.empty"] = "Очередь пуста",
                 ["queue.guest"] = "Гость",

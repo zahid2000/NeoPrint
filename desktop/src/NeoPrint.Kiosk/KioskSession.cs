@@ -126,6 +126,9 @@ public sealed class KioskSession
                 orders.MarkPaid(jobId);
                 await OnUiAsync(() => _ = _model.Flow?.PaymentConfirmed(paymentId)).ConfigureAwait(false);
             };
+            // A phone joined or left (plan section 9.3): the header says so, never who.
+            Func<Guid, DateTime, Task> sessionOpened = (sessionId, expiresAt) => OnUiAsync(() => _model.SessionOpened(sessionId, expiresAt));
+            Func<Guid, string, Task> sessionClosed = (sessionId, _) => OnUiAsync(() => _model.SessionClosed(sessionId));
             Action<PrinterActivity> activityChanged = activity =>
                 Dispatcher.UIThread.Post(() => _model.SetPrinterProblem(activity.LastErrorCode));
 
@@ -160,6 +163,8 @@ public sealed class KioskSession
             hub.CommandReceived += commandReceived;
             hub.Reconnected += reconnected;
             hub.PaymentConfirmed += paymentConfirmed;
+            hub.SessionOpened += sessionOpened;
+            hub.SessionClosed += sessionClosed;
             worker.ActivityChanged += activityChanged;
             worker.JobFinished += jobFinished;
 
@@ -173,6 +178,8 @@ public sealed class KioskSession
                 hub.CommandReceived -= commandReceived;
                 hub.Reconnected -= reconnected;
                 hub.PaymentConfirmed -= paymentConfirmed;
+                hub.SessionOpened -= sessionOpened;
+                hub.SessionClosed -= sessionClosed;
                 worker.ActivityChanged -= activityChanged;
                 worker.JobFinished -= jobFinished;
             });

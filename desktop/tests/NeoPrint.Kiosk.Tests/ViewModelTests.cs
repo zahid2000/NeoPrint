@@ -31,6 +31,33 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void The_header_says_a_phone_joined_never_who_and_forgets_it_when_its_session_ends()
+    {
+        var model = new MainWindowViewModel();
+        model.HasConnectedPhones.Should().BeFalse();
+
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        model.SessionOpened(first, DateTime.UtcNow.AddMinutes(10));
+        model.ConnectedPhonesText.Should().Be("Telefon qoşulub");
+
+        model.SessionOpened(second, DateTime.UtcNow.AddMinutes(10));
+        model.ConnectedPhonesText.Should().Be("2 telefon qoşulub");
+
+        // The same session extended is still one phone.
+        model.SessionOpened(first, DateTime.UtcNow.AddMinutes(10));
+        model.ConnectedPhones.Should().Be(2);
+
+        model.SessionClosed(second);
+        model.ConnectedPhones.Should().Be(1);
+
+        // Its "closed" message lost: past its end it goes anyway.
+        model.SessionOpened(first, DateTime.UtcNow.AddSeconds(-1));
+        model.Now = DateTime.Now;
+        model.HasConnectedPhones.Should().BeFalse();
+    }
+
+    [Fact]
     public void An_activated_kiosk_shows_its_qr_and_code_in_the_footer()
     {
         var model = new MainWindowViewModel();

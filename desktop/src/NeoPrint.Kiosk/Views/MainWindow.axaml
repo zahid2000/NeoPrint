@@ -55,11 +55,34 @@
                                VerticalAlignment="Center" />
                 </StackPanel>
 
-                <TextBlock Grid.Column="1"
-                           Text="{Binding KioskName}"
-                           Classes="muted"
-                           Margin="{DynamicResource GapStart6}"
-                           VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            Spacing="{DynamicResource Space4}"
+                            Margin="{DynamicResource GapStart6}"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="{Binding KioskName}"
+                               Classes="muted"
+                               VerticalAlignment="Center" />
+
+                    <!-- A phone joined in a session (plan section 9.3): that one did,
+                         never who - the screen is in a public place. Not a button. -->
+                    <Border IsVisible="{Binding HasConnectedPhones}"
+                            Background="{DynamicResource InfoBg}"
+                            CornerRadius="{DynamicResource RadiusSm}"
+                            Height="{DynamicResource StatusChipHeight}"
+                            Padding="{DynamicResource InsetX4}"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                            <PathIcon Data="{StaticResource IconPhone}"
+                                      Width="20" Height="20"
+                                      Foreground="{DynamicResource Info500}"
+                                      VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ConnectedPhonesText}"
+                                       Foreground="{DynamicResource Info500}"
+                                       FontSize="{DynamicResource FontSizeCaption}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
 
                 <!-- Language picker: large targets, this is a touch screen. -->
                 <ItemsControl Grid.Column="2" ItemsSource="{Binding Languages}" VerticalAlignment="Center">

@@ -130,6 +130,8 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 
     Sağ sütun (fiskal çek, email) qalır. Müştəri artıq ekrandan çıxıbsa (başqa ekran və ya başqa sifariş), arayış ana ekranda 3 dəqiqə göstərilir. Başqa müştərinin sifarişi üçün arayış heç vaxt qəbz ekranına düşmür.
 
+**Telefon qoşulub (kiosk, Addım 5).** Mobil tətbiq bu kioskda sessiya açanda (plan 9.3) başlıqda, kiosk adının yanında kiçik nişan: `info` fonunda telefon ikonu + mətn "Telefon qoşulub" (bir neçə sessiya varsa "2 telefon qoşulub"), `Info500` rəngində. Kimin qoşulduğu heç vaxt göstərilmir — ekran ictimaidir. Nişan düymə deyil, axını bloklamır və heç bir ekranı dəyişmir; son sessiya bağlananda və ya vaxtı bitəndə gizlənir (hub mesajı itsə də, bitmə vaxtı keçəndə özü gizlənir). Tətbiqdən gələn sifariş növbə panelində adi iş kimi görünür.
+
 **Promokod sahəsi (kiosk).** Parametrlər ekranında, qiymət kartının altında: "Promokod" düyməsi (secondary) basılanda yazma paneli açılır: kod sahəsi + "Tətbiq et" (panelin əsas düyməsi), hərf-rəqəm klaviaturası (böyük hərflər, rəqəmlər, `-`) və "Sil", "Bağla"; kod qəbul olunanda panel bağlanır. Uğurlu kod qiymət kartında ayrıca sətir kimi görünür ("Promokod X −Y ₼", `--success-500` ikonu ilə) və yekun məbləğ yenilənir; uyğun olmayan kod sahənin altında səbəbi ilə (ikon + mətn) göstərilir, sifarişi bloklamır — müştəri kodu silib davam edə bilər.
 
 **Mobil: ana səhifə, ödəniş və balans (Addım 4).**
