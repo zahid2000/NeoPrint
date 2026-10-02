@@ -116,6 +116,7 @@ public static class DependencyInjection
         services.AddScoped<IKioskDeviceRepository, KioskDeviceRepository>();
         services.AddScoped<IEnrollmentTokenRepository, EnrollmentTokenRepository>();
         services.AddScoped<IKioskRepository, KioskRepository>();
+        services.AddScoped<NeoPrint.Application.Kiosks.IKioskSearch, KioskSearch>();
 
         // Print jobs, the queue and kiosk commands (plan step 3)
         services.AddScoped<IKioskCommandRepository, KioskCommandRepository>();

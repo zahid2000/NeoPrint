@@ -559,6 +559,53 @@ konfiqurasiyanı yenidən çəkir — bütün konfiqurasiyanı poll etmək lazı
 
 ---
 
+## Kiosk axtarışı (mobil tətbiq, Addım 5)
+
+Yalnız mobil istifadəçi token-i (`401` anonim, `403` kiosk / admin token-i).
+Müştəri yalnız gedə biləcəyi kioskları görür: `Online`, `Paused`, `Offline`,
+`Maintenance`. `NotActivated`, `NotConfigured`, `Disabled` kiosk axtarışda
+yoxdur, detalı `404 notFound.kiosk`.
+
+`status` — müştərinin gözləyəcəyi: saxlanan status, amma son heartbeat-i
+`Kiosk.OfflineAfterSeconds`-dan (60) köhnə olan kiosk `Offline` göstərilir
+(statusu saxlayan monitor Addım 7-dədir, T-083).
+
+### `GET /api/kiosks?search=&lat=&lng=&radiusKm=`
+
+→ `{ "items": [ { "id", "code", "name", "address", "lat", "lng", "status", "distanceKm" } ] }`, ən çox 100.
+
+- `search` — ad, kod və ya ünvanın bir hissəsi, böyük-kiçik hərf fərqi yoxdur (ən çox 100 simvol; mətn kimi axtarılır, pattern deyil). Kioskun `id`-si verilərsə dəqiq uyğunluq.
+- `lat` + `lng` — ən yaxın birinci, `distanceKm` ilə (`2dsphere`, `Location.Point`). Məkansız sorğuda `distanceKm` yoxdur, sıra koda görədir.
+- `radiusKm` — 0,1–100, yalnız `lat` / `lng` ilə.
+- Xətalar (`400`): `kiosks.searchTooLong`, `kiosks.searchPointIncomplete` (yalnız biri verilib), `kiosks.latitudeRange`, `kiosks.longitudeRange`, `kiosks.searchRadiusWithoutPoint`, `kiosks.searchRadiusRange`.
+
+### `GET /api/kiosks/{idOrCode}`
+
+`idOrCode` — `id` və ya kod (`ksk-9002` də olar).
+
+```json
+{
+  "id", "code", "name", "address", "lat", "lng", "status",
+  "capabilities": { "color", "duplex", "a3" },
+  "paper": [ { "size": "A4", "availableSheets": 480, "state": "Ok" } ],
+  "queueLength": 1,
+  "prices": { "profileName", "bwPerSide", "colorPerSide", "paperMultipliers", "minOrder", "tiers", "currency" }
+}
+```
+
+`paper` — kioskun lotoku olan hər ölçü (A3 yalnız printer A3 bacaranda).
+`availableSheets` — sayğac minus hələ çap olunmamış sifarişlərə ayrılmış vərəqlər;
+lotok tutumu təyin olunmayıbsa sahə yoxdur və `state` = `Unknown`. `state`:
+`Ok`, `Low` (200 vərəqdən az — plan 2.15-in A4 Warning seed həddi; admin qaydaları
+Addım 7-də), `Out`. `prices` — kioskun qiymət profili (yoxdursa default);
+sifariş zamanı qiymət serverdə yenidən hesablanır.
+
+### `GET /api/kiosks/{id}/queue`
+
+→ `{ "kioskId", "length" }` — növbədə və çapda olan sifarişlərin **sayı**; kimin olduğu heç vaxt verilmir.
+
+---
+
 ## Kiosklar
 
 ### `GET /api/admin/kiosks`

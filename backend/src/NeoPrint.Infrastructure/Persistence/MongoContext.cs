@@ -105,6 +105,9 @@ public sealed class MongoContext
     public MongoSet<AdminUser> AdminUsers => Set<AdminUser>("admin_users");
     public MongoSet<AdminRole> AdminRoles => Set<AdminRole>("admin_roles");
 
+    /// <summary>The GeoJSON point of a kiosk (<see cref="KioskLocationSerializer"/>).</summary>
+    public const string KioskPointPath = "Location." + KioskLocationSerializer.PointField;
+
     public MongoSet<Kiosk> Kiosks => Set<Kiosk>("kiosks");
     public MongoSet<KioskDevice> KioskDevices => Set<KioskDevice>("kiosk_devices");
     public MongoSet<EnrollmentToken> EnrollmentTokens => Set<EnrollmentToken>("enrollment_tokens");
@@ -190,6 +193,9 @@ public sealed class MongoContext
 
         ConventionRegistry.Register("neoprint", pack, _ => true);
 
+        // A kiosk's place, with the GeoJSON point the search is indexed on.
+        BsonSerializer.RegisterSerializer(new KioskLocationSerializer());
+
         // Money keeps its currency with it (plan section 2.3).
         BsonSerializer.RegisterSerializer(new MoneySerializer());
         BsonSerializer.RegisterSerializer(
@@ -252,10 +258,28 @@ public sealed class MongoContext
         await CreateAsync(AdminRoles,
             (Builders<AdminRole>.IndexKeys.Ascending(r => r.Name), Unique("ux_admin_roles_name")));
 
+        // Kiosks saved before the search existed have no GeoJSON point yet
+        // (KioskLocationSerializer writes it on every save from now on). Built
+        // from their own coordinates, so running this again changes nothing.
+        await Kiosks.WithoutSession.UpdateManyAsync(
+                Builders<Kiosk>.Filter.Exists(KioskPointPath, exists: false),
+                Builders<Kiosk>.Update.Pipeline(new[]
+                {
+                    new BsonDocument("$set", new BsonDocument(KioskPointPath, new BsonDocument
+                    {
+                        { "type", "Point" },
+                        { "coordinates", new BsonArray { "$Location.Lng", "$Location.Lat" } },
+                    })),
+                }),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
         await CreateAsync(Kiosks,
             (Builders<Kiosk>.IndexKeys.Ascending(k => k.Code), Unique("ux_kiosks_code")),
             (Builders<Kiosk>.IndexKeys.Ascending(k => k.Status), Named("ix_kiosks_status")),
-            (Builders<Kiosk>.IndexKeys.Ascending(k => k.ActiveDeviceId), Named("ix_kiosks_active_device")));
+            (Builders<Kiosk>.IndexKeys.Ascending(k => k.ActiveDeviceId), Named("ix_kiosks_active_device")),
+            // Kiosks near the user (plan step 5, GET kiosks?lat=&lng=).
+            (Builders<Kiosk>.IndexKeys.Geo2DSphere(KioskPointPath), Named("ix_kiosks_location")));
 
         await CreateAsync(KioskDevices,
             (Builders<KioskDevice>.IndexKeys.Ascending(d => d.PublicKey), Unique("ux_kiosk_devices_public_key")),
