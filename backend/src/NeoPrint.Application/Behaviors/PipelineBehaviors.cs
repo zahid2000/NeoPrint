@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
+using NeoPrint.Domain.Common;
 
 namespace NeoPrint.Application.Behaviors;
 
@@ -95,6 +96,20 @@ public sealed class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRe
         {
             _logger.LogInformation(
                 "{Operation} {Status} in {DurationMs} ms.", operation, "Cancelled", stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+        catch (Exception exception) when (exception is DomainException or AuthenticationException)
+        {
+            // A rule said no - a revoked device registering again, a receipt
+            // that is already issued: the caller gets a 4xx and nothing is
+            // broken. A warning with the message key, not an error with a
+            // stack trace, so alerts on errors stay meaningful.
+            _logger.LogWarning(
+                "{Operation} {Status} in {DurationMs} ms with {ErrorCode}.",
+                operation,
+                "Rejected",
+                stopwatch.ElapsedMilliseconds,
+                exception.Message);
             throw;
         }
         catch (Exception exception)

@@ -37,6 +37,19 @@ Minimum useful fields:
 -   DurationMs
 -   ErrorCode
 
+## Log səviyyələri (API)
+
+| Nə baş verib | Səviyyə | Harada |
+| --- | --- | --- |
+| Sorğu uğurla bitib, yoxlama (validation) rədd edib, sorğu ləğv olunub | `Information` | `LoggingBehavior`, `ProblemDetailsExceptionHandler` |
+| Qayda rədd edib: `DomainException` (409), `NotFoundException` (404), `AuthenticationException` (401) — məs. ləğv olunmuş cihazın qeydiyyatı, artıq verilmiş çekin təkrarı | `Warning`, mesaj açarı ilə (`ErrorCode`), stack trace-siz | `LoggingBehavior` |
+| Gözlənilməz xəta (5xx) | `Error`, exception ilə | `LoggingBehavior`, `ProblemDetailsExceptionHandler` |
+
+Alert yalnız `Error`-a qurulur, ona görə qayda rəddi `Error` yazılmır. ASP.NET Core-un
+`ExceptionHandlerMiddleware`-i hər exception-ı handler-dən əvvəl `Error` kimi yazır.
+Bu kateqoriya `Program.cs`-də söndürülüb, çünki səviyyəni handler seçir (T-132,
+`RefusalLoggingTests`).
+
 ## Do not log
 
 -   passwords

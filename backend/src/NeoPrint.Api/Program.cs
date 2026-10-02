@@ -81,6 +81,12 @@ else
 builder.Logging.Configure(options =>
     options.ActivityTrackingOptions = ActivityTrackingOptions.TraceId | ActivityTrackingOptions.SpanId);
 
+// ASP.NET Core's exception middleware logs every exception as an error before
+// ProblemDetailsExceptionHandler sees it - a refused rule (409) included. The
+// handler decides the level instead: an unexpected failure (5xx) is logged
+// there as an error with the exception, an expected refusal is not an error.
+builder.Logging.AddFilter("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogLevel.None);
+
 // ---------------------------------------------------------------------------
 // Configuration
 //
