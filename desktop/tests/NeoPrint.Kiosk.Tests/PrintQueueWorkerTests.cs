@@ -393,6 +393,87 @@ public sealed class PrintQueueWorkerTests : IDisposable
         _printer.Printed.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task A_paid_order_from_the_app_is_fetched_into_the_spool_and_printed()
+    {
+        var remote = new FakeRemoteOrders(_spool);
+        var worker = new PrintQueueWorker(
+            _backend, _printer, _spool, _journal, () => FakePrinterService.FakePrinterName, NullLogger<PrintQueueWorker>.Instance, _printer, remote);
+        var id = Guid.NewGuid();
+        remote.Orders[id] = new RemoteOrder(id, "777001", new JobOptions(Copies: 1), 3, 3);
+        _backend.Queue.Add(new QueueItem(id, "777001", 1, "Queued", 3, 1, null, "hesabat.pdf", DateTime.UtcNow));
+
+        await worker.StepAsync(CancellationToken.None);
+
+        remote.Fetched.Should().Equal(id);
+        _printer.Printed.Should().ContainSingle().Which.JobName.Should().Be("NeoPrint-777001");
+        _backend.Reports.Should().Equal((id, "Printing", 0, 0, (string?)null), (id, "Completed", 3, 3, (string?)null));
+        _spool.Exists(JournalEntry.SpoolNameFor(id)).Should().BeFalse();
+
+        // The backend takes a printed job off its queue; the kiosk forgets it.
+        _backend.Queue.RemoveAll(item => item.JobId == id);
+        await worker.StepAsync(CancellationToken.None);
+        remote.Fetched.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task An_order_whose_file_does_not_come_waits_while_the_next_one_prints()
+    {
+        var remote = new FakeRemoteOrders(_spool) { Failing = true };
+        var worker = new PrintQueueWorker(
+            _backend, _printer, _spool, _journal, () => FakePrinterService.FakePrinterName, NullLogger<PrintQueueWorker>.Instance, _printer, remote);
+        var stuck = Guid.NewGuid();
+        remote.Orders[stuck] = new RemoteOrder(stuck, "777002", new JobOptions(), 1, 1);
+        _backend.Queue.Add(new QueueItem(stuck, "777002", 1, "Queued", 1, 1, null, "a.pdf", DateTime.UtcNow));
+        var flash = await PlaceAsync(worker, code: "777003");
+
+        await worker.StepAsync(CancellationToken.None);
+
+        _printer.Printed.Should().ContainSingle().Which.JobName.Should().Be("NeoPrint-777003", "the one with its file here goes on");
+        _journal.Find(stuck).Should().BeNull("nothing is recorded for an order with no file");
+        _backend.Reports.Should().NotContain(report => report.JobId == stuck);
+
+        // Asked again only after a pause, not on every round.
+        _backend.Queue.RemoveAll(item => item.JobId == flash);
+        await worker.StepAsync(CancellationToken.None);
+        remote.Attempts.Should().Be(1);
+    }
+
+    /// <summary>An app whose orders are fetched from a dictionary instead of the backend.</summary>
+    private sealed class FakeRemoteOrders : IRemoteOrders
+    {
+        private readonly SpoolStore _spool;
+
+        public FakeRemoteOrders(SpoolStore spool) => _spool = spool;
+
+        public Dictionary<Guid, RemoteOrder> Orders { get; } = [];
+
+        public List<Guid> Fetched { get; } = [];
+
+        public bool Failing { get; set; }
+
+        public int Attempts { get; private set; }
+
+        public async Task<RemoteOrder?> FetchAsync(Guid jobId, CancellationToken cancellationToken)
+        {
+            Attempts++;
+
+            if (Failing)
+            {
+                throw new HttpRequestException("the file did not come");
+            }
+
+            if (!Orders.TryGetValue(jobId, out var order))
+            {
+                return null;
+            }
+
+            await _spool.PutAsync(JournalEntry.SpoolNameFor(jobId), new MemoryStream(Encoding.ASCII.GetBytes("%PDF-1.7 app")), cancellationToken);
+            Fetched.Add(jobId);
+            return order;
+        }
+    }
+
     private sealed class FakeBackend : IPrintBackend
     {
         public List<QueueItem> Queue { get; } = [];

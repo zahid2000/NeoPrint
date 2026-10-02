@@ -13,6 +13,24 @@ public interface IPrintBackend
         Guid jobId, string status, int printedSides, int printedSheets, string? errorCode, PrintAttemptReport? attempt, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Orders placed somewhere other than this kiosk's screen - the app in a
+/// session (plan section 9.3) - whose print file the kiosk fetches once they
+/// are paid (plan section 7.4: backend → encrypted spool → printer).
+/// </summary>
+public interface IRemoteOrders
+{
+    /// <summary>
+    /// Puts the order's print file, prepared with its options, into the spool
+    /// under <see cref="JournalEntry.SpoolNameFor"/>. Null when it is not an
+    /// order to fetch (a flash order's file is placed here, never fetched).
+    /// </summary>
+    Task<RemoteOrder?> FetchAsync(Guid jobId, CancellationToken cancellationToken);
+}
+
+/// <summary>What the journal needs to know of a fetched order.</summary>
+public sealed record RemoteOrder(Guid JobId, string JobCode, JobOptions Options, int RequiredSheets, int Sides);
+
 /// <summary>The backend calls of <see cref="PrintQueueWorker"/>, over the kiosk's API client.</summary>
 public sealed class ApiPrintBackend : IPrintBackend
 {
@@ -53,6 +71,9 @@ public sealed class PrintQueueWorker
     /// <summary>How long an unpaid order's file is kept: well past the longest payment timeout (30 minutes).</summary>
     private static readonly TimeSpan UnpaidLifetime = TimeSpan.FromHours(2);
 
+    /// <summary>How long to wait before trying again to fetch an order whose file did not come.</summary>
+    private static readonly TimeSpan FetchRetry = TimeSpan.FromSeconds(30);
+
     /// <summary>How long a queued job may be missing from the backend's queue before its file goes.</summary>
     private static readonly TimeSpan StaleGrace = TimeSpan.FromMinutes(2);
 
@@ -62,6 +83,10 @@ public sealed class PrintQueueWorker
     private readonly JobJournal _journal;
     private readonly Func<string?> _selectedPrinter;
     private readonly IPrinterPageCounter? _counter;
+    private readonly IRemoteOrders? _remote;
+
+    /// <summary>When an order could not be fetched, so it is tried again after a pause rather than on every round.</summary>
+    private readonly Dictionary<Guid, DateTime> _fetchFailedAt = [];
     private readonly ILogger<PrintQueueWorker> _logger;
     private readonly SemaphoreSlim _wake = new(0, int.MaxValue);
     private readonly SemaphoreSlim _printerLock = new(1, 1);
@@ -73,8 +98,10 @@ public sealed class PrintQueueWorker
         JobJournal journal,
         Func<string?> selectedPrinter,
         ILogger<PrintQueueWorker> logger,
-        IPrinterPageCounter? counter = null)
+        IPrinterPageCounter? counter = null,
+        IRemoteOrders? remote = null)
     {
+        _remote = remote;
         _backend = backend;
         _printers = printers;
         _spool = spool;
@@ -398,6 +425,8 @@ public sealed class PrintQueueWorker
                 _journal.Remove(abandoned.JobId);
             }
 
+            await FetchRemoteAsync(queue, cancellationToken).ConfigureAwait(false);
+
             // In the backend's order: the first queued job whose file is here.
             foreach (var item in queue.Where(item => item.Status == "Queued"))
             {
@@ -414,6 +443,51 @@ public sealed class PrintQueueWorker
             .Where(entry => entry.State == JournalState.Queued && _spool.Exists(entry.SpoolName))
             .OrderBy(entry => entry.QueuedAt)
             .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Paid orders from the app that this kiosk has no file for yet: fetched in
+    /// queue order, one at a time, before the next job is chosen. One that fails
+    /// waits (<see cref="FetchRetry"/>) and keeps its place; the jobs behind it
+    /// whose files are here print meanwhile.
+    /// </summary>
+    private async Task FetchRemoteAsync(IReadOnlyList<QueueItem> queue, CancellationToken cancellationToken)
+    {
+        if (_remote is null)
+        {
+            return;
+        }
+
+        foreach (var item in queue.Where(item => item.Status == "Queued" && _journal.Find(item.JobId) is null))
+        {
+            if (_fetchFailedAt.TryGetValue(item.JobId, out var failedAt) && DateTime.UtcNow - failedAt < FetchRetry)
+            {
+                continue;
+            }
+
+            try
+            {
+                if (await _remote.FetchAsync(item.JobId, cancellationToken).ConfigureAwait(false) is not { } order)
+                {
+                    // Not one to fetch (a flash order whose file this kiosk lost):
+                    // asked about again only after the pause.
+                    _fetchFailedAt[item.JobId] = DateTime.UtcNow;
+                    continue;
+                }
+
+                _journal.Save(new JournalEntry(
+                    order.JobId, order.JobCode, JournalState.Queued, order.Options, order.RequiredSheets, 0, 0, null, false,
+                    item.QueuedAt ?? DateTime.UtcNow, DateTime.UtcNow, null, order.Sides));
+                _fetchFailedAt.Remove(item.JobId);
+
+                _logger.LogInformation("Order {JobCode} from the app fetched into the spool.", order.JobCode);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                _fetchFailedAt[item.JobId] = DateTime.UtcNow;
+                _logger.LogWarning(exception, "The file of order {JobCode} could not be fetched; trying again later.", item.JobCode);
+            }
+        }
     }
 
     /// <returns>Whether the job went to the printer; false when it waits for one.</returns>

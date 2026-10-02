@@ -233,6 +233,12 @@ public sealed class KioskHubClient : HubClientBase
     /// <summary>A payment this kiosk opened was paid (plan section 9.1, step 3): the payment and its job.</summary>
     public event Func<Guid, Guid, Task>? PaymentConfirmed;
 
+    /// <summary>A phone joined this kiosk (plan section 9.3): the session and when it ends. Never who.</summary>
+    public event Func<Guid, DateTime, Task>? SessionOpened;
+
+    /// <summary>The phone left: the session and why (<c>Closed</c>, <c>Expired</c>, <c>Replaced</c>).</summary>
+    public event Func<Guid, string, Task>? SessionClosed;
+
     protected override void Register(HubConnection connection)
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -242,6 +248,12 @@ public sealed class KioskHubClient : HubClientBase
         connection.On<JobMessage>("JobCancelled", message => Raise(JobCancelled, message.JobId));
         connection.On<PaymentMessage>("PaymentConfirmed", message => PaymentConfirmed is { } paid
             ? paid(message.PaymentId, message.JobId)
+            : Task.CompletedTask);
+        connection.On<SessionMessage>("SessionOpened", message => SessionOpened is { } opened
+            ? opened(message.SessionId, message.ExpiresAt ?? DateTime.UtcNow)
+            : Task.CompletedTask);
+        connection.On<SessionMessage>("SessionClosed", message => SessionClosed is { } closed
+            ? closed(message.SessionId, message.Reason ?? string.Empty)
             : Task.CompletedTask);
         connection.On<KioskMessage>("PrinterConfigChanged", _ => Raise(PrinterConfigChanged));
         connection.On<KioskMessage>("KioskConfigChanged", _ => Raise(KioskConfigChanged));
@@ -261,6 +273,8 @@ public sealed class KioskHubClient : HubClientBase
     private sealed record KioskMessage(Guid KioskId);
 
     private sealed record PaymentMessage(Guid KioskId, Guid PaymentId, Guid JobId);
+
+    private sealed record SessionMessage(Guid KioskId, Guid SessionId, DateTime? ExpiresAt, string? Reason);
 
     private sealed record CommandMessage(Guid CommandId, string Type, string? Payload);
 }

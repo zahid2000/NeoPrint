@@ -282,6 +282,7 @@ internal static class Program
         services.AddSingleton<SpoolStore>();
         services.AddSingleton<JobJournal>();
         services.AddSingleton<IPrintBackend, ApiPrintBackend>();
+        services.AddSingleton<IRemoteOrders, AppOrders>();
         services.AddSingleton(provider => new PrintQueueWorker(
             provider.GetRequiredService<IPrintBackend>(),
             provider.GetRequiredService<IPrinterService>(),
@@ -289,7 +290,8 @@ internal static class Program
             provider.GetRequiredService<JobJournal>(),
             () => provider.GetRequiredService<KioskRuntime>().Configuration?.SelectedPrinter,
             provider.GetRequiredService<ILogger<PrintQueueWorker>>(),
-            provider.GetRequiredService<IPrinterPageCounter>()));
+            provider.GetRequiredService<IPrinterPageCounter>(),
+            provider.GetRequiredService<IRemoteOrders>()));
         services.AddSingleton(provider => new PrinterReporter(
             provider.GetRequiredService<IPrinterService>(),
             (printers, cancellationToken) => provider.GetRequiredService<KioskApiClient>().ReportKioskPrintersAsync(printers, cancellationToken),

@@ -231,6 +231,22 @@ public sealed partial class KioskApiClient
         return await ReadAsync<PrintJobInfo>(request, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// The PDF of a paid order placed in the app (plan section 7.4), written
+    /// to <paramref name="destination"/> as it arrives.
+    /// </summary>
+    public async Task DownloadPrintFileAsync(Guid jobId, Stream destination, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+
+        using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, $"api/print-jobs/{jobId}/file", cancellationToken)
+            .ConfigureAwait(false);
+        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+
+        await ThrowIfProblemAsync(response, cancellationToken).ConfigureAwait(false);
+        await response.Content.CopyToAsync(destination, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>This kiosk's queue, in order.</summary>
     public Task<IReadOnlyList<QueueItem>> GetQueueAsync(CancellationToken cancellationToken = default)
         => GetAsync<IReadOnlyList<QueueItem>>("api/kiosks/me/queue", cancellationToken);
