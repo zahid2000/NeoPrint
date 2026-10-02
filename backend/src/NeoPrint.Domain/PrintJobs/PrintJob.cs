@@ -1,5 +1,6 @@
 using NeoPrint.Documents;
 using NeoPrint.Domain.Common;
+using NeoPrint.Domain.Files;
 using NeoPrint.Domain.Pricing;
 
 namespace NeoPrint.Domain.PrintJobs;
@@ -89,6 +90,13 @@ public sealed class PrintJob : Entity
 
         FileId ??= fileId;
     }
+
+    /// <summary>
+    /// The PDF this order prints, as it was when the order was placed (a job
+    /// made from a file in the account). The kiosk downloads exactly this
+    /// object; the file cannot be edited or deleted while the order is open.
+    /// </summary>
+    public FileObject? PrintFile { get; private set; }
 
     /// <summary>The file's name on the flash drive, for the queue panel and the history.</summary>
     public string? LocalFileName { get; set; }
@@ -206,7 +214,8 @@ public sealed class PrintJob : Entity
         DateTime now,
         Guid? userId = null,
         Guid? fileId = null,
-        string? localFileName = null)
+        string? localFileName = null,
+        FileObject? printFile = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(jobCode);
         ArgumentNullException.ThrowIfNull(options);
@@ -224,6 +233,7 @@ public sealed class PrintJob : Entity
             UserId = userId,
             FileId = fileId,
             LocalFileName = localFileName,
+            PrintFile = printFile,
             CreatedAt = now,
         };
     }

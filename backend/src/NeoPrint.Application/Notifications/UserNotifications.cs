@@ -22,11 +22,17 @@ public interface IUserNotifier
     Task PaymentStatusChangedAsync(Guid userId, UserPaymentUpdate update, CancellationToken cancellationToken = default);
 
     Task RefundStatusChangedAsync(Guid userId, UserRefundUpdate update, CancellationToken cancellationToken = default);
+
+    /// <summary>The app's kiosk session ended (plan section 8.2, "sessiya TTL bitəndə bildiriş").</summary>
+    Task SessionClosedAsync(Guid userId, UserSessionUpdate update, CancellationToken cancellationToken = default);
 }
 
 public sealed record UserJobUpdate(Guid JobId, string JobCode, string Status);
 
 public sealed record UserPaymentUpdate(Guid PaymentId, Guid? JobId, string Status);
+
+/// <param name="Reason"><c>Closed</c>, <c>Expired</c> or <c>Replaced</c>.</param>
+public sealed record UserSessionUpdate(Guid SessionId, Guid KioskId, string Reason);
 
 public sealed record UserRefundUpdate(Guid RefundId, Guid PaymentId, Guid? JobId, string Status, decimal Amount, string Destination);
 

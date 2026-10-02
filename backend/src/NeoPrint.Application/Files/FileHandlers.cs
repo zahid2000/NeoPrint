@@ -434,6 +434,7 @@ public sealed class SetAutoDeleteHandler : IRequestHandler<SetAutoDeleteCommand,
 /// <summary>Deletes a file and everything stored for it.</summary>
 public sealed class DeleteFileHandler : IRequestHandler<DeleteFileCommand>
 {
+    private readonly PrintJobs.IPrintJobRepository _jobs;
     private readonly IFileRepository _files;
     private readonly IFileStorage _storage;
     private readonly IClock _clock;
@@ -443,8 +444,10 @@ public sealed class DeleteFileHandler : IRequestHandler<DeleteFileCommand>
         IFileRepository files,
         IFileStorage storage,
         IClock clock,
-        ILogger<DeleteFileHandler> logger)
+        ILogger<DeleteFileHandler> logger,
+        PrintJobs.IPrintJobRepository jobs)
     {
+        _jobs = jobs;
         _files = files;
         _storage = storage;
         _clock = clock;
@@ -458,6 +461,12 @@ public sealed class DeleteFileHandler : IRequestHandler<DeleteFileCommand>
         var file = await FileAccess
             .LoadOwnedAsync(_files, request.UserId, request.FileId, cancellationToken)
             .ConfigureAwait(false);
+
+        // The kiosk still has to fetch it for an order that may print.
+        if (await _jobs.HasOpenOrderForFileAsync(file.Id, cancellationToken).ConfigureAwait(false))
+        {
+            throw new DomainException("files.inUseByOrder");
+        }
 
         // Every object the file owns, not only the original: the converted
         // PDF and the saved versions are the same bytes to somebody who finds

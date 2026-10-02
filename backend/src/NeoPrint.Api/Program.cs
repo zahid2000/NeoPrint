@@ -415,6 +415,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         job => job.RunAsync(CancellationToken.None),
         Cron.Daily(4));
 
+    // Kiosk sessions whose time ran out: the kiosk and the app are told (plan section 9.3).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Sessions.KioskSessionJobs>(
+        NeoPrint.Infrastructure.Sessions.KioskSessionJobs.ExpiryJobId,
+        jobs => jobs.RunAsync(CancellationToken.None),
+        Cron.Minutely());
+
     recurring.AddOrUpdate<PrintQueueReconciliationJob>(
         PrintQueueReconciliationJob.RecurringId,
         job => job.RunAsync(CancellationToken.None),

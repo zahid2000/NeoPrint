@@ -196,6 +196,67 @@ public sealed class KioskClientContractTests
         attempts[0].GetProperty("status").GetString().Should().Be("Completed");
     }
 
+    [PdfiumFact]
+    public async Task A_session_and_its_paid_app_order_reach_the_kiosk_client_which_downloads_the_pdf()
+    {
+        if (Skip) { return; }
+
+        var paths = new FakeAppPaths();
+        var api = Client(paths);
+        var registration = await RegisterAsync(api, "contract-session");
+        var kioskId = await ActivateAsync(registration.DeviceId, "Contract session");
+        await LoadPaperAsync(kioskId);
+        var code = (await api.GetConfigurationAsync()).Code;
+
+        await using var hub = new KioskHubClient(api, Settings(), NullLogger<KioskHubClient>.Instance)
+        {
+            HandlerFactory = _fixture.Server.CreateHandler,
+        };
+
+        var opened = new TaskCompletionSource<Guid>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var closed = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        hub.SessionOpened += (session, _) => { opened.TrySetResult(session); return Task.CompletedTask; };
+        hub.SessionClosed += (_, reason) => { closed.TrySetResult(reason); return Task.CompletedTask; };
+        await hub.StartAsync(CancellationToken.None);
+
+        using var user = await TestUsers.ConfirmedAsync(_fixture);
+        var fileId = await SessionTests.UploadReadyPdfAsync(_fixture, user.Client, pages: 2);
+        var session = await (await user.Client.PostAsJsonAsync("/api/sessions", new { kiosk = code })).Content.ReadFromJsonAsync<JsonElement>();
+        var sessionId = session.GetProperty("id").GetGuid();
+        (await opened.Task.WaitAsync(HubWait)).Should().Be(sessionId);
+
+        using var place = new HttpRequestMessage(HttpMethod.Post, $"/api/sessions/{sessionId}/print-jobs")
+        {
+            Content = JsonContent.Create(new { fileId, options = new { copies = 1, color = false, duplex = false, paper = "A4", pagesPerSheet = 1 } }),
+        };
+        place.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+        var order = await (await user.Client.SendAsync(place)).Content.ReadFromJsonAsync<JsonElement>();
+
+        using var pay = new HttpRequestMessage(HttpMethod.Post, $"/api/payments/{order.GetProperty("paymentId").GetGuid()}/pay-with-app")
+        {
+            Content = JsonContent.Create(new { source = "Card", useBonus = false, expectedAmount = order.GetProperty("amount").GetDecimal() }),
+        };
+        pay.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+        (await user.Client.SendAsync(pay)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // What the kiosk's worker sees and fetches (AppOrders): its queue, the
+        // order's options, and the PDF it was priced on.
+        var jobId = order.GetProperty("jobId").GetGuid();
+        (await api.GetQueueAsync()).Should().Contain(item => item.JobId == jobId && item.Status == "Queued");
+
+        var job = await api.GetPrintJobAsync(jobId);
+        job.Source.Should().Be("MobileSession");
+        job.PageCount.Should().Be(2);
+        job.Options.Paper.Should().Be("A4");
+
+        using var downloaded = new MemoryStream();
+        await api.DownloadPrintFileAsync(jobId, downloaded);
+        downloaded.ToArray().Should().Equal(await user.Client.GetByteArrayAsync($"/api/files/{fileId}/pdf"));
+
+        (await user.Client.DeleteAsync($"/api/sessions/{sessionId}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await closed.Task.WaitAsync(HubWait)).Should().Be("Closed");
+    }
+
     [DockerFact]
     public async Task A_kiosk_in_safe_mode_is_taken_out_of_service_and_back_by_its_heartbeat()
     {

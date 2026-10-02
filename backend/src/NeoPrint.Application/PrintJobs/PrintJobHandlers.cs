@@ -32,12 +32,9 @@ public sealed class KioskPrintJobHandlers :
     IRequestHandler<ReportPrintJobStatusCommand, PrintJobResponse>,
     IRequestHandler<GetKioskQueueQuery, IReadOnlyList<QueueEntry>>
 {
-    /// <summary>Attempts at drawing a job code nobody holds before giving up.</summary>
-    private const int CodeAttempts = 8;
-
     private readonly IKioskDeviceRepository _devices;
     private readonly IKioskRepository _kiosks;
-    private readonly IPricingProfileRepository _profiles;
+    private readonly PrintOrderRules _rules;
     private readonly IPrintJobRepository _jobs;
     private readonly IPrintAttemptRepository _attempts;
     private readonly ISupplyEventRepository _supplies;
@@ -55,7 +52,7 @@ public sealed class KioskPrintJobHandlers :
     public KioskPrintJobHandlers(
         IKioskDeviceRepository devices,
         IKioskRepository kiosks,
-        IPricingProfileRepository profiles,
+        PrintOrderRules rules,
         IPrintJobRepository jobs,
         IPrintAttemptRepository attempts,
         ISupplyEventRepository supplies,
@@ -72,7 +69,7 @@ public sealed class KioskPrintJobHandlers :
     {
         _devices = devices;
         _kiosks = kiosks;
-        _profiles = profiles;
+        _rules = rules;
         _jobs = jobs;
         _attempts = attempts;
         _supplies = supplies;
@@ -107,24 +104,8 @@ public sealed class KioskPrintJobHandlers :
             throw new DomainException(UserMessage.Of("printJobs.kioskNotTakingOrders", ("status", kiosk.Status)));
         }
 
-        await EnsureWithinLimitsAsync(kiosk, request.PageCount, cancellationToken).ConfigureAwait(false);
-        EnsurePrinterCan(kiosk, request.Options);
-
-        var profile = await ProfileOfAsync(kiosk, cancellationToken).ConfigureAwait(false);
         var now = _clock.UtcNow;
-
-        PriceSnapshot price;
-
-        try
-        {
-            price = PriceSnapshot.Take(profile, request.Options.ToSpec(request.PageCount), now);
-        }
-        catch (PricingException exception)
-        {
-            throw new ValidationException([new ValidationError("options", UserMessage.Of(exception.Code, exception.Arguments))]);
-        }
-
-        await EnsurePaperAsync(kiosk, request.Options.Paper, price.Price.Sheets, cancellationToken).ConfigureAwait(false);
+        var price = await _rules.CheckAndPriceAsync(kiosk, request.PageCount, request.Options, now, cancellationToken).ConfigureAwait(false);
 
         Promos.PromoCheck? promo = null;
 
@@ -132,7 +113,7 @@ public sealed class KioskPrintJobHandlers :
         {
             // Checked now so the customer knows before paying; the place is taken
             // when the payment opens (plan section 2.7). No account here: no per-account limit.
-            promo = await _promos.CheckAsync(request.PromoCode, kiosk.Id, profile.Id, price.Total, userId: null, cancellationToken).ConfigureAwait(false);
+            promo = await _promos.CheckAsync(request.PromoCode, kiosk.Id, price.ProfileId, price.Total, userId: null, cancellationToken).ConfigureAwait(false);
 
             if (promo.Refusal is { } refusal)
             {
@@ -141,7 +122,19 @@ public sealed class KioskPrintJobHandlers :
         }
 
         var actor = ActorContext.Kiosk(request.DeviceId, correlationId: _correlation.CorrelationId);
-        var job = await AddWithUniqueCodeAsync(kiosk, request, price, now, cancellationToken).ConfigureAwait(false);
+        var job = await _rules
+            .AddWithUniqueCodeAsync(
+                code => PrintJob.Create(
+                    code,
+                    kiosk.Id,
+                    PrintJobSource.Flash,
+                    request.PageCount,
+                    request.Options,
+                    price,
+                    now,
+                    localFileName: string.IsNullOrWhiteSpace(request.LocalFileName) ? null : Path.GetFileName(request.LocalFileName.Trim())),
+                cancellationToken)
+            .ConfigureAwait(false);
 
         if (promo is { Promo: { } code })
         {
@@ -417,115 +410,6 @@ public sealed class KioskPrintJobHandlers :
             .ConfigureAwait(false);
         await _notifier.JobAddedAsync(job.KioskId, job.Id, cancellationToken).ConfigureAwait(false);
         await _queue.AnnounceAsync(job.KioskId, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<PrintJob> AddWithUniqueCodeAsync(
-        Kiosk kiosk, CreateKioskPrintJobCommand request, PriceSnapshot price, DateTime now, CancellationToken cancellationToken)
-    {
-        for (var attempt = 0; attempt < CodeAttempts; attempt++)
-        {
-            var job = PrintJob.Create(
-                NewJobCode(),
-                kiosk.Id,
-                PrintJobSource.Flash,
-                request.PageCount,
-                request.Options,
-                price,
-                now,
-                localFileName: string.IsNullOrWhiteSpace(request.LocalFileName) ? null : Path.GetFileName(request.LocalFileName.Trim()));
-
-            if (await _jobs.TryAddAsync(job, cancellationToken).ConfigureAwait(false))
-            {
-                return job;
-            }
-        }
-
-        // A million codes and a unique index: eight collisions in a row mean
-        // something other than bad luck.
-        throw new InvalidOperationException("Could not draw an unused job code.");
-    }
-
-    /// <summary>Six random digits (plan section 5, <c>JobCode</c>).</summary>
-    private static string NewJobCode() => RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6", System.Globalization.CultureInfo.InvariantCulture);
-
-    private async Task EnsureWithinLimitsAsync(Kiosk kiosk, int pageCount, CancellationToken cancellationToken)
-    {
-        var maxPages = kiosk.MaxPages
-                       ?? await _settings.GetIntAsync(SettingKeys.FilesDefaultMaxPages, 200, cancellationToken).ConfigureAwait(false);
-
-        if (pageCount > maxPages)
-        {
-            throw Invalid("pageCount", "printJobs.tooManyPages", ("count", pageCount), ("max", maxPages));
-        }
-    }
-
-    /// <summary>
-    /// Refuses what the selected printer cannot do, as the options screen
-    /// already should have (plan section 7.7: effective capabilities).
-    /// </summary>
-    private static void EnsurePrinterCan(Kiosk kiosk, PrintOptions options)
-    {
-        var can = kiosk.EffectiveCapabilities();
-
-        if (options.Color && !can.Color)
-        {
-            throw Invalid("color", "printJobs.colorUnavailable");
-        }
-
-        if (options.Duplex && !can.Duplex)
-        {
-            throw Invalid("duplex", "printJobs.duplexUnavailable");
-        }
-
-        if (options.Paper == "A3" && !can.A3)
-        {
-            throw Invalid("paper", "printJobs.a3Unavailable");
-        }
-    }
-
-    /// <summary>
-    /// Plan section 2.15: an order the paper cannot cover is refused when
-    /// <c>Paper.BlockWhenInsufficient</c> is on. Sheets already promised to
-    /// jobs that have not printed yet are not available to this one.
-    /// </summary>
-    private async Task EnsurePaperAsync(Kiosk kiosk, string paper, int sheets, CancellationToken cancellationToken)
-    {
-        var block = await _settings
-            .GetBoolAsync(SettingKeys.PaperBlockWhenInsufficient, true, cancellationToken)
-            .ConfigureAwait(false);
-
-        // A tray with no capacity set has no counter to trust yet: nothing to
-        // compare with, so nothing is refused on its account.
-        if (!block || !kiosk.PaperStock.TryGetValue(paper, out var stock) || stock.Capacity <= 0)
-        {
-            return;
-        }
-
-        var reserved = await _jobs.ReservedSheetsAsync(kiosk.Id, paper, cancellationToken).ConfigureAwait(false);
-        var available = stock.Current - reserved;
-
-        if (sheets > available)
-        {
-            _logger.LogWarning(
-                "Order refused at kiosk {KioskId}: {Sheets} sheets of {Paper} needed, {Available} available.",
-                kiosk.Id,
-                sheets,
-                paper,
-                Math.Max(0, available));
-
-            throw new DomainException("printJobs.notEnoughPaper");
-        }
-    }
-
-    private async Task<PricingProfile> ProfileOfAsync(Kiosk kiosk, CancellationToken cancellationToken)
-    {
-        var profile = kiosk.PricingProfileId is { } id
-            ? await _profiles.FindByIdAsync(id, cancellationToken).ConfigureAwait(false)
-            : null;
-
-        return profile
-               ?? await _profiles.FindDefaultAsync(cancellationToken).ConfigureAwait(false)
-               ?? throw new NotFoundException("pricingProfile");
     }
 
     private async Task<Kiosk> KioskOfAsync(Guid deviceId, CancellationToken cancellationToken)

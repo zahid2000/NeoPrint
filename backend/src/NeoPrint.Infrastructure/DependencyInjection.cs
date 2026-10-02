@@ -117,6 +117,8 @@ public static class DependencyInjection
         services.AddScoped<IEnrollmentTokenRepository, EnrollmentTokenRepository>();
         services.AddScoped<IKioskRepository, KioskRepository>();
         services.AddScoped<NeoPrint.Application.Kiosks.IKioskSearch, KioskSearch>();
+        services.AddScoped<Application.Sessions.IKioskSessionStore, Sessions.RedisKioskSessionStore>();
+        services.AddScoped<Application.Sessions.IKioskSessionAccess, Application.Sessions.KioskSessionHandlers>();
 
         // Print jobs, the queue and kiosk commands (plan step 3)
         services.AddScoped<IKioskCommandRepository, KioskCommandRepository>();
@@ -127,6 +129,7 @@ public static class DependencyInjection
         services.AddScoped<IPrintQueue, RedisPrintQueue>();
         services.AddScoped<ITransitionHistory, TransitionHistory>();
         services.AddScoped<PrintQueueService>();
+        services.AddScoped<Application.PrintJobs.PrintOrderRules>();
         services.AddScoped<PrintQueueReconciliationJob>();
 
         // Payments (plan section 2.5, step 4). The mock bank is the only bank
@@ -154,6 +157,7 @@ public static class DependencyInjection
         services.AddScoped<Refunds.RefundJobs>();
         services.AddScoped<Refunds.WalletLedgerReconciliationJob>();
         services.AddScoped<Payments.PaymentJobs>();
+        services.AddScoped<Sessions.KioskSessionJobs>();
 
         // Jobs whose outcome is unknown and customers' claims (plan section 2.5, scenario B).
         services.AddScoped<Application.PrintJobs.SuspectedJobIncidents>();

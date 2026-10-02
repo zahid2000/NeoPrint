@@ -58,6 +58,9 @@ public sealed class SignalRUserNotifier : IUserNotifier
     public Task RefundStatusChangedAsync(Guid userId, UserRefundUpdate update, CancellationToken cancellationToken = default)
         => Send(userId, "RefundStatusChanged", update, cancellationToken);
 
+    public Task SessionClosedAsync(Guid userId, UserSessionUpdate update, CancellationToken cancellationToken = default)
+        => Send(userId, "SessionClosed", update, cancellationToken);
+
     private Task Send(Guid userId, string method, object payload, CancellationToken cancellationToken)
         => _hub.Clients.Group(UserHub.GroupFor(userId)).SendAsync(method, payload, cancellationToken);
 }

@@ -802,11 +802,52 @@ yenilənmiş flag.
 |---|---|---|
 | `/hubs/provisioning` | Provisioning token | Aktivləşdirmə anında cihaza xəbər verilir — cihaz kod ekranından özü keçir |
 | `/hubs/admin` | Admin token | `PermissionsChanged`, `DeviceRevoked`, `QueueUpdated` (yalnız hesabın əhatəsindəki kiosklar üçün) |
-| `/hubs/kiosk` | Kiosk token | Qrup `kiosk:{kioskId}` (token-dəki kiosk). `QueueUpdated` (`{kioskId, queue[]}`), `JobAdded`, `JobCancelled` (`{kioskId, jobId}`), `PrinterConfigChanged`, `KioskConfigChanged`, `KioskCommand`, `PaymentConfirmed` (`{kioskId, paymentId, jobId}`) |
-| `/hubs/user` | User token | Qrup `user:{userId}` (token-dəki istifadəçi; başqasının hadisəsi heç vaxt gəlmir). `JobStatusChanged` (`{jobId, jobCode, status}` — `Suspected` daxil), `PaymentStatusChanged` (`{paymentId, jobId, status}`), `RefundStatusChanged` (`{refundId, paymentId, jobId, status, amount, destination}`). Mesaj yalnız xəbərdir: cari statusu daşıyır, təfərrüat API-dən oxunur; itən və ya təkrar gələn mesaj heç nəyi pozmur |
+| `/hubs/kiosk` | Kiosk token | Qrup `kiosk:{kioskId}` (token-dəki kiosk). `QueueUpdated` (`{kioskId, queue[]}`), `JobAdded`, `JobCancelled` (`{kioskId, jobId}`), `PrinterConfigChanged`, `KioskConfigChanged`, `KioskCommand`, `PaymentConfirmed` (`{kioskId, paymentId, jobId}`), `SessionOpened` (`{kioskId, sessionId, expiresAt}` — telefon qoşuldu; kim olduğu yoxdur, ekran ictimaidir), `SessionClosed` (`{kioskId, sessionId, reason}`: `Closed` / `Expired` / `Replaced`) |
+| `/hubs/user` | User token | Qrup `user:{userId}` (token-dəki istifadəçi; başqasının hadisəsi heç vaxt gəlmir). `JobStatusChanged` (`{jobId, jobCode, status}` — `Suspected` daxil), `PaymentStatusChanged` (`{paymentId, jobId, status}`), `RefundStatusChanged` (`{refundId, paymentId, jobId, status, amount, destination}`), `SessionClosed` (`{sessionId, kioskId, reason}`). Mesaj yalnız xəbərdir: cari statusu daşıyır, təfərrüat API-dən oxunur; itən və ya təkrar gələn mesaj heç nəyi pozmur |
 
 Redis backplane ilə işləyir, ona görə bir necə API instansiyası eyni qrupları
 xidmət edə bilir.
+
+---
+
+## Sessiyalar (`/api/sessions`, mobil tətbiq, Addım 5)
+
+Yalnız mobil istifadəçi token-i. Sessiya — tətbiqin bir kioskla müvəqqəti əlaqəsi
+(Bölmə 9.3): Redis-də `session:{id}` → `{UserId, KioskId, ExpiresAt}`, ömrü
+`KioskSession.TtlMinutes` (10) fəaliyyətsizlik; sessiyada verilən hər sifariş müddəti
+yenidən başladır. İstifadəçinin eyni anda bir sessiyası olur. Redis itsə açıq
+sessiyalar itir, istifadəçi yenisini açır; verilmiş sifarişlər MongoDB-dədir.
+
+### `POST /api/sessions`
+
+`{ "kiosk": "KSK-9002" }` (kod — hərf fərqi yoxdur — və ya `id`) → `{ id, kioskId, kioskCode, kioskName, expiresAt, ttlMinutes }`.
+Eyni kioskda təkrar açmaq **eyni sessiyanı** uzadır (ikiqat toxunuş iki sessiya açmır);
+başqa kioskda açmaq əvvəlkini bağlayır (`SessionClosed`, `Replaced`). Kiosk `SessionOpened`
+alır. Kiosk `Online` deyilsə → `409 sessions.kioskNotTakingOrders`; aktivləşdirilməmiş,
+quraşdırılmamış, söndürülmüş və ya olmayan kiosk → `404 notFound.kiosk`; boş → `400 sessions.kioskRequired`.
+
+### `GET /api/sessions/current` · `GET /api/sessions/{id}`
+
+İstifadəçinin açıq sessiyası (`current` — yoxdursa `204`). Bitmiş, bağlanmış və ya başqasının sessiyası → `404 notFound.session`.
+
+### `DELETE /api/sessions/{id}`
+
+`204`. Kiosk `SessionClosed` (`Closed`) alır. Artıq bitmiş sessiya üçün də `204` (idempotent), heç kimə ikinci dəfə xəbər verilmir.
+
+Vaxtı bitən sessiyalar dəqiqədə bir (`kiosk-session-expiry` Hangfire işi) kioska və tətbiqə
+`SessionClosed` (`Expired`) kimi bildirilir — hər biri bir dəfə.
+
+### `POST /api/sessions/{id}/print-jobs` (`Idempotency-Key` məcburi)
+
+Plan 9.3 addım 2 (`Source=MobileSession`): hesabdakı hazır faylın sessiya kioskunda sifarişi.
+`{ "fileId", "options": { copies, pageRange, color, duplex, paper, orientation, pagesPerSheet, scaling } }` →
+`{ jobId, jobCode, paymentId, amount, currency, expiresAt, pages, sheets }`.
+
+- Kioskun `POST /api/print-jobs`-i ilə **eyni qaydalar**: səhifə limiti, printerin imkanları, kağız (`Paper.BlockWhenInsufficient`), qiymət kioskun profilindən snapshot (`PrintOrderRules`).
+- Sifariş `PendingPayment`; cavabdakı `paymentId` tətbiqin öz ödənişidir (`MobileApp`, kanal `Mobile`, istifadəçiyə bağlı) — `GET /api/payments/{id}/app` və `POST /api/payments/{id}/pay-with-app` ilə ödənilir (balans / kart / bonus / promokod, kiosk QR-ı ilə eyni). `Payment.TimeoutMinutes` keçərsə sifariş vaxtı bitir.
+- Sifariş faylın **o anki PDF-ini** saxlayır (`PrintFile`); sifariş bitməyənə qədər (ödəniş gözləyir, ödənilib, növbədə, çapda, dayanıb, baxışda) faylı redaktə etmək və silmək → `409 files.inUseByOrder`.
+- Xətalar: sessiya yoxdur / bitib / başqasınındır → `404 notFound.session`; fayl başqasınındır və ya yoxdur → `404 notFound.file`; fayl hazır deyil → `409 files.notReadyNamed`; kiosk sifariş qəbul etmir → `409 sessions.kioskNotTakingOrders`.
+- Plan `POST print-jobs` yazır; həmin marşrut kioskundur (yalnız kiosk token-i), ona görə tətbiqin sifarişi sessiyanın altındadır (`DECISIONS.md`, 2026-10-03).
 
 ---
 
@@ -907,6 +948,9 @@ qiymət redaktəyə uyğunlaşır. Gövdədə **yalnız biri**:
 Ən çox `Files.VersionsToKeep` (default 5) versiya saxlanılır; köhnələri storage-dan
 silinir. Əvəz olunan çevrilmiş PDF də silinir.
 
+
+Bu faylla verilmiş sifariş hələ bitməyibsə → `409 files.inUseByOrder` (sifariş qiymətləndirildiyi PDF-i çap edir).
+
 ### `GET /api/files/{id}/versions`
 
 → `[ { "number", "extension", "sizeBytes", "createdAt", "note", "isCurrent" } ]`, yenisi əvvəldə.
@@ -924,6 +968,9 @@ Bir versiyanın məzmunu, deşifrə olunmuş.
 
 → `204`. Obyektlər **bütün** provayderlərdən silinir (mirror və migrasiya
 nüsxələri daxil).
+
+
+Bu faylla verilmiş sifariş hələ bitməyibsə → `409 files.inUseByOrder` (sifariş qiymətləndirildiyi PDF-i çap edir).
 
 ### `GET /api/files/formats`
 
@@ -1100,6 +1147,13 @@ Kiosk çapın gedişini bildirir: `{ "status": "Printing" | "Completed" | "Inter
 Tətbiqdə "Sifarişlərim": hesabın son 100 sifarişi, ən yenisi əvvəl —
 `[{ id, jobCode, status, kioskId, kioskCode, kioskName, fileName, pages, copies, color, paper, amount, currency, printedSides, reason, paymentId, createdAt, finishedAt }]`.
 Tətbiqlə ödənilən kiosk sifarişi ödəniş anında hesaba bağlanır və burada görünür; bank QR ilə ödənilən anonim sifariş görünmür. `amount` — kioskda göstərilən qiymət (promokod daxil); faktiki tutulan məbləğ qəbzdədir. `reason` — dayanma və ya ləğv səbəbi oxuyanın dilində.
+
+### `GET /api/print-jobs/{id}/file` (Kiosk token)
+
+Tətbiqdən verilmiş sifarişin (`MobileSession`) çap PDF-i, deşifrə olunmuş (plan 7.4): kiosk onu şifrəli
+spool-a yazıb oradan çap edir. Yalnız sifarişin kioskuna və yalnız ödənildikdən sonra, bitməmiş halda
+(`Paid`, `Queued`, `Printing`); əks halda `409 printJobs.fileNotPrintable`. Başqa kioskun sifarişi,
+fləş sifarişi və ya faylsız sifariş → `404`. Bayt-bayt sifarişin qiymətləndirildiyi PDF-dir.
 
 ### `GET /api/print-jobs/{id}/refunds` (Kiosk token)
 

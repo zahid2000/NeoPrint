@@ -41,6 +41,12 @@ public interface IPrintJobRepository
     /// </summary>
     Task<int> ReservedSheetsAsync(Guid kioskId, string paper, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Whether an order for this file is still open - not yet paid, waiting,
+    /// printing, stopped or under review: its PDF must stay as it is until then.
+    /// </summary>
+    Task<bool> HasOpenOrderForFileAsync(Guid fileId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<PrintJob>> ListByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
 
     /// <summary>A customer's own jobs, newest first (plan section 6: <c>GET print-jobs/my</c>).</summary>
@@ -118,6 +124,12 @@ public interface IKioskNotifier
 
     /// <summary>A remote command for the kiosk (plan section 7.8).</summary>
     Task KioskCommandAsync(Guid kioskId, KioskCommandMessage command, CancellationToken cancellationToken = default);
+
+    /// <summary>A phone joined the kiosk (plan section 9.3): a small notice on its screen, never who.</summary>
+    Task SessionOpenedAsync(Guid kioskId, Guid sessionId, DateTime expiresAt, CancellationToken cancellationToken = default);
+
+    /// <summary>The phone left: closed, replaced or expired.</summary>
+    Task SessionClosedAsync(Guid kioskId, Guid sessionId, string reason, CancellationToken cancellationToken = default);
 }
 
 /// <summary>One line of the queue panel (plan section 7.2).</summary>

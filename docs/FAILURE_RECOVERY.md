@@ -27,6 +27,11 @@ Recovery MongoDB-dəki biznes state-dən başlamalıdır.
 
 Redis/RabbitMQ müvəqqəti itərsə biznes state itmiş hesab olunmamalıdır.
 
+Yeganə istisna **kiosk sessiyalarıdır** (Addım 5, `session:{id}`): onlar yalnız Redis-də yaşayır,
+çünki biznes qeydi deyil — tətbiqin növbəti sifarişinin hansı kioska gedəcəyini deyir. Redis itsə
+açıq sessiyalar itir: tətbiq `404 notFound.session` alır və istifadəçi sessiyanı yenidən açır.
+Sessiyada artıq verilmiş sifarişlər və ödənişlər MongoDB-dədir və toxunulmaz qalır.
+
 ## Power loss
 
 Kiosk yenidən qalxdıqda:

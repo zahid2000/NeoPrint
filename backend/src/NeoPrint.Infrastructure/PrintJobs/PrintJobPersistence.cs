@@ -61,6 +61,18 @@ public sealed class PrintJobRepository : IPrintJobRepository
     private static readonly PrintJobStatus[] QueueStatuses = [PrintJobStatus.Queued, PrintJobStatus.Printing];
 
     /// <summary>Jobs whose paper is spoken for: placed, not printed and not given up.</summary>
+    /// <summary>An order that may still print: its file has to stay as it was ordered.</summary>
+    private static readonly PrintJobStatus[] OpenStatuses =
+    [
+        PrintJobStatus.Draft,
+        PrintJobStatus.PendingPayment,
+        PrintJobStatus.Paid,
+        PrintJobStatus.Queued,
+        PrintJobStatus.Printing,
+        PrintJobStatus.Interrupted,
+        PrintJobStatus.Suspected,
+    ];
+
     private static readonly PrintJobStatus[] ReservingStatuses =
     [
         PrintJobStatus.PendingPayment,
@@ -130,6 +142,11 @@ public sealed class PrintJobRepository : IPrintJobRepository
         // taken those off the counter; only the rest is still promised.
         return jobs.Sum(job => Math.Max(0, job.RequiredSheets - job.PrintedSheets));
     }
+
+    public Task<bool> HasOpenOrderForFileAsync(Guid fileId, CancellationToken cancellationToken = default)
+        => _context.PrintJobs
+            .Find(job => job.FileId == fileId && OpenStatuses.Contains(job.Status))
+            .AnyAsync(cancellationToken);
 
     public async Task<IReadOnlyList<PrintJob>> ListByIdsAsync(
         IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)

@@ -63,6 +63,17 @@ public sealed class PrintJobsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = job.Id }, job);
     }
 
+    /// <summary>
+    /// The PDF of a paid order placed in the app (plan section 7.4): the kiosk
+    /// keeps it in its encrypted spool and prints from there.
+    /// </summary>
+    [HttpGet("{id:guid}/file")]
+    public async Task<IActionResult> PrintFile(Guid id, CancellationToken cancellationToken)
+    {
+        var file = await _sender.Send(new GetKioskPrintFileQuery(DeviceId, id), cancellationToken);
+        return File(file.Content, "application/pdf", file.FileName);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PrintJobResponse>> Get(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new GetKioskPrintJobQuery(DeviceId, id), cancellationToken));

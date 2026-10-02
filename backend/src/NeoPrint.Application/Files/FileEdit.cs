@@ -183,6 +183,7 @@ public sealed class EditFileHandler :
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly ILogger<EditFileHandler> _logger;
+    private readonly PrintJobs.IPrintJobRepository _jobs;
 
     public EditFileHandler(
         IFileRepository files,
@@ -192,8 +193,10 @@ public sealed class EditFileHandler :
         IEventPublisher events,
         ICorrelationContext correlation,
         IClock clock,
-        ILogger<EditFileHandler> logger)
+        ILogger<EditFileHandler> logger,
+        PrintJobs.IPrintJobRepository jobs)
     {
+        _jobs = jobs;
         _files = files;
         _storage = storage;
         _editor = editor;
@@ -240,6 +243,13 @@ public sealed class EditFileHandler :
         if (file.Status != FileStatus.Ready || file.Pdf is null)
         {
             throw Invalid("edit", "files.edit.notReady");
+        }
+
+        // An order still to print uses this PDF: an edit would replace it under
+        // the order that was priced on it.
+        if (await _jobs.HasOpenOrderForFileAsync(file.Id, cancellationToken).ConfigureAwait(false))
+        {
+            throw new DomainException("files.inUseByOrder");
         }
 
         var number = (file.LatestVersion?.Number ?? 0) + 1;
