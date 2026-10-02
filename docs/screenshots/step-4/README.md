@@ -43,6 +43,10 @@ Real bank, real fiskal provayder (e-kassa), real printer və Windows kiosku əl 
 | `admin-19-refund-to-voucher.png` | Uğursuz refund anonim müştəri üçün voucher-ə yönəldilir |
 | `admin-20-refund-voucher-done.png` | Voucher `RF-…` verilib, refund "Qaytarılıb"; tarixçədə "Qaytarma alınmadı" → "Qaytarıldı" |
 | `admin-21-fiscal-pending.png` | Fiskal çeklər: qaytarma çeki satış çekini gözləyir. E-kassa bərpa olunandan sonra hər iki çek avtomatik verilib (backoff ilə) |
+| `admin-22-fiscal-incident.png` | T-129: e-kassa (`mock-fiscal/mode=Reject`) balans artırma çekini rədd edib. Səhifənin başında "Açıq incident-lər" kartı göstərilir: ciddilik, nə baş verdiyi oxucunun dilində, "Təkrar cəhd" |
+| `admin-23-fiscal-incident-retried.png` | E-kassa bərpa olunub, "Təkrar cəhd" basılıb: çek "Verilib", incident bağlanıb və kart yox olub |
+| `admin-24-refunds-filter.png` | T-137: Qaytarmalar səhifəsində status və səbəb filtri ("Admin qərarı") |
+| `admin-25-payments-channel.png` | T-138: Ödənişlər səhifəsində kanal filtri ("Mobil tətbiq") |
 
 ## Mobil tətbiq
 

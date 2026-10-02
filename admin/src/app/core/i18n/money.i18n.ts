@@ -50,6 +50,7 @@ export const moneyTranslations: PageTranslations = {
 
     'money.refundReason.SystemError': 'Sistem xətası',
     'money.refundReason.UserCancel': 'Müştəri ləğv etdi',
+    'money.refundReason.ScheduleCancel': 'Planlı çap ləğv edildi',
     'money.refundReason.AdminManual': 'Admin qərarı',
     'money.refundReason.PartialPrint': 'Qismən çap',
     'money.refundReason.LatePayment': 'Gec gələn ödəniş',
@@ -66,6 +67,9 @@ export const moneyTranslations: PageTranslations = {
     'money.fiscalStatus.Pending': 'Hazırlanır',
     'money.fiscalStatus.Issued': 'Verilib',
     'money.fiscalStatus.Failed': 'Alınmadı',
+    'money.incidentSeverity.Critical': 'Kritik',
+    'money.incidentSeverity.High': 'Yüksək',
+    'money.incidentSeverity.Medium': 'Orta',
 
     'money.voucherStatus.Active': 'Aktiv',
     'money.voucherStatus.Redeemed': 'İstifadə olunub',
@@ -113,6 +117,9 @@ export const moneyTranslations: PageTranslations = {
     'payments.filterSearch': 'Ödəniş ID, sifariş kodu və ya bank istinadı',
     'payments.filterStatus': 'Status',
     'payments.filterMethod': 'Üsul',
+    'payments.filterChannel': 'Kanal',
+    'money.channel.Kiosk': 'Kiosk',
+    'money.channel.Mobile': 'Mobil tətbiq',
     'payments.filterRefund': 'Qaytarma',
     'payments.refundPending': 'Qaytarma yoldadır',
     'payments.refundFailed': 'Qaytarma alınmadı',
@@ -209,6 +216,8 @@ export const moneyTranslations: PageTranslations = {
     'refunds.colDestination': 'Hara',
     'refunds.colAmount': 'Məbləğ',
     'refunds.count': '{{total}} qaytarma',
+    'refunds.filterStatus': 'Status',
+    'refunds.filterReason': 'Səbəb',
 
     'fiscal.title': 'Fiskal çeklər',
     'fiscal.description':
@@ -230,7 +239,11 @@ export const moneyTranslations: PageTranslations = {
     'fiscal.colTerminal': 'Terminal / fiskal ID',
     'fiscal.colAmount': 'Məbləğ',
     'fiscal.openPayment': 'Ödənişi aç',
-    'fiscal.retry': 'Yenidən göndər',
+    'fiscal.retry': 'Təkrar cəhd',
+    'fiscal.incidents': 'Açıq incident-lər',
+    'fiscal.incidentsHint':
+      'E-kassa bu çekləri vermədi. Səbəbi oxuyun və təkrar cəhd edin; bərpa olunanda incident özü bağlanır.',
+    'fiscal.incidentSince': 'Açılıb: {{time}}',
     'fiscal.retried': 'Çek yenidən göndərildi.',
     'fiscal.count': '{{total}} çek',
 
@@ -502,6 +515,7 @@ export const moneyTranslations: PageTranslations = {
 
     'money.refundReason.SystemError': 'System fault',
     'money.refundReason.UserCancel': 'Cancelled by the customer',
+    'money.refundReason.ScheduleCancel': 'Scheduled print cancelled',
     'money.refundReason.AdminManual': 'Admin decision',
     'money.refundReason.PartialPrint': 'Partly printed',
     'money.refundReason.LatePayment': 'Late payment',
@@ -518,6 +532,9 @@ export const moneyTranslations: PageTranslations = {
     'money.fiscalStatus.Pending': 'On its way',
     'money.fiscalStatus.Issued': 'Issued',
     'money.fiscalStatus.Failed': 'Failed',
+    'money.incidentSeverity.Critical': 'Critical',
+    'money.incidentSeverity.High': 'High',
+    'money.incidentSeverity.Medium': 'Medium',
 
     'money.voucherStatus.Active': 'Active',
     'money.voucherStatus.Redeemed': 'Used',
@@ -565,6 +582,9 @@ export const moneyTranslations: PageTranslations = {
     'payments.filterSearch': 'Payment ID, order code or bank reference',
     'payments.filterStatus': 'Status',
     'payments.filterMethod': 'Method',
+    'payments.filterChannel': 'Channel',
+    'money.channel.Kiosk': 'Kiosk',
+    'money.channel.Mobile': 'Mobile app',
     'payments.filterRefund': 'Refund',
     'payments.refundPending': 'Refund on its way',
     'payments.refundFailed': 'Refund failed',
@@ -663,6 +683,8 @@ export const moneyTranslations: PageTranslations = {
     'refunds.colDestination': 'Where',
     'refunds.colAmount': 'Amount',
     'refunds.count': '{{total}} refunds',
+    'refunds.filterStatus': 'Status',
+    'refunds.filterReason': 'Reason',
 
     'fiscal.title': 'Fiscal receipts',
     'fiscal.description':
@@ -685,7 +707,11 @@ export const moneyTranslations: PageTranslations = {
     'fiscal.colTerminal': 'Terminal / fiscal ID',
     'fiscal.colAmount': 'Amount',
     'fiscal.openPayment': 'Open the payment',
-    'fiscal.retry': 'Send again',
+    'fiscal.retry': 'Try again',
+    'fiscal.incidents': 'Open incidents',
+    'fiscal.incidentsHint':
+      'The e-kassa did not issue these receipts. Read the reason and try again; the incident closes by itself once the receipt is issued.',
+    'fiscal.incidentSince': 'Opened: {{time}}',
     'fiscal.retried': 'The receipt was sent again.',
     'fiscal.count': '{{total}} receipts',
 
@@ -959,6 +985,7 @@ export const moneyTranslations: PageTranslations = {
 
     'money.refundReason.SystemError': 'Сбой системы',
     'money.refundReason.UserCancel': 'Отменён клиентом',
+    'money.refundReason.ScheduleCancel': 'Отмена запланированной печати',
     'money.refundReason.AdminManual': 'Решение администратора',
     'money.refundReason.PartialPrint': 'Частичная печать',
     'money.refundReason.LatePayment': 'Поздний платёж',
@@ -975,6 +1002,9 @@ export const moneyTranslations: PageTranslations = {
     'money.fiscalStatus.Pending': 'Готовится',
     'money.fiscalStatus.Issued': 'Выдан',
     'money.fiscalStatus.Failed': 'Не прошёл',
+    'money.incidentSeverity.Critical': 'Критический',
+    'money.incidentSeverity.High': 'Высокий',
+    'money.incidentSeverity.Medium': 'Средний',
 
     'money.voucherStatus.Active': 'Активен',
     'money.voucherStatus.Redeemed': 'Использован',
@@ -1022,6 +1052,9 @@ export const moneyTranslations: PageTranslations = {
     'payments.filterSearch': 'ID платежа, код заказа или ссылка банка',
     'payments.filterStatus': 'Статус',
     'payments.filterMethod': 'Способ',
+    'payments.filterChannel': 'Канал',
+    'money.channel.Kiosk': 'Киоск',
+    'money.channel.Mobile': 'Мобильное приложение',
     'payments.filterRefund': 'Возврат',
     'payments.refundPending': 'Возврат в пути',
     'payments.refundFailed': 'Возврат не прошёл',
@@ -1118,6 +1151,8 @@ export const moneyTranslations: PageTranslations = {
     'refunds.colDestination': 'Куда',
     'refunds.colAmount': 'Сумма',
     'refunds.count': 'Возвратов: {{total}}',
+    'refunds.filterStatus': 'Статус',
+    'refunds.filterReason': 'Причина',
 
     'fiscal.title': 'Фискальные чеки',
     'fiscal.description':
@@ -1139,7 +1174,11 @@ export const moneyTranslations: PageTranslations = {
     'fiscal.colTerminal': 'Терминал / фискальный ID',
     'fiscal.colAmount': 'Сумма',
     'fiscal.openPayment': 'Открыть платёж',
-    'fiscal.retry': 'Отправить снова',
+    'fiscal.retry': 'Повторить',
+    'fiscal.incidents': 'Открытые инциденты',
+    'fiscal.incidentsHint':
+      'Э-касса не выдала эти чеки. Прочитайте причину и повторите; инцидент закроется сам, когда чек будет выдан.',
+    'fiscal.incidentSince': 'Открыт: {{time}}',
     'fiscal.retried': 'Чек отправлен снова.',
     'fiscal.count': 'Чеков: {{total}}',
 

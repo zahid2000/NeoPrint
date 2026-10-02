@@ -62,6 +62,12 @@ const tones: Record<string, StatusTone> = {
   Closed: 'neutral',
   Inactive: 'neutral',
 
+  // Incidents (T-129): severity and status
+  Critical: 'danger',
+  High: 'danger',
+  Medium: 'warning',
+  Resolved: 'success',
+
   // Kiosk commands
   Sent: 'info',
   Acknowledged: 'info',

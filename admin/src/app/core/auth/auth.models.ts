@@ -91,6 +91,7 @@ export const Permissions = {
   receiptsView: 'receipts.view',
   vouchersView: 'vouchers.view',
   fiscalView: 'fiscal.view',
+  incidentsView: 'incidents.view',
   usersView: 'users.view',
   usersBlock: 'users.block',
   walletsAdjust: 'wallets.adjust',

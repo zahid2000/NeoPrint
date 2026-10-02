@@ -152,6 +152,19 @@ public static class Messages
             builder.Append(template, index, open - index);
             var name = template[(open + 1)..close];
 
+            // {type:fiscal.receiptType}: the value is a code ("TopUp") written
+            // out through the catalog ("fiscal.receiptType.topUp"), so a stored
+            // message reads in the reader's words, not the enum's.
+            var colon = name.IndexOf(':', StringComparison.Ordinal);
+
+            if (colon > 0 && arguments.TryGetValue(name[..colon], out var code))
+            {
+                var key = $"{name[(colon + 1)..]}.{(code.Length > 0 ? char.ToLowerInvariant(code[0]) + code[1..] : code)}";
+                builder.Append(Has(key) ? Write(new UserMessage(key), language) : code);
+                index = close + 1;
+                continue;
+            }
+
             builder.Append(!arguments.TryGetValue(name, out var value)
                 ? template[open..(close + 1)]
                 // An argument named ...Message is itself a stored message: the

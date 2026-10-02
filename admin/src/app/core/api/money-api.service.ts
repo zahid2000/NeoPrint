@@ -9,6 +9,7 @@ import {
   CustomerDetail,
   CustomerRow,
   FiscalRow,
+  IncidentRow,
   Page,
   PaymentDetail,
   PaymentFilter,
@@ -68,6 +69,7 @@ export class MoneyApiService {
     let params = new HttpParams().set('page', filter.page).set('pageSize', filter.pageSize);
     params = withAll(params, 'status', filter.statuses);
     params = withAll(params, 'method', filter.methods);
+    params = withOptional(params, 'channel', filter.channel);
     params = withOptional(params, 'purpose', filter.purpose);
     params = withOptional(params, 'kioskId', filter.kioskId);
     params = withOptional(params, 'from', filter.from);
@@ -95,12 +97,11 @@ export class MoneyApiService {
     statuses: readonly string[],
     page: number,
     pageSize: number,
+    reasons: readonly string[] = [],
   ): Observable<Page<RefundRow>> {
-    const params = withAll(
-      new HttpParams().set('page', page).set('pageSize', pageSize),
-      'status',
-      statuses,
-    );
+    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    params = withAll(params, 'status', statuses);
+    params = withAll(params, 'reason', reasons);
     return this.http.get<Page<RefundRow>>('/api/admin/refunds', { params });
   }
 
@@ -130,6 +131,18 @@ export class MoneyApiService {
 
   retryFiscal(id: string): Observable<FiscalRow> {
     return this.http.post<FiscalRow>(`/api/admin/fiscal-receipts/${id}/retry`, {}, idempotent());
+  }
+
+  listIncidents(
+    statuses: readonly string[],
+    types: readonly string[],
+    page: number,
+    pageSize: number,
+  ): Observable<Page<IncidentRow>> {
+    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    params = withAll(params, 'status', statuses);
+    params = withAll(params, 'type', types);
+    return this.http.get<Page<IncidentRow>>('/api/admin/incidents', { params });
   }
 
   fiscalSettings(): Observable<PlatformSetting[]> {

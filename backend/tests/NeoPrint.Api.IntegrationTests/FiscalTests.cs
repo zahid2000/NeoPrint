@@ -148,12 +148,20 @@ public sealed class FiscalTests
         var list = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/fiscal-receipts?status=Failed&type=Sale");
         list.GetProperty("items").EnumerateArray().Should().Contain(item => item.GetProperty("id").GetGuid() == receiptId);
 
+        // The panel sees the incident next to the receipt, in its own words (T-129).
+        var open = await OpenFiscalIncidentAsync(admin, receiptId, "Open");
+        open.GetProperty("entityType").GetString().Should().Be("FiscalReceipt");
+        open.GetProperty("severity").GetString().Should().Be("High");
+        open.GetProperty("details").GetString().Should().StartWith("E-kassa").And.NotContain("incidents.");
+        (await admin.GetAsync("/api/admin/incidents?status=Nope")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
         using var retry = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/fiscal-receipts/{receiptId}/retry");
         retry.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
         var retried = await admin.SendAsync(retry);
         retried.StatusCode.Should().Be(HttpStatusCode.OK, await retried.Content.ReadAsStringAsync());
         (await retried.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString().Should().Be("Issued");
         (await IncidentsAsync(receiptId, open: true)).Should().BeEmpty();
+        (await OpenFiscalIncidentAsync(admin, receiptId, "Resolved")).GetProperty("resolution").GetString().Should().StartWith("Fiskal çek verildi");
 
         using var again = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/fiscal-receipts/{receiptId}/retry");
         again.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
@@ -324,6 +332,13 @@ public sealed class FiscalTests
     {
         using var scope = _fixture.Services.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<IFiscalReceiptRepository>().ListForPaymentAsync(paymentId);
+    }
+
+    private static async Task<JsonElement> OpenFiscalIncidentAsync(HttpClient admin, Guid receiptId, string status)
+    {
+        var page = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/incidents?status={status}&type=FiscalFailed&pageSize=100");
+        return page.GetProperty("items").EnumerateArray().Should()
+            .ContainSingle(item => item.GetProperty("entityId").GetString() == receiptId.ToString()).Subject;
     }
 
     private async Task<List<Incident>> IncidentsAsync(Guid receiptId, bool open)

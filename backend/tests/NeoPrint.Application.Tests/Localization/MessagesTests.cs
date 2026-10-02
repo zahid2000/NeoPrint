@@ -148,6 +148,21 @@ public sealed partial class MessagesTests
     }
 
     [Fact]
+    public void A_code_argument_is_written_in_the_reader_s_words()
+    {
+        // Stored once with the enum's name; read in each reader's language (T-129).
+        var stored = UserMessage.Of("incidents.fiscalRejected", ("type", "TopUp"), ("amount", 1)).Encode();
+
+        Messages.WriteStored(stored, "az").Should().StartWith("E-kassa 1 ₼ məbləğində balans artırma fiskal çekini rədd etdi.");
+        Messages.WriteStored(stored, "en").Should().StartWith("The e-kassa refused a top-up fiscal receipt of 1 ₼.");
+        Messages.WriteStored(stored, "ru").Should().Contain("фискальный чек пополнения баланса").And.NotContain("TopUp");
+
+        // A code the catalog does not know is shown as it is rather than lost.
+        Messages.Write(UserMessage.Of("incidents.fiscalRejected", ("type", "Other"), ("amount", 1)), "en")
+            .Should().StartWith("The e-kassa refused a Other fiscal receipt");
+    }
+
+    [Fact]
     public void A_nested_message_argument_is_written_out_too()
     {
         var problem = UserMessage.EncodeAll(

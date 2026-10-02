@@ -122,6 +122,13 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 - *Vaxt bitdi:* warning ikonlu tam blok — nə oldu ("Ödəniş vaxtı bitdi, məbləğ tutulmayıb"), nə etmək olar; əsas düymə "Yenidən cəhd et", ikinci "Ləğv et".
 - *Ödəniş uğurlu (qəbz):* yaşıl ✓ dairə + "Ödəniş uğurlu", sifariş kodu iri kod qutusunda, növbədəki yer; sağda fiskal çek QR-ı (hazırdırsa; hazır deyilsə "Fiskal çek hazırlanır" mətni + dönən halqa, boş kvadrat yox); "Qəbzi email-ə göndər" kartı — başlıq + "Email ünvanını yazın" düyməsi (secondary); toxunanda yazma paneli açılır: email sahəsi + "Göndər" + tam hərf klaviaturası (`@`, `.`, `-`, `_` düymələri ilə). Göndərildikdən sonra panel bağlanır, kartda uğur sətri görünür (ikon + "Göndərildi: a***@..."). Əsas düymə "Bitir" (panel bağlı olanda).
 - *Refund arayışı (RefundInfo):* printer xətasından və ya ödənilmiş sifarişin ləğvindən sonra: info ikonlu başlıq ("Çap tamamlanmadı" / "Sifariş ləğv edildi"), məbləğ iri, hara qaytarıldığı ("X ₼ kartınıza qaytarılır. Bankınızdan asılı olaraq 1–3 iş günü çəkə bilər."), status səhifəsinin QR-ı + altında qısa izah ("Statusu telefonunuzda izləyin"). Əsas düymə "Bitir".
+  - **Harada göstərilir (T-133):** müştəri həmin sifarişin qəbz ekranındadırsa (ekran 9), arayış orada göstərilir:
+    - "Ödəniş uğurlu" başlığı "Çap tamamlanmadı"-ya dəyişir;
+    - uğur ikonu xəbərdarlıq ikonuna dəyişir (`WarningBg` / `Warning500`);
+    - növbədəki yer və "kodu saxlayın" mətni gizlənir;
+    - sifariş kodunun altında refund kartı çıxır (məbləğ və hara qaytarıldığı, QR).
+
+    Sağ sütun (fiskal çek, email) qalır. Müştəri artıq ekrandan çıxıbsa (başqa ekran və ya başqa sifariş), arayış ana ekranda 3 dəqiqə göstərilir. Başqa müştərinin sifarişi üçün arayış heç vaxt qəbz ekranına düşmür.
 
 **Promokod sahəsi (kiosk).** Parametrlər ekranında, qiymət kartının altında: "Promokod" düyməsi (secondary) basılanda yazma paneli açılır: kod sahəsi + "Tətbiq et" (panelin əsas düyməsi), hərf-rəqəm klaviaturası (böyük hərflər, rəqəmlər, `-`) və "Sil", "Bağla"; kod qəbul olunanda panel bağlanır. Uğurlu kod qiymət kartında ayrıca sətir kimi görünür ("Promokod X −Y ₼", `--success-500` ikonu ilə) və yekun məbləğ yenilənir; uyğun olmayan kod sahənin altında səbəbi ilə (ikon + mətn) göstərilir, sifarişi bloklamır — müştəri kodu silib davam edə bilər.
 
@@ -200,6 +207,13 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 - Səhifə şablonu: başlıq + qısa izah → filtr paneli → cədvəl → pagination. Detal səhifələri tab-larla.
 - Dashboard kartları: rəqəm + izah + trend; kritik kartlar (incident, uğursuz refund) yuxarıda və semantik rənglə.
 - Real-time yenilənən sahələrdə "canlı" göstəricisi və son yenilənmə vaxtı.
+- **Səhifəyə aid açıq incident-lər** (məs. Fiskal çeklər, T-129): başlığın dərhal altında, səhifənin başqa kartlarından (parametrlər, filtr) əvvəl ayrıca kart. Kartın sol kənarı ciddiliyin rəngindədir (Critical/High — `danger`, Medium — `warning`). Başlıqda "Açıq incident-lər" və say göstərilir. Hər sətirdə:
+  - ciddilik chip-i (rəng + ikon + mətn);
+  - nə baş verib və nə etmək lazımdır (incident mətni);
+  - nə vaxtdan;
+  - sağda bir hərəkət düyməsi (`mat-stroked-button`, məs. "Təkrar cəhd"). Səhifənin primary düyməsi olmadığı üçün `stroked`-dur.
+
+  Açıq incident yoxdursa kart göstərilmir: aşağıdakı siyahının öz empty state-i var. Kartı yalnız incident-ləri görmək icazəsi olan görür. Hərəkət düyməsi yalnız müvafiq icazə ilə görünür.
 
 ### 5.4 Operator paneli (mobil brauzer / PWA)
 - Tək sütun, iri kartlar, baş barmaqla çatan zonada əsas düymələr.

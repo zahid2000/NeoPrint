@@ -11,8 +11,10 @@ import { moneyTranslations } from '../../core/i18n/money.i18n';
 import { PaymentDetail, RefundOptions } from '../../core/api/step4.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
+import { FiscalComponent } from './fiscal.component';
 import { PaymentDetailComponent } from './payment-detail.component';
 import { PaymentsComponent } from './payments.component';
+import { RefundsComponent } from './refunds.component';
 import { RefundDialogComponent } from './refund-dialog.component';
 
 function setUp(permissions: string[], extra: unknown[] = []): HttpTestingController {
@@ -185,5 +187,110 @@ describe('money pages', () => {
     });
     expect(request.request.headers.has('Idempotency-Key')).toBe(true);
     request.flush({});
+  });
+
+  it('the fiscal page puts the open incidents first and retries the receipt they are about (T-129)', async () => {
+    const http = setUp([Permissions.fiscalView, Permissions.fiscalManage, Permissions.incidentsView]);
+    TestBed.inject(TranslateService).setTranslation('az', moneyTranslations.az);
+    const fixture = TestBed.createComponent(FiscalComponent);
+    fixture.detectChanges();
+
+    http.expectOne('/api/admin/fiscal/settings').flush([]);
+    http.expectOne((r) => r.url === '/api/admin/fiscal-receipts').flush({
+      items: [
+        { id: 'r-wait', type: 'Refund', status: 'Pending', amount: 0.3, currency: 'AZN', attempts: 4, createdAt: '2026-10-02T05:00:00Z' },
+        { id: 'r-new', type: 'Sale', status: 'Pending', amount: 0.3, currency: 'AZN', attempts: 0, createdAt: '2026-10-02T05:00:00Z' },
+      ],
+      total: 2,
+      page: 1,
+      pageSize: 20,
+    });
+    const incidents = http.expectOne((r) => r.url === '/api/admin/incidents');
+    expect(incidents.request.params.getAll('status')).toEqual(['Open', 'Acknowledged']);
+    expect(incidents.request.params.getAll('type')).toEqual(['FiscalFailed']);
+    incidents.flush({
+      items: [
+        {
+          id: 'i1',
+          type: 'FiscalFailed',
+          severity: 'High',
+          status: 'Open',
+          details: 'E-kassa 0.3 ₼ məbləğində Sale fiskal çekini rədd etdi.',
+          entityType: 'FiscalReceipt',
+          entityId: 'r-failed',
+          createdAt: '2026-10-02T05:00:00Z',
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 50,
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const page = fixture.componentInstance;
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Açıq incident-lər (1)');
+    expect(text).toContain('E-kassa 0.3 ₼ məbləğində Sale fiskal çekini rədd etdi.');
+    expect(text).toContain('Yüksək');
+    // A receipt the e-kassa has not answered can be tried now; a fresh one is left alone.
+    expect(page.canRetry(page.rows()[0]!)).toBe(true);
+    expect(page.canRetry(page.rows()[1]!)).toBe(false);
+
+    const button = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.incidents button')][0] as HTMLButtonElement;
+    expect(button.textContent?.trim()).toBe('Təkrar cəhd');
+    button.click();
+    const retry = http.expectOne('/api/admin/fiscal-receipts/r-failed/retry');
+    expect(retry.request.method).toBe('POST');
+    retry.flush({});
+    await fixture.whenStable();
+    http.expectOne((r) => r.url === '/api/admin/fiscal-receipts').flush({ items: [], total: 0, page: 1, pageSize: 20 });
+    http.expectOne((r) => r.url === '/api/admin/incidents').flush({ items: [], total: 0, page: 1, pageSize: 50 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.incidents')).toBeNull();
+  });
+
+  it('without the incidents permission the fiscal page does not ask for them', () => {
+    const http = setUp([Permissions.fiscalView]);
+    const fixture = TestBed.createComponent(FiscalComponent);
+    fixture.detectChanges();
+
+    http.expectOne((r) => r.url === '/api/admin/fiscal-receipts').flush({ items: [], total: 0, page: 1, pageSize: 20 });
+    http.expectNone((r) => r.url === '/api/admin/incidents');
+  });
+
+  it('the payments list filters by channel (T-138)', () => {
+    const http = setUp([]);
+    const fixture = TestBed.createComponent(PaymentsComponent);
+    fixture.componentInstance.channel.set('Mobile');
+    fixture.componentInstance.load();
+
+    const request = http.expectOne((r) => r.url === '/api/admin/payments');
+    expect(request.request.params.get('channel')).toBe('Mobile');
+    request.flush({ items: [], total: 0, page: 1, pageSize: 20 });
+    expect(fixture.componentInstance.filtersActive()).toBe(true);
+  });
+
+  it('the refunds list filters by status and reason; the failed tab keeps its own status (T-137)', async () => {
+    const http = setUp([]);
+    const page = TestBed.createComponent(RefundsComponent).componentInstance;
+    page.statuses.set(['Succeeded']);
+    page.reasons.set(['SystemError', 'AdminManual']);
+    void page.apply();
+
+    const all = http.match((r) => r.url === '/api/admin/refunds');
+    const list = all.find((r) => r.request.params.get('pageSize') === '20')!;
+    expect(list.request.params.getAll('status')).toEqual(['Succeeded']);
+    expect(list.request.params.getAll('reason')).toEqual(['SystemError', 'AdminManual']);
+    all.forEach((r) => r.flush({ items: [], total: 0, page: 1, pageSize: 20 }));
+    await Promise.resolve();
+
+    page.tab(1);
+    const failed = http.match((r) => r.url === '/api/admin/refunds');
+    const failedList = failed.find((r) => r.request.params.get('pageSize') === '20')!;
+    expect(failedList.request.params.getAll('status')).toEqual(['Failed']);
+    expect(failedList.request.params.getAll('reason')).toEqual(['SystemError', 'AdminManual']);
+    failed.forEach((r) => r.flush({ items: [], total: 0, page: 1, pageSize: 20 }));
   });
 });

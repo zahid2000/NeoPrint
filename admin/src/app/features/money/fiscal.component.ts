@@ -11,7 +11,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { PlatformSetting } from '../../core/api/admin-api.service';
 import { MoneyApiService } from '../../core/api/money-api.service';
-import { FiscalRow } from '../../core/api/step4.models';
+import { FiscalRow, IncidentRow } from '../../core/api/step4.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
@@ -30,6 +30,8 @@ const pageSize = 20;
  * "Fiskal çeklər" (plan section 8A.3): every fiscal receipt, filtered by
  * status and type; a failed one is retried from here. The fiscal settings
  * (online terminal, top-up mode) sit above the list for whoever may change them.
+ * The open fiscal incidents - a refused receipt, one waiting too long - come
+ * first, each with its own "Təkrar cəhd" (T-129, docs/DESIGN_SYSTEM.md 5.3).
  */
 @Component({
   selector: 'app-fiscal',
@@ -57,6 +59,39 @@ const pageSize = 20;
         [title]="'fiscal.title' | translate"
         [description]="'fiscal.description' | translate"
       />
+
+      @if (incidents().length > 0) {
+        <section class="neo-card incidents" [attr.aria-label]="'fiscal.incidents' | translate">
+          <h2 class="money__card-title">
+            {{ 'fiscal.incidents' | translate }} ({{ incidents().length }})
+          </h2>
+          <p class="neo-caption incidents__hint">{{ 'fiscal.incidentsHint' | translate }}</p>
+          @for (incident of incidents(); track incident.id) {
+            <div class="incidents__row">
+              <app-status-chip
+                [status]="incident.severity"
+                [text]="'money.incidentSeverity.' + incident.severity | translate"
+              />
+              <div class="incidents__text">
+                <span>{{ incident.details }}</span>
+                <span class="neo-caption money__block">{{
+                  'fiscal.incidentSince' | translate: { time: (incident.createdAt | dateTime) }
+                }}</span>
+              </div>
+              @if (canManage() && incident.entityType === 'FiscalReceipt' && incident.entityId) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="retrying() === incident.entityId"
+                  (click)="retry(incident.entityId)"
+                >
+                  {{ 'fiscal.retry' | translate }}
+                </button>
+              }
+            </div>
+          }
+        </section>
+      }
 
       @if (canManage() && settings().length > 0) {
         <section class="neo-card settings">
@@ -176,12 +211,12 @@ const pageSize = 20;
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let f">
-                @if (f.status === 'Failed' && canManage()) {
+                @if (canRetry(f)) {
                   <button
                     mat-stroked-button
                     type="button"
                     [disabled]="retrying() === f.id"
-                    (click)="retry(f)"
+                    (click)="retry(f.id)"
                   >
                     {{ 'fiscal.retry' | translate }}
                   </button>
@@ -208,6 +243,28 @@ const pageSize = 20;
     .settings {
       margin-block-end: var(--space-4);
     }
+
+    .incidents {
+      margin-block-end: var(--space-4);
+      border-inline-start: var(--space-1) solid var(--danger-500);
+    }
+
+    .incidents__hint {
+      margin: 0 0 var(--space-3);
+    }
+
+    .incidents__row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+      align-items: center;
+      padding-block: var(--space-3);
+      border-block-start: 1px solid var(--neutral-200);
+    }
+
+    .incidents__text {
+      flex: 1 1 320px;
+    }
   `,
 })
 export class FiscalComponent implements OnInit {
@@ -228,11 +285,13 @@ export class FiscalComponent implements OnInit {
   readonly loading = signal(true);
   readonly problem = signal<Problem | null>(null);
   readonly retrying = signal<string | null>(null);
+  readonly incidents = signal<readonly IncidentRow[]>([]);
 
   readonly settings = signal<PlatformSetting[]>([]);
   readonly values = signal<Record<string, string>>({});
   readonly saving = signal(false);
   readonly canManage = computed(() => this.auth.can(Permissions.fiscalManage));
+  readonly canSeeIncidents = computed(() => this.auth.can(Permissions.incidentsView));
   readonly dirty = computed(() => this.settings().some((s) => s.value !== this.values()[s.key]));
 
   ngOnInit(): void {
@@ -241,6 +300,14 @@ export class FiscalComponent implements OnInit {
     }
 
     void this.load();
+    void this.loadIncidents();
+  }
+
+  /** A refused receipt, or one the e-kassa has not answered yet: both can be tried now. */
+  canRetry(row: FiscalRow): boolean {
+    return (
+      this.canManage() && (row.status === 'Failed' || (row.status === 'Pending' && row.attempts > 0))
+    );
   }
 
   apply(): void {
@@ -276,13 +343,13 @@ export class FiscalComponent implements OnInit {
     }
   }
 
-  async retry(row: FiscalRow): Promise<void> {
-    this.retrying.set(row.id);
+  async retry(id: string): Promise<void> {
+    this.retrying.set(id);
 
     try {
-      await firstValueFrom(this.api.retryFiscal(row.id));
+      await firstValueFrom(this.api.retryFiscal(id));
       this.notify.success('fiscal.retried');
-      await this.load();
+      await Promise.all([this.load(), this.loadIncidents()]);
     } catch (error) {
       this.problem.set(toProblem(error));
     } finally {
@@ -305,6 +372,22 @@ export class FiscalComponent implements OnInit {
       this.problem.set(toProblem(error));
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /** Open and acknowledged fiscal incidents; the page works without them. */
+  async loadIncidents(): Promise<void> {
+    if (!this.canSeeIncidents()) {
+      return;
+    }
+
+    try {
+      const page = await firstValueFrom(
+        this.api.listIncidents(['Open', 'Acknowledged'], ['FiscalFailed'], 1, 50),
+      );
+      this.incidents.set(page.items);
+    } catch {
+      this.incidents.set([]);
     }
   }
 

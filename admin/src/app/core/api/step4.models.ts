@@ -27,9 +27,23 @@ export const paymentStatuses = [
 
 export const paymentMethods = ['BankQr', 'MobileApp', 'Wallet', 'Card', 'Bonus', 'Mixed'] as const;
 
+/** Where the payment was started (plan section 8A.3, "kanal"). */
+export const paymentChannels = ['Kiosk', 'Mobile'] as const;
+
+export const refundReasons = [
+  'SystemError',
+  'UserCancel',
+  'ScheduleCancel',
+  'AdminManual',
+  'PartialPrint',
+  'LatePayment',
+  'DuplicatePayment',
+] as const;
+
 export interface PaymentFilter {
   readonly statuses?: readonly string[];
   readonly methods?: readonly string[];
+  readonly channel?: string | null;
   readonly purpose?: string | null;
   readonly kioskId?: string | null;
   readonly from?: string | null;
@@ -188,6 +202,22 @@ export interface FiscalRow {
   readonly lastError?: string;
   readonly createdAt: string;
   readonly issuedAt?: string;
+}
+
+/** An incident as the panel lists it (GET /api/admin/incidents, T-129). */
+export interface IncidentRow {
+  readonly id: string;
+  readonly type: string;
+  readonly severity: string;
+  readonly status: string;
+  /** What happened and what to do, already in the reader's language. */
+  readonly details: string;
+  readonly entityType?: string;
+  readonly entityId?: string;
+  readonly kioskId?: string;
+  readonly createdAt: string;
+  readonly resolvedAt?: string;
+  readonly resolution?: string;
 }
 
 export interface ReceiptRow {

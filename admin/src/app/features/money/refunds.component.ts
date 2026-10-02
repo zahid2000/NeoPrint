@@ -1,6 +1,9 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Router } from '@angular/router';
@@ -8,9 +11,10 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 import { MoneyApiService } from '../../core/api/money-api.service';
-import { RefundRow } from '../../core/api/step4.models';
+import { RefundRow, refundReasons, refundStatuses } from '../../core/api/step4.models';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
+import { FilterBarComponent } from '../../shared/filter-bar.component';
 import { DateTimePipe, MoneyPipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
@@ -20,14 +24,18 @@ import { PagerComponent } from './money-shared';
 const pageSize = 20;
 
 /**
- * "Refund-lar" (plan section 8A.3): every refund, and the failed ones on a
- * tab of their own with their count. A row opens its payment, where a failed
+ * "Refund-lar" (plan section 8A.3): every refund, filtered by status and
+ * reason (T-137), and the failed ones on a tab of their own with their count. A row opens its payment, where a failed
  * refund is retried or sent elsewhere.
  */
 @Component({
   selector: 'app-refunds',
   imports: [
+    FormsModule,
     MatBadgeModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    FilterBarComponent,
     MatButtonModule,
     MatTableModule,
     MatTabsModule,
@@ -57,6 +65,27 @@ const pageSize = 20;
           </ng-template>
         </mat-tab>
       </mat-tab-group>
+
+      <app-filter-bar>
+        @if (!failedOnly()) {
+          <mat-form-field>
+            <mat-label>{{ 'refunds.filterStatus' | translate }}</mat-label>
+            <mat-select multiple [ngModel]="statuses()" (ngModelChange)="statuses.set($event); apply()">
+              @for (option of statusOptions; track option) {
+                <mat-option [value]="option">{{ 'money.refundStatus.' + option | translate }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+        <mat-form-field>
+          <mat-label>{{ 'refunds.filterReason' | translate }}</mat-label>
+          <mat-select multiple [ngModel]="reasons()" (ngModelChange)="reasons.set($event); apply()">
+            @for (option of reasonOptions; track option) {
+              <mat-option [value]="option">{{ 'money.refundReason.' + option | translate }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </app-filter-bar>
 
       @if (problem(); as problem) {
         <app-error-banner [problem]="problem" effect="refunds.loadFailedEffect" (retry)="load()" />
@@ -144,11 +173,15 @@ export class RefundsComponent implements OnInit {
 
   readonly pageSize = pageSize;
   readonly columns = ['created', 'status', 'reason', 'destination', 'amount'];
+  readonly statusOptions = refundStatuses;
+  readonly reasonOptions = refundReasons;
 
   readonly rows = signal<readonly RefundRow[]>([]);
   readonly total = signal(0);
   readonly page = signal(1);
   readonly failedOnly = signal(false);
+  readonly statuses = signal<string[]>([]);
+  readonly reasons = signal<string[]>([]);
   readonly failedCount = signal(0);
   readonly loading = signal(true);
   readonly problem = signal<Problem | null>(null);
@@ -159,6 +192,11 @@ export class RefundsComponent implements OnInit {
 
   tab(index: number): void {
     this.failedOnly.set(index === 1);
+    this.page.set(1);
+    void this.load();
+  }
+
+  apply(): void {
     this.page.set(1);
     void this.load();
   }
@@ -179,7 +217,12 @@ export class RefundsComponent implements OnInit {
     try {
       const [list, failed] = await Promise.all([
         firstValueFrom(
-          this.api.listRefunds(this.failedOnly() ? ['Failed'] : [], this.page(), pageSize),
+          this.api.listRefunds(
+            this.failedOnly() ? ['Failed'] : this.statuses(),
+            this.page(),
+            pageSize,
+            this.reasons(),
+          ),
         ),
         firstValueFrom(this.api.listRefunds(['Failed'], 1, 1)),
       ]);

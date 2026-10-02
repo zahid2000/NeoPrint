@@ -1234,6 +1234,7 @@ Kiosk qəbz ekranı və tətbiq üçün: `{ receiptId, status (Pending/Issued/Fa
 | `GET /api/admin/fiscal-receipts/{id}` | `fiscal.view` | Detal |
 | `POST /api/admin/fiscal-receipts/{id}/retry` (`Idempotency-Key`) | `fiscal.manage` | `Failed` və ya gözləyən çek dərhal, yeni cəhd sayı ilə; verilmiş çek `409 fiscal.alreadyIssued`; audit `fiscal.receipts.retry` |
 | `GET` · `PUT /api/admin/fiscal/settings` | `fiscal.manage` | Yalnız `Fiscal.*` tənzimləmələri (`{ values: { "Fiscal.OnlineTerminalId": "..." } }`); başqa açar `400 fiscal.settingNotFiscal`; tip yoxlaması və audit ümumi tənzimləmələrdəki kimi |
+| `GET /api/admin/incidents?status=&type=&page=&pageSize=` | `incidents.view` | Incident siyahısı (T-129): kritik əvvəl, sonra ən yeni. `status` = `Open`/`Acknowledged`/`Resolved`, `type` = `FiscalFailed`, `RefundFailed`, `JobSuspected`, … (səhv dəyər `400 incidents.filterInvalid`). Sətir: `id, type, severity, status, details` (oxuyanın dilində), `entityType` + `entityId` (məs. `FiscalReceipt` + çekin id-si), `kioskId, createdAt, resolvedAt, resolution`. "Fiskal çeklər" səhifəsi açıq fiskal incident-ləri buradan götürür. Acknowledge / resolve və ayrıca "Incident-lər" səhifəsi Addım 7-dədir |
 
 ### Development
 

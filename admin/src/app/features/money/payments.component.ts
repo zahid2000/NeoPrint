@@ -14,7 +14,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { AdminApiService, KioskListItem } from '../../core/api/admin-api.service';
 import { MoneyApiService } from '../../core/api/money-api.service';
-import { PaymentRow, paymentMethods, paymentStatuses } from '../../core/api/step4.models';
+import { PaymentRow, paymentChannels, paymentMethods, paymentStatuses } from '../../core/api/step4.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
@@ -31,7 +31,7 @@ const pageSize = 20;
 
 /**
  * "Ödənişlər" (plan section 8A.3): every payment the admin may see, newest
- * first; filters for status, method, kiosk, period, "xəta olub" and the
+ * first; filters for status, method, channel, kiosk, period, "xəta olub" and the
  * refund state. A row opens the payment.
  */
 @Component({
@@ -99,6 +99,16 @@ const pageSize = 20;
           <mat-select multiple [ngModel]="methods()" (ngModelChange)="methods.set($event); apply()">
             @for (option of methodOptions; track option) {
               <mat-option [value]="option">{{ 'money.method.' + option | translate }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>{{ 'payments.filterChannel' | translate }}</mat-label>
+          <mat-select [ngModel]="channel()" (ngModelChange)="channel.set($event); apply()">
+            <mat-option [value]="null">{{ 'common.all' | translate }}</mat-option>
+            @for (option of channelOptions; track option) {
+              <mat-option [value]="option">{{ 'money.channel.' + option | translate }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -253,6 +263,7 @@ export class PaymentsComponent implements OnInit {
   readonly pageSize = pageSize;
   readonly statusOptions = paymentStatuses;
   readonly methodOptions = paymentMethods;
+  readonly channelOptions = paymentChannels;
   readonly columns = ['created', 'status', 'method', 'kiosk', 'job', 'amount'];
 
   readonly rows = signal<readonly PaymentRow[]>([]);
@@ -265,6 +276,7 @@ export class PaymentsComponent implements OnInit {
   readonly search = signal('');
   readonly statuses = signal<string[]>([]);
   readonly methods = signal<string[]>([]);
+  readonly channel = signal<string | null>(null);
   readonly refund = signal<string | null>(null);
   readonly kiosk = signal<string | null>(null);
   readonly from = signal<Date | null>(null);
@@ -276,6 +288,7 @@ export class PaymentsComponent implements OnInit {
       this.search().trim() !== '' ||
       this.statuses().length > 0 ||
       this.methods().length > 0 ||
+      this.channel() !== null ||
       this.refund() !== null ||
       this.kiosk() !== null ||
       this.from() !== null ||
@@ -315,6 +328,7 @@ export class PaymentsComponent implements OnInit {
     this.search.set('');
     this.statuses.set([]);
     this.methods.set([]);
+    this.channel.set(null);
     this.refund.set(null);
     this.kiosk.set(null);
     this.from.set(null);
@@ -336,6 +350,7 @@ export class PaymentsComponent implements OnInit {
       search: this.search(),
       statuses: this.statuses(),
       methods: this.methods(),
+      channel: this.channel(),
       refund: this.refund(),
       kioskId: this.kiosk(),
       from: startOfDay(this.from()),
