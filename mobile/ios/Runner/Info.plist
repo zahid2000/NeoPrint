@@ -15,6 +15,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Yaxınlığınızdakı kioskları göstərmək üçün məkanınız lazımdır. Məkan heç yerdə saxlanmır.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Çap etmək istədiyiniz şəkli seçmək üçün foto kitabxanasına giriş lazımdır.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

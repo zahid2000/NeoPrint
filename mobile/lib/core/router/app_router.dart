@@ -18,6 +18,8 @@ import '../../features/payments/payment_models.dart';
 import '../../features/payments/scan_screen.dart';
 import '../../features/receipts/receipts_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
+import '../../features/kiosk_search/kiosk_detail_screen.dart';
+import '../../features/kiosk_search/kiosk_models.dart';
 import '../../features/kiosk_search/kiosk_search_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
@@ -36,6 +38,7 @@ abstract final class Routes {
 
   static const home = '/home';
   static const kiosks = '/kiosks';
+  static String kiosk(String code) => '/kiosk/$code';
   static const files = '/files';
   static const filesCamera = '/files/camera';
   static String filePreview(String id) => '/files/$id';
@@ -138,6 +141,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (_, __) => const ReceiptsScreen(),
         ),
       ],
+      // A kiosk found in the search, or opened by its code (plan section 8.3,
+      // neoprint://kiosk/{code}).
+      if (Readiness.kioskSearch)
+        GoRoute(
+          path: '/kiosk/:code',
+          builder: (_, state) => KioskDetailScreen(
+            idOrCode: state.pathParameters['code']!,
+            initial: state.extra is KioskSummary
+                ? state.extra! as KioskSummary
+                : null,
+          ),
+        ),
       if (Readiness.printJobs)
         GoRoute(path: Routes.claims, builder: (_, __) => const ClaimsScreen()),
 

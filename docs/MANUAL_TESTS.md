@@ -229,3 +229,17 @@ Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-də
 | 5 | Tətbiqdə **QR oxut** (ML Kit) | QR 2 saniyə ərzində tanınır, ödəniş ekranı açılır |
 | 6 | Fiskal çekin QR-ını telefonla oxudun | e-kassa saytında çek açılır, məbləğ və tarix düzgündür |
 | 7 | Balansdan və bonus səhifələrlə ödəniş | Fiskal çekdə bonus hissəsi 0 ₼, yalnız pulla ödənilən hissə; balans heç vaxt karta çıxarılmır |
+
+## MT-07. Addım 5 — real telefon, kamera, FCM (T-149)
+
+**Nə vaxt:** Addım 5-in sonunda (lokal stack + real telefon) və Addım 7-də staging-də təkrar.
+**Harada:** real Android və iOS telefon, telefon kompüterlə eyni şəbəkədə
+(`DEV_ENVIRONMENT.md` bölmə 6 — real telefon). Bu cədvəl Addım 5 irəlilədikcə doldurulur.
+
+| # | Addım | Gözlənilən |
+|---|---|---|
+| 1 | Kiosklar → **Yaxınımda** (ilk dəfə) | Telefon məkan icazəsi soruşur (izah mətni: "Yaxınlığınızdakı kioskları göstərmək üçün…"); icazədən sonra siyahı məsafə ilə, ən yaxın birinci |
+| 2 | İcazəni rədd edin, sonra yenidən **Yaxınımda** | Warning sətri "Məkana icazə verilmədi…"; ikinci seçimdə icazə yenidən soruşulur. "Bir daha soruşma" / iOS-da rədd — "telefonun tənzimləmələrində … açın" mətni |
+| 3 | Telefonda məkan xidmətini söndürüb **Yaxınımda** | "Telefonda məkan xidməti söndürülüb…" mətni, siyahı məkansız qalır |
+| 4 | **Xəritə** — barmaqla sürüşdürmə, iki barmaqla böyütmə | Xəritə səlis hərəkət edir, marker toxunuşla seçilir, aşağıda kart açılır, "© OpenStreetMap contributors" həmişə görünür |
+| 5 | Release build (`flutter build apk --release`) **`NEOPRINT_MAP_TILE_URL`-siz** | "Xəritə" seçimi görünmür, yalnız siyahı (ictimai OSM serveri release-də istifadə olunmur — T-061) |

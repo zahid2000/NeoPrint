@@ -17,7 +17,7 @@ abstract final class Readiness {
   static const bool printJobs = true;
 
   /// Kiosk search and the map - step 5.
-  static const bool kioskSearch = false;
+  static const bool kioskSearch = true;
 
   /// Scheduled printing - step 5.
   static const bool scheduledPrint = false;

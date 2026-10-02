@@ -71,3 +71,35 @@ String formatBytes(int bytes, {String language = 'az'}) {
 
   return '${text.replaceAll('.', _separators(language).decimal)}\u00a0${units[unit]}';
 }
+
+/// A distance as its number and unit: `850` m under a kilometre, `1,2` km
+/// up to ten, then whole kilometres. The unit word is the caller's (it is
+/// translated: km / км).
+({String value, bool kilometres}) formatDistance(
+  double km, {
+  String language = 'az',
+}) {
+  final decimal = _separators(language).decimal;
+
+  if (km < 1) {
+    // Rounded to tens of metres: the search point is a phone's fix, not a survey.
+    return (value: ((km * 100).round() * 10).toString(), kilometres: false);
+  }
+
+  return (
+    value: km < 10
+        ? km.toStringAsFixed(1).replaceAll('.', decimal)
+        : km.round().toString(),
+    kilometres: true,
+  );
+}
+
+/// A percentage or factor without trailing zeros: `10`, `12,5` (az, ru) or
+/// `12.5` (en).
+String formatNumber(double value, {String language = 'az'}) {
+  final text = value == value.roundToDouble()
+      ? value.round().toString()
+      : value.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
+
+  return text.replaceAll('.', _separators(language).decimal);
+}

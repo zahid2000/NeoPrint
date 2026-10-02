@@ -557,6 +557,10 @@ flutter run -d chrome
 API CORS-u Development-də `localhost`-un istənilən portunu qəbul edir; Flutter-in
 seçdiyi port fərq etmir. Başqa ünvan lazımdırsa: `--dart-define=NEOPRINT_API_URL=http://localhost:5080`.
 
+Kiosklar bölməsində **Yaxınımda** brauzerdən məkan icazəsi istəyir; Chrome `localhost`-da icazə verir
+(https tələb olunmur). Xəritə debug rejimində ictimai OpenStreetMap serverindən yüklənir — yalnız
+development üçün (T-061).
+
 ### Android emulyator
 
 ```bash
@@ -892,6 +896,10 @@ cd mobile && flutter analyze && flutter test && dart format --set-exit-if-change
 flutter build web          # lokalda; Android build CI-da (Android SDK 36 lazımdır)
 # Hazır web build-i lokal API ilə açmaq üçün (release build default olaraq api.neoprint.az-a gedir):
 flutter build web --dart-define=NEOPRINT_API_URL=http://localhost:5080/
+# Kiosklar xəritəsi: release build ictimai OSM tile serverini işlətmir (T-061) — tile ünvanı verilməyibsə
+# yalnız siyahı görünür. Lokal yoxlama üçün (az sayda sorğu, OSM siyasətinə uyğun):
+flutter build web --dart-define=NEOPRINT_API_URL=http://localhost:5080/ "--dart-define=NEOPRINT_MAP_TILE_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+# flutter run (debug) xəritəni əlavə parametrsiz göstərir.
 
 # Admin
 cd admin && npm run lint && npm test && npm run build

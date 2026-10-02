@@ -359,5 +359,122 @@
     "placeholders": {
       "reason": { "type": "String" }
     }
-  }
+  },
+  "kioskSearchHint": "Ad, kod və ya ünvan",
+  "kioskSearchClear": "Axtarışı təmizlə",
+  "kioskViewList": "Siyahı",
+  "kioskViewMap": "Xəritə",
+  "kioskNearMe": "Yaxınımda",
+  "kioskDistanceKm": "{value} km",
+  "@kioskDistanceKm": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "kioskDistanceM": "{value} m",
+  "@kioskDistanceM": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
+  "kioskStatusOnline": "İşləyir",
+  "kioskStatusPaused": "Fasilədə",
+  "kioskStatusMaintenance": "Servisdə",
+  "kioskStatusOffline": "Əlaqə yoxdur",
+  "kioskLocating": "Məkanınız təyin olunur…",
+  "kioskLocationServiceOff": "Telefonda məkan xidməti söndürülüb, ona görə yaxın kiosklar göstərilmir. Məkanı açıb \"Yaxınımda\" seçimini yenidən edin.",
+  "kioskLocationDenied": "Məkana icazə verilmədi, ona görə yaxın kiosklar göstərilmir. \"Yaxınımda\" seçimini yenidən edib icazə verin.",
+  "kioskLocationDeniedForever": "Məkana icazə bağlanıb, ona görə yaxın kiosklar göstərilmir. Telefonun tənzimləmələrində NeoPrint üçün məkanı açın.",
+  "kioskLocationUnavailable": "Məkanınızı təyin etmək alınmadı, ona görə yaxın kiosklar göstərilmir. Bir az sonra \"Yaxınımda\" seçimini yenidən edin.",
+  "kioskEmpty": "Hələ heç bir kiosk yoxdur",
+  "kioskEmptyHint": "Kiosklar quraşdırılanda burada görünəcək.",
+  "kioskEmptySearch": "Axtarışa uyğun kiosk tapılmadı",
+  "kioskEmptySearchHint": "Adı, kodu (KSK-0001) və ya ünvanı başqa cür yazın.",
+  "kioskEmptyNear": "{km} km radiusda kiosk yoxdur",
+  "@kioskEmptyNear": {
+    "placeholders": {
+      "km": { "type": "int" }
+    }
+  },
+  "kioskEmptyNearHint": "Radiusu böyüdün və ya kiosku adı ilə axtarın.",
+  "kioskWiderRadius": "Radiusu böyüt",
+  "kioskLoadFailed": "Kioskları yükləmək alınmadı: {reason}",
+  "@kioskLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "kioskMore": "Ətraflı",
+  "kioskMapLegend": "Kioskun vəziyyəti",
+  "kioskNotFound": "Kiosk tapılmadı",
+  "kioskNotFoundHint": "Kiosk söndürülüb və ya hələ işə salınmayıb. Başqa kiosk seçin.",
+  "kioskDetailLoadFailed": "Kiosk məlumatını yükləmək alınmadı: {reason}",
+  "@kioskDetailLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "kioskCapabilities": "İmkanlar",
+  "kioskCapColor": "Rəngli çap",
+  "kioskCapDuplex": "İkitərəfli çap",
+  "kioskCapA3": "A3 çap",
+  "kioskCapMissing": "{capability} — yoxdur",
+  "@kioskCapMissing": {
+    "placeholders": {
+      "capability": { "type": "String" }
+    }
+  },
+  "kioskPrices": "Qiymətlər",
+  "kioskPriceBw": "A4, ağ-qara, bir üz",
+  "kioskPriceColor": "A4, rəngli, bir üz",
+  "kioskPriceA3": "A3 — A4 qiymətinin {times} misli",
+  "@kioskPriceA3": {
+    "placeholders": {
+      "times": { "type": "String" }
+    }
+  },
+  "kioskPriceMinOrder": "Minimum sifariş",
+  "kioskPriceTier": "{sides} üzdən: −{percent}%",
+  "@kioskPriceTier": {
+    "placeholders": {
+      "sides": { "type": "int" },
+      "percent": { "type": "String" }
+    }
+  },
+  "kioskPricesHint": "Yekun qiymət sifariş verəndə hesablanır.",
+  "kioskQueue": "Növbə",
+  "kioskQueueEmpty": "Növbə boşdur",
+  "kioskQueueCount": "Növbədə {count} sifariş",
+  "@kioskQueueCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "kioskPaper": "Kağız",
+  "kioskPaperOk": "{size} kağızı kifayətdir",
+  "@kioskPaperOk": {
+    "placeholders": {
+      "size": { "type": "String" }
+    }
+  },
+  "kioskPaperLow": "{size} kağızı azdır",
+  "@kioskPaperLow": {
+    "placeholders": {
+      "size": { "type": "String" }
+    }
+  },
+  "kioskPaperLowImpact": "Böyük sifariş qəbul olunmaya bilər.",
+  "kioskPaperOut": "{size} kağızı qurtarıb",
+  "@kioskPaperOut": {
+    "placeholders": {
+      "size": { "type": "String" }
+    }
+  },
+  "kioskPaperOutImpact": "Bu kioskda hazırda {size} çap etmək olmur.",
+  "@kioskPaperOutImpact": {
+    "placeholders": {
+      "size": { "type": "String" }
+    }
+  },
+  "kioskShowAll": "Bütün kiosklar"
 }

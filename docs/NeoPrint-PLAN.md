@@ -84,6 +84,7 @@ NeoPrint — çoxfunksiyalı terminal (kiosk) printer platformasıdır. 4 hissə
 | Mobile | `image` | MIT | Şəkil emalı (kəsmə, filtr) |
 | Mobile | `google_mlkit_barcode_scanning` | MIT | QR oxuma (`camera` ilə) |
 | Mobile | `flutter_map` | BSD-3 | OpenStreetMap xəritəsi (Google Maps API açarı / ödənişi tələb etmir); MIT alternativi yoxdur — **istisna** |
+| Mobile | `latlong2` | Apache-2.0 | `flutter_map`-in öz API-sinin koordinat tipi (`LatLng`); flutter_map onsuz da ondan asılıdır — 2026-10-02 layihə sahibi təsdiqlədi |
 | Admin | Angular, Angular Material / CDK, Angular Service Worker | MIT (Google) | Platforma, PWA |
 | Admin | `@microsoft/signalr` | MIT (Microsoft) | Real-time |
 | Admin | `@ngx-translate/core` | MIT | Runtime dil dəyişmə |
