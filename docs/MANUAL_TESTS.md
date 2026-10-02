@@ -209,7 +209,11 @@ Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-də
 | 13 | Eyni `simulate-success`-i `?duplicate=true` ilə göndərin | Bir ödəniş, bir çap, bir fiskal çek (idempotency) |
 | 14 | `mock-bank/refunds-fail?fails=true` və `mock-fiscal/mode?mode=Down`, sonra №5 (ssenari A) | Refund `Refund.ProviderMaxAttempts` cəhddən sonra `Failed`, ödəniş "Qaytarma alınmadı", xəta mətni panelin dilində (T-127); satış çeki "Hazırlanır", xətası oxunaqlı |
 | 15 | Ödəniş səhifəsində uğursuz refund → təyinat "Voucher kodu" → **Yenidən göndər** | Voucher `RF-XXXX-XXXX`, refund "Qaytarılıb" |
-| 16 | `mock-fiscal/mode?mode=Ok`, `mock-bank/refunds-fail?fails=false` | Növbəti planlaşdırılmış cəhddə (backoff, ən çox 30 dəq) satış, sonra qaytarma çeki verilir; e-kassa rədd edən çek (`mode=Reject`) Fiskal çeklər-də **Yenidən göndər** ilə təkrarlanır |
+| 16 | `mock-fiscal/mode?mode=Ok`, `mock-bank/refunds-fail?fails=false` | Növbəti planlaşdırılmış cəhddə (backoff, ən çox 30 dəq) satış, sonra qaytarma çeki verilir; e-kassa rədd edən çek (`mode=Reject`) Fiskal çeklər-də **Təkrar cəhd** ilə təkrarlanır |
+| 17 | `mock-fiscal/mode?mode=Reject`, mobil tətbiqdə balansı 1 ₼ artırın; sonra `mode=Ok` | Fiskal çeklər səhifəsinin başında "Açıq incident-lər (1)": "E-kassa 1 ₼ məbləğində balans artırma fiskal çekini rədd etdi…" (xam `TopUp` deyil). **Təkrar cəhd** → çek "Verilib", kart yox olur (T-129) |
+| 18 | №5-dəki kimi `printer-fail-next.txt`, ödənişdən sonra qəbz ekranında gözləyin ("Bitir" basmayın) | Bir neçə saniyədən sonra başlıq "Çap tamamlanmadı", xəbərdarlıq ikonu, "0,30 ₼ kartınıza qaytarılır…" və QR. Kart tam görünür. "Bitir"-dən sonra ana ekranda arayış təkrar çıxmır (T-133) |
+| 19 | Admin → Promokodlar: etibarlı (məs. 20%), vaxtı bitmiş və yalnız başqa kiosk üçün kod yaradın; hər birini kioskun promokod panelində və tətbiqlə ödəniş ekranında yazın | Vaxtı bitmiş — "Promokodun müddəti bitib."; başqa kiosk — "Bu promokod bu kioskda keçərli deyil."; etibarlı — endirim sətri və azalmış məbləğ. Ödənişdən sonra siyahıda istifadə sayı və verilən endirim artır, vaxtı bitmiş kod "Vaxtı bitib", məhdudiyyət kodun altında görünür (T-130, T-139) |
+| 20 | Qaytarmalar → səbəb filtri, Ödənişlər → kanal filtri | Yalnız seçilmiş səbəb / kanalın sətirləri (T-137, T-138) |
 
 ## MT-06. Addım 4 — real provayderlər və telefon (T-099)
 
