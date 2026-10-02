@@ -257,6 +257,35 @@ public sealed class PaymentFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task A_refund_for_the_order_on_the_receipt_screen_is_shown_there_and_no_one_else_gets_it()
+    {
+        var (flow, kit) = await PlacedAsync();
+        await flow.PayWithBankCommand.ExecuteAsync(null);
+        var payment = kit.Backend.Payments.Values.Single();
+        kit.Backend.Payments[payment.Id] = payment with { Status = "Succeeded" };
+        await flow.RefreshPaymentAsync();
+        flow.Stage.Should().Be(FlowStage.Placed);
+        flow.PlacedHeading.Should().Be(T("paid.title"));
+
+        // Another kiosk customer's order: not for this screen.
+        flow.ShowPrinterRefund(Guid.NewGuid(), 0.30m, "OriginalMethod", "https://neoprint.test/refund/x").Should().BeFalse();
+        flow.PrinterStopped.Should().BeFalse();
+
+        // The printer stopped this order while the customer is still reading its receipt (T-133).
+        flow.ShowPrinterRefund(payment.JobId, 0.30m, "OriginalMethod", "https://neoprint.test/refund/1").Should().BeTrue();
+        flow.PrinterStopped.Should().BeTrue();
+        flow.PlacedHeading.Should().Be(T("refund.printerTitle"), "it no longer says the order went well");
+        flow.RefundText.Should().Be(T("refund.cardBody", Formats.Money(0.30m, "az")));
+        flow.RefundQr.Should().Be("https://neoprint.test/refund/1");
+
+        // Once they have gone, the next customer starts clean; a late refund goes to the home screen.
+        flow.LeaveCommand.Execute(null);
+        flow.PrinterStopped.Should().BeFalse();
+        flow.RefundText.Should().BeNull();
+        flow.ShowPrinterRefund(payment.JobId, 0.30m, "OriginalMethod", "https://neoprint.test/refund/1").Should().BeFalse();
+    }
+
+    [Fact]
     public async Task A_typing_sheet_never_stays_open_over_another_screen()
     {
         var (flow, _) = await PlacedAsync();

@@ -137,6 +137,8 @@
     <sys:Double x:Key="PayMethodWidth">560</sys:Double>
     <sys:Double x:Key="PaymentQrSize">480</sys:Double>
     <sys:Double x:Key="ReceiptQrSize">280</sys:Double>
+    <!-- The refund card on the receipt screen sits under the order code: a smaller QR keeps it on screen (T-133). -->
+    <sys:Double x:Key="RefundQrSize">200</sys:Double>
     <sys:Double x:Key="StatusIconSize">120</sys:Double>
     <CornerRadius x:Key="StatusIconRadius">60</CornerRadius>
     <sys:Double x:Key="FooterHeight">96</sys:Double>

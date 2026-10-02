@@ -23,6 +23,7 @@ Real bank, real fiskal provayder (e-kassa), real printer və Windows kiosku əl 
 | `kiosk-06-paid-receipt.png` | "Ödəniş uğurlu": sifariş kodu, fiskal çekin QR-ı, "Email ünvanını yazın" (klaviatura ayrıca paneldə açılır — T-120) |
 | `kiosk-07-printer-error-refund.png` | Ssenari A: printer çap zamanı qırılıb → 0,30 ₼ avtomatik karta qaytarılıb; ana ekranda "Çap tamamlanmadı" arayışı və status səhifəsinin QR-ı |
 | `kiosk-08-app-payment-qr.png` | "NeoPrint tətbiqi" ilə ödəniş: tətbiqin QR-ı və geri sayım |
+| `kiosk-09-printer-refund-on-receipt.png` | T-133: printer çap zamanı qırılıb (`printer-fail-next.txt`), müştəri hələ qəbz ekranındadır. Başlıq "Çap tamamlanmadı" olub, ikon xəbərdarlığa dəyişib; refund kartında "0,30 ₼ kartınıza qaytarılır" yazılır və status QR-ı var. "Bitir"-dən sonra ana ekranda arayış təkrar çıxmır |
 
 ## Admin paneli
 

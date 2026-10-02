@@ -462,18 +462,42 @@
                   IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPlaced}}">
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="820">
                     <Border Width="{DynamicResource StatusIconSize}" Height="{DynamicResource StatusIconSize}" Background="{DynamicResource SuccessBg}"
-                            CornerRadius="{DynamicResource StatusIconRadius}" HorizontalAlignment="Center">
+                            CornerRadius="{DynamicResource StatusIconRadius}" HorizontalAlignment="Center" IsVisible="{Binding !PrinterStopped}">
                         <PathIcon Data="{StaticResource IconSuccess}" Width="60" Height="60" Foreground="{DynamicResource Success500}" />
+                    </Border>
+                    <!-- The printer stopped this order and it was refunded (T-133). -->
+                    <Border Width="{DynamicResource StatusIconSize}" Height="{DynamicResource StatusIconSize}" Background="{DynamicResource WarningBg}"
+                            CornerRadius="{DynamicResource StatusIconRadius}" HorizontalAlignment="Center" IsVisible="{Binding PrinterStopped}">
+                        <PathIcon Data="{StaticResource IconWarning}" Width="60" Height="60" Foreground="{DynamicResource Warning500}" />
                     </Border>
                     <TextBlock Text="{Binding PlacedHeading}" Classes="h1" HorizontalAlignment="Center" />
                     <TextBlock Text="{Binding PlacedCodeLabel}" Classes="muted" HorizontalAlignment="Center" />
                     <Border Background="{DynamicResource Brand50}" CornerRadius="{DynamicResource RadiusLg}" Padding="{DynamicResource CodeBoxPadding}" HorizontalAlignment="Center">
                         <TextBlock Text="{Binding PlacedCode}" FontSize="{DynamicResource FontSizeCode}" FontWeight="SemiBold" Foreground="{DynamicResource Brand700}" />
                     </Border>
-                    <TextBlock Text="{Binding PlacedPosition}" Classes="h2" HorizontalAlignment="Center"
-                               IsVisible="{Binding PlacedPosition, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    <TextBlock Text="{Binding KeepCodeText}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
-                    <TextBlock Text="{Binding AppNoteText}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" IsVisible="{Binding PaidWithApp}" />
+                    <StackPanel Spacing="{DynamicResource Space6}" IsVisible="{Binding !PrinterStopped}">
+                        <TextBlock Text="{Binding PlacedPosition}" Classes="h2" HorizontalAlignment="Center"
+                                   IsVisible="{Binding PlacedPosition, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <TextBlock Text="{Binding KeepCodeText}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+                        <TextBlock Text="{Binding AppNoteText}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" IsVisible="{Binding PaidWithApp}" />
+                    </StackPanel>
+
+                    <!-- RefundInfo on the receipt screen: what goes back, where, and the QR to follow it. -->
+                    <Border Classes="card" IsVisible="{Binding PrinterStopped}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                            <Border Classes="qr" IsVisible="{Binding RefundQr, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Image Source="{Binding RefundQr, Converter={x:Static vm:ScreenConverters.QrImage}}"
+                                       Width="{DynamicResource RefundQrSize}" Height="{DynamicResource RefundQrSize}" />
+                            </Border>
+                            <StackPanel Spacing="{DynamicResource Space4}" VerticalAlignment="Center" MaxWidth="440">
+                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                                    <PathIcon Data="{StaticResource IconInfo}" Width="32" Height="32" Foreground="{DynamicResource Info500}" VerticalAlignment="Top" />
+                                    <TextBlock Text="{Binding RefundText}" Classes="h2" TextWrapping="Wrap" MaxWidth="390" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding RefundScanText}" Classes="muted" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- The fiscal receipt and "email me the receipt": only for a paid order. -->

@@ -333,8 +333,11 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
     public string PlacedTitle => T("placed.title");
 
-    /// <summary>"Ödəniş uğurlu" for a paid order, "Sifarişiniz növbədədir" for a Development one.</summary>
-    public string PlacedHeading => HasPayment ? T("paid.title") : T("placed.title");
+    /// <summary>
+    /// "Ödəniş uğurlu" for a paid order, "Sifarişiniz növbədədir" for a
+    /// Development one, "Çap tamamlanmadı" once the printer stopped it (T-133).
+    /// </summary>
+    public string PlacedHeading => PrinterStopped ? T("refund.printerTitle") : HasPayment ? T("paid.title") : T("placed.title");
 
     public string PlacedCodeLabel => T("placed.code");
 

@@ -105,13 +105,21 @@ public sealed partial class PrintFlowViewModel
     [ObservableProperty]
     private bool _paidWithApp;
 
-    // ---- refund (after a cancellation)
+    // ---- refund (after a cancellation, or the printer stopped this order)
 
     [ObservableProperty]
     private string? _refundText;
 
     [ObservableProperty]
     private string? _refundQr;
+
+    /// <summary>
+    /// The printer stopped the order on this receipt screen and the backend
+    /// refunded it (scenario A): the screen says so where the customer is
+    /// looking, not only on the home screen after "Bitir" (T-133).
+    /// </summary>
+    [ObservableProperty]
+    private bool _printerStopped;
 
     // ---- texts
 
@@ -533,6 +541,9 @@ public sealed partial class PrintFlowViewModel
         EmailEditing = false;
         FiscalQr = null;
         FiscalPending = true;
+        PrinterStopped = false;
+        RefundText = null;
+        RefundQr = null;
         PaidWithApp = payment.Method is not "BankQr";
 
         if (_placedJob is { } job)
@@ -711,16 +722,8 @@ public sealed partial class PrintFlowViewModel
 
                 if (refunds.Count > 0)
                 {
-                    var refund = refunds[0];
-                    var amount = Formats.Money(refunds.Sum(r => r.Amount), Language);
-
-                    RefundText = refund.Destination switch
-                    {
-                        "Wallet" => T("refund.walletBody", amount),
-                        "Voucher" => T("refund.voucherBody", amount),
-                        _ => T("refund.cardBody", amount),
-                    };
-                    RefundQr = refund.StatusUrl;
+                    RefundText = RefundBody(refunds[0].Destination, refunds.Sum(r => r.Amount));
+                    RefundQr = refunds[0].StatusUrl;
                     return;
                 }
 
@@ -733,6 +736,39 @@ public sealed partial class PrintFlowViewModel
             // Left the screen.
         }
     }
+
+    /// <summary>
+    /// The backend refunded an order the printer stopped. Shown here when the
+    /// customer is still on this order's receipt screen; otherwise the caller
+    /// shows it on the home screen.
+    /// </summary>
+    /// <returns>Whether this screen took it.</returns>
+    public bool ShowPrinterRefund(Guid jobId, decimal amount, string destination, string? statusUrl)
+    {
+        if (Stage != FlowStage.Placed || _placedJob?.Id != jobId)
+        {
+            return false;
+        }
+
+        RefundText = RefundBody(destination, amount);
+        RefundQr = statusUrl;
+        PrinterStopped = true;
+        return true;
+    }
+
+    private string RefundBody(string destination, decimal amount)
+    {
+        var text = Formats.Money(amount, Language);
+
+        return destination switch
+        {
+            "Wallet" => T("refund.walletBody", text),
+            "Voucher" => T("refund.voucherBody", text),
+            _ => T("refund.cardBody", text),
+        };
+    }
+
+    partial void OnPrinterStoppedChanged(bool value) => OnPropertyChanged(nameof(PlacedHeading));
 
     partial void OnPromoEditingChanged(bool value) => OnPropertyChanged(nameof(IsTyping));
 
@@ -772,5 +808,6 @@ public sealed partial class PrintFlowViewModel
         PaidWithApp = false;
         RefundText = null;
         RefundQr = null;
+        PrinterStopped = false;
     }
 }

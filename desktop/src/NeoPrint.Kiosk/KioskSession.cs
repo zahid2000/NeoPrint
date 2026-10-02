@@ -257,7 +257,16 @@ public sealed class KioskSession
 
             if (refunds.Count > 0)
             {
-                await OnUiAsync(() => _model.ShowRefund(refunds.Sum(r => r.Amount), refunds[0].Destination, refunds[0].StatusUrl)).ConfigureAwait(false);
+                var amount = refunds.Sum(r => r.Amount);
+                await OnUiAsync(() =>
+                {
+                    // The customer still on this order's receipt screen reads it there (T-133);
+                    // one who has gone on finds it on the home screen.
+                    if (!(_model.Screen == KioskScreen.Flow && _model.Flow?.ShowPrinterRefund(jobId, amount, refunds[0].Destination, refunds[0].StatusUrl) == true))
+                    {
+                        _model.ShowRefund(amount, refunds[0].Destination, refunds[0].StatusUrl);
+                    }
+                }).ConfigureAwait(false);
                 return;
             }
         }

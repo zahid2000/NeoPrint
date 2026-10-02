@@ -126,7 +126,7 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
     - "Ödəniş uğurlu" başlığı "Çap tamamlanmadı"-ya dəyişir;
     - uğur ikonu xəbərdarlıq ikonuna dəyişir (`WarningBg` / `Warning500`);
     - növbədəki yer və "kodu saxlayın" mətni gizlənir;
-    - sifariş kodunun altında refund kartı çıxır (məbləğ və hara qaytarıldığı, QR).
+    - sifariş kodunun altında refund kartı çıxır (məbləğ və hara qaytarıldığı, QR). QR `RefundQrSize` (200) ölçüsündədir, `ReceiptQrSize` deyil: kart ekrana sığmalıdır.
 
     Sağ sütun (fiskal çek, email) qalır. Müştəri artıq ekrandan çıxıbsa (başqa ekran və ya başqa sifariş), arayış ana ekranda 3 dəqiqə göstərilir. Başqa müştərinin sifarişi üçün arayış heç vaxt qəbz ekranına düşmür.
 
