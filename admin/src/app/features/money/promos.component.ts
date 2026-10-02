@@ -6,7 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 import { AdminApiService, KioskListItem } from '../../core/api/admin-api.service';
@@ -102,6 +102,9 @@ const pageSize = 20;
                 @if (p.description) {
                   <span class="neo-caption money__block">{{ p.description }}</span>
                 }
+                @for (line of restriction(p); track line) {
+                  <span class="neo-caption money__block">{{ line }}</span>
+                }
               </td>
             </ng-container>
             <ng-container matColumnDef="value">
@@ -140,8 +143,8 @@ const pageSize = 20;
               <th mat-header-cell *matHeaderCellDef>{{ 'promos.colStatus' | translate }}</th>
               <td mat-cell *matCellDef="let p">
                 <app-status-chip
-                  [status]="p.isActive ? 'Active' : 'Inactive'"
-                  [text]="(p.isActive ? 'promos.active' : 'promos.inactive') | translate"
+                  [status]="state(p)"
+                  [text]="'promos.state.' + state(p) | translate"
                 />
               </td>
             </ng-container>
@@ -178,6 +181,7 @@ export class PromosComponent implements OnInit {
   private readonly admin = inject(AdminApiService);
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotifyService);
+  private readonly translate = inject(TranslateService);
 
   readonly pageSize = pageSize;
   readonly columns = ['code', 'value', 'period', 'used', 'status', 'actions'];
@@ -189,19 +193,60 @@ export class PromosComponent implements OnInit {
   readonly loading = signal(true);
   readonly problem = signal<Problem | null>(null);
 
-  private kiosks: readonly KioskListItem[] = [];
-  private profiles: readonly PricingProfile[] = [];
+  private readonly kiosks = signal<readonly KioskListItem[]>([]);
+  private readonly profiles = signal<readonly PricingProfile[]>([]);
   private lastCode = '';
 
   ngOnInit(): void {
     // The restriction pickers: without them a code still applies everywhere.
     firstValueFrom(this.admin.listKiosks())
-      .then((k) => (this.kiosks = k))
+      .then((k) => this.kiosks.set(k))
       .catch(() => undefined);
     firstValueFrom(this.admin.listPricingProfiles())
-      .then((p) => (this.profiles = p))
+      .then((p) => this.profiles.set(p))
       .catch(() => undefined);
     void this.load();
+  }
+
+  /**
+   * What a customer would meet today (T-139): switched off, not started yet,
+   * over, used up - or working. "Aktiv" alone hid a code that had ended.
+   */
+  state(promo: Promo, now = new Date()): 'Inactive' | 'Scheduled' | 'Expired' | 'Exhausted' | 'Active' {
+    if (!promo.isActive) {
+      return 'Inactive';
+    }
+
+    if (promo.startsAt && new Date(promo.startsAt) > now) {
+      return 'Scheduled';
+    }
+
+    if (promo.endsAt && new Date(promo.endsAt) < now) {
+      return 'Expired';
+    }
+
+    if (promo.totalLimit && promo.usedCount >= promo.totalLimit) {
+      return 'Exhausted';
+    }
+
+    return 'Active';
+  }
+
+  /** Where the code applies, when not everywhere: kiosk codes and profile names. */
+  restriction(promo: Promo): string[] {
+    const lines: string[] = [];
+
+    if (promo.kioskIds.length > 0) {
+      const codes = promo.kioskIds.map((id) => this.kiosks().find((k) => k.id === id)?.code ?? '?');
+      lines.push(this.translate.instant('promos.onlyKiosks', { list: codes.join(', ') }));
+    }
+
+    if (promo.profileIds.length > 0) {
+      const names = promo.profileIds.map((id) => this.profiles().find((p) => p.id === id)?.name ?? '?');
+      lines.push(this.translate.instant('promos.onlyProfiles', { list: names.join(', ') }));
+    }
+
+    return lines;
   }
 
   apply(): void {
@@ -238,7 +283,7 @@ export class PromosComponent implements OnInit {
     const saved = await firstValueFrom(
       this.dialog
         .open<PromoDialogComponent, PromoDialogData, boolean>(PromoDialogComponent, {
-          data: { promo, kiosks: this.kiosks, profiles: this.profiles },
+          data: { promo, kiosks: this.kiosks(), profiles: this.profiles() },
           autoFocus: 'dialog',
         })
         .afterClosed(),

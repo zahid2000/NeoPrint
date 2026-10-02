@@ -61,6 +61,9 @@ const tones: Record<string, StatusTone> = {
   Answered: 'success',
   Closed: 'neutral',
   Inactive: 'neutral',
+  // Promo codes (T-139): not started yet, used up
+  Scheduled: 'neutral',
+  Exhausted: 'warning',
 
   // Incidents (T-129): severity and status
   Critical: 'danger',

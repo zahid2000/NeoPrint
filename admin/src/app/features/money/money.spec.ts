@@ -14,6 +14,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { FiscalComponent } from './fiscal.component';
 import { PaymentDetailComponent } from './payment-detail.component';
 import { PaymentsComponent } from './payments.component';
+import { PromosComponent } from './promos.component';
 import { RefundsComponent } from './refunds.component';
 import { RefundDialogComponent } from './refund-dialog.component';
 
@@ -292,5 +293,31 @@ describe('money pages', () => {
     expect(failedList.request.params.getAll('status')).toEqual(['Failed']);
     expect(failedList.request.params.getAll('reason')).toEqual(['SystemError', 'AdminManual']);
     failed.forEach((r) => r.flush({ items: [], total: 0, page: 1, pageSize: 20 }));
+  });
+
+  it('the promo list says when a code no longer works and where it applies (T-139)', async () => {
+    const http = setUp([]);
+    TestBed.inject(TranslateService).setTranslation('az', moneyTranslations.az);
+    TestBed.inject(TranslateService).use('az');
+    const fixture = TestBed.createComponent(PromosComponent);
+    const page = fixture.componentInstance;
+    fixture.detectChanges();
+    http.expectOne('/api/admin/kiosks').flush([{ id: 'k1', code: 'KSK-9001', name: 'Windows', status: 'Online' }]);
+    http.expectOne('/api/admin/pricing-profiles').flush([]);
+    http.expectOne((r) => r.url === '/api/admin/promos').flush({ items: [], total: 0, page: 1, pageSize: 20 });
+    await new Promise((resolve) => setTimeout(resolve));
+
+    const now = new Date('2026-10-02T06:00:00Z');
+    const promo = {
+      id: 'p', code: 'X', kind: 'Percent' as const, value: 10, minAmount: 0, kioskIds: [] as string[], profileIds: [] as string[],
+      isActive: true, usedCount: 0, confirmedCount: 0, totalDiscount: 0, createdAt: '2026-09-01T00:00:00Z',
+    };
+    expect(page.state(promo, now)).toBe('Active');
+    expect(page.state({ ...promo, endsAt: '2026-09-30T19:59:59Z' }, now)).toBe('Expired');
+    expect(page.state({ ...promo, startsAt: '2026-10-04T20:00:00Z' }, now)).toBe('Scheduled');
+    expect(page.state({ ...promo, totalLimit: 2, usedCount: 2 }, now)).toBe('Exhausted');
+    expect(page.state({ ...promo, isActive: false, endsAt: '2026-09-30T19:59:59Z' }, now)).toBe('Inactive');
+    expect(page.restriction({ ...promo, kioskIds: ['k1'] })).toEqual(['Yalnız kiosklar: KSK-9001']);
+    expect(page.restriction(promo)).toEqual([]);
   });
 });

@@ -24,6 +24,9 @@ Real bank, real fiskal provayder (e-kassa), real printer və Windows kiosku əl 
 | `kiosk-07-printer-error-refund.png` | Ssenari A: printer çap zamanı qırılıb → 0,30 ₼ avtomatik karta qaytarılıb; ana ekranda "Çap tamamlanmadı" arayışı və status səhifəsinin QR-ı |
 | `kiosk-08-app-payment-qr.png` | "NeoPrint tətbiqi" ilə ödəniş: tətbiqin QR-ı və geri sayım |
 | `kiosk-09-printer-refund-on-receipt.png` | T-133: printer çap zamanı qırılıb (`printer-fail-next.txt`), müştəri hələ qəbz ekranındadır. Başlıq "Çap tamamlanmadı" olub, ikon xəbərdarlığa dəyişib; refund kartında "0,30 ₼ kartınıza qaytarılır" yazılır və status QR-ı var. "Bitir"-dən sonra ana ekranda arayış təkrar çıxmır |
+| `kiosk-10-promo-expired.png` | T-130: vaxtı bitmiş kod `KOHNE` — "Promokodun müddəti bitib." |
+| `kiosk-11-promo-other-kiosk.png` | T-130: yalnız KSK-9001 üçün olan `K9001` KSK-9002-də — "Bu promokod bu kioskda keçərli deyil." |
+| `kiosk-12-promo-valid.png` | T-130: `YAY20` (20%) — "Promokod YAY20: −0,06 ₼", ödəniləcək 0,24 ₼. Bank QR ilə ödənilib: `promoDiscount 0,06`, promokodun `confirmedCount` 1 |
 
 ## Admin paneli
 
@@ -48,6 +51,8 @@ Real bank, real fiskal provayder (e-kassa), real printer və Windows kiosku əl 
 | `admin-23-fiscal-incident-retried.png` | E-kassa bərpa olunub, "Təkrar cəhd" basılıb: çek "Verilib", incident bağlanıb və kart yox olub |
 | `admin-24-refunds-filter.png` | T-137: Qaytarmalar səhifəsində status və səbəb filtri ("Admin qərarı") |
 | `admin-25-payments-channel.png` | T-138: Ödənişlər səhifəsində kanal filtri ("Mobil tətbiq") |
+| `admin-26-promo-new.png` | T-130: "Yeni promokod" dialoqu — `YAY20`, faiz, 20 |
+| `admin-27-promos.png` | T-130 / T-139: Promokodlar — real vəziyyət ("Aktiv", "Vaxtı bitib", "Hələ başlamayıb"), məhdudiyyət kodun altında ("Yalnız kiosklar: KSK-9001"), istifadə 2, verilən endirim 0,12 ₼ |
 
 ## Mobil tətbiq
 
@@ -57,3 +62,6 @@ Real bank, real fiskal provayder (e-kassa), real printer və Windows kiosku əl 
 | `mobile-02-paid.png` | "Ödəniş uğurlu" — sifariş kioskda növbəyə düşüb |
 | `mobile-03-receipts.png` | Profil → Qəbzlər: `NP-2026-000004`, fiskal çek verilib |
 | `mobile-04-wallet.png` | Balans: ledger, "Balansı artır", voucher kodu |
+| `mobile-05-promo-kohne.png`, `mobile-06-promo-k9001.png` | T-130: tətbiqlə ödəniş ekranında vaxtı bitmiş və başqa kioskun kodu səbəbi ilə rədd olunur |
+| `mobile-07-promo-yay20.png` | T-130: `YAY20` −0,06 ₼, "0,24 ₼ ödə" |
+| `mobile-08-promo-paid.png` | T-130: balansdan 0,24 ₼ ödənilib, sifariş kioskda növbəyə düşüb; promokodun `confirmedCount` 2, verilən endirim 0,12 ₼ |
