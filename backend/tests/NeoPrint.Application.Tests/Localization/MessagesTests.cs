@@ -175,6 +175,42 @@ public sealed partial class MessagesTests
             .Should().Be("The connection test failed: There is a problem in 1 buckets, neoprint.files — The bucket does not exist.");
     }
 
+    [Fact]
+    public void A_fiscal_incident_s_cause_reads_in_the_reader_s_language()
+    {
+        // Stored as the cause's key (T-140), not as Azerbaijani text.
+        var stored = UserMessage.Of(
+                "incidents.fiscalPending", ("type", "Sale"), ("amount", 2.5m), ("minutes", 15), ("causeMessage", "fiscal.provider.unavailable"))
+            .Encode();
+
+        stored.Should().NotContain("E-kassa");
+        Messages.WriteStored(stored, "az").Should().Contain("Səbəb: E-kassa cavab vermədi; çek avtomatik yenidən göndəriləcək. Ödəniş");
+        Messages.WriteStored(stored, "en").Should().Contain("Reason: The e-kassa did not answer; the receipt is sent again automatically. Payments");
+        Messages.WriteStored(stored, "ru").Should().Contain("Причина: Э-касса не ответила; чек будет отправлен повторно автоматически. Платежи");
+
+        var noCause = UserMessage.Of(
+            "incidents.fiscalPending", ("type", "Sale"), ("amount", 1), ("minutes", 15), ("causeMessage", "incidents.fiscalPendingNoCause"));
+        Messages.Write(noCause, "en").Should().Contain("for 15 min. Reason: No reason was recorded. Payments go on");
+    }
+
+    [Fact]
+    public void A_fiscal_incident_stored_with_azerbaijani_cause_text_still_reads_in_the_reader_s_language()
+    {
+        // What step 4 stored: the cause already written out in Azerbaijani.
+        static string Legacy(string cause)
+            => UserMessage.Of("incidents.fiscalPending", ("type", "Sale"), ("amount", 2.5m), ("minutes", 15), ("cause", cause)).Encode();
+
+        var legacy = Legacy(Messages.Write(new UserMessage("fiscal.provider.unavailable"), "az"));
+
+        Messages.WriteStored(legacy, "en").Should().Contain("Reason: The e-kassa did not answer; the receipt is sent again automatically. Payments");
+        Messages.WriteStored(legacy, "ru").Should().Contain("Причина: Э-касса не ответила;");
+        Messages.WriteStored(legacy, "az").Should().Contain("Səbəb: E-kassa cavab vermədi;");
+
+        // No cause at all, and a sentence no catalog has any more: shown as they were.
+        Messages.WriteStored(Legacy("-"), "en").Should().Contain("Reason: - Payments");
+        Messages.WriteStored(Legacy("Köhnə mətn"), "en").Should().Contain("Reason: Köhnə mətn Payments").And.NotContain("{causeMessage}");
+    }
+
     [Theory]
     [InlineData("az", "12,5")]
     [InlineData("ru", "12,5")]

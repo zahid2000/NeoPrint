@@ -87,7 +87,9 @@ public sealed class FiscalTests
         {
             var (_, paymentId, _) = await PaidBankJobAsync(_fixture, kiosk);
             pending = (await EventuallyAsync(
-                () => ReceiptAsync(FiscalizationHandlers.SaleKey(paymentId)), r => r is { Attempts: > 0 }, "the first try"))!;
+                // The try is counted before the e-kassa is called and its outcome
+                // saved after: wait for the outcome, not just the count (T-151).
+                () => ReceiptAsync(FiscalizationHandlers.SaleKey(paymentId)), r => r is { Attempts: > 0, LastError: not null }, "the first try"))!;
 
             pending.Status.Should().Be(FiscalReceiptStatus.Pending, "the payment never waits for the e-kassa");
             pending.LastError.Should().Be("fiscal.provider.unavailable");
@@ -105,7 +107,17 @@ public sealed class FiscalTests
             await AgeAsync(pending.Id, minutes: 30);
             await SendAsync(new ReportLateFiscalReceiptsCommand());
             await SendAsync(new ReportLateFiscalReceiptsCommand());
-            (await IncidentsAsync(pending.Id, open: true)).Should().ContainSingle(i => i.Type == IncidentType.FiscalFailed && i.Severity == IncidentSeverity.High);
+            (await IncidentsAsync(pending.Id, open: true)).Should().ContainSingle(i => i.Type == IncidentType.FiscalFailed && i.Severity == IncidentSeverity.High)
+                .Which.Details.Should().Contain("causeMessage=fiscal.provider.unavailable", "the cause is kept as its key (T-140)").And.NotContain("E-kassa");
+
+            // The same incident in English for an English-speaking admin.
+            using var english = new HttpRequestMessage(HttpMethod.Get, "/api/admin/incidents?status=Open&type=FiscalFailed&pageSize=100");
+            english.Headers.AcceptLanguage.ParseAdd("en");
+            var incidents = await (await admin.SendAsync(english)).Content.ReadFromJsonAsync<JsonElement>();
+            incidents.GetProperty("items").EnumerateArray()
+                .Single(item => item.GetProperty("entityId").GetString() == pending.Id.ToString())
+                .GetProperty("details").GetString()
+                .Should().Contain("Reason: The e-kassa did not answer; the receipt is sent again automatically. Payments");
         }
         finally
         {

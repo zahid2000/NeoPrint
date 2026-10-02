@@ -488,7 +488,8 @@ public sealed class FiscalizationHandlers :
                         ("type", receipt.Type.ToString()),
                         ("amount", receipt.Amount.Amount),
                         ("minutes", minutes),
-                        ("cause", receipt.LastError is { } error && Messages.Has(error) ? Messages.Write(new UserMessage(error)) : "-")),
+                        // The cause's key, not its text: read in the reader's language (T-140).
+                        ("causeMessage", receipt.LastError is { } error && Messages.Has(error) ? error : "incidents.fiscalPendingNoCause")),
                     $"fiscal-pending:{receipt.Id}",
                     cancellationToken,
                     receipt.KioskId,

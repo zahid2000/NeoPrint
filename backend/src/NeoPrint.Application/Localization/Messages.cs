@@ -35,6 +35,14 @@ public static class Messages
     private static readonly Lazy<FrozenDictionary<string, FrozenDictionary<string, string>>> Catalogs =
         new(Load);
 
+    /// <summary>Azerbaijani text → key, for texts without placeholders that belong to one key only.</summary>
+    private static readonly Lazy<FrozenDictionary<string, string>> AzerbaijaniKeys = new(() =>
+        Catalog(DefaultLanguage)
+            .Where(entry => !entry.Value.Contains('{', StringComparison.Ordinal))
+            .GroupBy(entry => entry.Value, StringComparer.Ordinal)
+            .Where(group => group.Count() == 1)
+            .ToFrozenDictionary(group => group.Key, group => group.Single().Key, StringComparer.Ordinal));
+
     /// <summary>The language of the text written out on this call path.</summary>
     public static string Current
     {
@@ -165,19 +173,34 @@ public static class Messages
                 continue;
             }
 
-            builder.Append(!arguments.TryGetValue(name, out var value)
-                ? template[open..(close + 1)]
+            var nested = name.EndsWith("Message", StringComparison.Ordinal);
+
+            builder.Append(arguments.TryGetValue(name, out var value)
                 // An argument named ...Message is itself a stored message: the
                 // provider's problem inside "the connection test failed: ...".
-                : name.EndsWith("Message", StringComparison.Ordinal)
+                ? nested
                     ? WriteStored(value, language) ?? string.Empty
-                    : Localise(value, language));
+                    : Localise(value, language)
+                : nested && arguments.TryGetValue(name[..^"Message".Length], out var legacy)
+                    ? Reread(legacy, language)
+                    : template[open..(close + 1)]);
 
             index = close + 1;
         }
 
         return builder.ToString();
     }
+
+    /// <summary>
+    /// An argument stored before it became a nested message (<c>cause</c>
+    /// before <c>causeMessage</c>, T-140): the sentence was written out in
+    /// Azerbaijani, so it is matched back to its key and read in the reader's
+    /// language. A sentence the catalog no longer has is shown as it is.
+    /// </summary>
+    private static string Reread(string written, string language)
+        => AzerbaijaniKeys.Value.TryGetValue(written, out var key)
+            ? Write(new UserMessage(key), language)
+            : written;
 
     /// <summary>
     /// A decimal argument in the reader's style: <c>12,5</c> in Azerbaijani and
