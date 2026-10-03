@@ -266,7 +266,8 @@ public sealed class UserQrFileHandlers :
         var (grant, kiosk) = await UseAsync(request.DeviceId, request.Grant, cancellationToken).ConfigureAwait(false);
         var job = await _jobs.FindByIdAsync(request.JobId, cancellationToken).ConfigureAwait(false);
 
-        if (job is null || job.UserId != grant.UserId || !job.HeldForUser)
+        // A scheduled print is printed from the app only (docs/DECISIONS.md T-145).
+        if (job is null || job.UserId != grant.UserId || !job.HeldForUser || job.Source == PrintJobSource.Scheduled)
         {
             throw new NotFoundException("printJob");
         }

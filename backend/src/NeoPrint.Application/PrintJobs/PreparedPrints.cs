@@ -128,16 +128,11 @@ public sealed class PreparedPrintHandlers :
     /// <summary>The reason an uncollected order is cancelled with; the refund module maps it to its own reason.</summary>
     public const string NotCollectedReason = "printJobs.reason.notCollected";
 
-    /// <summary>Kiosks a customer may choose (the public kiosk search's rule).</summary>
-    private static readonly KioskStatus[] Choosable =
-        [KioskStatus.Online, KioskStatus.Paused, KioskStatus.Offline, KioskStatus.Maintenance];
-
     private readonly IPreparedPrintRepository _prepared;
     private readonly IFileRepository _files;
     private readonly IKioskRepository _kiosks;
     private readonly IPrintJobRepository _jobs;
-    private readonly IPaymentRepository _payments;
-    private readonly PrintOrderRules _rules;
+    private readonly AppPaidOrders _orders;
     private readonly PrintQueueService _queue;
     private readonly IKioskNotifier _notifier;
     private readonly IEventPublisher _events;
@@ -151,8 +146,7 @@ public sealed class PreparedPrintHandlers :
         IFileRepository files,
         IKioskRepository kiosks,
         IPrintJobRepository jobs,
-        IPaymentRepository payments,
-        PrintOrderRules rules,
+        AppPaidOrders orders,
         PrintQueueService queue,
         IKioskNotifier notifier,
         IEventPublisher events,
@@ -165,8 +159,7 @@ public sealed class PreparedPrintHandlers :
         _files = files;
         _kiosks = kiosks;
         _jobs = jobs;
-        _payments = payments;
-        _rules = rules;
+        _orders = orders;
         _queue = queue;
         _notifier = notifier;
         _events = events;
@@ -180,7 +173,7 @@ public sealed class PreparedPrintHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var file = await ReadyFileAsync(request.UserId, request.FileId, cancellationToken).ConfigureAwait(false);
+        var file = await _orders.ReadyFileAsync(request.UserId, request.FileId, cancellationToken).ConfigureAwait(false);
         var options = request.Options ?? PreparedOptions.None;
 
         if (options.Problems(file.PageCount) is [var (field, message), ..])
@@ -260,54 +253,11 @@ public sealed class PreparedPrintHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var kiosk = await ChoosableKioskAsync(request.Kiosk, cancellationToken).ConfigureAwait(false);
-        var file = await ReadyFileAsync(request.UserId, request.FileId, cancellationToken).ConfigureAwait(false);
-        var now = _clock.UtcNow;
-
-        // Paper is counted when it is collected: it may be days away.
-        var price = await _rules
-            .CheckAndPriceAsync(kiosk, file.PageCount, request.Options, now, cancellationToken, checkPaper: false)
+        var kiosk = await _orders.ChoosableKioskAsync(request.Kiosk, cancellationToken).ConfigureAwait(false);
+        var file = await _orders.ReadyFileAsync(request.UserId, request.FileId, cancellationToken).ConfigureAwait(false);
+        var (job, payment) = await _orders
+            .PlaceAsync(request.UserId, kiosk, file, request.Options, request.ExpectedAmount, PrintJobSource.UserQr, _clock.UtcNow, cancellationToken)
             .ConfigureAwait(false);
-
-        if (price.Total.Amount != decimal.Round(request.ExpectedAmount, 2, MidpointRounding.AwayFromZero))
-        {
-            _logger.LogInformation(
-                "Paid preparation at kiosk {KioskId} refused: the app showed {Expected}, the profile now says {Amount}.",
-                kiosk.Id,
-                request.ExpectedAmount,
-                price.Total.Amount);
-            throw new DomainException(UserMessage.Of("printJobs.priceChanged", ("amount", price.Total.Amount)));
-        }
-
-        var actor = ActorContext.User(request.UserId, correlationId: _correlation.CorrelationId);
-        var job = await _rules
-            .AddWithUniqueCodeAsync(
-                code => PrintJob.Create(
-                    code,
-                    kiosk.Id,
-                    PrintJobSource.UserQr,
-                    file.PageCount,
-                    request.Options,
-                    price,
-                    now,
-                    userId: request.UserId,
-                    fileId: file.Id,
-                    localFileName: file.FileName,
-                    printFile: file.Pdf,
-                    heldForUser: true),
-                cancellationToken)
-            .ConfigureAwait(false);
-
-        job.AwaitPayment(actor, now);
-        await _jobs.UpdateAsync(job, cancellationToken).ConfigureAwait(false);
-
-        var minutes = Math.Clamp(
-            await _settings.GetIntAsync(SettingKeys.PaymentTimeoutMinutes, 5, cancellationToken).ConfigureAwait(false), 1, 60);
-
-        var payment = Payment.Open(job.Id, kiosk.Id, PaymentMethod.MobileApp, PaymentChannel.Mobile, job.Price.Total, now, now.AddMinutes(minutes));
-        payment.ShowAppQr(now);
-        payment.AssignUser(request.UserId, now);
-        await _payments.AddAsync(payment, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation(
             "Paid preparation {JobId} placed at kiosk {KioskId} for file {FileId}, payment {PaymentId}.",
@@ -316,15 +266,7 @@ public sealed class PreparedPrintHandlers :
             file.Id,
             payment.Id);
 
-        return new SessionPrintJobResponse(
-            job.Id,
-            job.JobCode,
-            payment.Id,
-            payment.Amount.Amount,
-            payment.Amount.Currency,
-            payment.ExpiresAt,
-            job.Price.Price.Pages,
-            job.RequiredSheets);
+        return AppPaidOrders.Response(job, payment);
     }
 
     public async Task Handle(CancelHeldPrintJobCommand request, CancellationToken cancellationToken)
@@ -333,7 +275,8 @@ public sealed class PreparedPrintHandlers :
 
         var job = await _jobs.FindByIdAsync(request.JobId, cancellationToken).ConfigureAwait(false);
 
-        if (job is null || job.UserId != request.UserId || !job.HeldForUser)
+        // A scheduled print is cancelled through its schedule, which keeps its own status.
+        if (job is null || job.UserId != request.UserId || !job.HeldForUser || job.Source == PrintJobSource.Scheduled)
         {
             throw new NotFoundException("printJob");
         }
@@ -410,31 +353,6 @@ public sealed class PreparedPrintHandlers :
     private async Task<int> AutoCancelDaysAsync(CancellationToken cancellationToken)
         => Math.Clamp(
             await _settings.GetIntAsync(SettingKeys.PreparedPrintAutoCancelDays, 7, cancellationToken).ConfigureAwait(false), 1, 90);
-
-    private async Task<Kiosk> ChoosableKioskAsync(string idOrCode, CancellationToken cancellationToken)
-    {
-        var text = idOrCode.Trim();
-        var kiosk = Guid.TryParse(text, out var id)
-            ? await _kiosks.FindByIdAsync(id, cancellationToken).ConfigureAwait(false)
-            : await _kiosks.FindByCodeAsync(text.ToUpperInvariant(), cancellationToken).ConfigureAwait(false);
-
-        return kiosk is not null && Choosable.Contains(kiosk.Status) ? kiosk : throw new NotFoundException("kiosk");
-    }
-
-    /// <summary>The user's own file, ready to print; another user's reads as missing.</summary>
-    private async Task<StoredFile> ReadyFileAsync(Guid userId, Guid fileId, CancellationToken cancellationToken)
-    {
-        var file = await _files.FindByIdAsync(fileId, cancellationToken).ConfigureAwait(false);
-
-        if (file is null || file.UserId != userId || file.DeletedAt is not null)
-        {
-            throw new NotFoundException("file");
-        }
-
-        return file is { Status: FileStatus.Ready, Pdf: not null }
-            ? file
-            : throw new DomainException(UserMessage.Of("files.notReadyNamed", ("name", file.FileName)));
-    }
 
     internal static MyPreparedPrintView PreparedView(PreparedPrint prepared, StoredFile? file, PrintJob? lastJob)
     {

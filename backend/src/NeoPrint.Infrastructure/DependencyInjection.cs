@@ -130,6 +130,7 @@ public static class DependencyInjection
         services.AddScoped<ITransitionHistory, TransitionHistory>();
         services.AddScoped<PrintQueueService>();
         services.AddScoped<Application.PrintJobs.PrintOrderRules>();
+        services.AddScoped<Application.PrintJobs.AppPaidOrders>();
 
         // Personal QR and files prepared for a kiosk (plan section 9.4).
         services.AddSingleton<Application.UserQr.IUserQrSigner, UserQr.HmacUserQrSigner>();
@@ -138,6 +139,9 @@ public static class DependencyInjection
         services.AddScoped<Application.UserQr.IUserQrGrantStore, UserQr.RedisUserQrGrantStore>();
         services.AddScoped<Application.PrintJobs.IPreparedPrintRepository, PreparedPrintRepository>();
         services.AddScoped<UserQr.UncollectedPrintJobsJob>();
+        services.AddScoped<Application.Schedules.IScheduledPrintRepository, Schedules.ScheduledPrintRepository>();
+        services.AddScoped<Schedules.ScheduledPrintDueJob>();
+        services.AddScoped<Schedules.ScheduledPrintAutoCancelJob>();
         services.AddScoped<PrintQueueReconciliationJob>();
 
         // Payments (plan section 2.5, step 4). The mock bank is the only bank
@@ -314,6 +318,7 @@ public static class DependencyInjection
             bus.AddConsumer<Receipts.ReceiptConsumer>();
             bus.AddConsumer<Receipts.ReceiptFiscalConsumer>();
             bus.AddConsumer<Notifications.UserNotificationConsumer>();
+            bus.AddConsumer<Schedules.ScheduledPrintJobConsumer>();
 
             // Every process caches the storage providers, so every process needs
             // its own copy of this event: a queue per instance, deleted when the

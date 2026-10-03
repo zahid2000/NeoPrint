@@ -36,6 +36,7 @@ public sealed class AppPaymentHandlers :
     private readonly IPaymentRepository _payments;
     private readonly IPrintJobRepository _jobs;
     private readonly IKioskRepository _kiosks;
+    private readonly Schedules.IScheduledPrintRepository _schedules;
     private readonly IPaymentProviders _providers;
     private readonly PaymentSettlement _settlement;
     private readonly WalletLedger _wallet;
@@ -50,6 +51,7 @@ public sealed class AppPaymentHandlers :
         IPaymentRepository payments,
         IPrintJobRepository jobs,
         IKioskRepository kiosks,
+        Schedules.IScheduledPrintRepository schedules,
         IPaymentProviders providers,
         PaymentSettlement settlement,
         WalletLedger wallet,
@@ -63,6 +65,7 @@ public sealed class AppPaymentHandlers :
         _payments = payments;
         _jobs = jobs;
         _kiosks = kiosks;
+        _schedules = schedules;
         _providers = providers;
         _settlement = settlement;
         _wallet = wallet;
@@ -350,6 +353,9 @@ public sealed class AppPaymentHandlers :
         var (usable, value) = await BonusAsync(payment, job, wallet, cancellationToken).ConfigureAwait(false);
         var now = _clock.UtcNow;
         var open = payment.Status == PaymentStatus.Pending;
+        var schedule = job.Source == PrintJobSource.Scheduled
+            ? await _schedules.FindByJobIdAsync(job.Id, cancellationToken).ConfigureAwait(false)
+            : null;
         Promos.PromoCheck? promo = null;
         Promos.PromoCheck? promoWithBonus = null;
 
@@ -388,6 +394,7 @@ public sealed class AppPaymentHandlers :
             open ? promo?.Discount.Amount ?? 0 : payment.Discount.Amount,
             open ? promoWithBonus?.Discount.Amount ?? 0 : payment.Discount.Amount,
             promo?.Refusal is { } refusal ? Localization.Messages.Write(refusal) : null,
-            job.HeldForUser);
+            job.HeldForUser && job.Source != PrintJobSource.Scheduled,
+            schedule?.ScheduledAt);
     }
 }

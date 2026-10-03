@@ -16,6 +16,9 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Kiosk.IdleResetSeconds':
       'Ekrana toxunulmasa kiosk bu müddətdən sonra ana ekrana qayıdır.',
     'settings.description.UserQr.RotationSeconds': 'Şəxsi QR kodu bu intervalla yenilənir.',
+    'settings.description.PreparedPrint.AutoCancelDays':
+      'Tətbiqdə ödənilib kioskda götürülməyən sifariş bu qədər gündən sonra ləğv olunur (pul balansa qayıdır).',
+    'settings.description.Schedule.MaxDaysAhead': 'Çapı ən çox neçə gün sonraya planlamaq olar.',
     'settings.description.Schedule.ReminderLeadMinutes':
       'Planlanmış çapdan neçə dəqiqə əvvəl xatırlatma gəlir (0 — vaxtında).',
     'settings.description.Schedule.AutoCancelHours':
@@ -109,6 +112,10 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Kiosk.IdleResetSeconds':
       'Left untouched, the kiosk returns to its home screen after this long.',
     'settings.description.UserQr.RotationSeconds': 'How often the personal QR code is renewed.',
+    'settings.description.PreparedPrint.AutoCancelDays':
+      'An order paid in the app and not collected at the kiosk is cancelled after this many days (the money goes back to the balance).',
+    'settings.description.Schedule.MaxDaysAhead':
+      'How many days ahead a print can be scheduled at most.',
     'settings.description.Schedule.ReminderLeadMinutes':
       'How many minutes before a scheduled print the reminder comes (0 means on time).',
     'settings.description.Schedule.AutoCancelHours':
@@ -195,6 +202,10 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Kiosk.IdleResetSeconds':
       'Без касаний киоск возвращается на главный экран через это время.',
     'settings.description.UserQr.RotationSeconds': 'Как часто обновляется личный QR-код.',
+    'settings.description.PreparedPrint.AutoCancelDays':
+      'Заказ, оплаченный в приложении и не забранный в киоске, отменяется через столько дней (деньги возвращаются на баланс).',
+    'settings.description.Schedule.MaxDaysAhead':
+      'На сколько дней вперёд максимум можно запланировать печать.',
     'settings.description.Schedule.ReminderLeadMinutes':
       'За сколько минут до печати по расписанию приходит напоминание (0 — в назначенное время).',
     'settings.description.Schedule.AutoCancelHours':

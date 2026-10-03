@@ -161,7 +161,8 @@ public sealed class PrintJobRepository : IPrintJobRepository
 
     public async Task<IReadOnlyList<PrintJob>> ListHeldForUserAsync(Guid userId, CancellationToken cancellationToken = default)
         => await _context.PrintJobs
-            .Find(job => job.UserId == userId && job.HeldForUser && job.Status == PrintJobStatus.Paid)
+            .Find(job => job.UserId == userId && job.HeldForUser && job.Status == PrintJobStatus.Paid
+                          && job.Source != PrintJobSource.Scheduled)
             .SortByDescending(job => job.CreatedAt)
             .Limit(100)
             .ToListAsync(cancellationToken)
@@ -169,7 +170,8 @@ public sealed class PrintJobRepository : IPrintJobRepository
 
     public async Task<IReadOnlyList<PrintJob>> ListHeldPaidBeforeAsync(DateTime paidBefore, int take, CancellationToken cancellationToken = default)
         => await _context.PrintJobs
-            .Find(job => job.HeldForUser && job.Status == PrintJobStatus.Paid && job.PaidAt <= paidBefore)
+            .Find(job => job.HeldForUser && job.Status == PrintJobStatus.Paid && job.PaidAt <= paidBefore
+                          && job.Source != PrintJobSource.Scheduled)
             .SortBy(job => job.PaidAt)
             .Limit(take)
             .ToListAsync(cancellationToken)

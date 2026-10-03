@@ -150,11 +150,17 @@ Rollback:
 
 ## ScheduledPrint
 
-`Scheduled → AwaitingUser → Sent`
+`PendingPayment → Scheduled → AwaitingUser → Sent`
 
-`Scheduled | AwaitingUser → Cancelled`
+`Scheduled → Sent` ("Çapa ver" vaxtdan əvvəl, `docs/DECISIONS.md` T-145)
+
+`AwaitingUser → Scheduled` ("Vaxtı dəyiş")
+
+`PendingPayment | Scheduled | AwaitingUser → Cancelled`
 
 `AwaitingUser → Expired` (auto-cancel + refund)
+
+`PendingPayment` — planlama yaradılıb, onun job-u hələ ödənilməyib. Ödəniş gəlməsə (intent bitir) job `Expired` olur və planlama `Cancelled` olur, istifadəçinin siyahısında görünmür. Sifarişin özü `Source=Scheduled` job-dur. Bu job ödənişdən sonra `Paid` qalır (`HeldForUser`) və "Çapa ver" ilə `Paid → Queued` keçidini edir. Ləğv və `Expired` zamanı job ləğv olunur (`Paid → Cancelled`), pul balansa `RefundReason.ScheduleCancel` ilə qayıdır. Job başqa yolla ləğv olunsa (admin), planlama da `Cancelled` olur.
 
 ## Qaydalar
 

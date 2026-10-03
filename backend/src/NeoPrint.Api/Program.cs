@@ -427,6 +427,17 @@ await using (var scope = app.Services.CreateAsyncScope())
         job => job.RunAsync(CancellationToken.None),
         Cron.Hourly());
 
+    // Scheduled prints (plan section 9.5): whose time came every minute, unanswered ones every 10.
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Schedules.ScheduledPrintDueJob>(
+        NeoPrint.Infrastructure.Schedules.ScheduledPrintDueJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Minutely());
+
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Schedules.ScheduledPrintAutoCancelJob>(
+        NeoPrint.Infrastructure.Schedules.ScheduledPrintAutoCancelJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        "*/10 * * * *");
+
     recurring.AddOrUpdate<PrintQueueReconciliationJob>(
         PrintQueueReconciliationJob.RecurringId,
         job => job.RunAsync(CancellationToken.None),

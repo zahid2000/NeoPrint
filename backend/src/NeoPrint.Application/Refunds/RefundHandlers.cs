@@ -429,13 +429,16 @@ public sealed class RefundHandlers :
             return Unit.Value;
         }
 
-        var reason = cancelled.ReasonKey == PrintJobs.PreparedPrintHandlers.NotCollectedReason
-            ? RefundReason.NotCollected
-            : cancelled.CancelledBy switch
+        var reason = cancelled.ReasonKey switch
         {
-            nameof(ActorType.Admin) => RefundReason.AdminManual,
-            nameof(ActorType.System) => RefundReason.SystemError,
-            _ => RefundReason.UserCancel,
+            PrintJobs.PreparedPrintHandlers.NotCollectedReason => RefundReason.NotCollected,
+            Schedules.ScheduleHandlers.CancelledReason or Schedules.ScheduleHandlers.ExpiredReason => RefundReason.ScheduleCancel,
+            _ => cancelled.CancelledBy switch
+            {
+                nameof(ActorType.Admin) => RefundReason.AdminManual,
+                nameof(ActorType.System) => RefundReason.SystemError,
+                _ => RefundReason.UserCancel,
+            },
         };
 
         await _events.PublishAsync(

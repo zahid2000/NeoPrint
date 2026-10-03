@@ -435,6 +435,7 @@ public sealed class SetAutoDeleteHandler : IRequestHandler<SetAutoDeleteCommand,
 public sealed class DeleteFileHandler : IRequestHandler<DeleteFileCommand>
 {
     private readonly PrintJobs.IPrintJobRepository _jobs;
+    private readonly Schedules.IScheduledPrintRepository _schedules;
     private readonly IFileRepository _files;
     private readonly IFileStorage _storage;
     private readonly IClock _clock;
@@ -445,9 +446,11 @@ public sealed class DeleteFileHandler : IRequestHandler<DeleteFileCommand>
         IFileStorage storage,
         IClock clock,
         ILogger<DeleteFileHandler> logger,
-        PrintJobs.IPrintJobRepository jobs)
+        PrintJobs.IPrintJobRepository jobs,
+        Schedules.IScheduledPrintRepository schedules)
     {
         _jobs = jobs;
+        _schedules = schedules;
         _files = files;
         _storage = storage;
         _clock = clock;
@@ -461,6 +464,12 @@ public sealed class DeleteFileHandler : IRequestHandler<DeleteFileCommand>
         var file = await FileAccess
             .LoadOwnedAsync(_files, request.UserId, request.FileId, cancellationToken)
             .ConfigureAwait(false);
+
+        // A scheduled print is told apart: it is cancelled first, in its own list (docs/DECISIONS.md T-145).
+        if (await _schedules.HasActiveForFileAsync(file.Id, cancellationToken).ConfigureAwait(false))
+        {
+            throw new DomainException("files.inUseBySchedule");
+        }
 
         // The kiosk still has to fetch it for an order that may print.
         if (await _jobs.HasOpenOrderForFileAsync(file.Id, cancellationToken).ConfigureAwait(false))

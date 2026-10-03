@@ -62,6 +62,7 @@ public static class SettingKeys
     public const string PreparedPrintAutoCancelDays = "PreparedPrint.AutoCancelDays";
     public const string ScheduleReminderLeadMinutes = "Schedule.ReminderLeadMinutes";
     public const string ScheduleAutoCancelHours = "Schedule.AutoCancelHours";
+    public const string ScheduleMaxDaysAhead = "Schedule.MaxDaysAhead";
     public const string ReferralBonusPages = "Referral.BonusPages";
     public const string ReferralInviteeBonusPages = "Referral.InviteeBonusPages";
     public const string ReferralMaxBonusPagesPerJob = "Referral.MaxBonusPagesPerJob";
@@ -154,6 +155,7 @@ public static class SettingKeys
         new(PreparedPrintAutoCancelDays, "7", SettingValueType.Integer, "Tətbiqdə əvvəlcədən ödənilmiş, kioskda götürülməyən sifariş neçə gündən sonra ləğv olunur (pul balansa qayıdır)"),
         new(ScheduleReminderLeadMinutes, "0", SettingValueType.Integer, "Planlanmış vaxtda bildiriş"),
         new(ScheduleAutoCancelHours, "24", SettingValueType.Integer, "Cavab verilməyən planlanmış çapın avtomatik ləğvi"),
+        new(ScheduleMaxDaysAhead, "30", SettingValueType.Integer, "Çapı ən çox neçə gün sonraya planlamaq olar"),
         new(ReferralBonusPages, "10", SettingValueType.Integer, "Dəvət edənə verilən bonus səhifə"),
         new(ReferralInviteeBonusPages, "0", SettingValueType.Integer, "Dəvət olunana verilən bonus"),
         new(ReferralMaxBonusPagesPerJob, "5", SettingValueType.Integer, "Bir çapda maksimum bonus səhifə"),

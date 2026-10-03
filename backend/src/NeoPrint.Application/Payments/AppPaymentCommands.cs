@@ -53,6 +53,7 @@ public enum SettleCardOutcome
 /// <param name="BonusPagesUsable">How many bonus pages this order can take (plan section 2.6: at most <c>Referral.MaxBonusPagesPerJob</c>).</param>
 /// <param name="BonusValue">What those pages take off the price.</param>
 /// <param name="CollectAtKiosk">Paid for later (plan section 9.4): once paid it waits at the kiosk for the user's QR, not in the queue.</param>
+/// <param name="ScheduledAt">A scheduled print (plan section 9.5): once paid it waits for this time, and the app asks then.</param>
 public sealed record AppPaymentView(
     Guid Id,
     string Status,
@@ -79,4 +80,5 @@ public sealed record AppPaymentView(
     decimal PromoDiscount = 0,
     decimal PromoDiscountWithBonus = 0,
     string? PromoRefusal = null,
-    bool CollectAtKiosk = false);
+    bool CollectAtKiosk = false,
+    DateTime? ScheduledAt = null);

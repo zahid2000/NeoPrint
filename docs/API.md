@@ -1519,11 +1519,33 @@ bitmə vaxtı `X-Qr-Expires-At` başlığındadır. Hər iki cavab `Cache-Contro
   Başqa kiosk üçün ödənilib → `409 printJobs.paidAtAnotherKiosk` (`{kiosk}`). Təkrar çağırış dəyişiklik etmir.
 - `GET /api/print-jobs/{id}/file` götürülməmiş ödənişli hazırlıq üçün `409 printJobs.fileNotPrintable`.
 
+## Planlanmış çap (`/api/schedules`, `User` token, Addım 5)
+
+Plan 9.5; qərarlar `DECISIONS.md` (T-145). Sifarişin özü planlama anında yaradılan `Source=Scheduled` job-dur
+(ödənilir, `Paid` qalır, kağız ayırmır, kioskun QR siyahısında görünmür). Qiymət kioskun cari profilindən snapshot olunur.
+
+- `POST` (`Idempotency-Key`) `{ kiosk, fileId, options, scheduledAt, expectedAmount }` →
+  `{ scheduleId, jobId, jobCode, paymentId, amount, currency, paymentExpiresAt, scheduledAt }`; ödəniş `payments/{paymentId}/pay-with-app` ilə.
+  Ödənişdən sonra `GET /api/payments/{id}/app` cavabında `scheduledAt` (və `collectAtKiosk: false`) olur.
+  `scheduledAt` UTC: ən azı 15 dəqiqə sonra (`400 schedules.tooSoon`), ən çox `Schedule.MaxDaysAhead` (30) gün sonra (`400 schedules.tooFar`).
+  Qiymət dəyişibsə `409 printJobs.priceChanged` (`{amount}`), kiosk seçimi dəstəkləmirsə `400` — `/api/prepared-prints/paid` ilə eyni.
+- `GET` → `{ items: [{ id, jobId, jobCode, fileId, fileName, pages, options, kioskId, kioskCode?, kioskName?, amount, currency, scheduledAt,
+  status, jobStatus, paymentId?, autoCancelAt?, createdAt }] }`, ən yenisi əvvəl. `status`: `PendingPayment`, `Scheduled`, `AwaitingUser`,
+  `Sent`, `Cancelled`, `Expired`; ödənilmədən ləğv olunanlar siyahıda yoxdur. `autoCancelAt` — `AwaitingUser` üçün avtomatik ləğv vaxtı.
+- `PUT /{id}/time` `{ scheduledAt }` → `ScheduleView` (`Scheduled`); eyni vaxt qaydaları. Gözləmədə deyilsə `409 schedules.notActive`.
+- `POST /{id}/print-now` (`Idempotency-Key`) → `ScheduleView` (`Sent`, job `Queued`). Vaxtından əvvəl də işləyir. Kiosk `Online` deyilsə
+  `409 schedules.kioskUnavailable` (`{kiosk}`, `{status}`); printer/kağız çatmırsa kiosk sifariş qaydalarının `409`-u. Təkrar çağırış dəyişiklik etmir.
+- `DELETE /{id}` → `204`; job ləğv olunur, ödənilmişsə pul balansa (`RefundReason.ScheduleCancel`, qaytarma fiskal çeki ilə). Çapa verilibsə `409 schedules.notActive`.
+- Arxa plan: `scheduled-print-due` (hər dəqiqə) — vaxtı çatan `AwaitingUser` olur, istifadəçiyə `/hubs/user` üzərindən `ScheduleDue`
+  `{ scheduleId, jobId, scheduledAt, status }` (bir dəfə; `Schedule.ReminderLeadMinutes` > 0 olanda vaxtdan o qədər əvvəl);
+  `scheduled-print-auto-cancel` (10 dəq) — `Schedule.AutoCancelHours` (24) cavabsız qalan `Expired`, pul balansa.
+- Aktiv planlanmış çapı olan fayl silinmir: `DELETE /api/files/{id}` → `409 files.inUseBySchedule`.
+
 ---
 
 ## Hələ mövcud olmayan endpoint-lər
 
-Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: planlanmış çap, push və məxfilik
+Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: push və məxfilik
 (Addım 5), skan və paylaşım (Addım 6), telemetriya, incident səhifəsi və operator paneli (Addım 7). Addım 4-ün ödəniş,
 refund, wallet, fiskal çek, qəbz, promokod, istifadəçi hub-ı və admin pul səhifələri yuxarıdakı bölmələrdədir.
 

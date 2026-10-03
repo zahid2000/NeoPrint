@@ -25,6 +25,12 @@ public interface IUserNotifier
 
     /// <summary>The app's kiosk session ended (plan section 8.2, "sessiya TTL bitəndə bildiriş").</summary>
     Task SessionClosedAsync(Guid userId, UserSessionUpdate update, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// A scheduled print's time came, or its reminder is due (plan section 9.5, step 2):
+    /// the app asks "Çapa ver" or "Vaxtı dəyiş".
+    /// </summary>
+    Task ScheduleDueAsync(Guid userId, UserScheduleUpdate update, CancellationToken cancellationToken = default);
 }
 
 public sealed record UserJobUpdate(Guid JobId, string JobCode, string Status);
@@ -33,6 +39,9 @@ public sealed record UserPaymentUpdate(Guid PaymentId, Guid? JobId, string Statu
 
 /// <param name="Reason"><c>Closed</c>, <c>Expired</c> or <c>Replaced</c>.</param>
 public sealed record UserSessionUpdate(Guid SessionId, Guid KioskId, string Reason);
+
+/// <param name="Status">The schedule's status now: <c>Scheduled</c> for an early reminder, <c>AwaitingUser</c> once due.</param>
+public sealed record UserScheduleUpdate(Guid ScheduleId, Guid JobId, DateTime ScheduledAt, string Status);
 
 public sealed record UserRefundUpdate(Guid RefundId, Guid PaymentId, Guid? JobId, string Status, decimal Amount, string Destination);
 
