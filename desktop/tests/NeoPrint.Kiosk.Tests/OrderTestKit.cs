@@ -51,7 +51,8 @@ internal sealed class OrderTestKit : IDisposable
     public FakePrinterService Printer { get; }
 
     public static async Task<OrderTestKit> CreateAsync(
-        int paperCurrent = 480, bool blockOnPaper = true, IReadOnlyList<string>? allowedFormats = null, int maxFileSizeMb = 50, bool skipPayment = true)
+        int paperCurrent = 480, bool blockOnPaper = true, IReadOnlyList<string>? allowedFormats = null, int maxFileSizeMb = 50, bool skipPayment = true,
+        bool canColor = true)
     {
         var paths = new FakeAppPaths();
         paths.EnsureCreated();
@@ -72,7 +73,7 @@ internal sealed class OrderTestKit : IDisposable
 
         // The configuration comes from the disk cache: the quote needs no call.
         var cache = new ConfigurationCache(paths);
-        cache.Save(Configuration(paperCurrent, blockOnPaper, allowedFormats, maxFileSizeMb), DateTime.UtcNow);
+        cache.Save(Configuration(paperCurrent, blockOnPaper, allowedFormats, maxFileSizeMb, canColor), DateTime.UtcNow);
 
         var runtime = new KioskRuntime(api, new SystemClock(), NullLogger<KioskRuntime>.Instance, cache);
         runtime.LoadCachedConfiguration().Should().BeTrue();
@@ -121,14 +122,14 @@ internal sealed class OrderTestKit : IDisposable
     }
 
     private static KioskConfiguration Configuration(
-        int paperCurrent, bool blockOnPaper, IReadOnlyList<string>? allowedFormats, int maxFileSizeMb) => new(
+        int paperCurrent, bool blockOnPaper, IReadOnlyList<string>? allowedFormats, int maxFileSizeMb, bool canColor) => new(
         Guid.NewGuid(),
         "KSK-0001",
         "Mərkəz",
         "Online",
         "az",
         FakePrinterService.FakePrinterName,
-        new PrinterCapabilityFlags(true, true, true),
+        new PrinterCapabilityFlags(canColor, true, true),
         [],
         null,
         5,
@@ -185,9 +186,57 @@ internal sealed class OrderBackend : HttpMessageHandler
     /// <summary>Promo codes that exist and what they take off.</summary>
     public Dictionary<string, decimal> Promos { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>What a read personal QR lists (plan section 9.4).</summary>
+    public List<UserQrItem> UserQrItems { get; } = [];
+
+    /// <summary>The grant every read QR gets.</summary>
+    public Guid UserQrGrant { get; } = Guid.NewGuid();
+
+    /// <summary>When set, a read QR is refused with this text (as the server says it).</summary>
+    public string? UserQrRefusal { get; set; }
+
+    /// <summary>When set, picking a paid order is refused with this text.</summary>
+    public string? ReleaseRefusal { get; set; }
+
+    /// <summary>Codes read, preparations ordered (with the body), paid orders released.</summary>
+    public List<string> ScannedCodes { get; } = [];
+
+    public List<(Guid PreparedId, string? Grant, string Body)> PreparedOrders { get; } = [];
+
+    public List<Guid> Released { get; } = [];
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var path = request.RequestUri!.AbsolutePath;
+
+        if (path.EndsWith("/api/print-jobs/pending-for-user", StringComparison.Ordinal) && request.Method == HttpMethod.Post)
+        {
+            using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
+            ScannedCodes.Add(body.RootElement.GetProperty("code").GetString()!);
+
+            return UserQrRefusal is { } refusal
+                ? Problem(HttpStatusCode.Conflict, JsonSerializer.Serialize(new { title = refusal, status = 409, code = "userQr.invalid" }))
+                : Json(new UserQrFiles(UserQrGrant, DateTime.UtcNow.AddMinutes(5), UserQrItems));
+        }
+
+        if (path.Contains("/api/print-jobs/pending-for-user/prepared/", StringComparison.Ordinal))
+        {
+            var grant = request.Headers.TryGetValues("X-User-Qr-Grant", out var grants) ? grants.Single() : null;
+            PreparedOrders.Add((Guid.Parse(path.Split('/')[^1]), grant, await request.Content!.ReadAsStringAsync(cancellationToken)));
+            return Json(Job(Guid.NewGuid(), "PendingPayment"));
+        }
+
+        if (path.Contains("/api/print-jobs/pending-for-user/paid/", StringComparison.Ordinal))
+        {
+            if (ReleaseRefusal is { } refusal)
+            {
+                return Problem(HttpStatusCode.Conflict, JsonSerializer.Serialize(new { title = refusal, status = 409 }));
+            }
+
+            var id = Guid.Parse(path.Split('/')[^2]);
+            Released.Add(id);
+            return Json(Job(id, "Queued", "715204"));
+        }
 
         if (path.EndsWith("/register", StringComparison.Ordinal))
         {

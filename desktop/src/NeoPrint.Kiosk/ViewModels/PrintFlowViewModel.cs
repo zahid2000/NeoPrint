@@ -37,6 +37,12 @@ public enum FlowStage
 
     /// <summary>The time ran out, or the bank said no: nothing was taken.</summary>
     PaymentExpired = 11,
+
+    /// <summary>Screen 10: what the user prepared in the app, after their QR was read (plan section 9.4).</summary>
+    UserFiles = 12,
+
+    /// <summary>An order paid in the app, sent to the queue from screen 10.</summary>
+    Collected = 13,
 }
 
 /// <summary>A folder or a file on the flash drive.</summary>
@@ -238,7 +244,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
     public bool IsPaged => !IsImage && !IsText;
 
-    public int PageCount => _document?.PageCount ?? 0;
+    public int PageCount => _document?.PageCount ?? _remote?.Pages ?? 0;
 
     public bool CanColor => _orders.Configuration?.EffectiveCapabilities.Color == true;
 
@@ -440,6 +446,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         _sourcePath = null;
         _driveRoot = null;
         _foundJob = null;
+        ResetUserQr();
         Entries.Clear();
         Pages.Clear();
         LargePage = null;
@@ -738,7 +745,9 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     private void ShowPreview()
     {
         Error = null;
-        Stage = FlowStage.Preview;
+
+        // A file from the app has no preview here: back to the user's list.
+        Stage = _remote is null ? FlowStage.Preview : FlowStage.UserFiles;
     }
 
     [RelayCommand]
@@ -958,12 +967,12 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     {
         _orderKey = null;
 
-        if (_document is null || Stage != FlowStage.Options)
+        if ((_document is null && _remote is null) || Stage != FlowStage.Options)
         {
             return;
         }
 
-        var quote = _orders.Quote(Options(), _document.PageCount);
+        var quote = _orders.Quote(Options(), PageCount);
 
         if (quote is null)
         {
@@ -975,7 +984,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
             QuoteDetail = AllPages ? null : T("options.rangeNeeded");
             CanPlace = false;
             Error = null;
-            RangeProblem = AllPages || typing ? null : T("options.rangeInvalid", _document.PageCount);
+            RangeProblem = AllPages || typing ? null : T("options.rangeInvalid", PageCount);
             return;
         }
 
@@ -1021,12 +1030,13 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     [RelayCommand]
     private async Task PlaceAsync()
     {
-        if (_document is null || !CanPlace)
+        if ((_document is null && _remote is null) || !CanPlace)
         {
             return;
         }
 
         var document = _document;
+        var remote = _remote;
         var options = Options();
         var name = FileName ?? "document";
 
@@ -1037,7 +1047,9 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         {
             var key = _orderKey ??= Guid.NewGuid().ToString("N");
             var promo = AppliedPromo;
-            var job = await Task.Run(() => _orders.PlaceAsync(document, name, options, key, CancellationToken.None, promo)).ConfigureAwait(true);
+            var job = remote is not null && _userQr is { } files
+                ? await Task.Run(() => _orders.OrderPreparedAsync(files.Grant, remote.Id, options, key, promo, CancellationToken.None)).ConfigureAwait(true)
+                : await Task.Run(() => _orders.PlaceAsync(document!, name, options, key, CancellationToken.None, promo)).ConfigureAwait(true);
             _orderKey = null;
 
             PlacedCode = job.JobCode;
@@ -1229,11 +1241,11 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         // choosing one, placing an order is still the options.
         _step = value switch
         {
-            FlowStage.Browse => 0,
+            FlowStage.Browse or FlowStage.UserFiles => 0,
             FlowStage.Preview or FlowStage.Edit => 1,
             FlowStage.Options => 2,
             FlowStage.PaymentMethod or FlowStage.QrPayment or FlowStage.PaymentExpired => 3,
-            FlowStage.Placed => 4,
+            FlowStage.Placed or FlowStage.Collected => 4,
             FlowStage.CancelLookup or FlowStage.CancelConfirm or FlowStage.CancelDone => -1,
             _ => _step,
         };

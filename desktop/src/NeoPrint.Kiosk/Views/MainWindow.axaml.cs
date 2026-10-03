@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 
+using NeoPrint.Kiosk.Core;
 using NeoPrint.Kiosk.ViewModels;
 
 namespace NeoPrint.Kiosk.Views;
@@ -20,11 +21,39 @@ public partial class MainWindow : Window
 {
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromSeconds(1) };
 
+    // The QR scanner types like a keyboard (plan section 2.0): its keys are
+    // read before any control sees them, and its timing tells it from a person.
+    private readonly QrScannerBuffer _scanner = new();
+    private readonly System.Diagnostics.Stopwatch _keyClock = System.Diagnostics.Stopwatch.StartNew();
+
     public MainWindow()
     {
         InitializeComponent();
 
         _clock.Tick += OnClockTick;
+        AddHandler(TextInputEvent, OnScannerText, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(KeyDownEvent, OnScannerKey, RoutingStrategies.Tunnel, handledEventsToo: true);
+    }
+
+    private void OnScannerText(object? sender, TextInputEventArgs e)
+    {
+        foreach (var character in e.Text ?? string.Empty)
+        {
+            _scanner.Accept(character, _keyClock.Elapsed);
+        }
+    }
+
+    private void OnScannerKey(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Return) || _scanner.Enter(_keyClock.Elapsed) is not { } line)
+        {
+            return;
+        }
+
+        if (Model?.Scanned(line) == true)
+        {
+            e.Handled = true;
+        }
     }
 
     private MainWindowViewModel? Model => DataContext as MainWindowViewModel;

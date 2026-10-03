@@ -250,6 +250,23 @@ public sealed class KioskOrderService
 
     public Task<PrintJobInfo> CancelAsync(Guid jobId, CancellationToken cancellationToken) => _api.CancelPrintJobAsync(jobId, cancellationToken);
 
+    // ---- the personal QR (plan section 9.4)
+
+    /// <summary>The user's files for this kiosk after their QR was read, and the grant to act on them.</summary>
+    public Task<UserQrFiles> ScanUserQrAsync(string code, CancellationToken cancellationToken) => _api.ScanUserQrAsync(code, cancellationToken);
+
+    /// <summary>
+    /// A file prepared in the app, ordered here. Nothing goes to the spool now:
+    /// once paid, the queue worker fetches the PDF from the backend (plan section 7.4).
+    /// </summary>
+    public Task<PrintJobInfo> OrderPreparedAsync(
+        Guid grant, Guid preparedId, JobOptions options, string idempotencyKey, string? promoCode, CancellationToken cancellationToken)
+        => _api.OrderPreparedAsync(grant, preparedId, options, idempotencyKey, promoCode, cancellationToken);
+
+    /// <summary>An order paid in the app for this kiosk, into the queue.</summary>
+    public Task<PrintJobInfo> ReleaseHeldAsync(Guid grant, Guid jobId, CancellationToken cancellationToken)
+        => _api.ReleaseHeldAsync(grant, jobId, cancellationToken);
+
     // ---- payment (plan sections 9.1, 9.2)
 
     /// <summary>What a promo code takes off <paramref name="amount"/> here, or why not.</summary>

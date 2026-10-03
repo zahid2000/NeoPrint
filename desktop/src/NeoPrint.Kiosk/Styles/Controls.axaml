@@ -209,6 +209,11 @@
         <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
     </Style>
 
+    <!-- A card that cannot be chosen here: grey, and its own line says why (docs/DESIGN_SYSTEM.md §5.1). -->
+    <Style Selector="Border.card.off">
+        <Setter Property="Background" Value="{DynamicResource Neutral100}" />
+    </Style>
+
     <!-- The text of a filled button is always white. Last in the file on purpose:
          Avalonia applies styles in order, not by specificity, so the TextBlock
          style above would otherwise paint it Neutral800 on the brand or danger

@@ -280,6 +280,35 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void CancelByCode() => CancelByCodeRequested?.Invoke();
 
+    /// <summary>The QR scanner read a personal QR where a new order may start; the application opens screen 10.</summary>
+    public event Action<string>? UserQrRequested;
+
+    /// <summary>
+    /// The QR scanner read a line (plan section 9.4, step 2). Only a personal
+    /// QR (<c>NPU:</c>) does anything, and only where a customer could start an
+    /// order: the home screen, or the first screen of one not yet placed. A
+    /// read during a payment is ignored - that customer is still here.
+    /// </summary>
+    /// <returns>Whether it was taken.</returns>
+    public bool Scanned(string line)
+    {
+        if (!line.StartsWith("NPU:", StringComparison.Ordinal) || !CanPrintFromFlash || IsSafeMode)
+        {
+            return false;
+        }
+
+        var free = Screen == KioskScreen.Home
+                   || (Screen == KioskScreen.Flow && Flow is { Stage: FlowStage.Browse or FlowStage.UserFiles or FlowStage.CancelLookup });
+
+        if (!free)
+        {
+            return false;
+        }
+
+        UserQrRequested?.Invoke(line);
+        return true;
+    }
+
     /// <summary>
     /// The printer stopped or recovered. A stopped printer takes the kiosk to
     /// screen 13 - unless somebody is in the middle of an order, which they
@@ -308,6 +337,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// <summary>How long a customer's language choice outlives them (docs/DESIGN_SYSTEM.md 5.1).</summary>
     public static readonly TimeSpan LanguageResetAfter = TimeSpan.FromSeconds(90);
 
+    /// <summary>How long the list of the user's own files stays without a touch.</summary>
+    public static readonly TimeSpan UserFilesFor = TimeSpan.FromSeconds(60);
+
     /// <summary>How long a refund notice stays for the customer who was here.</summary>
     public static readonly TimeSpan RefundNoticeFor = TimeSpan.FromMinutes(3);
 
@@ -325,7 +357,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         // A file being prepared or an order being placed is left to finish; a
         // QR being paid on a phone is not idleness - its own countdown ends it.
-        if (Screen == KioskScreen.Flow && Flow is { Stage: not (FlowStage.Working or FlowStage.QrPayment) } flow && idle > orderLimit)
+        // The user's own file list closes sooner: their file names are on a public screen (plan 7.3, screen 10).
+        var limit = Flow?.Stage == FlowStage.UserFiles && orderLimit > UserFilesFor ? UserFilesFor : orderLimit;
+
+        if (Screen == KioskScreen.Flow && Flow is { Stage: not (FlowStage.Working or FlowStage.QrPayment) } flow && idle > limit)
         {
             flow.Abandon();
             Screen = PrinterProblem is null ? KioskScreen.Home : KioskScreen.OutOfService;

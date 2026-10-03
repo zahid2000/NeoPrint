@@ -251,6 +251,14 @@
                     <StackPanel Spacing="{DynamicResource Space6}">
                         <TextBlock Text="{Binding OptionsTitle}" Classes="h1" />
 
+                        <!-- A file from the app: what was chosen there and this kiosk cannot do (plan 9.4). -->
+                        <Border Classes="warning" IsVisible="{Binding PresetNote, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                                <PathIcon Data="{StaticResource IconWarning}" Width="28" Height="28" Foreground="{DynamicResource Warning500}" VerticalAlignment="Top" />
+                                <TextBlock Text="{Binding PresetNote}" TextWrapping="Wrap" MaxWidth="1000" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- Copies -->
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
                             <TextBlock Text="{Binding CopiesLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
@@ -537,6 +545,73 @@
                 </StackPanel>
             </Grid>
 
+            <!-- ============ Screen 10: the user's files, after their QR (plan 9.4) ============ -->
+            <Grid RowDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsUserFiles}}">
+                <StackPanel Spacing="{DynamicResource Space4}" Margin="{DynamicResource GapBelow4}">
+                    <TextBlock Text="{Binding UserFilesTitle}" Classes="h1" />
+                    <TextBlock Text="{Binding UserFilesBody}" Classes="muted" IsVisible="{Binding HasUserFiles}" />
+                </StackPanel>
+
+                <!-- Nothing prepared: the empty state says what to do in the app. -->
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="820"
+                            IsVisible="{Binding HasNoUserFiles}">
+                    <PathIcon Data="{StaticResource IconPhone}" Width="80" Height="80" Foreground="{DynamicResource Neutral400}" />
+                    <TextBlock Text="{Binding UserFilesEmpty}" Classes="h1" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding UserFilesEmptyHint}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+                </StackPanel>
+
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding UserFiles}" IsVisible="{Binding HasUserFiles}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:UserFileCard">
+                            <Border Classes="card" Classes.off="{Binding !IsPrintable}" Margin="{DynamicResource GapBelow4}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <PathIcon Width="40" Height="40" Foreground="{DynamicResource Brand600}" Data="{StaticResource IconPrint}" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" Spacing="{DynamicResource Space4}" Margin="{DynamicResource GapStart6}" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Title}" Classes="h2" TextTrimming="CharacterEllipsis" MaxWidth="900" />
+                                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                                            <TextBlock Text="{Binding Detail}" Classes="caption" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Amount}" Classes="caption" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                       IsVisible="{Binding Amount, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}" IsVisible="{Binding IsPaid}">
+                                                <PathIcon Data="{StaticResource IconSuccess}" Width="24" Height="24" Foreground="{DynamicResource Success500}" />
+                                                <TextBlock Text="{Binding PaidText}" Classes="caption" Foreground="{DynamicResource Success500}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}"
+                                                    IsVisible="{Binding Reason, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <PathIcon Data="{StaticResource IconInfo}" Width="24" Height="24" Foreground="{DynamicResource Neutral600}" />
+                                            <TextBlock Text="{Binding Reason}" Classes="caption" TextWrapping="Wrap" MaxWidth="900" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Classes="primary" VerticalAlignment="Center" IsVisible="{Binding IsPrintable}"
+                                            Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).PickUserFileCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="{Binding ActionText}" Foreground="{DynamicResource Neutral0}" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+
+            <!-- ============ Collected: an order paid in the app, now in the queue ============ -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="820"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsCollected}}">
+                <Border Width="{DynamicResource StatusIconSize}" Height="{DynamicResource StatusIconSize}" Background="{DynamicResource SuccessBg}"
+                        CornerRadius="{DynamicResource StatusIconRadius}" HorizontalAlignment="Center">
+                    <PathIcon Data="{StaticResource IconSuccess}" Width="60" Height="60" Foreground="{DynamicResource Success500}" />
+                </Border>
+                <TextBlock Text="{Binding CollectedTitle}" Classes="h1" HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding PlacedCodeLabel}" Classes="muted" HorizontalAlignment="Center" />
+                <Border Background="{DynamicResource Brand50}" CornerRadius="{DynamicResource RadiusLg}" Padding="{DynamicResource CodeBoxPadding}" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding CollectedCode}" FontSize="{DynamicResource FontSizeCode}" FontWeight="SemiBold" Foreground="{DynamicResource Brand700}" />
+                </Border>
+                <TextBlock Text="{Binding CollectedPosition}" Classes="h2" HorizontalAlignment="Center"
+                           IsVisible="{Binding CollectedPosition, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <TextBlock Text="{Binding CollectedBody}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+            </StackPanel>
+
             <!-- ============ Screen 11: cancel by code ============ -->
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}"
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsCancelLookup}}">
@@ -723,9 +798,29 @@
                         <MultiBinding Converter="{x:Static BoolConverters.Or}">
                             <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsBrowse}" />
                             <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsCancelLookup}" />
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsUserFiles}" />
                         </MultiBinding>
                     </Button.IsVisible>
                     <TextBlock Text="{Binding BackText}" />
+                </Button>
+                <!-- Screen 10: more than five files are paged (docs/DESIGN_SYSTEM.md §5.1). -->
+                <Button Classes="secondary" Command="{Binding PreviousUserPageCommand}">
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsUserFiles}" />
+                            <Binding Path="HasEarlierUserFiles" />
+                        </MultiBinding>
+                    </Button.IsVisible>
+                    <TextBlock Text="{Binding PreviousPageText}" />
+                </Button>
+                <Button Classes="secondary" Command="{Binding NextUserPageCommand}">
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsUserFiles}" />
+                            <Binding Path="HasMoreUserFiles" />
+                        </MultiBinding>
+                    </Button.IsVisible>
+                    <TextBlock Text="{Binding NextPageText}" />
                 </Button>
                 <Button Classes="secondary" Command="{Binding BackToBrowseCommand}"
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
@@ -794,6 +889,7 @@
                         <MultiBinding Converter="{x:Static BoolConverters.Or}">
                             <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsPlaced}" />
                             <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsCancelDone}" />
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsCollected}" />
                         </MultiBinding>
                     </Button.IsVisible>
                     <TextBlock Text="{Binding DoneText}" Foreground="{DynamicResource Neutral0}" />
