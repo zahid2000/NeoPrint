@@ -18,6 +18,12 @@ Ləğv:
 
 `Queued → Cancelled`, `PendingPayment → Cancelled`
 
+Tətbiqdə əvvəlcədən ödənilib kioskda götürülməyi gözləyən sifariş (plan 9.4,
+`HeldForUser`; `docs/DECISIONS.md` T-144) ödənişdən sonra növbəyə düşmür,
+`Paid` qalır. İstifadəçi QR-ını həmin kioskda göstərəndə `Paid → Queued`;
+sahibi ləğv edəndə və ya `PreparedPrint.AutoCancelDays` keçəndə
+`Paid → Cancelled` (pul balansa qaytarılır).
+
 Printer/kiosk problemi — **nəticə məlumdur** (kiosk serverlə əlaqədədir):
 
 `Printing → Interrupted`

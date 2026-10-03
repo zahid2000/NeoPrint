@@ -42,8 +42,9 @@ public sealed class PrintOrderRules
     /// Within the kiosk's limits, something its printer can do, enough paper -
     /// and the price from its profile, taken now and never recomputed.
     /// </summary>
+    /// <param name="checkPaper">False for an order collected later (paid in the app for later): its paper is checked when it is collected.</param>
     public async Task<PriceSnapshot> CheckAndPriceAsync(
-        Kiosk kiosk, int pageCount, PrintOptions options, DateTime now, CancellationToken cancellationToken)
+        Kiosk kiosk, int pageCount, PrintOptions options, DateTime now, CancellationToken cancellationToken, bool checkPaper = true)
     {
         ArgumentNullException.ThrowIfNull(kiosk);
         ArgumentNullException.ThrowIfNull(options);
@@ -64,9 +65,25 @@ public sealed class PrintOrderRules
             throw new ValidationException([new ValidationError("options", UserMessage.Of(exception.Code, exception.Arguments))]);
         }
 
-        await EnsurePaperAsync(kiosk, options.Paper, price.Price.Sheets, cancellationToken).ConfigureAwait(false);
+        if (checkPaper)
+        {
+            await EnsurePaperAsync(kiosk, options.Paper, price.Price.Sheets, cancellationToken).ConfigureAwait(false);
+        }
 
         return price;
+    }
+
+    /// <summary>
+    /// An order paid earlier is collected now: the kiosk's printer must still
+    /// do what it was paid for, and the paper must cover it.
+    /// </summary>
+    public async Task EnsureCanPrintAsync(Kiosk kiosk, PrintJob job, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(kiosk);
+        ArgumentNullException.ThrowIfNull(job);
+
+        EnsurePrinterCan(kiosk, job.Options);
+        await EnsurePaperAsync(kiosk, job.Options.Paper, job.RequiredSheets, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Adds the job <paramref name="make"/> builds around a fresh six-digit code, drawing again on a clash.</summary>

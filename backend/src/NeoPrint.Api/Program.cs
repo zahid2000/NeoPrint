@@ -421,6 +421,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         jobs => jobs.RunAsync(CancellationToken.None),
         Cron.Minutely());
 
+    // Orders paid in the app for later and never collected: cancelled, money to the wallet (plan section 9.4).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.UserQr.UncollectedPrintJobsJob>(
+        NeoPrint.Infrastructure.UserQr.UncollectedPrintJobsJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Hourly());
+
     recurring.AddOrUpdate<PrintQueueReconciliationJob>(
         PrintQueueReconciliationJob.RecurringId,
         job => job.RunAsync(CancellationToken.None),

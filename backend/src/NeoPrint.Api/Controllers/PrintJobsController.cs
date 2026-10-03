@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.PrintJobs;
+using NeoPrint.Application.UserQr;
 using NeoPrint.Domain.Admin;
 using NeoPrint.Domain.PrintJobs;
 
@@ -32,6 +33,9 @@ public sealed class PrintJobsController : ControllerBase
         _sender = sender;
         _currentUser = currentUser;
     }
+
+    /// <summary>The grant a scanned personal QR gave this kiosk.</summary>
+    public const string GrantHeader = "X-User-Qr-Grant";
 
     private Guid DeviceId => _currentUser.DeviceId ?? throw new UnauthorizedAccessException();
 
@@ -73,6 +77,47 @@ public sealed class PrintJobsController : ControllerBase
         var file = await _sender.Send(new GetKioskPrintFileQuery(DeviceId, id), cancellationToken);
         return File(file.Content, "application/pdf", file.FileName);
     }
+
+    /// <summary>
+    /// The QR scanner read a personal QR (plan section 9.4, step 2): the
+    /// user's files for kiosks and a grant (<c>X-User-Qr-Grant</c>) for this
+    /// kiosk to act on them for a few minutes. POST, not GET: the code must
+    /// not end up in an address that gets logged.
+    /// </summary>
+    [HttpPost("pending-for-user")]
+    public async Task<ActionResult<UserQrFilesView>> ScanUserQr([FromBody] ScanUserQrRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return Ok(await _sender.Send(new ScanUserQrCommand(DeviceId, request.Code ?? string.Empty), cancellationToken));
+    }
+
+    /// <summary>The same list again while the grant lasts; using it extends it.</summary>
+    [HttpGet("pending-for-user")]
+    public async Task<ActionResult<UserQrFilesView>> UserQrFiles(
+        [FromHeader(Name = GrantHeader)] Guid grant, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new GetUserQrFilesQuery(DeviceId, grant), cancellationToken));
+
+    /// <summary>
+    /// An unpaid preparation picked: an order at this kiosk with the options
+    /// chosen on its screen, paid as any kiosk order. Idempotent.
+    /// </summary>
+    [HttpPost("pending-for-user/prepared/{id:guid}")]
+    [Idempotent]
+    public async Task<ActionResult<PrintJobResponse>> OrderPrepared(
+        Guid id, [FromHeader(Name = GrantHeader)] Guid grant, [FromBody] OrderPreparedRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return Ok(await _sender.Send(
+            new OrderPreparedPrintCommand(DeviceId, grant, id, request.Options ?? PrintOptions.Default, request.PromoCode),
+            cancellationToken));
+    }
+
+    /// <summary>An order paid in the app for this kiosk, picked: into the queue. Picking it again changes nothing.</summary>
+    [HttpPost("pending-for-user/paid/{jobId:guid}/release")]
+    public async Task<ActionResult<PrintJobResponse>> ReleaseHeld(
+        Guid jobId, [FromHeader(Name = GrantHeader)] Guid grant, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new ReleaseHeldPrintJobCommand(DeviceId, grant, jobId), cancellationToken));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PrintJobResponse>> Get(Guid id, CancellationToken cancellationToken)
@@ -134,6 +179,10 @@ public sealed class PrintJobsController : ControllerBase
 
 /// <param name="Dev">Development only: queue without a payment (plan step 3). Refused elsewhere.</param>
 /// <param name="PromoCode">Optional; one per order (plan section 2.7).</param>
+public sealed record ScanUserQrRequest(string? Code);
+
+public sealed record OrderPreparedRequest(PrintOptions? Options, string? PromoCode);
+
 public sealed record CreatePrintJobRequest(string? LocalFileName, int PageCount, PrintOptions? Options, bool Dev = false, string? PromoCode = null);
 
 /// <param name="Attempt">The try this report belongs to (plan section 2.5, <c>print_attempts</c>).</param>

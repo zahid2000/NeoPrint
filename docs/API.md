@@ -1483,9 +1483,47 @@ Hamısı admin tokeni ilə; siyahılar adminin **kiosk əhatəsinə** daraldıl�
 | `GET /api/admin/users/{id}` | `users.view` | `profile`, `language`, `wallet`, `recentJobs[]` (son 20), `fileCount`, `fileBytes` (fayl məzmunu yox), `referred`, `consents[]` |
 | `POST /api/admin/users/{id}/block` · `.../unblock` (`Idempotency-Key`) | `users.block` | `{ reason }` məcburi (1–500, `400 users.reasonRequired`), audit-ə düşür. Blok: bütün refresh token-lər ləğv olunur və istifadəçi Redis blocklist-ə düşür — əlindəki access token **dərhal** `403` alır (Redis cavab vermirsə yoxlama MongoDB-dəki statusa keçir). Balansa toxunulmur. Təkrar blok / aktiv hesabı blokdan çıxarmaq heç nə dəyişmir |
 
+## Şəxsi QR və "Kiosk üçün hazırla" (mobil tətbiq + kiosk, Addım 5)
+
+Plan 9.4; layihə sahibinin qərarı `DECISIONS.md` (T-144). Qiymət həmişə kioskun **cari** profili ilə hesablanır.
+
+### `GET /api/users/me/qr` · `GET /api/users/me/qr.png` (`User`)
+
+`{ code, expiresAt, rotationSeconds }` — `code` = `NPU:{userId:N}:{unixSeconds}:{hmac}` (HMAC-SHA256, açar `NEOPRINT_QR_HMAC_KEY`, base64url),
+`UserQr.RotationSeconds` (60) müddətində keçərli; tətbiq vaxtı bitməzdən əvvəl yenisini alır. `qr.png` eyni kodu PNG kimi qaytarır,
+bitmə vaxtı `X-Qr-Expires-At` başlığındadır. Hər iki cavab `Cache-Control: no-store`.
+
+### `/api/prepared-prints` (`User`)
+
+- `GET` → `{ items: [{ kind, id, fileId, fileName, pages, preset?, options?, state, kioskId?, kioskCode?, kioskName?, amount?, currency?, jobCode?, createdAt, collectBy? }] }`.
+  `kind`: `Prepared` (ödənişsiz, istənilən kiosk) və ya `Paid` (əvvəlcədən ödənilmiş, bir kiosk). `state`: `Ready`, `Printing`, `Printed`, `FileUnavailable`, `Paid`.
+- `POST` (`Idempotency-Key`) `{ fileId, options?: { copies?, color?, duplex?, paper?, pagesPerSheet?, pageRange? } }` — ödənişsiz hazırlıq; `null` sahə kioskda seçilir. Səhv seçim → `400`.
+- `DELETE /{id}` → `204` (siyahıdan çıxarır).
+- `POST /paid` (`Idempotency-Key`) `{ kiosk, fileId, options, expectedAmount }` → `{ jobId, jobCode, paymentId, amount, currency, expiresAt, pages, sheets }`.
+  Kioskda `Source=UserQr`, `HeldForUser` sifariş; `pay-with-app` ilə ödənilir və **növbəyə düşmür** (`Paid` qalır, kağız ayrılmır).
+  `expectedAmount` kioskun cari qiymətindən fərqlidirsə → `409 printJobs.priceChanged` (`{amount}` — yeni qiymət), heç nə yaradılmır.
+  Kiosk seçimi dəstəkləmirsə → `400 printJobs.colorUnavailable` / `a3Unavailable` / `duplexUnavailable`. `GET /api/payments/{id}/app` cavabında `collectAtKiosk: true`.
+- `POST /paid/{jobId}/cancel` → `204`, pul balansa (`RefundReason.UserCancel`); artıq götürülüb və ya ödənilməyibsə `409 printJobs.notHeld`.
+- Götürülməyən ödənişli hazırlıq `PreparedPrint.AutoCancelDays` (7) gündən sonra saatlıq `uncollected-print-jobs` işi ilə ləğv olunur, pul balansa (`RefundReason.NotCollected`).
+
+### Kiosk: `/api/print-jobs/pending-for-user` (`Kiosk`)
+
+- `POST /api/print-jobs/pending-for-user` `{ code }` → `{ grant, expiresAt, items: [{ kind, id, fileName, pages, preset?, options?, amount?, currency?, here, kioskCode?, createdAt }] }`.
+  QR-ın HMAC-ı və yaşı yoxlanır: tanınmayan / dəyişdirilmiş / bloklanmış hesab → `409 userQr.invalid` (hesabın olub-olmadığı deyilmir), köhnə → `409 userQr.expired`.
+  `grant` — yalnız **bu kiosk** və bu istifadəçi üçün 5 dəqiqəlik icazə (Redis `userqr:{grant}`), hər istifadədə uzanır. Kod URL-ə düşməsin deyə `POST`.
+  `here: false` — başqa kiosk üçün ödənilmiş sifariş (göstərilir, burada çap olunmur).
+- `GET /api/print-jobs/pending-for-user` (`X-User-Qr-Grant` başlığı) — eyni siyahı; icazə bitib və ya başqa kioskundur → `409 userQr.grantExpired`.
+- `POST /api/print-jobs/pending-for-user/prepared/{id}` (`X-User-Qr-Grant`, `Idempotency-Key`) `{ options, promoCode? }` → `PrintJobResponse`
+  (`Source=UserQr`, `PendingPayment`, istifadəçiyə bağlı). Kioskun sifariş qaydaları və ödəniş ekranları (9.1 / 9.2) ilə eynidir.
+- `POST /api/print-jobs/pending-for-user/paid/{jobId}/release` (`X-User-Qr-Grant`) → `PrintJobResponse` (`Queued`). Printer imkanı və kağız indi yoxlanır.
+  Başqa kiosk üçün ödənilib → `409 printJobs.paidAtAnotherKiosk` (`{kiosk}`). Təkrar çağırış dəyişiklik etmir.
+- `GET /api/print-jobs/{id}/file` götürülməmiş ödənişli hazırlıq üçün `409 printJobs.fileNotPrintable`.
+
+---
+
 ## Hələ mövcud olmayan endpoint-lər
 
-Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: mobil çap sessiyası, kiosk axtarışı, push və məxfilik
+Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: planlanmış çap, push və məxfilik
 (Addım 5), skan və paylaşım (Addım 6), telemetriya, incident səhifəsi və operator paneli (Addım 7). Addım 4-ün ödəniş,
 refund, wallet, fiskal çek, qəbz, promokod, istifadəçi hub-ı və admin pul səhifələri yuxarıdakı bölmələrdədir.
 

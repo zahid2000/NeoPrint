@@ -42,6 +42,9 @@ public enum RefundReason
 
     /// <summary>A second payment for a job already paid.</summary>
     DuplicatePayment = 6,
+
+    /// <summary>Paid in the app for later and not collected at the kiosk in time (plan section 9.4).</summary>
+    NotCollected = 7,
 }
 
 public enum RefundStatus

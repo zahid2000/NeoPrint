@@ -121,7 +121,13 @@ public sealed class PaymentSettlement
             }
 
             job.MarkPaid(payment.Id, actor, now);
-            job.Enqueue(actor, now);
+
+            // Paid for later: it waits for its owner's QR at the kiosk (plan section 9.4).
+            if (!job.HeldForUser)
+            {
+                job.Enqueue(actor, now);
+            }
+
             await _jobs.UpdateAsync(job, cancellationToken).ConfigureAwait(false);
             jobPaid = true;
         }
@@ -161,7 +167,7 @@ public sealed class PaymentSettlement
                 cancellationToken)
             .ConfigureAwait(false);
 
-        if (jobPaid)
+        if (jobPaid && !job!.HeldForUser)
         {
             await _queue.SyncAsync(job!, cancellationToken).ConfigureAwait(false);
             await _events.PublishAsync(new PrintJobQueued(job!.Id, job.KioskId, _correlation.CorrelationId), cancellationToken)

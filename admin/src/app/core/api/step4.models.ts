@@ -38,6 +38,7 @@ export const refundReasons = [
   'PartialPrint',
   'LatePayment',
   'DuplicatePayment',
+  'NotCollected',
 ] as const;
 
 export interface PaymentFilter {

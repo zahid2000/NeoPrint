@@ -81,6 +81,9 @@ public sealed class PrintJobRepository : IPrintJobRepository
         PrintJobStatus.Printing,
     ];
 
+    /// <summary>An order paid for later reserves no paper until it is collected: it may be days away.</summary>
+    private static readonly PrintJobStatus[] NotYetCollected = [PrintJobStatus.PendingPayment, PrintJobStatus.Paid];
+
     private readonly MongoContext _context;
 
     public PrintJobRepository(MongoContext context) => _context = context;
@@ -133,7 +136,8 @@ public sealed class PrintJobRepository : IPrintJobRepository
         var jobs = await _context.PrintJobs
             .Find(job => job.KioskId == kioskId
                           && job.Options.Paper == paper
-                          && ReservingStatuses.Contains(job.Status))
+                          && ReservingStatuses.Contains(job.Status)
+                          && !(job.HeldForUser && NotYetCollected.Contains(job.Status)))
             .Project(job => new { job.RequiredSheets, job.PrintedSheets })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -152,6 +156,22 @@ public sealed class PrintJobRepository : IPrintJobRepository
         IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
         => await _context.PrintJobs
             .Find(job => ids.Contains(job.Id))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PrintJob>> ListHeldForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        => await _context.PrintJobs
+            .Find(job => job.UserId == userId && job.HeldForUser && job.Status == PrintJobStatus.Paid)
+            .SortByDescending(job => job.CreatedAt)
+            .Limit(100)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PrintJob>> ListHeldPaidBeforeAsync(DateTime paidBefore, int take, CancellationToken cancellationToken = default)
+        => await _context.PrintJobs
+            .Find(job => job.HeldForUser && job.Status == PrintJobStatus.Paid && job.PaidAt <= paidBefore)
+            .SortBy(job => job.PaidAt)
+            .Limit(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

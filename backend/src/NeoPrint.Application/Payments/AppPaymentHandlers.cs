@@ -387,6 +387,7 @@ public sealed class AppPaymentHandlers :
             open ? job.PromoCode : payment.PromoCode,
             open ? promo?.Discount.Amount ?? 0 : payment.Discount.Amount,
             open ? promoWithBonus?.Discount.Amount ?? 0 : payment.Discount.Amount,
-            promo?.Refusal is { } refusal ? Localization.Messages.Write(refusal) : null);
+            promo?.Refusal is { } refusal ? Localization.Messages.Write(refusal) : null,
+            job.HeldForUser);
     }
 }

@@ -429,7 +429,9 @@ public sealed class RefundHandlers :
             return Unit.Value;
         }
 
-        var reason = cancelled.CancelledBy switch
+        var reason = cancelled.ReasonKey == PrintJobs.PreparedPrintHandlers.NotCollectedReason
+            ? RefundReason.NotCollected
+            : cancelled.CancelledBy switch
         {
             nameof(ActorType.Admin) => RefundReason.AdminManual,
             nameof(ActorType.System) => RefundReason.SystemError,

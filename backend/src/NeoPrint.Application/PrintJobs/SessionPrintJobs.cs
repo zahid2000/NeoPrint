@@ -190,7 +190,8 @@ public sealed class KioskPrintFileHandler : IRequestHandler<GetKioskPrintFileQue
             throw new NotFoundException("printJob");
         }
 
-        if (!Printable.Contains(job.Status))
+        // Paid for later and not collected: nothing to print yet.
+        if (!Printable.Contains(job.Status) || job.IsHeld)
         {
             throw new DomainException("printJobs.fileNotPrintable");
         }

@@ -129,6 +129,7 @@ public sealed class MongoContext
     public MongoSet<Domain.Refunds.RefundVoucher> RefundVouchers => Set<Domain.Refunds.RefundVoucher>("refund_vouchers");
     public MongoSet<Domain.Incidents.Incident> Incidents => Set<Domain.Incidents.Incident>("incidents");
     public MongoSet<Domain.Support.SupportClaim> SupportClaims => Set<Domain.Support.SupportClaim>("support_claims");
+    public MongoSet<Domain.PrintJobs.PreparedPrint> PreparedPrints => Set<Domain.PrintJobs.PreparedPrint>("prepared_prints");
     public MongoSet<Domain.Fiscal.FiscalReceipt> FiscalReceipts => Set<Domain.Fiscal.FiscalReceipt>("fiscal_receipts");
     public MongoSet<Domain.Receipts.Receipt> Receipts => Set<Domain.Receipts.Receipt>("receipts");
     public MongoSet<Receipts.Counter> Counters => Set<Receipts.Counter>("counters");
@@ -444,6 +445,11 @@ public sealed class MongoContext
             // The per-account limit and the statistics.
             (Builders<Domain.Promos.PromoUsage>.IndexKeys.Ascending(u => u.PromoCodeId).Ascending(u => u.UserId).Ascending(u => u.Status),
                 Named("ix_promo_usages_code_user_status")));
+
+        // The user's list in the app and on the kiosk after their QR (plan section 9.4).
+        await CreateAsync(PreparedPrints,
+            (Builders<Domain.PrintJobs.PreparedPrint>.IndexKeys.Ascending(p => p.UserId).Descending(p => p.CreatedAt),
+                Named("ix_prepared_prints_user_created")));
 
         await CreateAsync(SupportClaims,
             (Builders<Domain.Support.SupportClaim>.IndexKeys.Ascending(c => c.JobId), Named("ix_support_claims_job")),

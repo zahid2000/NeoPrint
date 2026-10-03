@@ -58,6 +58,8 @@ public static class SettingKeys
     public const string KioskSessionTtlMinutes = "KioskSession.TtlMinutes";
     public const string KioskIdleResetSeconds = "Kiosk.IdleResetSeconds";
     public const string UserQrRotationSeconds = "UserQr.RotationSeconds";
+
+    public const string PreparedPrintAutoCancelDays = "PreparedPrint.AutoCancelDays";
     public const string ScheduleReminderLeadMinutes = "Schedule.ReminderLeadMinutes";
     public const string ScheduleAutoCancelHours = "Schedule.AutoCancelHours";
     public const string ReferralBonusPages = "Referral.BonusPages";
@@ -149,6 +151,7 @@ public static class SettingKeys
         new(KioskSessionTtlMinutes, "10", SettingValueType.Integer, "Mobil ↔ kiosk sessiyasının fəaliyyətsizlik müddəti"),
         new(KioskIdleResetSeconds, "90", SettingValueType.Integer, "Toxunulmasa ana ekrana qayıdış"),
         new(UserQrRotationSeconds, "60", SettingValueType.Integer, "Şəxsi QR token-in yenilənmə müddəti"),
+        new(PreparedPrintAutoCancelDays, "7", SettingValueType.Integer, "Tətbiqdə əvvəlcədən ödənilmiş, kioskda götürülməyən sifariş neçə gündən sonra ləğv olunur (pul balansa qayıdır)"),
         new(ScheduleReminderLeadMinutes, "0", SettingValueType.Integer, "Planlanmış vaxtda bildiriş"),
         new(ScheduleAutoCancelHours, "24", SettingValueType.Integer, "Cavab verilməyən planlanmış çapın avtomatik ləğvi"),
         new(ReferralBonusPages, "10", SettingValueType.Integer, "Dəvət edənə verilən bonus səhifə"),

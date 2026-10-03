@@ -55,6 +55,7 @@ export const moneyTranslations: PageTranslations = {
     'money.refundReason.PartialPrint': 'Qismən çap',
     'money.refundReason.LatePayment': 'Gec gələn ödəniş',
     'money.refundReason.DuplicatePayment': 'Təkrar ödəniş',
+    'money.refundReason.NotCollected': 'Əvvəlcədən ödənilmiş sifariş götürülmədi',
 
     'money.initiatedBy.System': 'Sistem',
     'money.initiatedBy.Admin': 'Administrator',
@@ -527,6 +528,7 @@ export const moneyTranslations: PageTranslations = {
     'money.refundReason.PartialPrint': 'Partly printed',
     'money.refundReason.LatePayment': 'Late payment',
     'money.refundReason.DuplicatePayment': 'Duplicate payment',
+    'money.refundReason.NotCollected': 'Prepaid order not collected',
 
     'money.initiatedBy.System': 'System',
     'money.initiatedBy.Admin': 'Admin',
@@ -1004,6 +1006,7 @@ export const moneyTranslations: PageTranslations = {
     'money.refundReason.PartialPrint': 'Частичная печать',
     'money.refundReason.LatePayment': 'Поздний платёж',
     'money.refundReason.DuplicatePayment': 'Повторный платёж',
+    'money.refundReason.NotCollected': 'Предоплаченный заказ не получен',
 
     'money.initiatedBy.System': 'Система',
     'money.initiatedBy.Admin': 'Администратор',

@@ -103,6 +103,16 @@ public sealed class PrintJob : Entity
 
     public PrintJobSource Source { get; set; }
 
+    /// <summary>
+    /// Paid in the app for later (plan section 9.4, "Kiosk üçün hazırla"): it
+    /// stays <see cref="PrintJobStatus.Paid"/> and goes into the queue only
+    /// when its owner shows their QR at this kiosk and picks it.
+    /// </summary>
+    public bool HeldForUser { get; private set; }
+
+    /// <summary>Paid and waiting for its owner at the kiosk.</summary>
+    public bool IsHeld => HeldForUser && Status == PrintJobStatus.Paid;
+
     /// <summary>Pages in the document; the range picks from these.</summary>
     public int PageCount { get; set; }
 
@@ -162,6 +172,8 @@ public sealed class PrintJob : Entity
     /// <summary>Why the job was cancelled, as a stored message.</summary>
     public string? CancelReason { get; private set; }
 
+    public DateTime? PaidAt { get; private set; }
+
     public DateTime? QueuedAt { get; private set; }
 
     public DateTime? StartedAt { get; private set; }
@@ -188,7 +200,7 @@ public sealed class PrintJob : Entity
         new StateMachine<PrintJobStatus>(nameof(PrintJob))
             .Allow(PrintJobStatus.Draft, PrintJobStatus.PendingPayment, PrintJobStatus.Cancelled, PrintJobStatus.Expired)
             .Allow(PrintJobStatus.PendingPayment, PrintJobStatus.Paid, PrintJobStatus.Expired, PrintJobStatus.Cancelled)
-            .Allow(PrintJobStatus.Paid, PrintJobStatus.Queued)
+            .Allow(PrintJobStatus.Paid, PrintJobStatus.Queued, PrintJobStatus.Cancelled)
             .Allow(PrintJobStatus.Queued, PrintJobStatus.Printing, PrintJobStatus.Cancelled, PrintJobStatus.Suspected)
             .Allow(
                 PrintJobStatus.Printing,
@@ -215,7 +227,8 @@ public sealed class PrintJob : Entity
         Guid? userId = null,
         Guid? fileId = null,
         string? localFileName = null,
-        FileObject? printFile = null)
+        FileObject? printFile = null,
+        bool heldForUser = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(jobCode);
         ArgumentNullException.ThrowIfNull(options);
@@ -234,6 +247,7 @@ public sealed class PrintJob : Entity
             FileId = fileId,
             LocalFileName = localFileName,
             PrintFile = printFile,
+            HeldForUser = heldForUser,
             CreatedAt = now,
         };
     }
@@ -267,8 +281,29 @@ public sealed class PrintJob : Entity
     /// <summary>The payment went through.</summary>
     public void MarkPaid(Guid? paymentId, ActorContext actor, DateTime now)
     {
+        var before = Status;
         Move(PrintJobStatus.Paid, actor, now);
         PaymentId ??= paymentId;
+
+        if (before != PrintJobStatus.Paid)
+        {
+            PaidAt = now;
+        }
+    }
+
+    /// <summary>
+    /// Its owner showed their QR at the kiosk and picked it: into the queue
+    /// (plan section 9.4, step 3).
+    /// </summary>
+    /// <exception cref="DomainException">It is not a job paid for later, or it already left.</exception>
+    public void Release(ActorContext actor, DateTime now)
+    {
+        if (!IsHeld)
+        {
+            throw new DomainException("printJobs.notHeld");
+        }
+
+        Enqueue(actor, now);
     }
 
     /// <summary>

@@ -130,6 +130,14 @@ public static class DependencyInjection
         services.AddScoped<ITransitionHistory, TransitionHistory>();
         services.AddScoped<PrintQueueService>();
         services.AddScoped<Application.PrintJobs.PrintOrderRules>();
+
+        // Personal QR and files prepared for a kiosk (plan section 9.4).
+        services.AddSingleton<Application.UserQr.IUserQrSigner, UserQr.HmacUserQrSigner>();
+        services.AddSingleton<Application.UserQr.IQrImages, UserQr.QrCoderImages>();
+        services.AddSingleton<Application.UserQr.UserQrCodes>();
+        services.AddScoped<Application.UserQr.IUserQrGrantStore, UserQr.RedisUserQrGrantStore>();
+        services.AddScoped<Application.PrintJobs.IPreparedPrintRepository, PreparedPrintRepository>();
+        services.AddScoped<UserQr.UncollectedPrintJobsJob>();
         services.AddScoped<PrintQueueReconciliationJob>();
 
         // Payments (plan section 2.5, step 4). The mock bank is the only bank
