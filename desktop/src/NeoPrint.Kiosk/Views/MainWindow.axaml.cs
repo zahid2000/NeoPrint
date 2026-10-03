@@ -45,7 +45,8 @@ public partial class MainWindow : Window
 
     private void OnScannerKey(object? sender, KeyEventArgs e)
     {
-        if (e.Key is not (Key.Enter or Key.Return) || _scanner.Enter(_keyClock.Elapsed) is not { } line)
+        // Scanners end a read with CR (Enter) or, set up so, with LF.
+        if (e.Key is not (Key.Enter or Key.LineFeed) || _scanner.Enter(_keyClock.Elapsed) is not { } line)
         {
             return;
         }

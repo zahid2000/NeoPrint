@@ -6,7 +6,8 @@ namespace NeoPrint.Kiosk.Core;
 /// The kiosk's QR reader is a USB HID scanner that types what it reads like a
 /// keyboard (plan section 2.0, "QR reader"): this tells its typing from a
 /// person's. A read is a line whose characters arrive less than
-/// <see cref="MaxGap"/> apart and that ends with Enter. Same on both systems.
+/// <see cref="MaxGap"/> apart and that ends with Enter (CR, or LF where the
+/// scanner is set up so). Same on both systems.
 /// </summary>
 /// <remarks>Not thread safe: fed from the UI thread's key events.</remarks>
 public sealed class QrScannerBuffer

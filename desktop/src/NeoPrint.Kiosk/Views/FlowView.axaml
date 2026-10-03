@@ -567,7 +567,7 @@
                                 <Grid ColumnDefinitions="Auto,*,Auto">
                                     <PathIcon Width="40" Height="40" Foreground="{DynamicResource Brand600}" Data="{StaticResource IconPrint}" VerticalAlignment="Center" />
                                     <StackPanel Grid.Column="1" Spacing="{DynamicResource Space4}" Margin="{DynamicResource GapStart6}" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Title}" Classes="h2" TextTrimming="CharacterEllipsis" MaxWidth="900" />
+                                        <TextBlock Text="{Binding Title}" Classes="h2" TextTrimming="CharacterEllipsis" MaxWidth="900" HorizontalAlignment="Left" />
                                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
                                             <TextBlock Text="{Binding Detail}" Classes="caption" VerticalAlignment="Center" />
                                             <TextBlock Text="{Binding Amount}" Classes="caption" FontWeight="SemiBold" VerticalAlignment="Center"
