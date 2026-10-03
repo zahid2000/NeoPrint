@@ -18,6 +18,7 @@ import 'package:neoprint/features/prepared/prepared_repository.dart';
 import 'package:neoprint/features/session/session_controller.dart';
 import 'package:neoprint/features/session/session_models.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
+import 'package:neoprint/shared/widgets/redirect_to.dart';
 
 import 'kiosk_search_test.dart' show FakeKiosks, elmler;
 import 'session_test.dart' show FakeSessions, detail;
@@ -412,4 +413,26 @@ void main() {
     expect(paid.options!.copies, 2);
     expect(paid.state, PreparedState.paid);
   });
+
+  testWidgets(
+    'a page rebuilt by the browser without what it was handed goes back to where it is chosen',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: GoRouter(
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (_, __) => const RedirectTo('/files'),
+              ),
+              GoRoute(path: '/files', builder: (_, __) => const Text('files')),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('files'), findsOneWidget);
+    },
+  );
 }

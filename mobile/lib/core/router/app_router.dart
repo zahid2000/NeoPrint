@@ -29,6 +29,7 @@ import '../../features/prepared/prepare_screen.dart';
 import '../../features/prepared/prepared_list_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
 import '../../shared/widgets/bottom_nav_shell.dart';
+import '../../shared/widgets/redirect_to.dart';
 import '../auth/auth_controller.dart';
 import '../auth/auth_models.dart';
 import '../features/readiness.dart';
@@ -174,8 +175,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Opened with the file picked; without it there is nothing to print.
           redirect: (_, state) =>
               state.extra is UserFile ? null : Routes.sessionFiles,
-          builder: (_, state) =>
-              PrintOptionsScreen(file: state.extra! as UserFile),
+          builder: (_, state) => switch (state.extra) {
+            final UserFile file => PrintOptionsScreen(file: file),
+            _ => const RedirectTo(Routes.sessionFiles),
+          },
         ),
       ],
       if (Readiness.printJobs)
@@ -191,7 +194,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: Routes.prepare,
           // Opened from a file's menu; without the file there is nothing to prepare.
           redirect: (_, state) => state.extra is UserFile ? null : Routes.files,
-          builder: (_, state) => PrepareScreen(file: state.extra! as UserFile),
+          builder: (_, state) => switch (state.extra) {
+            final UserFile file => PrepareScreen(file: file),
+            _ => const RedirectTo(Routes.files),
+          },
         ),
       ],
 
@@ -235,8 +241,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                     // yet, so the list is where the user lands.
                     redirect: (_, state) =>
                         state.extra is UserFile ? null : Routes.files,
-                    builder: (_, state) =>
-                        FilePreviewScreen(file: state.extra! as UserFile),
+                    builder: (_, state) => switch (state.extra) {
+                      final UserFile file => FilePreviewScreen(file: file),
+                      _ => const RedirectTo(Routes.files),
+                    },
                   ),
                 ],
               ),
