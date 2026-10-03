@@ -21,7 +21,10 @@ import 'auth_validators.dart';
 /// requires: the button stays disabled until both are ticked, so an account
 /// cannot exist without a recorded consent.
 class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.referralCode});
+
+  /// From an invitation link (https://neoprint.az/r/{code}, plan section 8.3).
+  final String? referralCode;
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
@@ -36,7 +39,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _fullName = TextEditingController();
-  final _referralCode = TextEditingController();
+  late final _referralCode = TextEditingController(text: widget.referralCode);
 
   bool _obscurePassword = true;
   bool _acceptedPrivacy = false;

@@ -222,9 +222,6 @@
   "profileReceipts": "Receipts",
   "profileClaims": "My requests",
   "noticeSuspected": "We are checking how your print turned out. Your money is safe.",
-  "noticeRefundWallet": "{amount} went back to your balance.",
-  "noticeRefundCard": "{amount} is going back to your card.",
-  "noticeRefundVoucher": "{amount} was given back as a voucher.",
 
   "payPromoAdd": "Have a promo code?",
   "payPromoField": "Promo code",
@@ -425,5 +422,19 @@
 
   "weekdayShortFri": "Fr",
 
-  "weekdayShortSat": "Sa"
+  "weekdayShortSat": "Sa",
+
+  "notificationsTitle": "Notifications",
+
+  "notificationsBellUnread": "Notifications, {count} unread",
+
+  "notificationsEmpty": "No notifications yet",
+
+  "notificationsEmptyHint": "You will see them here when a print is ready, a scheduled print's time comes or money is returned.",
+
+  "notificationsLoadFailed": "Could not load the notifications: {reason}",
+
+  "notificationsUnread": "Unread",
+
+  "notificationOpen": "Open"
 }

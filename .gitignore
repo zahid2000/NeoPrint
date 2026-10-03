@@ -79,6 +79,10 @@ build/
 **/android/local.properties
 **/android/key.properties
 **/android/app/google-services.json
+# FlutterFire CLI's record of a "flutterfire configure" run. The app's Firebase
+# configuration is mobile/lib/firebase_options.dart (committed); re-running the
+# CLI must not bring back the Gradle google-services plugin (docs/DEV_ENVIRONMENT.md).
+mobile/firebase.json
 **/ios/Runner/GoogleService-Info.plist
 *.jks
 *.keystore

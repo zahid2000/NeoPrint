@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:neoprint/core/network/api_client.dart';
 import 'package:neoprint/core/realtime/user_hub.dart';
+import 'package:neoprint/core/router/app_links.dart';
 import 'package:neoprint/features/home/home_screen.dart';
 import 'package:neoprint/features/notices/hub_notices.dart';
 import 'package:neoprint/features/payments/pay_screen.dart';
@@ -60,9 +61,9 @@ void main() {
     });
 
     test('a neoprint://pay link becomes the payment route', () {
-      expect(payLinkLocation(Uri.parse('neoprint://pay/abc')), '/pay/abc');
-      expect(payLinkLocation(Uri.parse('/home')), isNull);
-      expect(payLinkLocation(Uri.parse('neoprint://wallet/abc')), isNull);
+      expect(appLinkLocation(Uri.parse('neoprint://pay/abc')), '/pay/abc');
+      expect(appLinkLocation(Uri.parse('/home')), isNull);
+      expect(appLinkLocation(Uri.parse('neoprint://pay/a/b')), isNull);
     });
 
     test('the countdown reads like the kiosk', () {
@@ -441,7 +442,7 @@ void main() {
   group('notices', () {
     final l10n = AppLocalizationsAz();
 
-    test('a job under review and a finished refund are announced', () {
+    test('a job under review is announced; a finished refund is left to its notification banner (T-146)', () {
       expect(
         noticeFor(
           l10n,
@@ -460,7 +461,7 @@ void main() {
           }),
           'az',
         ),
-        '0,30 ₼ balansınıza qaytarıldı.',
+        isNull,
       );
     });
 

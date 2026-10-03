@@ -7,6 +7,7 @@ import '../network/api_client.dart';
 import '../storage/secure_storage.dart';
 import 'auth_models.dart';
 import 'auth_repository.dart';
+import '../push/push_service.dart';
 
 /// The backend address for this build. See `api_base_url.dart`.
 final apiBaseUrl = resolveApiBaseUrl();
@@ -192,8 +193,15 @@ final class AuthController extends Notifier<AuthState> {
     }
   }
 
-  /// Signs out.
+  /// Signs out. This device stops getting the user's push first, while the
+  /// session still lets it say so; a failure there does not keep anyone in.
   Future<void> signOut() async {
+    try {
+      await ref.read(pushRegistrationProvider).unregister();
+    } on Object {
+      // The token stays on the account until FCM reports it gone or another
+      // account registers it; nothing more to do here.
+    }
     await _repository.signOut();
     state = const AuthState.signedOut();
   }

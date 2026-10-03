@@ -17,6 +17,7 @@ import '../jobs/jobs_controller.dart';
 import '../jobs/jobs_repository.dart';
 import '../payments/scan_screen.dart';
 import '../wallet/wallet_controller.dart';
+import '../notifications/notifications_screen.dart';
 
 /// The home tab (plan section 8.2; docs/DESIGN_SYSTEM.md 5.2): the balance
 /// first, the one main action under it, then the jobs still on their way and
@@ -31,7 +32,13 @@ class HomeScreen extends ConsumerWidget {
     final canScan = Readiness.kioskPayment && ref.watch(canScanProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.appTitle)),
+      appBar: AppBar(
+        title: Text(l10n.appTitle),
+        actions: const [
+          NotificationBell(),
+          SizedBox(width: Spacing.x2),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           await Future.wait([

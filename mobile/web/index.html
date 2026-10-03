@@ -41,6 +41,18 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // A push clicked while this tab was open (firebase-messaging-sw.js): the
+    // app starts again on the notification's screen.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        const href = event.data && event.data.neoprintOpen;
+        if (typeof href === 'string' && new URL(href).origin === window.location.origin) {
+          window.location.assign(href);
+        }
+      });
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

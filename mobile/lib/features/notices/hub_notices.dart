@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/format/formats.dart';
 import '../../core/realtime/user_hub.dart';
 import '../../core/realtime/user_hub_provider.dart';
 import '../../l10n/app_localizations.dart';
@@ -18,17 +17,7 @@ String? noticeFor(AppLocalizations l10n, HubEvent event, String language) {
     case 'JobStatusChanged' when payload['status'] == 'Suspected':
       return l10n.noticeSuspected;
 
-    case 'RefundStatusChanged' when payload['status'] == 'Succeeded':
-      final amount = formatMoney(
-        (payload['amount'] as num? ?? 0).toDouble(),
-        language: language,
-      );
-
-      return switch (payload['destination']) {
-        'Wallet' => l10n.noticeRefundWallet(amount),
-        'Voucher' => l10n.noticeRefundVoucher(amount),
-        _ => l10n.noticeRefundCard(amount),
-      };
+    // A refund that came back is told by its notification's banner (T-146).
 
     // Only when its time ran out: closing or moving on is the user's own doing.
     case 'SessionClosed' when payload['reason'] == 'Expired':

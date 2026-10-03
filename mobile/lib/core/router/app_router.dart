@@ -14,7 +14,7 @@ import '../../features/files/files_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/jobs/claims_screen.dart';
 import '../../features/payments/pay_screen.dart';
-import '../../features/payments/payment_models.dart';
+import '../../features/notifications/notifications_screen.dart';
 import '../../features/payments/scan_screen.dart';
 import '../../features/receipts/receipts_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
@@ -34,6 +34,7 @@ import '../../shared/widgets/redirect_to.dart';
 import '../auth/auth_controller.dart';
 import '../auth/auth_models.dart';
 import '../features/readiness.dart';
+import 'app_links.dart';
 
 /// Route paths, in one place so a rename cannot leave a dangling link.
 abstract final class Routes {
@@ -63,6 +64,7 @@ abstract final class Routes {
   static const prepared = '/prepared';
   static const prepare = '/prepare';
   static const scheduleNew = '/schedule/new';
+  static const notifications = '/notifications';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -83,12 +85,13 @@ final routerProvider = Provider<GoRouter>((ref) {
     /// Deep links land here too, so a link into the app cannot skip email
     /// confirmation or an outstanding consent (plan section 8.3).
     redirect: (context, state) {
-      // The kiosk's "pay with the app" QR read by another scanner arrives as
-      // neoprint://pay/{id}; it becomes the app's own route, and the gates
-      // below still apply to it (plan section 8.3).
-      final payLink = payLinkLocation(state.uri);
-      if (payLink != null) {
-        return payLink;
+      // A link into the app - the kiosk's "pay with the app" QR read by
+      // another scanner, a voucher, a referral, a push opened from the
+      // phone's tray - becomes the app's own route, and the gates below
+      // still apply to it (plan section 8.3).
+      final link = appLinkLocation(state.uri);
+      if (link != null) {
+        return link;
       }
 
       final status = ref.read(authControllerProvider).status;
@@ -126,7 +129,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.signIn, builder: (_, __) => const SignInScreen()),
       GoRoute(
         path: Routes.register,
-        builder: (_, __) => const RegisterScreen(),
+        builder: (_, state) =>
+            RegisterScreen(referralCode: state.uri.queryParameters['ref']),
       ),
       GoRoute(
         path: Routes.confirmEmail,
@@ -148,7 +152,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ],
       if (Readiness.wallet) ...[
-        GoRoute(path: Routes.wallet, builder: (_, __) => const WalletScreen()),
+        GoRoute(
+          path: Routes.wallet,
+          builder: (_, state) =>
+              WalletScreen(voucher: state.uri.queryParameters['voucher']),
+        ),
         GoRoute(
           path: Routes.receipts,
           builder: (_, __) => const ReceiptsScreen(),
@@ -166,6 +174,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 : null,
           ),
         ),
+      GoRoute(
+        path: Routes.notifications,
+        builder: (_, __) => const NotificationsScreen(),
+      ),
       // Printing in a session: choose the file, then its options (plan section 9.3).
       if (Readiness.mobileSession) ...[
         GoRoute(

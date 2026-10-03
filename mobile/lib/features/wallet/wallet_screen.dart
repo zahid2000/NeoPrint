@@ -16,11 +16,32 @@ import 'wallet_repository.dart';
 /// The balance, the rule that it never goes back to a card, adding money,
 /// a voucher, and every movement (plan section 2.14; docs/DESIGN_SYSTEM.md
 /// section 4, "Balans ekranı").
-class WalletScreen extends ConsumerWidget {
-  const WalletScreen({super.key});
+class WalletScreen extends ConsumerStatefulWidget {
+  const WalletScreen({super.key, this.voucher});
+
+  /// From a voucher link (neoprint://voucher/{code}, plan section 8.3): the
+  /// voucher dialog opens with it filled in.
+  final String? voucher;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends ConsumerState<WalletScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.voucher case final code?) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showVoucherDialog(context, code: code);
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final wallet = ref.watch(walletProvider);
 
@@ -355,18 +376,23 @@ class _TopUpSheetState extends ConsumerState<_TopUpSheet> {
 }
 
 /// A refund voucher into the wallet.
-Future<void> showVoucherDialog(BuildContext context) =>
-    showDialog<void>(context: context, builder: (_) => const _VoucherDialog());
+Future<void> showVoucherDialog(BuildContext context, {String? code}) =>
+    showDialog<void>(
+      context: context,
+      builder: (_) => _VoucherDialog(code: code),
+    );
 
 class _VoucherDialog extends ConsumerStatefulWidget {
-  const _VoucherDialog();
+  const _VoucherDialog({this.code});
+
+  final String? code;
 
   @override
   ConsumerState<_VoucherDialog> createState() => _VoucherDialogState();
 }
 
 class _VoucherDialogState extends ConsumerState<_VoucherDialog> {
-  final _code = TextEditingController();
+  late final _code = TextEditingController(text: widget.code);
   String _key = newIdempotencyKey();
   bool _busy = false;
   String? _error;

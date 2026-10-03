@@ -208,14 +208,3 @@ final class KioskCode extends ScannedCode {
 final class ForeignCode extends ScannedCode {
   const ForeignCode();
 }
-
-/// The route a `neoprint://pay/{id}` link opens, or null when the address is
-/// not one (plan section 8.3: links into the app).
-String? payLinkLocation(Uri uri) {
-  if (uri.scheme == 'neoprint' && uri.host == 'pay') {
-    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-    return segments.length == 1 ? '/pay/${segments.single}' : null;
-  }
-
-  return null;
-}

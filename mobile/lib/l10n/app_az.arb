@@ -331,24 +331,6 @@
   "profileReceipts": "Qəbzlər",
   "profileClaims": "Müraciətlərim",
   "noticeSuspected": "Çapınızın nəticəsi dəqiqləşdirilir. Pulunuz itməyib.",
-  "noticeRefundWallet": "{amount} balansınıza qaytarıldı.",
-  "@noticeRefundWallet": {
-    "placeholders": {
-      "amount": { "type": "String" }
-    }
-  },
-  "noticeRefundCard": "{amount} kartınıza qaytarılır.",
-  "@noticeRefundCard": {
-    "placeholders": {
-      "amount": { "type": "String" }
-    }
-  },
-  "noticeRefundVoucher": "{amount} voucher kodu ilə qaytarıldı.",
-  "@noticeRefundVoucher": {
-    "placeholders": {
-      "amount": { "type": "String" }
-    }
-  },
 
   "payPromoAdd": "Promokodunuz var?",
   "payPromoField": "Promokod",
@@ -799,5 +781,21 @@
 
   "weekdayShortFri": "C.",
 
-  "weekdayShortSat": "Ş."
+  "weekdayShortSat": "Ş.",
+
+  "notificationsTitle": "Bildirişlər",
+
+  "notificationsBellUnread": "Bildirişlər, {count} oxunmamış",
+  "@notificationsBellUnread": { "placeholders": {"count":{"type":"int"}} },
+
+  "notificationsEmpty": "Hələ bildiriş yoxdur",
+
+  "notificationsEmptyHint": "Çap hazır olanda, planlanmış çapın vaxtı çatanda və pul qaytarılanda burada görəcəksiniz.",
+
+  "notificationsLoadFailed": "Bildirişləri yükləmək alınmadı: {reason}",
+  "@notificationsLoadFailed": { "placeholders": {"reason":{"type":"String"}} },
+
+  "notificationsUnread": "Oxunmayıb",
+
+  "notificationOpen": "Aç"
 }

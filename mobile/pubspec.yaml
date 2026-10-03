@@ -53,6 +53,13 @@ dependencies:
   # Where the user is, for "near me" (MIT; plan section 2.0).
   geolocator: 14.1.1
 
+  # Push (BSD-3, Google's official FlutterFire; plan section 2.0). The
+  # backend sends through its own FCM HTTP v1 client; the app only receives.
+  # On the web firebase_core_web loads the Firebase JS SDK 12.19.0 from
+  # gstatic.com, and web/firebase-messaging-sw.js pins the same version.
+  firebase_core: 4.15.0
+  firebase_messaging: 16.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -222,9 +222,6 @@
   "profileReceipts": "Квитанции",
   "profileClaims": "Мои обращения",
   "noticeSuspected": "Уточняем результат печати. Ваши деньги не потеряны.",
-  "noticeRefundWallet": "{amount} возвращено на баланс.",
-  "noticeRefundCard": "{amount} возвращается на карту.",
-  "noticeRefundVoucher": "{amount} возвращено ваучером.",
 
   "payPromoAdd": "Есть промокод?",
   "payPromoField": "Промокод",
@@ -425,5 +422,19 @@
 
   "weekdayShortFri": "Пт",
 
-  "weekdayShortSat": "Сб"
+  "weekdayShortSat": "Сб",
+
+  "notificationsTitle": "Уведомления",
+
+  "notificationsBellUnread": "Уведомления, непрочитанных: {count}",
+
+  "notificationsEmpty": "Уведомлений пока нет",
+
+  "notificationsEmptyHint": "Здесь появятся сообщения о готовой печати, наступлении времени печати по расписанию и возврате денег.",
+
+  "notificationsLoadFailed": "Не удалось загрузить уведомления: {reason}",
+
+  "notificationsUnread": "Не прочитано",
+
+  "notificationOpen": "Открыть"
 }

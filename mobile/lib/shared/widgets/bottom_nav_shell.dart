@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/features/readiness.dart';
 import '../../features/notices/hub_notices.dart';
+import '../../features/notifications/notification_host.dart';
 import '../../features/schedule/schedule_due_prompt.dart';
 import '../../features/session/session_banner.dart';
 import '../../l10n/app_localizations.dart';
@@ -24,9 +25,11 @@ class BottomNavShell extends StatelessWidget {
     return Scaffold(
       // Inside the scaffold, so a notice sits above the navigation bar.
       body: HubNotices(
-        child: Readiness.scheduledPrint
-            ? ScheduleDuePrompt(child: shell)
-            : shell,
+        child: NotificationHost(
+          child: Readiness.scheduledPrint
+              ? ScheduleDuePrompt(child: shell)
+              : shell,
+        ),
       ),
       // The open session sits just above the bar, on every tab.
       bottomNavigationBar: Column(
