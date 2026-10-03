@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/features/readiness.dart';
 import '../../core/format/formats.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
@@ -292,8 +293,22 @@ class _FileCard extends ConsumerWidget {
               ),
               PopupMenuButton<String>(
                 tooltip: l10n.commonMore,
-                onSelected: (_) => _delete(context, ref),
+                onSelected: (choice) => choice == 'prepare'
+                    ? context.push(Routes.prepare, extra: file)
+                    : _delete(context, ref),
                 itemBuilder: (_) => [
+                  if (Readiness.personalQr && file.status == FileStatus.ready)
+                    PopupMenuItem(
+                      value: 'prepare',
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.storefront_outlined,
+                          color: tokens.brand500,
+                        ),
+                        title: Text(l10n.prepareMenu),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
                   PopupMenuItem(
                     value: 'delete',
                     child: ListTile(

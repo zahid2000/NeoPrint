@@ -70,6 +70,30 @@ class HomeScreen extends ConsumerWidget {
                 label: Text(l10n.homeOpenFiles),
               ),
 
+            // Printing with the personal QR (plan section 9.4).
+            if (Readiness.personalQr) ...[
+              const SizedBox(height: Spacing.x2),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.push(Routes.myQr),
+                      icon: const Icon(Icons.qr_code_2),
+                      label: Text(l10n.myQrTitle),
+                    ),
+                  ),
+                  const SizedBox(width: Spacing.x2),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.push(Routes.prepared),
+                      icon: const Icon(Icons.inventory_2_outlined),
+                      label: Text(l10n.preparedTitle),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
             if (Readiness.printJobs) const _Jobs(),
           ],
         ),

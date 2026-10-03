@@ -31,6 +31,7 @@ final class AppPayment {
     this.promoDiscount = 0,
     this.promoDiscountWithBonus = 0,
     this.promoRefusal,
+    this.collectAtKiosk = false,
   });
 
   factory AppPayment.fromJson(Map<String, dynamic> json) => AppPayment(
@@ -60,6 +61,7 @@ final class AppPayment {
     promoDiscountWithBonus: (json['promoDiscountWithBonus'] as num? ?? 0)
         .toDouble(),
     promoRefusal: json['promoRefusal'] as String?,
+    collectAtKiosk: json['collectAtKiosk'] as bool? ?? false,
   );
 
   final String id;
@@ -96,6 +98,10 @@ final class AppPayment {
   /// Why the order's promo code does not apply to this account, in the
   /// user's language.
   final String? promoRefusal;
+
+  /// Paid for later (plan section 9.4): it waits at its kiosk for the user's
+  /// QR rather than going into the queue.
+  final bool collectAtKiosk;
 
   bool get isOpen => status == 'Pending';
 

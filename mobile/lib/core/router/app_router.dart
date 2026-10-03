@@ -24,6 +24,9 @@ import '../../features/kiosk_search/kiosk_search_screen.dart';
 import '../../features/session/pick_file_screen.dart';
 import '../../features/session/print_options_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/prepared/my_qr_screen.dart';
+import '../../features/prepared/prepare_screen.dart';
+import '../../features/prepared/prepared_list_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
 import '../../shared/widgets/bottom_nav_shell.dart';
 import '../auth/auth_controller.dart';
@@ -54,6 +57,9 @@ abstract final class Routes {
   static const wallet = '/wallet';
   static const receipts = '/receipts';
   static const claims = '/claims';
+  static const myQr = '/my-qr';
+  static const prepared = '/prepared';
+  static const prepare = '/prepare';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -174,6 +180,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       ],
       if (Readiness.printJobs)
         GoRoute(path: Routes.claims, builder: (_, __) => const ClaimsScreen()),
+      // The personal QR and files prepared for a kiosk (plan section 9.4).
+      if (Readiness.personalQr) ...[
+        GoRoute(path: Routes.myQr, builder: (_, __) => const MyQrScreen()),
+        GoRoute(
+          path: Routes.prepared,
+          builder: (_, __) => const PreparedListScreen(),
+        ),
+        GoRoute(
+          path: Routes.prepare,
+          // Opened from a file's menu; without the file there is nothing to prepare.
+          redirect: (_, state) => state.extra is UserFile ? null : Routes.files,
+          builder: (_, state) => PrepareScreen(file: state.extra! as UserFile),
+        ),
+      ],
 
       // The five bottom-nav destinations from plan section 8.1, in a shell so
       // the bar keeps its state as the tabs change.

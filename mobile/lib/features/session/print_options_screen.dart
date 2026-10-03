@@ -97,7 +97,7 @@ class _Options extends ConsumerStatefulWidget {
 }
 
 class _OptionsState extends ConsumerState<_Options> {
-  static const _maxCopies = 99;
+  static const _maxCopies = 50;
   static const _quoteDelay = Duration(milliseconds: 300);
 
   OrderOptions _options = const OrderOptions();

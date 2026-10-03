@@ -22,6 +22,10 @@ abstract final class Readiness {
   /// Printing at a kiosk in a session: open it, choose a file, pay - step 5.
   static const bool mobileSession = true;
 
+  /// The personal QR, files prepared for a kiosk and orders paid for later -
+  /// step 5.
+  static const bool personalQr = true;
+
   /// Scheduled printing - step 5.
   static const bool scheduledPrint = false;
 

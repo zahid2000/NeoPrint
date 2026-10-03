@@ -14,6 +14,9 @@
 :root {
   color-scheme: light;
 
+  /* A QR code is drawn on white in both themes: scanners need the contrast. */
+  --qr-background: #ffffff;
+
   /* --- Brand ----------------------------------------------------------- */
   --brand-50: #eef3ff;
   --brand-100: #dce6ff;

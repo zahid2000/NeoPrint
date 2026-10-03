@@ -561,5 +561,105 @@
       "amount": { "type": "String" }
     }
   },
-  "orderButtonPlain": "Sifariş et"
+  "orderButtonPlain": "Sifariş et",
+  "myQrTitle": "Mənim QR kodum",
+  "myQrHint": "Kioskdakı QR oxuyucuya yaxınlaşdırın.",
+  "myQrRotates": "Kod {seconds} saniyədən bir yenilənir",
+  "@myQrRotates": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "myQrFailed": "QR kodu yükləmək alınmadı: {reason}",
+  "@myQrFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "preparedTitle": "Hazırladıqlarım",
+  "preparedEmpty": "Kiosk üçün hazırladığınız fayl yoxdur",
+  "preparedEmptyHint": "Faylın menyusundan \"Kiosk üçün hazırla\"nı seçin.",
+  "preparedLoadFailed": "Siyahını yükləmək alınmadı: {reason}",
+  "@preparedLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "preparedAtKiosk": "Parametrlər kioskda seçiləcək",
+  "preparedStateReady": "Hazır",
+  "preparedStatePrinting": "Çap olunur",
+  "preparedStatePrinted": "Çap olunub",
+  "preparedStateFileUnavailable": "Fayl əlçatan deyil",
+  "preparedFileUnavailableHint": "Fayl silinib və ya hazır deyil. Bunu siyahıdan çıxarın.",
+  "preparedStatePaid": "Ödənilib",
+  "preparedPaidAt": "{kiosk} kioskunda · {amount}",
+  "@preparedPaidAt": {
+    "placeholders": {
+      "kiosk": { "type": "String" },
+      "amount": { "type": "String" }
+    }
+  },
+  "preparedCollectBy": "{date} tarixinədək götürün, sonra pul balansınıza qayıdır.",
+  "@preparedCollectBy": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "preparedRemove": "Siyahıdan çıxar",
+  "preparedCancel": "Ləğv et",
+  "preparedCancelTitle": "Sifariş ləğv edilsin?",
+  "preparedCancelBody": "{amount} balansınıza qaytarılacaq.",
+  "@preparedCancelBody": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "preparedActionFailed": "Alınmadı: {reason}",
+  "@preparedActionFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "prepareMenu": "Kiosk üçün hazırla",
+  "prepareAtKiosk": "Kioskda",
+  "prepareOneSide": "Bir üz",
+  "prepareTwoSides": "İki üz",
+  "prepareKioskLabel": "Kiosk (istəyə görə)",
+  "prepareAnyKiosk": "İstənilən kioskda çap etmək olar.",
+  "prepareKioskHint": "Kiosk seçsəniz, qiyməti görüb əvvəlcədən ödəyə bilərsiniz; onda bütün parametrlər indi seçilir.",
+  "prepareChooseKiosk": "Kiosk seç",
+  "prepareChangeKiosk": "Dəyiş",
+  "prepareClearKiosk": "Kioskdan imtina",
+  "prepareKioskSheetTitle": "Kioskı seçin",
+  "prepareSave": "Hazırla",
+  "preparePay": "Əvvəlcədən ödə — {amount}",
+  "@preparePay": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "preparePayPlain": "Əvvəlcədən ödə",
+  "prepareSaveUnpaid": "Ödənişsiz saxla",
+  "prepareSaved": "Hazırdır. Kioskda QR kodunuzu oxudun.",
+  "prepareFailed": "Hazırlamaq alınmadı: {reason}",
+  "@prepareFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "preparePriceChangedTitle": "Qiymət dəyişib",
+  "preparePriceChangedBody": "Əvvəl: {before}. İndi: {now}.",
+  "@preparePriceChangedBody": {
+    "placeholders": {
+      "before": { "type": "String" },
+      "now": { "type": "String" }
+    }
+  },
+  "preparePriceChangedConfirm": "Yeni qiymətlə ödə",
+  "payCollectAtKioskBody": "Sifariş hazırdır. {kiosk} kioskunda QR kodunuzu oxudun — çap o zaman başlayacaq.",
+  "@payCollectAtKioskBody": {
+    "placeholders": {
+      "kiosk": { "type": "String" }
+    }
+  }
 }

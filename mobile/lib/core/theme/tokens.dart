@@ -113,6 +113,13 @@ abstract final class Motion {
 }
 
 /// Fixed sizes the design system names.
+/// Colours that do not follow the theme because a device reads them.
+abstract final class Functional {
+  /// A QR code is drawn on white in both themes: scanners need the contrast
+  /// (kiosk `QrBackground`, admin `--qr-background`).
+  static const qrBackground = Color(0xFFFFFFFF);
+}
+
 abstract final class Sizes {
   /// The minimum touch target on a phone.
   static const touchTarget = 48.0;
