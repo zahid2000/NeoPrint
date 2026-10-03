@@ -217,18 +217,19 @@ class _PreparedCard extends ConsumerWidget {
 
   /// Pages and what was chosen in the app; nothing chosen says so.
   String _detail(AppLocalizations l10n) {
-    final parts = [l10n.filesPageCount(item.pages)];
     final options = item.options;
     final preset = item.preset;
+    final copies = options?.copies ?? preset?.copies ?? 1;
+    final parts = [
+      copies > 1
+          ? l10n.jobPagesCopies(item.pages, copies)
+          : l10n.filesPageCount(item.pages),
+    ];
 
     if (options != null) {
-      if (options.copies > 1) parts.add('${options.copies} ×');
       parts.add(options.color ? l10n.optColorful : l10n.optBlackWhite);
       parts.add(options.paper);
     } else if (preset != null && !preset.isEmpty) {
-      if (preset.copies case final copies? when copies > 1) {
-        parts.add('$copies ×');
-      }
       if (preset.color case final color?) {
         parts.add(color ? l10n.optColorful : l10n.optBlackWhite);
       }

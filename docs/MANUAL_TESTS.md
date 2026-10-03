@@ -248,3 +248,8 @@ Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-də
 | 8 | **Fayl seç** → fayl → seçimlər → **Sifariş et** → ödəyin | Qiymət seçim dəyişəndə yenilənir; ödənişdən sonra kiosk sifarişi özü yükləyib çap edir, sifariş tarixçədə "Tamamlandı" |
 | 9 | Sessiya açıq ikən tətbiqi arxa plana atın, 10 dəqiqədən çox gözləyin, sonra açın | Banner yoxdur; tətbiq açıq qalıbsa "Sessiya bitdi. Çap üçün kioskda yenidən açın." bildirişi; kiosk nişanı itir |
 | 10 | Sessiya açıq ikən telefonu Wi-Fi-dan ayırıb 1 dəqiqə sonra qaytarın | Bağlantı bərpa olunanda banner serverin vəziyyətinə uyğunlaşır (sessiya hələ varsa qalır, bitibsə gedir) |
+| 11 | Kioska real USB QR skaner (HID, klaviatura rejimi) qoşun; tətbiqdə **Mənim QR kodum** ekranını skanerə tutun — Windows və Linux kioskda | Ekran "Hazırladığınız fayllar" açılır; ekranın parlaqlığı aşağı olsa da oxunur. Skaner sətir sonunu CR və ya LF göndərirsə hər ikisində işləyir |
+| 12 | QR ekranını açıq saxlayıb 2 dəqiqə gözləyin, sonra oxudun | Kod özü yenilənib — kiosk qəbul edir. Köhnə kodun ekran görüntüsünü oxutsanız: "QR kodun vaxtı keçib…" |
+| 13 | Skanerlə başqa QR (bank QR-ı, kiosk QR-ı) oxudun — ana ekranda və ödəniş ekranında | Heç nə dəyişmir; ödəniş gedən ekran yerində qalır |
+| 14 | Tətbiqdə kiosk seçib **Əvvəlcədən ödə**, sonra həmin kioskda QR → **Çapa ver** | Sifariş növbəyə düşür və çap olunur; başqa kioskda eyni QR-da kart boz, "KSK-… kioskunda ödənilib" |
+| 15 | Hazırladıqlarım → ödənilmiş → **Ləğv et** | Təsdiq dialoqu məbləği deyir; balans həmin məbləğ qədər artır, qaytarma fiskal çeki yaranır |

@@ -877,6 +877,39 @@ PowerShell-də `curl` əvəzinə `curl.exe` yazın (və ya `Invoke-RestMethod -M
 
 ---
 
+## 7d. Addım 5 — şəxsi QR ilə çap (plan 9.4)
+
+1. Tətbiqdə (Chrome və ya telefon) **Fayllarım → faylın menyusu → Kiosk üçün hazırla**.
+   Kiosk seçmədən **Hazırla** — ödənişsiz hazırlıq (istənilən kioskda); kiosk seçib
+   **Əvvəlcədən ödə** — həmin kioskda gözləyən ödənilmiş sifariş. Siyahı: Ana səhifə → **Hazırladıqlarım**.
+2. Kioskda QR oxutmaq. Kiosk USB skanerin yazdığı sətri qəbul edir (simvollar arası < 50 ms, sonunda Enter və ya LF):
+   - **Real skaner** (USB HID, klaviatura rejimi): tətbiqdə **Mənim QR kodum** ekranını skanerə tutun.
+   - **Windows dev kiosk** (`start-kiosk.ps1` ilə işləyir) — QR-ı skaner kimi yazır:
+
+     ```powershell
+     powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\scan-user-qr.ps1
+     # başqa istifadəçi: -Email ... -Password ...
+     ```
+
+     Skript düymələri yalnız `NeoPrint.Kiosk` prosesinin pəncərəsinə göndərir; kiosk işləmirsə heç nə yazmır.
+   - **Linux konteyner kiosku** (X11, pəncərə meneceri yoxdur): əvvəl pəncərəyə fokus, sonra kod və sətir sonu
+     **bir** `xdotool type` çağırışında (ayrı `xdotool key Return` 50 ms-dən gec gəlir və rədd olunur).
+     `CODE` — `GET /api/users/me/qr` cavabındakı `code` (60 saniyə keçərlidir):
+
+     ```bash
+     docker exec neoprint-kshot sh -c 'xdotool windowfocus --sync $(xdotool search --name NeoPrint | head -1)'
+     docker exec neoprint-kshot xdotool type --delay 3 "$CODE
+     "
+     ```
+
+3. Kioskda ekran 10 açılır: ödənişsizdə **Seç** → parametrlər (tətbiqdə seçilənlər qoyulur) → kioskda ödəniş;
+   bu kiosk üçün ödənilmişdə **Çapa ver** → birbaşa növbə. Siyahı 60 saniyə toxunulmasa bağlanır.
+4. Götürülməyən ödənilmiş sifariş `PreparedPrint.AutoCancelDays` (7) gündən sonra saatlıq `uncollected-print-jobs`
+   Hangfire işi ilə ləğv olunur, pul balansa qayıdır. Hangfire panelində (`/hangfire`) işi əl ilə də işə salmaq olar —
+   vaxtı gəlməmiş sifarişə toxunmur.
+
+---
+
 ## 8. Build, test, lint
 
 ```bash
