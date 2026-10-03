@@ -115,6 +115,18 @@ public sealed class ScheduleTests
         (await PrintNowAsync(user.Client, scheduleId)).StatusCode.Should().Be(HttpStatusCode.OK);
         (await kiosk.Client.GetAsync($"/api/print-jobs/{jobId}/file")).StatusCode.Should().Be(HttpStatusCode.OK);
 
+        // Printed: its owner is told, once, opening the order (T-146).
+        await ReportAsync(kiosk.Client, jobId, "Printing");
+        await ReportAsync(kiosk.Client, jobId, "Completed", sides: 3, sheets: 3);
+        var printed = await EventuallyAsync(
+            () => NotificationTests.ListAsync(user.Client, "az"),
+            p => p.GetProperty("items").EnumerateArray().Any(n => n.GetProperty("type").GetString() == "JobCompleted"),
+            "the job completed notification");
+        var note = printed.GetProperty("items").EnumerateArray().Single(n => n.GetProperty("type").GetString() == "JobCompleted");
+        note.GetProperty("title").GetString().Should().Be("Çap hazırdır");
+        note.GetProperty("body").GetString().Should().Contain(kiosk.KioskCode);
+        note.GetProperty("link").GetString().Should().Be($"neoprint://jobs/{jobId}");
+
         // Sent: an ordinary order now, neither moved nor cancelled from this list.
         (await user.Client.DeleteAsync($"/api/schedules/{scheduleId}")).StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await RescheduleAsync(user.Client, scheduleId, DateTime.UtcNow.AddHours(6))).StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -135,6 +147,12 @@ public sealed class ScheduleTests
         using var kiosk = await ReadyKioskAsync(_fixture, "schedule-due");
         using var user = await TestUsers.ConfirmedAsync(_fixture);
         var fileId = await SessionTests.UploadReadyPdfAsync(_fixture, user.Client, pages: 3);
+
+        // A phone in Azerbaijani and a browser in English (T-146).
+        var phone = $"phone-{Guid.NewGuid():N}";
+        var browser = $"browser-{Guid.NewGuid():N}";
+        await NotificationTests.RegisterDeviceAsync(user.Client, phone, "az", "android");
+        await NotificationTests.RegisterDeviceAsync(user.Client, browser, "en", "web");
 
         var (dueId, dueJob, duePayment) = await ScheduleAndPayAsync(user.Client, kiosk.KioskCode, fileId, DateTime.UtcNow.AddHours(1));
         var (cancelledId, cancelledJob, cancelledPayment) =
@@ -162,9 +180,28 @@ public sealed class ScheduleTests
         listed.GetProperty("status").GetString().Should().Be("AwaitingUser");
         listed.GetProperty("autoCancelAt").GetDateTime().ToUniversalTime().Should().BeCloseTo(DateTime.UtcNow.AddHours(24), TimeSpan.FromMinutes(2));
 
+        // The push: one per device, each in its own language, opening the schedule.
+        var pushed = await EventuallyAsync(() => Task.FromResult(_fixture.Pushes.To(phone)), p => p.Count == 1, "the push to the phone");
+        pushed[0].Title.Should().Be("Planlanmış çapın vaxtı çatdı");
+        pushed[0].Body.Should().Contain(kiosk.KioskCode);
+        pushed[0].Data["type"].Should().Be("ScheduleDue");
+        pushed[0].Data["link"].Should().Be($"neoprint://schedules/{dueId}");
+        (await EventuallyAsync(() => Task.FromResult(_fixture.Pushes.To(browser)), p => p.Count == 1, "the push to the browser"))[0]
+            .Title.Should().Be("Time for your scheduled print");
+
         // A second run asks nobody twice.
         await SendAsync(new RunDueSchedulesCommand());
         (await FindAsync(dueId)).RemindedAt.Should().Be(due.RemindedAt);
+        await Task.Delay(1500);
+        _fixture.Pushes.To(phone).Should().ContainSingle();
+
+        // The list reads in the app's language, and opening it reads it.
+        var page = await NotificationTests.ListAsync(user.Client, "ru");
+        var dueNote = page.GetProperty("items").EnumerateArray().Single(n => n.GetProperty("type").GetString() == "ScheduleDue");
+        dueNote.GetProperty("title").GetString().Should().Be("Время печати по расписанию");
+        page.GetProperty("unread").GetInt64().Should().Be(1);
+        (await user.Client.PostAsync($"/api/notifications/{dueNote.GetProperty("id").GetGuid()}/read", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await NotificationTests.ListAsync(user.Client, "az")).GetProperty("unread").GetInt64().Should().Be(0);
 
         // Nobody answered for a day: cancelled and refunded.
         await UpdateAsync(dueId, Builders<ScheduledPrint>.Update.Set(s => s.AwaitingSince, DateTime.UtcNow.AddHours(-25)));
@@ -189,6 +226,18 @@ public sealed class ScheduleTests
             refund!.Reason.Should().Be(RefundReason.ScheduleCancel);
             refund.Destination.Should().Be(RefundDestination.Wallet, "a scheduled print's money goes back to the balance");
         }
+
+        // Told once that it was cancelled for want of an answer, with the money back;
+        // no separate refund notice for either - the user cancelled one in the app.
+        var cancelledPush = await EventuallyAsync(
+            () => Task.FromResult(_fixture.Pushes.To(phone).Where(p => p.Data["type"] == "ScheduleAutoCancelled").ToList()),
+            p => p.Count == 1,
+            "the auto-cancel push");
+        cancelledPush[0].Body.Should().Contain("0,30 ₼");
+        await SendAsync(new AutoCancelSchedulesCommand());
+        var types = (await NotificationTests.ListAsync(user.Client, "az")).GetProperty("items").EnumerateArray()
+            .Select(n => n.GetProperty("type").GetString()).ToList();
+        types.Should().BeEquivalentTo(["ScheduleDue", "ScheduleAutoCancelled"]);
 
         // Both closed, the file is free again.
         (await user.Client.DeleteAsync($"/api/files/{fileId}")).StatusCode.Should().Be(HttpStatusCode.NoContent);

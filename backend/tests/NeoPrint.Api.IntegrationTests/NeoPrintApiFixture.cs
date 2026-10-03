@@ -415,6 +415,12 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
             services.AddSingleton<IEmailSender>(
                 provider => provider.GetRequiredService<CapturedEmails>());
 
+            // What would have gone to FCM (CapturedPushes).
+            services.RemoveAll<NeoPrint.Application.Notifications.IPushSender>();
+            services.AddSingleton<CapturedPushes>();
+            services.AddSingleton<NeoPrint.Application.Notifications.IPushSender>(
+                provider => provider.GetRequiredService<CapturedPushes>());
+
             // The mock bank's callbacks reach the in-memory server, exactly
             // as they reach the API over the network in Development.
             services.AddHttpClient(NeoPrint.Infrastructure.Payments.MockBankSimulator.HttpClientName)
@@ -424,6 +430,9 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
 
     /// <summary>The emails the API tried to send during a test.</summary>
     public CapturedEmails Emails => Services.GetRequiredService<CapturedEmails>();
+
+    /// <summary>The pushes the API delivered during a test (in place of FCM).</summary>
+    public CapturedPushes Pushes => Services.GetRequiredService<CapturedPushes>();
 
     /// <summary>A client that does not follow redirects, so status codes are visible.</summary>
     public HttpClient CreateApiClient() => CreateClient(new WebApplicationFactoryClientOptions

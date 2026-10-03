@@ -547,5 +547,18 @@
   "wallet.nothingToPost": "A wallet movement cannot be zero.",
   "wallet.topUpRange": "A top-up can be {min}–{max} ₼.",
   "wallet.topUpWithoutUser": "The top-up is not tied to a user.",
-  "wallet.wrongDirection": "A {type} movement cannot move the wallet this way."
+  "wallet.wrongDirection": "A {type} movement cannot move the wallet this way.",
+  "notFound.notification": "Notification not found.",
+  "notifications.tokenInvalid": "This device's notification key is not valid. Open the app again.",
+  "notifications.jobCompleted.title": "Your print is ready",
+  "notifications.jobCompleted.body": "Order {code} was printed at kiosk {kiosk}. Remember to take the pages.",
+  "notifications.scheduleDue.title": "Time for your scheduled print",
+  "notifications.scheduleDue.body": "Print it now at kiosk {kiosk}, or change the time.",
+  "notifications.scheduleAutoCancelled.title": "Scheduled print cancelled",
+  "notifications.scheduleAutoCancelled.body": "The print at kiosk {kiosk} was not answered. {amount} ₼ went back to your balance.",
+  "notifications.refundCompleted.title": "Money returned",
+  "notifications.refundCompleted.body": "{amount} ₼ returned {destination:refunds.destination}.",
+  "refunds.destination.originalMethod": "to the card you paid with",
+  "refunds.destination.wallet": "to your balance",
+  "refunds.destination.voucher": "as a voucher code"
 }

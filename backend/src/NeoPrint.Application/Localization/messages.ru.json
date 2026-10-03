@@ -547,5 +547,18 @@
   "wallet.nothingToPost": "Изменение баланса не может быть нулевым.",
   "wallet.topUpRange": "Пополнение возможно на {min}–{max} ₼.",
   "wallet.topUpWithoutUser": "Пополнение не привязано к пользователю.",
-  "wallet.wrongDirection": "Операция {type} не может менять баланс в эту сторону."
+  "wallet.wrongDirection": "Операция {type} не может менять баланс в эту сторону.",
+  "notFound.notification": "Уведомление не найдено.",
+  "notifications.tokenInvalid": "Ключ уведомлений этого устройства недействителен. Откройте приложение заново.",
+  "notifications.jobCompleted.title": "Печать готова",
+  "notifications.jobCompleted.body": "Заказ {code} напечатан в киоске {kiosk}. Не забудьте забрать листы.",
+  "notifications.scheduleDue.title": "Время печати по расписанию",
+  "notifications.scheduleDue.body": "Отправьте на печать в киоске {kiosk} или измените время.",
+  "notifications.scheduleAutoCancelled.title": "Печать по расписанию отменена",
+  "notifications.scheduleAutoCancelled.body": "Ответа на печать в киоске {kiosk} не было. {amount} ₼ возвращены на ваш баланс.",
+  "notifications.refundCompleted.title": "Деньги возвращены",
+  "notifications.refundCompleted.body": "{amount} ₼ возвращены {destination:refunds.destination}.",
+  "refunds.destination.originalMethod": "на карту, которой вы платили",
+  "refunds.destination.wallet": "на ваш баланс",
+  "refunds.destination.voucher": "в виде кода ваучера"
 }

@@ -547,5 +547,18 @@
   "wallet.nothingToPost": "Balans dəyişikliyi sıfır ola bilməz.",
   "wallet.topUpRange": "Balans {min}–{max} ₼ aralığında artırıla bilər.",
   "wallet.topUpWithoutUser": "Balans artırılması istifadəçiyə bağlı deyil.",
-  "wallet.wrongDirection": "Bu növ əməliyyat ({type}) balansı bu istiqamətdə dəyişə bilməz."
+  "wallet.wrongDirection": "Bu növ əməliyyat ({type}) balansı bu istiqamətdə dəyişə bilməz.",
+  "notFound.notification": "Bildiriş tapılmadı.",
+  "notifications.tokenInvalid": "Bu cihazın bildiriş açarı düzgün deyil. Tətbiqi yenidən açın.",
+  "notifications.jobCompleted.title": "Çap hazırdır",
+  "notifications.jobCompleted.body": "{code} sifarişi {kiosk} kioskunda çap olundu. Vərəqləri götürməyi unutmayın.",
+  "notifications.scheduleDue.title": "Planlanmış çapın vaxtı çatdı",
+  "notifications.scheduleDue.body": "{kiosk} kioskunda çapa verin və ya vaxtı dəyişin.",
+  "notifications.scheduleAutoCancelled.title": "Planlanmış çap ləğv olundu",
+  "notifications.scheduleAutoCancelled.body": "{kiosk} kioskundakı çapa cavab verilmədi. {amount} ₼ balansınıza qaytarıldı.",
+  "notifications.refundCompleted.title": "Pul qaytarıldı",
+  "notifications.refundCompleted.body": "{amount} ₼ qaytarıldı: {destination:refunds.destination}.",
+  "refunds.destination.originalMethod": "ödədiyiniz karta",
+  "refunds.destination.wallet": "balansınıza",
+  "refunds.destination.voucher": "voucher kodu kimi"
 }

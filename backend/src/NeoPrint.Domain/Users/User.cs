@@ -36,7 +36,14 @@ public sealed class User : Entity
     /// </summary>
     public List<string> DeviceIds { get; set; } = [];
 
-    public List<string> FcmTokens { get; set; } = [];
+    /// <summary>
+    /// The phones and browsers that get this user's push notifications, newest
+    /// last; at most <see cref="MaxPushDevices"/> (plan section 5, <c>FcmTokens</c>).
+    /// </summary>
+    public List<PushDevice> FcmTokens { get; set; } = [];
+
+    /// <summary>A user signing in on more devices than this drops the longest unused one.</summary>
+    public const int MaxPushDevices = 10;
 
     /// <summary>UI language: az (default), en or ru.</summary>
     public string Language { get; set; } = "az";

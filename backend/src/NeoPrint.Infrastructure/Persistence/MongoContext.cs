@@ -132,6 +132,7 @@ public sealed class MongoContext
     public MongoSet<Domain.PrintJobs.PreparedPrint> PreparedPrints => Set<Domain.PrintJobs.PreparedPrint>("prepared_prints");
 
     public MongoSet<Domain.Schedules.ScheduledPrint> ScheduledPrints => Set<Domain.Schedules.ScheduledPrint>("scheduled_prints");
+    public MongoSet<Domain.Notifications.Notification> Notifications => Set<Domain.Notifications.Notification>("notifications");
     public MongoSet<Domain.Fiscal.FiscalReceipt> FiscalReceipts => Set<Domain.Fiscal.FiscalReceipt>("fiscal_receipts");
     public MongoSet<Domain.Receipts.Receipt> Receipts => Set<Domain.Receipts.Receipt>("receipts");
     public MongoSet<Receipts.Counter> Counters => Set<Receipts.Counter>("counters");
@@ -225,7 +226,9 @@ public sealed class MongoContext
         await CreateAsync(Users,
             (Builders<User>.IndexKeys.Ascending(user => user.Email), Unique("ux_users_email")),
             (Builders<User>.IndexKeys.Ascending(user => user.PublicId), Unique("ux_users_public_id")),
-            (Builders<User>.IndexKeys.Ascending(user => user.ReferralCode), Unique("ux_users_referral_code")));
+            (Builders<User>.IndexKeys.Ascending(user => user.ReferralCode), Unique("ux_users_referral_code")),
+            // A push token is taken off whichever account has it (sign-in elsewhere, FCM forgot it).
+            (Builders<User>.IndexKeys.Ascending("FcmTokens.Token"), Named("ix_users_push_token")));
 
         await CreateAsync(EmailConfirmations,
             (Builders<EmailConfirmation>.IndexKeys.Ascending(c => c.UserId), Named("ix_email_confirmations_user")),
@@ -465,6 +468,14 @@ public sealed class MongoContext
                 Named("ix_scheduled_prints_status_awaiting")),
             (Builders<Domain.Schedules.ScheduledPrint>.IndexKeys.Ascending(s => s.FileId).Ascending(s => s.Status),
                 Named("ix_scheduled_prints_file_status")));
+
+        await CreateAsync(Notifications,
+            // One notification per event, however often the event is told.
+            (Builders<Domain.Notifications.Notification>.IndexKeys.Ascending(n => n.DedupKey), Unique("ux_notifications_dedup")),
+            (Builders<Domain.Notifications.Notification>.IndexKeys.Ascending(n => n.UserId).Descending(n => n.CreatedAt),
+                Named("ix_notifications_user_created")),
+            (Builders<Domain.Notifications.Notification>.IndexKeys.Ascending(n => n.UserId).Ascending(n => n.ReadAt),
+                Named("ix_notifications_user_unread")));
 
         await CreateAsync(SupportClaims,
             (Builders<Domain.Support.SupportClaim>.IndexKeys.Ascending(c => c.JobId), Named("ix_support_claims_job")),

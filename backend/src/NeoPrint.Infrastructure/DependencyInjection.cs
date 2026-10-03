@@ -9,6 +9,7 @@ using MassTransit;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -90,6 +91,7 @@ public static class DependencyInjection
         AddFiscal(services, configuration);
         AddHealthChecks(services, configuration);
         AddAuth(services);
+        AddPush(services, configuration);
 
         return services;
     }
@@ -191,6 +193,42 @@ public static class DependencyInjection
         services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
         services.AddScoped<IFeatureFlagEvaluator, CachedFeatureFlagEvaluator>();
         services.AddScoped<CachedFeatureFlagEvaluator>();
+    }
+
+    /// <summary>
+    /// Notifications and push (plan section 2.1): FCM HTTP v1 when OpenBao has the
+    /// service account key, otherwise <see cref="Notifications.LoggingPushSender"/>
+    /// - a missing or broken key never stops the service.
+    /// </summary>
+    private static void AddPush(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddScoped<Application.Notifications.INotificationRepository, Notifications.NotificationRepository>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddHttpClient(Notifications.FcmPushSender.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15));
+        services.AddSingleton<Notifications.LoggingPushSender>();
+        services.AddSingleton<Application.Notifications.IPushSender>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("NeoPrint.Push");
+            var account = Notifications.FcmServiceAccount.TryParse(
+                configuration[Notifications.FcmServiceAccount.ConfigurationKey], out var problem);
+
+            if (account is not null)
+            {
+                logger.LogInformation("Push: FCM HTTP v1, project {ProjectId}.", account.ProjectId);
+                return ActivatorUtilities.CreateInstance<Notifications.FcmPushSender>(provider, account);
+            }
+
+            if (problem is not null)
+            {
+                logger.LogError("Push: the FCM key in OpenBao cannot be used ({Problem}); pushes are only logged.", problem);
+            }
+            else
+            {
+                logger.LogInformation("Push: FCM not configured; pushes are only logged (LoggingPushSender).");
+            }
+
+            return provider.GetRequiredService<Notifications.LoggingPushSender>();
+        });
     }
 
     private static void AddMongo(IServiceCollection services, IConfiguration configuration)
@@ -319,6 +357,8 @@ public static class DependencyInjection
             bus.AddConsumer<Receipts.ReceiptFiscalConsumer>();
             bus.AddConsumer<Notifications.UserNotificationConsumer>();
             bus.AddConsumer<Schedules.ScheduledPrintJobConsumer>();
+            bus.AddConsumer<Notifications.NotificationDeliveryConsumer>();
+            bus.AddConsumer<Notifications.NotificationTriggerConsumer>();
 
             // Every process caches the storage providers, so every process needs
             // its own copy of this event: a queue per instance, deleted when the

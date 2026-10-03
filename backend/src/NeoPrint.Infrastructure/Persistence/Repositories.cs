@@ -74,6 +74,29 @@ public sealed class UserRepository : IUserRepository
 
     public Task<long> CountReferredAsync(Guid userId, CancellationToken cancellationToken = default)
         => _context.Users.CountDocumentsAsync(user => user.ReferredBy == userId, cancellationToken: cancellationToken);
+
+    public async Task SavePushDeviceAsync(Guid userId, PushDevice device, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+
+        await RemovePushDeviceAsync(device.Token, cancellationToken).ConfigureAwait(false);
+        await _context.Users
+            .UpdateOneAsync(
+                user => user.Id == userId,
+                Builders<User>.Update.PushEach(user => user.FcmTokens, [device], slice: -User.MaxPushDevices),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public Task RemovePushDeviceAsync(string token, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(token);
+
+        return _context.Users.UpdateManyAsync(
+            Builders<User>.Filter.ElemMatch(user => user.FcmTokens, device => device.Token == token),
+            Builders<User>.Update.PullFilter(user => user.FcmTokens, device => device.Token == token),
+            cancellationToken: cancellationToken);
+    }
 }
 
 /// <inheritdoc cref="IEmailConfirmationRepository" />

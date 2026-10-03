@@ -31,6 +31,9 @@ public interface IUserNotifier
     /// the app asks "Çapa ver" or "Vaxtı dəyiş".
     /// </summary>
     Task ScheduleDueAsync(Guid userId, UserScheduleUpdate update, CancellationToken cancellationToken = default);
+
+    /// <summary>A notification was stored (plan section 8.2): the list and the badge refresh, an in-app banner shows.</summary>
+    Task NotificationAsync(Guid userId, UserNotificationUpdate update, CancellationToken cancellationToken = default);
 }
 
 public sealed record UserJobUpdate(Guid JobId, string JobCode, string Status);
@@ -42,6 +45,8 @@ public sealed record UserSessionUpdate(Guid SessionId, Guid KioskId, string Reas
 
 /// <param name="Status">The schedule's status now: <c>Scheduled</c> for an early reminder, <c>AwaitingUser</c> once due.</param>
 public sealed record UserScheduleUpdate(Guid ScheduleId, Guid JobId, DateTime ScheduledAt, string Status);
+
+public sealed record UserNotificationUpdate(Guid NotificationId, string Type);
 
 public sealed record UserRefundUpdate(Guid RefundId, Guid PaymentId, Guid? JobId, string Status, decimal Amount, string Destination);
 

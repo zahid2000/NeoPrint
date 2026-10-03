@@ -167,6 +167,7 @@ public sealed class ScheduleHandlers :
     private readonly ISettingsReader _settings;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
+    private readonly ISender _sender;
     private readonly ILogger<ScheduleHandlers> _logger;
 
     public ScheduleHandlers(
@@ -182,6 +183,7 @@ public sealed class ScheduleHandlers :
         ISettingsReader settings,
         ICorrelationContext correlation,
         IClock clock,
+        ISender sender,
         ILogger<ScheduleHandlers> logger)
     {
         _schedules = schedules;
@@ -196,6 +198,7 @@ public sealed class ScheduleHandlers :
         _settings = settings;
         _correlation = correlation;
         _clock = clock;
+        _sender = sender;
         _logger = logger;
     }
 
@@ -415,8 +418,7 @@ public sealed class ScheduleHandlers :
                 continue;
             }
 
-            expired += await Safely(schedule, () => CloseAsync(schedule, job, ExpiredReason, system, expire: true, cancellationToken))
-                .ConfigureAwait(false);
+            expired += await Safely(schedule, () => ExpireAsync(schedule, job, system, cancellationToken)).ConfigureAwait(false);
         }
 
         if (expired > 0)
@@ -426,6 +428,18 @@ public sealed class ScheduleHandlers :
 
         return expired;
     }
+
+    /// <summary>Closes it as unanswered, then tells the user; the notification's key makes a repeat silent.</summary>
+    private async Task ExpireAsync(ScheduledPrint schedule, PrintJob job, ActorContext system, CancellationToken cancellationToken)
+    {
+        await CloseAsync(schedule, job, ExpiredReason, system, expire: true, cancellationToken).ConfigureAwait(false);
+        await _sender
+            .Send(NotificationTriggers.ScheduleAutoCancelled(schedule, await KioskCodeAsync(schedule, cancellationToken).ConfigureAwait(false)), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<string> KioskCodeAsync(ScheduledPrint schedule, CancellationToken cancellationToken)
+        => (await _kiosks.FindByIdAsync(schedule.KioskId, cancellationToken).ConfigureAwait(false))?.Code ?? string.Empty;
 
     /// <summary>
     /// Cancels the job first - its refund and receipts follow from that, as
@@ -502,10 +516,20 @@ public sealed class ScheduleHandlers :
         }
     }
 
-    /// <summary>Saves first, then tells: a failed save repeats the run, not the message.</summary>
+    /// <summary>
+    /// The notification first - stored once per time, so a run repeated after a
+    /// failed save adds nothing - then the save, then the open app's dialog.
+    /// </summary>
     private async Task RemindAsync(ScheduledPrint schedule, DateTime now, CancellationToken cancellationToken)
     {
         var tell = schedule.RemindedAt is null;
+        if (tell)
+        {
+            await _sender
+                .Send(NotificationTriggers.ScheduleDue(schedule, await KioskCodeAsync(schedule, cancellationToken).ConfigureAwait(false)), cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         schedule.NoteReminded(now);
         await _schedules.UpdateAsync(schedule, cancellationToken).ConfigureAwait(false);
 

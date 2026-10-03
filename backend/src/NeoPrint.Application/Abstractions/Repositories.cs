@@ -34,6 +34,17 @@ public interface IUserRepository
 
     /// <summary>How many accounts this user invited (plan section 2.6).</summary>
     Task<long> CountReferredAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Registers a device for this user's push, replacing an older entry for
+    /// the same token. The token is taken off every other account first: a
+    /// phone someone else signs in on stops getting the previous user's
+    /// notifications. Beyond <see cref="User.MaxPushDevices"/> the oldest goes.
+    /// </summary>
+    Task SavePushDeviceAsync(Guid userId, PushDevice device, CancellationToken cancellationToken = default);
+
+    /// <summary>Takes a push token off whichever account has it (signed out, or FCM no longer knows it).</summary>
+    Task RemovePushDeviceAsync(string token, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Persistence for email confirmation codes.</summary>

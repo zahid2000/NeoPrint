@@ -64,6 +64,9 @@ public sealed class SignalRUserNotifier : IUserNotifier
     public Task ScheduleDueAsync(Guid userId, UserScheduleUpdate update, CancellationToken cancellationToken = default)
         => Send(userId, "ScheduleDue", update, cancellationToken);
 
+    public Task NotificationAsync(Guid userId, UserNotificationUpdate update, CancellationToken cancellationToken = default)
+        => Send(userId, "Notification", update, cancellationToken);
+
     private Task Send(Guid userId, string method, object payload, CancellationToken cancellationToken)
         => _hub.Clients.Group(UserHub.GroupFor(userId)).SendAsync(method, payload, cancellationToken);
 }
