@@ -411,5 +411,19 @@
   "schedDueTitle": "Время запланированной печати",
   "schedDueBody": "{file} · в киоске {kiosk}. Если вы рядом с киоском, отправьте на печать.",
   "payScheduledBody": "Печать запланирована на {time}. В назначенное время приложение спросит: печатать или изменить время.",
-  "payToSchedules": "Запланированная печать"
+  "payToSchedules": "Запланированная печать",
+
+  "weekdayShortSun": "Вс",
+
+  "weekdayShortMon": "Пн",
+
+  "weekdayShortTue": "Вт",
+
+  "weekdayShortWed": "Ср",
+
+  "weekdayShortThu": "Чт",
+
+  "weekdayShortFri": "Пт",
+
+  "weekdayShortSat": "Сб"
 }

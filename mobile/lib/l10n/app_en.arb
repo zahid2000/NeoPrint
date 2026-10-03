@@ -411,5 +411,19 @@
   "schedDueTitle": "Time for your scheduled print",
   "schedDueBody": "{file} · at kiosk {kiosk}. If you are at the kiosk, send it to print.",
   "payScheduledBody": "The print is scheduled for {time}. When the time comes, the app asks whether to print or change the time.",
-  "payToSchedules": "Scheduled prints"
+  "payToSchedules": "Scheduled prints",
+
+  "weekdayShortSun": "Su",
+
+  "weekdayShortMon": "Mo",
+
+  "weekdayShortTue": "Tu",
+
+  "weekdayShortWed": "We",
+
+  "weekdayShortThu": "Th",
+
+  "weekdayShortFri": "Fr",
+
+  "weekdayShortSat": "Sa"
 }

@@ -784,5 +784,20 @@
       "time": { "type": "String" }
     }
   },
-  "payToSchedules": "Planlanmış çaplar"
+  "payToSchedules": "Planlanmış çaplar",
+
+  "weekdayShortSun": "B.",
+  "@weekdayShortSun": { "description": "The date picker's weekday row, Sunday to Saturday. Short names: CLDR gives Azerbaijani digits there." },
+
+  "weekdayShortMon": "B.e.",
+
+  "weekdayShortTue": "Ç.a.",
+
+  "weekdayShortWed": "Ç.",
+
+  "weekdayShortThu": "C.a.",
+
+  "weekdayShortFri": "C.",
+
+  "weekdayShortSat": "Ş."
 }
