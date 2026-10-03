@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/push/push_service.dart';
 import '../../core/realtime/user_hub.dart';
@@ -129,7 +128,7 @@ class _NotificationHostState extends ConsumerState<NotificationHost> {
         ? null
         : appLinkLocation(Uri.parse(event.link!));
     if (location != null) {
-      GoRouter.of(context).push(location);
+      openAppLocation(context, location);
     }
   }
 

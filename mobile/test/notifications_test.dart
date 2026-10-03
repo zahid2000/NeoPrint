@@ -203,6 +203,65 @@ void main() {
       semantics.dispose();
     });
 
+    testWidgets(
+      'a tab it opens is switched to, not pushed over the list (the tab shell stays whole)',
+      (tester) async {
+        final notifications = FakeNotifications()
+          ..items = [note('n1', 'JobCompleted', link: 'neoprint://jobs/j1')];
+        final router = GoRouter(
+          initialLocation: '/notifications',
+          routes: [
+            StatefulShellRoute.indexedStack(
+              builder: (_, __, shell) => Scaffold(body: shell),
+              branches: [
+                StatefulShellBranch(
+                  routes: [
+                    GoRoute(
+                      path: '/home',
+                      builder: (_, __) => const Text('home tab'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            GoRoute(
+              path: '/notifications',
+              builder: (_, __) => const NotificationsScreen(),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              notificationRepositoryProvider.overrideWithValue(notifications),
+              userHubEventsProvider.overrideWithValue(const Stream.empty()),
+              userHubReconnectedProvider.overrideWithValue(
+                const Stream.empty(),
+              ),
+            ],
+            child: MaterialApp.router(
+              theme: AppTheme.light(),
+              locale: const Locale('az'),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              routerConfig: router,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Çap hazırdır'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('home tab'), findsOneWidget);
+        expect(
+          router.routerDelegate.currentConfiguration.uri.toString(),
+          '/home',
+        );
+      },
+    );
+
     testWidgets('an empty list says what will come here', (tester) async {
       await tester.pumpWidget(
         app(const NotificationsScreen(), notifications: FakeNotifications()),
@@ -223,7 +282,11 @@ void main() {
 
         await tester.pumpWidget(
           app(
-            const NotificationHost(child: Scaffold(body: Text('home'))),
+            const Scaffold(
+              body: NotificationHost(
+                child: Scaffold(appBar: null, body: Text('home')),
+              ),
+            ),
             notifications: notifications,
             hub: hub,
             pushApi: pushApi,

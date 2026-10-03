@@ -1,3 +1,6 @@
+import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
+
 import 'app_router.dart';
 
 final _code = RegExp(r'^[A-Za-z0-9-]{1,40}$');
@@ -52,4 +55,24 @@ String? appLinkLocation(Uri uri) {
     'notifications' => Routes.notifications,
     _ => null,
   };
+}
+
+/// The bottom-navigation tabs (plan section 8.1): switched to, never pushed -
+/// pushing a tab's route would stack a second, empty copy of the tab shell.
+const _tabs = {
+  Routes.home,
+  Routes.kiosks,
+  Routes.files,
+  Routes.scheduled,
+  Routes.profile,
+};
+
+/// Opens a route from [appLinkLocation]: a tab is switched to, any other
+/// screen goes on top of where the user is, so back returns there.
+void openAppLocation(BuildContext context, String location) {
+  if (_tabs.contains(Uri.parse(location).path)) {
+    GoRouter.of(context).go(location);
+  } else {
+    GoRouter.of(context).push(location);
+  }
 }

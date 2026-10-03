@@ -43,7 +43,7 @@ void openNotification(
       ? null
       : appLinkLocation(Uri.parse(item.link!));
   if (location != null) {
-    context.push(location);
+    openAppLocation(context, location);
   }
 }
 
