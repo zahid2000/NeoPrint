@@ -243,3 +243,8 @@ Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-də
 | 3 | Telefonda məkan xidmətini söndürüb **Yaxınımda** | "Telefonda məkan xidməti söndürülüb…" mətni, siyahı məkansız qalır |
 | 4 | **Xəritə** — barmaqla sürüşdürmə, iki barmaqla böyütmə | Xəritə səlis hərəkət edir, marker toxunuşla seçilir, aşağıda kart açılır, "© OpenStreetMap contributors" həmişə görünür |
 | 5 | Release build (`flutter build apk --release`) **`NEOPRINT_MAP_TILE_URL`-siz** | "Xəritə" seçimi görünmür, yalnız siyahı (ictimai OSM serveri release-də istifadə olunmur — T-061) |
+| 6 | Telefonun kamerası ilə kiosk ekranının altındakı kiosk QR-ını oxudun (Ana səhifə → **QR oxut**) | Həmin kioskun detalı açılır, aşağıda **Sessiya aç** |
+| 7 | **Sessiya aç** → kiosk ekranına baxın | Kioskun başlığında "Telefon qoşulub" nişanı (kimin olduğu yazılmır); telefonda tabların üstündə "KSK-… · ad" və qalan dəqiqə |
+| 8 | **Fayl seç** → fayl → seçimlər → **Sifariş et** → ödəyin | Qiymət seçim dəyişəndə yenilənir; ödənişdən sonra kiosk sifarişi özü yükləyib çap edir, sifariş tarixçədə "Tamamlandı" |
+| 9 | Sessiya açıq ikən tətbiqi arxa plana atın, 10 dəqiqədən çox gözləyin, sonra açın | Banner yoxdur; tətbiq açıq qalıbsa "Sessiya bitdi. Çap üçün kioskda yenidən açın." bildirişi; kiosk nişanı itir |
+| 10 | Sessiya açıq ikən telefonu Wi-Fi-dan ayırıb 1 dəqiqə sonra qaytarın | Bağlantı bərpa olunanda banner serverin vəziyyətinə uyğunlaşır (sessiya hələ varsa qalır, bitibsə gedir) |
