@@ -253,3 +253,6 @@ Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-də
 | 13 | Skanerlə başqa QR (bank QR-ı, kiosk QR-ı) oxudun — ana ekranda və ödəniş ekranında | Heç nə dəyişmir; ödəniş gedən ekran yerində qalır |
 | 14 | Tətbiqdə kiosk seçib **Əvvəlcədən ödə**, sonra həmin kioskda QR → **Çapa ver** | Sifariş növbəyə düşür və çap olunur; başqa kioskda eyni QR-da kart boz, "KSK-… kioskunda ödənilib" |
 | 15 | Hazırladıqlarım → ödənilmiş → **Ləğv et** | Təsdiq dialoqu məbləği deyir; balans həmin məbləğ qədər artır, qaytarma fiskal çeki yaranır |
+| 16 | Real telefonda (Android) **Fayllarım → menyu → Çapı planla**: tarix və saat seçiciləri, kiosk, ödəniş | Sistem tarix/saat dialoqları telefonun dilində və 24 saat formatında; 15 dəqiqədən tez vaxt seçiləndə izah çıxır, heç nə yaradılmır |
+| 17 | Planlanmış çapın vaxtını 16–17 dəqiqə sonraya qoyun, tətbiqi açıq saxlayın | Vaxt çatanda (≤ 1 dəq gecikmə ilə) "Planlanmış çapın vaxtı çatıb" dialoqu; **Çapa ver** → kiosk çap edir. Tətbiq bağlı olanda gələn push bildirişi T-146-da əlavə olunur və orada yoxlanır |
+| 18 | Vaxtı çatmış çapa cavab verməyin (və ya admin paneldə `Schedule.AutoCancelHours`-u 1 edin) | Müddət keçəndə siyahıda "Vaxtı keçdi · Pul balansa qaytarıldı", balans artır, qaytarma fiskal çeki yaranır |

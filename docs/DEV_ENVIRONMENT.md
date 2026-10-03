@@ -924,6 +924,26 @@ PowerShell-də `curl` əvəzinə `curl.exe` yazın (və ya `Invoke-RestMethod -M
 
 ---
 
+## 7e. Addım 5 — planlanmış çap (plan 9.5)
+
+1. Tətbiqdə **Fayllarım → faylın menyusu → Çapı planla** və ya **Planlanmışlar → Yeni planlama**: kiosk, parametrlər,
+   tarix və saat (ən tez 15 dəqiqə, ən gec `Schedule.MaxDaysAhead` = 30 gün sonra), sonra ödəniş.
+2. Vaxtın çatmasını gözləmədən yoxlamaq üçün planlamanın vaxtını keçmişə çəkin. Dəqiqəlik `scheduled-print-due` işi onu
+   `AwaitingUser` edir, tətbiq açıqdırsa "Planlanmış çapın vaxtı çatıb" dialoqu çıxır:
+
+   ```bash
+   docker exec neoprint-mongo mongosh --quiet "mongodb://neoprint:devMongoPassword@localhost:27017/neoprint?authSource=admin&directConnection=true" \
+     --eval "db.scheduled_prints.updateOne({_id: UUID('<schedule-id>')}, {\$set: {ScheduledAt: new Date(Date.now() - 60000)}})"
+   ```
+
+   `<schedule-id>` — `GET /api/schedules` cavabındakı `id`.
+3. Avtomatik ləğvi yoxlamaq üçün `AwaitingUser` planlamanın `AwaitingSince` sahəsini 25 saat geri çəkin
+   (`{$set: {AwaitingSince: new Date(Date.now() - 25*3600000)}}`). 10 dəqiqəlik `scheduled-print-auto-cancel` işi onu
+   `Expired` edir, pul balansa qayıdır. Hangfire panelində (`/hangfire` → Recurring jobs) işi əl ilə də işə salmaq olar.
+4. Aktiv planlanmış çapı olan fayl silinmir. Planlamanı ləğv edəndən sonra fayl silinə bilər.
+
+---
+
 ## 8. Build, test, lint
 
 ```bash

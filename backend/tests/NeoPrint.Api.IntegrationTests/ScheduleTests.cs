@@ -101,7 +101,7 @@ public sealed class ScheduleTests
         await SetKioskStatusAsync(kiosk.KioskId, KioskStatus.Paused);
         var paused = await PrintNowAsync(user.Client, scheduleId);
         paused.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        (await paused.Content.ReadAsStringAsync()).Should().Contain(kiosk.KioskCode);
+        (await paused.Content.ReadAsStringAsync()).Should().Contain(kiosk.KioskCode).And.NotContain("Paused", "the status is said in words");
         await SetKioskStatusAsync(kiosk.KioskId, KioskStatus.Online);
 
         // "Çapa ver" hours early: into the queue; pressed twice, still once.
