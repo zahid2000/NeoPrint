@@ -92,6 +92,7 @@ public sealed record ScheduleCreatedResponse(
 
 /// <param name="Status"><see cref="ScheduledPrintStatus"/>; a paid one whose news has not arrived yet reads <c>Scheduled</c>.</param>
 /// <param name="JobStatus">Where its order is: after <c>Sent</c>, whether it printed.</param>
+/// <param name="PaymentId">The payment opened with it: an unpaid one is paid with <c>payments/{id}/pay-with-app</c>.</param>
 /// <param name="AutoCancelAt">For <c>AwaitingUser</c>: cancelled and refunded after this.</param>
 public sealed record ScheduleView(
     Guid Id,
@@ -109,7 +110,7 @@ public sealed record ScheduleView(
     DateTime ScheduledAt,
     string Status,
     string JobStatus,
-    Guid? PaymentId,
+    Guid PaymentId,
     DateTime? AutoCancelAt,
     DateTime CreatedAt);
 
@@ -210,7 +211,7 @@ public sealed class ScheduleHandlers :
             .PlaceAsync(request.UserId, kiosk, file, request.Options, request.ExpectedAmount, PrintJobSource.Scheduled, now, cancellationToken)
             .ConfigureAwait(false);
 
-        var schedule = ScheduledPrint.Create(request.UserId, kiosk.Id, file.Id, job, at, now);
+        var schedule = ScheduledPrint.Create(request.UserId, kiosk.Id, file.Id, job, payment.Id, at, now);
         await _schedules.AddAsync(schedule, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation(
@@ -485,7 +486,7 @@ public sealed class ScheduleHandlers :
 
         if (schedule.Status == ScheduledPrintStatus.PendingPayment && job.Status == PrintJobStatus.Paid)
         {
-            schedule.Confirm(job.PaymentId, system, now);
+            schedule.Confirm(system, now);
             await _schedules.UpdateAsync(schedule, cancellationToken).ConfigureAwait(false);
             _logger.LogInformation("Scheduled print {ScheduleId} paid; it waits for {ScheduledAt:o}.", schedule.Id, schedule.ScheduledAt);
         }
@@ -598,7 +599,7 @@ public sealed class ScheduleHandlers :
             schedule.ScheduledAt,
             status.ToString(),
             job.Status.ToString(),
-            job.PaymentId,
+            schedule.PaymentId,
             schedule.AwaitingSince?.AddHours(autoCancelHours),
             schedule.CreatedAt);
     }

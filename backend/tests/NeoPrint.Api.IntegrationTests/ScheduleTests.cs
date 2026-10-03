@@ -210,8 +210,9 @@ public sealed class ScheduleTests
         var scheduleId = body.GetProperty("scheduleId").GetGuid();
         var jobId = body.GetProperty("jobId").GetGuid();
 
-        (await ListAsync(user.Client)).Single(s => s.GetProperty("id").GetGuid() == scheduleId)
-            .GetProperty("status").GetString().Should().Be("PendingPayment");
+        var pending = (await ListAsync(user.Client)).Single(s => s.GetProperty("id").GetGuid() == scheduleId);
+        pending.GetProperty("status").GetString().Should().Be("PendingPayment");
+        pending.GetProperty("paymentId").GetGuid().Should().Be(body.GetProperty("paymentId").GetGuid(), "the app pays it from the list");
         (await PrintNowAsync(user.Client, scheduleId)).StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         (await user.Client.DeleteAsync($"/api/schedules/{scheduleId}")).StatusCode.Should().Be(HttpStatusCode.NoContent);

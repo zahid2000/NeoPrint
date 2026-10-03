@@ -31,7 +31,7 @@ public sealed class ScheduledPrintRepository : IScheduledPrintRepository
 
     public async Task<IReadOnlyList<ScheduledPrint>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default)
         => await _context.ScheduledPrints
-            .Find(s => s.UserId == userId && !(s.Status == ScheduledPrintStatus.Cancelled && s.PaymentId == null))
+            .Find(s => s.UserId == userId && !(s.Status == ScheduledPrintStatus.Cancelled && s.PaidAt == null))
             .SortByDescending(s => s.CreatedAt)
             .Limit(take)
             .ToListAsync(cancellationToken)

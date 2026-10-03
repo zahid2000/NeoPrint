@@ -28,13 +28,13 @@ public sealed class ScheduledPrintTests
         var job = PrintJob.Create("123456", Guid.NewGuid(), PrintJobSource.Scheduled, 3, options,
             PriceSnapshot.Take(profile, options.ToSpec(3), Now), Now, userId: Guid.NewGuid(), heldForUser: true);
 
-        return ScheduledPrint.Create(job.UserId!.Value, job.KioskId, Guid.NewGuid(), job, Now.AddHours(2), Now);
+        return ScheduledPrint.Create(job.UserId!.Value, job.KioskId, Guid.NewGuid(), job, Guid.NewGuid(), Now.AddHours(2), Now);
     }
 
     private static ScheduledPrint Paid()
     {
         var schedule = NewSchedule();
-        schedule.Confirm(Guid.NewGuid(), System, Now);
+        schedule.Confirm(System, Now);
         return schedule;
     }
 
@@ -46,11 +46,10 @@ public sealed class ScheduledPrintTests
         schedule.Price.Total.Amount.Should().Be(0.30m);
         schedule.IsActive.Should().BeFalse();
 
-        var paymentId = Guid.NewGuid();
-        schedule.Confirm(paymentId, System, Now);
-        schedule.Confirm(Guid.NewGuid(), System, Now);
+        schedule.Confirm(System, Now);
+        schedule.Confirm(System, Now.AddMinutes(1));
         schedule.Status.Should().Be(ScheduledPrintStatus.Scheduled);
-        schedule.PaymentId.Should().Be(paymentId, "a repeated payment event changes nothing");
+        schedule.PaidAt.Should().Be(Now, "a repeated payment event changes nothing");
 
         schedule.BecomeDue(System, Now.AddHours(2));
         schedule.BecomeDue(System, Now.AddHours(3));

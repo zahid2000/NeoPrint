@@ -44,7 +44,11 @@ public sealed class ScheduledPrint : Entity
 
     public Guid JobId { get; private set; }
 
-    public Guid? PaymentId { get; private set; }
+    /// <summary>The payment opened with it, the one the app pays.</summary>
+    public Guid PaymentId { get; private set; }
+
+    /// <summary>When its job was paid; a schedule never paid is left off the user's list once closed.</summary>
+    public DateTime? PaidAt { get; private set; }
 
     public PrintOptions Options { get; private set; } = PrintOptions.Default;
 
@@ -82,7 +86,7 @@ public sealed class ScheduledPrint : Entity
                 ScheduledPrintStatus.Expired);
 
     public static ScheduledPrint Create(
-        Guid userId, Guid kioskId, Guid fileId, PrintJob job, DateTime scheduledAt, DateTime now)
+        Guid userId, Guid kioskId, Guid fileId, PrintJob job, Guid paymentId, DateTime scheduledAt, DateTime now)
     {
         ArgumentNullException.ThrowIfNull(job);
 
@@ -92,6 +96,7 @@ public sealed class ScheduledPrint : Entity
             KioskId = kioskId,
             FileId = fileId,
             JobId = job.Id,
+            PaymentId = paymentId,
             Options = job.Options,
             Price = job.Price,
             ScheduledAt = scheduledAt,
@@ -101,7 +106,7 @@ public sealed class ScheduledPrint : Entity
     }
 
     /// <summary>Its job was paid: it now waits for its time. A repeat is a no-op.</summary>
-    public void Confirm(Guid? paymentId, ActorContext actor, DateTime now)
+    public void Confirm(ActorContext actor, DateTime now)
     {
         if (Status != ScheduledPrintStatus.PendingPayment)
         {
@@ -109,7 +114,7 @@ public sealed class ScheduledPrint : Entity
         }
 
         Move(ScheduledPrintStatus.Scheduled, actor, now);
-        PaymentId = paymentId;
+        PaidAt = now;
     }
 
     /// <summary>The reminder for the current time went out.</summary>
