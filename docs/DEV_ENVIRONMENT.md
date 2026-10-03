@@ -965,6 +965,41 @@ PowerShell-də `curl` əvəzinə `curl.exe` yazın (və ya `Invoke-RestMethod -M
 
 ---
 
+## 7f. Addım 5 — bildirişlər və push (T-146)
+
+**FCM açarı olmadan (default).** Backend `LoggingPushSender` işlədir: bildiriş siyahıya düşür, tətbiq açıqdırsa banner
+çıxır, push isə yalnız loqa yazılır. Tətbiq giriş edəndə cihazı qeydiyyatdan keçirir (web-də VAPID açarı verilməyibsə
+keçirmir). Hansı göndəricinin işlədiyi API-nin başlanğıc loqundadır:
+
+```bash
+docker compose logs api | grep "Push:"                  # "FCM HTTP v1, project ..." və ya "FCM not configured"
+docker compose logs -f api | grep -E "Push not sent|Notification .* delivered|FCM"
+```
+
+Bildiriş yaratmaq üçün real axınlar: sifarişi çap edin (`JobCompleted`), planlanmış çapın vaxtını keçmişə çəkin
+(7e, `ScheduleDue`) və ya `AwaitingSince`-i geri çəkin (`ScheduleAutoCancelled`), kart / balans refund-u
+(`RefundCompleted`). Bildirişlər: ana səhifənin başlığındakı zəng.
+
+**Real FCM ilə.** Açarı OpenBao-ya yazın (yuxarıda "Firebase (FCM) service account açarı"), `docker compose restart api`.
+Sonra:
+
+```bash
+# Android telefon (USB, eyni Wi-Fi; "Real telefon" bölməsi):
+cd mobile && flutter run -d <telefon_id> --dart-define=NEOPRINT_API_URL=http://192.168.1.50:5080
+
+# Web (Chrome): VAPID public açarı — Firebase Console → Project settings → Cloud Messaging → Web Push certificates
+cd mobile && flutter build web --dart-define=NEOPRINT_API_URL=http://localhost:5080/ --dart-define=NEOPRINT_FCM_VAPID_KEY=<açar>
+```
+
+Brauzer bildiriş icazəsini soruşur. Push yalnız tətbiq **arxa planda** olanda sistem bildirişi kimi görünür; ön planda
+tətbiqin öz banneri çıxır. Tətbiqi bağlayıb (web-də tabı başqa taba keçirib) yuxarıdakı axınlardan birini edin.
+
+**FlutterFire CLI-ni yenidən işlətsəniz** (`flutterfire configure`): yalnız `lib/firebase_options.dart` saxlanılır.
+CLI-nin `android/settings.gradle.kts` və `android/app/build.gradle.kts`-ə əlavə etdiyi `com.google.gms.google-services`
+sətirlərini silin — tətbiq onlarsız işləyir, CI isə onlarla `google-services.json` axtarıb düşür.
+
+---
+
 ## 8. Build, test, lint
 
 ```bash

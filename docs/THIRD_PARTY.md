@@ -80,7 +80,14 @@ düzəldildi (`DECISIONS.md`).
 | `flutter_map` | 8.3.2 | BSD-3-Clause | Kiosklar xəritəsi — OpenStreetMap, Google Maps açarı / ödənişi yoxdur (Addım 5, plan 2.0 istisnası). Tile ünvanı `NEOPRINT_MAP_TILE_URL` ilə; ictimai OSM serveri yalnız development-də (T-061) |
 | `latlong2` | 0.10.1 | Apache-2.0 | `flutter_map` API-sinin koordinat tipi (`LatLng`); flutter_map-in öz asılılığıdır, kodda birbaşa istifadə üçün pinlənib (2026-10-02 təsdiqlənib) |
 | `geolocator` | 14.1.1 | MIT | "Yaxınımda" — istifadəçinin yeri (Addım 5); Android / iOS / web implementasiyaları Baseflow-un öz paketləridir |
+| `firebase_core` | 4.15.0 | BSD-3-Clause (Google, FlutterFire) | Push üçün Firebase-in işə salınması (Addım 5, T-146, plan 2.0). Konfiqurasiya `lib/firebase_options.dart`-dadır (public identifikatorlar); Gradle `google-services` plagini istifadə olunmur |
+| `firebase_messaging` | 16.7.0 | BSD-3-Clause (Google, FlutterFire) | Push qəbulu: FCM token, ön planda gələn mesaj, toxunulan push (Addım 5, T-146). Göndərmə backend-in öz FCM HTTP v1 klientindədir — FirebaseAdmin yoxdur |
 | `flutter_lints` | 5.0.0 | BSD-3-Clause | Lint qaydaları (dev) |
+
+**Firebase JS SDK 12.19.0** (Apache-2.0, Google) — paket deyil, mobil tətbiqin **web build-i** onu iş vaxtı
+`www.gstatic.com/firebasejs/`-dən yükləyir: səhifədə `firebase_core_web` özü, push service worker-ində
+(`mobile/web/firebase-messaging-sw.js`) `firebase-app-compat.js` və `firebase-messaging-compat.js`. Versiya
+`firebase_core_web`-in dəstəklədiyi ilə eynidir və pinlidir; FlutterFire yeniləndikdə hər ikisi birlikdə dəyişir.
 
 HEIC → JPEG çevrilməsi paket deyil — platformanın öz API-si (Android `ImageDecoder`, iOS `UIImage`), `MainActivity.kt` və `AppDelegate.swift`-də.
 

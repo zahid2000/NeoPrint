@@ -1540,12 +1540,42 @@ Plan 9.5; qərarlar `DECISIONS.md` (T-145). Sifarişin özü planlama anında ya
   `{ scheduleId, jobId, scheduledAt, status }` (bir dəfə; `Schedule.ReminderLeadMinutes` > 0 olanda vaxtdan o qədər əvvəl);
   `scheduled-print-auto-cancel` (10 dəq) — `Schedule.AutoCancelHours` (24) cavabsız qalan `Expired`, pul balansa.
 - Aktiv planlanmış çapı olan fayl silinmir: `DELETE /api/files/{id}` → `409 files.inUseBySchedule`.
+- Vaxt çatanda və avtomatik ləğvdə bildiriş + push da gedir (`ScheduleDue`, `ScheduleAutoCancelled` — aşağıda "Bildirişlər").
+
+---
+
+## Bildirişlər və push (`User` token, Addım 5)
+
+Plan 6, 8.2, 8.4; qərarlar `DECISIONS.md` (T-146). Başlıq və mətn serverdə mesaj açarı + arqumentlər kimi saxlanır,
+oxuyanın dilində yazılır: siyahı `Accept-Language` ilə, push cihazın qeydiyyatdakı dili ilə.
+
+- `GET /api/notifications?take=20&before={next}` → `{ items: [{ id, type, title, body, link?, createdAt, readAt? }], unread, next? }`,
+  ən yenisi əvvəl. `take` 1–50. `unread` — istifadəçinin bütün oxunmamışları (zəngin sayğacı). `next` sonuncu səhifədə yoxdur.
+- `POST /api/notifications/{id}/read` → bildiriş (`readAt` ilə). Təkrar çağırış ilk vaxtı saxlayır. Başqasınınkı → `404 notFound.notification`.
+- `POST /api/users/me/fcm-token` `{ token, language, platform }` → `204`. `language` az/en/ru (başqası → az), `platform` android/ios/web
+  (başqası → `unknown`). Eyni token başqa hesabdadırsa oradan silinir (telefonda başqası daxil oldu). Hesabda ən çox 10 cihaz, ən köhnəsi düşür.
+  Boş və ya boşluqlu token → `400 notifications.tokenInvalid`.
+- `DELETE /api/users/me/fcm-token` `{ token }` → `204` (çıxış). Yalnız öz hesabındakı token silinir.
+- `/hubs/user` → `Notification` `{ notificationId, type }`: yeni bildiriş saxlandı (siyahı və banner üçün).
+- Push (FCM HTTP v1, `notification` + `data`): `data` = `{ notificationId, type, link? }`. FCM açarı OpenBao-da yoxdursa
+  `LoggingPushSender` yalnız loqa yazır. FCM tokeni tanımırsa (`UNREGISTERED` və s.) token hesabdan silinir; müvəqqəti xətada
+  yalnız çatmayan cihaza təkrar göndərilir.
+
+| `type` (plan 8.4) | Nə vaxt | `link` |
+|---|---|---|
+| `JobCompleted` | Qeydiyyatlı istifadəçinin sifarişi çap olundu | `neoprint://jobs/{jobId}` |
+| `ScheduleDue` | Planlanmış çapın vaxtı çatdı (və ya xatırlatma) | `neoprint://schedules/{id}` |
+| `ScheduleAutoCancelled` | Cavab verilmədi, ləğv olundu, pul balansa | `neoprint://schedules/{id}` |
+| `RefundCompleted` | Pul qaytarıldı (planlanmış çapın ləğvi istisna) | `neoprint://wallet` |
+| `JobInterruptedRefundOffer`, `KioskOutOfServiceRefundOffer` | Addım 7 (kiosk dayananda) | — |
+| `FileShared`, `ReferralRewarded` | Addım 6 | — |
+| `ExportReady`, `FileAutoDeleted` | Addım 5 / M6 (T-147) | — |
 
 ---
 
 ## Hələ mövcud olmayan endpoint-lər
 
-Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: push və məxfilik
+Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: məxfilik
 (Addım 5), skan və paylaşım (Addım 6), telemetriya, incident səhifəsi və operator paneli (Addım 7). Addım 4-ün ödəniş,
 refund, wallet, fiskal çek, qəbz, promokod, istifadəçi hub-ı və admin pul səhifələri yuxarıdakı bölmələrdədir.
 
