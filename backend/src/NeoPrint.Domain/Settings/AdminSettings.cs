@@ -154,7 +154,7 @@ public static class SettingKeys
         new(UserQrRotationSeconds, "60", SettingValueType.Integer, "Şəxsi QR token-in yenilənmə müddəti"),
         new(PreparedPrintAutoCancelDays, "7", SettingValueType.Integer, "Tətbiqdə əvvəlcədən ödənilmiş, kioskda götürülməyən sifariş neçə gündən sonra ləğv olunur (pul balansa qayıdır)"),
         new(ScheduleReminderLeadMinutes, "0", SettingValueType.Integer, "Planlanmış vaxtda bildiriş"),
-        new(ScheduleAutoCancelHours, "24", SettingValueType.Integer, "Cavab verilməyən planlanmış çapın avtomatik ləğvi"),
+        new(ScheduleAutoCancelHours, "24", SettingValueType.Integer, "Vaxtı çatan, cavab verilməyən planlanmış çapın avtomatik ləğvi (saat)"),
         new(ScheduleMaxDaysAhead, "30", SettingValueType.Integer, "Çapı ən çox neçə gün sonraya planlamaq olar"),
         new(ReferralBonusPages, "10", SettingValueType.Integer, "Dəvət edənə verilən bonus səhifə"),
         new(ReferralInviteeBonusPages, "0", SettingValueType.Integer, "Dəvət olunana verilən bonus"),

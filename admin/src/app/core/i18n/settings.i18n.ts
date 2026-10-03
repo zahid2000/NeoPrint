@@ -22,7 +22,7 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Schedule.ReminderLeadMinutes':
       'Planlanmış çapdan neçə dəqiqə əvvəl xatırlatma gəlir (0 — vaxtında).',
     'settings.description.Schedule.AutoCancelHours':
-      'Cavab verilməyən planlanmış çap bu müddətdən sonra avtomatik ləğv olunur.',
+      'Vaxtı çatan planlanmış çapa neçə saat ərzində cavab verilməsə, avtomatik ləğv olunur (pul balansa qayıdır).',
     'settings.description.Referral.BonusPages':
       'Dəvət edən istifadəçiyə verilən bonus səhifə sayı.',
     'settings.description.Referral.InviteeBonusPages':
@@ -119,7 +119,7 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Schedule.ReminderLeadMinutes':
       'How many minutes before a scheduled print the reminder comes (0 means on time).',
     'settings.description.Schedule.AutoCancelHours':
-      'A scheduled print nobody answers is cancelled after this long.',
+      'How many hours a due scheduled print waits for an answer before it is cancelled (the money goes back to the balance).',
     'settings.description.Referral.BonusPages': 'Bonus pages given to the user who invites.',
     'settings.description.Referral.InviteeBonusPages': 'Bonus pages given to the invited user.',
     'settings.description.Referral.MaxBonusPagesPerJob':
@@ -209,7 +209,7 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Schedule.ReminderLeadMinutes':
       'За сколько минут до печати по расписанию приходит напоминание (0 — в назначенное время).',
     'settings.description.Schedule.AutoCancelHours':
-      'Печать по расписанию без ответа отменяется через это время.',
+      'Через сколько часов без ответа наступившая печать по расписанию отменяется (деньги возвращаются на баланс).',
     'settings.description.Referral.BonusPages': 'Бонусные страницы пригласившему пользователю.',
     'settings.description.Referral.InviteeBonusPages':
       'Бонусные страницы приглашённому пользователю.',
