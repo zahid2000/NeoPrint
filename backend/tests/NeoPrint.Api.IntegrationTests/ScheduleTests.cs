@@ -10,7 +10,9 @@ using MongoDB.Driver;
 
 using NeoPrint.Application.PrintJobs;
 using NeoPrint.Application.Schedules;
+using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Kiosks;
+using NeoPrint.Domain.Pricing;
 using NeoPrint.Domain.Refunds;
 using NeoPrint.Domain.Schedules;
 using NeoPrint.Infrastructure.Persistence;
@@ -239,6 +241,55 @@ public sealed class ScheduleTests
         view.GetProperty("scheduledAt").GetDateTime().ToUniversalTime().Should().BeCloseTo(at, TimeSpan.FromSeconds(1));
 
         return (body.GetProperty("scheduleId").GetGuid(), body.GetProperty("jobId").GetGuid(), paymentId);
+    }
+
+    /// <summary><c>docs/DECISIONS.md</c> T-155: paid when scheduled, never priced again.</summary>
+    [PdfiumFact]
+    public async Task A_scheduled_print_keeps_the_price_it_was_paid_at_when_the_kiosk_prices_change()
+    {
+        if (Skip)
+        {
+            return;
+        }
+
+        using var kiosk = await ReadyKioskAsync(_fixture, "schedule-price");
+        using var user = await TestUsers.ConfirmedAsync(_fixture);
+        var fileId = await SessionTests.UploadReadyPdfAsync(_fixture, user.Client, pages: 3);
+        var (scheduleId, jobId, paymentId) = await ScheduleAndPayAsync(user.Client, kiosk.KioskCode, fileId, DateTime.UtcNow.AddHours(2));
+        await EventuallyAsync(
+            async () => (await ListAsync(user.Client)).Single(s => s.GetProperty("id").GetGuid() == scheduleId),
+            s => s.GetProperty("status").GetString() == "Scheduled",
+            "the schedule paid");
+
+        // The kiosk's prices go up: a new order is priced by them...
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+            var dearer = new PricingProfile { Name = $"Dearer {Guid.NewGuid():N}", BwPricePerSide = Money.FromAzn(0.50m) };
+            await context.PricingProfiles.InsertOneAsync(dearer);
+            await context.Kiosks.UpdateOneAsync(
+                Builders<Kiosk>.Filter.Eq(k => k.Id, kiosk.KioskId), Builders<Kiosk>.Update.Set(k => k.PricingProfileId, dearer.Id));
+        }
+
+        (await CreateAsync(user.Client, kiosk.KioskCode, fileId, DateTime.UtcNow.AddHours(3))).StatusCode
+            .Should().Be(HttpStatusCode.Conflict, "the new prices apply to a new order");
+
+        // ...the one already paid is moved and sent at the price it was paid at, with no second payment.
+        (await RescheduleAsync(user.Client, scheduleId, DateTime.UtcNow.AddHours(4))).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ListAsync(user.Client)).Single(s => s.GetProperty("id").GetGuid() == scheduleId)
+            .GetProperty("amount").GetDecimal().Should().Be(0.30m);
+        var sent = await PrintNowAsync(user.Client, scheduleId);
+        sent.StatusCode.Should().Be(HttpStatusCode.OK, await sent.Content.ReadAsStringAsync());
+        (await sent.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("amount").GetDecimal().Should().Be(0.30m);
+
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+            var job = await context.PrintJobs.Find(j => j.Id == jobId).SingleAsync();
+            job.Price.Total.Should().Be(Money.FromAzn(0.30m));
+            job.PaymentId.Should().Be(paymentId);
+            (await context.Payments.CountDocumentsAsync(p => p.JobId == jobId)).Should().Be(1);
+        }
     }
 
     private static Task<HttpResponseMessage> CreateAsync(

@@ -301,6 +301,27 @@ docker exec -e BAO_ADDR=http://127.0.0.1:8200 -e BAO_TOKEN=<root-token> \
 
 KV yolları: `neoprint/backend/core`, `/crypto`, `/providers`, `/seed`.
 
+### Firebase (FCM) service account açarı
+
+Push üçün backend `NEOPRINT_FCM_SERVICE_ACCOUNT_JSON`-u OpenBao-dan
+(`neoprint/backend/providers`) alır. Boşdursa `LoggingPushSender` işləyir:
+bildiriş göndərilmir, yalnız loqa "göndəriləcəkdi" yazılır (plan 2.1).
+
+1. Firebase Console → ⚙ **Project settings** → **Service accounts** →
+   **Generate new private key** (JSON yüklənir).
+2. Açarı **söhbətə, issue-ya, seed faylına yapışdırmayın** — skript onu stdin ilə
+   birbaşa OpenBao-ya yazır, ekranda yalnız layihə adı və hesab görünür:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\dev-secrets\set-fcm-key.ps1 -Path C:\Users\<siz>\Downloads\<açar>.json
+Remove-Item C:\Users\<siz>\Downloads\<açar>.json
+docker compose restart api
+```
+
+Açar təsadüfən başqa yerə düşübsə (söhbət, ekran görüntüsü, commit): Firebase
+Console → **Service accounts** → **Manage service account permissions** →
+`firebase-adminsdk-…` → **Keys** tabında həmin açarı silin və yenisini yaradın.
+
 ---
 
 ## 4. Test hesabları
