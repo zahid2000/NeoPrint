@@ -35,7 +35,22 @@ if ($null -eq $kiosk -or -not $shell.AppActivate($kiosk.Id)) {
     exit 1
 }
 
+Add-Type -Namespace NeoPrintDev -Name Foreground -MemberDefinition @'
+[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+'@
+
 Start-Sleep -Milliseconds 300
+
+# Rule (docs/DEV_ENVIRONMENT.md): keys go to the kiosk process only. Activation may
+# not take, or another window may come up meanwhile - check the window that will
+# actually receive the keys, just before sending them, and stop if it is not the kiosk's.
+[uint32]$owner = 0
+[void][NeoPrintDev.Foreground]::GetWindowThreadProcessId([NeoPrintDev.Foreground]::GetForegroundWindow(), [ref]$owner)
+if ($owner -ne $kiosk.Id) {
+    Write-Host 'Ön planda kiosk pəncərəsi deyil — heç nə yazılmadı. Kiosk pəncərəsini önə gətirib skripti yenidən işə salın.' -ForegroundColor Red
+    exit 1
+}
 
 # The code is NPU:<hex>:<digits>:<base64url> - none of SendKeys' special characters.
 $shell.SendKeys("$($qr.code){ENTER}")

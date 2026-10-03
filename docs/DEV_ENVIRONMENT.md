@@ -13,6 +13,15 @@ yarandıqca bu fayl yenilənir.
 > **Layihədə PostgreSQL yoxdur.** Source of truth MongoDB-dir, Redis keş/queue/lock,
 > RabbitMQ mesaj brokeri, RustFS obyekt saxlamasıdır (plan Bölmə 4).
 
+> **Dev skriptlərin klaviatura qaydası.** `tools/` altındakı heç bir skript başqa proseslərin
+> pəncərəsinə düymə göndərmir. Klaviatura simulyasiyası (skaner, mətn yazma) yalnız
+> `NeoPrint.Kiosk` prosesinin pəncərəsinə gedir: pəncərə **prosesə görə** tapılır (başlığa görə yox —
+> repo açıq olan redaktorun başlığında da "NeoPrint" var) və düymələrdən dərhal əvvəl ön plandakı
+> pəncərənin həmin prosesə aid olduğu yoxlanır. Kiosk prosesi tapılmasa və ya ön planda başqa
+> pəncərə olsa, skript **heç nə yazmadan** xəta ilə dayanır. Linux konteyner kioskunda düymələr
+> konteynerin öz virtual ekranına (Xvfb) gedir, orada kioskdan başqa pəncərə yoxdur. Yeni skript
+> yazılanda bu qayda məcburidir.
+
 ---
 
 ## 1. Sürətli başlanğıc (sıfırdan)
@@ -891,15 +900,20 @@ PowerShell-də `curl` əvəzinə `curl.exe` yazın (və ya `Invoke-RestMethod -M
      # başqa istifadəçi: -Email ... -Password ...
      ```
 
-     Skript düymələri yalnız `NeoPrint.Kiosk` prosesinin pəncərəsinə göndərir; kiosk işləmirsə heç nə yazmır.
+     Skript düymələri yalnız `NeoPrint.Kiosk` prosesinin pəncərəsinə göndərir (yuxarıdakı klaviatura qaydası):
+     kiosk işləmirsə və ya yazmadan dərhal əvvəl ön planda başqa pəncərə varsa, heç nə yazmadan dayanır.
    - **Linux konteyner kiosku** (X11, pəncərə meneceri yoxdur): əvvəl pəncərəyə fokus, sonra kod və sətir sonu
      **bir** `xdotool type` çağırışında (ayrı `xdotool key Return` 50 ms-dən gec gəlir və rədd olunur).
-     `CODE` — `GET /api/users/me/qr` cavabındakı `code` (60 saniyə keçərlidir):
+     `CODE` — `GET /api/users/me/qr` cavabındakı `code` (60 saniyə keçərlidir). Kiosk prosesi və ya
+     pəncərəsi yoxdursa, əmr heç nə yazmır:
 
      ```bash
-     docker exec neoprint-kshot sh -c 'xdotool windowfocus --sync $(xdotool search --name NeoPrint | head -1)'
-     docker exec neoprint-kshot xdotool type --delay 3 "$CODE
-     "
+     docker exec -e CODE="$CODE" neoprint-kshot sh -c '
+       pidof dotnet >/dev/null || { echo "Kiosk işləmir — heç nə yazılmadı"; exit 1; }
+       W=$(xdotool search --name "^NeoPrint$" | head -1)
+       [ -n "$W" ] || { echo "Kiosk pəncərəsi yoxdur — heç nə yazılmadı"; exit 1; }
+       xdotool windowfocus --sync "$W" && xdotool type --delay 3 "$CODE
+     "'
      ```
 
 3. Kioskda ekran 10 açılır: ödənişsizdə **Seç** → parametrlər (tətbiqdə seçilənlər qoyulur) → kioskda ödəniş;
