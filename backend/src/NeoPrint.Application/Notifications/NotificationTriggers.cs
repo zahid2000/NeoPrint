@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using MediatR;
 
 using NeoPrint.Application.Abstractions;
@@ -75,10 +77,16 @@ public sealed class NotificationTriggers :
             schedule.UserId,
             NotificationType.ScheduleAutoCancelled,
             UserMessage.Of("notifications.scheduleAutoCancelled.title"),
-            UserMessage.Of("notifications.scheduleAutoCancelled.body", ("kiosk", kiosk), ("amount", schedule.Price.Total.Amount)),
+            UserMessage.Of("notifications.scheduleAutoCancelled.body", ("kiosk", kiosk), ("amount", Amount(schedule.Price.Total.Amount))),
             NotificationLinks.Schedule(schedule.Id),
             $"ScheduleAutoCancelled:{schedule.Id}");
     }
+
+    /// <summary>
+    /// Money always with two decimals ("0,20 ₼", docs/DESIGN_SYSTEM.md section 6): a
+    /// decimal read back from Mongo has lost its scale (0.2).
+    /// </summary>
+    private static string Amount(decimal value) => value.ToString("0.00", CultureInfo.InvariantCulture);
 
     public async Task Handle(NotifyJobCompletedCommand request, CancellationToken cancellationToken)
     {
@@ -125,7 +133,7 @@ public sealed class NotificationTriggers :
                     UserMessage.Of("notifications.refundCompleted.title"),
                     UserMessage.Of(
                         "notifications.refundCompleted.body",
-                        ("amount", refund.Amount.Amount),
+                        ("amount", Amount(refund.Amount.Amount)),
                         ("destination", refund.Destination.ToString())),
                     NotificationLinks.Wallet,
                     $"RefundCompleted:{refund.Id}"),
