@@ -293,9 +293,11 @@ class _FileCard extends ConsumerWidget {
               ),
               PopupMenuButton<String>(
                 tooltip: l10n.commonMore,
-                onSelected: (choice) => choice == 'prepare'
-                    ? context.push(Routes.prepare, extra: file)
-                    : _delete(context, ref),
+                onSelected: (choice) => switch (choice) {
+                  'prepare' => context.push(Routes.prepare, extra: file),
+                  'schedule' => context.push(Routes.scheduleNew, extra: file),
+                  _ => _delete(context, ref),
+                },
                 itemBuilder: (_) => [
                   if (Readiness.personalQr && file.status == FileStatus.ready)
                     PopupMenuItem(
@@ -306,6 +308,19 @@ class _FileCard extends ConsumerWidget {
                           color: tokens.brand500,
                         ),
                         title: Text(l10n.prepareMenu),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  if (Readiness.scheduledPrint &&
+                      file.status == FileStatus.ready)
+                    PopupMenuItem(
+                      value: 'schedule',
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.event_outlined,
+                          color: tokens.brand500,
+                        ),
+                        title: Text(l10n.schedMenu),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),

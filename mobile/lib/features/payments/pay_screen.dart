@@ -663,17 +663,33 @@ class _Paid extends StatelessWidget {
             Text(l10n.paySuccessTitle, style: theme.textTheme.headlineSmall),
             const SizedBox(height: Spacing.x2),
             Text(
-              payment.collectAtKiosk
-                  ? l10n.payCollectAtKioskBody(payment.kioskCode ?? '')
-                  : l10n.paySuccessBody(payment.jobCode ?? ''),
+              switch (payment) {
+                AppPayment(scheduledAt: final at?) => l10n.payScheduledBody(
+                  formatDateTime(
+                    at,
+                    today: l10n.commonToday,
+                    yesterday: l10n.commonYesterday,
+                  ),
+                ),
+                AppPayment(collectAtKiosk: true) => l10n.payCollectAtKioskBody(
+                  payment.kioskCode ?? '',
+                ),
+                _ => l10n.paySuccessBody(payment.jobCode ?? ''),
+              },
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge,
             ),
             const SizedBox(height: Spacing.x6),
-            NeoPrimaryButton(
-              label: l10n.payBackHome,
-              onPressed: () => context.go(Routes.home),
-            ),
+            if (payment.scheduledAt != null)
+              NeoPrimaryButton(
+                label: l10n.payToSchedules,
+                onPressed: () => context.go(Routes.scheduled),
+              )
+            else
+              NeoPrimaryButton(
+                label: l10n.payBackHome,
+                onPressed: () => context.go(Routes.home),
+              ),
           ],
         ),
       ),

@@ -32,6 +32,7 @@ final class AppPayment {
     this.promoDiscountWithBonus = 0,
     this.promoRefusal,
     this.collectAtKiosk = false,
+    this.scheduledAt,
   });
 
   factory AppPayment.fromJson(Map<String, dynamic> json) => AppPayment(
@@ -62,6 +63,9 @@ final class AppPayment {
         .toDouble(),
     promoRefusal: json['promoRefusal'] as String?,
     collectAtKiosk: json['collectAtKiosk'] as bool? ?? false,
+    scheduledAt: json['scheduledAt'] == null
+        ? null
+        : DateTime.parse(json['scheduledAt'] as String),
   );
 
   final String id;
@@ -102,6 +106,9 @@ final class AppPayment {
   /// Paid for later (plan section 9.4): it waits at its kiosk for the user's
   /// QR rather than going into the queue.
   final bool collectAtKiosk;
+
+  /// A scheduled print: once paid it waits for this time (plan section 9.5).
+  final DateTime? scheduledAt;
 
   bool get isOpen => status == 'Pending';
 

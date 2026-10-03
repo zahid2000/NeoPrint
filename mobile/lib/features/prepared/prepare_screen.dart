@@ -14,7 +14,9 @@ import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_primary_button.dart';
 import '../files/file_models.dart';
+import '../../shared/widgets/option_widgets.dart';
 import '../kiosk_search/kiosk_models.dart';
+import '../kiosk_search/kiosk_picker_sheet.dart';
 import '../kiosk_search/kiosk_search_controller.dart';
 import '../kiosk_search/kiosk_status_view.dart';
 import '../payments/payment_models.dart' show toCents;
@@ -155,11 +157,7 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
   }
 
   Future<void> _chooseKiosk() async {
-    final chosen = await showModalBottomSheet<KioskSummary>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => const _KioskSheet(),
-    );
+    final chosen = await showKioskPicker(context);
 
     if (chosen == null) {
       return;
@@ -335,7 +333,7 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
           ),
           const SizedBox(height: Spacing.x4),
 
-          _Label(l10n.optCopies),
+          OptionLabel(l10n.optCopies),
           Row(
             children: [
               if (atKiosk) ...[
@@ -372,8 +370,8 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
           ),
           const SizedBox(height: Spacing.x4),
 
-          _Label(l10n.optColor),
-          _Choice<bool>(
+          OptionLabel(l10n.optColor),
+          OptionChoice<bool>(
             atKiosk: atKiosk,
             atKioskLabel: l10n.prepareAtKiosk,
             value: _color,
@@ -383,11 +381,12 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
             ],
             onChanged: (value) => _change(() => _color = value),
           ),
-          if (detail != null && !detail.color) _Why(l10n.optColorUnavailable),
+          if (detail != null && !detail.color)
+            OptionWhy(l10n.optColorUnavailable),
           const SizedBox(height: Spacing.x4),
 
-          _Label(l10n.optDuplex),
-          _Choice<bool>(
+          OptionLabel(l10n.optDuplex),
+          OptionChoice<bool>(
             atKiosk: atKiosk,
             atKioskLabel: l10n.prepareAtKiosk,
             value: _duplex,
@@ -397,22 +396,23 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
             ],
             onChanged: (value) => _change(() => _duplex = value),
           ),
-          if (detail != null && !detail.duplex) _Why(l10n.optDuplexUnavailable),
+          if (detail != null && !detail.duplex)
+            OptionWhy(l10n.optDuplexUnavailable),
           const SizedBox(height: Spacing.x4),
 
-          _Label(l10n.optPaper),
-          _Choice<String>(
+          OptionLabel(l10n.optPaper),
+          OptionChoice<String>(
             atKiosk: atKiosk,
             atKioskLabel: l10n.prepareAtKiosk,
             value: _paper,
             choices: [('A4', 'A4', true), ('A3', 'A3', detail?.a3 ?? true)],
             onChanged: (value) => _change(() => _paper = value),
           ),
-          if (detail != null && !detail.a3) _Why(l10n.optA3Unavailable),
+          if (detail != null && !detail.a3) OptionWhy(l10n.optA3Unavailable),
           const SizedBox(height: Spacing.x4),
 
-          _Label(l10n.optPerSheet),
-          _Choice<int>(
+          OptionLabel(l10n.optPerSheet),
+          OptionChoice<int>(
             atKiosk: atKiosk,
             atKioskLabel: l10n.prepareAtKiosk,
             value: _perSheet,
@@ -421,7 +421,7 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
           ),
           const SizedBox(height: Spacing.x4),
 
-          _Label(l10n.optPages),
+          OptionLabel(l10n.optPages),
           SegmentedButton<_Pages>(
             segments: [
               if (atKiosk)
@@ -453,7 +453,7 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
           ],
           const SizedBox(height: Spacing.x6),
 
-          _Label(l10n.prepareKioskLabel),
+          OptionLabel(l10n.prepareKioskLabel),
           Card(
             margin: EdgeInsets.zero,
             child: Padding(
@@ -587,123 +587,4 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
       ),
     );
   }
-}
-
-/// A choice whose first segment is "at the kiosk" while no kiosk is chosen.
-class _Choice<T extends Object> extends StatelessWidget {
-  const _Choice({
-    required this.atKiosk,
-    required this.atKioskLabel,
-    required this.value,
-    required this.choices,
-    required this.onChanged,
-  });
-
-  final bool atKiosk;
-  final String atKioskLabel;
-  final T? value;
-
-  /// (value, label, whether this kiosk can do it).
-  final List<(T, String, bool)> choices;
-  final ValueChanged<T?> onChanged;
-
-  @override
-  Widget build(BuildContext context) => SegmentedButton<T?>(
-    segments: [
-      if (atKiosk) ButtonSegment<T?>(value: null, label: Text(atKioskLabel)),
-      for (final (choice, label, enabled) in choices)
-        ButtonSegment<T?>(value: choice, label: Text(label), enabled: enabled),
-    ],
-    selected: {value},
-    onSelectionChanged: (selected) => onChanged(selected.single),
-  );
-}
-
-/// The kiosks to choose from: the public search, nearest or by name.
-class _KioskSheet extends ConsumerWidget {
-  const _KioskSheet();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final kiosks = ref.watch(_kioskChoicesProvider);
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.x4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.prepareKioskSheetTitle,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: Spacing.x3),
-            Flexible(
-              child: switch (kiosks) {
-                AsyncData(:final value) when value.isEmpty => Text(
-                  l10n.kioskEmpty,
-                ),
-                AsyncData(:final value) => ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final kiosk in value)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          l10n.sessionBannerKiosk(kiosk.code, kiosk.name),
-                        ),
-                        subtitle: Text(kiosk.address),
-                        trailing: KioskStatusChip(status: kiosk.status),
-                        onTap: () => Navigator.pop(context, kiosk),
-                      ),
-                  ],
-                ),
-                AsyncError(:final error) => Text(
-                  error is ApiException
-                      ? apiErrorText(l10n, error)
-                      : l10n.errorServer,
-                ),
-                _ => const Center(child: CircularProgressIndicator()),
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-final _kioskChoicesProvider = FutureProvider.autoDispose<List<KioskSummary>>(
-  (ref) => ref.watch(kioskRepositoryProvider).search(),
-);
-
-class _Label extends StatelessWidget {
-  const _Label(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: Spacing.x2),
-    child: Text(text, style: Theme.of(context).textTheme.titleSmall),
-  );
-}
-
-/// Why a choice is not there: the kiosk's real limit.
-class _Why extends StatelessWidget {
-  const _Why(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: Spacing.x1),
-    child: Text(
-      text,
-      style: Theme.of(context).textTheme.bodySmall
-          ?.copyWith(color: context.tokens.neutral600),
-    ),
-  );
 }

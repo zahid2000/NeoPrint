@@ -661,5 +661,128 @@
     "placeholders": {
       "kiosk": { "type": "String" }
     }
-  }
+  },
+  "schedNew": "Yeni planlama",
+  "schedEmpty": "Planlanmış çapınız yoxdur",
+  "schedEmptyHint": "Faylı seçin, kiosku və vaxtı göstərin — çap vaxtında hazır olsun.",
+  "schedLoadFailed": "Siyahı yüklənmədi: {reason}",
+  "@schedLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "schedStatusPendingPayment": "Ödəniş gözlənilir",
+  "schedStatusScheduled": "Planlanıb",
+  "schedStatusAwaitingUser": "Vaxtı çatıb",
+  "schedStatusSent": "Çapa verilib",
+  "schedStatusPrinted": "Çap olunub",
+  "schedStatusCancelled": "Ləğv edilib",
+  "schedStatusExpired": "Vaxtı keçdi",
+  "schedExpiredRefunded": "Pul balansa qaytarıldı.",
+  "schedWhereWhen": "{kiosk} · {time}",
+  "@schedWhereWhen": {
+    "placeholders": {
+      "kiosk": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  },
+  "schedAutoCancelHint": "{time}-dək cavab verməsəniz ləğv olunacaq, pul balansa qayıdacaq.",
+  "@schedAutoCancelHint": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "schedPrintNow": "Çapa ver",
+  "schedChangeTime": "Vaxtı dəyiş",
+  "schedCancel": "Ləğv et",
+  "schedPay": "Ödə",
+  "schedCancelTitle": "Planlanmış çap ləğv edilsin?",
+  "schedCancelBody": "{amount} balansınıza qaytarılacaq.",
+  "@schedCancelBody": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "schedCancelUnpaidBody": "Ödəniş alınmayıb, heç nə tutulmayacaq.",
+  "schedActionFailed": "Alınmadı: {reason}",
+  "@schedActionFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "schedSentDone": "Çapa verildi. {kiosk} kioskunda sifariş kodu: {code}",
+  "@schedSentDone": {
+    "placeholders": {
+      "kiosk": { "type": "String" },
+      "code": { "type": "String" }
+    }
+  },
+  "schedMovedDone": "Yeni vaxt: {time}",
+  "@schedMovedDone": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "schedCancelledDone": "Planlanmış çap ləğv edildi.",
+  "schedPrintFailedTitle": "Çapa vermək olmadı",
+  "schedPrintFailedBody": "{reason} Bir az sonra yenidən cəhd edə və ya başqa vaxt seçə bilərsiniz.",
+  "@schedPrintFailedBody": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "schedTooSoon": "Ən tez {minutes} dəqiqə sonranı seçin.",
+  "@schedTooSoon": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "schedTimeHint": "Ən tez {minutes} dəqiqə sonra.",
+  "@schedTimeHint": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "schedCreateTitle": "Çapı planla",
+  "schedFileLabel": "Fayl",
+  "schedChooseFile": "Fayl seç",
+  "schedChange": "Dəyiş",
+  "schedFileSheetTitle": "Hazır fayllar",
+  "schedNoReadyFiles": "Çap üçün hazır fayl yoxdur. Əvvəl \"Fayllarım\" bölməsinə fayl yükləyin.",
+  "schedKioskLabel": "Kiosk",
+  "schedChooseKiosk": "Kiosk seç",
+  "schedTimeLabel": "Vaxt",
+  "schedChooseTime": "Tarix və saat seç",
+  "schedPayAndSchedule": "Ödə və planla — {amount}",
+  "@schedPayAndSchedule": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "schedPayPlain": "Ödə və planla",
+  "schedNeedFile": "Əvvəl fayl seçin.",
+  "schedNeedKiosk": "Əvvəl kiosk seçin.",
+  "schedNeedTime": "Əvvəl tarix və saat seçin.",
+  "schedFailed": "Planlamaq olmadı: {reason}",
+  "@schedFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "schedMenu": "Çapı planla",
+  "schedDueTitle": "Planlanmış çapın vaxtı çatıb",
+  "schedDueBody": "{file} · {kiosk} kioskunda. Kioskun yanındasınızsa çapa verin.",
+  "@schedDueBody": {
+    "placeholders": {
+      "file": { "type": "String" },
+      "kiosk": { "type": "String" }
+    }
+  },
+  "payScheduledBody": "Çap {time} üçün planlandı. Vaxt çatanda tətbiq soruşacaq: çapa verək, ya vaxtı dəyişək.",
+  "@payScheduledBody": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "payToSchedules": "Planlanmış çaplar"
 }

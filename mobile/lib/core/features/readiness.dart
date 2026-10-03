@@ -27,7 +27,7 @@ abstract final class Readiness {
   static const bool personalQr = true;
 
   /// Scheduled printing - step 5.
-  static const bool scheduledPrint = false;
+  static const bool scheduledPrint = true;
 
   /// Sending a file to another user by their public code - step 6.
   static const bool fileSharing = false;

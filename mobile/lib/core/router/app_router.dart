@@ -27,6 +27,7 @@ import '../../features/profile/profile_screen.dart';
 import '../../features/prepared/my_qr_screen.dart';
 import '../../features/prepared/prepare_screen.dart';
 import '../../features/prepared/prepared_list_screen.dart';
+import '../../features/schedule/schedule_create_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
 import '../../shared/widgets/bottom_nav_shell.dart';
 import '../../shared/widgets/redirect_to.dart';
@@ -61,6 +62,7 @@ abstract final class Routes {
   static const myQr = '/my-qr';
   static const prepared = '/prepared';
   static const prepare = '/prepare';
+  static const scheduleNew = '/schedule/new';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -198,6 +200,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             final UserFile file => PrepareScreen(file: file),
             _ => const RedirectTo(Routes.files),
           },
+        ),
+        GoRoute(
+          path: Routes.scheduleNew,
+          // From a file's menu with the file; from the tab without one.
+          builder: (_, state) =>
+              ScheduleCreateScreen(file: state.extra as UserFile?),
         ),
       ],
 
