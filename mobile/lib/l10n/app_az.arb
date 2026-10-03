@@ -476,5 +476,90 @@
       "size": { "type": "String" }
     }
   },
-  "kioskShowAll": "Bütün kiosklar"
+  "kioskShowAll": "Bütün kiosklar",
+  "sessionOpen": "Sessiya aç",
+  "sessionClose": "Sessiyanı bağla",
+  "sessionChooseFile": "Fayl seç",
+  "sessionKioskNotTaking": "Bu kiosk hazırda sifariş qəbul etmir. Başqa kiosk seçin.",
+  "sessionBannerKiosk": "{code} · {name}",
+  "@sessionBannerKiosk": {
+    "placeholders": {
+      "code": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "sessionMinutesLeft": "{minutes} dəq qalıb",
+  "@sessionMinutesLeft": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "sessionUnderMinute": "1 dəqiqədən az qalıb",
+  "sessionOpenFailed": "Sessiyanı açmaq alınmadı: {reason}",
+  "@sessionOpenFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "noticeSessionExpired": "Sessiya bitdi. Çap üçün kioskda yenidən açın.",
+  "pickFileTitle": "Faylı seçin",
+  "pickFileEmpty": "Çap üçün hazır faylınız yoxdur",
+  "pickFileEmptyHint": "Faylı yükləyin; hazır olanda burada görünəcək.",
+  "pickFileUpload": "Fayl yüklə",
+  "printOptionsSubtitle": "{kiosk} · {pages}",
+  "@printOptionsSubtitle": {
+    "placeholders": {
+      "kiosk": { "type": "String" },
+      "pages": { "type": "String" }
+    }
+  },
+  "optCopies": "Nüsxə",
+  "optCopiesLess": "Nüsxəni azalt",
+  "optCopiesMore": "Nüsxəni artır",
+  "optColor": "Rəng",
+  "optBlackWhite": "Ağ-qara",
+  "optColorful": "Rəngli",
+  "optDuplex": "İkitərəfli çap",
+  "optPaper": "Kağız",
+  "optPages": "Səhifələr",
+  "optPagesAll": "Hamısı",
+  "optPagesRange": "Aralıq",
+  "optRangeHint": "Məs. 1-3, 5",
+  "optRangeInvalid": "Aralıq düzgün deyil: 1–{count} arası səhifələri vergüllə yazın (məs. 1-3, 5).",
+  "@optRangeInvalid": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "optPerSheet": "Vərəqdə səhifə",
+  "optColorUnavailable": "Bu kiosk rəngli çap etmir.",
+  "optDuplexUnavailable": "Bu kiosk ikitərəfli çap etmir.",
+  "optA3Unavailable": "Bu kiosk A3 çap etmir.",
+  "quoteSidesSheets": "{sides} üz · {sheets} vərəq",
+  "@quoteSidesSheets": {
+    "placeholders": {
+      "sides": { "type": "int" },
+      "sheets": { "type": "int" }
+    }
+  },
+  "quoteVolumeDiscount": "Həcm endirimi −{percent}%",
+  "@quoteVolumeDiscount": {
+    "placeholders": {
+      "percent": { "type": "String" }
+    }
+  },
+  "quoteFailed": "Qiyməti hesablamaq alınmadı: {reason}",
+  "@quoteFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "quotePaperShort": "Bu kioskda bu sifariş üçün kifayət qədər kağız yoxdur. Başqa kiosk seçin və ya nüsxəni azaldın.",
+  "orderButton": "Sifariş et — {amount}",
+  "@orderButton": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "orderButtonPlain": "Sifariş et"
 }

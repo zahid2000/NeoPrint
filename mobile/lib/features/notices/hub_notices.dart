@@ -30,6 +30,10 @@ String? noticeFor(AppLocalizations l10n, HubEvent event, String language) {
         _ => l10n.noticeRefundCard(amount),
       };
 
+    // Only when its time ran out: closing or moving on is the user's own doing.
+    case 'SessionClosed' when payload['reason'] == 'Expired':
+      return l10n.noticeSessionExpired;
+
     default:
       return null;
   }

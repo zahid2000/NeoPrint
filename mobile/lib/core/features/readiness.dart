@@ -19,6 +19,9 @@ abstract final class Readiness {
   /// Kiosk search and the map - step 5.
   static const bool kioskSearch = true;
 
+  /// Printing at a kiosk in a session: open it, choose a file, pay - step 5.
+  static const bool mobileSession = true;
+
   /// Scheduled printing - step 5.
   static const bool scheduledPrint = false;
 

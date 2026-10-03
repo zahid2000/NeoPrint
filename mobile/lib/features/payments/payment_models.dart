@@ -158,11 +158,22 @@ sealed class ScannedCode {
     r'^neoprint://pay/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$',
   );
 
-  /// `neoprint://pay/{id}` is an order to pay; anything else is not ours.
-  static ScannedCode parse(String raw) {
-    final match = _payLink.firstMatch(raw.trim());
+  static final _kioskLink = RegExp(r'^neoprint://kiosk/([A-Za-z0-9-]{1,32})$');
 
-    return match == null ? const ForeignCode() : PayCode(match.group(1)!);
+  /// `neoprint://pay/{id}` is an order to pay, `neoprint://kiosk/{code}` a
+  /// kiosk to open a session at (plan section 2.9); anything else is not ours.
+  static ScannedCode parse(String raw) {
+    final text = raw.trim();
+
+    if (_payLink.firstMatch(text) case final pay?) {
+      return PayCode(pay.group(1)!);
+    }
+
+    if (_kioskLink.firstMatch(text) case final kiosk?) {
+      return KioskCode(kiosk.group(1)!.toUpperCase());
+    }
+
+    return const ForeignCode();
   }
 }
 
@@ -171,6 +182,13 @@ final class PayCode extends ScannedCode {
   const PayCode(this.paymentId);
 
   final String paymentId;
+}
+
+/// The kiosk's own QR in its footer: its detail opens, with "Sessiya aç".
+final class KioskCode extends ScannedCode {
+  const KioskCode(this.code);
+
+  final String code;
 }
 
 /// A bank QR or any other code: not something this app pays.

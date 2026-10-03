@@ -1,14 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/features/readiness.dart';
 import '../../core/format/formats.dart';
 import '../../core/network/api_client.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
+import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_empty_state.dart';
+import '../../shared/widgets/neo_primary_button.dart';
+import '../session/session_controller.dart';
 import 'kiosk_models.dart';
 import 'kiosk_search_controller.dart';
 import 'kiosk_status_view.dart';
@@ -41,6 +47,12 @@ class KioskDetailScreen extends ConsumerWidget {
             : BackButton(onPressed: () => context.go(Routes.kiosks)),
         title: Text(detail.valueOrNull?.summary.name ?? initial?.name ?? ''),
       ),
+      bottomNavigationBar: Readiness.mobileSession
+          ? switch (detail) {
+              AsyncData(:final value) => _SessionBar(kiosk: value),
+              _ => null,
+            }
+          : null,
       body: switch (detail) {
         AsyncData(:final value) => RefreshIndicator(
           onRefresh: () => ref.refresh(kioskDetailProvider(idOrCode).future),
@@ -336,6 +348,105 @@ class _PaperRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Sessiya aç", or what to do in the session already open here
+/// (docs/DESIGN_SYSTEM.md, "Mobil: sessiya ilə çap"). A kiosk that takes no
+/// orders gets the reason instead of a button.
+class _SessionBar extends ConsumerStatefulWidget {
+  const _SessionBar({required this.kiosk});
+
+  final KioskDetail kiosk;
+
+  @override
+  ConsumerState<_SessionBar> createState() => _SessionBarState();
+}
+
+class _SessionBarState extends ConsumerState<_SessionBar> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _open() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      await ref.read(sessionProvider.notifier).open(widget.kiosk.summary.code);
+    } on ApiException catch (error) {
+      if (mounted) {
+        _error = AppLocalizations.of(
+          context,
+        ).sessionOpenFailed(apiErrorText(AppLocalizations.of(context), error));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  Future<void> _close() async {
+    try {
+      await ref.read(sessionProvider.notifier).close();
+    } on ApiException catch (error) {
+      if (mounted) {
+        setState(
+          () => _error = apiErrorText(AppLocalizations.of(context), error),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final session = ref.watch(sessionProvider).valueOrNull;
+    final here = session != null && session.kioskId == widget.kiosk.summary.id;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          Spacing.x4,
+          Spacing.x2,
+          Spacing.x4,
+          Spacing.x4,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_error case final error?) ...[
+              NeoBanner.error(message: error),
+              const SizedBox(height: Spacing.x2),
+            ],
+            if (here) ...[
+              NeoPrimaryButton(
+                label: l10n.sessionChooseFile,
+                icon: Icons.description_outlined,
+                onPressed: () => unawaited(context.push(Routes.sessionFiles)),
+              ),
+              TextButton(
+                onPressed: () => unawaited(_close()),
+                child: Text(l10n.sessionClose),
+              ),
+            ] else if (widget.kiosk.summary.status == KioskStatus.online)
+              NeoPrimaryButton(
+                label: l10n.sessionOpen,
+                icon: Icons.link,
+                busy: _busy,
+                onPressed: _busy ? null : () => unawaited(_open()),
+              )
+            else
+              NeoBanner(
+                tone: StatusTone.info,
+                message: l10n.sessionKioskNotTaking,
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -10,6 +10,9 @@ import 'package:neoprint/features/kiosk_search/kiosk_repository.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_search_controller.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_search_screen.dart';
 import 'package:neoprint/features/kiosk_search/user_location.dart';
+import 'package:neoprint/features/session/session_controller.dart';
+import 'package:neoprint/features/session/session_models.dart';
+import 'package:neoprint/features/session/session_repository.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
 
 /// A kiosk search the test scripts: it records what it was asked and
@@ -88,10 +91,20 @@ const mayis = KioskSummary(
   status: KioskStatus.offline,
 );
 
+/// No session open: the kiosk detail offers to open one.
+class _NoSession implements SessionRepository {
+  @override
+  Future<KioskSessionInfo?> current() async => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
 Widget app(Widget home, FakeKiosks kiosks, {UserLocation? location}) =>
     ProviderScope(
       overrides: [
         kioskRepositoryProvider.overrideWithValue(kiosks),
+        sessionRepositoryProvider.overrideWithValue(_NoSession()),
         if (location != null) userLocationProvider.overrideWithValue(location),
       ],
       child: MaterialApp(
@@ -316,7 +329,7 @@ void main() {
       expect(find.text('0,30 ₼'), findsOneWidget);
       expect(find.text('A3 — A4 qiymətinin 2 misli'), findsOneWidget);
       expect(find.text('50 üzdən: −10%'), findsOneWidget);
-      expect(find.text('Növbədə 2 sifariş'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Növbədə 2 sifariş'), 200);
 
       await tester.scrollUntilVisible(find.text('A3 kağızı qurtarıb'), 200);
       expect(find.text('A4 kağızı azdır'), findsOneWidget);

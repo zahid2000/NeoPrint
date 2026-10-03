@@ -21,6 +21,8 @@ import '../../features/wallet/wallet_screen.dart';
 import '../../features/kiosk_search/kiosk_detail_screen.dart';
 import '../../features/kiosk_search/kiosk_models.dart';
 import '../../features/kiosk_search/kiosk_search_screen.dart';
+import '../../features/session/pick_file_screen.dart';
+import '../../features/session/print_options_screen.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
 import '../../shared/widgets/bottom_nav_shell.dart';
@@ -39,6 +41,8 @@ abstract final class Routes {
   static const home = '/home';
   static const kiosks = '/kiosks';
   static String kiosk(String code) => '/kiosk/$code';
+  static const sessionFiles = '/session/files';
+  static const sessionPrint = '/session/print';
   static const files = '/files';
   static const filesCamera = '/files/camera';
   static String filePreview(String id) => '/files/$id';
@@ -153,6 +157,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                 : null,
           ),
         ),
+      // Printing in a session: choose the file, then its options (plan section 9.3).
+      if (Readiness.mobileSession) ...[
+        GoRoute(
+          path: Routes.sessionFiles,
+          builder: (_, __) => const PickFileScreen(),
+        ),
+        GoRoute(
+          path: Routes.sessionPrint,
+          // Opened with the file picked; without it there is nothing to print.
+          redirect: (_, state) =>
+              state.extra is UserFile ? null : Routes.sessionFiles,
+          builder: (_, state) =>
+              PrintOptionsScreen(file: state.extra! as UserFile),
+        ),
+      ],
       if (Readiness.printJobs)
         GoRoute(path: Routes.claims, builder: (_, __) => const ClaimsScreen()),
 

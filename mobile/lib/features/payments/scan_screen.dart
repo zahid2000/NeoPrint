@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 
+import '../../core/features/readiness.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
@@ -150,7 +151,11 @@ class _ScanScreenState extends State<ScanScreen> {
             _done = true;
             context.pushReplacement(Routes.pay(paymentId));
             return;
-          case ForeignCode():
+          case KioskCode(:final code) when Readiness.kioskSearch:
+            _done = true;
+            context.pushReplacement(Routes.kiosk(code));
+            return;
+          case KioskCode() || ForeignCode():
             if (!_foreign) {
               setState(() => _foreign = true);
             }
