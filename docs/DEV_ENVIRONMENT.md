@@ -622,6 +622,17 @@ flutter run -d <telefon_id> --dart-define=NEOPRINT_API_URL=http://192.168.1.50:5
 Telefonun brauzerində `http://192.168.1.50:5080/health/live` açılırsa, tətbiq də
 qoşulacaq. Açılmırsa problem şəbəkə/firewall-dadır, tətbiqdə yox.
 
+Real telefonda `localhost` telefonun özüdür, ona görə `NEOPRINT_API_URL=http://localhost:5080/`
+işləmir — kompüterin IP-si yazılır.
+
+**"Android sdkmanager did not install NDK 28.2.13676358"** ilə build dayanırsa:
+cmdline-tools 23-ün köhnəlmiş `sdkmanager`-i paket adını (`ndk;…`) `;`-də bölür və
+tapmır. NDK-nı yeni `android` CLI ilə bir dəfə quraşdırın (~2 GB):
+
+```powershell
+& "$env:LOCALAPPDATA\Android\sdk\cmdline-tools\latest\bin\android.exe" sdk install ndk/28.2.13676358
+```
+
 ### Şəbəkə xətası görsəniz
 
 Tətbiq "Serverə qoşulmaq mümkün olmadı" deyirsə: API işləyir? (`curl http://localhost:5080/health/live`);
