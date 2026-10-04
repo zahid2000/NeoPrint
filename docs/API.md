@@ -772,7 +772,8 @@ Token **bir dəfəlikdir**.
 
 Anonim və ya hər hansı token. Çağıran üçün qiymətləndirilmiş flag-lar.
 
-→ `{ "scan.enabled": true, "wallet.enabled": false }`
+→ `{ "scheduled_print": true, "data_export": false, ... }` (açarlar `FeatureFlag.MvpFlags`; mobil
+tətbiq göndərilməyən açarı "açıq" sayır, backend də elə)
 
 Qiymətləndirmə sırası: kiosk override → allowlist → faiz (yalnız qeydiyyatlı
 istifadəçi üçün; anonim kiosk sessiyasında default qərar verir) → default.
@@ -790,9 +791,22 @@ istifadəçi üçün; anonim kiosk sessiyasında default qərar verir) → defau
 `features.manage`.
 
 `{ "defaultEnabled", "rolloutPercent", "kioskOverrides", "userAllowlist" }` →
-yenilənmiş flag.
+yenilənmiş flag. Saxlanan kimi Redis keşi (`features:all`) təmizlənir — dəyişiklik dərhal tətbiq olunur.
 
-`[RequireFeature]` ilə qorunan endpoint söndürülmüş flag üçün `403` qaytarır.
+### Söndürülmüş flag: yalnız yeni istifadə bağlanır (T-148)
+
+Rədd cavabı həmişə eynidir: `404`, `code = features.unavailable`, `feature = <açar>`
+(`[RequireFeature]` atributu və ya use-case daxilində `FeatureDisabledException`). Kiosk bəlli olan
+yoxlamalar use-case-dədir ki, kiosk override (pilot) tətbiq olunsun.
+
+| Flag | Bağlanan (yeni) | Açıq qalan (artıq yaradılmış / ödənilmiş) |
+|---|---|---|
+| `scheduled_print` | `POST schedules` | siyahı, vaxtı dəyiş, "Çapa ver", ləğv, ödənilməmişin ödənişi |
+| `user_qr_print` | `POST prepared-prints`, `POST prepared-prints/paid`, kioskda `POST print-jobs/pending-for-user/prepared/{id}`; QR oxunanda ödənilməmiş hazırlıqlar siyahıya düşmür | `GET users/me/qr(.png)`, kioskda QR oxutma + ödənilmiş sifarişin `release`-i, siyahı, ləğv |
+| `mobile_session_print` | `POST sessions` (yeni sessiya) | açıq sessiyanın uzadılması və ondakı sifariş |
+| `mobile_payment_at_kiosk` | kioskda `POST payments/intents` (`MobileApp`), kiosk kanalı ödənişinin `GET payments/{id}/app` və `pay-with-app`-i (ödənilməmiş, rezervasiyasız) | başlamış / ödənilmiş ödəniş, bank QR, tətbiqdə ödənilən sifarişlər (`Mobile` kanalı) |
+| `promo_codes` | promokodun tətbiqi (`promos.disabled`) | — |
+| `data_export` | `POST users/me/export` | `GET users/me/export`, hazır arxivin linki |
 
 ---
 

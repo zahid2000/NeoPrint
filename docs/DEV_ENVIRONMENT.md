@@ -1031,6 +1031,20 @@ db.users.updateOne({Email: /^deleted-/, ErasedAt: null}, {$set: {DeletedAt: new 
 
 10 dəqiqəlik `account-deletion` işi (və ya Hangfire-da Trigger now) faylları bütün provayderlərdən silir və `ErasedAt` yazır.
 
+## 7h. Addım 5 — mobil feature flag-lar (T-148)
+
+Admin paneli → **Feature flag-lar** (`http://localhost:8080/features`): flag-ı söndürün (hamı üçün) və ya yalnız bir
+kiosk üçün override qoyun (pilot). Dəyişiklik dərhal tətbiq olunur. Tətbiq flag-ları girişdə, ön plana qayıdanda və
+server "funksiya bağlıdır" deyəndə yenidən oxuyur — brauzerdə səhifəni yeniləmək kifayətdir.
+
+Söndürüləndə nə gizlənir və nə qalır — `docs/API.md` → "Söndürülmüş flag". İstifadəçi üçün hazırkı qiymətlər:
+
+```bash
+curl -s http://localhost:5080/api/features -H "Authorization: Bearer <istifadəçi tokeni>"
+```
+
+Yoxladıqdan sonra flag-ları geri açmağı unutmayın — dev mühitində bütün hesablar üçün ortaqdır.
+
 ---
 
 ## 8. Build, test, lint
