@@ -143,7 +143,7 @@ Problem olarsa əvvəlcə `tools/dev-doctor` işlədin (bölmə 9).
 | **RustFS — veb konsolu** | http://localhost:9001/rustfs/console/ | `neoprintrustfs` / `devRustfsPassword` |
 | **RustFS — secondary** | http://localhost:9010 | migrasiya / mirror hədəfi (plan 9.8) |
 | **Mailpit (SMTP tutucu)** | http://localhost:8025 | bütün email-lər buraya gəlir; SMTP: `localhost:1025` |
-| **Hangfire dashboard** | http://localhost:5080/hangfire | yalnız Development |
+| **Hangfire dashboard** | hələ yoxdur — `/api/admin/hangfire` (yalnız SuperAdmin) Addım 7-də gəlir (T-167) | Background işlər öz cədvəli ilə işləyir |
 
 ---
 
@@ -956,7 +956,7 @@ PowerShell-də `curl` əvəzinə `curl.exe` yazın (və ya `Invoke-RestMethod -M
 3. Kioskda ekran 10 açılır: ödənişsizdə **Seç** → parametrlər (tətbiqdə seçilənlər qoyulur) → kioskda ödəniş;
    bu kiosk üçün ödənilmişdə **Çapa ver** → birbaşa növbə. Siyahı 60 saniyə toxunulmasa bağlanır.
 4. Götürülməyən ödənilmiş sifariş `PreparedPrint.AutoCancelDays` (7) gündən sonra saatlıq `uncollected-print-jobs`
-   Hangfire işi ilə ləğv olunur, pul balansa qayıdır. Hangfire panelində (`/hangfire`) işi əl ilə də işə salmaq olar —
+   Hangfire işi ilə ləğv olunur, pul balansa qayıdır (növbəti saat başında; Hangfire paneli Addım 7-də — T-167). İş
    vaxtı gəlməmiş sifarişə toxunmur.
 
 ---
@@ -976,7 +976,7 @@ PowerShell-də `curl` əvəzinə `curl.exe` yazın (və ya `Invoke-RestMethod -M
    `<schedule-id>` — `GET /api/schedules` cavabındakı `id`.
 3. Avtomatik ləğvi yoxlamaq üçün `AwaitingUser` planlamanın `AwaitingSince` sahəsini 25 saat geri çəkin
    (`{$set: {AwaitingSince: new Date(Date.now() - 25*3600000)}}`). 10 dəqiqəlik `scheduled-print-auto-cancel` işi onu
-   `Expired` edir, pul balansa qayıdır. Hangfire panelində (`/hangfire` → Recurring jobs) işi əl ilə də işə salmaq olar.
+   `Expired` edir, pul balansa qayıdır (ən çox 10 dəqiqə gözləyin; Hangfire paneli Addım 7-də — T-167).
 4. Aktiv planlanmış çapı olan fayl silinmir. Planlamanı ləğv edəndən sonra fayl silinə bilər.
 
 ---
@@ -1034,8 +1034,8 @@ db.files.updateOne({_id: UUID('<fayl-id>')}, {$set: {CreatedAt: new Date(Date.no
 
 **Məlumatlarımı yüklə.** Profil → **Məlumatlarımı yüklə** → **Arxiv hazırla**. Hazır olanda bildiriş gəlir; **Yüklə**
 linki brauzerdə açır (24 saat). Vaxtı keçmiş arxivi saatlıq `data-export-cleanup` işi silir; gözləmədən:
-`db.data_exports.updateOne({_id: UUID('<id>')}, {$set: {ExpiresAt: new Date()}})`, sonra Hangfire paneldə
-(`/hangfire` → Recurring jobs → `data-export-cleanup` → Trigger now).
+`db.data_exports.updateOne({_id: UUID('<id>')}, {$set: {ExpiresAt: new Date()}})`, sonra növbəti saat başında iş
+arxivi silir (Hangfire paneli Addım 7-də — T-167).
 
 **Hesabımı sil.** Test üçün **ayrıca hesab** yaradın (`dev-user`-i silməyin — onu silsəniz API-nin növbəti
 Development başlanğıcı yenisini yaradır, amma köhnə sifarişlər anonim hesaba qalır). Profil → **Hesabımı sil** →
@@ -1045,7 +1045,7 @@ Development başlanğıcı yenisini yaradır, amma köhnə sifarişlər anonim h
 db.users.updateOne({Email: /^deleted-/, ErasedAt: null}, {$set: {DeletedAt: new Date(Date.now() - 25*3600000)}})
 ```
 
-10 dəqiqəlik `account-deletion` işi (və ya Hangfire-da Trigger now) faylları bütün provayderlərdən silir və `ErasedAt` yazır.
+10 dəqiqəlik `account-deletion` işi (ən çox 10 dəqiqə gözləyin) faylları bütün provayderlərdən silir və `ErasedAt` yazır.
 
 ## 7h. Addım 5 — mobil feature flag-lar (T-148)
 
