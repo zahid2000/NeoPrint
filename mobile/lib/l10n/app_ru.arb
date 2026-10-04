@@ -476,5 +476,37 @@
 
   "exportOpenFailed": "Не удалось открыть ссылку. Проверьте, что на телефоне есть браузер.",
 
-  "exportLoadFailed": "Не удалось загрузить: {reason}"
+  "exportLoadFailed": "Не удалось загрузить: {reason}",
+
+  "deleteTitle": "Удалить учётную запись",
+
+  "deleteWarningTitle": "Это нельзя отменить",
+
+  "deleteWarningBody": "Ваши файлы со всеми копиями и профиль удаляются. Записи о платежах и чеках по закону остаются, без ваших данных.",
+
+  "deleteBalance": "{amount} на балансе и бонусные страницы ({pages}) будут потеряны и не возвращаются.",
+
+  "deleteBalanceOnly": "{amount} на балансе будут потеряны и не возвращаются.",
+
+  "deleteBlockedTitle": "Перед удалением завершите или отмените:",
+
+  "deleteBlockerPrints": "Заказы в печати: {count}",
+
+  "deleteBlockerSchedules": "Печать по расписанию: {count}",
+
+  "deleteBlockerUncollected": "Незабранные заказы: {count}",
+
+  "deleteBlockerRefunds": "Возвраты в процессе (дождитесь): {count}",
+
+  "deletePasswordLabel": "Пароль",
+
+  "deleteConfirmLabel": "Для подтверждения введите УДАЛИТЬ",
+
+  "deleteConfirmWord": "УДАЛИТЬ",
+
+  "deleteButton": "Удалить учётную запись",
+
+  "deleteDone": "Учётная запись удалена.",
+
+  "deleteLoadFailed": "Не удалось загрузить: {reason}"
 }

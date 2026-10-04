@@ -33,7 +33,7 @@ abstract final class Readiness {
   static const bool dataExport = true;
 
   /// "Hesabımı sil" in the profile - step 5 (T-147).
-  static const bool accountDeletion = false;
+  static const bool accountDeletion = true;
 
   /// Sending a file to another user by their public code - step 6.
   static const bool fileSharing = false;

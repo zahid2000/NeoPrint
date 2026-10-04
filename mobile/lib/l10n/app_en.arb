@@ -476,5 +476,37 @@
 
   "exportOpenFailed": "The link could not be opened. Check that the phone has a browser.",
 
-  "exportLoadFailed": "Could not load it: {reason}"
+  "exportLoadFailed": "Could not load it: {reason}",
+
+  "deleteTitle": "Delete my account",
+
+  "deleteWarningTitle": "This cannot be undone",
+
+  "deleteWarningBody": "Your files, with all their copies, and your profile are deleted. Payment and receipt records stay, without your name, as the law requires.",
+
+  "deleteBalance": "The {amount} on your balance and {pages} bonus pages will be lost and are not refunded.",
+
+  "deleteBalanceOnly": "The {amount} on your balance will be lost and is not refunded.",
+
+  "deleteBlockedTitle": "Before deleting the account, finish or cancel these:",
+
+  "deleteBlockerPrints": "Orders printing at a kiosk: {count}",
+
+  "deleteBlockerSchedules": "Scheduled prints: {count}",
+
+  "deleteBlockerUncollected": "Orders not collected at a kiosk: {count}",
+
+  "deleteBlockerRefunds": "Money on its way back (wait for it): {count}",
+
+  "deletePasswordLabel": "Password",
+
+  "deleteConfirmLabel": "Type DELETE to confirm",
+
+  "deleteConfirmWord": "DELETE",
+
+  "deleteButton": "Delete my account",
+
+  "deleteDone": "Your account was deleted.",
+
+  "deleteLoadFailed": "Could not load it: {reason}"
 }

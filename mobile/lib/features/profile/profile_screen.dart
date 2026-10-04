@@ -139,6 +139,20 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () => context.push(Routes.privacyExport),
             ),
 
+          if (Readiness.accountDeletion)
+            ListTile(
+              leading: Icon(
+                Icons.person_remove_outlined,
+                color: theme.colorScheme.error,
+              ),
+              title: Text(
+                l10n.deleteTitle,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.privacyDelete),
+            ),
+
           const Divider(),
 
           ListTile(

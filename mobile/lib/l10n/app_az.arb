@@ -842,5 +842,44 @@
   "exportOpenFailed": "Link açılmadı. Telefonda brauzer olduğunu yoxlayın.",
 
   "exportLoadFailed": "Məlumatı yükləmək alınmadı: {reason}",
-  "@exportLoadFailed": { "placeholders": {"reason":{"type":"String"}} }
+  "@exportLoadFailed": { "placeholders": {"reason":{"type":"String"}} },
+
+  "deleteTitle": "Hesabımı sil",
+
+  "deleteWarningTitle": "Bu geri qaytarılmır",
+
+  "deleteWarningBody": "Fayllarınız bütün nüsxələri ilə və profiliniz silinir. Ödəniş və qəbz qeydləri qanuna görə adsız şəkildə qalır.",
+
+  "deleteBalance": "Balansınızdakı {amount} və {pages} bonus səhifə itəcək, geri qaytarılmır.",
+  "@deleteBalance": { "placeholders": {"amount":{"type":"String"},"pages":{"type":"int"}} },
+
+  "deleteBalanceOnly": "Balansınızdakı {amount} itəcək, geri qaytarılmır.",
+  "@deleteBalanceOnly": { "placeholders": {"amount":{"type":"String"}} },
+
+  "deleteBlockedTitle": "Hesabı silməzdən əvvəl bunları bitirin və ya ləğv edin:",
+
+  "deleteBlockerPrints": "Kioskda çap olunan sifariş: {count}",
+  "@deleteBlockerPrints": { "placeholders": {"count":{"type":"int"}} },
+
+  "deleteBlockerSchedules": "Planlanmış çap: {count}",
+  "@deleteBlockerSchedules": { "placeholders": {"count":{"type":"int"}} },
+
+  "deleteBlockerUncollected": "Kioskda götürülməmiş sifariş: {count}",
+  "@deleteBlockerUncollected": { "placeholders": {"count":{"type":"int"}} },
+
+  "deleteBlockerRefunds": "Qaytarılan pul (bitməsini gözləyin): {count}",
+  "@deleteBlockerRefunds": { "placeholders": {"count":{"type":"int"}} },
+
+  "deletePasswordLabel": "Şifrə",
+
+  "deleteConfirmLabel": "Təsdiq üçün SİL yazın",
+
+  "deleteConfirmWord": "SİL",
+
+  "deleteButton": "Hesabımı sil",
+
+  "deleteDone": "Hesabınız silindi.",
+
+  "deleteLoadFailed": "Məlumatı yükləmək alınmadı: {reason}",
+  "@deleteLoadFailed": { "placeholders": {"reason":{"type":"String"}} }
 }

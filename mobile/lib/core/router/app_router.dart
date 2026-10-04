@@ -15,6 +15,7 @@ import '../../features/home/home_screen.dart';
 import '../../features/jobs/claims_screen.dart';
 import '../../features/payments/pay_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
+import '../../features/privacy/account_deletion_screen.dart';
 import '../../features/privacy/data_export_screen.dart';
 import '../../features/payments/scan_screen.dart';
 import '../../features/receipts/receipts_screen.dart';
@@ -67,6 +68,7 @@ abstract final class Routes {
   static const scheduleNew = '/schedule/new';
   static const notifications = '/notifications';
   static const privacyExport = '/privacy/export';
+  static const privacyDelete = '/privacy/delete';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -175,6 +177,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ? state.extra! as KioskSummary
                 : null,
           ),
+        ),
+      if (Readiness.accountDeletion)
+        GoRoute(
+          path: Routes.privacyDelete,
+          builder: (_, __) => const AccountDeletionScreen(),
         ),
       if (Readiness.dataExport)
         GoRoute(
