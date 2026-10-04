@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
 import '../../core/format/formats.dart';
 import '../../core/network/api_client.dart';
@@ -47,7 +48,9 @@ class KioskDetailScreen extends ConsumerWidget {
             : BackButton(onPressed: () => context.go(Routes.kiosks)),
         title: Text(detail.valueOrNull?.summary.name ?? initial?.name ?? ''),
       ),
-      bottomNavigationBar: Readiness.mobileSession
+      bottomNavigationBar:
+          Readiness.mobileSession &&
+              ref.watch(featureOnProvider(FeatureKey.mobileSessionPrint))
           ? switch (detail) {
               AsyncData(:final value) => _SessionBar(kiosk: value),
               _ => null,

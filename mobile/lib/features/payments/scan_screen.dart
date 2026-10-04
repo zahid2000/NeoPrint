@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 
+import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
@@ -30,14 +31,14 @@ enum _ScanProblem { noCamera, permission }
 /// Reads the kiosk's "pay with the NeoPrint app" QR (plan section 9.2) and
 /// opens its payment. Everything happens on the phone: the frames go to ML
 /// Kit on the device and nowhere else.
-class ScanScreen extends StatefulWidget {
+class ScanScreen extends ConsumerStatefulWidget {
   const ScanScreen({super.key});
 
   @override
-  State<ScanScreen> createState() => _ScanScreenState();
+  ConsumerState<ScanScreen> createState() => _ScanScreenState();
 }
 
-class _ScanScreenState extends State<ScanScreen> {
+class _ScanScreenState extends ConsumerState<ScanScreen> {
   final _scanner = BarcodeScanner(formats: [BarcodeFormat.qrCode]);
 
   CameraController? _controller;
@@ -52,6 +53,9 @@ class _ScanScreenState extends State<ScanScreen> {
 
   /// The last code read was not ours (a bank QR, a web link).
   bool _foreign = false;
+
+  /// A kiosk's "pay with the app" QR read while that is switched off.
+  bool _payOff = false;
 
   @override
   void initState() {
@@ -147,6 +151,13 @@ class _ScanScreenState extends State<ScanScreen> {
         }
 
         switch (ScannedCode.parse(raw)) {
+          case PayCode()
+              when !ref.read(
+                featureOnProvider(FeatureKey.mobilePaymentAtKiosk),
+              ):
+            if (!_payOff) {
+              setState(() => _payOff = true);
+            }
           case PayCode(:final paymentId):
             _done = true;
             context.pushReplacement(Routes.pay(paymentId));
@@ -218,7 +229,11 @@ class _ScanScreenState extends State<ScanScreen> {
         null => _Viewfinder(
           controller: controller!,
           instruction: l10n.scanInstruction,
-          warning: _foreign ? l10n.scanForeign : null,
+          warning: _payOff
+              ? l10n.featureOffKioskPayment
+              : _foreign
+              ? l10n.scanForeign
+              : null,
         ),
       },
     );

@@ -84,6 +84,8 @@
   "errorCancelled": "The request was cancelled.",
   "errorServer": "Something went wrong on the server. Please try again shortly.",
   "errorSessionExpired": "Your session has expired. Please sign in again.",
+  "errorFeatureOff": "This feature is switched off at the moment. Nothing was created and no money was taken. Please continue another way.",
+  "featureOffKioskPayment": "Paying with the app is switched off at this kiosk for now. No money was taken. Pay with the bank QR on the kiosk screen.",
 
   "commonToday": "Today",
   "commonYesterday": "Yesterday",

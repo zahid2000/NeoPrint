@@ -84,6 +84,8 @@
   "errorCancelled": "Əməliyyat ləğv edildi.",
   "errorServer": "Serverdə xəta baş verdi. Bir az sonra yenidən cəhd edin.",
   "errorSessionExpired": "Sessiya bitib. Yenidən daxil olun.",
+  "errorFeatureOff": "Bu funksiya hazırda bağlıdır. Heç nə yaradılmadı və pul tutulmadı. Başqa yolla davam edin.",
+  "featureOffKioskPayment": "Bu kioskda tətbiqlə ödəniş hazırda bağlıdır. Pul tutulmadı. Kioskun ekranında bank QR-ı ilə ödəyin.",
 
   "commonToday": "Bu gün",
   "commonYesterday": "Dünən",

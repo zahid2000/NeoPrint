@@ -37,6 +37,8 @@ final class ApiException implements Exception {
     required this.message,
     this.kind = ApiErrorKind.server,
     this.fieldErrors = const {},
+    this.code,
+    this.feature,
   });
 
   const ApiException.unreachable()
@@ -57,6 +59,18 @@ final class ApiException implements Exception {
 
   /// Validation errors grouped by field, for marking up the form.
   final Map<String, List<String>> fieldErrors;
+
+  /// The server's message key (`code` in the problem document), for reacting
+  /// to a specific rule without reading the sentence.
+  final String? code;
+
+  /// The feature flag that refused the request (`features.unavailable`).
+  final String? feature;
+
+  /// A feature switched off on the server refused it (plan section 2.16).
+  bool get isFeatureOff => code == featureOffCode;
+
+  static const featureOffCode = 'features.unavailable';
 
   /// Whether this was a network problem rather than a refusal.
   bool get isNetworkError => kind == ApiErrorKind.unreachable;
@@ -149,6 +163,10 @@ final class ApiClient {
 
   /// Called when the session cannot be recovered and the user must sign in.
   void Function()? onSessionExpired;
+
+  /// Called when the server says a feature is switched off, so the app can
+  /// read its flags again and hide the way in.
+  void Function()? onFeatureOff;
 
   Dio get dio => _dio;
 
@@ -249,7 +267,13 @@ final class ApiClient {
     }
 
     if (status < 200 || status >= 300) {
-      throw _fromProblemDetails(status, reply.data);
+      final problem = _fromProblemDetails(status, reply.data);
+
+      if (problem.isFeatureOff) {
+        onFeatureOff?.call();
+      }
+
+      throw problem;
     }
 
     response?.call(reply);
@@ -370,6 +394,8 @@ final class ApiClient {
       statusCode: status,
       message: message,
       fieldErrors: fieldErrors,
+      code: data['code'] as String?,
+      feature: data['feature'] as String?,
     );
   }
 }

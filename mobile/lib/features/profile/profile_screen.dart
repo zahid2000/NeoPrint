@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
 import '../../core/router/app_router.dart';
 import '../../l10n/app_localizations.dart';
@@ -21,6 +22,9 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final dataExport =
+        Readiness.dataExport &&
+        ref.watch(featureOnProvider(FeatureKey.dataExport));
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
@@ -115,7 +119,7 @@ class ProfileScreen extends ConsumerWidget {
               title: Text(l10n.profileLegal),
             ),
 
-          if (Readiness.dataExport || Readiness.accountDeletion) ...[
+          if (dataExport || Readiness.accountDeletion) ...[
             const Divider(),
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -131,7 +135,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ],
 
-          if (Readiness.dataExport)
+          if (dataExport)
             ListTile(
               leading: const Icon(Icons.download_outlined),
               title: Text(l10n.exportTitle),

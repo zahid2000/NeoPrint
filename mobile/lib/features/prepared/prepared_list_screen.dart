@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/features/feature_flags.dart';
 import '../../core/format/formats.dart';
 import '../../core/network/api_client.dart';
 import '../../core/router/app_router.dart';
@@ -37,7 +38,9 @@ class PreparedListScreen extends ConsumerWidget {
               NeoEmptyState(
                 icon: Icons.inventory_2_outlined,
                 message: l10n.preparedEmpty,
-                hint: l10n.preparedEmptyHint,
+                hint: ref.watch(featureOnProvider(FeatureKey.userQrPrint))
+                    ? l10n.preparedEmptyHint
+                    : null,
               ),
             ],
           ),

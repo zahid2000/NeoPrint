@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
 import '../../core/format/formats.dart';
 import '../../core/router/app_router.dart';
@@ -210,6 +211,7 @@ class _FileCard extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final text = Theme.of(context).textTheme;
     final tokens = context.tokens;
+    final flags = ref.watch(featureFlagsProvider);
 
     final details = [
       formatBytes(
@@ -308,7 +310,9 @@ class _FileCard extends ConsumerWidget {
                   _ => _delete(context, ref),
                 },
                 itemBuilder: (_) => [
-                  if (Readiness.personalQr && file.status == FileStatus.ready)
+                  if (Readiness.personalQr &&
+                      flags.isOn(FeatureKey.userQrPrint) &&
+                      file.status == FileStatus.ready)
                     PopupMenuItem(
                       value: 'prepare',
                       child: ListTile(
@@ -321,6 +325,7 @@ class _FileCard extends ConsumerWidget {
                       ),
                     ),
                   if (Readiness.scheduledPrint &&
+                      flags.isOn(FeatureKey.scheduledPrint) &&
                       file.status == FileStatus.ready)
                     PopupMenuItem(
                       value: 'schedule',

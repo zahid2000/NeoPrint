@@ -1,3 +1,4 @@
+import '../core/features/feature_flags.dart';
 import '../core/network/api_client.dart';
 import '../l10n/app_localizations.dart';
 
@@ -11,6 +12,12 @@ String apiErrorText(AppLocalizations l10n, ApiException error) =>
       ApiErrorKind.unreachable => l10n.errorNetwork,
       ApiErrorKind.cancelled => l10n.errorCancelled,
       ApiErrorKind.sessionExpired => l10n.errorSessionExpired,
+      // Switched off on the server: the app's own three-part sentence, and for
+      // the kiosk's app QR the way that still works (T-148).
+      ApiErrorKind.server when error.isFeatureOff =>
+        error.feature == FeatureKey.mobilePaymentAtKiosk
+            ? l10n.featureOffKioskPayment
+            : l10n.errorFeatureOff,
       ApiErrorKind.server =>
         error.message.isNotEmpty ? error.message : l10n.errorServer,
     };

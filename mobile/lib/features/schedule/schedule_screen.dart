@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/features/feature_flags.dart';
 import '../../core/format/formats.dart';
 import '../../core/network/api_client.dart';
 import '../../core/router/app_router.dart';
@@ -27,6 +28,8 @@ class ScheduleScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final items = ref.watch(schedulesProvider);
     void create() => unawaited(context.push(Routes.scheduleNew));
+    // Switched off: what was paid stays here, nothing new is offered (T-148).
+    final canCreate = ref.watch(featureOnProvider(FeatureKey.scheduledPrint));
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.navScheduled)),
@@ -38,12 +41,14 @@ class ScheduleScreen extends ConsumerWidget {
               NeoEmptyState(
                 icon: Icons.event_outlined,
                 message: l10n.schedEmpty,
-                hint: l10n.schedEmptyHint,
-                action: FilledButton.icon(
-                  onPressed: create,
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.schedNew),
-                ),
+                hint: canCreate ? l10n.schedEmptyHint : null,
+                action: canCreate
+                    ? FilledButton.icon(
+                        onPressed: create,
+                        icon: const Icon(Icons.add),
+                        label: Text(l10n.schedNew),
+                      )
+                    : null,
               ),
             ],
           ),
@@ -73,7 +78,7 @@ class ScheduleScreen extends ConsumerWidget {
         },
       ),
       bottomNavigationBar: switch (items) {
-        AsyncData(:final value) when value.isNotEmpty => SafeArea(
+        AsyncData(:final value) when value.isNotEmpty && canCreate => SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
               Spacing.x4,

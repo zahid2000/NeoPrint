@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/features/feature_flags.dart';
 import '../../core/format/formats.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/idempotency.dart';
@@ -381,7 +382,10 @@ class _PayScreenState extends ConsumerState<PayScreen> {
 
     final toPay = _toPay(payment);
     final promo = payment.promoFor(useBonus: _useBonus && payment.canUseBonus);
-    final canTypePromo = payment.promoCode == null && _afterBonus(payment) > 0;
+    final canTypePromo =
+        payment.promoCode == null &&
+        _afterBonus(payment) > 0 &&
+        ref.watch(featureOnProvider(FeatureKey.promoCodes));
     final walletShort = payment.walletBalance < toPay;
     final low = _secondsLeft <= 60;
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
 import '../../core/format/formats.dart';
 import '../../core/network/api_client.dart';
@@ -16,6 +17,7 @@ import '../jobs/job_card.dart';
 import '../jobs/jobs_controller.dart';
 import '../jobs/jobs_repository.dart';
 import '../payments/scan_screen.dart';
+import '../prepared/prepared_repository.dart';
 import '../wallet/wallet_controller.dart';
 import '../notifications/notifications_screen.dart';
 
@@ -30,6 +32,13 @@ class HomeScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
     final canScan = Readiness.kioskPayment && ref.watch(canScanProvider);
+    // Switched off, the QR and the list stay while something prepared or
+    // paid is still there to collect (docs/DECISIONS.md, T-148).
+    final personalQr =
+        Readiness.personalQr &&
+        (ref.watch(featureOnProvider(FeatureKey.userQrPrint)) ||
+            (ref.watch(preparedPrintsProvider).valueOrNull?.isNotEmpty ??
+                false));
 
     return Scaffold(
       appBar: AppBar(
@@ -78,7 +87,7 @@ class HomeScreen extends ConsumerWidget {
               ),
 
             // Printing with the personal QR (plan section 9.4).
-            if (Readiness.personalQr) ...[
+            if (personalQr) ...[
               const SizedBox(height: Spacing.x2),
               Row(
                 children: [
