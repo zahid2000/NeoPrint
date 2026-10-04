@@ -196,20 +196,35 @@ final class AuthController extends Notifier<AuthState> {
   /// Signs out. This device stops getting the user's push first, while the
   /// session still lets it say so; a failure there does not keep anyone in.
   Future<void> signOut() async {
+    _signingOut = true;
     try {
-      await ref.read(pushRegistrationProvider).unregister();
-    } on Object {
-      // The token stays on the account until FCM reports it gone or another
-      // account registers it; nothing more to do here.
+      try {
+        await ref.read(pushRegistrationProvider).unregister();
+      } on Object {
+        // The token stays on the account until FCM reports it gone or another
+        // account registers it; nothing more to do here.
+      }
+      await _repository.signOut();
+      state = const AuthState.signedOut();
+    } finally {
+      _signingOut = false;
     }
-    await _repository.signOut();
-    state = const AuthState.signedOut();
   }
 
   /// Called by the API client when the refresh token is refused.
+  ///
+  /// Not after the user signed out: a request still on its way then (the
+  /// hub, a list refreshing) is refused too, and "session expired" would
+  /// contradict "signed out" - or "your account was deleted".
   void onSessionExpired() {
+    if (state.status == AuthStatus.signedOut || _signingOut) {
+      return;
+    }
+
     state = const AuthState.signedOut(error: ApiException.sessionExpired());
   }
+
+  bool _signingOut = false;
 
   /// Clears the error banner.
   void clearError() => state = state.copyWith(clearError: true);
