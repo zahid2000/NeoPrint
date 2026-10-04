@@ -84,6 +84,23 @@ public sealed class FileVersion
 }
 
 /// <summary>
+/// A picture a layout keeps its own copy of (docs/DECISIONS.md 2026-10-05).
+/// </summary>
+public sealed class LayoutAsset
+{
+    /// <summary>The name the layout's elements use for it, as <c>asset:{Key}</c>.</summary>
+    public string Key { get; set; } = string.Empty;
+
+    public FileObject Object { get; set; } = null!;
+
+    /// <summary>The picture's format, for the editor that draws it again.</summary>
+    public string MediaType { get; set; } = string.Empty;
+
+    /// <summary>Copied from a sensitive file, which makes the layout sensitive too.</summary>
+    public bool Sensitive { get; set; }
+}
+
+/// <summary>
 /// A file a user owns (plan sections 2.2, 2.13).
 /// </summary>
 /// <remarks>
@@ -148,6 +165,102 @@ public sealed class StoredFile : Entity
     public bool IsSensitive { get; set; }
 
     public DateTime? DeletedAt { get; set; }
+
+    /// <summary>The scanned document's real width, as its type or the user gave it (plan section 2.11).</summary>
+    public double? PhysicalWidthMm { get; set; }
+
+    /// <summary>The scanned document's real height.</summary>
+    public double? PhysicalHeightMm { get; set; }
+
+    /// <summary>The scanner's document type, e.g. <c>IdCard</c>, or <c>Custom</c>.</summary>
+    public string? DocumentType { get; set; }
+
+    /// <summary>
+    /// A finished document that is printed, shared and deleted but never
+    /// edited: a saved scan, and a copy of one (docs/DECISIONS.md 2026-10-05).
+    /// </summary>
+    public bool EditLocked { get; set; }
+
+    /// <summary>
+    /// The page layout a <see cref="FileSource.Layout"/> file was drawn from,
+    /// with its pictures named <c>asset:{key}</c> (plan section 2.11). Null for
+    /// every other file.
+    /// </summary>
+    public string? LayoutProjectJson { get; private set; }
+
+    /// <summary>The layout's own copies of its pictures, so it can be edited after the sources are gone.</summary>
+    public List<LayoutAsset> LayoutAssets { get; set; } = [];
+
+    /// <summary>Records the layout a new layout file was drawn from.</summary>
+    public void StartLayout(string layoutJson, IReadOnlyList<LayoutAsset> assets)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(layoutJson);
+        ArgumentNullException.ThrowIfNull(assets);
+
+        if (Source != FileSource.Layout || LayoutProjectJson is not null)
+        {
+            throw new DomainException("files.layout.notLayout");
+        }
+
+        LayoutProjectJson = layoutJson;
+        LayoutAssets = [.. assets];
+    }
+
+    /// <summary>
+    /// Saves a changed layout as a new version, the way an edit is saved
+    /// (plan section 2.2): the PDF drawn from it becomes the newest version and
+    /// the file is converted again.
+    /// </summary>
+    /// <param name="pdf">The new PDF, already in storage.</param>
+    /// <param name="layoutJson">The layout, pictures named <c>asset:{key}</c>.</param>
+    /// <param name="assets">Every picture it uses: the ones it kept and the ones newly copied.</param>
+    /// <returns>Versions dropped by <paramref name="keep"/> and pictures no longer used, whose objects can be deleted.</returns>
+    /// <exception cref="DomainException">Not a layout, or not ready.</exception>
+    public (IReadOnlyList<FileVersion> Versions, IReadOnlyList<LayoutAsset> Assets) ApplyLayout(
+        FileObject pdf, string layoutJson, IReadOnlyList<LayoutAsset> assets, int keep, ActorContext actor, DateTime now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(layoutJson);
+        ArgumentNullException.ThrowIfNull(assets);
+
+        if (Source != FileSource.Layout || LayoutProjectJson is null)
+        {
+            throw new DomainException("files.layout.notLayout");
+        }
+
+        var versions = ApplyEdit(pdf, "pdf", new UserMessage("files.note.layoutEdited").Encode(), keep, actor, now);
+        var used = assets.Select(asset => asset.Key).ToHashSet(StringComparer.Ordinal);
+        var unused = LayoutAssets.Where(asset => !used.Contains(asset.Key)).ToList();
+
+        LayoutProjectJson = layoutJson;
+        LayoutAssets = [.. assets];
+
+        return (versions, unused);
+    }
+
+    /// <summary>
+    /// Every object stored for the file - original, PDF, versions, layout
+    /// pictures - each once. What deleting the file has to delete and what
+    /// counts against the quota.
+    /// </summary>
+    public IEnumerable<FileObject> AllObjects()
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        IEnumerable<FileObject?> all =
+        [
+            Original,
+            Pdf,
+            .. Versions.Select(version => version.Object),
+            .. LayoutAssets.Select(asset => asset.Object),
+        ];
+
+        foreach (var stored in all)
+        {
+            if (stored is not null && seen.Add(stored.Key))
+            {
+                yield return stored;
+            }
+        }
+    }
 
     /// <summary>When an order made from it last printed at a kiosk; what <see cref="AutoDeleteRule.AfterPrint"/> waits for.</summary>
     public DateTime? PrintedAt { get; private set; }

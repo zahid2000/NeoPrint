@@ -30,9 +30,8 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
 {
     private readonly IFileRepository _files;
     private readonly IFileStorage _storage;
-    private readonly IKioskRepository _kiosks;
+    private readonly FileIntake _intake;
     private readonly ISettingsReader _settings;
-    private readonly IClock _clock;
     private readonly IEventPublisher _events;
     private readonly ICorrelationContext _correlation;
     private readonly ILogger<UploadFileHandler> _logger;
@@ -40,18 +39,16 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
     public UploadFileHandler(
         IFileRepository files,
         IFileStorage storage,
-        IKioskRepository kiosks,
+        FileIntake intake,
         ISettingsReader settings,
-        IClock clock,
         IEventPublisher events,
         ICorrelationContext correlation,
         ILogger<UploadFileHandler> logger)
     {
         _files = files;
         _storage = storage;
-        _kiosks = kiosks;
+        _intake = intake;
         _settings = settings;
-        _clock = clock;
         _events = events;
         _correlation = correlation;
         _logger = logger;
@@ -61,18 +58,19 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var maxBytes = await MaxBytesAsync(request.KioskId, cancellationToken).ConfigureAwait(false);
-
-        if (request.DeclaredLength > maxBytes)
+        // A scan, a layout and a shared copy each have their own way in, with
+        // their own checks (the scan notice, the layout's pictures, the
+        // sender); an upload that merely claims to be one is refused.
+        if (request.Source is not (FileSource.Uploaded or FileSource.Usb))
         {
-            throw Invalid(
-                "file",
-                "files.tooLarge",
-                ("size", Megabytes(request.DeclaredLength)),
-                ("max", Megabytes(maxBytes)));
+            throw FileIntake.Invalid("source", "files.sourceNotAllowed");
         }
 
-        await EnsureQuotaAsync(request.UserId, request.DeclaredLength, cancellationToken)
+        var maxBytes = await _intake.MaxBytesAsync(request.KioskId, cancellationToken).ConfigureAwait(false);
+
+        FileIntake.EnsureWithin(request.DeclaredLength, maxBytes);
+
+        await _intake.EnsureQuotaAsync(request.UserId, request.DeclaredLength, cancellationToken)
             .ConfigureAwait(false);
 
         // The first block decides what the file is. Buffered here rather than
@@ -85,7 +83,7 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
 
         if (!signature.Recognised)
         {
-            throw Invalid("file", signature.Reason ?? "files.signature.unknown");
+            throw FileIntake.Invalid("file", signature.Reason ?? "files.signature.unknown");
         }
 
         var format = signature.Format!;
@@ -95,12 +93,12 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         var file = new StoredFile
         {
             UserId = request.UserId,
-            FileName = SafeName(request.FileName, format.Extension),
+            FileName = FileIntake.SafeName(request.FileName, format.Extension),
             Extension = format.Extension,
             MediaType = format.MediaType,
             Source = request.Source,
             IsSensitive = request.IsSensitive,
-            AutoDelete = await DefaultAutoDeleteAsync(request.IsSensitive, cancellationToken)
+            AutoDelete = await _intake.DefaultAutoDeleteAsync(request.IsSensitive, cancellationToken)
                 .ConfigureAwait(false),
         };
 
@@ -122,11 +120,7 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         {
             await _storage.DeleteAsync(stored, StorageBucket.Files, cancellationToken).ConfigureAwait(false);
 
-            throw Invalid(
-                "file",
-                "files.tooLarge",
-                ("size", Megabytes(stored.PlaintextLength)),
-                ("max", Megabytes(maxBytes)));
+            FileIntake.EnsureWithin(stored.PlaintextLength, maxBytes);
         }
 
         file.Original = ToFileObject(stored);
@@ -150,42 +144,6 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         return Map(file);
     }
 
-    private async Task<long> MaxBytesAsync(Guid? kioskId, CancellationToken cancellationToken)
-    {
-        var defaultMb = await _settings
-            .GetIntAsync(SettingKeys.FilesDefaultMaxSizeMb, 50, cancellationToken)
-            .ConfigureAwait(false);
-
-        if (kioskId is null)
-        {
-            return defaultMb * 1024L * 1024L;
-        }
-
-        // The kiosk's own limit wins when it has one (plan section 2.2).
-        var kiosk = await _kiosks.FindByIdAsync(kioskId.Value, cancellationToken).ConfigureAwait(false);
-
-        return (kiosk?.MaxFileSizeMb ?? defaultMb) * 1024L * 1024L;
-    }
-
-    private async Task EnsureQuotaAsync(Guid userId, long incoming, CancellationToken cancellationToken)
-    {
-        var quotaGb = await _settings
-            .GetIntAsync(SettingKeys.FilesUserQuotaGb, 1, cancellationToken)
-            .ConfigureAwait(false);
-
-        var quota = quotaGb * 1024L * 1024L * 1024L;
-        var used = await _files.TotalBytesAsync(userId, cancellationToken).ConfigureAwait(false);
-
-        if (used + incoming > quota)
-        {
-            throw Invalid(
-                "file",
-                "files.quotaFull",
-                ("used", Megabytes(used)),
-                ("quota", quotaGb));
-        }
-    }
-
     private async Task EnsureFormatEnabledAsync(FileFormat format, CancellationToken cancellationToken)
     {
         var allowed = await _settings
@@ -203,52 +161,8 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
 
         if (!enabled.Contains(format.Extension, StringComparer.OrdinalIgnoreCase))
         {
-            throw Invalid("file", "files.formatDisabled", ("format", format.Extension));
+            throw FileIntake.Invalid("file", "files.formatDisabled", ("format", format.Extension));
         }
-    }
-
-    private async Task<AutoDeleteRule> DefaultAutoDeleteAsync(
-        bool isSensitive, CancellationToken cancellationToken)
-    {
-        if (!isSensitive)
-        {
-            return AutoDeleteRule.Never;
-        }
-
-        // Plan section 2.13: a scanned identity document defaults to deleting
-        // itself after the print, not to living in the account forever.
-        var configured = await _settings
-            .GetAsync(SettingKeys.PrivacySensitiveAutoDeleteDefault, cancellationToken)
-            .ConfigureAwait(false);
-
-        return Enum.TryParse<AutoDeleteRule>(configured, ignoreCase: true, out var rule)
-            ? rule
-            : AutoDeleteRule.AfterPrint;
-    }
-
-    /// <summary>
-    /// A display name that cannot be used as a path.
-    /// </summary>
-    /// <remarks>
-    /// The object key is built from identifiers, so this is only what the user
-    /// sees - but a name carrying <c>../</c> or a NUL byte would still end up
-    /// in a Content-Disposition header and in the admin panel.
-    /// </remarks>
-    private static string SafeName(string? fileName, string extension)
-    {
-        var candidate = Path.GetFileName(fileName ?? string.Empty).Trim();
-
-        foreach (var c in Path.GetInvalidFileNameChars())
-        {
-            candidate = candidate.Replace(c, '_');
-        }
-
-        if (string.IsNullOrWhiteSpace(candidate))
-        {
-            candidate = $"sənəd.{extension}";
-        }
-
-        return candidate.Length > 200 ? candidate[..200] : candidate;
     }
 
     private static async Task<int> ReadAtMostAsync(
@@ -293,14 +207,13 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         file.IsSensitive,
         file.AutoDelete.ToString(),
         file.Versions.Count,
-        file.CreatedAt);
-
-    private static long Megabytes(long bytes) => bytes / (1024 * 1024);
-
-    private static ValidationException Invalid(string field, string key, params (string Name, object? Value)[] arguments)
-        => new([new ValidationError(field, key, arguments)]);
+        file.CreatedAt,
+        file.EditLocked,
+        file.LayoutProjectJson is not null,
+        file.DocumentType,
+        file.PhysicalWidthMm,
+        file.PhysicalHeightMm);
 }
-
 /// <summary>
 /// A stream that replays bytes already read, then continues with the rest.
 /// </summary>

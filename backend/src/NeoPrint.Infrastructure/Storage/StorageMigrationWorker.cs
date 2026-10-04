@@ -476,6 +476,21 @@ public sealed class StorageMigrationWorker
                 },
                 cancellationToken)
             .ConfigureAwait(false);
+
+        // A layout's own copies of its pictures (step 6).
+        await files.UpdateManyAsync(
+                filter.Eq("LayoutAssets.Object.ProviderId", sourceId),
+                update.Set("LayoutAssets.$[asset].Object.ProviderId", targetId),
+                new UpdateOptions
+                {
+                    ArrayFilters =
+                    [
+                        new BsonDocumentArrayFilterDefinition<MongoDB.Bson.BsonDocument>(
+                            new MongoDB.Bson.BsonDocument("asset.Object.ProviderId", new MongoDB.Bson.BsonBinaryData(sourceId, MongoDB.Bson.GuidRepresentation.Standard))),
+                    ],
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task SwitchPrimaryAsync(

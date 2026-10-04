@@ -49,10 +49,7 @@ public sealed class FileRepository : IFileRepository
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return files.Sum(file =>
-            file.Original.PlaintextLength
-            + (file.Pdf is not null && file.Pdf.Key != file.Original.Key ? file.Pdf.PlaintextLength : 0)
-            + file.Versions.Sum(version => version.Object.PlaintextLength));
+        return files.Sum(file => file.AllObjects().Sum(stored => stored.PlaintextLength));
     }
 
     // Through AggregateWriter like every other aggregate: the status changes

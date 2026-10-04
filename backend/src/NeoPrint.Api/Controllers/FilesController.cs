@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
@@ -84,6 +86,103 @@ public sealed class FilesController : ControllerBase
             cancellationToken);
 
         return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+    }
+
+    /// <summary>
+    /// Saves a scan as a finished PDF (plan section 2.11; docs/DECISIONS.md
+    /// 2026-10-05). Multipart: the pictures as <c>images</c> parts, each
+    /// part's file name being its name in <c>layout</c>; the layout JSON;
+    /// <c>documentType</c> (a preset, or <c>Custom</c> with
+    /// <c>physicalWidthMm</c> / <c>physicalHeightMm</c>); <c>isSensitive</c>;
+    /// <c>fileName</c>. Requires the current scan notice to be accepted.
+    /// </summary>
+    [HttpPost("scan")]
+    [RequestSizeLimit(200L * 1024 * 1024)]
+    [ProducesResponseType(typeof(UserFileResult), StatusCodes.Status201Created)]
+    public async Task<ActionResult<UserFileResult>> Scan(
+        [FromForm] List<IFormFile> images,
+        [FromForm] string? layout,
+        [FromForm] string? documentType,
+        [FromForm] double? physicalWidthMm,
+        [FromForm] double? physicalHeightMm,
+        [FromForm] bool isSensitive,
+        [FromForm] string? fileName,
+        CancellationToken cancellationToken)
+    {
+        var pictures = new List<ScanPicture>(images?.Count ?? 0);
+
+        foreach (var image in images ?? [])
+        {
+            await using var stream = image.OpenReadStream();
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            pictures.Add(new ScanPicture(image.FileName, buffer.ToArray()));
+        }
+
+        var result = await _sender.Send(
+            new CreateScanCommand(
+                UserId, pictures, layout ?? string.Empty, documentType, physicalWidthMm, physicalHeightMm, isSensitive, fileName),
+            cancellationToken);
+
+        return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+    }
+
+    /// <summary>
+    /// Saves a new page layout (plan section 2.11). Pictures are named
+    /// <c>file:{id}</c> (an image file) or <c>file:{id}:{page}</c> (a page of
+    /// any file); the layout keeps its own copy of each.
+    /// </summary>
+    [HttpPost("layout")]
+    [ProducesResponseType(typeof(UserFileResult), StatusCodes.Status201Created)]
+    public async Task<ActionResult<UserFileResult>> CreateLayout(
+        [FromBody] LayoutRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new CreateLayoutCommand(UserId, request?.Layout.GetRawText() ?? string.Empty, request?.FileName),
+            cancellationToken);
+
+        return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+    }
+
+    /// <summary>
+    /// Saves a changed layout as a new version. Pictures the layout already
+    /// holds keep their <c>asset:{key}</c> names; new ones are named as for
+    /// a new layout.
+    /// </summary>
+    [HttpPut("{id:guid}/layout")]
+    [ProducesResponseType(typeof(UserFileResult), StatusCodes.Status200OK)]
+    public async Task<ActionResult<UserFileResult>> UpdateLayout(
+        Guid id, [FromBody] LayoutRequest request, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(
+            new UpdateLayoutCommand(UserId, id, request?.Layout.GetRawText() ?? string.Empty), cancellationToken));
+
+    /// <summary>A layout file's layout and its pictures, for "Tərtibatı redaktə et".</summary>
+    [HttpGet("{id:guid}/layout")]
+    [ProducesResponseType(typeof(LayoutResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<LayoutResponse>> GetLayout(Guid id, CancellationToken cancellationToken)
+    {
+        var view = await _sender.Send(new GetLayoutQuery(UserId, id), cancellationToken);
+
+        using var document = JsonDocument.Parse(view.LayoutJson);
+
+        return Ok(new LayoutResponse(view.FileId, document.RootElement.Clone(), view.Assets));
+    }
+
+    /// <summary>One of a layout's pictures, decrypted, for the editor to draw.</summary>
+    /// <param name="id">The layout file.</param>
+    /// <param name="key">The picture's key: its name without <c>asset:</c>.</param>
+    [HttpGet("{id:guid}/layout/assets/{key}")]
+    public async Task<IActionResult> LayoutAsset(Guid id, string key, CancellationToken cancellationToken)
+    {
+        var file = await LoadOwnedAsync(id, cancellationToken);
+        var asset = file.LayoutAssets.FirstOrDefault(candidate => candidate.Key == key)
+                    ?? throw new NeoPrint.Domain.Common.NotFoundException("asset");
+
+        var stream = await _storage.OpenReadAsync(ToStoredObject(asset.Object), StorageBucket.Files, cancellationToken);
+
+        Response.Headers.CacheControl = "private, max-age=86400";
+
+        return File(stream, asset.MediaType);
     }
 
     /// <summary>One page of the user's files, newest first.</summary>
@@ -287,3 +386,10 @@ public sealed class FilesController : ControllerBase
 
 /// <param name="Rule">One of Never, AfterPrint, AfterOneDay, AfterSevenDays, AfterThirtyDays.</param>
 public sealed record SetAutoDeleteRequest(string? Rule);
+
+/// <param name="Layout">The layout (<c>NeoPrint.Layout</c> JSON).</param>
+/// <param name="FileName">The name the new layout file is saved under.</param>
+public sealed record LayoutRequest(JsonElement Layout, string? FileName);
+
+/// <param name="Layout">Pictures named <c>asset:{key}</c>, as <see cref="FilesController.LayoutAsset"/> serves them.</param>
+public sealed record LayoutResponse(Guid FileId, JsonElement Layout, IReadOnlyList<LayoutAssetView> Assets);

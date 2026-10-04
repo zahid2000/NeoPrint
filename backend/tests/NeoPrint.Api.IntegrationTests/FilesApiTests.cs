@@ -258,12 +258,11 @@ public sealed class FilesApiTests
     }
 
     [DockerFact]
-    public async Task A_scanned_document_defaults_to_deleting_itself_after_the_print()
+    public async Task A_personal_document_defaults_to_deleting_itself_after_the_print()
     {
         using var client = await SignedInAsync();
 
         var form = Upload(Pdf(), "vəsiqə.pdf", "application/pdf");
-        form.Add(new StringContent("Scan"), "source");
         form.Add(new StringContent("true"), "isSensitive");
 
         var created = await (await client.PostAsync("/api/files", form))
@@ -272,8 +271,28 @@ public sealed class FilesApiTests
         // Plan section 2.13: a personal document does not sit in the account
         // by default.
         created.GetProperty("isSensitive").GetBoolean().Should().BeTrue();
-        created.GetProperty("source").GetString().Should().Be("Scan");
+        created.GetProperty("source").GetString().Should().Be("Uploaded");
         created.GetProperty("autoDelete").GetString().Should().Be("AfterPrint");
+    }
+
+    [DockerFact]
+    public async Task An_upload_cannot_claim_to_be_a_scan_or_a_layout()
+    {
+        // A scan has its own way in, behind the scan notice, and is locked
+        // once saved (docs/DECISIONS.md 2026-10-05); an upload saying "Scan"
+        // would skip both.
+        using var client = await SignedInAsync();
+
+        foreach (var source in new[] { "Scan", "Layout", "Shared" })
+        {
+            var form = Upload(Pdf(), "saxta.pdf", "application/pdf");
+            form.Add(new StringContent(source), "source");
+
+            var refused = await client.PostAsync("/api/files", form);
+
+            refused.StatusCode.Should().Be(HttpStatusCode.BadRequest, source);
+            (await refused.Content.ReadAsStringAsync()).Should().Contain("yalnız adi fayl");
+        }
     }
 
     [DockerFact]

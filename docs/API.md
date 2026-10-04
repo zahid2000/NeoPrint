@@ -184,9 +184,10 @@ qaytarılır.
 
 → `{ "docType", "version", "language", "content", "publishedAt" }`
 
-### `GET /api/consents/pending?lang=az`
+### `GET /api/consents/pending?lang=az&scan=false`
 
-User token. Qəbul edilməmiş sənəd versiyaları.
+User token. Qəbul edilməmiş sənəd versiyaları (Privacy, Terms). `scan=true` —
+`ScanNotice` də (ilk skandan əvvəl soruşulur, girişdə yox; Addım 6).
 
 ### `POST /api/consents`
 
@@ -890,8 +891,8 @@ sayma hücumuna imkan verər.
 |---|---|---|
 | `file` | fayl | Məcburi |
 | `kioskId` | GUID | Seçilibsə həmin kioskun ölçü limiti tətbiq olunur |
-| `source` | mətn | `Uploaded` (default), `Scan`, `Layout`, `Usb`, `Shared` |
-| `isSensitive` | bool | Şəxsi sənəd (skan) — avtomatik silinmə defolt olaraq `AfterPrint` olur |
+| `source` | mətn | Yalnız `Uploaded` (default). `Scan` / `Layout` / `Shared` → `400 files.sourceNotAllowed`: onların öz endpoint-i və yoxlamaları var (Addım 6) |
+| `isSensitive` | bool | Şəxsi sənəd — avtomatik silinmə defolt olaraq `AfterPrint` olur |
 
 → `201` + fayl obyekti.
 
@@ -913,7 +914,9 @@ işləyir. `Ready` olandan sonra `pageCount` doludur.
 
 → Fayl obyekti: `id`, `fileName`, `extension`, `mediaType`, `source`, `status`
 (`Pending` / `Converting` / `Ready` / `Failed`), `failureReason`, `sizeBytes`,
-`pageCount`, `isSensitive`, `autoDelete`, `versionCount`, `createdAt`.
+`pageCount`, `isSensitive`, `autoDelete`, `versionCount`, `createdAt`,
+`editLocked` (saxlanılmış skan — yalnız çap, Addım 6), `hasLayout` ("Tərtibatı
+redaktə et" açılır), `documentType`, `physicalWidthMm`, `physicalHeightMm` (skan).
 
 ### `GET /api/files/{id}/content`
 
@@ -959,6 +962,8 @@ qiymət redaktəyə uyğunlaşır. Gövdədə **yalnız biri**:
 - `text` — yalnız TXT (ən çox 1 000 000 simvol).
 - PS / PCL / XPS redaktə olunmur (`400`) — çapda səhifə aralığı seçilir.
 - Fayl `Ready` deyilsə `400`. "Səhifədə yerləşdir" `files/layout`-dadır (plan 2.11).
+- Saxlanılmış skan (`editLocked`) → `400 files.edit.scanLocked`; tərtibat faylı →
+  `400 files.edit.useLayoutEditor` (`PUT files/{id}/layout` ilə dəyişdirilir).
 
 Ən çox `Files.VersionsToKeep` (default 5) versiya saxlanılır; köhnələri storage-dan
 silinir. Əvəz olunan çevrilmiş PDF də silinir.
@@ -988,6 +993,73 @@ nüsxələri daxil).
 
 
 Bu faylla verilmiş sifariş hələ bitməyibsə → `409 files.inUseByOrder` (sifariş qiymətləndirildiyi PDF-i çap edir).
+
+### Skan və səhifə tərtibatı (Addım 6, plan 2.11)
+
+Tərtibat JSON-u (`NeoPrint.Layout`, backend və kiosk eyni renderer):
+
+```json
+{ "version": 1, "paper": "A4", "orientation": "Portrait", "marginMm": 10,
+  "pages": [ { "elements": [
+    { "image": "front.jpg", "xMm": 62.2, "yMm": 89.52, "widthMm": 85.6, "heightMm": 53.98, "rotationDeg": 0 } ] } ] }
+```
+
+- `paper`: `A4` / `A3` / `A5`; `orientation`: `Portrait` / `Landscape`; ölçülər mm,
+  kağızın sol yuxarı küncündən; `rotationDeg` qutunun mərkəzi ətrafında saat əqrəbi ilə.
+  Şəkil qutusunun ölçüsü onun **çap ölçüsüdür** (real ölçü, 100%).
+- Limitlər: 1–50 səhifə, səhifədə 1–40 şəkil, ən çox 50 müxtəlif şəkil, kənar
+  0–50 mm, şəkil tərəfi 1–1000 mm, şəklin mərkəzi kağızın üzərində olmalıdır,
+  JSON ≤ 512 KB. Pozulma → `400 layout.*` (izahlı mesajla).
+- Şəkillər 300 DPI-dan yüksək saxlanılmır (yerləşdirildiyi ən böyük ölçüyə görə
+  kiçildilir), EXIF oriyentasiyasına görə düzəldilir; 100 MP-dən böyük şəkil `400`.
+
+#### `POST /api/files/scan`
+
+Skan — bitmiş PDF kimi saxlanılır, **sonra redaktə olunmur** (`editLocked`),
+şəkillər saxlanılmır (DECISIONS 2026-10-05). `multipart/form-data`:
+
+| Sahə | Məna |
+|---|---|
+| `images` | Səhifə şəkilləri (JPEG/PNG…, imza ilə yoxlanılır), hər hissənin fayl adı `layout`-dakı `image` adıdır. Ən çox 50 |
+| `layout` | Tərtibat JSON-u (skan sessiyasının son addımındakı yerləşdirmə) |
+| `documentType` | `IdCard`, `Id2`, `Passport`, `Photo3x4`, `Photo10x15`, `A6`, `A5`, `A4` və ya `Custom` |
+| `physicalWidthMm`, `physicalHeightMm` | Yalnız `Custom` üçün, 1–1000 |
+| `isSensitive` | `IdCard` / `Id2` / `Passport` üçün göndərilməsə də `true` olur |
+| `fileName` | Göstərilən ad; `.pdf` əlavə olunur |
+
+→ `201` + fayl obyekti (`source` = `Scan`, `extension` = `pdf`). Şərt: istifadəçi
+`ScanNotice`-in **cari versiyasını** qəbul edib (`GET /api/consents/pending?scan=true`
+→ `POST /api/consents`), əks halda `400 scan.noticeRequired`. Saxlanılmış skan başqa
+tərtibata mənbə ola bilməz (`400 files.layout.scanNotSource`).
+
+#### `POST /api/files/layout`
+
+`{ "layout": { ... }, "fileName": "Fotolar" }` → `201` + fayl obyekti (`source` =
+`Layout`, `hasLayout` = `true`). Şəkil adları:
+
+- `file:{id}` — şəkil faylının cari məzmunu (şəkil deyilsə 1-ci səhifə);
+- `file:{id}:{n}` — istənilən faylın PDF-inin `n`-ci səhifəsi, şəkil kimi (A4 eni 300 DPI).
+
+Tərtibat hər şəklin **öz şifrəli nüsxəsini** saxlayır (`asset:{key}` adı ilə):
+mənbə fayl silinsə də yenidən açılır. Mənbələrdən biri həssasdırsa tərtibat da
+həssasdır (avtomatik silinmə default `AfterPrint`). Başqasının faylı `404`.
+
+#### `GET /api/files/{id}/layout`
+
+→ `{ "fileId", "layout": { ...şəkillər "asset:{key}" adı ilə... }, "assets": [ { "name", "mediaType", "sizeBytes" } ] }`.
+Tərtibat faylı deyilsə `400 files.layout.notLayout`.
+
+#### `GET /api/files/{id}/layout/assets/{key}`
+
+Tərtibatın şəkli, deşifrə olunmuş (`Cache-Control: private`), redaktorda çəkmək üçün.
+
+#### `PUT /api/files/{id}/layout`
+
+`{ "layout": { ... } }` — dəyişmiş tərtibat **yeni versiya** kimi saxlanılır
+(`files.note.layoutEdited`), fayl `Pending` olur və yenidən çevrilir. Mövcud
+şəkillər `asset:{key}`, yeniləri `file:…` adı ilə. İstifadə olunmayan şəkil
+nüsxələri silinir. Açıq sifariş varsa `409 files.inUseByOrder`; həssaslıq heç
+vaxt azalmır.
 
 ### `GET /api/files/formats`
 

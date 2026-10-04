@@ -38,7 +38,7 @@ public sealed class FileEraser
     {
         ArgumentNullException.ThrowIfNull(file);
 
-        foreach (var stored in Objects(file))
+        foreach (var stored in file.AllObjects())
         {
             await _storage.DeleteAsync(
                     new StoredObject(
@@ -57,20 +57,6 @@ public sealed class FileEraser
         await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
     }
 
-    private static IEnumerable<FileObject> Objects(StoredFile file)
-    {
-        yield return file.Original;
-
-        if (file.Pdf is not null && file.Pdf.Key != file.Original.Key)
-        {
-            yield return file.Pdf;
-        }
-
-        foreach (var version in file.Versions)
-        {
-            yield return version.Object;
-        }
-    }
 }
 
 /// <summary>An order printed (plan section 6, <c>PrintJobCompleted</c>): its file notes it and may delete itself.</summary>

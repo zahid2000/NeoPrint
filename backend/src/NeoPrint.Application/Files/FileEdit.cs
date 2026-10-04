@@ -233,6 +233,19 @@ public sealed class EditFileHandler :
         var file = await FileAccess.LoadOwnedAsync(_files, request.UserId, request.FileId, cancellationToken)
             .ConfigureAwait(false);
 
+        // A saved scan is a finished document (docs/DECISIONS.md 2026-10-05).
+        if (file.EditLocked)
+        {
+            throw Invalid("edit", "files.edit.scanLocked");
+        }
+
+        // A layout's PDF is drawn from its layout: changed pages would no
+        // longer match what "Tərtibatı redaktə et" opens.
+        if (file.Source == FileSource.Layout)
+        {
+            throw Invalid("edit", "files.edit.useLayoutEditor");
+        }
+
         var original = FileFormats.Find(file.Extension);
 
         if (original?.Group == FormatGroup.PageDescription)

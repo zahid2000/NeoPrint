@@ -34,6 +34,9 @@ public interface IFileRepository
 }
 
 /// <summary>What the API reports about a file.</summary>
+/// <param name="EditLocked">A saved scan or a copy of one: printed, never edited (docs/DECISIONS.md 2026-10-05).</param>
+/// <param name="HasLayout">A layout that "Tərtibatı redaktə et" can open again.</param>
+/// <param name="DocumentType">The scanner's document type, for a scan.</param>
 public sealed record UserFileResult(
     Guid Id,
     string FileName,
@@ -47,7 +50,12 @@ public sealed record UserFileResult(
     bool IsSensitive,
     string AutoDelete,
     int VersionCount,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool EditLocked = false,
+    bool HasLayout = false,
+    string? DocumentType = null,
+    double? PhysicalWidthMm = null,
+    double? PhysicalHeightMm = null);
 
 /// <summary>A page of a user's files.</summary>
 public sealed record FileListResult(IReadOnlyList<UserFileResult> Items, long Total);

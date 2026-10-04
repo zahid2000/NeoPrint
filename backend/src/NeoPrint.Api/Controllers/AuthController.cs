@@ -164,10 +164,14 @@ public sealed class LegalController : ControllerBase
     }
 
     /// <summary>Documents the signed-in user still has to accept.</summary>
+    /// <param name="scan">
+    /// Also the scan notice, which is asked before the first scan rather than
+    /// at sign-in (plan section 2.11).
+    /// </param>
     [HttpGet("consents/pending")]
     [Authorize]
     public async Task<ActionResult<IReadOnlyCollection<PendingConsent>>> Pending(
-        [FromQuery] string lang = "az", CancellationToken cancellationToken = default)
+        [FromQuery] string lang = "az", [FromQuery] bool scan = false, CancellationToken cancellationToken = default)
     {
         var userId = _currentUser.UserId;
         if (userId is null)
@@ -179,7 +183,8 @@ public sealed class LegalController : ControllerBase
         var accepted = await _legal.GetAcceptedVersionsAsync(userId.Value, cancellationToken);
 
         var pending = current
-            .Where(entry => entry.Key is LegalDocumentType.Privacy or LegalDocumentType.Terms)
+            .Where(entry => entry.Key is LegalDocumentType.Privacy or LegalDocumentType.Terms
+                            || (scan && entry.Key == LegalDocumentType.ScanNotice))
             .Where(entry => !accepted.TryGetValue(entry.Key, out var version) ||
                             !string.Equals(version, entry.Value.Version, StringComparison.Ordinal))
             .Select(entry => new PendingConsent(entry.Key, entry.Value.Version))

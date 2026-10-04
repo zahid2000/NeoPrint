@@ -57,6 +57,7 @@
     <ProjectReference Include="..\NeoPrint.Application\NeoPrint.Application.csproj" />
     <ProjectReference Include="..\..\shared\NeoPrint.Crypto\NeoPrint.Crypto.csproj" />
     <ProjectReference Include="..\..\shared\NeoPrint.Pdfium\NeoPrint.Pdfium.csproj" />
+    <ProjectReference Include="..\..\shared\NeoPrint.Layout\NeoPrint.Layout.csproj" />
   </ItemGroup>
 
 </Project>

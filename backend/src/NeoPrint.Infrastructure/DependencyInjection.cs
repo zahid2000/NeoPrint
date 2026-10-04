@@ -145,6 +145,7 @@ public static class DependencyInjection
         services.AddScoped<Schedules.ScheduledPrintDueJob>();
         services.AddScoped<Schedules.ScheduledPrintAutoCancelJob>();
         services.AddScoped<Application.Files.FileEraser>();
+        services.AddScoped<Application.Files.FileIntake>();
         services.AddScoped<Files.FileAutoDeleteJob>();
         services.AddScoped<Application.Privacy.IDataExportRepository, Privacy.DataExportRepository>();
         services.AddScoped<Application.Privacy.IDataExportBuilder, Privacy.DataExportBuilder>();
@@ -320,6 +321,7 @@ public static class DependencyInjection
         services.AddScoped<DocumentConversionService>();
         services.AddSingleton<IPageRenderer, PdfiumPageRenderer>();
         services.AddSingleton<NeoPrint.Application.Files.IFileEditor, FileEditor>();
+        services.AddSingleton<NeoPrint.Application.Files.ILayoutDocuments, LayoutDocuments>();
         services.AddScoped<IEventPublisher, Messaging.MassTransitEventPublisher>();
 
         // Storage sync (plan section 2.10). The worker is transient: each Hangfire

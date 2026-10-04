@@ -158,7 +158,8 @@ public sealed class StorageSourcePurge
             .Find(filter.Or(
                 filter.Eq("Original.ProviderId", providerId),
                 filter.Eq("Pdf.ProviderId", providerId),
-                filter.Eq("Versions.Object.ProviderId", providerId)))
+                filter.Eq("Versions.Object.ProviderId", providerId),
+                filter.Eq("LayoutAssets.Object.ProviderId", providerId)))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -166,10 +167,9 @@ public sealed class StorageSourcePurge
 
         foreach (var file in files)
         {
-            foreach (var stored in new[] { file.Original, file.Pdf }
-                         .Concat(file.Versions.Select(v => v.Object)))
+            foreach (var stored in file.AllObjects())
             {
-                if (stored is not null && stored.ProviderId == providerId)
+                if (stored.ProviderId == providerId)
                 {
                     keys.Add(stored.Key);
                 }
