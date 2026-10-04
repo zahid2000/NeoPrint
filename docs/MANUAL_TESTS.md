@@ -236,6 +236,8 @@ Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-də
 **Harada:** real Android və iOS telefon, telefon kompüterlə eyni şəbəkədə
 (`DEV_ENVIRONMENT.md` bölmə 6 — real telefon). Bu cədvəl Addım 5 irəlilədikcə doldurulur.
 
+**Vəziyyət (`v0.5.0`, 2026-10-04): yoxlanmayıb** — layihə sahibi real cihazlarda sonra icra edəcək. Lokal Chrome-da yalnız real FCM web push tətbiq öndə ikən yoxlanıb (T-163, `docs/screenshots/step-5/push-01-fcm-foreground.png`).
+
 | # | Addım | Gözlənilən |
 |---|---|---|
 | 1 | Kiosklar → **Yaxınımda** (ilk dəfə) | Telefon məkan icazəsi soruşur (izah mətni: "Yaxınlığınızdakı kioskları göstərmək üçün…"); icazədən sonra siyahı məsafə ilə, ən yaxın birinci |

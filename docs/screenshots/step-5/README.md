@@ -4,7 +4,7 @@ Hamısı `docker compose up --remove-orphans -d --build api admin` edilmiş stac
 
 - **Mobil tətbiq:** web build (`flutter build web --dart-define=NEOPRINT_API_URL=http://localhost:5080/`), Playwright + Chrome, 430×932. Dəyişən hesablar üçün hər dəfə **yeni test hesabı** (qeydiyyat + Mailpit-dən kod); `dev-user` yalnız oxunan ssenarilərdə.
 - **Kiosk:** Linux build-i Docker konteynerində (`neoprint-kshot`, KSK-9002, Xvfb 1920×1080, fake printer). Yeni kodla yeniləmə — `tools/dev-kiosk/update-linux-kiosk.sh`. Şəxsi QR skanerin yerinə `xdotool type` ilə yalnız kiosk pəncərəsinə yazılıb (`DEV_ENVIRONMENT.md` 7d), toxunuşlar `xdotool`.
-- **Push:** dev-də `LoggingPushSender` və tətbiq daxili banner. Real FCM (web token qeydiyyatı işləyir; Google IAM rolu gözlənilir — T-163) və real telefon — `docs/MANUAL_TESTS.md` MT-07.
+- **Push:** dev-də `LoggingPushSender` və tətbiq daxili banner. Real FCM web push (Chrome, tətbiq öndə) — `push-01`, T-163; arxa plan və real telefon — `docs/MANUAL_TESTS.md` MT-07 (yoxlanmayıb).
 - **Bank / fiskal:** mock; kart ödənişi mock kart provayderi ilə.
 
 | Qrup | Fayllar | Nə göstərir | Tapşırıq |
@@ -15,6 +15,7 @@ Hamısı `docker compose up --remove-orphans -d --build api admin` edilmiş stac
 | Planlanmış çap | `schedule-01…18` | Tab, fayl menyusu, tarix/saat (Azərbaycan həftə günləri), ödəniş, siyahı, vaxt çatanda dialoq, çap, ləğv → balans, kiosk dayandırılıb, vaxtı dəyiş, avtomatik ləğv (admin ayarı) | T-145, T-154…156 |
 | Planlanmış çap (əlavə) | `plan-01…04` | Ana səhifədə "Planlanıb · {vaxt}"; eyni dəqiqəyə düşən iki plan bir dialoqda, ikisi də çap olundu | T-158, T-159 |
 | Bildirişlər | `notif-01…07` | Zəng nişanı, banner, siyahı, oxunma, bildirişdən ekrana keçid | T-146 |
+| Real FCM | `push-01-fcm-foreground` | Real FCM HTTP v1 ilə gələn "Arxiviniz hazırdır" — brauzer aldı, tətbiq banneri | T-163 |
 | Məxfilik | `privacy-01…09` | Avtomatik silinmə, "Məlumatlarımı yüklə" (hazırlanır / hazırdır), "Hesabımı sil" (mane olan, forma, çıxış) | T-147 |
 | Feature flag (mobil) | `flags-01…06` | Söndürüləndə giriş nöqtələri yoxdur, ödənilmiş planlama tabı qalır; açılanda qayıdır | T-148 |
 | Feature flag (kiosk) | `kiosk-flags-01…04` | Açıq ekranda canlı keçid: "Promokod" itir, ödənişdə yalnız bank QR, açılanda "NeoPrint tətbiqi" qayıdır | T-160 |

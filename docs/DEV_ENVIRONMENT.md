@@ -318,6 +318,11 @@ Remove-Item C:\Users\<siz>\Downloads\<açar>.json
 docker compose restart api
 ```
 
+3. Service account-un mesaj göndərmək hüququ olmalıdır. Push `403 PERMISSION_DENIED —
+   cloudmessaging.messages.create` qaytarırsa: https://console.cloud.google.com/iam-admin/iam?project=neoprint-8d6e1 →
+   `firebase-adminsdk-…@….iam.gserviceaccount.com` sətrində ✏ → **Add another role** →
+   **Firebase Cloud Messaging API Admin** → **Save** (1–2 dəqiqəyə tətbiq olunur, T-163).
+
 Açar təsadüfən başqa yerə düşübsə (söhbət, ekran görüntüsü, commit): Firebase
 Console → **Service accounts** → **Manage service account permissions** →
 `firebase-adminsdk-…` → **Keys** tabında həmin açarı silin və yenisini yaradın.
