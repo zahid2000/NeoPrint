@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.UserQr;
+using NeoPrint.Application.Users;
 
 namespace NeoPrint.Api.Controllers;
 
@@ -25,6 +26,19 @@ public sealed class UsersController : ControllerBase
     }
 
     private Guid UserId => _currentUser.UserId ?? throw new UnauthorizedAccessException();
+
+    /// <summary>
+    /// The account's language (T-152): <c>{ "language": "az" | "en" | "ru" }</c>. Emails,
+    /// pushes and server messages follow it on every device.
+    /// </summary>
+    [HttpPut]
+    public async Task<IActionResult> Update([FromBody] UpdateMeRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        await _sender.Send(new ChangeMyLanguageCommand(UserId, request.Language), cancellationToken);
+        return NoContent();
+    }
 
     /// <summary>The personal QR now (plan section 2.9): good for <c>rotationSeconds</c>, then fetch a new one.</summary>
     [HttpGet("qr")]
@@ -54,3 +68,5 @@ public sealed class UsersController : ControllerBase
     /// <summary>A code that lets a kiosk open the account's files must not sit in a cache.</summary>
     private void NoStore() => Response.Headers.CacheControl = "no-store";
 }
+
+public sealed record UpdateMeRequest(string? Language);

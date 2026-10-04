@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 using NeoPrint.Application.Abstractions;
@@ -74,6 +75,25 @@ public sealed class UserRepository : IUserRepository
 
     public Task<long> CountReferredAsync(Guid userId, CancellationToken cancellationToken = default)
         => _context.Users.CountDocumentsAsync(user => user.ReferredBy == userId, cancellationToken: cancellationToken);
+
+    public Task SetLanguageAsync(Guid userId, string language, CancellationToken cancellationToken = default)
+        => _context.Users.UpdateOneAsync(
+            Builders<User>.Filter.Eq(user => user.Id, userId),
+            // Every device of the account follows (docs/DECISIONS.md T-152): pushes
+            // are written in the account's language, not the one a phone had once.
+            Builders<User>.Update
+                .Set(user => user.Language, language)
+                .Set("FcmTokens.$[device].Language", language),
+            new UpdateOptions
+            {
+                // Only device entries: an array filter never fails on an element of another shape.
+                ArrayFilters =
+                [
+                    new BsonDocumentArrayFilterDefinition<BsonDocument>(
+                        new BsonDocument("device.Token", new BsonDocument("$exists", true))),
+                ],
+            },
+            cancellationToken);
 
     public async Task SavePushDeviceAsync(Guid userId, PushDevice device, CancellationToken cancellationToken = default)
     {

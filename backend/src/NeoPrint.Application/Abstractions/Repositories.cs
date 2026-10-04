@@ -43,6 +43,12 @@ public interface IUserRepository
     /// </summary>
     Task SavePushDeviceAsync(Guid userId, PushDevice device, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The account's language (T-152), written on its own so a push device
+    /// registered at the same moment is not overwritten.
+    /// </summary>
+    Task SetLanguageAsync(Guid userId, string language, CancellationToken cancellationToken = default);
+
     /// <summary>Deleted accounts not yet erased whose deletion is older than <paramref name="deletedBefore"/>.</summary>
     Task<IReadOnlyList<Guid>> ListToEraseAsync(DateTime deletedBefore, int take, CancellationToken cancellationToken = default);
 
