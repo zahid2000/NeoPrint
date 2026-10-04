@@ -52,7 +52,7 @@ internal sealed class OrderTestKit : IDisposable
 
     public static async Task<OrderTestKit> CreateAsync(
         int paperCurrent = 480, bool blockOnPaper = true, IReadOnlyList<string>? allowedFormats = null, int maxFileSizeMb = 50, bool skipPayment = true,
-        bool canColor = true)
+        bool canColor = true, IReadOnlyDictionary<string, bool>? features = null)
     {
         var paths = new FakeAppPaths();
         paths.EnsureCreated();
@@ -73,7 +73,7 @@ internal sealed class OrderTestKit : IDisposable
 
         // The configuration comes from the disk cache: the quote needs no call.
         var cache = new ConfigurationCache(paths);
-        cache.Save(Configuration(paperCurrent, blockOnPaper, allowedFormats, maxFileSizeMb, canColor), DateTime.UtcNow);
+        cache.Save(Configuration(paperCurrent, blockOnPaper, allowedFormats, maxFileSizeMb, canColor, features), DateTime.UtcNow);
 
         var runtime = new KioskRuntime(api, new SystemClock(), NullLogger<KioskRuntime>.Instance, cache);
         runtime.LoadCachedConfiguration().Should().BeTrue();
@@ -122,7 +122,8 @@ internal sealed class OrderTestKit : IDisposable
     }
 
     private static KioskConfiguration Configuration(
-        int paperCurrent, bool blockOnPaper, IReadOnlyList<string>? allowedFormats, int maxFileSizeMb, bool canColor) => new(
+        int paperCurrent, bool blockOnPaper, IReadOnlyList<string>? allowedFormats, int maxFileSizeMb, bool canColor,
+        IReadOnlyDictionary<string, bool>? features) => new(
         Guid.NewGuid(),
         "KSK-0001",
         "Mərkəz",
@@ -137,7 +138,7 @@ internal sealed class OrderTestKit : IDisposable
         200,
         null,
         new Dictionary<string, PaperStockLevel> { ["A4"] = new(500, paperCurrent) },
-        new Dictionary<string, bool>(),
+        features ?? new Dictionary<string, bool>(),
         15,
         24,
         DateTime.UtcNow,

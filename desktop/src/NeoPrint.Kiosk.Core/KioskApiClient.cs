@@ -84,7 +84,25 @@ public sealed record KioskConfiguration(
     KioskPrices? Prices = null,
     IReadOnlyList<string>? AllowedFormats = null,
     bool PaperBlockWhenInsufficient = true,
-    int IdleResetSeconds = 90);
+    int IdleResetSeconds = 90)
+{
+    /// <summary>
+    /// Whether a feature flag is on for this kiosk (plan section 2.16, T-160). A key
+    /// the backend did not send is on, as the backend treats it: a flag leaves the
+    /// catalogue once its feature is permanent.
+    /// </summary>
+    public bool IsOn(string feature) => Features is null || !Features.TryGetValue(feature, out var on) || on;
+}
+
+/// <summary>The feature flags the kiosk acts on (backend <c>MvpFlags</c>).</summary>
+public static class KioskFeatures
+{
+    /// <summary>"Tətbiqlə ödə" on the payment screen.</summary>
+    public const string MobilePaymentAtKiosk = "mobile_payment_at_kiosk";
+
+    /// <summary>Typing a promo code on the options screen.</summary>
+    public const string PromoCodes = "promo_codes";
+}
 
 /// <summary>The rates of the kiosk's profile: the live quote on the options screen (plan section 7.3, screen 5).</summary>
 public sealed record KioskPrices(

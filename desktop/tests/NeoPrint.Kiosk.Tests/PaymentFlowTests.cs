@@ -345,4 +345,52 @@ public sealed class PaymentFlowTests : IDisposable
 
         flow.Stage.Should().Be(FlowStage.QrPayment, "the file is in the spool already");
     }
+
+    [Fact]
+    public async Task A_kiosk_with_app_payment_and_promo_codes_switched_off_offers_neither()
+    {
+        // T-160: the configuration's flags, evaluated for this kiosk.
+        var kit = await OrderTestKit.CreateAsync(
+            skipPayment: false,
+            features: new Dictionary<string, bool>
+            {
+                [KioskFeatures.MobilePaymentAtKiosk] = false,
+                [KioskFeatures.PromoCodes] = false,
+            });
+        _kits.Add(kit);
+        kit.Pdf(1, _drive, "report.pdf");
+
+        var drives = new FakeRemovableDriveWatcher();
+        drives.Drives.Add(new RemovableDrive(_drive, "USB", 1, 1));
+        var flow = new PrintFlowViewModel(kit.Orders, drives, pageImage: _ => null) { Language = "az", Delay = (_, token) => Task.Delay(5, token) };
+
+        await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
+        await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
+        flow.ContinueCommand.Execute(null);
+
+        flow.CanEditPromo.Should().BeFalse("promo_codes is off here");
+        flow.EditPromoCommand.Execute(null);
+        flow.PromoEditing.Should().BeFalse();
+
+        await flow.PlaceCommand.ExecuteAsync(null);
+        flow.Stage.Should().Be(FlowStage.PaymentMethod);
+        flow.CanPayWithApp.Should().BeFalse("only the bank QR is offered");
+
+        await flow.PayWithAppCommand.ExecuteAsync(null);
+        kit.Backend.Payments.Values.Should().NotContain(p => p.Method == "MobileApp");
+
+        await flow.PayWithBankCommand.ExecuteAsync(null);
+        flow.Stage.Should().Be(FlowStage.QrPayment);
+    }
+
+    [Fact]
+    public void A_flag_the_backend_did_not_send_is_on()
+    {
+        var configuration = new KioskConfiguration(
+            Guid.NewGuid(), "KSK-0001", "Mərkəz", "Online", "az", null, new PrinterCapabilityFlags(true, true, true), [], null, 5, 50, 200, null,
+            new Dictionary<string, PaperStockLevel>(), new Dictionary<string, bool> { [KioskFeatures.PromoCodes] = false }, 15, 24, DateTime.UtcNow);
+
+        configuration.IsOn(KioskFeatures.PromoCodes).Should().BeFalse();
+        configuration.IsOn(KioskFeatures.MobilePaymentAtKiosk).Should().BeTrue("not sent: on, as on the backend");
+    }
 }

@@ -494,6 +494,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         QueueDisplayLimit = configuration.QueueDisplayLimit;
         SelectedPrinterName = configuration.SelectedPrinter;
 
+        // A feature flag switched (T-160): the order on screen hides or shows
+        // its ways in now, not at the next order.
+        Flow?.ConfigurationChanged();
+
         // A kiosk with no printer chosen yet waits on screen 14 rather than
         // offering to print (plan section 7.3).
         if (Screen is KioskScreen.Flow or KioskScreen.SafeMode or KioskScreen.Admin)

@@ -21,6 +21,9 @@ public sealed class KioskHub : Hub
 {
     public static string GroupFor(Guid kioskId) => $"kiosk:{kioskId}";
 
+    /// <summary>Every connected kiosk: for what all their configurations carry (feature flags).</summary>
+    public const string AllKiosksGroup = "kiosks";
+
     public override async Task OnConnectedAsync()
     {
         if (CallerClaims.KioskId(Context.User) is not { } kioskId)
@@ -30,6 +33,7 @@ public sealed class KioskHub : Hub
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, GroupFor(kioskId));
+        await Groups.AddToGroupAsync(Context.ConnectionId, AllKiosksGroup);
         await base.OnConnectedAsync();
     }
 
@@ -39,6 +43,8 @@ public sealed class KioskHub : Hub
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, GroupFor(kioskId));
         }
+
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, AllKiosksGroup);
 
         await base.OnDisconnectedAsync(exception);
     }
@@ -65,6 +71,9 @@ public sealed class SignalRKioskNotifier : IKioskNotifier, NeoPrint.Application.
 
     public Task KioskConfigChangedAsync(Guid kioskId, CancellationToken cancellationToken = default)
         => Send(kioskId, "KioskConfigChanged", new { kioskId }, cancellationToken);
+
+    public Task AllKiosksConfigChangedAsync(CancellationToken cancellationToken = default)
+        => _hub.Clients.Group(KioskHub.AllKiosksGroup).SendAsync("KioskConfigChanged", new { kioskId = Guid.Empty }, cancellationToken);
 
     /// <summary>The customer at this kiosk paid (plan section 7.3, screen 7: SignalR plus a polling fallback).</summary>
     public Task PaymentConfirmedAsync(Guid kioskId, Guid paymentId, Guid jobId, CancellationToken cancellationToken = default)

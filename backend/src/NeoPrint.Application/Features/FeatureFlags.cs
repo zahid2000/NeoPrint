@@ -148,15 +148,22 @@ public sealed class UpdateFeatureFlagHandler : IRequestHandler<UpdateFeatureFlag
     private readonly IFeatureFlagEvaluator _evaluator;
     private readonly IAuditWriter _audit;
     private readonly IAdminNotifier _notifier;
+    private readonly PrintJobs.IKioskNotifier _kiosks;
     private readonly IClock _clock;
 
     public UpdateFeatureFlagHandler(
-        IFeatureFlagRepository flags, IFeatureFlagEvaluator evaluator, IAuditWriter audit, IAdminNotifier notifier, IClock clock)
+        IFeatureFlagRepository flags,
+        IFeatureFlagEvaluator evaluator,
+        IAuditWriter audit,
+        IAdminNotifier notifier,
+        PrintJobs.IKioskNotifier kiosks,
+        IClock clock)
     {
         _flags = flags;
         _evaluator = evaluator;
         _audit = audit;
         _notifier = notifier;
+        _kiosks = kiosks;
         _clock = clock;
     }
 
@@ -210,6 +217,10 @@ public sealed class UpdateFeatureFlagHandler : IRequestHandler<UpdateFeatureFlag
         // Kiosks and panels pick the change up over SignalR rather than at
         // their next poll (plan section 2.16).
         await _notifier.FeatureFlagsChangedAsync(cancellationToken).ConfigureAwait(false);
+
+        // The kiosks hide or show the way in at once (T-160): each fetches its
+        // configuration, whose features are evaluated for that kiosk.
+        await _kiosks.AllKiosksConfigChangedAsync(cancellationToken).ConfigureAwait(false);
 
         return ListFeatureFlagsHandler.ToDetails(flag);
     }

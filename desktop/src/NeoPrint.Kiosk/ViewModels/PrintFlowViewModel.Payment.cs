@@ -210,9 +210,44 @@ public sealed partial class PrintFlowViewModel
     // Promo code
     // -----------------------------------------------------------------------
 
+    /// <summary>
+    /// "Tətbiqlə ödə" on screen 6; gone while <c>mobile_payment_at_kiosk</c> is off
+    /// for this kiosk (T-160, docs/DESIGN_SYSTEM.md "Söndürülmüş funksiya").
+    /// </summary>
+    public bool CanPayWithApp => _orders.Configuration?.IsOn(KioskFeatures.MobilePaymentAtKiosk) ?? true;
+
+    /// <summary>Whether a promo code may be typed (<c>promo_codes</c>); one already applied can still be removed.</summary>
+    public bool CanUsePromo => _orders.Configuration?.IsOn(KioskFeatures.PromoCodes) ?? true;
+
+    /// <summary>The "Promokod" button: no code applied yet, and codes are on.</summary>
+    public bool CanEditPromo => AppliedPromo is null && CanUsePromo;
+
+    /// <summary>
+    /// The configuration changed (a feature flag switched): the screen on show
+    /// hides or shows its ways in at once.
+    /// </summary>
+    public void ConfigurationChanged()
+    {
+        OnPropertyChanged(nameof(CanPayWithApp));
+        OnPropertyChanged(nameof(CanUsePromo));
+        OnPropertyChanged(nameof(CanEditPromo));
+
+        if (!CanUsePromo && PromoEditing)
+        {
+            PromoEditing = false;
+        }
+    }
+
+    partial void OnAppliedPromoChanged(string? value) => OnPropertyChanged(nameof(CanEditPromo));
+
     [RelayCommand]
     private void EditPromo()
     {
+        if (!CanUsePromo)
+        {
+            return;
+        }
+
         PromoEditing = !PromoEditing;
         PromoProblem = null;
     }
@@ -340,7 +375,7 @@ public sealed partial class PrintFlowViewModel
     private Task PayWithBankAsync() => OpenPaymentAsync("BankQr");
 
     [RelayCommand]
-    private Task PayWithAppAsync() => OpenPaymentAsync("MobileApp");
+    private Task PayWithAppAsync() => CanPayWithApp ? OpenPaymentAsync("MobileApp") : Task.CompletedTask;
 
     private async Task OpenPaymentAsync(string method)
     {

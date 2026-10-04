@@ -134,6 +134,12 @@ public interface IKioskNotifier
     /// <summary>Limits, prices, flags or paper changed: fetch the configuration again.</summary>
     Task KioskConfigChangedAsync(Guid kioskId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Something every kiosk's configuration carries changed - a feature flag
+    /// (T-160): each connected kiosk fetches its configuration again.
+    /// </summary>
+    Task AllKiosksConfigChangedAsync(CancellationToken cancellationToken = default);
+
     /// <summary>A remote command for the kiosk (plan section 7.8).</summary>
     Task KioskCommandAsync(Guid kioskId, KioskCommandMessage command, CancellationToken cancellationToken = default);
 

@@ -387,7 +387,7 @@
                     </Border>
 
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                        <Button Classes="secondary" Command="{Binding EditPromoCommand}" IsVisible="{Binding AppliedPromo, Converter={x:Static ObjectConverters.IsNull}}">
+                        <Button Classes="secondary" Command="{Binding EditPromoCommand}" IsVisible="{Binding CanEditPromo}">
                             <TextBlock Text="{Binding PromoButtonText}" />
                         </Button>
                         <Button Classes="secondary" Command="{Binding RemovePromoCommand}" IsVisible="{Binding AppliedPromo, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -413,7 +413,7 @@
                             <TextBlock Text="{Binding PayBankHint}" Classes="muted" TextWrapping="Wrap" />
                         </StackPanel>
                     </Button>
-                    <Button Classes="pay-method" Command="{Binding PayWithAppCommand}">
+                    <Button Classes="pay-method" Command="{Binding PayWithAppCommand}" IsVisible="{Binding CanPayWithApp}">
                         <StackPanel Spacing="{DynamicResource Space4}">
                             <PathIcon Data="{StaticResource IconPhone}" Width="64" Height="64" Foreground="{DynamicResource Brand600}" HorizontalAlignment="Left" />
                             <TextBlock Text="{Binding PayAppText}" Classes="h2" TextWrapping="Wrap" />

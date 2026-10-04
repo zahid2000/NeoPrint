@@ -159,6 +159,37 @@ public sealed class FeatureFlagTests
         (await PostAsync(user.Client, "/api/users/me/export", new { })).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [DockerFact]
+    public async Task A_switch_reaches_every_connected_kiosk_and_its_configuration_says_so()
+    {
+        if (Skip)
+        {
+            return;
+        }
+
+        using var admin = await SuperAdminAsync();
+        using var kiosk = await ReadyKioskAsync(_fixture, "flags-hub");
+        await using var hub = await RawHubConnection.ConnectAsync(_fixture, "kiosk", kiosk.AccessToken);
+        var before = await FlagsAsync(admin);
+        var flag = before["mobile_payment_at_kiosk"];
+
+        try
+        {
+            var overrides = flag.GetProperty("kioskOverrides").Deserialize<Dictionary<string, bool>>()!;
+            overrides[kiosk.KioskId.ToString()] = false;
+            await PutAsync(admin, flag, flag.GetProperty("defaultEnabled").GetBoolean(), overrides);
+
+            // T-160: told at once, not at its next poll; the configuration then says off.
+            await hub.WaitForAsync("KioskConfigChanged", TimeSpan.FromSeconds(10));
+            var config = await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config");
+            config.GetProperty("features").GetProperty("mobile_payment_at_kiosk").GetBoolean().Should().BeFalse();
+        }
+        finally
+        {
+            await RestoreAsync(admin, before, ["mobile_payment_at_kiosk"]);
+        }
+    }
+
     private static async Task RefusedAsync(HttpResponseMessage response, string feature)
     {
         var raw = await response.Content.ReadAsStringAsync();
