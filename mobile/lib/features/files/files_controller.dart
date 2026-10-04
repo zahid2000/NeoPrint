@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
+import '../../core/realtime/user_hub_provider.dart';
 import 'file_models.dart';
 import 'files_repository.dart';
 import 'heic_converter.dart';
@@ -129,7 +130,19 @@ class FilesController extends Notifier<FilesState> {
 
   @override
   FilesState build() {
-    ref.onDispose(() => _poll?.cancel());
+    // A file that deleted itself (T-147) leaves the list at once.
+    final gone = ref
+        .watch(userHubEventsProvider)
+        .where(
+          (event) =>
+              event.target == 'Notification' &&
+              event.payload['type'] == 'FileAutoDeleted',
+        )
+        .listen((_) => unawaited(load()));
+    ref.onDispose(() {
+      _poll?.cancel();
+      unawaited(gone.cancel());
+    });
     Future.microtask(load);
     return const FilesState();
   }

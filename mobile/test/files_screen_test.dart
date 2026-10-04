@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neoprint/core/realtime/user_hub.dart';
+import 'package:neoprint/core/realtime/user_hub_provider.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:neoprint/features/files/file_models.dart';
 import 'package:neoprint/features/files/files_controller.dart';
@@ -14,7 +18,7 @@ import 'package:neoprint/l10n/app_localizations.dart';
 class ListRepository implements FilesRepository {
   ListRepository(this.files);
 
-  final List<UserFile> files;
+  List<UserFile> files;
 
   @override
   Future<FilePage> list({int page = 1, int pageSize = 50}) async =>
@@ -57,11 +61,13 @@ Widget app(
   List<UserFile> files, {
   ThemeData? theme,
   ListRepository? repository,
+  Stream<HubEvent> hub = const Stream.empty(),
 }) => ProviderScope(
   overrides: [
     filesRepositoryProvider.overrideWithValue(
       repository ?? ListRepository(files),
     ),
+    userHubEventsProvider.overrideWithValue(hub),
   ],
   child: MaterialApp(
     theme: theme ?? AppTheme.light(),
@@ -94,6 +100,34 @@ UserFile file({
 });
 
 void main() {
+  testWidgets('a file that deleted itself leaves the list at once (T-147)', (
+    tester,
+  ) async {
+    final hub = StreamController<HubEvent>.broadcast();
+    final repository = ListRepository([
+      file(name: 'pasport.jpg', autoDelete: 'AfterPrint'),
+      file(),
+    ]);
+    await tester.pumpWidget(
+      app(const [], repository: repository, hub: hub.stream),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('pasport.jpg'), findsOneWidget);
+
+    repository.files = [file()];
+    hub.add(
+      const HubEvent('Notification', {
+        'notificationId': 'n1',
+        'type': 'FileAutoDeleted',
+      }),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('pasport.jpg'), findsNothing);
+    expect(find.text('hesabat.pdf'), findsOneWidget);
+    await hub.close();
+  });
+
   testWidgets(
     'auto-delete is chosen from the file menu and shows on the card (T-147)',
     (tester) async {
