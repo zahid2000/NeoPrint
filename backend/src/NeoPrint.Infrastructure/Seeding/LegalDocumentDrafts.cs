@@ -58,8 +58,6 @@ internal static class LegalDocumentDrafts
         Məlumatlarınızı ZIP arxivi kimi yükləyə və hesabınızı silə bilərsiniz. Hesab
         silindikdə bütün fayllar 24 saat ərzində fiziki olaraq silinir və profil
         anonimləşdirilir. **Balansınız və bonus səhifələriniz itir.**
-
-        Tam mətn: docs/legal/PRIVACY_POLICY.az.md
         """;
 
     private const string Terms = """
@@ -89,8 +87,6 @@ internal static class LegalDocumentDrafts
 
         ## Məzmun
         Çap etdiyiniz məzmunun qanuniliyinə siz cavabdehsiniz.
-
-        Tam mətn: docs/legal/TERMS.az.md
         """;
 
     private const string ScanNotice = """

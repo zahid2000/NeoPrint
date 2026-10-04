@@ -1058,6 +1058,13 @@ bu, "başqa telefonda giriş"i yoxlamağın ən asan yoludur. Profil → **Hüqu
 admin panelində dərc olunmuş cari versiyanı göstərir (Admin → Hüquqi sənədlər); en/ru versiyası dərc olunmayıbsa
 Azərbaycan mətni və "hələ yalnız Azərbaycan dilindədir" qeydi görünür.
 
+**Köhnə bazada qaralamanın sonunda "Tam mətn: docs/legal/…" görünürsə (T-161).** Seed yalnız sənəd yoxdursa yazır, ona
+görə 2026-10-04-dən əvvəl yaradılmış lokal bazada köhnə mətn qalır. Bir dəfə işlədin:
+
+```js
+db.legal_documents.find({Content: /Tam mətn: docs\/legal\//}).forEach(d => db.legal_documents.updateOne({_id: d._id}, {$set: {Content: d.Content.replace(/\n*Tam mətn: docs\/legal\/[A-Z_]+\.az\.md\n*$/, "\n")}}))
+```
+
 ---
 
 ## 8. Build, test, lint
