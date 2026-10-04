@@ -76,6 +76,8 @@ export const settingsTranslations: PageTranslations = {
       'Həssas skanlar üçün standart avtomatik silinmə qaydası.',
     'settings.description.Privacy.AccountDeletionGraceHours':
       'Hesab silindikdən sonra fayllar bu müddətdən sonra birdəfəlik silinir.',
+    'settings.description.Privacy.ExportMaxMegabytes':
+      '"Məlumatlarımı yüklə" arxivinə faylların məzmunu bu ölçüyə qədər daxil edilir (MB); çox olanda yalnız siyahısı yazılır.',
     'settings.description.Fiscal.Enabled': 'Satışlar üçün fiskal çek vurulur.',
     'settings.description.Fiscal.TopUpReceiptMode':
       'Balans artırılanda (OnTopUp) və ya xidmət göstəriləndə (OnService) fiskal çek.',
@@ -167,6 +169,8 @@ export const settingsTranslations: PageTranslations = {
       'The default automatic deletion rule for sensitive scans.',
     'settings.description.Privacy.AccountDeletionGraceHours':
       'After an account is deleted, its files are removed for good after this long.',
+    'settings.description.Privacy.ExportMaxMegabytes':
+      'Up to this size (MB) the files go into a "Download my data" archive; above it they are only listed.',
     'settings.description.Fiscal.Enabled': 'Sales get a fiscal receipt.',
     'settings.description.Fiscal.TopUpReceiptMode':
       'Fiscal receipt when the balance is topped up (OnTopUp) or when the service is given (OnService).',
@@ -260,6 +264,8 @@ export const settingsTranslations: PageTranslations = {
       'Правило автоматического удаления для конфиденциальных сканов по умолчанию.',
     'settings.description.Privacy.AccountDeletionGraceHours':
       'После удаления учётной записи её файлы окончательно удаляются через это время.',
+    'settings.description.Privacy.ExportMaxMegabytes':
+      'До этого размера (МБ) файлы входят в архив «Скачать мои данные»; если больше — только их список.',
     'settings.description.Fiscal.Enabled': 'Для продаж выбивается фискальный чек.',
     'settings.description.Fiscal.TopUpReceiptMode':
       'Фискальный чек при пополнении баланса (OnTopUp) или при оказании услуги (OnService).',

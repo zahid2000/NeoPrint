@@ -146,6 +146,10 @@ public static class DependencyInjection
         services.AddScoped<Schedules.ScheduledPrintAutoCancelJob>();
         services.AddScoped<Application.Files.FileEraser>();
         services.AddScoped<Files.FileAutoDeleteJob>();
+        services.AddScoped<Application.Privacy.IDataExportRepository, Privacy.DataExportRepository>();
+        services.AddScoped<Application.Privacy.IDataExportBuilder, Privacy.DataExportBuilder>();
+        services.AddSingleton<Application.Privacy.IExportLinkSigner, Privacy.HmacExportLinkSigner>();
+        services.AddScoped<Privacy.DataExportCleanupJob>();
         services.AddScoped<PrintQueueReconciliationJob>();
 
         // Payments (plan section 2.5, step 4). The mock bank is the only bank
@@ -362,6 +366,7 @@ public static class DependencyInjection
             bus.AddConsumer<Notifications.NotificationDeliveryConsumer>();
             bus.AddConsumer<Notifications.NotificationTriggerConsumer>();
             bus.AddConsumer<Files.FilePrintedConsumer>();
+            bus.AddConsumer<Privacy.DataExportConsumer>();
 
             // Every process caches the storage providers, so every process needs
             // its own copy of this event: a queue per instance, deleted when the

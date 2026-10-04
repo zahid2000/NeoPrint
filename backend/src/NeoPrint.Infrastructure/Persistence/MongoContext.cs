@@ -133,6 +133,7 @@ public sealed class MongoContext
 
     public MongoSet<Domain.Schedules.ScheduledPrint> ScheduledPrints => Set<Domain.Schedules.ScheduledPrint>("scheduled_prints");
     public MongoSet<Domain.Notifications.Notification> Notifications => Set<Domain.Notifications.Notification>("notifications");
+    public MongoSet<Domain.Privacy.DataExport> DataExports => Set<Domain.Privacy.DataExport>("data_exports");
     public MongoSet<Domain.Fiscal.FiscalReceipt> FiscalReceipts => Set<Domain.Fiscal.FiscalReceipt>("fiscal_receipts");
     public MongoSet<Domain.Receipts.Receipt> Receipts => Set<Domain.Receipts.Receipt>("receipts");
     public MongoSet<Receipts.Counter> Counters => Set<Receipts.Counter>("counters");
@@ -471,6 +472,11 @@ public sealed class MongoContext
                 Named("ix_scheduled_prints_status_awaiting")),
             (Builders<Domain.Schedules.ScheduledPrint>.IndexKeys.Ascending(s => s.FileId).Ascending(s => s.Status),
                 Named("ix_scheduled_prints_file_status")));
+
+        await CreateAsync(DataExports,
+            (Builders<Domain.Privacy.DataExport>.IndexKeys.Ascending(e => e.UserId).Descending(e => e.CreatedAt), Named("ix_data_exports_user_created")),
+            // The hourly clean-up: ready archives past their time.
+            (Builders<Domain.Privacy.DataExport>.IndexKeys.Ascending(e => e.Status).Ascending(e => e.ExpiresAt), Named("ix_data_exports_status_expires")));
 
         await CreateAsync(Notifications,
             // One notification per event, however often the event is told.

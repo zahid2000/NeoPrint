@@ -444,6 +444,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         job => job.RunAsync(CancellationToken.None),
         "*/5 * * * *");
 
+    // "Məlumatlarımı yüklə" archives past their 24 hours.
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Privacy.DataExportCleanupJob>(
+        NeoPrint.Infrastructure.Privacy.DataExportCleanupJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Hourly());
+
     recurring.AddOrUpdate<PrintQueueReconciliationJob>(
         PrintQueueReconciliationJob.RecurringId,
         job => job.RunAsync(CancellationToken.None),

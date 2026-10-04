@@ -567,5 +567,11 @@
   "files.autoDelete.afterPrint": "after printing",
   "files.autoDelete.afterOneDay": "after 1 day",
   "files.autoDelete.afterSevenDays": "after 7 days",
-  "files.autoDelete.afterThirtyDays": "after 30 days"
+  "files.autoDelete.afterThirtyDays": "after 30 days",
+  "notifications.exportReady.title": "Your archive is ready",
+  "notifications.exportReady.body": "You can download the archive of your data for the next 24 hours.",
+  "privacy.exportFailed": "The archive could not be made. Try again a little later.",
+  "privacy.exportLinkInvalid": "This download link is not valid or has expired. Make the archive again in the app.",
+  "privacy.export.readme": "NeoPrint — the archive of your data\n\nprofile.json — profile and the documents you accepted\npayments.json — payments\nrefunds.json — refunds\nbalance.json — balance and its movements\norders.json — print orders\nreceipts/ — receipts (PDF)\nfiles.json — the list of your files\nfiles/ — the originals of your files and their edited versions\n",
+  "privacy.export.readmeWithoutFiles": "NeoPrint — the archive of your data\n\nprofile.json — profile and the documents you accepted\npayments.json — payments\nrefunds.json — refunds\nbalance.json — balance and its movements\norders.json — print orders\nreceipts/ — receipts (PDF)\nfiles.json — the list of your files\n\nYour files together are larger than the archive allows, so their contents are not included - they are listed in files.json. You can download them from the app one by one.\n"
 }

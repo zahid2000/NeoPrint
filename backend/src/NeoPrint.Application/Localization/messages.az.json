@@ -567,5 +567,11 @@
   "files.autoDelete.afterPrint": "çapdan sonra",
   "files.autoDelete.afterOneDay": "1 gündən sonra",
   "files.autoDelete.afterSevenDays": "7 gündən sonra",
-  "files.autoDelete.afterThirtyDays": "30 gündən sonra"
+  "files.autoDelete.afterThirtyDays": "30 gündən sonra",
+  "notifications.exportReady.title": "Arxiviniz hazırdır",
+  "notifications.exportReady.body": "Məlumatlarınızın arxivini 24 saat ərzində yükləyə bilərsiniz.",
+  "privacy.exportFailed": "Arxivi hazırlamaq alınmadı. Bir az sonra yenidən cəhd edin.",
+  "privacy.exportLinkInvalid": "Bu yükləmə linki keçərli deyil və ya vaxtı keçib. Tətbiqdə arxivi yenidən hazırlayın.",
+  "privacy.export.readme": "NeoPrint — məlumatlarınızın arxivi\n\nprofile.json — profil və qəbul etdiyiniz sənədlər\npayments.json — ödənişlər\nrefunds.json — qaytarmalar\nbalance.json — balans və onun hərəkətləri\norders.json — çap sifarişləri\nreceipts/ — qəbzlər (PDF)\nfiles.json — fayllarınızın siyahısı\nfiles/ — fayllarınızın orijinalları və redaktə versiyaları\n",
+  "privacy.export.readmeWithoutFiles": "NeoPrint — məlumatlarınızın arxivi\n\nprofile.json — profil və qəbul etdiyiniz sənədlər\npayments.json — ödənişlər\nrefunds.json — qaytarmalar\nbalance.json — balans və onun hərəkətləri\norders.json — çap sifarişləri\nreceipts/ — qəbzlər (PDF)\nfiles.json — fayllarınızın siyahısı\n\nFayllarınızın ümumi ölçüsü arxiv həddini keçir, ona görə onların məzmunu daxil edilməyib — siyahısı files.json-dadır. Faylları tətbiqdən ayrıca yükləyə bilərsiniz.\n"
 }

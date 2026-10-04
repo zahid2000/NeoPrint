@@ -121,6 +121,7 @@ public static class SettingKeys
     public const string LayoutDefaultMarginMm = "Layout.DefaultMarginMm";
     public const string PrivacySensitiveAutoDeleteDefault = "Privacy.SensitiveAutoDeleteDefault";
     public const string PrivacyAccountDeletionGraceHours = "Privacy.AccountDeletionGraceHours";
+    public const string PrivacyExportMaxMegabytes = "Privacy.ExportMaxMegabytes";
     public const string FiscalEnabled = "Fiscal.Enabled";
     public const string FiscalTopUpReceiptMode = "Fiscal.TopUpReceiptMode";
     public const string FiscalMaxPendingMinutes = "Fiscal.MaxPendingMinutes";
@@ -187,6 +188,7 @@ public static class SettingKeys
         new(LayoutDefaultMarginMm, "10", SettingValueType.Integer, "Tərtibat redaktorunda default kənar boşluq (mm)"),
         new(PrivacySensitiveAutoDeleteDefault, "AfterPrint", SettingValueType.String, "Həssas skanlar üçün default avtomatik silinmə"),
         new(PrivacyAccountDeletionGraceHours, "24", SettingValueType.Integer, "Hesab silindikdən sonra faylların fiziki silinmə müddəti"),
+        new(PrivacyExportMaxMegabytes, "500", SettingValueType.Integer, "Məlumat arxivinə faylların məzmunu bu ölçüyə qədər daxil edilir (MB)"),
         new(FiscalEnabled, "true", SettingValueType.Boolean, "Fiskallaşdırma aktivdir"),
         new(FiscalTopUpReceiptMode, "OnTopUp", SettingValueType.String, "Balans artırılanda (OnTopUp) və ya xidmətdə (OnService) fiskal çek"),
         new(FiscalMaxPendingMinutes, "15", SettingValueType.Integer, "Fiskallaşmayan satış üçün incident həddi"),

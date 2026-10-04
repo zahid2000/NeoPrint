@@ -26,6 +26,8 @@ public static class NotificationLinks
     public const string Wallet = "neoprint://wallet";
 
     public const string Files = "neoprint://files";
+
+    public const string Export = "neoprint://privacy/export";
 }
 
 /// <summary>A job printed: its owner hears it (plan section 8.4, <c>JobCompleted</c>).</summary>

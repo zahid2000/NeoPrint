@@ -567,5 +567,11 @@
   "files.autoDelete.afterPrint": "после печати",
   "files.autoDelete.afterOneDay": "через 1 день",
   "files.autoDelete.afterSevenDays": "через 7 дней",
-  "files.autoDelete.afterThirtyDays": "через 30 дней"
+  "files.autoDelete.afterThirtyDays": "через 30 дней",
+  "notifications.exportReady.title": "Архив готов",
+  "notifications.exportReady.body": "Архив ваших данных можно скачать в течение 24 часов.",
+  "privacy.exportFailed": "Не удалось подготовить архив. Попробуйте чуть позже.",
+  "privacy.exportLinkInvalid": "Эта ссылка недействительна или устарела. Подготовьте архив заново в приложении.",
+  "privacy.export.readme": "NeoPrint — архив ваших данных\n\nprofile.json — профиль и принятые вами документы\npayments.json — платежи\nrefunds.json — возвраты\nbalance.json — баланс и его движения\norders.json — заказы печати\nreceipts/ — чеки (PDF)\nfiles.json — список ваших файлов\nfiles/ — оригиналы ваших файлов и их отредактированные версии\n",
+  "privacy.export.readmeWithoutFiles": "NeoPrint — архив ваших данных\n\nprofile.json — профиль и принятые вами документы\npayments.json — платежи\nrefunds.json — возвраты\nbalance.json — баланс и его движения\norders.json — заказы печати\nreceipts/ — чеки (PDF)\nfiles.json — список ваших файлов\n\nОбщий размер ваших файлов превышает лимит архива, поэтому их содержимое не включено — список в files.json. Файлы можно скачать из приложения по отдельности.\n"
 }
