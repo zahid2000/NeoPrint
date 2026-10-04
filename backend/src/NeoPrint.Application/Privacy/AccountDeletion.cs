@@ -7,6 +7,7 @@ using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Application.Common;
 using NeoPrint.Application.Files;
+using NeoPrint.Application.Localization;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Privacy;
 using NeoPrint.Domain.Settings;
@@ -68,8 +69,9 @@ public sealed class AccountDeletionHandlers :
     IRequestHandler<EraseDeletedAccountsCommand, int>,
     IRequestHandler<EraseAccountCommand>
 {
-    /// <summary>"SİL", in any of the app's languages.</summary>
-    private static readonly HashSet<string> Confirmations = new(StringComparer.OrdinalIgnoreCase) { "SİL", "SIL", "DELETE", "УДАЛИТЬ" };
+    /// <summary>The confirmation word in any of the app's languages (<c>privacy.deleteWord</c>).</summary>
+    private static readonly HashSet<string> Confirmations =
+        [.. Messages.Languages.Select(language => Word(Messages.Write(new UserMessage("privacy.deleteWord"), language)))];
 
     private const int Batch = 20;
 
@@ -137,7 +139,7 @@ public sealed class AccountDeletionHandlers :
         var user = await _users.FindByIdAsync(request.UserId, cancellationToken).ConfigureAwait(false)
             ?? throw new NotFoundException("user");
 
-        if (!Confirmations.Contains(request.Confirmation?.Trim() ?? string.Empty))
+        if (!Confirmations.Contains(Word(request.Confirmation ?? string.Empty)))
         {
             throw new ValidationException([new ValidationError("confirmation", "privacy.deleteConfirmation")]);
         }
@@ -165,6 +167,9 @@ public sealed class AccountDeletionHandlers :
 
         _logger.LogInformation("Account {UserId} deleted by its owner; erased after the grace hours.", user.Id);
     }
+
+    /// <summary>"sil", "Sil" and the Azerbaijani capital are one word: the dotted capital I is folded to I.</summary>
+    private static string Word(string text) => text.Trim().ToUpperInvariant().Replace('İ', 'I');
 
     public async Task<int> Handle(EraseDeletedAccountsCommand request, CancellationToken cancellationToken)
     {

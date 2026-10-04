@@ -576,5 +576,6 @@
   "privacy.export.readmeWithoutFiles": "NeoPrint — the archive of your data\n\nprofile.json — profile and the documents you accepted\npayments.json — payments\nrefunds.json — refunds\nbalance.json — balance and its movements\norders.json — print orders\nreceipts/ — receipts (PDF)\nfiles.json — the list of your files\n\nYour files together are larger than the archive allows, so their contents are not included - they are listed in files.json. You can download them from the app one by one.\n",
   "privacy.deleteConfirmation": "Type DELETE to confirm.",
   "privacy.deletePassword": "The password is not correct.",
-  "privacy.deleteBlocked": "The account cannot be deleted yet: there is a print in progress, a scheduled print, an order not collected at a kiosk or money on its way back. Finish or cancel them first."
+  "privacy.deleteBlocked": "The account cannot be deleted yet: there is a print in progress, a scheduled print, an order not collected at a kiosk or money on its way back. Finish or cancel them first.",
+  "privacy.deleteWord": "DELETE"
 }
