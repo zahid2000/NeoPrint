@@ -87,6 +87,33 @@ public sealed record PrintOptions(
         return problems;
     }
 
+    /// <summary>
+    /// What is wrong with these options for a scan or layout that must print
+    /// at real size on <paramref name="paper"/> (plan section 2.11): 100%,
+    /// that paper, one page to a sheet - N-up would shrink the card.
+    /// </summary>
+    public IReadOnlyList<(string Field, UserMessage Message)> RealSizeProblems(string paper)
+    {
+        var problems = new List<(string, UserMessage)>();
+
+        if (Scaling != PageScaling.Actual)
+        {
+            problems.Add(("scaling", new UserMessage("printJobs.realSizeScaling")));
+        }
+
+        if (!string.Equals(Paper, paper, StringComparison.Ordinal))
+        {
+            problems.Add(("paper", UserMessage.Of("printJobs.realSizePaper", ("paper", paper))));
+        }
+
+        if (PagesPerSheet != 1)
+        {
+            problems.Add(("pagesPerSheet", new UserMessage("printJobs.realSizeOnePerSheet")));
+        }
+
+        return problems;
+    }
+
     /// <summary>The pages that will be printed, in order.</summary>
     /// <exception cref="DomainException">The range does not fit the document.</exception>
     public IReadOnlyList<int> SelectedPages(int pageCount)

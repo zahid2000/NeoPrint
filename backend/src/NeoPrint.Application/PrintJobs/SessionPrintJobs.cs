@@ -93,6 +93,7 @@ public sealed class SessionPrintJobHandlers : IRequestHandler<CreateSessionPrint
         }
 
         var now = _clock.UtcNow;
+        PrintOrderRules.EnsureRealSize(file, request.Options);
         var price = await _rules.CheckAndPriceAsync(kiosk, file.PageCount, request.Options, now, cancellationToken).ConfigureAwait(false);
         var actor = ActorContext.User(request.UserId, correlationId: _correlation.CorrelationId);
 

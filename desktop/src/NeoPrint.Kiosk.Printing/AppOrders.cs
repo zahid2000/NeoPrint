@@ -56,7 +56,7 @@ public sealed class AppOrders : IRemoteOrders
             }
 
             var printFile = Path.Combine(folder, "print.pdf");
-            PdfTools.BuildForPrint(downloaded, printFile, pages, job.Options.PagesPerSheet, job.Options.Paper);
+            PdfTools.BuildForPrint(downloaded, printFile, pages, job.Options.PagesPerSheet, job.Options.Paper, job.Options.Scaling == "Actual");
 
             await using (var stream = File.OpenRead(printFile))
             {

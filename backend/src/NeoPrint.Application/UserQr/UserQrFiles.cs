@@ -68,7 +68,8 @@ public sealed record UserQrItem(
     string? Currency,
     bool Here,
     string? KioskCode,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? RealSizePaper = null);
 
 public sealed class UserQrFileHandlers :
     IRequestHandler<ScanUserQrCommand, UserQrFilesView>,
@@ -214,6 +215,7 @@ public sealed class UserQrFileHandlers :
         }
 
         var now = _clock.UtcNow;
+        PrintOrderRules.EnsureRealSize(file, request.Options);
         var price = await _rules.CheckAndPriceAsync(kiosk, file.PageCount, request.Options, now, cancellationToken).ConfigureAwait(false);
 
         Promos.PromoCheck? promo = null;
@@ -359,7 +361,7 @@ public sealed class UserQrFileHandlers :
             if (view.State == "Ready")
             {
                 items.Add(new UserQrItem(
-                    "Prepared", item.Id, view.FileName, view.Pages, item.Options, null, null, null, true, null, item.CreatedAt));
+                    "Prepared", item.Id, view.FileName, view.Pages, item.Options, null, null, null, true, null, item.CreatedAt, file?.RealSizePaper));
             }
         }
 

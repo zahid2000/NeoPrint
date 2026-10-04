@@ -253,7 +253,12 @@ public sealed partial class LinuxPrinterService : IPrinterService, IPrinterForma
             "-o", request.Duplex ? "sides=two-sided-long-edge" : "sides=one-sided",
             "-o", $"media={request.Paper}",
             "-o", request.Color ? "ColorModel=RGB" : "ColorModel=Gray",
-            "-o", "fit-to-page",
+
+            // A scan or layout at 100% (plan section 2.11): CUPS must neither
+            // fit nor shrink it; the page is already the size of the paper.
+            .. (request.ActualSize
+                ? (string[])["-o", "print-scaling=none", "-o", "fit-to-page=false"]
+                : ["-o", "fit-to-page"]),
             "-o", $"document-format={request.ContentType}",
             request.PdfPath,
         ];

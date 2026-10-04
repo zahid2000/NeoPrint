@@ -176,6 +176,8 @@ public sealed class PreparedPrintHandlers :
         var file = await _orders.ReadyFileAsync(request.UserId, request.FileId, cancellationToken).ConfigureAwait(false);
         var options = request.Options ?? PreparedOptions.None;
 
+        PrintOrderRules.EnsureRealSize(file, options);
+
         if (options.Problems(file.PageCount) is [var (field, message), ..])
         {
             throw new ValidationException([new ValidationError(field, message)]);

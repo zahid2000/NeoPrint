@@ -191,6 +191,25 @@ public sealed class StoredFile : Entity
     /// <summary>The layout's own copies of its pictures, so it can be edited after the sources are gone.</summary>
     public List<LayoutAsset> LayoutAssets { get; set; } = [];
 
+    /// <summary>
+    /// The paper a scan or layout was drawn on (<c>A4</c>, <c>A3</c>, <c>A5</c>);
+    /// null for every other file.
+    /// </summary>
+    public string? LayoutPaper { get; set; }
+
+    /// <summary>
+    /// The paper this file must be printed on at 100% (plan section 2.11:
+    /// "Real ölçü 100%" and the layout's paper are compulsory), or null when
+    /// the customer chooses. An A5 layout goes on A4, in the middle: the
+    /// kiosks have A4 and A3 trays (docs/DECISIONS.md 2026-10-05).
+    /// </summary>
+    public string? RealSizePaper => LayoutPaper switch
+    {
+        null => null,
+        "A3" => "A3",
+        _ => "A4",
+    };
+
     /// <summary>Records the layout a new layout file was drawn from.</summary>
     public void StartLayout(string layoutJson, IReadOnlyList<LayoutAsset> assets)
     {

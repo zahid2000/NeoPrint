@@ -2,6 +2,8 @@ using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
 
+using NeoPrint.Kiosk.Platform.Abstractions;
+
 namespace NeoPrint.Kiosk.Printing;
 
 /// <summary>A page and how far to turn it: the file editor's page operations (plan section 2.2).</summary>
@@ -84,9 +86,22 @@ public static class PdfTools
     /// <param name="pages">1-based pages, as the range selected them.</param>
     /// <param name="pagesPerSheet">1, 2 or 4.</param>
     /// <param name="paper">A4 or A3: the sheet the N-up layout is drawn on.</param>
-    public static void BuildForPrint(string sourcePath, string targetPath, IReadOnlyList<int> pages, int pagesPerSheet, string paper)
+    /// <param name="actualSize">
+    /// A scan or layout at 100% (plan section 2.11): each page is put on a
+    /// sheet of <paramref name="paper"/> at its own size, in the middle - an
+    /// A5 layout lands centred on A4 - so the printer, told not to scale,
+    /// prints exactly the paper it is given.
+    /// </param>
+    public static void BuildForPrint(
+        string sourcePath, string targetPath, IReadOnlyList<int> pages, int pagesPerSheet, string paper, bool actualSize = false)
     {
         ArgumentNullException.ThrowIfNull(pages);
+
+        if (actualSize)
+        {
+            OnSheets(sourcePath, targetPath, pages, paper);
+            return;
+        }
 
         if (pagesPerSheet <= 1)
         {
@@ -146,6 +161,42 @@ public static class PdfTools
         catch (PrintingException)
         {
             throw;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            throw new PrintingException("printer.spoolFailed", exception);
+        }
+    }
+
+    /// <summary>Each page at its own size in the middle of a sheet of the paper, turned with the sheet when it is wider than tall.</summary>
+    private static void OnSheets(string sourcePath, string targetPath, IReadOnlyList<int> pages, string paper)
+    {
+        var (paperWidth, paperHeight) = Papers.GetValueOrDefault(paper, Papers["A4"]);
+
+        try
+        {
+            using var form = XPdfForm.FromFile(sourcePath);
+            using var result = new PdfDocument();
+
+            foreach (var number in pages)
+            {
+                form.PageNumber = number;
+
+                var landscape = form.PointWidth > form.PointHeight;
+                var sheetWidth = landscape ? paperHeight : paperWidth;
+                var sheetHeight = landscape ? paperWidth : paperHeight;
+
+                var sheet = result.AddPage();
+                sheet.Width = XUnit.FromPoint(sheetWidth);
+                sheet.Height = XUnit.FromPoint(sheetHeight);
+
+                var place = PagePlacement.Actual(new Placement(0, 0, sheetWidth, sheetHeight), form.PointWidth, form.PointHeight);
+
+                using var graphics = XGraphics.FromPdfPage(sheet);
+                graphics.DrawImage(form, new XRect(place.X, place.Y, place.Width, place.Height));
+            }
+
+            result.Save(targetPath);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

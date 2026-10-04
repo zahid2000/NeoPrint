@@ -39,6 +39,38 @@ public sealed class PrintOrderRules
     }
 
     /// <summary>
+    /// Refuses options that would not print a scan or layout at its real size
+    /// (plan section 2.11). The apps lock these choices and say why; this is
+    /// the check behind the lock, so the price quoted is the price of what prints.
+    /// </summary>
+    public static void EnsureRealSize(Domain.Files.StoredFile file, PrintOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (file.RealSizePaper is { } paper && options.RealSizeProblems(paper) is { Count: > 0 } problems)
+        {
+            throw new ValidationException([.. problems.Select(problem => new ValidationError(problem.Field, problem.Message))]);
+        }
+    }
+
+    /// <summary>The part of <see cref="EnsureRealSize"/> a preparation can already break: the paper and N-up it fixed.</summary>
+    public static void EnsureRealSize(Domain.Files.StoredFile file, PreparedOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (file.RealSizePaper is not { } paper)
+        {
+            return;
+        }
+
+        var complete = options.Complete(PrintOptions.Default with { Paper = paper, Scaling = PageScaling.Actual });
+
+        EnsureRealSize(file, complete);
+    }
+
+    /// <summary>
     /// Within the kiosk's limits, something its printer can do, enough paper -
     /// and the price from its profile, taken now and never recomputed.
     /// </summary>

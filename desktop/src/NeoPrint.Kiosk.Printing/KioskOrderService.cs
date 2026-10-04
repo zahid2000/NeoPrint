@@ -168,7 +168,7 @@ public sealed class KioskOrderService
             if (original is null)
             {
                 printFile = Path.Combine(folder, "print.pdf");
-                PdfTools.BuildForPrint(document.PdfPath, printFile, pages, options.PagesPerSheet, options.Paper);
+                PdfTools.BuildForPrint(document.PdfPath, printFile, pages, options.PagesPerSheet, options.Paper, options.Scaling == "Actual");
             }
 
             await using (var stream = File.OpenRead(printFile!))
@@ -229,6 +229,7 @@ public sealed class KioskOrderService
             || document.SourcePath is null
             || !string.IsNullOrWhiteSpace(options.PageRange)
             || options.PagesPerSheet > 1
+            || options.Scaling == "Actual"
             || _runtime.Configuration?.SelectedPrinter is not { } printer)
         {
             return null;

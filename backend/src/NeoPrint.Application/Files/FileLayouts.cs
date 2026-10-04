@@ -20,7 +20,8 @@ namespace NeoPrint.Application.Files;
 
 /// <summary>What a layout uses, read from its JSON without drawing it.</summary>
 /// <param name="Images">Every picture name, once each.</param>
-public sealed record LayoutOutline(IReadOnlyList<string> Images, int PageCount);
+/// <param name="Paper">A4, A3 or A5.</param>
+public sealed record LayoutOutline(IReadOnlyList<string> Images, int PageCount, string Paper);
 
 /// <summary>A scanner document type and its real size (plan section 2.11).</summary>
 public sealed record ScanDocumentType(string Key, double WidthMm, double HeightMm, bool Sensitive);
@@ -181,6 +182,7 @@ public sealed class FileLayoutHandlers :
             DocumentType = documentType,
             PhysicalWidthMm = width,
             PhysicalHeightMm = height,
+            LayoutPaper = outline.Paper,
             AutoDelete = await _intake.DefaultAutoDeleteAsync(sensitive, cancellationToken).ConfigureAwait(false),
         };
 
@@ -214,6 +216,7 @@ public sealed class FileLayoutHandlers :
             Extension = "pdf",
             MediaType = "application/pdf",
             Source = FileSource.Layout,
+            LayoutPaper = outline.Paper,
         };
 
         var pictures = await CollectAsync(file, outline.Images, maxBytes, cancellationToken).ConfigureAwait(false);
@@ -303,6 +306,7 @@ public sealed class FileLayoutHandlers :
             // Never relaxed: a layout that once held a personal document stays
             // marked, whatever was taken out of it.
             file.IsSensitive |= pictures.Values.Any(picture => picture.Sensitive);
+            file.LayoutPaper = outline.Paper;
 
             await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
         }

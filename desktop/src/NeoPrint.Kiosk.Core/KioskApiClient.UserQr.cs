@@ -30,7 +30,8 @@ public sealed record UserQrItem(
     string? Currency,
     bool Here,
     string? KioskCode,
-    DateTime CreatedAt)
+    DateTime CreatedAt,
+    string? RealSizePaper = null)
 {
     public bool IsPaid => Kind == "Paid";
 }

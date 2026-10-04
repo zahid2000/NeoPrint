@@ -223,6 +223,52 @@ public sealed record PrintRequest(
     /// it again (<see cref="IPrintJobTracker"/>).
     /// </summary>
     public Action<string>? Submitted { get; init; }
+
+    /// <summary>
+    /// Print at 100%, never fitted to the paper: scans and layouts, where a
+    /// card must come out card-sized (plan section 2.11, "Real ölçü 100%").
+    /// </summary>
+    public bool ActualSize { get; init; }
+}
+
+/// <summary>A rectangle on the sheet, in whatever unit the caller works in.</summary>
+public readonly record struct Placement(double X, double Y, double Width, double Height);
+
+/// <summary>
+/// Where a page goes on the sheet (plan sections 7.4, 2.11): fitted to the
+/// printable area, or at its real size in the middle of the paper.
+/// </summary>
+/// <remarks>
+/// Kept apart from the Windows printer code so it can be tested anywhere:
+/// the arithmetic decides whether an ID card prints 85.6 mm wide.
+/// </remarks>
+public static class PagePlacement
+{
+    /// <summary>The page shrunk or grown to fill the printable area, keeping its shape, centred.</summary>
+    public static Placement Fit(Placement printable, double pageWidth, double pageHeight)
+    {
+        var scale = Math.Min(printable.Width / pageWidth, printable.Height / pageHeight);
+        var width = pageWidth * scale;
+        var height = pageHeight * scale;
+
+        return new Placement(
+            printable.X + ((printable.Width - width) / 2),
+            printable.Y + ((printable.Height - height) / 2),
+            width,
+            height);
+    }
+
+    /// <summary>
+    /// The page at its own size, centred on the whole sheet - not on the
+    /// printable area, whose margins differ from side to side on most printers.
+    /// </summary>
+    /// <param name="sheet">The whole sheet, in the drawing's coordinates.</param>
+    public static Placement Actual(Placement sheet, double pageWidth, double pageHeight)
+        => new(
+            sheet.X + ((sheet.Width - pageWidth) / 2),
+            sheet.Y + ((sheet.Height - pageHeight) / 2),
+            pageWidth,
+            pageHeight);
 }
 
 /// <summary>

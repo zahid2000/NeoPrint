@@ -933,11 +933,54 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     private void ChooseDuplex(string? value) => Duplex = value == "true" && CanDuplex;
 
     [RelayCommand]
-    private void ChoosePaper(string? value) => Paper = value == "A3" && CanA3 ? "A3" : "A4";
+    private void ChoosePaper(string? value)
+    {
+        if (!IsRealSize)
+        {
+            Paper = value == "A3" && CanA3 ? "A3" : "A4";
+        }
+    }
 
     [RelayCommand]
     private void ChoosePerSheet(string? value)
-        => PagesPerSheet = int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n is 1 or 2 or 4 ? n : 1;
+    {
+        if (!IsRealSize)
+        {
+            PagesPerSheet = int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n is 1 or 2 or 4 ? n : 1;
+        }
+    }
+
+    /// <summary>
+    /// The paper a scan or layout must print on at 100% (plan section 2.11);
+    /// null when the customer chooses. Paper and pages per sheet are then
+    /// fixed, shown and explained (docs/DESIGN_SYSTEM.md, "Real ölçü kilidi").
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRealSize), nameof(CanChooseSheet), nameof(RealSizeNote), nameof(RealSizeBlocked))]
+    private string? _realSizePaper;
+
+    public bool IsRealSize => RealSizePaper is not null;
+
+    /// <summary>Whether paper and pages per sheet can be changed.</summary>
+    public bool CanChooseSheet => !IsRealSize;
+
+    /// <summary>Why paper and pages per sheet are fixed.</summary>
+    public string? RealSizeNote => RealSizePaper is { } paper && RealSizeBlocked is null ? T("options.realSize", paper) : null;
+
+    /// <summary>An A3 scan or layout at a kiosk without A3: it cannot be printed here.</summary>
+    public string? RealSizeBlocked => RealSizePaper == "A3" && !CanA3 ? T("options.realSizeNoA3") : null;
+
+    /// <summary>Fixes the options a scan or layout must print with: 100%, its paper, one page to a sheet.</summary>
+    private void ApplyRealSize(string? paper)
+    {
+        RealSizePaper = paper;
+
+        if (paper is not null)
+        {
+            Paper = paper;
+            PagesPerSheet = 1;
+        }
+    }
 
     partial void OnCopiesChanged(int value) => Requote();
 
@@ -961,7 +1004,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         Paper,
         "Auto",
         PagesPerSheet,
-        "Fit");
+        IsRealSize ? "Actual" : "Fit");
 
     private void Requote()
     {
@@ -1008,7 +1051,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
         QuoteDetail = detail;
         Error = quote.PaperCovers ? null : T("options.notEnoughPaper");
-        CanPlace = quote.PaperCovers;
+        CanPlace = quote.PaperCovers && RealSizeBlocked is null;
         RequotePromo(quote.Price.FinalPrice);
     }
 
@@ -1020,6 +1063,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         RangeProblem = null;
         Color = false;
         Duplex = false;
+        RealSizePaper = null;
         Paper = "A4";
         PagesPerSheet = 1;
         PriceText = null;

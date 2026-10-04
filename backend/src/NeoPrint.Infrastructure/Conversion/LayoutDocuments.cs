@@ -19,7 +19,7 @@ public sealed class LayoutDocuments : ILayoutDocuments
     {
         var project = Parse(layoutJson);
 
-        return new LayoutOutline(project.Images(), project.Pages.Count);
+        return new LayoutOutline(project.Images(), project.Pages.Count, project.Paper.ToString());
     }
 
     public string RenameImages(string layoutJson, IReadOnlyDictionary<string, string> names)

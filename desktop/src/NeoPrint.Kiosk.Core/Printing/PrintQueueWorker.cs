@@ -549,6 +549,7 @@ public sealed class PrintQueueWorker
                         $"NeoPrint-{entry.JobCode}",
                         entry.ContentType ?? PrintContentTypes.Pdf)
                     {
+                        ActualSize = entry.Options.Scaling == "Actual",
                         // Kept at once: a restart from here on can find the job.
                         Submitted = reference => _journal.Save(printing = printing with { SpoolerJobId = reference }),
                     },

@@ -253,10 +253,24 @@
 
                         <!-- A file from the app: what was chosen there and this kiosk cannot do (plan 9.4). -->
                         <Border Classes="warning" IsVisible="{Binding PresetNote, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                            <Grid ColumnDefinitions="Auto,*">
                                 <PathIcon Data="{StaticResource IconWarning}" Width="28" Height="28" Foreground="{DynamicResource Warning500}" VerticalAlignment="Top" />
-                                <TextBlock Text="{Binding PresetNote}" TextWrapping="Wrap" MaxWidth="1000" />
-                            </StackPanel>
+                                <TextBlock Grid.Column="1" Margin="{DynamicResource GapStart4}" Text="{Binding PresetNote}" TextWrapping="Wrap" />
+                            </Grid>
+                        </Border>
+
+                        <!-- A scan or layout: 100%, its paper, one page to a sheet (docs/DESIGN_SYSTEM.md, "Real ölçü kilidi"). -->
+                        <Border Classes="info" IsVisible="{Binding RealSizeNote, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <PathIcon Data="{StaticResource IconInfo}" Width="28" Height="28" Foreground="{DynamicResource Info500}" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1" Margin="{DynamicResource GapStart4}" Text="{Binding RealSizeNote}" TextWrapping="Wrap" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="warning" IsVisible="{Binding RealSizeBlocked, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <PathIcon Data="{StaticResource IconWarning}" Width="28" Height="28" Foreground="{DynamicResource Warning500}" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1" Margin="{DynamicResource GapStart4}" Text="{Binding RealSizeBlocked}" TextWrapping="Wrap" />
+                            </Grid>
                         </Border>
 
                         <!-- Copies -->
@@ -341,7 +355,7 @@
                         </StackPanel>
 
                         <!-- Paper -->
-                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" IsEnabled="{Binding CanChooseSheet}">
                             <TextBlock Text="{Binding PaperLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
                             <Button Classes="choice" Classes.selected="{Binding Paper, Converter={x:Static vm:ScreenConverters.IsA4}}"
                                     Command="{Binding ChoosePaperCommand}" CommandParameter="A4">
@@ -355,7 +369,7 @@
                         </StackPanel>
 
                         <!-- Pages per sheet -->
-                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" IsEnabled="{Binding CanChooseSheet}">
                             <TextBlock Text="{Binding PerSheetLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
                             <Button Classes="choice" Classes.selected="{Binding PagesPerSheet, Converter={x:Static vm:ScreenConverters.IsOne}}"
                                     Command="{Binding ChoosePerSheetCommand}" CommandParameter="1"><TextBlock Text="1" /></Button>

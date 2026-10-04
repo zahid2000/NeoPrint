@@ -212,7 +212,8 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         file.LayoutProjectJson is not null,
         file.DocumentType,
         file.PhysicalWidthMm,
-        file.PhysicalHeightMm);
+        file.PhysicalHeightMm,
+        file.RealSizePaper);
 }
 /// <summary>
 /// A stream that replays bytes already read, then continues with the rest.

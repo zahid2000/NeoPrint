@@ -40,6 +40,46 @@ public sealed class PrinterServiceTests
     }
 
     [Fact]
+    public void A_scan_or_layout_goes_to_cups_unscaled_and_anything_else_fitted()
+    {
+        var request = new PrintRequest(Printer, "/spool/work/print.pdf", 1, false, false, "A4", "Job 1");
+
+        var fitted = LinuxPrinterService.Arguments(request);
+        var actual = LinuxPrinterService.Arguments(request with { ActualSize = true });
+
+        fitted.Should().Contain("fit-to-page").And.NotContain("print-scaling=none");
+        actual.Should().ContainInOrder("-o", "print-scaling=none", "-o", "fit-to-page=false")
+            .And.NotContain("fit-to-page");
+        actual[^1].Should().Be("/spool/work/print.pdf");
+    }
+
+    [Fact]
+    public void An_actual_size_page_sits_in_the_middle_of_the_sheet_at_its_own_size()
+    {
+        // 1/100 inch, as Windows draws: A4 is 826.8 x 1169.3, the drawing's
+        // origin is the printable corner 25 x 30 in.
+        var sheet = new Placement(-25, -30, 826.8, 1169.3);
+
+        var a4 = PagePlacement.Actual(sheet, 826.8, 1169.3);
+        var a5 = PagePlacement.Actual(sheet, 582.7, 826.8);
+
+        a4.Should().Be(new Placement(-25, -30, 826.8, 1169.3));
+        a5.Width.Should().Be(582.7);
+        (a5.X + (a5.Width / 2)).Should().BeApproximately(-25 + (826.8 / 2), 1e-9);
+        (a5.Y + (a5.Height / 2)).Should().BeApproximately(-30 + (1169.3 / 2), 1e-9);
+    }
+
+    [Fact]
+    public void A_fitted_page_fills_the_printable_area_keeping_its_shape()
+    {
+        var fitted = PagePlacement.Fit(new Placement(10, 10, 800, 1100), 2480, 3508);
+
+        (fitted.Width / fitted.Height).Should().BeApproximately(2480.0 / 3508, 1e-9);
+        fitted.Height.Should().BeApproximately(1100, 1e-9);
+        fitted.X.Should().BeGreaterThan(10);
+    }
+
+    [Fact]
     public async Task The_native_formats_come_from_the_queues_ipp_attributes()
     {
         var cups = new FakeCups

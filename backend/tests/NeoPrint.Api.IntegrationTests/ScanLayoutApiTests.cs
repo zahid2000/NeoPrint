@@ -119,6 +119,29 @@ public sealed class ScanLayoutApiTests
             .Should().BeEquivalentTo(["original.pdf"]);
     }
 
+    [PdfiumFact]
+    public async Task A_scan_is_ordered_only_at_real_size_on_its_paper()
+    {
+        using var user = await SignedInAsync();
+        await AcceptScanNoticeAsync(user);
+
+        var scan = await (await user.PostAsync("/api/files/scan", ScanForm())).Content.ReadFromJsonAsync<JsonElement>();
+        var id = scan.GetProperty("id").GetGuid();
+        scan.GetProperty("realSizePaper").GetString().Should().Be("A4");
+        await ConvertAsync(id);
+
+        var onA3 = await user.PostAsJsonAsync("/api/prepared-prints", new { fileId = id, options = new { paper = "A3" } });
+        onA3.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await onA3.Content.ReadAsStringAsync()).Should().Contain("A4 kağızı üçün hazırlanıb");
+
+        var twoUp = await user.PostAsJsonAsync("/api/prepared-prints", new { fileId = id, options = new { pagesPerSheet = 2 } });
+        twoUp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await twoUp.Content.ReadAsStringAsync()).Should().Contain("bir səhifə");
+
+        var plain = await user.PostAsJsonAsync("/api/prepared-prints", new { fileId = id, options = new { copies = 2 } });
+        plain.IsSuccessStatusCode.Should().BeTrue(await plain.Content.ReadAsStringAsync());
+    }
+
     [DockerFact]
     public async Task A_scan_names_only_pictures_it_was_sent_and_only_pictures()
     {

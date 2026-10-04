@@ -171,17 +171,28 @@ public sealed class WindowsPrinterService : IPrinterService, IPrinterFormatSuppo
             {
                 using var bitmap = new Bitmap(w, h, stride, PixelFormat.Format32bppArgb, handle.AddrOfPinnedObject());
 
-                // Fit the printable area, keeping the page's shape; the page
-                // range and N-up are already in the PDF (plan section 7.4).
-                var area = e.MarginBounds;
-                var scale = Math.Min(area.Width / (float)w, area.Height / (float)h);
-                var target = new RectangleF(
-                    area.Left + ((area.Width - (w * scale)) / 2),
-                    area.Top + ((area.Height - (h * scale)) / 2),
-                    w * scale,
-                    h * scale);
+                // The page range and N-up are already in the PDF (plan section 7.4).
+                // Units are 1/100 inch. A scan or layout prints at its real
+                // size in the middle of the sheet; the drawing's origin is the
+                // printable corner, so the sheet starts at minus the hard
+                // margins (plan section 2.11). Anything else fits the printable area.
+                Placement placement;
 
-                e.Graphics!.DrawImage(bitmap, target);
+                if (request.ActualSize)
+                {
+                    var sheet = new Placement(
+                        -e.PageSettings.HardMarginX, -e.PageSettings.HardMarginY, e.PageBounds.Width, e.PageBounds.Height);
+                    placement = PagePlacement.Actual(sheet, width / 72.0 * 100, height / 72.0 * 100);
+                }
+                else
+                {
+                    var area = e.MarginBounds;
+                    placement = PagePlacement.Fit(new Placement(area.Left, area.Top, area.Width, area.Height), w, h);
+                }
+
+                e.Graphics!.DrawImage(
+                    bitmap,
+                    new RectangleF((float)placement.X, (float)placement.Y, (float)placement.Width, (float)placement.Height));
             }
             finally
             {

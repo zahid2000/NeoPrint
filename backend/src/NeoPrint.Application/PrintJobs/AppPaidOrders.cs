@@ -120,6 +120,8 @@ public sealed class AppPaidOrders
             await _features.RequireAsync(feature, kiosk.Id, userId, cancellationToken).ConfigureAwait(false);
         }
 
+        PrintOrderRules.EnsureRealSize(file, options);
+
         // Paper is counted when it is printed: that may be days away.
         var price = await _rules
             .CheckAndPriceAsync(kiosk, file.PageCount, options, now, cancellationToken, checkPaper: false)

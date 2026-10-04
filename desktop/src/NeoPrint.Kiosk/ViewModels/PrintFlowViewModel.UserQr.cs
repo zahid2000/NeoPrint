@@ -125,6 +125,7 @@ public sealed partial class PrintFlowViewModel
             FileName = card.Item.FileName;
             ResetOptions();
             ApplyPreset(card.Item.Preset);
+            ApplyRealSize(card.Item.RealSizePaper);
             Stage = FlowStage.Options;
             OnPropertyChanged(nameof(PageCount));
             OnPropertyChanged(nameof(AllPagesText));

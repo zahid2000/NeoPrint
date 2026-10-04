@@ -63,6 +63,14 @@
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
+    <!-- A choice fixed for the customer (a scan at real size): still shown as the one chosen,
+         not greyed like the others (docs/DESIGN_SYSTEM.md, "Real ölçü kilidi"). -->
+    <Style Selector="Button.choice.selected:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brand50}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brand600}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brand700}" />
+    </Style>
+
     <!-- A way to pay (section 4, "Ödəniş ekranları"): a whole card is the button. -->
     <Style Selector="Button.pay-method">
         <Setter Property="Background" Value="{DynamicResource Neutral0}" />
@@ -78,6 +86,15 @@
     <Style Selector="Button.pay-method:pointerover /template/ ContentPresenter">
         <Setter Property="BorderBrush" Value="{DynamicResource Brand600}" />
         <Setter Property="Background" Value="{DynamicResource Brand50}" />
+    </Style>
+
+    <!-- Information the customer should know, not a problem: why an option is fixed. -->
+    <Style Selector="Border.info">
+        <Setter Property="Background" Value="{DynamicResource InfoBg}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Info500}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Padding" Value="{DynamicResource Inset4}" />
     </Style>
 
     <!-- A warning the customer must see before paying: a code that did not apply. -->

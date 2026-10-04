@@ -233,6 +233,30 @@ public sealed class DocumentPreparerTests : IDisposable
         PdfTools.PageCount(target).Should().Be(3);
     }
 
+    [Fact]
+    public void At_actual_size_an_a5_page_goes_onto_an_a4_sheet_unscaled_and_a4_stays_a4()
+    {
+        var a5 = Path.Combine(_folder, "a5.pdf");
+        using (var source = new PdfSharp.Pdf.PdfDocument())
+        {
+            var page = source.AddPage();
+            page.Width = PdfSharp.Drawing.XUnit.FromMillimeter(148);
+            page.Height = PdfSharp.Drawing.XUnit.FromMillimeter(210);
+            source.Save(a5);
+        }
+
+        var target = Path.Combine(_folder, "actual.pdf");
+        PdfTools.BuildForPrint(a5, target, [1], pagesPerSheet: 1, "A4", actualSize: true);
+
+        using var result = PdfSharp.Pdf.IO.PdfReader.Open(target, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+        result.Pages[0].Width.Millimeter.Should().BeApproximately(210, 0.1);
+        result.Pages[0].Height.Millimeter.Should().BeApproximately(297, 0.1);
+
+        var a4 = Path.Combine(_folder, "actual-a4.pdf");
+        PdfTools.BuildForPrint(Pdf(2), a4, [2, 1], pagesPerSheet: 1, "A4", actualSize: true);
+        PdfTools.PageCount(a4).Should().Be(2);
+    }
+
     [Theory]
     [InlineData(2, 5, 3)]
     [InlineData(4, 5, 2)]
