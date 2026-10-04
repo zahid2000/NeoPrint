@@ -29,12 +29,40 @@ class ListRepository implements FilesRepository {
     CancelToken? cancelToken,
   }) => throw UnimplementedError();
 
+  final rules = <(String, AutoDeleteRule)>[];
+
+  @override
+  Future<UserFile> setAutoDelete(String id, AutoDeleteRule rule) async {
+    rules.add((id, rule));
+    final current = files.firstWhere((f) => f.id == id);
+    return UserFile.fromJson({
+      'id': current.id,
+      'fileName': current.fileName,
+      'extension': current.extension,
+      'source': 'Uploaded',
+      'status': 'Ready',
+      'sizeBytes': current.sizeBytes,
+      'pageCount': current.pageCount,
+      'isSensitive': current.isSensitive,
+      'createdAt': current.createdAt.toUtc().toIso8601String(),
+      'autoDelete': rule.wire,
+    });
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Widget app(List<UserFile> files, {ThemeData? theme}) => ProviderScope(
-  overrides: [filesRepositoryProvider.overrideWithValue(ListRepository(files))],
+Widget app(
+  List<UserFile> files, {
+  ThemeData? theme,
+  ListRepository? repository,
+}) => ProviderScope(
+  overrides: [
+    filesRepositoryProvider.overrideWithValue(
+      repository ?? ListRepository(files),
+    ),
+  ],
   child: MaterialApp(
     theme: theme ?? AppTheme.light(),
     locale: const Locale('az'),
@@ -50,6 +78,7 @@ UserFile file({
   String source = 'Uploaded',
   bool sensitive = false,
   String? failure,
+  String autoDelete = 'Never',
 }) => UserFile.fromJson({
   'id': name,
   'fileName': name,
@@ -61,9 +90,50 @@ UserFile file({
   'pageCount': status == 'Ready' ? 3 : 0,
   'isSensitive': sensitive,
   'createdAt': DateTime.now().toUtc().toIso8601String(),
+  'autoDelete': autoDelete,
 });
 
 void main() {
+  testWidgets(
+    'auto-delete is chosen from the file menu and shows on the card (T-147)',
+    (tester) async {
+      final repository = ListRepository([
+        file(),
+        file(name: 'pasport.jpg', sensitive: true, autoDelete: 'AfterPrint'),
+      ]);
+      await tester.pumpWidget(app(const [], repository: repository));
+      await tester.pumpAndSettle();
+
+      // The sensitive scan already deletes itself after printing.
+      expect(find.text('Çapdan sonra silinəcək'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Əməliyyatlar').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Avtomatik silinmə'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Fayl bütün nüsxələri ilə birdəfəlik silinir, silinəndə bildiriş gəlir.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Bu faylla bütün sifarişlər çap olunandan sonra'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Yükləmədən 7 gün sonra'));
+      await tester.pumpAndSettle();
+
+      expect(repository.rules.single, (
+        'hesabat.pdf',
+        AutoDeleteRule.afterSevenDays,
+      ));
+      expect(find.text('7 gündən sonra silinəcək'), findsOneWidget);
+    },
+  );
+
   testWidgets('an empty list says so and offers the upload', (tester) async {
     await tester.pumpWidget(app(const []));
     await tester.pumpAndSettle();

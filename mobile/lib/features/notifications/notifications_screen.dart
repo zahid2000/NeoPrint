@@ -22,6 +22,7 @@ import 'notification_repository.dart';
   'ScheduleDue' => (Icons.alarm, StatusTone.info),
   'ScheduleAutoCancelled' => (Icons.event_busy, StatusTone.warning),
   'RefundCompleted' => (Icons.undo, StatusTone.success),
+  'FileAutoDeleted' => (Icons.auto_delete_outlined, StatusTone.neutral),
   _ => (Icons.notifications, StatusTone.neutral),
 };
 

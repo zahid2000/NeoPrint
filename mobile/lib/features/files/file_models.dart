@@ -39,6 +39,34 @@ enum FileSourceKind {
   };
 }
 
+/// When a file deletes itself (plan section 2.13; docs/DECISIONS.md T-147).
+enum AutoDeleteRule {
+  never('Never'),
+
+  /// After every order made from it printed.
+  afterPrint('AfterPrint'),
+  afterOneDay('AfterOneDay'),
+  afterSevenDays('AfterSevenDays'),
+  afterThirtyDays('AfterThirtyDays');
+
+  const AutoDeleteRule(this.wire);
+
+  final String wire;
+
+  static AutoDeleteRule parse(String? value) => values.firstWhere(
+    (rule) => rule.wire == value,
+    orElse: () => AutoDeleteRule.never,
+  );
+
+  /// Days after the upload, or null for the other rules.
+  int? get days => switch (this) {
+    afterOneDay => 1,
+    afterSevenDays => 7,
+    afterThirtyDays => 30,
+    _ => null,
+  };
+}
+
 final class UserFile {
   const UserFile({
     required this.id,
@@ -52,6 +80,7 @@ final class UserFile {
     required this.versionCount,
     required this.createdAt,
     this.failureReason,
+    this.autoDelete = AutoDeleteRule.never,
   });
 
   factory UserFile.fromJson(Map<String, dynamic> json) => UserFile(
@@ -68,6 +97,7 @@ final class UserFile {
     createdAt:
         DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ??
         DateTime.fromMillisecondsSinceEpoch(0),
+    autoDelete: AutoDeleteRule.parse(json['autoDelete'] as String?),
   );
 
   final String id;
@@ -89,6 +119,9 @@ final class UserFile {
 
   final int versionCount;
   final DateTime createdAt;
+
+  /// When it deletes itself.
+  final AutoDeleteRule autoDelete;
 
   /// Whether the file has pages to preview.
   bool get canPreview => status == FileStatus.ready && pageCount > 0;

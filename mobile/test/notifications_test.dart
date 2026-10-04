@@ -143,6 +143,7 @@ void main() {
         'neoprint://jobs/1b2c': '/home',
         'neoprint://schedules/9a8b': '/scheduled',
         'neoprint://wallet': '/wallet',
+        'neoprint://files': '/files',
         'neoprint://notifications': '/notifications',
       };
       cases.forEach(

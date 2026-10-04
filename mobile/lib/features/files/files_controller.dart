@@ -241,6 +241,25 @@ class FilesController extends Notifier<FilesState> {
     }
   }
 
+  /// Changes when a file deletes itself. Returns why it was refused, or null.
+  Future<ApiException?> setAutoDelete(
+    UserFile file,
+    AutoDeleteRule rule,
+  ) async {
+    try {
+      final saved = await _repository.setAutoDelete(file.id, rule);
+      state = state.copyWith(
+        files: [
+          for (final candidate in state.files)
+            candidate.id == file.id ? saved : candidate,
+        ],
+      );
+      return null;
+    } on ApiException catch (error) {
+      return error;
+    }
+  }
+
   void _schedulePoll() {
     _poll?.cancel();
 

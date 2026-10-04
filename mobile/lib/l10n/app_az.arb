@@ -797,5 +797,23 @@
 
   "notificationsUnread": "Oxunmayıb",
 
-  "notificationOpen": "Aç"
+  "notificationOpen": "Aç",
+
+  "filesAutoDeleteMenu": "Avtomatik silinmə",
+
+  "filesAutoDeleteExplanation": "Fayl bütün nüsxələri ilə birdəfəlik silinir, silinəndə bildiriş gəlir.",
+
+  "filesAutoDeleteNever": "Heç vaxt",
+
+  "filesAutoDeleteAfterPrint": "Çapdan sonra",
+
+  "filesAutoDeleteAfterPrintHint": "Bu faylla bütün sifarişlər çap olunandan sonra",
+
+  "filesAutoDeleteAfterDays": "Yükləmədən {days} gün sonra",
+  "@filesAutoDeleteAfterDays": { "placeholders": {"days":{"type":"int"}} },
+
+  "filesAutoDeleteChipAfterPrint": "Çapdan sonra silinəcək",
+
+  "filesAutoDeleteChipDays": "{days} gündən sonra silinəcək",
+  "@filesAutoDeleteChipDays": { "placeholders": {"days":{"type":"int"}} }
 }

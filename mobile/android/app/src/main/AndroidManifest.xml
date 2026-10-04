@@ -52,6 +52,7 @@
                 <data android:scheme="neoprint" android:host="jobs"/>
                 <data android:scheme="neoprint" android:host="schedules"/>
                 <data android:scheme="neoprint" android:host="wallet"/>
+                <data android:scheme="neoprint" android:host="files"/>
                 <data android:scheme="neoprint" android:host="notifications"/>
             </intent-filter>
             <!-- The invitation link https://neoprint.az/r/{code}. Opens the app

@@ -436,5 +436,21 @@
 
   "notificationsUnread": "Unread",
 
-  "notificationOpen": "Open"
+  "notificationOpen": "Open",
+
+  "filesAutoDeleteMenu": "Auto-delete",
+
+  "filesAutoDeleteExplanation": "The file is deleted for good, with all its copies; you get a notification when it goes.",
+
+  "filesAutoDeleteNever": "Never",
+
+  "filesAutoDeleteAfterPrint": "After printing",
+
+  "filesAutoDeleteAfterPrintHint": "Once every order made from it has printed",
+
+  "filesAutoDeleteAfterDays": "{days, plural, =1{1 day after upload} other{{days} days after upload}}",
+
+  "filesAutoDeleteChipAfterPrint": "Deletes after printing",
+
+  "filesAutoDeleteChipDays": "{days, plural, =1{Deletes after 1 day} other{Deletes after {days} days}}"
 }

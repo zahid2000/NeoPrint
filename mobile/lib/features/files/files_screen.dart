@@ -17,6 +17,7 @@ import '../../shared/widgets/neo_status_chip.dart';
 import 'file_models.dart';
 import 'files_controller.dart';
 import 'heic_converter.dart';
+import 'auto_delete_sheet.dart';
 
 /// "Fayllarım" (plan sections 2.2, 8.2): upload from the phone or the camera,
 /// the list with where each file came from, preview and delete.
@@ -266,6 +267,13 @@ class _FileCard extends ConsumerWidget {
                             tone: StatusTone.warning,
                             icon: Icons.lock_outline,
                           ),
+                        if (autoDeleteChipLabel(l10n, file.autoDelete)
+                            case final label?)
+                          NeoStatusChip(
+                            label: label,
+                            tone: StatusTone.neutral,
+                            icon: Icons.auto_delete_outlined,
+                          ),
                         if (file.status != FileStatus.ready)
                           NeoStatusChip(
                             label: switch (file.status) {
@@ -296,6 +304,7 @@ class _FileCard extends ConsumerWidget {
                 onSelected: (choice) => switch (choice) {
                   'prepare' => context.push(Routes.prepare, extra: file),
                   'schedule' => context.push(Routes.scheduleNew, extra: file),
+                  'autoDelete' => showAutoDeleteSheet(context, file),
                   _ => _delete(context, ref),
                 },
                 itemBuilder: (_) => [
@@ -324,6 +333,17 @@ class _FileCard extends ConsumerWidget {
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
+                  PopupMenuItem(
+                    value: 'autoDelete',
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.auto_delete_outlined,
+                        color: tokens.brand500,
+                      ),
+                      title: Text(l10n.filesAutoDeleteMenu),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
                   PopupMenuItem(
                     value: 'delete',
                     child: ListTile(

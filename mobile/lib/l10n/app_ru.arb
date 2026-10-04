@@ -436,5 +436,21 @@
 
   "notificationsUnread": "Не прочитано",
 
-  "notificationOpen": "Открыть"
+  "notificationOpen": "Открыть",
+
+  "filesAutoDeleteMenu": "Автоудаление",
+
+  "filesAutoDeleteExplanation": "Файл удаляется навсегда вместе со всеми копиями; при удалении придёт уведомление.",
+
+  "filesAutoDeleteNever": "Никогда",
+
+  "filesAutoDeleteAfterPrint": "После печати",
+
+  "filesAutoDeleteAfterPrintHint": "Когда напечатаны все заказы с этим файлом",
+
+  "filesAutoDeleteAfterDays": "{days, plural, one{Через {days} день после загрузки} few{Через {days} дня после загрузки} other{Через {days} дней после загрузки}}",
+
+  "filesAutoDeleteChipAfterPrint": "Удалится после печати",
+
+  "filesAutoDeleteChipDays": "{days, plural, one{Удалится через {days} день} few{Удалится через {days} дня} other{Удалится через {days} дней}}"
 }

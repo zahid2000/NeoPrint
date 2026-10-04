@@ -63,6 +63,14 @@ class FilesRepository {
     );
   }
 
+  /// When the file deletes itself (`PUT api/files/{id}/auto-delete`).
+  Future<UserFile> setAutoDelete(String id, AutoDeleteRule rule) => _api.send(
+    method: 'PUT',
+    path: 'api/files/$id/auto-delete',
+    body: {'rule': rule.wire},
+    parse: (json) => UserFile.fromJson(json as Map<String, dynamic>),
+  );
+
   Future<void> delete(String id) async {
     await _api.send(
       method: 'DELETE',

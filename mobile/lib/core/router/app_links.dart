@@ -18,6 +18,7 @@ final _code = RegExp(r'^[A-Za-z0-9-]{1,40}$');
 /// | `neoprint://jobs/{id}` | home, where the orders are |
 /// | `neoprint://schedules/{id}` | the scheduled prints |
 /// | `neoprint://wallet` | Balance |
+/// | `neoprint://files` | My files |
 /// | `neoprint://notifications` | the notifications |
 ///
 /// The router's sign-in gates still apply to whatever this returns.
@@ -52,6 +53,7 @@ String? appLinkLocation(Uri uri) {
     'jobs' => Routes.home,
     'schedules' => Routes.scheduled,
     'wallet' => Routes.wallet,
+    'files' => Routes.files,
     'notifications' => Routes.notifications,
     _ => null,
   };
