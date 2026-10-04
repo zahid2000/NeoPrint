@@ -24,6 +24,7 @@
     <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Abstractions\NeoPrint.Kiosk.Platform.Abstractions.csproj" />
     <ProjectReference Include="..\NeoPrint.Kiosk.Core\NeoPrint.Kiosk.Core.csproj" />
     <ProjectReference Include="..\..\..\backend\shared\NeoPrint.Layout\NeoPrint.Layout.csproj" />
+    <ProjectReference Include="..\..\..\backend\shared\NeoPrint.Pdfium\NeoPrint.Pdfium.csproj" />
     <ProjectReference Include="..\..\..\backend\shared\NeoPrint.Documents\NeoPrint.Documents.csproj" />
   </ItemGroup>
 

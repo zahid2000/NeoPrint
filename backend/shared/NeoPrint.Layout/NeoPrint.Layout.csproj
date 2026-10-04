@@ -2,10 +2,8 @@
 
   <!--
     Page layout renderer (plan section 2.11): turns a layout project into a PDF
-    at true physical size. The same renderer runs in the backend (for mobile)
-    and locally on the kiosk.
-
-    Implemented in step 2; the packages are added with the implementation.
+    at true physical size. The same renderer runs in the backend (mobile
+    layouts and scans) and locally on the kiosk, so both print the same.
   -->
 
   <PropertyGroup>
@@ -14,7 +12,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NeoPrint.Pdfium\NeoPrint.Pdfium.csproj" />
+    <!-- MIT, empira (official): the PDF itself. -->
+    <PackageReference Include="PDFsharp" />
+    <!-- MIT, Microsoft: decoding, turning upright and reducing the pictures. -->
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,398 @@
+[
+  {
+    "name": "id-front-back",
+    "template": "IdFrontBack",
+    "marginMm": 10,
+    "pictures": [
+      {
+        "image": "front",
+        "widthMm": 85.6,
+        "heightMm": 53.98
+      },
+      {
+        "image": "back",
+        "widthMm": 85.6,
+        "heightMm": 53.98
+      }
+    ],
+    "expected": {
+      "version": 1,
+      "paper": "A4",
+      "orientation": "Portrait",
+      "marginMm": 10,
+      "pages": [
+        {
+          "elements": [
+            {
+              "image": "front",
+              "xMm": 62.2,
+              "yMm": 89.52,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            },
+            {
+              "image": "back",
+              "xMm": 62.2,
+              "yMm": 153.5,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "id-front-only",
+    "template": "IdFrontBack",
+    "marginMm": 10,
+    "pictures": [
+      {
+        "image": "front",
+        "widthMm": 85.6,
+        "heightMm": 53.98
+      }
+    ],
+    "expected": {
+      "version": 1,
+      "paper": "A4",
+      "orientation": "Portrait",
+      "marginMm": 10,
+      "pages": [
+        {
+          "elements": [
+            {
+              "image": "front",
+              "xMm": 62.2,
+              "yMm": 121.51,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "grid-2x2-a5-reduced",
+    "template": "Grid2x2",
+    "marginMm": 10,
+    "pictures": [
+      {
+        "image": "p2",
+        "widthMm": 148,
+        "heightMm": 210
+      }
+    ],
+    "expected": {
+      "version": 1,
+      "paper": "A4",
+      "orientation": "Portrait",
+      "marginMm": 10,
+      "pages": [
+        {
+          "elements": [
+            {
+              "image": "p2",
+              "xMm": 10,
+              "yMm": 14.36,
+              "widthMm": 93.42,
+              "heightMm": 132.56,
+              "rotationDeg": 0
+            },
+            {
+              "image": "p2",
+              "xMm": 106.58,
+              "yMm": 14.36,
+              "widthMm": 93.42,
+              "heightMm": 132.56,
+              "rotationDeg": 0
+            },
+            {
+              "image": "p2",
+              "xMm": 10,
+              "yMm": 150.08,
+              "widthMm": 93.42,
+              "heightMm": 132.56,
+              "rotationDeg": 0
+            },
+            {
+              "image": "p2",
+              "xMm": 106.58,
+              "yMm": 150.08,
+              "widthMm": 93.42,
+              "heightMm": 132.56,
+              "rotationDeg": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "cards-2x4",
+    "template": "Cards2x4",
+    "marginMm": 10,
+    "pictures": [
+      {
+        "image": "front",
+        "widthMm": 85.6,
+        "heightMm": 53.98
+      },
+      {
+        "image": "back",
+        "widthMm": 85.6,
+        "heightMm": 53.98
+      }
+    ],
+    "expected": {
+      "version": 1,
+      "paper": "A4",
+      "orientation": "Portrait",
+      "marginMm": 10,
+      "pages": [
+        {
+          "elements": [
+            {
+              "image": "front",
+              "xMm": 16.9,
+              "yMm": 33.04,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            },
+            {
+              "image": "back",
+              "xMm": 107.5,
+              "yMm": 33.04,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            },
+            {
+              "image": "front",
+              "xMm": 16.9,
+              "yMm": 92.02,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            },
+            {
+              "image": "back",
+              "xMm": 107.5,
+              "yMm": 92.02,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            },
+            {
+              "image": "front",
+              "xMm": 16.9,
+              "yMm": 151,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            },
+            {
+              "image": "back",
+              "xMm": 107.5,
+              "yMm": 151,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            },
+            {
+              "image": "front",
+              "xMm": 16.9,
+              "yMm": 209.98,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            },
+            {
+              "image": "back",
+              "xMm": 107.5,
+              "yMm": 209.98,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "photo-3x4-x6",
+    "template": "Photo3x4x6",
+    "marginMm": 10,
+    "pictures": [
+      {
+        "image": "photo",
+        "widthMm": 30,
+        "heightMm": 40
+      }
+    ],
+    "expected": {
+      "version": 1,
+      "paper": "A4",
+      "orientation": "Portrait",
+      "marginMm": 10,
+      "pages": [
+        {
+          "elements": [
+            {
+              "image": "photo",
+              "xMm": 55,
+              "yMm": 106,
+              "widthMm": 30,
+              "heightMm": 40,
+              "rotationDeg": 0
+            },
+            {
+              "image": "photo",
+              "xMm": 90,
+              "yMm": 106,
+              "widthMm": 30,
+              "heightMm": 40,
+              "rotationDeg": 0
+            },
+            {
+              "image": "photo",
+              "xMm": 125,
+              "yMm": 106,
+              "widthMm": 30,
+              "heightMm": 40,
+              "rotationDeg": 0
+            },
+            {
+              "image": "photo",
+              "xMm": 55,
+              "yMm": 151,
+              "widthMm": 30,
+              "heightMm": 40,
+              "rotationDeg": 0
+            },
+            {
+              "image": "photo",
+              "xMm": 90,
+              "yMm": 151,
+              "widthMm": 30,
+              "heightMm": 40,
+              "rotationDeg": 0
+            },
+            {
+              "image": "photo",
+              "xMm": 125,
+              "yMm": 151,
+              "widthMm": 30,
+              "heightMm": 40,
+              "rotationDeg": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "passport-centered",
+    "template": "PassportCentered",
+    "marginMm": 10,
+    "pictures": [
+      {
+        "image": "passport",
+        "widthMm": 125,
+        "heightMm": 88
+      }
+    ],
+    "expected": {
+      "version": 1,
+      "paper": "A4",
+      "orientation": "Portrait",
+      "marginMm": 10,
+      "pages": [
+        {
+          "elements": [
+            {
+              "image": "passport",
+              "xMm": 42.5,
+              "yMm": 104.5,
+              "widthMm": 125,
+              "heightMm": 88,
+              "rotationDeg": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "one-per-page-margin-5",
+    "template": "OnePerPage",
+    "marginMm": 5,
+    "pictures": [
+      {
+        "image": "front",
+        "widthMm": 85.6,
+        "heightMm": 53.98
+      },
+      {
+        "image": "p1",
+        "widthMm": 210,
+        "heightMm": 297
+      },
+      {
+        "image": "p2",
+        "widthMm": 148,
+        "heightMm": 210
+      }
+    ],
+    "expected": {
+      "version": 1,
+      "paper": "A4",
+      "orientation": "Portrait",
+      "marginMm": 5,
+      "pages": [
+        {
+          "elements": [
+            {
+              "image": "front",
+              "xMm": 62.2,
+              "yMm": 121.51,
+              "widthMm": 85.6,
+              "heightMm": 53.98,
+              "rotationDeg": 0
+            }
+          ]
+        },
+        {
+          "elements": [
+            {
+              "image": "p1",
+              "xMm": 5,
+              "yMm": 7.07,
+              "widthMm": 200,
+              "heightMm": 282.86,
+              "rotationDeg": 0
+            }
+          ]
+        },
+        {
+          "elements": [
+            {
+              "image": "p2",
+              "xMm": 31,
+              "yMm": 43.5,
+              "widthMm": 148,
+              "heightMm": 210,
+              "rotationDeg": 0
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
