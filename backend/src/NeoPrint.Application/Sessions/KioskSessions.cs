@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
+using NeoPrint.Application.Features;
 using NeoPrint.Application.Notifications;
 using NeoPrint.Application.PrintJobs;
 using NeoPrint.Domain.Common;
@@ -114,6 +115,7 @@ public sealed class KioskSessionHandlers :
     private readonly IKioskNotifier _kiosk;
     private readonly IUserNotifier _user;
     private readonly ISettingsReader _settings;
+    private readonly IFeatureFlagEvaluator _features;
     private readonly IClock _clock;
     private readonly ILogger<KioskSessionHandlers> _logger;
 
@@ -123,6 +125,7 @@ public sealed class KioskSessionHandlers :
         IKioskNotifier kiosk,
         IUserNotifier user,
         ISettingsReader settings,
+        IFeatureFlagEvaluator features,
         IClock clock,
         ILogger<KioskSessionHandlers> logger)
     {
@@ -131,6 +134,7 @@ public sealed class KioskSessionHandlers :
         _kiosk = kiosk;
         _user = user;
         _settings = settings;
+        _features = features;
         _clock = clock;
         _logger = logger;
     }
@@ -165,6 +169,11 @@ public sealed class KioskSessionHandlers :
             await _kiosk.SessionOpenedAsync(kiosk.Id, extended.Id, extended.ExpiresAt, cancellationToken).ConfigureAwait(false);
             return View(extended, kiosk, ttl);
         }
+
+        // A new session is new usage; the one already open above carries on.
+        await _features
+            .RequireAsync(FeatureKeys.MobileSessionPrint, kiosk.Id, request.UserId, cancellationToken)
+            .ConfigureAwait(false);
 
         if (current is not null)
         {

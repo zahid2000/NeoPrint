@@ -1,10 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Features;
-using NeoPrint.Application.Localization;
-using NeoPrint.Domain.Common;
 
 namespace NeoPrint.Api.Infrastructure;
 
@@ -55,16 +52,10 @@ public sealed class RequireFeatureFilter : IAsyncActionFilter
 
             _logger.LogInformation("Request refused: feature '{Feature}' is disabled.", key);
 
-            // 404 rather than 403: a feature that is off should look absent,
-            // not forbidden.
-            context.Result = new NotFoundObjectResult(new ProblemDetails
-            {
-                Title = Messages.Write(new UserMessage("problem.featureOff")),
-                Detail = Messages.Write(new UserMessage("features.unavailable")),
-                Status = StatusCodes.Status404NotFound,
-            });
-
-            return;
+            // The same 404 as a refusal from inside a use case
+            // (ProblemDetailsExceptionHandler), with the flag key, so a client
+            // can refresh its flags and hide the entry point.
+            throw new FeatureDisabledException(key);
         }
 
         await next().ConfigureAwait(false);

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Features;
 using NeoPrint.Application.Privacy;
 using NeoPrint.Domain.Common;
 
@@ -36,6 +37,7 @@ public sealed class PrivacyController : ControllerBase
     /// instead of a second.
     /// </summary>
     [HttpPost("api/users/me/export")]
+    [RequireFeature(FeatureKeys.DataExport)]
     public async Task<ActionResult<DataExportView>> RequestExport(CancellationToken cancellationToken)
         => Ok(await _sender.Send(new RequestDataExportCommand(UserId), cancellationToken));
 

@@ -41,6 +41,7 @@ public sealed class AppPaymentHandlers :
     private readonly PaymentSettlement _settlement;
     private readonly WalletLedger _wallet;
     private readonly Promos.PromoService _promos;
+    private readonly Features.IFeatureFlagEvaluator _features;
     private readonly ISettingsReader _settings;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
@@ -56,6 +57,7 @@ public sealed class AppPaymentHandlers :
         PaymentSettlement settlement,
         WalletLedger wallet,
         Promos.PromoService promos,
+        Features.IFeatureFlagEvaluator features,
         ISettingsReader settings,
         ICorrelationContext correlation,
         IClock clock,
@@ -70,6 +72,7 @@ public sealed class AppPaymentHandlers :
         _settlement = settlement;
         _wallet = wallet;
         _promos = promos;
+        _features = features;
         _settings = settings;
         _correlation = correlation;
         _clock = clock;
@@ -82,6 +85,11 @@ public sealed class AppPaymentHandlers :
         ArgumentNullException.ThrowIfNull(request);
 
         var payment = await AppPaymentAsync(request.UserId, request.PaymentId, cancellationToken).ConfigureAwait(false);
+
+        if (payment is { WasPaid: false, Reserved: null })
+        {
+            await RequireKioskAppPaymentAsync(payment, request.UserId, cancellationToken).ConfigureAwait(false);
+        }
 
         return await ViewAsync(payment, request.UserId, cancellationToken).ConfigureAwait(false);
     }
@@ -138,6 +146,8 @@ public sealed class AppPaymentHandlers :
             // with the same reference rather than set more money aside.
             return new AppPaymentPlan(payment.Id, false, payment.ProviderRef, open.External.Amount);
         }
+
+        await RequireKioskAppPaymentAsync(payment, request.UserId, cancellationToken).ConfigureAwait(false);
 
         var source = request.Source?.Trim() switch
         {
@@ -326,6 +336,20 @@ public sealed class AppPaymentHandlers :
     /// An app payment the user may see: one opened for the app at a kiosk and
     /// not someone else's (a payment already taken by another user reads as missing).
     /// </summary>
+    /// <summary>
+    /// A kiosk's "pay with the app" QR is new usage of <c>mobile_payment_at_kiosk</c>:
+    /// refused while the flag is off. A try already in progress or paid carries
+    /// on, and orders paid in the app for a kiosk (Mobile channel) are not this flag.
+    /// </summary>
+    private async Task RequireKioskAppPaymentAsync(Payment payment, Guid userId, CancellationToken cancellationToken)
+    {
+        if (payment.Channel == PaymentChannel.Kiosk
+            && !await _features.IsEnabledAsync(Features.FeatureKeys.MobilePaymentAtKiosk, payment.KioskId, userId, cancellationToken).ConfigureAwait(false))
+        {
+            throw new Features.FeatureDisabledException(Features.FeatureKeys.MobilePaymentAtKiosk);
+        }
+    }
+
     private async Task<Payment> AppPaymentAsync(Guid userId, Guid paymentId, CancellationToken cancellationToken)
     {
         var payment = await _payments.FindByIdAsync(paymentId, cancellationToken).ConfigureAwait(false);

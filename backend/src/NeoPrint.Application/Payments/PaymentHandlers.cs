@@ -38,6 +38,7 @@ public sealed class PaymentHandlers :
     private readonly IProviderEventStore _providerEvents;
     private readonly PaymentSettlement _settlement;
     private readonly Promos.PromoService _promos;
+    private readonly Features.IFeatureFlagEvaluator _features;
     private readonly PrintQueueService _queue;
     private readonly ISettingsReader _settings;
     private readonly IEventPublisher _events;
@@ -53,6 +54,7 @@ public sealed class PaymentHandlers :
         IProviderEventStore providerEvents,
         PaymentSettlement settlement,
         Promos.PromoService promos,
+        Features.IFeatureFlagEvaluator features,
         PrintQueueService queue,
         ISettingsReader settings,
         IEventPublisher events,
@@ -67,6 +69,7 @@ public sealed class PaymentHandlers :
         _providerEvents = providerEvents;
         _settlement = settlement;
         _promos = promos;
+        _features = features;
         _queue = queue;
         _settings = settings;
         _events = events;
@@ -107,6 +110,13 @@ public sealed class PaymentHandlers :
         {
             // Paid a moment ago: show the receipt, do not take the money twice.
             return Response(paid, job, now);
+        }
+
+        if (request.Method == PaymentMethod.MobileApp
+            && !await _features.IsEnabledAsync(Features.FeatureKeys.MobilePaymentAtKiosk, kioskId, null, cancellationToken).ConfigureAwait(false))
+        {
+            // Switched off for this kiosk: no new "pay with the app" QR. The bank QR still works.
+            throw new Features.FeatureDisabledException(Features.FeatureKeys.MobilePaymentAtKiosk);
         }
 
         foreach (var open in earlier.Where(payment => payment.Status == PaymentStatus.Pending))

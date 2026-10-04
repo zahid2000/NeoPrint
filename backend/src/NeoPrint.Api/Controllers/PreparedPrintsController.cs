@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Features;
 using NeoPrint.Application.PrintJobs;
 using NeoPrint.Domain.PrintJobs;
 
@@ -38,6 +39,7 @@ public sealed class PreparedPrintsController : ControllerBase
 
     /// <summary>A file and the options chosen so far, unpaid; the rest is chosen at the kiosk.</summary>
     [HttpPost]
+    [RequireFeature(FeatureKeys.UserQrPrint)]
     [Idempotent]
     public async Task<ActionResult<MyPreparedPrintView>> Create(
         [FromBody] PreparePrintRequest request, CancellationToken cancellationToken)

@@ -92,6 +92,7 @@ public sealed class UserQrFileHandlers :
     private readonly IKioskNotifier _notifier;
     private readonly IEventPublisher _events;
     private readonly Promos.PromoService _promos;
+    private readonly Features.IFeatureFlagEvaluator _features;
     private readonly ISettingsReader _settings;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
@@ -111,6 +112,7 @@ public sealed class UserQrFileHandlers :
         IKioskNotifier notifier,
         IEventPublisher events,
         Promos.PromoService promos,
+        Features.IFeatureFlagEvaluator features,
         ISettingsReader settings,
         ICorrelationContext correlation,
         IClock clock,
@@ -129,6 +131,7 @@ public sealed class UserQrFileHandlers :
         _notifier = notifier;
         _events = events;
         _promos = promos;
+        _features = features;
         _settings = settings;
         _correlation = correlation;
         _clock = clock;
@@ -183,6 +186,13 @@ public sealed class UserQrFileHandlers :
         ArgumentNullException.ThrowIfNull(request.Options);
 
         var (grant, kiosk) = await UseAsync(request.DeviceId, request.Grant, cancellationToken).ConfigureAwait(false);
+
+        // A new order and a new payment: closed with the flag. An order already
+        // paid in the app is still released (ReleaseHeldPrintJobCommand).
+        if (!await PreparedOpenAsync(kiosk, grant, cancellationToken).ConfigureAwait(false))
+        {
+            throw new Features.FeatureDisabledException(Features.FeatureKeys.UserQrPrint);
+        }
 
         if (kiosk.Status != KioskStatus.Online)
         {
@@ -330,7 +340,11 @@ public sealed class UserQrFileHandlers :
                 held.CreatedAt));
         }
 
-        var prepared = await _prepared.ListForUserAsync(grant.UserId, cancellationToken).ConfigureAwait(false);
+        // With the flag off only what was paid for is shown: an unpaid
+        // preparation could not be ordered here.
+        var prepared = await PreparedOpenAsync(kiosk, grant, cancellationToken).ConfigureAwait(false)
+            ? await _prepared.ListForUserAsync(grant.UserId, cancellationToken).ConfigureAwait(false)
+            : [];
         var lastJobs = (await _jobs
                 .ListByIdsAsync(prepared.Where(p => p.LastJobId is not null).Select(p => p.LastJobId!.Value).ToList(), cancellationToken)
                 .ConfigureAwait(false))
@@ -351,6 +365,9 @@ public sealed class UserQrFileHandlers :
 
         return new UserQrFilesView(grant.Id, grant.ExpiresAt, items.OrderByDescending(i => i.Here).ThenByDescending(i => i.CreatedAt).ToList());
     }
+
+    private Task<bool> PreparedOpenAsync(Kiosk kiosk, UserQrGrant grant, CancellationToken cancellationToken)
+        => _features.IsEnabledAsync(Features.FeatureKeys.UserQrPrint, kiosk.Id, grant.UserId, cancellationToken);
 
     /// <summary>The grant, for this kiosk only, extended by being used.</summary>
     private async Task<(UserQrGrant Grant, Kiosk Kiosk)> UseAsync(Guid deviceId, Guid grantId, CancellationToken cancellationToken)

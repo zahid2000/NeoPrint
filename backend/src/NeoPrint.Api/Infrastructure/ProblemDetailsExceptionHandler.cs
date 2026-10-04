@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
+using NeoPrint.Application.Features;
 using NeoPrint.Application.Localization;
 using NeoPrint.Application.Payments;
 using NeoPrint.Crypto;
@@ -97,6 +98,16 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
                 Title = Title("problem.notFound"),
                 Detail = Messages.Write(notFound.Text),
                 Status = StatusCodes.Status404NotFound,
+            },
+
+            // 404 rather than 403 or 409: a feature that is off should look
+            // absent, not forbidden (plan section 2.16).
+            FeatureDisabledException disabled => new ProblemDetails
+            {
+                Title = Title("problem.featureOff"),
+                Detail = Messages.Write(disabled.Text),
+                Status = StatusCodes.Status404NotFound,
+                Extensions = { ["feature"] = disabled.Feature },
             },
 
             DomainException domain => new ProblemDetails

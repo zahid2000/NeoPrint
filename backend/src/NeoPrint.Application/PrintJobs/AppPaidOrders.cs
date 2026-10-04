@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
+using NeoPrint.Application.Features;
 using NeoPrint.Application.Files;
 using NeoPrint.Application.Payments;
 using NeoPrint.Domain.Common;
@@ -36,6 +37,7 @@ public sealed class AppPaidOrders
     private readonly IPaymentRepository _payments;
     private readonly PrintOrderRules _rules;
     private readonly ISettingsReader _settings;
+    private readonly Features.IFeatureFlagEvaluator _features;
     private readonly ICorrelationContext _correlation;
     private readonly ILogger<AppPaidOrders> _logger;
 
@@ -46,6 +48,7 @@ public sealed class AppPaidOrders
         IPaymentRepository payments,
         PrintOrderRules rules,
         ISettingsReader settings,
+        Features.IFeatureFlagEvaluator features,
         ICorrelationContext correlation,
         ILogger<AppPaidOrders> logger)
     {
@@ -55,6 +58,7 @@ public sealed class AppPaidOrders
         _payments = payments;
         _rules = rules;
         _settings = settings;
+        _features = features;
         _correlation = correlation;
         _logger = logger;
     }
@@ -101,6 +105,20 @@ public sealed class AppPaidOrders
     {
         ArgumentNullException.ThrowIfNull(kiosk);
         ArgumentNullException.ThrowIfNull(file);
+
+        // A new order is new usage of its feature; here the kiosk is known, so
+        // a per-kiosk pilot applies (plan section 2.16).
+        var feature = source switch
+        {
+            PrintJobSource.Scheduled => Features.FeatureKeys.ScheduledPrint,
+            PrintJobSource.UserQr => Features.FeatureKeys.UserQrPrint,
+            _ => null,
+        };
+
+        if (feature is not null)
+        {
+            await _features.RequireAsync(feature, kiosk.Id, userId, cancellationToken).ConfigureAwait(false);
+        }
 
         // Paper is counted when it is printed: that may be days away.
         var price = await _rules

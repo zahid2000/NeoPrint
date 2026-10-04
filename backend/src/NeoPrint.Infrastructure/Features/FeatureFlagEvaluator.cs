@@ -97,8 +97,18 @@ public sealed class CachedFeatureFlagEvaluator : IFeatureFlagEvaluator
     }
 
     /// <summary>Drops the cached flag set, so the next read sees the change.</summary>
-    public Task InvalidateAsync(CancellationToken cancellationToken = default)
-        => _cache.RemoveAsync(CacheKey, cancellationToken);
+    public async Task InvalidateAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _cache.RemoveAsync(CacheKey, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // The change is saved; without Redis it shows once the cached set expires.
+            _logger.LogWarning(exception, "Dropping the cached feature flags failed.");
+        }
+    }
 
     private async Task<IReadOnlyList<FeatureFlag>> LoadAsync(CancellationToken cancellationToken)
     {
