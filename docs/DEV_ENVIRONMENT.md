@@ -1045,6 +1045,19 @@ curl -s http://localhost:5080/api/features -H "Authorization: Bearer <istifadə�
 
 Yoxladıqdan sonra flag-ları geri açmağı unutmayın — dev mühitində bütün hesablar üçün ortaqdır.
 
+## 7i. Addım 5 — dil və hüquqi sənədlər (T-152)
+
+Profil → **Dil**: seçim dərhal tətbiq olunur və hesabda saxlanılır (`PUT /api/users/me`). Hesabın hazırkı dili:
+
+```js
+db.users.findOne({Email: '<email>'}, {Language: 1, 'FcmTokens.Language': 1})
+```
+
+Web build-də giriş saxlanmır (səhifə yenilənəndə yenidən daxil olursunuz) — hər girişdə tətbiq hesabın dilini götürür,
+bu, "başqa telefonda giriş"i yoxlamağın ən asan yoludur. Profil → **Hüquqi sənədlər** və qeydiyyat ekranında **Oxu**
+admin panelində dərc olunmuş cari versiyanı göstərir (Admin → Hüquqi sənədlər); en/ru versiyası dərc olunmayıbsa
+Azərbaycan mətni və "hələ yalnız Azərbaycan dilindədir" qeydi görünür.
+
 ---
 
 ## 8. Build, test, lint

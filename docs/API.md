@@ -1499,6 +1499,18 @@ Hamısı admin tokeni ilə; siyahılar adminin **kiosk əhatəsinə** daraldıl�
 | `GET /api/admin/users/{id}` | `users.view` | `profile`, `language`, `wallet`, `recentJobs[]` (son 20), `fileCount`, `fileBytes` (fayl məzmunu yox), `referred`, `consents[]` |
 | `POST /api/admin/users/{id}/block` · `.../unblock` (`Idempotency-Key`) | `users.block` | `{ reason }` məcburi (1–500, `400 users.reasonRequired`), audit-ə düşür. Blok: bütün refresh token-lər ləğv olunur və istifadəçi Redis blocklist-ə düşür — əlindəki access token **dərhal** `403` alır (Redis cavab vermirsə yoxlama MongoDB-dəki statusa keçir). Balansa toxunulmur. Təkrar blok / aktiv hesabı blokdan çıxarmaq heç nə dəyişmir |
 
+## Hesabın dili (`User` token, Addım 5, T-152)
+
+### `PUT /api/users/me`
+
+`{ "language": "az" | "en" | "ru" }` → `204`. Plandakı `PUT users/me`; bu addımda yalnız dil (ad dəyişmir).
+Hesabın dilidir: email-lər, push-lar (hesabın **bütün** push cihazlarının dili eyni atomik yeniləmədə dəyişir) və
+növbəti girişdə `user.language` bu dildə olur — tətbiq başqa telefonda da onu götürür. Başqa dəyər, boş və ya böyük
+hərf (`EN`) → `400 common.languageInvalid`. Eyni dili təkrar göndərmək heç nə dəyişmir.
+
+Hüquqi sənədlər üçün yeni endpoint yoxdur: tətbiq `GET /api/legal/{Privacy|Terms}?lang=` (anonim) ilə cari versiyanı
+oxuyur; tərcümə yoxdursa cavabın `language`-i `az` olur və ekran bunu deyir. Qeydiyyat bu versiyaları göndərir.
+
 ## Şəxsi QR və "Kiosk üçün hazırla" (mobil tətbiq + kiosk, Addım 5)
 
 Plan 9.4; layihə sahibinin qərarı `DECISIONS.md` (T-144). Qiymət həmişə kioskun **cari** profili ilə hesablanır.
