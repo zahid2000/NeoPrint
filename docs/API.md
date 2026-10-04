@@ -962,7 +962,9 @@ Bir versiyanın məzmunu, deşifrə olunmuş.
 ### `PUT /api/files/{id}/auto-delete`
 
 `{ "rule": "Never" | "AfterPrint" | "AfterOneDay" | "AfterSevenDays" | "AfterThirtyDays" }`
-→ fayl obyekti.
+→ fayl obyekti. Silinmə `FileAutoDeleteJob`-dadır (T-147): `AfterPrint` — bu faylla sifariş kioskda çap olunan kimi,
+amma faylın açıq sifarişi və ya aktiv planlanmış çapı varsa sonuncudan sonra; `After…Days` — yükləmədən N gün sonra
+(hər 5 dəqiqə). Bütün obyektlər bütün provayderlərdən silinir, istifadəçiyə `FileAutoDeleted` bildirişi gedir.
 
 ### `DELETE /api/files/{id}`
 
@@ -1573,10 +1575,34 @@ oxuyanın dilində yazılır: siyahı `Accept-Language` ilə, push cihazın qeyd
 
 ---
 
+## Məxfilik (`User` token, Addım 5)
+
+Plan 2.13; qərarlar `DECISIONS.md` (T-147).
+
+- `POST /api/users/me/export` → `{ id, status, requestedAt, readyAt?, expiresAt?, sizeBytes, includesFiles, downloadUrl?, failureReason? }`.
+  Arxiv arxa planda hazırlanır (`status`: `Preparing` → `Ready` / `Failed`, 24 saatdan sonra `Expired`); hazırlanan və ya hələ
+  keçərli olan varsa yenisi yaranmır, o qayıdır. Hazır olanda `ExportReady` bildirişi (`neoprint://privacy/export`).
+  ZIP: `README.txt`, `profile.json`, `payments.json`, `refunds.json`, `balance.json`, `orders.json`, `receipts/*.pdf`, `files.json`,
+  `files/` (orijinal + versiyalar; ümumi ölçü `Privacy.ExportMaxMegabytes`-dan böyükdürsə yalnız `files.json`, `includesFiles: false`).
+  Şifrə hash-i, token-lər, push token-ləri, provayder istinadları yoxdur.
+- `GET /api/users/me/export` → sonuncu arxiv, yoxdursa `204`. `downloadUrl` yalnız `Ready` ikən: `api/exports/download?token=…`.
+- `GET /api/exports/download?token=…` (**anonim**, sistem brauzeri üçün) → `application/zip`. Token HMAC-dır (açar
+  `NEOPRINT_DATA_PROTECTION_KEY`-dən HKDF ilə), arxivin vaxtı bitənə qədər keçərlidir; saxta / vaxtı keçmiş → `404 privacy.exportLinkInvalid`.
+- `GET /api/users/me/delete` → `{ blockers: { activePrints, scheduledPrints, uncollectedOrders, pendingRefunds, any }, balance, currency, bonusPages }`
+  — silməyə nə mane olur və nə itəcək.
+- `POST /api/users/me/delete` (`Idempotency-Key`) `{ password, confirmation }` → `204`. `confirmation` — `privacy.deleteWord`
+  (az `SİL`, en `DELETE`, ru `УДАЛИТЬ`; böyük-kiçik hərf və İ/I fərq etmir). Mane varsa `409 privacy.deleteBlocked`, yanlış şifrə
+  `400 privacy.deletePassword`, yanlış söz `400 privacy.deleteConfirmation`. Hesab dərhal bağlanır: email hash olur (həmin
+  ünvanla dərhal yeni qeydiyyat mümkündür), ad, şifrə, push cihazları silinir, sessiyalar ləğv olunur, access token blok
+  siyahısına düşür. `AccountDeletionJob` (10 dəq) `Privacy.AccountDeletionGraceHours` (24) keçəndən sonra faylları bütün
+  provayderlərdən, arxivləri, bildirişləri silir; qəbzlərdən email, razılıqlardan IP / cihaz, müraciətlərdən mətn silinir.
+  Ödəniş, refund, fiskal çek, qəbz və balans hərəkətləri anonim hesaba bağlı qalır.
+
+---
+
 ## Hələ mövcud olmayan endpoint-lər
 
-Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: məxfilik
-(Addım 5), skan və paylaşım (Addım 6), telemetriya, incident səhifəsi və operator paneli (Addım 7). Addım 4-ün ödəniş,
+Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: skan və paylaşım (Addım 6), telemetriya, incident səhifəsi və operator paneli (Addım 7). Addım 4-ün ödəniş,
 refund, wallet, fiskal çek, qəbz, promokod, istifadəçi hub-ı və admin pul səhifələri yuxarıdakı bölmələrdədir.
 
 Addım 2-nin bütün endpoint-ləri (fayllar, redaktə və versiyalar, səhifə

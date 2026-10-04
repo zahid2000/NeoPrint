@@ -34,7 +34,27 @@ only where legally/business-required; - wallet balance follows the
 documented rule; - files are removed according to retention rules; -
 audit history must not become misleading.
 
+### NeoPrint-də necə işləyir (Addım 5, T-147)
+
+- **Fayllar (avtomatik silinmə):** `FileAutoDeleteJob` (hər 5 dəq + `PrintJobCompleted`). `AfterPrint` — sifariş çap
+  olunan kimi, faylın açıq sifarişi / aktiv planlanmış çapı varsa sonuncudan sonra; `AfterOneDay/SevenDays/ThirtyDays` —
+  yükləmədən N gün sonra. Bütün obyektlər (orijinal, PDF, versiyalar) bütün provayderlərdən silinir (`FileEraser`,
+  istifadəçinin öz silməsi ilə eyni yol), sonra `DeletedAt`; uğursuz silmə növbəti dövrdə təkrarlanır.
+- **"Hesabımı sil":** şərtlər — aktiv çap, aktiv planlanmış çap, kioskda götürülməmiş sifariş, bitməmiş refund yoxdur.
+  Dərhal: `Status = Deleted`, email → SHA-256 hash (+ hesab id-si), ad / şifrə / push cihazları silinir, sessiyalar ləğv
+  olunur. `Privacy.AccountDeletionGraceHours` (24) keçəndən sonra `AccountDeletionJob` (10 dəq): fayllar bütün
+  provayderlərdən, ixrac arxivləri, bildirişlər silinir; qəbzlərdən email, razılıqlardan IP / cihaz, dəstək
+  müraciətlərindən mətn və cavab silinir (`—`), sonra `ErasedAt`.
+- **Qalır (anonim hesaba bağlı):** ödənişlər, refund-lar, fiskal çeklər (dəyişmir), qəbzlər, balans ledger-i (balans
+  itir, geri qaytarılmır — plan 2.14), razılıqların versiya və tarixi (sübut), müraciətin statusu / məbləği / qərarı,
+  cihaz id-ləri (referral yoxlaması üçün, şəxsə işarə etmir).
+
 ## Export
+
+"Məlumatlarımı yüklə" (T-147): ZIP — profil, ödənişlər, refund-lar, balans hərəkətləri, sifarişlər, qəbzlər (PDF), fayllar
+(orijinal + versiyalar; `Privacy.ExportMaxMegabytes`-dan böyükdürsə yalnız siyahı). Temp bucket-də şifrəli, 24 saat
+keçərli imzalı link; vaxtı keçəndə saatlıq iş arxivi silir. Şifrə hash-i, token-lər, provayder istinadları daxil deyil.
+
 
 User export should include allowed personal data and metadata without
 exposing secrets.

@@ -1000,6 +1000,39 @@ sətirlərini silin — tətbiq onlarsız işləyir, CI isə onlarla `google-ser
 
 ---
 
+## 7g. Addım 5 — məxfilik (T-147)
+
+Mongo əmrləri üçün qısa yol (PowerShell-də `$mongo`, bash-da `mongo` funksiyası kimi saxlaya bilərsiniz):
+
+```bash
+docker exec neoprint-mongo mongosh --quiet "mongodb://neoprint:devMongoPassword@localhost:27017/neoprint?authSource=admin&directConnection=true" --eval "<əmr>"
+```
+
+**Faylın avtomatik silinməsi.** Tətbiqdə faylın menyusu → **Avtomatik silinmə**. "Çapdan sonra" fayl, onunla verilmiş
+sifariş kioskda çap olunan kimi silinir (açıq sifariş / planlanmış çap varsa sonuncudan sonra). "N gün sonra"nı
+gözləmədən yoxlamaq üçün yükləmə vaxtını geri çəkin, 5 dəqiqəlik `file-auto-delete` işi silir:
+
+```js
+db.files.updateOne({_id: UUID('<fayl-id>')}, {$set: {CreatedAt: new Date(Date.now() - 2*86400000)}})
+```
+
+**Məlumatlarımı yüklə.** Profil → **Məlumatlarımı yüklə** → **Arxiv hazırla**. Hazır olanda bildiriş gəlir; **Yüklə**
+linki brauzerdə açır (24 saat). Vaxtı keçmiş arxivi saatlıq `data-export-cleanup` işi silir; gözləmədən:
+`db.data_exports.updateOne({_id: UUID('<id>')}, {$set: {ExpiresAt: new Date()}})`, sonra Hangfire paneldə
+(`/hangfire` → Recurring jobs → `data-export-cleanup` → Trigger now).
+
+**Hesabımı sil.** Test üçün **ayrıca hesab** yaradın (`dev-user`-i silməyin — onu silsəniz API-nin növbəti
+Development başlanğıcı yenisini yaradır, amma köhnə sifarişlər anonim hesaba qalır). Profil → **Hesabımı sil** →
+şifrə + `SİL`. Faylların fiziki silinməsi `Privacy.AccountDeletionGraceHours` (24) sonradır; gözləmədən:
+
+```js
+db.users.updateOne({Email: /^deleted-/, ErasedAt: null}, {$set: {DeletedAt: new Date(Date.now() - 25*3600000)}})
+```
+
+10 dəqiqəlik `account-deletion` işi (və ya Hangfire-da Trigger now) faylları bütün provayderlərdən silir və `ErasedAt` yazır.
+
+---
+
 ## 8. Build, test, lint
 
 ```bash
