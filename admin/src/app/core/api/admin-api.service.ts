@@ -482,8 +482,8 @@ export class AdminApiService {
     });
   }
 
-  deleteRole(id: string): Observable<void> {
-    return this.http.delete<void>(`/api/admin/roles/${id}`);
+  deleteRole(id: string, reason: string): Observable<void> {
+    return this.http.delete<void>(`/api/admin/roles/${id}`, withReason(reason));
   }
 
   // ---------------------------------------------------------------------

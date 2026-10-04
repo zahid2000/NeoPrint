@@ -310,6 +310,7 @@
   "pricing.tierMinimum": "Ступень должна начинаться хотя бы с 1 стороны.",
   "printJobs.a3Unavailable": "Принтер этого киоска не печатает A3.",
   "printJobs.belongsToAnotherUser": "Этот заказ принадлежит другому пользователю.",
+  "printJobs.cancelReasonRequired": "Укажите причину отмены — она попадает в журнал аудита.",
   "printJobs.cancelWhilePrinting": "Заказ уже печатается, его нельзя отменить.",
   "printJobs.colorUnavailable": "Принтер этого киоска не печатает в цвете.",
   "printJobs.copiesRange": "Число копий — от 1 до {max}.",

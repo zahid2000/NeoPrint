@@ -310,6 +310,7 @@
   "pricing.tierMinimum": "A tier starts at 1 side or more.",
   "printJobs.a3Unavailable": "This kiosk's printer cannot print A3.",
   "printJobs.belongsToAnotherUser": "This order belongs to another user.",
+  "printJobs.cancelReasonRequired": "Write the reason for the cancellation — it goes into the audit log.",
   "printJobs.cancelWhilePrinting": "The order is already printing and cannot be cancelled.",
   "printJobs.colorUnavailable": "This kiosk's printer cannot print in colour.",
   "printJobs.copiesRange": "The number of copies must be between 1 and {max}.",

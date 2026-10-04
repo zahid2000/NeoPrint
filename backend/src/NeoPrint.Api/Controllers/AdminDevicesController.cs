@@ -137,7 +137,8 @@ public sealed class AdminDevicesController : ControllerBase
         }
 
         var result = await _sender.Send(
-            new CreateEnrollmentTokenCommand(request.KioskId, request.NewKiosk, request.TtlHours, adminId.Value),
+            new CreateEnrollmentTokenCommand(
+                request.KioskId, request.NewKiosk, request.TtlHours, adminId.Value, _currentUser.Ip),
             cancellationToken);
 
         // The only time the raw token is ever returned; only its hash is stored.
@@ -162,7 +163,7 @@ public sealed class AdminDevicesController : ControllerBase
             return Forbid();
         }
 
-        await _sender.Send(new RevokeEnrollmentTokenCommand(id, adminId.Value), cancellationToken);
+        await _sender.Send(new RevokeEnrollmentTokenCommand(id, adminId.Value, _currentUser.Ip), cancellationToken);
 
         return NoContent();
     }

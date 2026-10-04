@@ -268,9 +268,12 @@ describe('RolesComponent', () => {
     // The dialog answers on a microtask, so the delete has not been sent yet.
     await flushMicrotasks();
 
-    backend
-      .expectOne('/api/admin/roles/22222222-2222-2222-2222-222222222222')
-      .flush({ detail: 'Bu rol 3 istifadəçiyə verilib.' }, { status: 409, statusText: 'Conflict' });
+    const request = backend.expectOne('/api/admin/roles/22222222-2222-2222-2222-222222222222');
+
+    // The reason the dialog collected goes to the audit log with the delete (T-165).
+    expect(request.request.headers.get('X-Audit-Reason')).toBe(encodeURIComponent('Artıq istifadə olunmur.'));
+
+    request.flush({ detail: 'Bu rol 3 istifadəçiyə verilib.' }, { status: 409, statusText: 'Conflict' });
 
     await removed;
 

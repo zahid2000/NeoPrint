@@ -179,7 +179,8 @@ public sealed record CreateEnrollmentTokenCommand(
     Guid? KioskId,
     NewKioskParameters? NewKiosk,
     int? TtlHours,
-    Guid CreatedBy) : IRequest<EnrollmentTokenResult>;
+    Guid CreatedBy,
+    string? Ip = null) : IRequest<EnrollmentTokenResult>;
 
 public sealed record EnrollmentTokenResult(
     Guid Id,
@@ -191,7 +192,7 @@ public sealed record EnrollmentTokenResult(
     string LinuxCommand);
 
 /// <summary>Revokes an enrollment token that has not been used.</summary>
-public sealed record RevokeEnrollmentTokenCommand(Guid Id, Guid RevokedBy) : IRequest<Unit>;
+public sealed record RevokeEnrollmentTokenCommand(Guid Id, Guid RevokedBy, string? Ip = null) : IRequest<Unit>;
 
 // ---------------------------------------------------------------------------
 // Validators

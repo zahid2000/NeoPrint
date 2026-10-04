@@ -252,7 +252,7 @@ export class RolesComponent {
     }
 
     try {
-      await firstValueFrom(this.api.deleteRole(role.id));
+      await firstValueFrom(this.api.deleteRole(role.id, confirmed.reason));
       this.selectedId.set(null);
       await this.reload();
     } catch (error) {

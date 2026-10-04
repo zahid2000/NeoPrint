@@ -269,7 +269,9 @@ public sealed class AdminPrintJobsController : ControllerBase
     [HasPermission(Permissions.JobsCancel)]
     public async Task<ActionResult<PrintJobResponse>> Cancel(
         Guid id, [FromBody] AdminCancelRequest? request, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new AdminCancelPrintJobCommand(AdminId, id, request?.Reason), cancellationToken));
+        => Ok(await _sender.Send(
+            new AdminCancelPrintJobCommand(AdminId, id, request?.Reason, _currentUser.Ip),
+            cancellationToken));
 
     /// <summary>The kiosk's live queue (kiosk detail → Queue).</summary>
     [HttpGet("kiosks/{kioskId:guid}/queue")]

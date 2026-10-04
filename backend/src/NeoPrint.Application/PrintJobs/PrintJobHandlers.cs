@@ -510,6 +510,7 @@ public sealed class AdminPrintJobHandlers :
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly SuspectedJobIncidents _suspected;
+    private readonly IAuditWriter _audit;
 
     public AdminPrintJobHandlers(
         IPermissionResolver permissions,
@@ -522,9 +523,11 @@ public sealed class AdminPrintJobHandlers :
         IEventPublisher events,
         ICorrelationContext correlation,
         IClock clock,
-        SuspectedJobIncidents suspected)
+        SuspectedJobIncidents suspected,
+        IAuditWriter audit)
     {
         _suspected = suspected;
+        _audit = audit;
         _permissions = permissions;
         _kiosks = kiosks;
         _jobs = jobs;
@@ -648,9 +651,17 @@ public sealed class AdminPrintJobHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // A destructive action: the reason is what the audit log keeps of why
+        // (plan section 8A.1); without one nothing is cancelled.
+        if (string.IsNullOrWhiteSpace(request.Reason))
+        {
+            throw new ValidationException([new ValidationError("reason", "printJobs.cancelReasonRequired")]);
+        }
+
         var (job, _) = await VisibleJobAsync(request.AdminUserId, request.JobId, cancellationToken).ConfigureAwait(false);
         var actor = ActorContext.Admin(request.AdminUserId, correlationId: _correlation.CorrelationId);
         var wasSuspected = job.Status == PrintJobStatus.Suspected;
+        var before = job.Status;
 
         await PrintJobCancellation.CancelAsync(
                 job,
@@ -670,6 +681,25 @@ public sealed class AdminPrintJobHandlers :
             // Cancelled with the default refund: the investigation is over.
             await _suspected
                 .CloseAsync(job.Id, request.AdminUserId, UserMessage.Of("incidents.resolution.suspectedDecided", ("decision", "Cancel")), cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        // Asked again for a job already cancelled, nothing happened - and the
+        // audit log keeps only what did.
+        if (before != PrintJobStatus.Cancelled)
+        {
+            await _audit
+                .WriteAsync(
+                    new AuditEntry(
+                        request.AdminUserId,
+                        "printJobs.cancel",
+                        "PrintJob",
+                        job.Id.ToString(),
+                        before.ToString(),
+                        job.Status.ToString(),
+                        request.Ip,
+                        request.Reason.Trim()),
+                    cancellationToken)
                 .ConfigureAwait(false);
         }
 

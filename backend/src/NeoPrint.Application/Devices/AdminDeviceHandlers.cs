@@ -370,19 +370,22 @@ public sealed class CreateEnrollmentTokenHandler
     private readonly ISecretHasher _secrets;
     private readonly ISettingsReader _settings;
     private readonly IClock _clock;
+    private readonly IAuditWriter _audit;
 
     public CreateEnrollmentTokenHandler(
         IEnrollmentTokenRepository tokens,
         IKioskRepository kiosks,
         ISecretHasher secrets,
         ISettingsReader settings,
-        IClock clock)
+        IClock clock,
+        IAuditWriter audit)
     {
         _tokens = tokens;
         _kiosks = kiosks;
         _secrets = secrets;
         _settings = settings;
         _clock = clock;
+        _audit = audit;
     }
 
     public async Task<EnrollmentTokenResult> Handle(
@@ -446,6 +449,22 @@ public sealed class CreateEnrollmentTokenHandler
 
         await _tokens.AddAsync(token, cancellationToken).ConfigureAwait(false);
 
+        // A token activates a kiosk with no one at the screen, so issuing one is
+        // a step of activation and is audited like it (plan section 7.11). What
+        // it is for and until when - never the token itself.
+        await _audit.WriteAsync(
+                new AuditEntry(
+                    request.CreatedBy,
+                    "devices.enrollmentToken.create",
+                    "EnrollmentToken",
+                    token.Id.ToString(),
+                    Before: null,
+                    After: $"{kiosk?.Code ?? $"new kiosk {template!.Name}"} until {token.ExpiresAt:O}",
+                    request.Ip,
+                    Reason: null),
+                cancellationToken)
+            .ConfigureAwait(false);
+
         // The ready-to-paste provisioning commands from plan section 7.11.
         return new EnrollmentTokenResult(
             token.Id,
@@ -463,11 +482,13 @@ public sealed class RevokeEnrollmentTokenHandler : IRequestHandler<RevokeEnrollm
 {
     private readonly IEnrollmentTokenRepository _tokens;
     private readonly IClock _clock;
+    private readonly IAuditWriter _audit;
 
-    public RevokeEnrollmentTokenHandler(IEnrollmentTokenRepository tokens, IClock clock)
+    public RevokeEnrollmentTokenHandler(IEnrollmentTokenRepository tokens, IClock clock, IAuditWriter audit)
     {
         _tokens = tokens;
         _clock = clock;
+        _audit = audit;
     }
 
     public async Task<Unit> Handle(RevokeEnrollmentTokenCommand request, CancellationToken cancellationToken)
@@ -480,6 +501,19 @@ public sealed class RevokeEnrollmentTokenHandler : IRequestHandler<RevokeEnrollm
         {
             token.RevokedAt = _clock.UtcNow;
             await _tokens.UpdateAsync(token, cancellationToken).ConfigureAwait(false);
+
+            await _audit.WriteAsync(
+                    new AuditEntry(
+                        request.RevokedBy,
+                        "devices.enrollmentToken.revoke",
+                        "EnrollmentToken",
+                        token.Id.ToString(),
+                        Before: null,
+                        After: null,
+                        request.Ip,
+                        Reason: null),
+                    cancellationToken)
+                .ConfigureAwait(false);
         }
 
         return Unit.Value;

@@ -310,6 +310,7 @@
   "pricing.tierMinimum": "Pillənin minimum üz sayı ən azı 1 olmalıdır.",
   "printJobs.a3Unavailable": "Bu kioskun printeri A3 çap etmir.",
   "printJobs.belongsToAnotherUser": "Bu sifariş başqa istifadəçiyə aiddir.",
+  "printJobs.cancelReasonRequired": "Ləğvin səbəbini yazın — o, audit jurnalına düşür.",
   "printJobs.cancelWhilePrinting": "Sifariş artıq çap olunur, onu ləğv etmək olmaz.",
   "printJobs.colorUnavailable": "Bu kioskun printeri rəngli çap etmir.",
   "printJobs.copiesRange": "Nüsxə sayı 1 ilə {max} arasında olmalıdır.",

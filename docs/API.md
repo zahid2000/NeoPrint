@@ -356,7 +356,7 @@ Hamısı `roles.manage` tələb edir.
 | `POST` | `/api/admin/roles` | `RoleResponse` |
 | `PUT` | `/api/admin/roles/{id}` | `RoleResponse` / `404` |
 | `POST` | `/api/admin/roles/{id}/clone` | `RoleResponse` / `404` |
-| `DELETE` | `/api/admin/roles/{id}` | `204` / `404` |
+| `DELETE` | `/api/admin/roles/{id}` | `204` / `404` — səbəb `X-Audit-Reason` başlığında, `roles.delete` audit-inə düşür |
 
 `RoleResponse`: `{ "id", "name", "description", "permissions", "isSystem", "userCount", "updatedAt" }`
 
@@ -756,6 +756,7 @@ növbəti sorğuda 403 alır. Kiosk `NotActivated` olur, hər şeyini saxlayır.
 → `{ "id", "token", "expiresAt", "kioskId", "kioskCode", "windowsCommand", "linuxCommand" }`
 
 **`token` yalnız bu bir dəfə qaytarılır** — serverdə yalnız hash-i saxlanılır.
+Yaratma və ləğv `audit_logs`-a düşür (`devices.enrollmentToken.create` — hədəf kiosk və bitmə vaxtı; `devices.enrollmentToken.revoke`), tokenin özü heç vaxt yazılmır (T-165).
 `windowsCommand` / `linuxCommand` provisioning skripti üçün hazır əmrdir.
 
 `GET` token-in özünü qaytarmır:
@@ -1215,7 +1216,7 @@ Kağız sayğacı (plan 2.15): job `Completed` və ya `Interrupted` olanda onun 
 |---|---|---|
 | `GET /api/admin/print-jobs?kioskId=&status=Queued,Printing&from=&to=&code=&page=&pageSize=` | `jobs.view` | Ən yenilər əvvəl; yalnız hesabın kiosk əhatəsi |
 | `GET /api/admin/print-jobs/{id}` | `jobs.view` | Sifariş + `history[]` (`from`, `to`, `actorType`, `reason`, `at`) + `attempts[]` (`number`, `printer`, `spoolerJobId`, `startedAt`, `finishedAt`, `counterBefore`, `counterAfter`, `counterUnit`, `reportedSides`, `reportedSheets`, `status`, `error` — oxuyanın dilində, `recovered`) |
-| `POST /api/admin/print-jobs/{id}/cancel` | `jobs.cancel` | `Idempotency-Key`; səbəb audit-ə |
+| `POST /api/admin/print-jobs/{id}/cancel` | `jobs.cancel` | `Idempotency-Key`; `{ "reason" }` **məcburidir** (boş → `400 printJobs.cancelReasonRequired`, sifariş toxunulmur); `audit_logs`-a `printJobs.cancel` (əvvəlki → sonrakı status, səbəb, IP) — artıq ləğv edilmiş sifarişə təkrar sorğu ikinci audit yazmır (T-165) |
 | `GET /api/admin/kiosks/{kioskId}/queue` | `jobs.view` | Kioskun canlı növbəsi |
 
 ## Ödənişlər (`/api/payments`, Addım 4)

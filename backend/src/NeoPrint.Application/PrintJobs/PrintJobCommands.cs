@@ -82,8 +82,12 @@ public sealed record GetPrintJobDetailQuery(Guid AdminUserId, Guid JobId) : IReq
 /// <summary>A kiosk's live queue, for the admin (plan section 8A.3, kiosk detail → Queue).</summary>
 public sealed record GetAdminKioskQueueQuery(Guid AdminUserId, Guid KioskId) : IRequest<IReadOnlyList<QueueEntry>>;
 
-/// <summary>An admin takes a job out of the queue.</summary>
-public sealed record AdminCancelPrintJobCommand(Guid AdminUserId, Guid JobId, string? Reason) : IRequest<PrintJobResponse>;
+/// <summary>
+/// An admin takes a job out of the queue. The reason is required and goes
+/// into the audit log with the caller's address (plan section 8A.1).
+/// </summary>
+public sealed record AdminCancelPrintJobCommand(Guid AdminUserId, Guid JobId, string? Reason, string? Ip = null)
+    : IRequest<PrintJobResponse>;
 
 /// <summary>A job as the kiosk, the app and the panel see it.</summary>
 public sealed record PrintJobResponse(

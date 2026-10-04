@@ -394,6 +394,37 @@ public sealed class DeviceActivationTests
     }
 
     [DockerFact]
+    public async Task Issuing_and_revoking_an_enrollment_token_is_audited_without_the_token()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SignedInSuperAdminAsync();
+
+        var created = await admin.PostAsJsonAsync("/api/admin/enrollment-tokens", new
+        {
+            newKiosk = NewKiosk("Audited enrollment", "Bakı"),
+        });
+        created.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var id = body.GetProperty("id").GetGuid().ToString();
+        var token = body.GetProperty("token").GetString()!;
+
+        (await admin.DeleteAsync($"/api/admin/enrollment-tokens/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        // Revoking twice changes nothing, and writes nothing more.
+        (await admin.DeleteAsync($"/api/admin/enrollment-tokens/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        using var scope = _fixture.Services.CreateScope();
+        var audits = await scope.ServiceProvider.GetRequiredService<MongoContext>().AuditLogs
+            .Find(entry => entry.EntityType == "EnrollmentToken" && entry.EntityId == id).ToListAsync();
+
+        audits.Select(entry => entry.Action).Should().BeEquivalentTo(["devices.enrollmentToken.create", "devices.enrollmentToken.revoke"]);
+        audits.Single(entry => entry.Action == "devices.enrollmentToken.create").After.Should().Contain("Audited enrollment");
+
+        // The token activates a kiosk on its own: it never reaches the audit log (T-165).
+        audits.Should().OnlyContain(entry => !(entry.After ?? "").Contains(token) && !(entry.Before ?? "").Contains(token));
+    }
+
+    [DockerFact]
     public async Task Revoking_a_device_frees_the_kiosk_and_stops_the_device_getting_a_token()
     {
         if (Skip) { return; }

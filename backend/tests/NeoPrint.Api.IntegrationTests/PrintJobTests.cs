@@ -429,6 +429,48 @@ public sealed class PrintJobTests
         var detail = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/print-jobs/{id}");
         detail.GetProperty("job").GetProperty("status").GetString().Should().Be("Cancelled");
         detail.GetProperty("job").GetProperty("cancelReason").GetString().Should().Be("Admin tərəfindən ləğv edildi");
+
+        // The admin's own words are kept where the audit log keeps every
+        // destructive action - once, however often the cancel is asked (T-165).
+        using var again = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/print-jobs/{id}/cancel")
+        {
+            Content = JsonContent.Create(new { reason = "test again" }),
+        };
+        again.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+        (await admin.SendAsync(again)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = _fixture.Services.CreateScope();
+        var audits = await scope.ServiceProvider.GetRequiredService<MongoContext>().AuditLogs
+            .Find(entry => entry.Action == "printJobs.cancel" && entry.EntityId == id.ToString()).ToListAsync();
+        audits.Should().ContainSingle();
+        audits[0].Reason.Should().Be("test");
+        audits[0].Before.Should().Be("Queued");
+        audits[0].After.Should().Be("Cancelled");
+        audits[0].AdminUserId.Should().NotBeNull();
+    }
+
+    [DockerFact]
+    public async Task An_admin_cancel_without_a_reason_is_refused_and_the_job_stays()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await ReadyKioskAsync("noreason");
+        var job = await PlacedAsync(kiosk.Client, 1);
+        var id = job.GetProperty("id").GetGuid();
+
+        using var cancel = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/print-jobs/{id}/cancel")
+        {
+            Content = JsonContent.Create(new { reason = "   " }),
+        };
+        cancel.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+        var response = await admin.SendAsync(cancel);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("reason");
+
+        var detail = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/print-jobs/{id}");
+        detail.GetProperty("job").GetProperty("status").GetString().Should().Be("Queued");
     }
 
     [DockerFact]
