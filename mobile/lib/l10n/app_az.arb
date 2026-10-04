@@ -793,6 +793,14 @@
   },
   "schedMenu": "Çapı planla",
   "schedDueTitle": "Planlanmış çapın vaxtı çatıb",
+  "schedDueManyTitle": "Planlanmış çapların vaxtı çatıb",
+  "schedDueRow": "{kiosk} kioskunda · {time}",
+  "@schedDueRow": {
+    "placeholders": {
+      "kiosk": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  },
   "schedDueBody": "{file} · {kiosk} kioskunda. Kioskun yanındasınızsa çapa verin.",
   "@schedDueBody": {
     "placeholders": {

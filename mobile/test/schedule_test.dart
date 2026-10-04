@@ -343,4 +343,67 @@ void main() {
       expect(schedules.printed, ['due']);
     },
   );
+
+  testWidgets(
+    'two due at the same minute share one dialog, each with its own buttons (T-159)',
+    (tester) async {
+      final schedules = FakeSchedules()
+        ..items = [
+          schedule('a', ScheduleStatus.awaitingUser),
+          schedule('b', ScheduleStatus.awaitingUser),
+        ];
+      await tester.pumpWidget(
+        app(
+          const ScheduleDuePrompt(child: Scaffold(body: Text('home'))),
+          schedules,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final id in ['a', 'b']) {
+        hubEvents.add(
+          HubEvent('ScheduleDue', {'scheduleId': id, 'status': 'AwaitingUser'}),
+        );
+      }
+      await tester.pumpAndSettle();
+
+      // One dialog, not two stacked.
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text('Planlanmış çapların vaxtı çatıb'), findsOneWidget);
+      expect(find.text('bilet-a.pdf'), findsOneWidget);
+      expect(find.text('bilet-b.pdf'), findsOneWidget);
+      expect(find.text('Çapa ver'), findsNWidgets(2));
+
+      // The kiosk refuses the first: why, under that row; the dialog stays.
+      schedules.printError = const ApiException(
+        statusCode: 409,
+        message: 'KSK-9002 kioskunda kağız qurtarıb.',
+      );
+      await tester.tap(find.text('Çapa ver').first);
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('KSK-9002 kioskunda kağız qurtarıb.'),
+        findsOneWidget,
+      );
+      expect(find.text('bilet-a.pdf'), findsOneWidget);
+
+      // Sent: it leaves the list; the last one is asked as a single.
+      schedules.printError = null;
+      await tester.tap(find.text('Çapa ver').first);
+      await tester.pumpAndSettle();
+      expect(schedules.printed, ['a']);
+      expect(find.text('Planlanmış çapın vaxtı çatıb'), findsOneWidget);
+      expect(
+        find.text(
+          'bilet-b.pdf · KSK-9002 kioskunda. Kioskun yanındasınızsa çapa verin.',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Çapa ver'));
+      await tester.pumpAndSettle();
+      expect(schedules.printed, ['a', 'b']);
+      expect(find.byType(AlertDialog), findsNothing);
+    },
+  );
 }

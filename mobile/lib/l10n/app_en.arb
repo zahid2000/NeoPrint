@@ -420,6 +420,8 @@
   "schedFailed": "Could not schedule: {reason}",
   "schedMenu": "Schedule a print",
   "schedDueTitle": "Time for your scheduled print",
+  "schedDueManyTitle": "Time for your scheduled prints",
+  "schedDueRow": "At kiosk {kiosk} · {time}",
   "schedDueBody": "{file} · at kiosk {kiosk}. If you are at the kiosk, send it to print.",
   "payScheduledBody": "The print is scheduled for {time}. When the time comes, the app asks whether to print or change the time.",
   "payToSchedules": "Scheduled prints",
