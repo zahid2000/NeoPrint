@@ -76,6 +76,7 @@ build/
 **/ios/Pods/
 **/ios/.symlinks/
 **/android/.gradle/
+**/android/.kotlin/
 **/android/local.properties
 **/android/key.properties
 **/android/app/google-services.json
