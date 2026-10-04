@@ -211,6 +211,12 @@
   "jobStatusDraft": "Hazırlanır",
   "jobStatusPendingPayment": "Ödəniş gözləyir",
   "jobStatusPaid": "Ödənildi",
+  "jobStatusScheduled": "Planlanıb · {at}",
+  "@jobStatusScheduled": {
+    "placeholders": {
+      "at": { "type": "String" }
+    }
+  },
   "jobStatusQueued": "Növbədə",
   "jobStatusPrinting": "Çap olunur",
   "jobStatusCompleted": "Tamamlandı",

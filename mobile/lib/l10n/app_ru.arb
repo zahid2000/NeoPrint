@@ -148,6 +148,7 @@
   "jobStatusDraft": "Готовится",
   "jobStatusPendingPayment": "Ожидает оплаты",
   "jobStatusPaid": "Оплачен",
+  "jobStatusScheduled": "Запланировано · {at}",
   "jobStatusQueued": "В очереди",
   "jobStatusPrinting": "Печатается",
   "jobStatusCompleted": "Выполнен",

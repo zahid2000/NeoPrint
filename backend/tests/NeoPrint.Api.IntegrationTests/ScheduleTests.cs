@@ -75,6 +75,11 @@ public sealed class ScheduleTests
         listed.GetProperty("jobStatus").GetString().Should().Be("Paid");
         listed.GetProperty("kioskCode").GetString().Should().Be(kiosk.KioskCode);
         listed.GetProperty("amount").GetDecimal().Should().Be(0.30m);
+
+        // On the home tab it is "Planlanıb · {time}", not a paid order waiting at the kiosk (T-158).
+        var mine = (await user.Client.GetFromJsonAsync<JsonElement>("/api/print-jobs/my")).EnumerateArray().Single(j => j.GetProperty("id").GetGuid() == jobId);
+        mine.GetProperty("status").GetString().Should().Be("Paid");
+        mine.GetProperty("scheduledAt").GetDateTime().ToUniversalTime().Should().BeCloseTo(listed.GetProperty("scheduledAt").GetDateTime().ToUniversalTime(), TimeSpan.FromSeconds(1));
         (await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/queue")).ToString().Should().NotContain(jobId.ToString());
         (await kiosk.Client.GetAsync($"/api/print-jobs/{jobId}/file")).StatusCode.Should().Be(HttpStatusCode.Conflict);
         using (var scope = _fixture.Services.CreateScope())
@@ -114,6 +119,8 @@ public sealed class ScheduleTests
         view.GetProperty("jobStatus").GetString().Should().Be("Queued");
         (await PrintNowAsync(user.Client, scheduleId)).StatusCode.Should().Be(HttpStatusCode.OK);
         (await kiosk.Client.GetAsync($"/api/print-jobs/{jobId}/file")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await user.Client.GetFromJsonAsync<JsonElement>("/api/print-jobs/my")).EnumerateArray().Single(j => j.GetProperty("id").GetGuid() == jobId)
+            .TryGetProperty("scheduledAt", out var sentAt).Should().BeFalse("sent: an ordinary order now, not {0}", sentAt);
 
         // Printed: its owner is told, once, opening the order (T-146).
         await ReportAsync(kiosk.Client, jobId, "Printing");

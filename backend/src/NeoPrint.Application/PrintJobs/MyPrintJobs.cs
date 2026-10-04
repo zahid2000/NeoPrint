@@ -14,6 +14,7 @@ public sealed record ListMyPrintJobsQuery(Guid UserId) : IRequest<IReadOnlyList<
 /// <summary>A job as its owner sees it in the app.</summary>
 /// <param name="Amount">What the job costs after the promo code quoted at the kiosk; what was actually charged is on the receipt.</param>
 /// <param name="Reason">Why it stopped or was cancelled, in the reader's language.</param>
+/// <param name="ScheduledAt">A scheduled print still waiting for its time (T-158): when it is due.</param>
 public sealed record MyPrintJobView(
     Guid Id,
     string JobCode,
@@ -32,7 +33,8 @@ public sealed record MyPrintJobView(
     string? Reason,
     Guid? PaymentId,
     DateTime CreatedAt,
-    DateTime? FinishedAt);
+    DateTime? FinishedAt,
+    DateTime? ScheduledAt = null);
 
 public sealed class MyPrintJobHandlers : IRequestHandler<ListMyPrintJobsQuery, IReadOnlyList<MyPrintJobView>>
 {
@@ -41,11 +43,13 @@ public sealed class MyPrintJobHandlers : IRequestHandler<ListMyPrintJobsQuery, I
 
     private readonly IPrintJobRepository _jobs;
     private readonly IKioskRepository _kiosks;
+    private readonly Schedules.IScheduledPrintRepository _schedules;
 
-    public MyPrintJobHandlers(IPrintJobRepository jobs, IKioskRepository kiosks)
+    public MyPrintJobHandlers(IPrintJobRepository jobs, IKioskRepository kiosks, Schedules.IScheduledPrintRepository schedules)
     {
         _jobs = jobs;
         _kiosks = kiosks;
+        _schedules = schedules;
     }
 
     /// <inheritdoc cref="ListMyPrintJobsQuery" />
@@ -60,6 +64,14 @@ public sealed class MyPrintJobHandlers : IRequestHandler<ListMyPrintJobsQuery, I
         {
             kiosks[kioskId] = await _kiosks.FindByIdAsync(kioskId, cancellationToken).ConfigureAwait(false);
         }
+
+        // A scheduled print waiting for its time is "Planlanıb · {time}" in the
+        // app, not "Paid" - it is not waiting at a kiosk (T-158).
+        var waiting = jobs.Any(job => job.Source == Domain.PrintJobs.PrintJobSource.Scheduled)
+            ? (await _schedules.ListForUserAsync(request.UserId, Take, cancellationToken).ConfigureAwait(false))
+                .Where(schedule => schedule.Status is Domain.Schedules.ScheduledPrintStatus.Scheduled or Domain.Schedules.ScheduledPrintStatus.AwaitingUser)
+                .ToDictionary(schedule => schedule.JobId, schedule => schedule.ScheduledAt)
+            : [];
 
         return jobs
             .Select(job =>
@@ -84,7 +96,8 @@ public sealed class MyPrintJobHandlers : IRequestHandler<ListMyPrintJobsQuery, I
                     Messages.WriteStored(job.ErrorReason ?? job.CancelReason),
                     job.PaymentId,
                     job.CreatedAt,
-                    job.FinishedAt);
+                    job.FinishedAt,
+                    waiting.TryGetValue(job.Id, out var at) ? at : null);
             })
             .ToList();
     }

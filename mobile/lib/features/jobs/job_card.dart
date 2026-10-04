@@ -81,7 +81,21 @@ class JobCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final tokens = context.tokens;
-    final look = jobStatusLook(l10n, job.status);
+    // A scheduled print waiting for its time is not a paid order waiting at
+    // the kiosk (T-158).
+    final look = job.scheduledAt != null && job.status == 'Paid'
+        ? (
+            label: l10n.jobStatusScheduled(
+              formatDateTime(
+                job.scheduledAt!,
+                today: l10n.commonToday,
+                yesterday: l10n.commonYesterday,
+              ),
+            ),
+            tone: StatusTone.info,
+            icon: Icons.schedule,
+          )
+        : jobStatusLook(l10n, job.status);
     final language = Localizations.localeOf(context).languageCode;
     final kiosk = [
       if (job.kioskName?.isNotEmpty ?? false) job.kioskName!,

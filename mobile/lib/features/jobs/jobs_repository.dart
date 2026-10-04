@@ -18,6 +18,7 @@ final class MyJob {
     this.reason,
     required this.createdAt,
     this.finishedAt,
+    this.scheduledAt,
   });
 
   factory MyJob.fromJson(Map<String, dynamic> json) => MyJob(
@@ -37,6 +38,9 @@ final class MyJob {
     finishedAt: json['finishedAt'] == null
         ? null
         : DateTime.parse(json['finishedAt'] as String),
+    scheduledAt: json['scheduledAt'] == null
+        ? null
+        : DateTime.parse(json['scheduledAt'] as String),
   );
 
   final String id;
@@ -57,6 +61,9 @@ final class MyJob {
   final String? reason;
   final DateTime createdAt;
   final DateTime? finishedAt;
+
+  /// A scheduled print still waiting for its time (T-158): when it is due.
+  final DateTime? scheduledAt;
 
   /// Still on its way: shown above the history (docs/DESIGN_SYSTEM.md 5.2).
   bool get isActive => const {

@@ -148,6 +148,7 @@
   "jobStatusDraft": "Being prepared",
   "jobStatusPendingPayment": "Awaiting payment",
   "jobStatusPaid": "Paid",
+  "jobStatusScheduled": "Scheduled · {at}",
   "jobStatusQueued": "In the queue",
   "jobStatusPrinting": "Printing",
   "jobStatusCompleted": "Completed",
