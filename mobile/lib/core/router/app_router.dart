@@ -13,6 +13,7 @@ import '../../features/files/file_preview_screen.dart';
 import '../../features/files/files_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/jobs/claims_screen.dart';
+import '../../features/legal/legal_documents.dart';
 import '../../features/payments/pay_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../../features/privacy/account_deletion_screen.dart';
@@ -69,6 +70,9 @@ abstract final class Routes {
   static const notifications = '/notifications';
   static const privacyExport = '/privacy/export';
   static const privacyDelete = '/privacy/delete';
+  static const legalList = '/legal';
+  static String legal(LegalDocumentType type) =>
+      '/legal/${type.wireName.toLowerCase()}';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -100,6 +104,13 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final status = ref.read(authControllerProvider).status;
       final location = state.matchedLocation;
+
+      // A legal document is read before accepting it too: from registration
+      // and from the consents gate (docs/DECISIONS.md T-152).
+      if (status != AuthStatus.restoring &&
+          location.startsWith('${Routes.legalList}/')) {
+        return null;
+      }
 
       switch (status) {
         case AuthStatus.restoring:
@@ -188,6 +199,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: Routes.privacyExport,
           builder: (_, __) => const DataExportScreen(),
         ),
+      if (Readiness.legalDocuments) ...[
+        GoRoute(
+          path: Routes.legalList,
+          builder: (_, __) => const LegalListScreen(),
+        ),
+        GoRoute(
+          path: '${Routes.legalList}/:type',
+          builder: (_, state) => LegalDocumentScreen(
+            type: LegalDocumentType.values.firstWhere(
+              (t) => t.wireName.toLowerCase() == state.pathParameters['type'],
+              orElse: () => LegalDocumentType.privacy,
+            ),
+          ),
+        ),
+      ],
       GoRoute(
         path: Routes.notifications,
         builder: (_, __) => const NotificationsScreen(),

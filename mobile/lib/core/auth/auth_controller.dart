@@ -193,6 +193,28 @@ final class AuthController extends Notifier<AuthState> {
     }
   }
 
+  /// The account's language was saved (`PUT users/me`, T-152): the profile
+  /// held here says so too.
+  void languageSaved(String language) {
+    final user = state.user;
+    if (user == null || user.language == language) {
+      return;
+    }
+
+    state = AuthState(
+      status: state.status,
+      user: UserProfile(
+        id: user.id,
+        publicId: user.publicId,
+        email: user.email,
+        fullName: user.fullName,
+        language: language,
+        emailConfirmed: user.emailConfirmed,
+        pendingConsents: user.pendingConsents,
+      ),
+    );
+  }
+
   /// Signs out. This device stops getting the user's push first, while the
   /// session still lets it say so; a failure there does not keep anyone in.
   Future<void> signOut() async {

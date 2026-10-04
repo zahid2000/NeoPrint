@@ -70,6 +70,38 @@
 
   "profileLanguage": "Dil",
   "profileLegal": "Hüquqi sənədlər",
+  "languageTitle": "Dil",
+  "languageHint": "Tətbiq, email-lər və bildirişlər bu dildə olacaq — bütün cihazlarınızda.",
+  "languagePhone": "Telefonun dili",
+  "languagePhoneValue": "Telefonun dili · {language}",
+  "@languagePhoneValue": {
+    "placeholders": {
+      "language": { "type": "String" }
+    }
+  },
+  "languageSaveFailed": "Dil dəyişmədi, tətbiq əvvəlki dildə qaldı. {reason}",
+  "@languageSaveFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "languageNameAz": "Azərbaycan",
+  "languageNameEn": "English",
+  "languageNameRu": "Русский",
+  "legalVersion": "Versiya {version} · {date}",
+  "@legalVersion": {
+    "placeholders": {
+      "version": { "type": "String" },
+      "date": { "type": "String" }
+    }
+  },
+  "legalOnlyAz": "Bu sənəd hələ yalnız Azərbaycan dilindədir.",
+  "legalLoadFailed": "Sənəd açılmadı: {reason}",
+  "@legalLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
   "profileSignOut": "Çıxış",
   "profilePublicId": "İstifadəçi kodu",
   "profileCopied": "Kopyalandı",

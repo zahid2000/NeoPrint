@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/auth_models.dart';
+import '../../core/features/readiness.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/auth_scaffold.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_primary_button.dart';
+import '../legal/legal_documents.dart';
 
 /// Re-accepting a document after a new version is published
 /// (plan sections 2.8, 2.13).
@@ -85,6 +87,9 @@ class _ConsentsScreenState extends ConsumerState<ConsentsScreen> {
                 }
               }),
             ),
+            if (Readiness.legalDocuments &&
+                consent.docType != LegalDocumentType.scanNotice)
+              LegalReadButton(type: consent.docType),
             const SizedBox(height: Spacing.x3),
           ],
 

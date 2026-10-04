@@ -7,12 +7,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/auth_models.dart';
+import '../../core/network/api_client.dart';
+import '../../core/features/readiness.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/auth_scaffold.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_primary_button.dart';
+import '../legal/legal_documents.dart';
 import 'auth_validators.dart';
 
 /// Registration (plan section 8.2).
@@ -31,9 +34,8 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  /// The version of the seeded drafts. Replaced by the version the server
-  /// reports once the legal documents are fetched in step 5.
-  static const _documentVersion = '0.1-draft';
+  /// Fetching the documents' current versions failed: nothing was sent.
+  ApiException? _versionsError;
 
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
@@ -61,6 +63,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
+    // The versions the documents have now - the ones "Oxu" shows - so the
+    // consent record matches what could be read (T-152).
+    final String privacy;
+    final String terms;
+    try {
+      privacy = (await ref.read(
+        legalDocumentProvider(LegalDocumentType.privacy).future,
+      )).version;
+      terms = (await ref.read(
+        legalDocumentProvider(LegalDocumentType.terms).future,
+      )).version;
+    } on ApiException catch (error) {
+      setState(() => _versionsError = error);
+      return;
+    }
+
+    setState(() => _versionsError = null);
+
     await ref
         .read(authControllerProvider.notifier)
         .register(
@@ -70,15 +90,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           referralCode: _referralCode.text.trim().isEmpty
               ? null
               : _referralCode.text,
-          consents: const [
+          consents: [
             PendingConsent(
               docType: LegalDocumentType.privacy,
-              version: _documentVersion,
+              version: privacy,
             ),
-            PendingConsent(
-              docType: LegalDocumentType.terms,
-              version: _documentVersion,
-            ),
+            PendingConsent(docType: LegalDocumentType.terms, version: terms),
           ],
         );
   }
@@ -105,8 +122,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (state.error != null) ...[
-              NeoBanner.error(message: apiErrorText(l10n, state.error!)),
+            if ((_versionsError ?? state.error) case final error?) ...[
+              NeoBanner.error(message: apiErrorText(l10n, error)),
               const SizedBox(height: Spacing.x4),
             ],
 
@@ -167,6 +184,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               onChanged: (value) => setState(() => _acceptedPrivacy = value),
               title: l10n.consentsAcceptPrivacy,
             ),
+            if (Readiness.legalDocuments)
+              const LegalReadButton(type: LegalDocumentType.privacy),
             const SizedBox(height: Spacing.x2),
             _ConsentTile(
               value: _acceptedTerms,
@@ -176,6 +195,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               // said before the account exists, not after.
               subtitle: l10n.consentsWalletWarning,
             ),
+            if (Readiness.legalDocuments)
+              const LegalReadButton(type: LegalDocumentType.terms),
             const SizedBox(height: Spacing.x6),
 
             NeoPrimaryButton(

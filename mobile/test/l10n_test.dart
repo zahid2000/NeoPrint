@@ -82,8 +82,10 @@ void main() {
   test('Azerbaijani text is in Azerbaijani', () {
     final offenders = [
       for (final entry in az.entries)
-        if (englishInAzerbaijani.hasMatch(entry.value) ||
-            cyrillic.hasMatch(entry.value))
+        // A language's own name (the language picker) is written in it.
+        if (!sameInEveryLanguage.contains(entry.value) &&
+            (englishInAzerbaijani.hasMatch(entry.value) ||
+                cyrillic.hasMatch(entry.value)))
           '${entry.key}: ${entry.value}',
       for (final entry in az.entries)
         if (words(entry.value).length >= 4 &&

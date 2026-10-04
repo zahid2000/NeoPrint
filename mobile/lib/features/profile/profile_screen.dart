@@ -8,13 +8,15 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
+import '../../core/l10n/language_controller.dart';
 import '../../core/router/app_router.dart';
 import '../../l10n/app_localizations.dart';
+import 'language_sheet.dart';
 
 /// The profile tab (plan section 8.2).
 ///
-/// The personal QR, the language picker and the privacy actions arrive in
-/// later steps; the account details and signing out work now.
+/// The account, the money screens, the language and the legal documents
+/// (T-152), privacy, and signing out.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -110,13 +112,19 @@ class ProfileScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.language_outlined),
               title: Text(l10n.profileLanguage),
-              subtitle: Text(user?.language.toUpperCase() ?? 'AZ'),
+              subtitle: Text(
+                languageSummary(l10n, ref.watch(appLanguageProvider)),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showLanguageSheet(context),
             ),
 
           if (Readiness.legalDocuments)
             ListTile(
               leading: const Icon(Icons.description_outlined),
               title: Text(l10n.profileLegal),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.legalList),
             ),
 
           if (dataExport || Readiness.accountDeletion) ...[

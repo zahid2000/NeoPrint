@@ -38,10 +38,11 @@ abstract final class Readiness {
   /// Sending a file to another user by their public code - step 6.
   static const bool fileSharing = false;
 
-  /// Choosing the interface language inside the app - step 5; until then the
-  /// app follows the phone's language.
-  static const bool languageSetting = false;
+  /// Choosing the language in the profile, kept on the account - step 5
+  /// (T-152).
+  static const bool languageSetting = true;
 
-  /// Reading the legal documents again from the profile - step 5.
-  static const bool legalDocuments = false;
+  /// Reading the legal documents from the profile and before accepting them
+  /// - step 5 (T-152).
+  static const bool legalDocuments = true;
 }

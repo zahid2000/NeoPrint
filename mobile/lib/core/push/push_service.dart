@@ -209,6 +209,10 @@ class PushRegistration {
   String? _token;
   StreamSubscription<String>? _refresh;
 
+  /// The app's language now: a renewed token is registered in it, not in the
+  /// one the app had at sign-in (T-152).
+  String? language;
+
   /// The token sent last, for signing out.
   String? get token => _token;
 
@@ -220,10 +224,13 @@ class PushRegistration {
       return;
     }
 
-    await _send(token, language);
+    this.language ??= language;
+    await _send(token, this.language!);
     await _refresh?.cancel();
     _refresh = _platform.tokenRefreshed.listen(
-      (fresh) => unawaited(_send(fresh, language).catchError((Object _) {})),
+      (fresh) => unawaited(
+        _send(fresh, this.language ?? language).catchError((Object _) {}),
+      ),
     );
   }
 

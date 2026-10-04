@@ -7,8 +7,9 @@ import 'package:flutter/services.dart';
 /// refresh token to live there and nowhere else - it is the one credential on
 /// the device that can mint new access tokens.
 ///
-/// Nothing else is kept here. Access tokens live for fifteen minutes and stay
-/// in memory; putting them in the keychain would only slow sign-in down.
+/// Besides it only the per-install id and the chosen language. Access tokens
+/// live for fifteen minutes and stay in memory; putting them in the keychain
+/// would only slow sign-in down.
 abstract interface class SecureStorage {
   Future<String?> read(String key);
 
@@ -29,6 +30,11 @@ abstract final class SecureStorageKeys {
   /// A random per-install identifier, used for the self-referral and
   /// repeat-referral check (plan section 2.6).
   static const deviceId = 'device_id';
+
+  /// The language chosen in the profile on this device, as
+  /// `<userId>|<az|en|ru|system>` (T-152). Not a secret; kept here because
+  /// this is the app's only store (plan section 2.0, no preferences package).
+  static const language = 'app_language';
 }
 
 /// [SecureStorage] over the platform channel.

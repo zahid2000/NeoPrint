@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'package:flutter/widgets.dart';
 
 /// The languages the app is written in (plan section 2.1). The first is the
 /// default.
@@ -16,6 +16,15 @@ String resolveLanguageCode(Locale? device) {
       : supportedLanguageCodes.first;
 }
 
+/// The phone's language, as the app would show it. Through the binding, so a
+/// test can set the phone's locale.
+String phoneLanguageCode() =>
+    resolveLanguageCode(WidgetsBinding.instance.platformDispatcher.locale);
+
+/// The language chosen in the profile (T-152), or null to follow the phone.
+/// Set by `AppLanguageController`; read where no provider is at hand - the
+/// API client's `Accept-Language`.
+String? chosenLanguageCode;
+
 /// The language the app is showing right now.
-String currentLanguageCode() =>
-    resolveLanguageCode(PlatformDispatcher.instance.locale);
+String currentLanguageCode() => chosenLanguageCode ?? phoneLanguageCode();

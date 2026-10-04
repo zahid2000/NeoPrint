@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/l10n/app_language.dart';
+import 'core/l10n/language_controller.dart';
 import 'core/l10n/material_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -19,6 +20,7 @@ class NeoPrintApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final language = ref.watch(appLanguageProvider);
 
     return MaterialApp.router(
       title: 'NeoPrint',
@@ -31,9 +33,9 @@ class NeoPrintApp extends ConsumerWidget {
       themeMode: ThemeMode.system,
 
       // Plan section 2.1: az is the default, with en and ru alongside. The
-      // device language is used when it is one of the three, and Azerbaijani
-      // otherwise.
-      locale: null,
+      // language chosen in the profile (T-152); otherwise the device's when
+      // it is one of the three, and Azerbaijani otherwise.
+      locale: language.followsPhone ? null : Locale(language.code),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
         AppLocalizations.delegate,
