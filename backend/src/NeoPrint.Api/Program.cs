@@ -450,6 +450,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         job => job.RunAsync(CancellationToken.None),
         Cron.Hourly());
 
+    // Deleted accounts past their grace hours are erased (plan section 2.13).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Privacy.AccountDeletionJob>(
+        NeoPrint.Infrastructure.Privacy.AccountDeletionJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        "*/10 * * * *");
+
     recurring.AddOrUpdate<PrintQueueReconciliationJob>(
         PrintQueueReconciliationJob.RecurringId,
         job => job.RunAsync(CancellationToken.None),

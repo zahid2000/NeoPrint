@@ -11,7 +11,7 @@ using NeoPrint.Domain.Common;
 namespace NeoPrint.Api.Controllers;
 
 /// <summary>
-/// "Məlumatlarımı yüklə" (plan sections 2.13 and 6; <c>docs/DECISIONS.md</c> T-147).
+/// "Məlumatlarımı yüklə" and "Hesabımı sil" (plan sections 2.13 and 6; <c>docs/DECISIONS.md</c> T-147).
 /// </summary>
 [ApiController]
 [Authorize(Policy = AuthorizationPolicies.User)]
@@ -44,6 +44,27 @@ public sealed class PrivacyController : ControllerBase
     public async Task<ActionResult<DataExportView>> GetExport(CancellationToken cancellationToken)
         => await _sender.Send(new GetDataExportQuery(UserId), cancellationToken) is { } view ? Ok(view) : NoContent();
 
+    /// <summary>What keeps the account from being deleted, and the balance that would be lost.</summary>
+    [HttpGet("api/users/me/delete")]
+    public async Task<ActionResult<DeletionCheck>> DeletionCheck(CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new GetDeletionCheckQuery(UserId), cancellationToken));
+
+    /// <summary>
+    /// "Hesabımı sil": the password and "SİL". Closed at once; the files are
+    /// erased from every provider after <c>Privacy.AccountDeletionGraceHours</c>.
+    /// <c>409 privacy.deleteBlocked</c> while something still holds the user's
+    /// money or orders (<c>GET users/me/delete</c> says what).
+    /// </summary>
+    [HttpPost("api/users/me/delete")]
+    [Idempotent]
+    public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        await _sender.Send(new DeleteAccountCommand(UserId, request.Password ?? string.Empty, request.Confirmation ?? string.Empty), cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>
     /// The archive itself, for the system browser: the signed link stands in
     /// for the session and is good until the archive expires.
@@ -64,3 +85,5 @@ public sealed class PrivacyController : ControllerBase
         return File(stream, "application/zip", $"neoprint-{export.ReadyAt:yyyy-MM-dd}.zip", enableRangeProcessing: false);
     }
 }
+
+public sealed record DeleteAccountRequest(string? Password, string? Confirmation);

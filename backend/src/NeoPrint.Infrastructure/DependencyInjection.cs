@@ -150,6 +150,8 @@ public static class DependencyInjection
         services.AddScoped<Application.Privacy.IDataExportBuilder, Privacy.DataExportBuilder>();
         services.AddSingleton<Application.Privacy.IExportLinkSigner, Privacy.HmacExportLinkSigner>();
         services.AddScoped<Privacy.DataExportCleanupJob>();
+        services.AddScoped<Application.Privacy.IPrivacyRecords, Privacy.PrivacyRecords>();
+        services.AddScoped<Privacy.AccountDeletionJob>();
         services.AddScoped<PrintQueueReconciliationJob>();
 
         // Payments (plan section 2.5, step 4). The mock bank is the only bank

@@ -64,6 +64,13 @@ public sealed class FileRepository : IFileRepository
     public Task AddAsync(StoredFile file, CancellationToken cancellationToken = default)
         => AggregateWriter.InsertAsync(_context, _context.Files, file, cancellationToken);
 
+    public async Task<IReadOnlyList<Guid>> ListLiveIdsAsync(Guid userId, CancellationToken cancellationToken = default)
+        => await _context.Files
+            .Find(f => f.UserId == userId && f.DeletedAt == null)
+            .Project(f => f.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<IReadOnlyList<Guid>> ListAutoDeleteDueAsync(DateTime now, int take, CancellationToken cancellationToken = default)
     {
         var filter = Builders<StoredFile>.Filter;

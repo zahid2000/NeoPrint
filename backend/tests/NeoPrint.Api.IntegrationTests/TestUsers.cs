@@ -24,10 +24,10 @@ internal static class TestUsers
     public const string Password = "Wallet!Test2026";
 
     /// <summary>Registers, confirms with the emailed code and signs in (plan section 9.0 flow for the app).</summary>
-    public static async Task<TestUser> ConfirmedAsync(NeoPrintApiFixture fixture)
+    public static async Task<TestUser> ConfirmedAsync(NeoPrintApiFixture fixture, string? email = null)
     {
         var client = fixture.CreateApiClient();
-        var email = $"wallet-{Guid.NewGuid():N}@neoprint.test";
+        email ??= $"wallet-{Guid.NewGuid():N}@neoprint.test";
 
         var privacy = await client.GetFromJsonAsync<JsonElement>("/api/legal/Privacy?lang=az");
         var terms = await client.GetFromJsonAsync<JsonElement>("/api/legal/Terms?lang=az");

@@ -43,6 +43,9 @@ public interface IUserRepository
     /// </summary>
     Task SavePushDeviceAsync(Guid userId, PushDevice device, CancellationToken cancellationToken = default);
 
+    /// <summary>Deleted accounts not yet erased whose deletion is older than <paramref name="deletedBefore"/>.</summary>
+    Task<IReadOnlyList<Guid>> ListToEraseAsync(DateTime deletedBefore, int take, CancellationToken cancellationToken = default);
+
     /// <summary>Takes a push token off whichever account has it (signed out, or FCM no longer knows it).</summary>
     Task RemovePushDeviceAsync(string token, CancellationToken cancellationToken = default);
 }

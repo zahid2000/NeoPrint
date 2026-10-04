@@ -88,6 +88,15 @@ public sealed class UserRepository : IUserRepository
             .ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<Guid>> ListToEraseAsync(DateTime deletedBefore, int take, CancellationToken cancellationToken = default)
+        => await _context.Users
+            .Find(u => u.Status == UserStatus.Deleted && u.ErasedAt == null && u.DeletedAt <= deletedBefore)
+            .SortBy(u => u.DeletedAt)
+            .Limit(take)
+            .Project(u => u.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public Task RemovePushDeviceAsync(string token, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(token);

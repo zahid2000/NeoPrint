@@ -27,6 +27,9 @@ public interface IFileRepository
     /// Files not deleted whose own rule may say "now" (plan section 2.13), oldest
     /// first: printed ones set to go after a print, and ones past their days.
     /// </summary>
+    /// <summary>Every file of a user not deleted yet, for the account deletion.</summary>
+    Task<IReadOnlyList<Guid>> ListLiveIdsAsync(Guid userId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Guid>> ListAutoDeleteDueAsync(DateTime now, int take, CancellationToken cancellationToken = default);
 }
 

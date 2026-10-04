@@ -573,5 +573,8 @@
   "privacy.exportFailed": "Arxivi hazırlamaq alınmadı. Bir az sonra yenidən cəhd edin.",
   "privacy.exportLinkInvalid": "Bu yükləmə linki keçərli deyil və ya vaxtı keçib. Tətbiqdə arxivi yenidən hazırlayın.",
   "privacy.export.readme": "NeoPrint — məlumatlarınızın arxivi\n\nprofile.json — profil və qəbul etdiyiniz sənədlər\npayments.json — ödənişlər\nrefunds.json — qaytarmalar\nbalance.json — balans və onun hərəkətləri\norders.json — çap sifarişləri\nreceipts/ — qəbzlər (PDF)\nfiles.json — fayllarınızın siyahısı\nfiles/ — fayllarınızın orijinalları və redaktə versiyaları\n",
-  "privacy.export.readmeWithoutFiles": "NeoPrint — məlumatlarınızın arxivi\n\nprofile.json — profil və qəbul etdiyiniz sənədlər\npayments.json — ödənişlər\nrefunds.json — qaytarmalar\nbalance.json — balans və onun hərəkətləri\norders.json — çap sifarişləri\nreceipts/ — qəbzlər (PDF)\nfiles.json — fayllarınızın siyahısı\n\nFayllarınızın ümumi ölçüsü arxiv həddini keçir, ona görə onların məzmunu daxil edilməyib — siyahısı files.json-dadır. Faylları tətbiqdən ayrıca yükləyə bilərsiniz.\n"
+  "privacy.export.readmeWithoutFiles": "NeoPrint — məlumatlarınızın arxivi\n\nprofile.json — profil və qəbul etdiyiniz sənədlər\npayments.json — ödənişlər\nrefunds.json — qaytarmalar\nbalance.json — balans və onun hərəkətləri\norders.json — çap sifarişləri\nreceipts/ — qəbzlər (PDF)\nfiles.json — fayllarınızın siyahısı\n\nFayllarınızın ümumi ölçüsü arxiv həddini keçir, ona görə onların məzmunu daxil edilməyib — siyahısı files.json-dadır. Faylları tətbiqdən ayrıca yükləyə bilərsiniz.\n",
+  "privacy.deleteConfirmation": "Təsdiq üçün SİL yazın.",
+  "privacy.deletePassword": "Şifrə düz deyil.",
+  "privacy.deleteBlocked": "Hesabı hələ silmək olmur: aktiv çap, planlanmış çap, kioskda götürülməmiş sifariş və ya qaytarılan pul var. Əvvəl onları bitirin və ya ləğv edin."
 }

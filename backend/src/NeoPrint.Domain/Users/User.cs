@@ -88,6 +88,47 @@ public sealed class User : Entity
     /// <summary>Whether this account may sign in and place orders.</summary>
     public bool CanSignIn => Status == UserStatus.Active;
 
+    /// <summary>
+    /// When the deleted account's files and personal records were erased
+    /// (<c>AccountDeletionJob</c>, after <c>Privacy.AccountDeletionGraceHours</c>).
+    /// </summary>
+    public DateTime? ErasedAt { get; set; }
+
+    /// <summary>
+    /// "Hesabımı sil" (plan section 2.13; docs/DECISIONS.md T-147): closed at
+    /// once, the profile made anonymous - the email becomes its hash, so the
+    /// address is free for a new account; the name, the password and the push
+    /// devices go. The device ids stay: they keep the referral checks honest
+    /// and say nothing about the person. A repeat changes nothing.
+    /// </summary>
+    public void Delete(DateTime now)
+    {
+        if (Status == UserStatus.Deleted)
+        {
+            return;
+        }
+
+        Email = DeletedEmail(Email, Id);
+        FullName = null;
+        PasswordHash = string.Empty;
+        FcmTokens.Clear();
+        Status = UserStatus.Deleted;
+        DeletedAt = now;
+    }
+
+    /// <summary>
+    /// What a deleted account's email becomes: its SHA-256, never the address,
+    /// with the account's id - the same address may be registered and deleted
+    /// again, and emails are unique.
+    /// </summary>
+    public static string DeletedEmail(string email, Guid userId)
+    {
+        ArgumentNullException.ThrowIfNull(email);
+
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(NormalizeEmail(email)));
+        return $"deleted-{Convert.ToHexString(hash).ToLowerInvariant()}-{userId:N}";
+    }
+
     /// <summary>When an admin blocked the account; null while it is not blocked.</summary>
     public DateTime? BlockedAt { get; set; }
 
