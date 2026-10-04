@@ -24,6 +24,8 @@ public static class NotificationLinks
     public static string Schedule(Guid scheduleId) => $"neoprint://schedules/{scheduleId}";
 
     public const string Wallet = "neoprint://wallet";
+
+    public const string Files = "neoprint://files";
 }
 
 /// <summary>A job printed: its owner hears it (plan section 8.4, <c>JobCompleted</c>).</summary>

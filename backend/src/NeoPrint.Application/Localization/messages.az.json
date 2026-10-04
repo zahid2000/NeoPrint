@@ -560,5 +560,12 @@
   "notifications.refundCompleted.body": "{amount} ₼ qaytarıldı: {destination:refunds.destination}.",
   "refunds.destination.originalMethod": "ödədiyiniz karta",
   "refunds.destination.wallet": "balansınıza",
-  "refunds.destination.voucher": "voucher kodu kimi"
+  "refunds.destination.voucher": "voucher kodu kimi",
+  "notifications.fileAutoDeleted.title": "Fayl silindi",
+  "notifications.fileAutoDeleted.body": "\"{name}\" seçdiyiniz qaydaya görə silindi: {rule:files.autoDelete}.",
+  "files.autoDelete.never": "heç vaxt",
+  "files.autoDelete.afterPrint": "çapdan sonra",
+  "files.autoDelete.afterOneDay": "1 gündən sonra",
+  "files.autoDelete.afterSevenDays": "7 gündən sonra",
+  "files.autoDelete.afterThirtyDays": "30 gündən sonra"
 }

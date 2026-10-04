@@ -560,5 +560,12 @@
   "notifications.refundCompleted.body": "{amount} ₼ returned {destination:refunds.destination}.",
   "refunds.destination.originalMethod": "to the card you paid with",
   "refunds.destination.wallet": "to your balance",
-  "refunds.destination.voucher": "as a voucher code"
+  "refunds.destination.voucher": "as a voucher code",
+  "notifications.fileAutoDeleted.title": "File deleted",
+  "notifications.fileAutoDeleted.body": "\"{name}\" was deleted by the rule you chose: {rule:files.autoDelete}.",
+  "files.autoDelete.never": "never",
+  "files.autoDelete.afterPrint": "after printing",
+  "files.autoDelete.afterOneDay": "after 1 day",
+  "files.autoDelete.afterSevenDays": "after 7 days",
+  "files.autoDelete.afterThirtyDays": "after 30 days"
 }

@@ -437,14 +437,12 @@ public sealed class DeleteFileHandler : IRequestHandler<DeleteFileCommand>
     private readonly PrintJobs.IPrintJobRepository _jobs;
     private readonly Schedules.IScheduledPrintRepository _schedules;
     private readonly IFileRepository _files;
-    private readonly IFileStorage _storage;
-    private readonly IClock _clock;
+    private readonly FileEraser _eraser;
     private readonly ILogger<DeleteFileHandler> _logger;
 
     public DeleteFileHandler(
         IFileRepository files,
-        IFileStorage storage,
-        IClock clock,
+        FileEraser eraser,
         ILogger<DeleteFileHandler> logger,
         PrintJobs.IPrintJobRepository jobs,
         Schedules.IScheduledPrintRepository schedules)
@@ -452,8 +450,7 @@ public sealed class DeleteFileHandler : IRequestHandler<DeleteFileCommand>
         _jobs = jobs;
         _schedules = schedules;
         _files = files;
-        _storage = storage;
-        _clock = clock;
+        _eraser = eraser;
         _logger = logger;
     }
 
@@ -480,41 +477,9 @@ public sealed class DeleteFileHandler : IRequestHandler<DeleteFileCommand>
         // Every object the file owns, not only the original: the converted
         // PDF and the saved versions are the same bytes to somebody who finds
         // them (plan section 2.13).
-        foreach (var stored in Objects(file))
-        {
-            await _storage.DeleteAsync(
-                    new StoredObject(
-                        stored.ProviderId,
-                        stored.Key,
-                        stored.Sha256,
-                        stored.EncryptedLength,
-                        stored.PlaintextLength,
-                        stored.KekId),
-                    StorageBucket.Files,
-                    cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        file.DeletedAt = _clock.UtcNow;
-
-        await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
+        await _eraser.EraseAsync(file, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("File {FileId} was deleted by its owner.", file.Id);
-    }
-
-    private static IEnumerable<FileObject> Objects(StoredFile file)
-    {
-        yield return file.Original;
-
-        if (file.Pdf is not null && file.Pdf.Key != file.Original.Key)
-        {
-            yield return file.Pdf;
-        }
-
-        foreach (var version in file.Versions)
-        {
-            yield return version.Object;
-        }
     }
 }
 

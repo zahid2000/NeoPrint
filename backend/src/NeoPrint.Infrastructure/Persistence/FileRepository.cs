@@ -64,6 +64,24 @@ public sealed class FileRepository : IFileRepository
     public Task AddAsync(StoredFile file, CancellationToken cancellationToken = default)
         => AggregateWriter.InsertAsync(_context, _context.Files, file, cancellationToken);
 
+    public async Task<IReadOnlyList<Guid>> ListAutoDeleteDueAsync(DateTime now, int take, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<StoredFile>.Filter;
+        var due = filter.Eq(f => f.DeletedAt, null) & (
+            (filter.Eq(f => f.AutoDelete, AutoDeleteRule.AfterPrint) & filter.Ne(f => f.PrintedAt, null))
+            | (filter.Eq(f => f.AutoDelete, AutoDeleteRule.AfterOneDay) & filter.Lte(f => f.CreatedAt, now.AddDays(-1)))
+            | (filter.Eq(f => f.AutoDelete, AutoDeleteRule.AfterSevenDays) & filter.Lte(f => f.CreatedAt, now.AddDays(-7)))
+            | (filter.Eq(f => f.AutoDelete, AutoDeleteRule.AfterThirtyDays) & filter.Lte(f => f.CreatedAt, now.AddDays(-30))));
+
+        return await _context.Files
+            .Find(due)
+            .SortBy(f => f.CreatedAt)
+            .Limit(take)
+            .Project(f => f.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public Task UpdateAsync(StoredFile file, CancellationToken cancellationToken = default)
         => AggregateWriter.ReplaceAsync(_context, _context.Files, file, cancellationToken);
 }

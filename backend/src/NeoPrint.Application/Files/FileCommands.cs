@@ -22,6 +22,12 @@ public interface IFileRepository
     Task AddAsync(StoredFile file, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(StoredFile file, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Files not deleted whose own rule may say "now" (plan section 2.13), oldest
+    /// first: printed ones set to go after a print, and ones past their days.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> ListAutoDeleteDueAsync(DateTime now, int take, CancellationToken cancellationToken = default);
 }
 
 /// <summary>What the API reports about a file.</summary>

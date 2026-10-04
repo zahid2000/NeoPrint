@@ -149,6 +149,33 @@ public sealed class StoredFile : Entity
 
     public DateTime? DeletedAt { get; set; }
 
+    /// <summary>When an order made from it last printed at a kiosk; what <see cref="AutoDeleteRule.AfterPrint"/> waits for.</summary>
+    public DateTime? PrintedAt { get; private set; }
+
+    /// <summary>A kiosk printed it. The latest time is kept.</summary>
+    public void MarkPrinted(DateTime at)
+    {
+        if (PrintedAt is null || at > PrintedAt)
+        {
+            PrintedAt = at;
+        }
+    }
+
+    /// <summary>
+    /// Whether its own rule says it should be gone by <paramref name="now"/>
+    /// (plan section 2.13): after a print, or a number of days after the upload.
+    /// Whether nothing still needs it - an order, a scheduled print - is the
+    /// caller's to check.
+    /// </summary>
+    public bool AutoDeleteDue(DateTime now) => DeletedAt is null && AutoDelete switch
+    {
+        AutoDeleteRule.AfterPrint => PrintedAt is not null,
+        AutoDeleteRule.AfterOneDay => now >= CreatedAt.AddDays(1),
+        AutoDeleteRule.AfterSevenDays => now >= CreatedAt.AddDays(7),
+        AutoDeleteRule.AfterThirtyDays => now >= CreatedAt.AddDays(30),
+        _ => false,
+    };
+
     private static readonly StateMachine<FileStatus> Transitions =
         new StateMachine<FileStatus>(nameof(StoredFile))
             .Allow(FileStatus.Pending, FileStatus.Converting, FileStatus.Failed)

@@ -438,6 +438,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         job => job.RunAsync(CancellationToken.None),
         "*/10 * * * *");
 
+    // Files that delete themselves (plan section 2.13); a print also triggers it at once.
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Files.FileAutoDeleteJob>(
+        NeoPrint.Infrastructure.Files.FileAutoDeleteJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        "*/5 * * * *");
+
     recurring.AddOrUpdate<PrintQueueReconciliationJob>(
         PrintQueueReconciliationJob.RecurringId,
         job => job.RunAsync(CancellationToken.None),

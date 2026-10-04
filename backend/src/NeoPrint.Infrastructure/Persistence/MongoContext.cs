@@ -360,7 +360,10 @@ public sealed class MongoContext
         await CreateAsync(Files,
             (Builders<Domain.Files.StoredFile>.IndexKeys
                 .Ascending(file => file.UserId).Descending(file => file.CreatedAt), Named("ix_files_user_created")),
-            (Builders<Domain.Files.StoredFile>.IndexKeys.Ascending("Original.ProviderId"), Named("ix_files_original_provider")));
+            (Builders<Domain.Files.StoredFile>.IndexKeys.Ascending("Original.ProviderId"), Named("ix_files_original_provider")),
+            // FileAutoDeleteJob: the live files that delete themselves.
+            (Builders<Domain.Files.StoredFile>.IndexKeys.Ascending(file => file.AutoDelete).Ascending(file => file.DeletedAt).Ascending(file => file.CreatedAt),
+                Named("ix_files_auto_delete")));
 
         await CreateAsync(KioskCommands,
             (Builders<KioskCommand>.IndexKeys

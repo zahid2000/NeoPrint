@@ -560,5 +560,12 @@
   "notifications.refundCompleted.body": "{amount} ₼ возвращены {destination:refunds.destination}.",
   "refunds.destination.originalMethod": "на карту, которой вы платили",
   "refunds.destination.wallet": "на ваш баланс",
-  "refunds.destination.voucher": "в виде кода ваучера"
+  "refunds.destination.voucher": "в виде кода ваучера",
+  "notifications.fileAutoDeleted.title": "Файл удалён",
+  "notifications.fileAutoDeleted.body": "«{name}» удалён по выбранному вами правилу: {rule:files.autoDelete}.",
+  "files.autoDelete.never": "никогда",
+  "files.autoDelete.afterPrint": "после печати",
+  "files.autoDelete.afterOneDay": "через 1 день",
+  "files.autoDelete.afterSevenDays": "через 7 дней",
+  "files.autoDelete.afterThirtyDays": "через 30 дней"
 }
