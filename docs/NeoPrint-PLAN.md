@@ -263,7 +263,8 @@ price      = max(MinOrder, base * (1 - tier.DiscountPercent/100))
 | `Schedule.ReminderLeadMinutes` | 0 | Planlanmış vaxtda bildiriş |
 | `Schedule.AutoCancelHours` | 24 | Cavab verilməyən planlanmış çap avtomatik ləğv + balansa refund |
 | `Referral.BonusPages` | 10 | Dəvət edənə verilən bonus səhifə |
-| `Referral.InviteeBonusPages` | 0 | Dəvət olunana verilən bonus |
+| `Referral.InviteeBonusPages` | 0 | Dəvət olunana verilən bonus (dəvət edənin bonusu ilə eyni anda, eyni şərtlə) |
+| `Referral.MaxRewardsPerMonth` | 20 | Bir dəvət edənin bir təqvim ayında (UTC) ala biləcəyi maksimum referral mükafatı; 0 = limitsiz (2026-10-05, `DECISIONS.md`) |
 | `Referral.MaxBonusPagesPerJob` | 5 | Bir çapda istifadə oluna bilən maksimum bonus səhifə |
 | `Refund.VoucherValidDays` | 90 | Anonim refund voucher-in etibarlılığı (yalnız bank refund-u mümkün olmadıqda) |
 | `Refund.ProviderMaxAttempts` | 3 | Bank/kart refund-unun avtomatik təkrar cəhd sayı |
@@ -395,10 +396,11 @@ qeyd **məcburidir**, hamısı `audit_logs`-a düşür:
 
 ### 2.6 Referral qaydası
 - Hər istifadəçinin unikal referral kodu var (`NP` + 6 simvol). Paylaşım: kod, link (`https://neoprint.az/r/{code}`), QR.
-- Dəvət olunan qeydiyyatdan keçib **ilk ödənişli çapını tamamladıqda** dəvət edənə `Referral.BonusPages` əlavə olunur.
+- Dəvət olunan qeydiyyatdan keçib **ilk ödənişli çapını tamamladıqda** dəvət edənə `Referral.BonusPages`, dəvət olunana `Referral.InviteeBonusPages` əlavə olunur. "İlk ödənişli çap" — dəvət olunanın `Completed` olan və ödənişində pul hissəsi > 0 olan (balans / kart / bank) ilk job-u; yalnız bonus və ya 100% promokodla ödənilən sayılmır. Job sonradan refund olunsa bonus geri alınmır.
+- Dəvət edən bir təqvim ayında `Referral.MaxRewardsPerMonth`-dan çox mükafat almır (limitdən sonrakı referral `Registered` qalır).
 - Bonus səhifələr print parametrlərindən (rəng, A3, ikitərəfli) asılı olmayaraq 1 bonus = 1 çap olunan üz.
 - Bir job-da maksimum `Referral.MaxBonusPagesPerJob` bonus istifadə olunur, qalanı adi ödənişlə.
-- Özünü dəvət etmək və eyni cihazdan təkrar referral bloklanır (device id yoxlaması).
+- Özünü dəvət etmək və eyni cihazdan təkrar referral bloklanır (device id yoxlaması): qeydiyyat dayanmır, yalnız bonus yazılmır.
 - Bonus səhifələr pul deyil, geri çıxarıla bilməz, hesab silinəndə itir.
 
 ### 2.7 Promokod
@@ -462,8 +464,8 @@ qeyd **məcburidir**, hamısı `audit_logs`-a düşür:
 ### 2.11 Mobil sənəd skanı və səhifə tərtibatı
 **Skan (mobil)**
 - Öz platform channel-ımız: Android — Google ML Kit Document Scanner API (Google Play Services, pulsuz); iOS — VisionKit `VNDocumentCameraViewController`. Kənar aşkarlama, perspektiv düzəlişi, çoxsəhifəli skan.
-- Skandan sonra (`image` paketi ilə): kəsmə, fırlatma, filtr (Orijinal / Qrayskeyl / Ağ-qara / Kontrastlı), parlaqlıq.
-- **Sənəd tipi və real ölçü** seçimi (skan zamanı və ya sonra dəyişdirilə bilər):
+- Skan sessiyasında, saxlamadan əvvəl (`image` paketi ilə): kəsmə, fırlatma, filtr (Orijinal / Qrayskeyl / Ağ-qara / Kontrastlı), parlaqlıq. Bir neçə səhifə skan edildikdən sonra sessiyanın **son addımında** istənilən səhifəyə qayıdıb dəyişiklik etmək və səhifələri kağızda yerləşdirmək olar (aşağıdakı tərtibat redaktoru, şablonlar daxil).
+- **Sənəd tipi və real ölçü** seçimi (skan sessiyası ərzində dəyişdirilə bilər; saxlanandan sonra yox):
 
 | Preset | Ölçü (mm) | Həssas sənəd |
 |---|---|---|
@@ -475,17 +477,18 @@ qeyd **məcburidir**, hamısı `audit_logs`-a düşür:
 | A6 / A5 / A4 | 105×148 / 148×210 / 210×297 | Xeyr (istifadəçi "Həssas" işarələyə bilər) |
 | Xüsusi | istifadəçi daxil edir (mm) | İstifadəçi seçir |
 
-- İlk skan zamanı məlumat pəncərəsi (bir dəfəlik razılıq): şəxsi sənədlərin şifrəli saxlanıldığı, avtomatik silinmə seçimi və məxfilik siyasətinə link.
-- Skan faylı `files`-a `Source=Scan`, `PhysicalWidthMm`, `PhysicalHeightMm`, `IsSensitive` metadata ilə şəkil (JPEG, 300 DPI) kimi yazılır. Həssas fayllar üçün default avtomatik silinmə `Privacy.SensitiveAutoDeleteDefault` (Bölmə 2.13).
+- İlk skan zamanı məlumat pəncərəsi (razılıq): şəxsi sənədlərin şifrəli saxlanıldığı, avtomatik silinmə seçimi və məxfilik siyasətinə link. Mətn admin dərc etdiyi `ScanNotice` sənədidir (`legal_documents`, versiyalı), qəbul `consents`-ə yazılır; yeni versiya dərc olunanda növbəti skanda yenidən soruşulur; backend `POST files/scan`-da cari versiyanın qəbulunu yoxlayır.
+- "Yadda saxla" → `POST files/scan` (səhifə şəkilləri JPEG 300 DPI + real ölçülər + həssaslıq + yerləşdirmə) → backend `NeoPrint.Layout` ilə **PDF** yaradır; şəkillər ayrıca saxlanılmır. Fayl `files`-a `Source=Scan`, `PhysicalWidthMm`, `PhysicalHeightMm`, `IsSensitive` metadata ilə yazılır. Həssas fayllar üçün default avtomatik silinmə `Privacy.SensitiveAutoDeleteDefault` (Bölmə 2.13).
+- **Saxlanılmış skan redaktə olunmur** (2026-10-05, layihə sahibi): redaktə, ölçü dəyişmə və tərtibat redaktəsi rədd edilir, başqa tərtibata mənbə kimi əlavə olunmur — yalnız çap, paylaşım (kilid paylaşılan nüsxəyə də keçir), avtomatik silinmə və silmə.
 
 **Səhifə tərtibatı redaktoru (mobil və kiosk)**
-- Açılış: skan/şəkil faylında "Səhifədə yerləşdir", və ya "Yeni tərtibat" → faylları seç (skanlar, şəkillər, PDF səhifələri şəkil kimi).
+- Açılış: skan sessiyasının son addımı; şəkil faylında "Səhifədə yerləşdir"; və ya "Yeni tərtibat" → faylları seç (şəkillər, PDF səhifələri şəkil kimi; saxlanılmış skanlar daxil deyil).
 - Kağız: A4 / A3 (+ A5), portret / landşaft, kənar boşluq (`Layout.DefaultMarginMm`).
 - Elementlər: sürüşdürmə, ölçü dəyişmə (nisbət kilidi default açıq), 90° və sərbəst fırlatma, **"Real ölçüyə qaytar"**, dublikat (məs. eyni vəsiqə × 4), sil, ön/arxa plan.
 - Köməkçilər: mm xətkeşləri, 5 mm grid, kənara / mərkəzə / bir-birinə snap, düzləndirmə düymələri, çap sahəsindən kənara çıxma xəbərdarlığı (printer kənarı: printer bildirirsə o, yoxdursa 4 mm).
 - Hazır şablonlar: "Vəsiqə ön + arxa (bir səhifədə, mərkəzdə, üst-alt)", "2 × 2", "8 kart (2 × 4)", "Foto 3×4 × 6", "Pasport səhifəsi mərkəzdə".
 - Default davranış: ID preset-li skan A4-ə əlavə olunanda **real ölçüdə** yerləşdirilir (böyüdülmür). İstifadəçi istəsə böyüdə bilər.
-- Nəticə: `LayoutProjectJson` (elementlər, mm koordinatları, fayl istinadları). PDF-i **paylaşılan .NET `NeoPrint.Layout` kitabxanası** (PDFsharp) yaradır: mobil üçün backend-də (`POST files/layout`), kioskda lokal. Şəkillər maks. 300 DPI. `files`-a `Source=Layout` kimi yazılır, "Tərtibatı redaktə et" ilə istənilən vaxt yenidən açılır. Tərtibatda həssas fayl varsa tərtibat da həssas sayılır.
+- Nəticə: `LayoutProjectJson` (elementlər, mm koordinatları, fayl istinadları). PDF-i **paylaşılan .NET `NeoPrint.Layout` kitabxanası** (PDFsharp) yaradır: mobil üçün backend-də (`POST files/layout`), kioskda lokal. Şəkillər maks. 300 DPI. `files`-a `Source=Layout` kimi yazılır, "Tərtibatı redaktə et" ilə istənilən vaxt yenidən açılır; tərtibat istifadə etdiyi şəkillərin öz şifrəli nüsxəsini saxlayır, ona görə mənbə fayl silinsə də redaktə işləyir. Tərtibatda həssas fayl varsa tərtibat da həssas sayılır. Skan sessiyasında qurulan yerləşdirmə isə `Source=Scan` PDF-ə çevrilir və yenidən açılmır.
 - Redaktor UI: mobil — Flutter `CustomPainter` + jestlər; kiosk — Avalonia + Skia.
 - Çap: tərtibat faylları üçün `Ölçüləmə = Real ölçü 100%` və kağız ölçüsü tərtibatdakı ilə **məcburidir** (PrintOptions-da dəyişdirilə bilməz, səbəbi yazılır). Windows: `PrintDocument` scaling söndürülür; Linux: `-o print-scaling=none -o fit-to-page=false`.
 - Kiosk: kamera skanı yoxdur; flash-dan gələn şəkillər üçün eyni redaktor. Anonim istifadəçinin tərtibat layihəsi saxlanılmır.
@@ -840,7 +843,7 @@ Tam state maşınları (PrintJob, Payment, Refund, Device, Kiosk, Update, Schedu
 | Kiosk (kiosk tətbiqi üçün) | `PUT kiosks/me/printers` (aşkarlanmış printer siyahısı), `GET kiosks/me/config` (seçilmiş printer, effektiv capability-lər, queue limiti, fayl limitləri, qiymət profili, feature flag-lar, kağız sayğacı), `GET kiosks/me/commands?status=Sent`, `POST kiosks/me/commands/{id}/result`, `POST kiosks/me/analytics` (batch) |
 | Sessions | `POST sessions` (kioskId), `GET sessions/{id}`, `DELETE sessions/{id}` |
 | Files | `POST files` (multipart), `GET files`, `GET files/{id}`, `GET files/{id}/content` (deşifrə olunmuş stream), `GET files/{id}/pages/{n}.png`, `POST files/{id}/edit` (PDF səhifə / şəkil / TXT əməliyyatları → yeni versiya), `PUT files/{id}/auto-delete`, `DELETE files/{id}` |
-| Scan / Layout | `POST files/scan` (şəkil + preset/ölçü + həssaslıq), `PUT files/{id}/physical-size`, `POST files/layout` (`LayoutProjectJson` → backend PDF yaradır), `PUT files/{id}/layout` |
+| Scan / Layout | `POST files/scan` (səhifə şəkilləri + preset/ölçü + həssaslıq + yerləşdirmə → backend PDF yaradır; saxlanılmış skan redaktə olunmur), `POST files/layout` (`LayoutProjectJson` → backend PDF yaradır), `PUT files/{id}/layout` |
 | Shares | `POST shares` (fileId, toPublicId), `GET shares/sent`, `GET shares/received`, `POST shares/{id}/save` |
 | Pricing | `POST pricing/quote` (kioskId, pageCount, options, promoCode?, useBonus?) |
 | PrintJobs | `POST print-jobs` (kiosk və ya mobil; limit, format, kağız yoxlaması), `GET print-jobs/my`, `GET print-jobs/{id}`, `POST print-jobs/{id}/cancel`, `POST print-jobs/{id}/status` (Kiosk rolu; `PrintedSides`, `PrintedSheets`, xəta), `GET print-jobs/pending-for-user` (Kiosk rolu, user QR ilə), `POST print-jobs/{id}/flash-upload` (mobil ödənişdən sonra) |
@@ -1220,8 +1223,8 @@ Mənbələr:
 | receipts | Qəbz siyahısı, PDF baxış (fiskal məlumatla), email göndər, paylaş (öz platform channel) |
 | support | Job detalında **"Problem barədə bildir"** düyməsi (Bölmə 2.5, ssenari B): job seçilir, qısa mətn yazılır, müraciət göndərilir. Müraciətlərin siyahısı və statusu; admin cavab verəndə push. `Suspected` job-da düymə ekranın üst hissəsində görünür |
 | referral | Kod, link, QR (backend PNG), paylaş, dəvət statistikası, qazanılan bonus |
-| share | Fayl paylaş (PublicId daxil et və ya QR scan), göndərilənlər/alınanlar tarixçəsi, alınan faylı "Fayllarıma saxla"; həssas fayl paylaşılanda xəbərdarlıq |
-| scanner | Sənəd skanı (öz platform channel), filtrlər, sənəd tipi / real ölçü preset-ləri, sonradan ölçü dəyişmə, ilk istifadədə məlumat/razılıq (Bölmə 2.11) |
+| share | Fayl paylaş (PublicId daxil et və ya QR scan), göndərilənlər/alınanlar tarixçəsi, alınan faylı "Fayllarıma saxla" (alıcıda müstəqil nüsxə; çap yalnız saxladıqdan sonra); həssas fayl paylaşılanda xəbərdarlıq + təsdiq |
+| scanner | Sənəd skanı (öz platform channel), filtrlər, sənəd tipi / real ölçü preset-ləri, sessiyanın sonunda düzəliş və səhifədə yerləşdirmə, PDF kimi saxlama (sonra redaktə yoxdur), ilk istifadədə məlumat/razılıq (Bölmə 2.11) |
 | layout_editor | Səhifə tərtibatı redaktoru, şablonlar, tərtibatı yadda saxla / sonra redaktə et |
 | privacy | "Məlumatlarımı yüklə", "Hesabımı sil" (şərtlər və xəbərdarlıqlarla), default avtomatik silinmə seçimi |
 | notifications | Siyahı, oxundu; push-dan müvafiq ekrana deep link; ön planda gələn push üçün tətbiq daxili banner |
@@ -1404,10 +1407,10 @@ Mənbələr:
 
 ### 9.7 Skan → tərtibat → çap
 1. Mobil: Skan → vəsiqə ön və arxa → preset "Şəxsiyyət vəsiqəsi (ID-1)" (həssas, avtomatik silinmə "Çapdan sonra")
-2. "Səhifədə yerləşdir" → şablon "Vəsiqə ön + arxa" → A4-də real ölçüdə yerləşir → lazım olsa düzəliş
-3. Yadda saxla → `POST files/layout` → backend PDF yaradır → "Fayllarım"
+2. Skan sessiyasının son addımı "Səhifədə yerləşdir" → şablon "Vəsiqə ön + arxa" → A4-də real ölçüdə yerləşir → lazım olsa düzəliş
+3. Yadda saxla → `POST files/scan` → backend PDF yaradır → "Fayllarım" (`Source=Scan`, yalnız çap)
 4. Kiosk seç / sessiya / planlama → PrintOptions (kağız və real ölçü kilidli) → ödəniş → çap
-5. Çap tamamlanır → həssas skanlar və tərtibat avtomatik silinir → push `FileAutoDeleted`
+5. Çap tamamlanır → həssas skan avtomatik silinir → push `FileAutoDeleted`
 
 ### 9.8 Storage migrasiyası (bir S3 provayderindən digərinə)
 1. Fayl saxlama → Scality provayderini əlavə et → bağlantı testi uğurlu
@@ -1582,7 +1585,7 @@ Mənbələr:
 - Admin web: Referral statistikası, istifadəçi detalında referral-lar və fayl metadata-sı
 
 **Definition of Done**
-- 9.7 axını: vəsiqə ön + arxa bir A4-də yerləşdirilib çap olunur, çapda kart ölçüsü real (85.6 × 53.98 mm ± 1 mm); çapdan sonra həssas fayllar avtomatik silinir
+- 9.7 axını: vəsiqə ön + arxa skan sessiyasında bir A4-də yerləşdirilib çap olunur, çapda kart ölçüsü real (85.6 × 53.98 mm ± 1 mm); çapdan sonra həssas fayllar avtomatik silinir
 - Tərtibat sonradan açılıb dəyişdirilir və yenidən çap olunur; mobil və kiosk eyni PDF nəticəsini verir
 - Paylaşılan fayl alan istifadəçidə görünür, tarixçə düzgündür
 - Dəvət olunanın ilk ödənişli çapından sonra dəvət edənə bonus yazılır, bir job-da maksimum limit tətbiq olunur
