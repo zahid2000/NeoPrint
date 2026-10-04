@@ -264,6 +264,28 @@ void main() {
       },
     );
 
+    testWidgets('a screen already open is not opened a second time', (
+      tester,
+    ) async {
+      final router = GoRouter(
+        initialLocation: '/wallet',
+        routes: [
+          GoRoute(
+            path: '/wallet',
+            builder: (context, __) => TextButton(
+              onPressed: () => openAppLocation(context, '/wallet'),
+              child: const Text('open again'),
+            ),
+          ),
+        ],
+      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.tap(find.text('open again'));
+      await tester.pumpAndSettle();
+
+      expect(router.canPop(), isFalse);
+    });
+
     testWidgets('an empty list says what will come here', (tester) async {
       await tester.pumpWidget(
         app(const NotificationsScreen(), notifications: FakeNotifications()),

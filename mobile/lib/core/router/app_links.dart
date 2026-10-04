@@ -75,9 +75,17 @@ const _tabs = {
 /// Opens a route from [appLinkLocation]: a tab is switched to, any other
 /// screen goes on top of where the user is, so back returns there.
 void openAppLocation(BuildContext context, String location) {
+  final router = GoRouter.of(context);
+
+  // Already there - the banner's "Aç" on the screen it points to.
+  if (router.routerDelegate.currentConfiguration.uri.path ==
+      Uri.parse(location).path) {
+    return;
+  }
+
   if (_tabs.contains(Uri.parse(location).path)) {
-    GoRouter.of(context).go(location);
+    router.go(location);
   } else {
-    GoRouter.of(context).push(location);
+    router.push(location);
   }
 }
