@@ -1070,6 +1070,19 @@ Kiosk kodu dəyişəndən sonra konteyner kioskunu (`neoprint-kshot`) yeniləmə
 bash tools/dev-kiosk/update-linux-kiosk.sh
 ```
 
+**Konteyneri image-dən yenidən qurmaq** (ilk dəfə, image dəyişəndə və ya konteyner silinibsə). Image
+`tools/dev-kiosk/linux-container/Dockerfile`-dadır: Xvfb, xdotool, ImageMagick və real kiosk kimi **LibreOffice,
+Ghostscript, fontlar** — Office faylları (DOCX / XLSX / PPTX) flaşdan açılır (T-168). Aktivləşdirmə
+`neoprint-kshot-data` həcmində qalır; ilk dəfə enrollment token verin (bölmə 5):
+
+```bash
+bash tools/dev-kiosk/build-linux-kiosk.sh                                # mövcud aktivləşdirmə ilə
+bash tools/dev-kiosk/build-linux-kiosk.sh --enrollment-token <TOKEN>     # ilk aktivləşdirmə
+```
+
+Skript sonda `soffice` və `gs` versiyalarını və "kiosk running" yazır. Konteynerdə konvertorlar tətbiqin öz
+hesabı ilə `prlimit` altında işləyir; ayrıca şəbəkəsiz `neoprint-convert` hesabı yalnız provisioning-dədir (real cihaz — T-094).
+
 **Kiosk və feature flag-lar (T-160).** Admin → Feature flag-lar → `mobile_payment_at_kiosk` / `promo_codes`-də
 KSK-9002 üçün override "söndürülüb" — kioskun açıq ekranı dərhal dəyişir (ödəniş ekranında yalnız bank QR-ı,
 parametrlərdə "Promokod" yoxdur). Yoxladıqdan sonra override-ı silin.

@@ -1,4 +1,4 @@
-# T-164 auditi — ekran görüntüləri (real stack, 2026-10-04)
+# T-164 auditi və düzəlişləri (T-165, T-166, T-168) — ekran görüntüləri (real stack, 2026-10-04)
 
 Stack compose ilə qaldırılıb.
 
@@ -22,3 +22,10 @@ Audit cədvəli: `docs/audits/T-164-plan-audit-steps-1-4.md`.
 | `admin-queue-03-empty-live.png` | Kağız qayıtdı, 708538 bir dəfə çap olundu, tab özü boşaldı | Addım 3 DoD |
 | `kiosk-flash-01-jpg.png` | Flaşdan JPG baxışı | Addım 3 DoD (formatlar) |
 | `kiosk-flash-02-docx-no-libreoffice.png` | DOCX: dev kiosk konteynerində LibreOffice yoxdur, kiosk izah verir (T-168) | Addım 3 DoD (formatlar) |
+| `admin-t165-01-cancel-reason.png` | Sifarişi ləğv: səbəb məcburidir; o, `audit_logs`-a `printJobs.cancel` kimi düşür (Queued → Cancelled, səbəb, IP) | T-165 |
+| `admin-t165-02-role-deleted.png` | Rol "T-165 silinəcək 69211" səbəblə silindi, siyahıda yoxdur. Səbəb `roles.delete` audit-indədir | T-165 |
+| `admin-t166-panel-after-api-recreate.png` | `api` yeni IP ilə yenidən yaradılandan sonra admin restart olunmadan giriş edir, "Canlı" | T-166 |
+| `kiosk-t168-01-docx.png` | Yeni kiosk image-i (LibreOffice ilə): flaşdan DOCX baxışı, Azərbaycan hərfləri | T-168 |
+| `kiosk-t168-02-docx-paid-printed.png` | Həmin DOCX bank QR ilə ödənildi, fake printerdə bir dəfə çap olundu (542230) | T-168 |
+| `kiosk-t168-03-xlsx.png` | XLSX cədvəl baxışı | T-168 |
+| `kiosk-t168-04-pptx.png` | PPTX — 2 slayd, 2 səhifə | T-168 |
