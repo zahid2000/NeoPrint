@@ -1045,6 +1045,19 @@ curl -s http://localhost:5080/api/features -H "Authorization: Bearer <istifadə�
 
 Yoxladıqdan sonra flag-ları geri açmağı unutmayın — dev mühitində bütün hesablar üçün ortaqdır.
 
+## 7j. Linux konteyner kioskunu (KSK-9002) yeni kodla yeniləmək
+
+Kiosk kodu dəyişəndən sonra konteyner kioskunu (`neoprint-kshot`) yeniləmək — publish, `/opt/neoprint`-ə köçürmə, restart
+(aktivləşdirmə və spool `neoprint-kshot-data` həcmində qalır; skript sonda yeni `NeoPrint.Kiosk.dll`-in tarixini göstərir):
+
+```bash
+bash tools/dev-kiosk/update-linux-kiosk.sh
+```
+
+**Kiosk və feature flag-lar (T-160).** Admin → Feature flag-lar → `mobile_payment_at_kiosk` / `promo_codes`-də
+KSK-9002 üçün override "söndürülüb" — kioskun açıq ekranı dərhal dəyişir (ödəniş ekranında yalnız bank QR-ı,
+parametrlərdə "Promokod" yoxdur). Yoxladıqdan sonra override-ı silin.
+
 ## 7i. Addım 5 — dil və hüquqi sənədlər (T-152)
 
 Profil → **Dil**: seçim dərhal tətbiq olunur və hesabda saxlanılır (`PUT /api/users/me`). Hesabın hazırkı dili:
