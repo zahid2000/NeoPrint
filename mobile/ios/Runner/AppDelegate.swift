@@ -16,6 +16,10 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NeoPrintHeicConverter") {
       HeicConverter.register(with: registrar)
     }
+
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NeoPrintBrowser") {
+      BrowserOpener.register(with: registrar)
+    }
   }
 }
 
@@ -68,6 +72,30 @@ final class HeicConverter: NSObject {
           }
         }
       }
+    }
+  }
+}
+
+/// A link opened in Safari: the "Məlumatlarımı yüklə" archive, too large to
+/// pass through the app (docs/DECISIONS.md T-147). Only http and https.
+final class BrowserOpener: NSObject {
+  static let channelName = "az.neoprint/browser"
+
+  static func register(with registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
+
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "open",
+        let arguments = call.arguments as? [String: Any],
+        let text = arguments["url"] as? String,
+        let url = URL(string: text),
+        url.scheme == "https" || url.scheme == "http"
+      else {
+        result(FlutterError(code: "BAD_ARGUMENT", message: "an http(s) url is required", details: nil))
+        return
+      }
+
+      UIApplication.shared.open(url) { opened in result(opened) }
     }
   }
 }

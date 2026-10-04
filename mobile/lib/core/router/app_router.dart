@@ -15,6 +15,7 @@ import '../../features/home/home_screen.dart';
 import '../../features/jobs/claims_screen.dart';
 import '../../features/payments/pay_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
+import '../../features/privacy/data_export_screen.dart';
 import '../../features/payments/scan_screen.dart';
 import '../../features/receipts/receipts_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
@@ -65,6 +66,7 @@ abstract final class Routes {
   static const prepare = '/prepare';
   static const scheduleNew = '/schedule/new';
   static const notifications = '/notifications';
+  static const privacyExport = '/privacy/export';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -173,6 +175,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ? state.extra! as KioskSummary
                 : null,
           ),
+        ),
+      if (Readiness.dataExport)
+        GoRoute(
+          path: Routes.privacyExport,
+          builder: (_, __) => const DataExportScreen(),
         ),
       GoRoute(
         path: Routes.notifications,

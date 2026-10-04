@@ -19,6 +19,7 @@ final _code = RegExp(r'^[A-Za-z0-9-]{1,40}$');
 /// | `neoprint://schedules/{id}` | the scheduled prints |
 /// | `neoprint://wallet` | Balance |
 /// | `neoprint://files` | My files |
+/// | `neoprint://privacy/export` | Məlumatlarımı yüklə |
 /// | `neoprint://notifications` | the notifications |
 ///
 /// The router's sign-in gates still apply to whatever this returns.
@@ -54,6 +55,8 @@ String? appLinkLocation(Uri uri) {
     'schedules' => Routes.scheduled,
     'wallet' => Routes.wallet,
     'files' => Routes.files,
+    'privacy' when segments.length == 1 && segments.single == 'export' =>
+      Routes.privacyExport,
     'notifications' => Routes.notifications,
     _ => null,
   };

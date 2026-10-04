@@ -815,5 +815,32 @@
   "filesAutoDeleteChipAfterPrint": "Çapdan sonra silinəcək",
 
   "filesAutoDeleteChipDays": "{days} gündən sonra silinəcək",
-  "@filesAutoDeleteChipDays": { "placeholders": {"days":{"type":"int"}} }
+  "@filesAutoDeleteChipDays": { "placeholders": {"days":{"type":"int"}} },
+
+  "privacySection": "Məxfilik",
+
+  "exportTitle": "Məlumatlarımı yüklə",
+
+  "exportIntro": "Arxivə profiliniz, ödənişləriniz, qaytarmalar, balansın hərəkətləri, sifarişləriniz, qəbzlər (PDF) və fayllarınız — orijinallar və redaktə versiyaları — daxildir. Fayllar çox böyükdürsə, yalnız siyahısı yazılır.",
+
+  "exportPrepare": "Arxiv hazırla",
+
+  "exportPreparing": "Hazırlanır… Bitəndə bildiriş gələcək.",
+
+  "exportDownload": "Yüklə",
+
+  "exportValidUntil": "Son yükləmə vaxtı: {time}",
+  "@exportValidUntil": { "placeholders": {"time":{"type":"String"}} },
+
+  "exportSize": "Ölçü: {size}",
+  "@exportSize": { "placeholders": {"size":{"type":"String"}} },
+
+  "exportFilesListed": "Fayllarınızın ümumi ölçüsü həddən böyük olduğu üçün arxivə yalnız onların siyahısı düşüb. Faylları \"Fayllarım\"-dan ayrıca yükləyə bilərsiniz.",
+
+  "exportRetry": "Yenidən hazırla",
+
+  "exportOpenFailed": "Link açılmadı. Telefonda brauzer olduğunu yoxlayın.",
+
+  "exportLoadFailed": "Məlumatı yükləmək alınmadı: {reason}",
+  "@exportLoadFailed": { "placeholders": {"reason":{"type":"String"}} }
 }

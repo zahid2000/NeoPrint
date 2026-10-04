@@ -1,7 +1,10 @@
 package az.neoprint.neoprint
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
+import android.net.Uri
 import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -22,6 +25,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        registerBrowser(flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HEIC_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -48,6 +52,31 @@ class MainActivity : FlutterActivity() {
                     } catch (error: Exception) {
                         runOnUiThread { result.error("FAILED", error.message, null) }
                     }
+                }
+            }
+    }
+
+    /**
+     * A second channel: a link opened in the phone's browser - the
+     * "Məlumatlarımı yüklə" archive, which is too large to pass through the
+     * app (docs/DECISIONS.md T-147). Only http and https.
+     */
+    private fun registerBrowser(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BROWSER_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                val url = call.argument<String>("url")
+                val uri = url?.let(Uri::parse)
+
+                if (call.method != "open" || uri == null || uri.scheme !in setOf("http", "https")) {
+                    result.error("BAD_ARGUMENT", "an http(s) url is required", null)
+                    return@setMethodCallHandler
+                }
+
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    result.success(true)
+                } catch (error: ActivityNotFoundException) {
+                    result.success(false)
                 }
             }
     }
@@ -85,6 +114,7 @@ class MainActivity : FlutterActivity() {
 
     private companion object {
         const val HEIC_CHANNEL = "az.neoprint/heic"
+        const val BROWSER_CHANNEL = "az.neoprint/browser"
         const val JPEG_QUALITY = 90
     }
 }

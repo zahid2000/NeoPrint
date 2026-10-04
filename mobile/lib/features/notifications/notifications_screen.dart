@@ -23,6 +23,7 @@ import 'notification_repository.dart';
   'ScheduleAutoCancelled' => (Icons.event_busy, StatusTone.warning),
   'RefundCompleted' => (Icons.undo, StatusTone.success),
   'FileAutoDeleted' => (Icons.auto_delete_outlined, StatusTone.neutral),
+  'ExportReady' => (Icons.inventory_2_outlined, StatusTone.success),
   _ => (Icons.notifications, StatusTone.neutral),
 };
 

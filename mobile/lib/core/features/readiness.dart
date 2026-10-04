@@ -29,6 +29,12 @@ abstract final class Readiness {
   /// Scheduled printing - step 5.
   static const bool scheduledPrint = true;
 
+  /// "Məlumatlarımı yüklə" in the profile - step 5 (T-147).
+  static const bool dataExport = true;
+
+  /// "Hesabımı sil" in the profile - step 5 (T-147).
+  static const bool accountDeletion = false;
+
   /// Sending a file to another user by their public code - step 6.
   static const bool fileSharing = false;
 

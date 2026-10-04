@@ -452,5 +452,29 @@
 
   "filesAutoDeleteChipAfterPrint": "Deletes after printing",
 
-  "filesAutoDeleteChipDays": "{days, plural, =1{Deletes after 1 day} other{Deletes after {days} days}}"
+  "filesAutoDeleteChipDays": "{days, plural, =1{Deletes after 1 day} other{Deletes after {days} days}}",
+
+  "privacySection": "Privacy",
+
+  "exportTitle": "Download my data",
+
+  "exportIntro": "The archive holds your profile, payments, refunds, balance movements, orders, receipts (PDF) and your files - originals and edited versions. If the files are too large, only their list is included.",
+
+  "exportPrepare": "Prepare the archive",
+
+  "exportPreparing": "Being prepared… You will get a notification when it is ready.",
+
+  "exportDownload": "Download",
+
+  "exportValidUntil": "Can be downloaded until {time}",
+
+  "exportSize": "Size: {size}",
+
+  "exportFilesListed": "Your files together are over the limit, so only their list is in the archive. You can download them one by one from My files.",
+
+  "exportRetry": "Prepare again",
+
+  "exportOpenFailed": "The link could not be opened. Check that the phone has a browser.",
+
+  "exportLoadFailed": "Could not load it: {reason}"
 }

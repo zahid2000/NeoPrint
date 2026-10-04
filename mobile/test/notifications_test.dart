@@ -144,6 +144,7 @@ void main() {
         'neoprint://schedules/9a8b': '/scheduled',
         'neoprint://wallet': '/wallet',
         'neoprint://files': '/files',
+        'neoprint://privacy/export': '/privacy/export',
         'neoprint://notifications': '/notifications',
       };
       cases.forEach(

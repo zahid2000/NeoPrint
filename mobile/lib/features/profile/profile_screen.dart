@@ -115,6 +115,30 @@ class ProfileScreen extends ConsumerWidget {
               title: Text(l10n.profileLegal),
             ),
 
+          if (Readiness.dataExport || Readiness.accountDeletion) ...[
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Spacing.x4,
+                Spacing.x2,
+                Spacing.x4,
+                0,
+              ),
+              child: Text(
+                l10n.privacySection,
+                style: theme.textTheme.titleSmall,
+              ),
+            ),
+          ],
+
+          if (Readiness.dataExport)
+            ListTile(
+              leading: const Icon(Icons.download_outlined),
+              title: Text(l10n.exportTitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.privacyExport),
+            ),
+
           const Divider(),
 
           ListTile(
