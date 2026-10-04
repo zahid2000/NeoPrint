@@ -251,7 +251,7 @@ class _ScheduleDueDialogState extends ConsumerState<ScheduleDueDialog> {
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: items.length,
-              separatorBuilder: (_, __) => const Divider(),
+              separatorBuilder: (_, __) => const Divider(height: Spacing.x6),
               itemBuilder: (context, index) {
                 final item = items[index];
                 return Column(
