@@ -1,3 +1,7 @@
+| İcrada | Layihə sahibi 2026-10-04: seed mətnindən repo yolu təmizlənir; en/ru hüquqşünasdan sonra admin paneldən dərc olunur (T-162) |
+| İcrada | Layihə sahibi 2026-10-04: Addım 5-də — kiosk flag-lara baxsın, söndürülmüş funksiyanın düyməsi gizlənsin, flag dəyişəndə konfiqurasiya yenilənməsi ilə tətbiq olunsun; real stack-də yoxlanır |
+| İcrada | Layihə sahibi 2026-10-04: eyni dəqiqəyə düşən planlar bir dialoqda siyahı ilə, hər birinin öz "Çapa ver" / "Vaxtı dəyiş" düymələri |
+| İcrada | Layihə sahibi 2026-10-04: ana səhifədə "Planlanıb · {vaxt}" kimi göstərilsin |
 # NeoPrint — tapşırıq reyestri
 
 Layihə sahibinin verdiyi **bütün** tapşırıqların yeganə siyahısı. Məqsəd: sessiya
@@ -183,3 +187,5 @@ Statuslar: `Açıq`, `İcrada`, `Tamamlandı`, `Ləğv edildi (səbəb)`, `Təxi
 | T-159 | 2026-10-04 | 5 | Tapıntı (T-146 real stack): iki planlanmış çapın vaxtı eyni dəqiqədə çatanda "Planlanmış çapın vaxtı çatıb" dialoqları üst-üstə açılır (biri bağlananda o biri görünür). Ardıcıl göstərmək və ya bir dialoqda siyahı — layihə sahibinin seçimi | Açıq | |
 | T-160 | 2026-10-04 | 5 | Tapıntı (T-148): kiosk tətbiqi konfiqurasiyada `features` alır, amma istifadə etmir — `mobile_payment_at_kiosk` sönəndə "Tətbiqlə ödə" düyməsi yenə görünür (basanda backend `404 features.unavailable`, kiosk server mətnini göstərir), `user_qr_print` / `promo_codes` / `mobile_session_print` üçün də kiosk ekranında giriş nöqtələri qalır. Backend bağlayır (pul tutulmur), amma kiosk UI-ı gizlətmir. Addım 5-də kiosk tərəfinə qoşmaq və ya kiosk addımına saxlamaq — layihə sahibinin seçimi | Açıq | |
 | T-161 | 2026-10-04 | 5 | Tapıntı (T-152 real stack): seed edilmiş hüquqi sənəd qaralamalarının (`LegalDocumentDrafts.cs`) sonunda istifadəçiyə "Tam mətn: docs/legal/TERMS.az.md" kimi repo yolu görünür; həmçinin en/ru versiyaları yoxdur (tətbiq az mətni + "yalnız Azərbaycan dilində" qeydini göstərir). Seed mətnini təmizləmək / tam qaralamaları en, ru ilə dərc etmək — mətni hüquqşünas təsdiqləyəcəyi üçün layihə sahibinin seçimi | Açıq | |
+| T-162 | 2026-10-04 | 7 | **Pilot-bloklayıcı.** Hüquqi sənədlərin yekun mətni (az/en/ru), hüquqşünas təsdiqi — Məxfilik siyasəti və İstifadə şərtləri admin panelindən dərc olunur (layihə sahibi, T-161) | Açıq | |
+| T-163 | 2026-10-04 | 5 | Real web push (T-146 / MT-07): FCM `403 PERMISSION_DENIED — cloudmessaging.messages.create` (`IAM_PERMISSION_DENIED`). Açar düzgündür (OAuth alınır, `6bb94c01…`), web token qeyd olunur; service account-a Google Cloud IAM-da "Firebase Cloud Messaging API Admin" rolu verilməlidir — layihə sahibinin əməliyyatı. Sonra web push yenidən yoxlanır | İcrada | |
