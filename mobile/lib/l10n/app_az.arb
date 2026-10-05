@@ -557,6 +557,13 @@
   "optColorUnavailable": "Bu kiosk rəngli çap etmir.",
   "optDuplexUnavailable": "Bu kiosk ikitərəfli çap etmir.",
   "optA3Unavailable": "Bu kiosk A3 çap etmir.",
+  "optRealSize": "Bu sənəd real ölçüdə (100%) {paper} kağızında, vərəqdə 1 səhifə çap olunur — kartın ölçüsü dəyişməsin deyə bu seçimlər dəyişdirilmir.",
+  "@optRealSize": {
+    "placeholders": {
+      "paper": { "type": "String" }
+    }
+  },
+  "optRealSizeNoA3": "Bu sənəd A3 kağızı üçün hazırlanıb, bu kioskda isə A3 yoxdur, ona görə burada çap olunmur. A3 olan kiosk seçin.",
   "quoteSidesSheets": "{sides} üz · {sheets} vərəq",
   "@quoteSidesSheets": {
     "placeholders": {

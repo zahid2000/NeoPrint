@@ -43,7 +43,14 @@ final class OrderOptions {
     this.paper = 'A4',
     this.pageRange,
     this.pagesPerSheet = 1,
+    this.actualSize = false,
   });
+
+  /// The options a scan or layout must print with: 100%, its paper, one
+  /// page to a sheet (plan section 2.11). Anything else starts at the defaults.
+  factory OrderOptions.forPaper(String? realSizePaper) => realSizePaper == null
+      ? const OrderOptions()
+      : OrderOptions(paper: realSizePaper, actualSize: true);
 
   final int copies;
   final bool color;
@@ -55,6 +62,9 @@ final class OrderOptions {
   /// Null for every page; otherwise as typed, e.g. `1-3, 5`.
   final String? pageRange;
   final int pagesPerSheet;
+
+  /// Real size (100%) rather than fitted to the paper: scans and layouts.
+  final bool actualSize;
 
   OrderOptions copyWith({
     int? copies,
@@ -71,6 +81,7 @@ final class OrderOptions {
     paper: paper ?? this.paper,
     pageRange: allPages ? null : pageRange ?? this.pageRange,
     pagesPerSheet: pagesPerSheet ?? this.pagesPerSheet,
+    actualSize: actualSize,
   );
 
   Map<String, dynamic> toJson() => {
@@ -81,7 +92,7 @@ final class OrderOptions {
     'paper': paper,
     'orientation': 'Auto',
     'pagesPerSheet': pagesPerSheet,
-    'scaling': 'Fit',
+    'scaling': actualSize ? 'Actual' : 'Fit',
   };
 }
 

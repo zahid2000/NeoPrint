@@ -14,6 +14,7 @@ import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_empty_state.dart';
 import '../../shared/widgets/neo_primary_button.dart';
+import '../../shared/widgets/option_widgets.dart';
 import '../files/file_models.dart';
 import '../kiosk_search/kiosk_models.dart';
 import '../kiosk_search/kiosk_search_controller.dart';
@@ -100,7 +101,8 @@ class _OptionsState extends ConsumerState<_Options> {
   static const _maxCopies = 50;
   static const _quoteDelay = Duration(milliseconds: 300);
 
-  OrderOptions _options = const OrderOptions();
+  // A scan or layout starts, and stays, at its real size on its paper.
+  late OrderOptions _options = OrderOptions.forPaper(widget.file.realSizePaper);
   bool _rangeMode = false;
   bool _rangeTouched = false;
   final _range = TextEditingController();
@@ -249,6 +251,10 @@ class _OptionsState extends ConsumerState<_Options> {
           Spacing.x8,
         ),
         children: [
+          if (widget.file.realSizePaper case final realSize?)
+            realSize == 'A3' && !kiosk.a3
+                ? RealSizeNote(l10n.optRealSizeNoA3, blocked: true)
+                : RealSizeNote(l10n.optRealSize(realSize)),
           Text(
             l10n.printOptionsSubtitle(
               kiosk.summary.code,
@@ -338,8 +344,9 @@ class _OptionsState extends ConsumerState<_Options> {
               ),
             ],
             selected: {_options.paper},
-            onSelectionChanged: (value) =>
-                _change(_options.copyWith(paper: value.single)),
+            onSelectionChanged: _options.actualSize
+                ? null
+                : (value) => _change(_options.copyWith(paper: value.single)),
           ),
           if (!kiosk.a3) _Why(l10n.optA3Unavailable),
           const SizedBox(height: Spacing.x4),
@@ -383,8 +390,10 @@ class _OptionsState extends ConsumerState<_Options> {
               ButtonSegment(value: 4, label: Text('4')),
             ],
             selected: {_options.pagesPerSheet},
-            onSelectionChanged: (value) =>
-                _change(_options.copyWith(pagesPerSheet: value.single)),
+            onSelectionChanged: _options.actualSize
+                ? null
+                : (value) =>
+                      _change(_options.copyWith(pagesPerSheet: value.single)),
           ),
           const SizedBox(height: Spacing.x6),
 
@@ -471,7 +480,10 @@ class _OptionsState extends ConsumerState<_Options> {
                         formatMoney(quote.total, language: language),
                       ),
                 busy: _placing,
-                onPressed: _placing ? null : () => unawaited(_order()),
+                onPressed:
+                    _placing || (widget.file.realSizePaper == 'A3' && !kiosk.a3)
+                    ? null
+                    : () => unawaited(_order()),
               ),
             ],
           ),

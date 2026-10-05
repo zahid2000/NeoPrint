@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/tokens.dart';
+import 'neo_banner.dart';
 
 // The print options' building blocks, shared by "Kiosk üçün hazırla" and
 // "Çapı planla" (docs/DESIGN_SYSTEM.md section 4, "Mobil").
@@ -14,6 +15,7 @@ class OptionChoice<T extends Object> extends StatelessWidget {
     required this.value,
     required this.choices,
     required this.onChanged,
+    this.locked = false,
   });
 
   final bool atKiosk;
@@ -24,6 +26,10 @@ class OptionChoice<T extends Object> extends StatelessWidget {
   final List<(T, String, bool)> choices;
   final ValueChanged<T?> onChanged;
 
+  /// Fixed for this file: the value stays shown as chosen, nothing else can
+  /// be picked (docs/DESIGN_SYSTEM.md, "Real ölçü kilidi").
+  final bool locked;
+
   @override
   Widget build(BuildContext context) => SegmentedButton<T?>(
     segments: [
@@ -32,7 +38,29 @@ class OptionChoice<T extends Object> extends StatelessWidget {
         ButtonSegment<T?>(value: choice, label: Text(label), enabled: enabled),
     ],
     selected: {value},
-    onSelectionChanged: (selected) => onChanged(selected.single),
+    onSelectionChanged: locked
+        ? null
+        : (selected) => onChanged(selected.single),
+  );
+}
+
+/// Why paper and pages per sheet are fixed: a scan or layout prints at real
+/// size (plan section 2.11; docs/DESIGN_SYSTEM.md, "Real ölçü kilidi").
+class RealSizeNote extends StatelessWidget {
+  const RealSizeNote(this.text, {super.key, this.blocked = false});
+
+  final String text;
+
+  /// The kiosk cannot print it at all (an A3 layout without A3).
+  final bool blocked;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: Spacing.x4),
+    child: NeoBanner(
+      tone: blocked ? StatusTone.warning : StatusTone.info,
+      message: text,
+    ),
   );
 }
 

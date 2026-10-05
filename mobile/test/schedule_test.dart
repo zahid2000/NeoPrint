@@ -92,7 +92,8 @@ ScheduledPrint schedule(
   kioskCode: 'KSK-9002',
   kioskName: 'Elmlər',
   amount: 0.30,
-  scheduledAt: DateTime(2026, 10, 5, 9),
+  // Far from any day the suite runs on: today and yesterday read as words.
+  scheduledAt: DateTime(2030, 3, 14, 9),
   status: status,
   jobStatus: jobStatus,
   paymentId: 'pay-$id',
@@ -154,7 +155,7 @@ void main() {
             schedule(
               'due',
               ScheduleStatus.awaitingUser,
-              autoCancelAt: DateTime(2026, 10, 6, 9),
+              autoCancelAt: DateTime(2030, 3, 15, 9),
             ),
             schedule('later', ScheduleStatus.scheduled),
             schedule('done', ScheduleStatus.sent, jobStatus: 'Completed'),
@@ -168,10 +169,10 @@ void main() {
         expect(find.text('Çap olunub'), findsOneWidget);
         expect(find.text('Vaxtı keçdi'), findsOneWidget);
         expect(find.text('Pul balansa qaytarıldı.'), findsOneWidget);
-        expect(find.text('KSK-9002 · 05.10.2026 09:00'), findsNWidgets(4));
+        expect(find.text('KSK-9002 · 14.03.2030 09:00'), findsNWidgets(4));
         expect(
           find.text(
-            '06.10.2026 09:00-dək cavab verməsəniz ləğv olunacaq, pul balansa qayıdacaq.',
+            '15.03.2030 09:00-dək cavab verməsəniz ləğv olunacaq, pul balansa qayıdacaq.',
           ),
           findsOneWidget,
         );

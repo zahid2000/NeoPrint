@@ -52,9 +52,12 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
   int? _copies;
   bool? _color;
   bool? _duplex;
-  String? _paper;
-  int? _perSheet;
+  // A scan or layout fixes both: its paper, one page to a sheet.
+  late String? _paper = widget.file.realSizePaper;
+  late int? _perSheet = widget.file.realSizePaper == null ? null : 1;
   _Pages _pages = _Pages.atKiosk;
+
+  bool get _realSize => widget.file.realSizePaper != null;
   final _range = TextEditingController();
 
   KioskSummary? _kiosk;
@@ -86,6 +89,7 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
     paper: _paper ?? 'A4',
     pagesPerSheet: _perSheet ?? 1,
     pageRange: _pages == _Pages.range ? _range.text.trim() : null,
+    actualSize: _realSize,
   );
 
   PreparedPreset get _preset => PreparedPreset(
@@ -325,6 +329,8 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
           Spacing.x8,
         ),
         children: [
+          if (widget.file.realSizePaper case final realSize?)
+            RealSizeNote(l10n.optRealSize(realSize)),
           Text(
             l10n.filesPageCount(_pageCount),
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -407,6 +413,7 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
             value: _paper,
             choices: [('A4', 'A4', true), ('A3', 'A3', detail?.a3 ?? true)],
             onChanged: (value) => _change(() => _paper = value),
+            locked: _realSize,
           ),
           if (detail != null && !detail.a3) OptionWhy(l10n.optA3Unavailable),
           const SizedBox(height: Spacing.x4),
@@ -418,6 +425,7 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
             value: _perSheet,
             choices: const [(1, '1', true), (2, '2', true), (4, '4', true)],
             onChanged: (value) => _change(() => _perSheet = value),
+            locked: _realSize,
           ),
           const SizedBox(height: Spacing.x4),
 

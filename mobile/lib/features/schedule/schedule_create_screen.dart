@@ -53,8 +53,11 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
   int _copies = 1;
   bool _color = false;
   bool _duplex = false;
-  String _paper = 'A4';
+  late String _paper = widget.file?.realSizePaper ?? 'A4';
   int _perSheet = 1;
+
+  /// A scan or layout: its paper and one page to a sheet are fixed.
+  String? get _realSizePaper => _file?.realSizePaper;
   _Pages _pages = _Pages.all;
   final _range = TextEditingController();
 
@@ -84,6 +87,7 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
     paper: _paper,
     pagesPerSheet: _perSheet,
     pageRange: _pages == _Pages.range ? _range.text.trim() : null,
+    actualSize: _realSizePaper != null,
   );
 
   List<int>? get _selected => _pages == _Pages.range
@@ -155,6 +159,10 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
     if (chosen != null) {
       _change(() {
         _file = chosen;
+        if (chosen.realSizePaper case final realSize?) {
+          _paper = realSize;
+          _perSheet = 1;
+        }
         _pages = _Pages.all;
         _range.clear();
       });
@@ -419,6 +427,8 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
           ),
           const SizedBox(height: Spacing.x6),
 
+          if (_realSizePaper case final realSize?)
+            RealSizeNote(l10n.optRealSize(realSize)),
           OptionLabel(l10n.optCopies),
           Row(
             children: [
@@ -483,6 +493,7 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
             value: _paper,
             choices: [('A4', 'A4', true), ('A3', 'A3', detail?.a3 ?? true)],
             onChanged: (value) => _change(() => _paper = value ?? 'A4'),
+            locked: _realSizePaper != null,
           ),
           if (detail != null && !detail.a3) OptionWhy(l10n.optA3Unavailable),
           const SizedBox(height: Spacing.x4),
@@ -494,6 +505,7 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
             value: _perSheet,
             choices: const [(1, '1', true), (2, '2', true), (4, '4', true)],
             onChanged: (value) => _change(() => _perSheet = value ?? 1),
+            locked: _realSizePaper != null,
           ),
           const SizedBox(height: Spacing.x4),
 

@@ -81,6 +81,10 @@ final class UserFile {
     required this.createdAt,
     this.failureReason,
     this.autoDelete = AutoDeleteRule.never,
+    this.editLocked = false,
+    this.hasLayout = false,
+    this.documentType,
+    this.realSizePaper,
   });
 
   factory UserFile.fromJson(Map<String, dynamic> json) => UserFile(
@@ -98,6 +102,10 @@ final class UserFile {
         DateTime.tryParse(json['createdAt'] as String? ?? '')?.toLocal() ??
         DateTime.fromMillisecondsSinceEpoch(0),
     autoDelete: AutoDeleteRule.parse(json['autoDelete'] as String?),
+    editLocked: json['editLocked'] as bool? ?? false,
+    hasLayout: json['hasLayout'] as bool? ?? false,
+    documentType: json['documentType'] as String?,
+    realSizePaper: json['realSizePaper'] as String?,
   );
 
   final String id;
@@ -122,6 +130,20 @@ final class UserFile {
 
   /// When it deletes itself.
   final AutoDeleteRule autoDelete;
+
+  /// A saved scan: printed, shared and deleted, never edited
+  /// (docs/DECISIONS.md 2026-10-05).
+  final bool editLocked;
+
+  /// A layout that "Tərtibatı redaktə et" opens again.
+  final bool hasLayout;
+
+  /// The scanner's document type, for a scan.
+  final String? documentType;
+
+  /// A scan or layout prints at 100% on this paper, one page to a sheet
+  /// (plan section 2.11); null when the customer chooses.
+  final String? realSizePaper;
 
   /// Whether the file has pages to preview.
   bool get canPreview => status == FileStatus.ready && pageCount > 0;
