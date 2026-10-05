@@ -41,6 +41,18 @@ class OptionChoice<T extends Object> extends StatelessWidget {
     onSelectionChanged: locked
         ? null
         : (selected) => onChanged(selected.single),
+    // Locked, the chosen value keeps its colour instead of fading with the rest.
+    style: locked ? _lockedStyle(context.tokens) : null,
+  );
+
+  static ButtonStyle _lockedStyle(NeoPrintTokens tokens) => ButtonStyle(
+    foregroundColor: WidgetStateProperty.resolveWith(
+      (states) =>
+          states.contains(WidgetState.selected) ? tokens.brand500 : null,
+    ),
+    backgroundColor: WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected) ? tokens.brand50 : null,
+    ),
   );
 }
 
