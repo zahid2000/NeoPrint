@@ -127,7 +127,7 @@ public sealed class FeatureFlagTests
         using var user = await TestUsers.ConfirmedAsync(_fixture);
         var fileId = await SessionTests.UploadReadyPdfAsync(_fixture, user.Client, pages: 1);
 
-        string[] keys = ["data_export", "user_qr_print"];
+        string[] keys = ["data_export", "user_qr_print", "file_sharing"];
         var before = await FlagsAsync(admin);
 
         try
@@ -141,14 +141,17 @@ public sealed class FeatureFlagTests
             var features = await user.Client.GetFromJsonAsync<JsonElement>("/api/features");
             features.GetProperty("data_export").GetBoolean().Should().BeFalse();
             features.GetProperty("user_qr_print").GetBoolean().Should().BeFalse();
+            features.GetProperty("file_sharing").GetBoolean().Should().BeFalse();
             features.GetProperty("scheduled_print").GetBoolean().Should().BeTrue();
 
             await RefusedAsync(await PostAsync(user.Client, "/api/users/me/export", new { }), "data_export");
             await RefusedAsync(await PostAsync(user.Client, "/api/prepared-prints", new { fileId, options = new { color = false } }), "user_qr_print");
+            await RefusedAsync(await PostAsync(user.Client, "/api/shares", new { fileId, toPublicId = "NP-000000" }), "file_sharing");
 
             // Reading stays open: the list and the QR that collects a paid order.
             (await user.Client.GetAsync("/api/prepared-prints")).StatusCode.Should().Be(HttpStatusCode.OK);
             (await user.Client.GetAsync("/api/users/me/qr")).StatusCode.Should().Be(HttpStatusCode.OK);
+            (await user.Client.GetAsync("/api/shares/received")).StatusCode.Should().Be(HttpStatusCode.OK, "what was already sent can still be saved");
             (await user.Client.GetAsync("/api/users/me/export")).StatusCode.Should().NotBe(HttpStatusCode.InternalServerError);
         }
         finally

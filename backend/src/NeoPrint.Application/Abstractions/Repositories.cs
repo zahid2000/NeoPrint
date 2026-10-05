@@ -18,6 +18,9 @@ public interface IUserRepository
 
     Task<User?> FindByReferralCodeAsync(string referralCode, CancellationToken cancellationToken = default);
 
+    /// <summary>The account with this <c>NP-XXXXXX</c> id, whatever its status.</summary>
+    Task<User?> FindByPublicIdAsync(string publicId, CancellationToken cancellationToken = default);
+
     Task<bool> ExistsByEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default);
 
     Task<bool> ExistsByPublicIdAsync(string publicId, CancellationToken cancellationToken = default);

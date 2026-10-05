@@ -62,6 +62,23 @@ public sealed class GetFilePageImageHandler : IRequestHandler<GetFilePageImageQu
             throw new NotFoundException("file");
         }
 
+        return await RenderAsync(file, request.Page, request.Width, request.IfNoneMatch, _storage, _renderer, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// A page of a file the caller may see: its owner's, or one shared with
+    /// them (<c>GET shares/{id}/pages/{n}.png</c>).
+    /// </summary>
+    internal static async Task<FilePageImage> RenderAsync(
+        StoredFile file,
+        int page,
+        int? requestedWidth,
+        string? ifNoneMatch,
+        IFileStorage storage,
+        IPageRenderer renderer,
+        CancellationToken cancellationToken)
+    {
         if (file.Status != FileStatus.Ready || file.Pdf is null)
         {
             throw Invalid(file.Status == FileStatus.Failed
@@ -69,28 +86,28 @@ public sealed class GetFilePageImageHandler : IRequestHandler<GetFilePageImageQu
                 : new UserMessage("files.notReadyRetry"));
         }
 
-        if (request.Page < 1 || request.Page > file.PageCount)
+        if (page < 1 || page > file.PageCount)
         {
-            throw Invalid(UserMessage.Of("files.pageMissing", ("count", file.PageCount), ("page", request.Page)));
+            throw Invalid(UserMessage.Of("files.pageMissing", ("count", file.PageCount), ("page", page)));
         }
 
-        var width = FilePageImage.Snap(request.Width);
+        var width = FilePageImage.Snap(requestedWidth);
 
         // The PDF's hash identifies its content: a new version of the file is
         // a different PDF and a different tag.
-        var etag = $"\"{file.Pdf.Sha256[..Math.Min(16, file.Pdf.Sha256.Length)]}-{request.Page}-{width}\"";
+        var etag = $"\"{file.Pdf.Sha256[..Math.Min(16, file.Pdf.Sha256.Length)]}-{page}-{width}\"";
 
-        if (string.Equals(request.IfNoneMatch, etag, StringComparison.Ordinal))
+        if (string.Equals(ifNoneMatch, etag, StringComparison.Ordinal))
         {
             return new FilePageImage(null, etag, NotModified: true);
         }
 
-        if (!_renderer.IsAvailable)
+        if (!renderer.IsAvailable)
         {
             throw Invalid(new UserMessage("files.previewUnavailable"));
         }
 
-        await using var pdf = await _storage.OpenReadAsync(
+        await using var pdf = await storage.OpenReadAsync(
                 new StoredObject(
                     file.Pdf.ProviderId,
                     file.Pdf.Key,
@@ -104,7 +121,7 @@ public sealed class GetFilePageImageHandler : IRequestHandler<GetFilePageImageQu
 
         try
         {
-            var png = await _renderer.RenderPngAsync(pdf, request.Page - 1, width, cancellationToken)
+            var png = await renderer.RenderPngAsync(pdf, page - 1, width, cancellationToken)
                 .ConfigureAwait(false);
 
             return new FilePageImage(png, etag, NotModified: false);

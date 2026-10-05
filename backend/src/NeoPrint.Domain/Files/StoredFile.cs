@@ -210,6 +210,70 @@ public sealed class StoredFile : Entity
         _ => "A4",
     };
 
+    /// <summary>
+    /// The recipient's own copy of a file shared with them (plan section 8.2,
+    /// "Fayllarıma saxla"): ready to print at once, its bytes already copied
+    /// into <paramref name="original"/> and <paramref name="pdf"/>.
+    /// </summary>
+    /// <remarks>
+    /// A personal document stays one, and a scan stays locked at its real size
+    /// (docs/DECISIONS.md 2026-10-05). A layout arrives as the PDF it draws:
+    /// its pictures stay the sender's.
+    /// </remarks>
+    public static StoredFile ReceiveShared(
+        Guid id,
+        Guid userId,
+        StoredFile sent,
+        FileObject original,
+        string extension,
+        FileObject pdf,
+        AutoDeleteRule autoDelete,
+        DateTime now)
+    {
+        ArgumentNullException.ThrowIfNull(sent);
+        ArgumentNullException.ThrowIfNull(original);
+        ArgumentException.ThrowIfNullOrWhiteSpace(extension);
+        ArgumentNullException.ThrowIfNull(pdf);
+
+        if (sent.Status != FileStatus.Ready || sent.PageCount <= 0)
+        {
+            throw new DomainException(UserMessage.Of("files.notReadyNamed", ("name", sent.FileName)));
+        }
+
+        return new StoredFile
+        {
+            Id = id,
+            CreatedAt = now,
+            UserId = userId,
+            FileName = sent.FileName,
+            Extension = extension,
+            MediaType = extension == sent.Extension ? sent.MediaType : MediaTypeOf(extension),
+            Source = FileSource.Shared,
+            Status = FileStatus.Ready,
+            Original = original,
+            Pdf = pdf,
+            PageCount = sent.PageCount,
+            AutoDelete = autoDelete,
+            IsSensitive = sent.IsSensitive,
+            PhysicalWidthMm = sent.PhysicalWidthMm,
+            PhysicalHeightMm = sent.PhysicalHeightMm,
+            DocumentType = sent.DocumentType,
+            EditLocked = sent.EditLocked,
+            LayoutPaper = sent.LayoutPaper,
+        };
+    }
+
+    // An edited version can be in another format than the upload (a DOCX
+    // saved as PDF, a picture turned): the copy is named by what it holds.
+    private static string MediaTypeOf(string extension) => extension switch
+    {
+        "pdf" => "application/pdf",
+        "png" => "image/png",
+        "jpg" or "jpeg" => "image/jpeg",
+        "txt" => "text/plain",
+        _ => "application/octet-stream",
+    };
+
     /// <summary>Records the layout a new layout file was drawn from.</summary>
     public void StartLayout(string layoutJson, IReadOnlyList<LayoutAsset> assets)
     {

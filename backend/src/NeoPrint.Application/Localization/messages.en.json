@@ -554,6 +554,8 @@
   "wallet.topUpWithoutUser": "The top-up is not tied to a user.",
   "wallet.wrongDirection": "A {type} movement cannot move the wallet this way.",
   "notFound.notification": "Notification not found.",
+  "notFound.share": "Share not found.",
+  "notFound.shareRecipient": "No user has this ID, so the file was not sent. Ask the recipient for their ID again.",
   "notifications.tokenInvalid": "This device's notification key is not valid. Open the app again.",
   "notifications.jobCompleted.title": "Your print is ready",
   "notifications.jobCompleted.body": "Order {code} was printed at kiosk {kiosk}. Remember to take the pages.",
@@ -600,6 +602,8 @@
   "layout.version": "The layout was made by an older version of the app and was not saved. Update the app and try again.",
   "notifications.exportReady.title": "Your archive is ready",
   "notifications.exportReady.body": "You can download the archive of your data for the next 24 hours.",
+  "notifications.fileShared.body": "{from} sent you \"{name}\". You can look at it and save it to your files.",
+  "notifications.fileShared.title": "A file was sent to you",
   "privacy.exportFailed": "The archive could not be made. Try again a little later.",
   "privacy.exportLinkInvalid": "This download link is not valid or has expired. Make the archive again in the app.",
   "privacy.export.readme": "NeoPrint — the archive of your data\n\nprofile.json — profile and the documents you accepted\npayments.json — payments\nrefunds.json — refunds\nbalance.json — balance and its movements\norders.json — print orders\nreceipts/ — receipts (PDF)\nfiles.json — the list of your files\nfiles/ — the originals of your files and their edited versions\n",
@@ -616,5 +620,12 @@
   "scan.physicalSize": "A custom size must be between 1 and 1000 mm, so the scan was not saved. Correct the width and height and save again.",
   "scan.pictureMissing": "The page \"{name}\" used in the arrangement was not sent, so the scan was not saved. Save the scan again.",
   "scan.pictureName": "The scan's page names are repeated or empty, so it was not saved. Save the scan again.",
-  "scan.tooManyPictures": "A scan can have at most {max} pages, so it was not saved. Split the document into several scans."
+  "scan.tooManyPictures": "A scan can have at most {max} pages, so it was not saved. Split the document into several scans.",
+  "shares.fileChanged": "The sender changed the file after sending it, so this share no longer opens. Ask them to send the new version.",
+  "shares.fileGone": "The file is no longer there — the sender deleted it, so it cannot be viewed or saved. If you need it, ask the sender to send it again.",
+  "shares.messageTooLong": "A note can be at most {max} characters, so the file was not sent. Shorten the note and send again.",
+  "shares.notSaving": "The file was not saved and nothing was added to your files. Press \"Save to my files\" again.",
+  "shares.publicIdInvalid": "An ID starts with \"NP-\" followed by 6 letters or digits, for example NP-7KQ2MX. Check the recipient's ID and type it again.",
+  "shares.sensitiveNeedsConfirmation": "\"{name}\" is a personal document and was not sent. It is sent once you read the warning and confirm.",
+  "shares.toSelf": "You cannot send a file to yourself. Type the recipient's ID."
 }

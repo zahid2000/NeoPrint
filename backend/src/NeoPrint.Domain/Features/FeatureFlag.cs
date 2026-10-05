@@ -48,7 +48,7 @@ public sealed class FeatureFlag : Entity
         ("user_qr_print", "Şəxsi QR ilə kioskda çap", [FeaturePlatform.Kiosk, FeaturePlatform.Mobile]),
         ("mobile_session_print", "Mobil sessiya ilə çap", [FeaturePlatform.Kiosk, FeaturePlatform.Mobile]),
         ("scheduled_print", "Planlanmış çap", [FeaturePlatform.Mobile, FeaturePlatform.Backend]),
-        ("file_sharing", "Fayl paylaşımı", [FeaturePlatform.Mobile]),
+        ("file_sharing", "Fayl paylaşımı", [FeaturePlatform.Mobile, FeaturePlatform.Backend]),
         ("referral", "Referral proqramı", [FeaturePlatform.Mobile, FeaturePlatform.Backend]),
         ("promo_codes", "Promokodlar", [FeaturePlatform.Kiosk, FeaturePlatform.Mobile]),
         ("layout_editor", "Səhifə tərtibatı redaktoru", [FeaturePlatform.Kiosk, FeaturePlatform.Mobile]),

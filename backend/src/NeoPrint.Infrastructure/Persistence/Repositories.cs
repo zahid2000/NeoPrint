@@ -25,6 +25,9 @@ public sealed class UserRepository : IUserRepository
     public Task<bool> ExistsByEmailAsync(string normalizedEmail, CancellationToken cancellationToken = default)
         => _context.Users.Find(user => user.Email == normalizedEmail).AnyAsync(cancellationToken);
 
+    public Task<User?> FindByPublicIdAsync(string publicId, CancellationToken cancellationToken = default)
+        => _context.Users.Find(user => user.PublicId == publicId).FirstOrDefaultAsync(cancellationToken)!;
+
     public Task<bool> ExistsByPublicIdAsync(string publicId, CancellationToken cancellationToken = default)
         => _context.Users.Find(user => user.PublicId == publicId).AnyAsync(cancellationToken);
 

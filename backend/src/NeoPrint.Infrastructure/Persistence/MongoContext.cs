@@ -131,6 +131,8 @@ public sealed class MongoContext
     public MongoSet<Domain.Support.SupportClaim> SupportClaims => Set<Domain.Support.SupportClaim>("support_claims");
     public MongoSet<Domain.PrintJobs.PreparedPrint> PreparedPrints => Set<Domain.PrintJobs.PreparedPrint>("prepared_prints");
 
+    public MongoSet<Domain.Sharing.Share> Shares => Set<Domain.Sharing.Share>("file_shares");
+
     public MongoSet<Domain.Schedules.ScheduledPrint> ScheduledPrints => Set<Domain.Schedules.ScheduledPrint>("scheduled_prints");
     public MongoSet<Domain.Notifications.Notification> Notifications => Set<Domain.Notifications.Notification>("notifications");
     public MongoSet<Domain.Privacy.DataExport> DataExports => Set<Domain.Privacy.DataExport>("data_exports");
@@ -459,6 +461,15 @@ public sealed class MongoContext
         await CreateAsync(PreparedPrints,
             (Builders<Domain.PrintJobs.PreparedPrint>.IndexKeys.Ascending(p => p.UserId).Descending(p => p.CreatedAt),
                 Named("ix_prepared_prints_user_created")));
+
+        // "Göndərilənlər", "Alınanlar", and a repeat of the same send (plan section 8.2).
+        await CreateAsync(Shares,
+            (Builders<Domain.Sharing.Share>.IndexKeys.Ascending(s => s.FromUserId).Descending(s => s.CreatedAt),
+                Named("ix_file_shares_from_created")),
+            (Builders<Domain.Sharing.Share>.IndexKeys.Ascending(s => s.ToUserId).Descending(s => s.CreatedAt),
+                Named("ix_file_shares_to_created")),
+            (Builders<Domain.Sharing.Share>.IndexKeys.Ascending(s => s.FileId).Ascending(s => s.ToUserId),
+                Named("ix_file_shares_file_to")));
 
         await CreateAsync(ScheduledPrints,
             // One schedule per order: the payment and cancellation events find it by its job.

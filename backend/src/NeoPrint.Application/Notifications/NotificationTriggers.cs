@@ -27,6 +27,9 @@ public static class NotificationLinks
 
     public const string Files = "neoprint://files";
 
+    /// <summary>The "Alınanlar" list of shared files.</summary>
+    public const string Shares = "neoprint://shares";
+
     public const string Export = "neoprint://privacy/export";
 }
 

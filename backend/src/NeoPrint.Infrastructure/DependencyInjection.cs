@@ -142,6 +142,7 @@ public static class DependencyInjection
         services.AddScoped<Application.PrintJobs.IPreparedPrintRepository, PreparedPrintRepository>();
         services.AddScoped<UserQr.UncollectedPrintJobsJob>();
         services.AddScoped<Application.Schedules.IScheduledPrintRepository, Schedules.ScheduledPrintRepository>();
+        services.AddScoped<Application.Sharing.IShareRepository, Sharing.ShareRepository>();
         services.AddScoped<Schedules.ScheduledPrintDueJob>();
         services.AddScoped<Schedules.ScheduledPrintAutoCancelJob>();
         services.AddScoped<Application.Files.FileEraser>();

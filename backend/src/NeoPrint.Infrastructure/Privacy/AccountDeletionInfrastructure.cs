@@ -84,6 +84,12 @@ public sealed class PrivacyRecords : IPrivacyRecords
             .ConfigureAwait(false);
 
         await _context.Notifications.DeleteManyAsync(n => n.UserId == userId, cancellationToken).ConfigureAwait(false);
+
+        // Shares both ways: the files they point at are erased with the
+        // account, and a copy someone saved is theirs (docs/DATA_RETENTION.md).
+        await _context.Shares
+            .DeleteManyAsync(s => s.FromUserId == userId || s.ToUserId == userId, cancellationToken)
+            .ConfigureAwait(false);
     }
 }
 

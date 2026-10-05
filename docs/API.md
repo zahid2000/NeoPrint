@@ -1645,6 +1645,38 @@ Plan 9.5; qərarlar `DECISIONS.md` (T-145). Sifarişin özü planlama anında ya
 
 ---
 
+## Fayl paylaşımı (`/api/shares`, `User` token, Addım 6)
+
+Plan 6, 8.2; qərarlar `DECISIONS.md` (2026-10-05, paylaşımın icazə və texniki modeli). Alıcıya heç nə öz razılığı olmadan
+düşmür: paylaşım göndərənin faylına, **göndərilən andakı PDF-ə** istinad edir; alıcının faylı yalnız "Fayllarıma saxla"
+ilə yaranır. Kolleksiya `file_shares`.
+
+- `POST` `{ fileId, toPublicId, message?, confirmSensitive }` → `ShareView`. Feature flag `file_sharing` söndürülübsə
+  `404 features.unavailable` (siyahılar və saxlama açıq qalır). `toPublicId` — `NP-XXXXXX` (böyük-kiçik hərf fərqi yoxdur);
+  formatı səhvdirsə `400 shares.publicIdInvalid`, belə istifadəçi yoxdursa, bloklanıb və ya silinibsə `404 notFound.shareRecipient`
+  (bloklanma göndərənə bildirilmir), özünə `400 shares.toSelf`. Fayl göndərənin deyilsə `404`, hazır deyilsə `409 files.notReadyNamed`.
+  Həssas fayl `confirmSensitive: true` olmadan `400 shares.sensitiveNeedsConfirmation` (tətbiq xəbərdarlığı göstərib təsdiqlə
+  yenidən göndərir). `message` — ən çox 200 simvol, bir sətir (idarəetmə və bidi simvolları boşluğa çevrilir), artığı
+  `400 shares.messageTooLong`. Eyni faylın eyni PDF-i eyni alıcıya, o saxlamadan, yenidən göndərilirsə — **eyni paylaşım**
+  qaytarılır (ikinci bildiriş getmir). Alıcıya `FileShared` bildirişi + push.
+- `GET /sent`, `GET /received` → `{ items: [ShareView] }`, ən yenisi əvvəl (100). `ShareView` =
+  `{ id, fileName, pageCount, isSensitive, message?, otherPublicId, createdAt, availability, savedFileId?, savedAt? }`;
+  `otherPublicId` — göndərilənlərdə alıcının, alınanlarda göndərənin id-si. `availability`: `Available`, `Saved`
+  (alıcının nüsxəsi var), `Gone` (göndərən faylı və ya hesabı silib / bloklanıb — "Fayl artıq yoxdur"), `Changed`
+  (göndərən faylı göndərdikdən sonra redaktə edib — alıcı göndəriləndən başqa şey almır).
+- `GET /{id}/pages/{n}.png?width=` — yalnız alıcı, saxlamadan əvvəl önizləmə (`GET /api/files/{id}/pages/{n}.png` ilə eyni
+  qaydalar). Başqasının paylaşımı `404`; `Gone` / `Changed` → `409 shares.fileGone` / `shares.fileChanged`.
+- `POST /{id}/save` → `UserFileResult` (`source: "Shared"`, `Ready`): alıcının kvotasında müstəqil şifrəli nüsxə (cari
+  məzmun və PDF yenidən şifrələnib kopyalanır; tərtibatın JSON-u və şəkilləri keçmir — nüsxə PDF-dir). Həssaslıq, skan
+  kilidi və real ölçü kağızı keçir; avtomatik silinmə alıcının default qaydası ilə (həssas → `AfterPrint`). Yenidən
+  çağırış nüsxə varsa **eyni nüsxəni** qaytarır; yarıda qalmış saxlama eyni id ilə davam edir. Kvota dolubsa
+  `400 files.quotaFull`; `Gone` / `Changed` → `409`. Göndərənin sonradan silməsi saxlanmış nüsxəyə təsir etmir.
+- `GET /qr.png` — istifadəçinin "mənə fayl göndər" QR-ı: `neoprint://share/NP-XXXXXX` (tətbiq skan edəndə paylaşım
+  ekranı alıcı doldurulmuş açılır).
+- Hesab silinəndə (`AccountDeletionJob`) istifadəçinin hər iki istiqamətdəki paylaşımları silinir.
+
+---
+
 ## Bildirişlər və push (`User` token, Addım 5)
 
 Plan 6, 8.2, 8.4; qərarlar `DECISIONS.md` (T-146). Başlıq və mətn serverdə mesaj açarı + arqumentlər kimi saxlanır,
@@ -1669,7 +1701,8 @@ oxuyanın dilində yazılır: siyahı `Accept-Language` ilə, push cihazın qeyd
 | `ScheduleAutoCancelled` | Cavab verilmədi, ləğv olundu, pul balansa | `neoprint://schedules/{id}` |
 | `RefundCompleted` | Pul qaytarıldı (planlanmış çapın ləğvi istisna) | `neoprint://wallet` |
 | `JobInterruptedRefundOffer`, `KioskOutOfServiceRefundOffer` | Addım 7 (kiosk dayananda) | — |
-| `FileShared`, `ReferralRewarded` | Addım 6 | — |
+| `FileShared` | Başqa istifadəçi fayl göndərdi (`{from}` — onun `NP-` id-si, `{name}`) | `neoprint://shares` |
+| `ReferralRewarded` | Addım 6 (M8) | — |
 | `ExportReady`, `FileAutoDeleted` | Addım 5 / M6 (T-147) | — |
 
 ---

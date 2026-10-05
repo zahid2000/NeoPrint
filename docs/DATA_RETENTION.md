@@ -43,7 +43,7 @@ audit history must not become misleading.
 - **"Hesabımı sil":** şərtlər — aktiv çap, aktiv planlanmış çap, kioskda götürülməmiş sifariş, bitməmiş refund yoxdur.
   Dərhal: `Status = Deleted`, email → SHA-256 hash (+ hesab id-si), ad / şifrə / push cihazları silinir, sessiyalar ləğv
   olunur. `Privacy.AccountDeletionGraceHours` (24) keçəndən sonra `AccountDeletionJob` (10 dəq): fayllar bütün
-  provayderlərdən, ixrac arxivləri, bildirişlər silinir; qəbzlərdən email, razılıqlardan IP / cihaz, dəstək
+  provayderlərdən, ixrac arxivləri, bildirişlər, hər iki istiqamətdəki fayl paylaşımları (`file_shares`) silinir; qəbzlərdən email, razılıqlardan IP / cihaz, dəstək
   müraciətlərindən mətn və cavab silinir (`—`), sonra `ErasedAt`.
 - **Qalır (anonim hesaba bağlı):** ödənişlər, refund-lar, fiskal çeklər (dəyişmir), qəbzlər, balans ledger-i (balans
   itir, geri qaytarılmır — plan 2.14), razılıqların versiya və tarixi (sübut), müraciətin statusu / məbləği / qərarı,

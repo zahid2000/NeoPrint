@@ -554,6 +554,8 @@
   "wallet.topUpWithoutUser": "Balans artırılması istifadəçiyə bağlı deyil.",
   "wallet.wrongDirection": "Bu növ əməliyyat ({type}) balansı bu istiqamətdə dəyişə bilməz.",
   "notFound.notification": "Bildiriş tapılmadı.",
+  "notFound.share": "Paylaşım tapılmadı.",
+  "notFound.shareRecipient": "Bu ID ilə istifadəçi tapılmadı, fayl göndərilmədi. ID-ni alıcıdan yenidən soruşun.",
   "notifications.tokenInvalid": "Bu cihazın bildiriş açarı düzgün deyil. Tətbiqi yenidən açın.",
   "notifications.jobCompleted.title": "Çap hazırdır",
   "notifications.jobCompleted.body": "{code} sifarişi {kiosk} kioskunda çap olundu. Vərəqləri götürməyi unutmayın.",
@@ -600,6 +602,8 @@
   "layout.version": "Tərtibat tətbiqin köhnə versiyasında yaradılıb və saxlanılmadı. Tətbiqi yeniləyib yenidən cəhd edin.",
   "notifications.exportReady.title": "Arxiviniz hazırdır",
   "notifications.exportReady.body": "Məlumatlarınızın arxivini 24 saat ərzində yükləyə bilərsiniz.",
+  "notifications.fileShared.body": "{from} sizə \"{name}\" faylını göndərdi. Baxıb fayllarınıza saxlaya bilərsiniz.",
+  "notifications.fileShared.title": "Sizə fayl göndərildi",
   "privacy.exportFailed": "Arxivi hazırlamaq alınmadı. Bir az sonra yenidən cəhd edin.",
   "privacy.exportLinkInvalid": "Bu yükləmə linki keçərli deyil və ya vaxtı keçib. Tətbiqdə arxivi yenidən hazırlayın.",
   "privacy.export.readme": "NeoPrint — məlumatlarınızın arxivi\n\nprofile.json — profil və qəbul etdiyiniz sənədlər\npayments.json — ödənişlər\nrefunds.json — qaytarmalar\nbalance.json — balans və onun hərəkətləri\norders.json — çap sifarişləri\nreceipts/ — qəbzlər (PDF)\nfiles.json — fayllarınızın siyahısı\nfiles/ — fayllarınızın orijinalları və redaktə versiyaları\n",
@@ -616,5 +620,12 @@
   "scan.physicalSize": "Xüsusi ölçü 1 ilə 1000 mm arasında olmalıdır, skan saxlanılmadı. En və hündürlüyü düzəldib yenidən saxlayın.",
   "scan.pictureMissing": "Yerləşdirmədəki \"{name}\" səhifəsi göndərilmədi, skan saxlanılmadı. Skanı yenidən saxlayın.",
   "scan.pictureName": "Skan səhifələrinin adları təkrarlanır və ya boşdur, skan saxlanılmadı. Skanı yenidən saxlayın.",
-  "scan.tooManyPictures": "Bir skanda ən çox {max} səhifə ola bilər, skan saxlanılmadı. Sənədi bir neçə skana bölün."
+  "scan.tooManyPictures": "Bir skanda ən çox {max} səhifə ola bilər, skan saxlanılmadı. Sənədi bir neçə skana bölün.",
+  "shares.fileChanged": "Göndərən faylı göndərdikdən sonra dəyişib, ona görə bu paylaşım açılmır. Yeni versiyanı yenidən göndərməsini istəyin.",
+  "shares.fileGone": "Fayl artıq yoxdur — göndərən onu silib, ona görə saxlamaq və baxmaq mümkün deyil. Lazımdırsa, göndərəndən yenidən göndərməsini istəyin.",
+  "shares.messageTooLong": "Qeyd ən çox {max} simvol ola bilər, fayl göndərilmədi. Qeydi qısaldıb yenidən göndərin.",
+  "shares.notSaving": "Fayl saxlanılmadı, fayllarınıza heç nə əlavə olunmadı. Yenidən \"Fayllarıma saxla\" basın.",
+  "shares.publicIdInvalid": "ID \"NP-\" ilə başlayır və 6 hərf və ya rəqəmdən ibarətdir, məsələn NP-7KQ2MX. Alıcının ID-sini yoxlayıb yenidən yazın.",
+  "shares.sensitiveNeedsConfirmation": "\"{name}\" şəxsi sənəddir və göndərilmədi. Xəbərdarlığı oxuyub təsdiqləsəniz göndərilir.",
+  "shares.toSelf": "Faylı özünüzə göndərə bilməzsiniz. Alıcının ID-sini yazın."
 }
