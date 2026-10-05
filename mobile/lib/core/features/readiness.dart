@@ -35,6 +35,10 @@ abstract final class Readiness {
   /// "Hesabımı sil" in the profile - step 5 (T-147).
   static const bool accountDeletion = true;
 
+  /// The document scanner: scan, arrange on paper, save as a finished PDF -
+  /// step 6 (T-178). Phones only; the web build never shows it.
+  static const bool documentScan = true;
+
   /// Sending a file to another user by their public code - step 6.
   static const bool fileSharing = false;
 

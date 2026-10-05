@@ -8,6 +8,7 @@ import '../../features/auth/sign_in_screen.dart';
 import '../../features/auth/splash_screen.dart';
 import '../../features/consents/consents_screen.dart';
 import '../../features/files/camera_capture_screen.dart';
+import '../../features/scanner/document_scan_screen.dart';
 import '../../features/files/file_models.dart';
 import '../../features/files/file_preview_screen.dart';
 import '../../features/files/files_screen.dart';
@@ -54,6 +55,7 @@ abstract final class Routes {
   static const sessionPrint = '/session/print';
   static const files = '/files';
   static const filesCamera = '/files/camera';
+  static const filesScanner = '/files/scanner';
   static String filePreview(String id) => '/files/$id';
   static const scheduled = '/scheduled';
   static const profile = '/profile';
@@ -293,6 +295,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'camera',
                     builder: (_, __) => const CameraCaptureScreen(),
+                  ),
+                  GoRoute(
+                    path: 'scanner',
+                    builder: (_, __) => const DocumentScanScreen(),
                   ),
                   GoRoute(
                     path: ':id',

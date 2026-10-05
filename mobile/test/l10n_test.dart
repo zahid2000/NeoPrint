@@ -39,6 +39,9 @@ void main() {
     'Azərbaycan',
     'English',
     'Русский',
+    // Numbers and units: a template and a size (document scanner).
+    '2 × 2',
+    '×  mm',
   };
 
   final englishInAzerbaijani = RegExp(

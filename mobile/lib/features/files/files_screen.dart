@@ -19,6 +19,8 @@ import 'file_models.dart';
 import 'files_controller.dart';
 import 'heic_converter.dart';
 import 'auto_delete_sheet.dart';
+import '../scanner/document_scanner.dart';
+import '../scanner/document_scan_screen.dart';
 
 /// "Fayllarım" (plan sections 2.2, 8.2): upload from the phone or the camera,
 /// the list with where each file came from, preview and delete.
@@ -134,6 +136,14 @@ class FilesScreen extends ConsumerWidget {
                 subtitle: Text(l10n.filesTakePhotoHint),
                 onTap: () => Navigator.pop(context, _Source.camera),
               ),
+            // The phone scanner (plan section 2.11): not on the web.
+            if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
+              ListTile(
+                leading: const Icon(Icons.document_scanner_outlined),
+                title: Text(l10n.filesScanDocument),
+                subtitle: Text(l10n.filesScanDocumentHint),
+                onTap: () => Navigator.pop(context, _Source.scan),
+              ),
             const SizedBox(height: Spacing.x4),
           ],
         ),
@@ -147,23 +157,37 @@ class FilesScreen extends ConsumerWidget {
     final controller = ref.read(filesControllerProvider.notifier);
 
     switch (choice) {
+      case _Source.scan:
+        final outcome = await context.push<ScanOutcome>(Routes.filesScanner);
+        if (!context.mounted) {
+          return;
+        }
+        if (outcome == ScanOutcome.saved) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(l10n.docScanSaved)));
+        } else if (outcome == ScanOutcome.useCamera) {
+          await _photo(context, controller);
+        }
       case _Source.file:
         final picked = await _pickFile(ref);
         if (picked != null) {
           await controller.upload(picked);
         }
       case _Source.camera:
-        final path = await context.push<String>(Routes.filesCamera);
-        if (path != null) {
-          await controller.upload(
-            PickedFile(
-              name: 'photo-${DateTime.now().millisecondsSinceEpoch}.jpg',
-              path: path,
-              readBytes: () =>
-                  throw UnsupportedError('Camera photos have a path.'),
-            ),
-          );
-        }
+        await _photo(context, controller);
+    }
+  }
+
+  Future<void> _photo(BuildContext context, FilesController controller) async {
+    final path = await context.push<String>(Routes.filesCamera);
+    if (path != null) {
+      await controller.upload(
+        PickedFile(
+          name: 'photo-${DateTime.now().millisecondsSinceEpoch}.jpg',
+          path: path,
+          readBytes: () => throw UnsupportedError('Camera photos have a path.'),
+        ),
+      );
     }
   }
 
@@ -198,7 +222,7 @@ class FilesScreen extends ConsumerWidget {
   }
 }
 
-enum _Source { file, camera }
+enum _Source { file, camera, scan }
 
 /// A file on the list: name, what it is, where it came from, and its state.
 class _FileCard extends ConsumerWidget {

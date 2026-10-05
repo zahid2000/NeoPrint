@@ -128,6 +128,89 @@
   "filesPickFileHint": "PDF, Word, Excel, PowerPoint, şəkil və s.",
   "filesTakePhoto": "Şəkil çək",
   "filesTakePhotoHint": "Sənədin və ya şəklin fotosunu çəkin",
+  "filesScanDocument": "Sənəd skanı",
+  "filesScanDocumentHint": "Vəsiqə, pasport, sənəd — kənarlar özü tapılır",
+  "docScanNoticeTitle": "Şəxsi sənədlərin skanı",
+  "docScanNoticeAccept": "Qəbul edirəm",
+  "docScanNoticeLater": "İndi yox",
+  "docScanNoticeLoadFailed": "Məlumat yüklənmədi, ona görə skan açılmadı. {reason}",
+  "@docScanNoticeLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "docScanNoticeAcceptFailed": "Razılıq göndərilmədi, ona görə skan açılmadı. {reason}",
+  "@docScanNoticeAcceptFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "docScanTitle": "Skanı hazırla",
+  "docScanPages": "Səhifələr",
+  "docScanPageN": "Səhifə {n}",
+  "@docScanPageN": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "docScanAddPage": "Səhifə əlavə et",
+  "docScanDeletePage": "Səhifəni sil",
+  "docScanType": "Sənəd tipi",
+  "docScanTypeIdCard": "Şəxsiyyət vəsiqəsi / bank kartı",
+  "docScanTypeId2": "ID-2 sənəd",
+  "docScanTypePassport": "Pasport səhifəsi",
+  "docScanTypePhoto3x4": "Foto 3×4",
+  "docScanTypePhoto10x15": "Foto 10×15",
+  "docScanTypeCustom": "Xüsusi ölçü",
+  "docScanSizeMm": "{width} × {height} mm",
+  "@docScanSizeMm": {
+    "placeholders": {
+      "width": { "type": "String" },
+      "height": { "type": "String" }
+    }
+  },
+  "docScanWidthMm": "En, mm",
+  "docScanHeightMm": "Hündürlük, mm",
+  "docScanCustomInvalid": "1 ilə 1000 mm arasında yazın",
+  "docScanSensitive": "Həssas sənəd",
+  "docScanSensitiveHint": "Şifrəli saxlanılır, çapdan sonra silinir",
+  "docScanSensitiveAlways": "Şəxsi sənəd — həmişə həssas",
+  "docScanArrangement": "Kağızda yerləşmə",
+  "docScanArrangeOnePerPage": "Hər səhifə ayrıca",
+  "docScanArrangeIdFrontBack": "Vəsiqə ön + arxa",
+  "docScanArrangeGrid2x2": "2 × 2",
+  "docScanArrangeCards2x4": "8 kart",
+  "docScanArrangePhoto3x4x6": "Foto 3×4 × 6",
+  "docScanArrangePassport": "Pasport mərkəzdə",
+  "docScanPaperPage": "A4 · səhifə {n} / {total}",
+  "@docScanPaperPage": {
+    "placeholders": {
+      "n": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "docScanFileName": "Ad",
+  "docScanLockedNote": "Saxlanandan sonra skan dəyişdirilmir — yalnız çap olunur.",
+  "docScanSave": "Yadda saxla",
+  "docScanSaving": "Hazırlanır…",
+  "docScanSaved": "Skan saxlanıldı",
+  "docScanSaveFailed": "Skan saxlanılmadı. {reason}",
+  "@docScanSaveFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "docScanPageUnreadable": "Səhifələrdən biri oxunmadı, skan saxlanılmadı. Həmin səhifəni silib yenidən skan edin.",
+  "docScanUnavailable": "Bu telefonda sənəd skaneri işləmir. Sənədin şəklini \"Şəkil çək\" ilə yükləyə bilərsiniz.",
+  "docScanFailed": "Skaner işləmədi, heç nə saxlanılmadı. Yenidən cəhd edin.",
+  "docScanEditRotate": "Fırlat",
+  "docScanFilterOriginal": "Orijinal",
+  "docScanFilterGray": "Boz",
+  "docScanFilterBw": "Ağ-qara",
+  "docScanFilterContrast": "Kontrast",
+  "docScanBrightness": "Parlaqlıq",
+  "docScanEditReset": "Sıfırla",
+  "docScanEditDone": "Hazır",
   "filesEmpty": "Hələ faylınız yoxdur.",
   "filesEmptyHint": "Yüklədiyiniz fayllar burada saxlanılır və istənilən kioskda çap oluna bilər.",
   "filesLoadFailed": "Fayllar göstərilə bilmir.",
