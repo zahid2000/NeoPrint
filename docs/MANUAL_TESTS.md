@@ -271,3 +271,45 @@ Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-də
 | 29 | Ayrıca test hesabı ilə: Profil → **Hesabımı sil** — əvvəl planlanmış çap varkən, sonra ləğv edib; şifrə + "sil" (kiçik hərflə) | Planlanmış çap varkən forma yox, siyahı və keçid; sonra düymə "sil" yazanda aktivləşir; silinəndə giriş ekranı + "Hesabınız silindi"; telefona həmin hesabın push-u artıq gəlmir |
 | 30 | Telefonda tətbiq açıqkən admin panelində `scheduled_print`-i söndürün, tətbiqi arxa plana keçirib qaytarın; sonra kioskun "Tətbiqlə ödə" QR-ını `mobile_payment_at_kiosk` söndürülmüş halda oxudun | Fayl menyusunda "Çapı planla" yox, aktiv planlama yoxdursa "Planlanmışlar" tabı yox (varsa qalır, "Yeni planlama" yox); QR oxunanda ödəniş ekranı açılmır, "bank QR-ı ilə ödəyin" xəbərdarlığı; pul tutulmur. Sonra flag-ları geri açın |
 | 31 | Real telefonda Profil → Dil → English; tətbiqi bağlayıb açın; sonra telefonun özünün dilini dəyişib "Telefonun dili"ni seçin və tətbiqə qayıdın. Bu vaxt push gələn bir əməliyyat edin (məs. çap) | Seçim tətbiq yenidən açılanda qalır; push mətni seçilmiş dildədir; "Telefonun dili"ndə telefonun dili dəyişəndə tətbiq də dəyişir və hesabın dili (admin → İstifadəçilər → dil) yenilənir |
+
+## MT-08. Addım 6 — sənəd skanı real telefonda (T-178, T-186; iOS — T-187)
+
+**Nə vaxt:** Addım 6-nın sonunda (lokal stack + real telefon); iOS hissəsi pilotdan əvvəl Mac-da (T-187).
+**Harada:** **Samsung S24** (USB ilə qoşulub, USB debugging açıq), telefon kompüterlə eyni Wi-Fi-da
+(`DEV_ENVIRONMENT.md` bölmə 6 — real telefon). Skaner Google ML Kit Document Scanner-dir: Google Play xidmətlərinin
+içində işləyir, kamera icazəsi istəmir; ilk açılışda Play xidmətləri skaner modulunu bir dəfə endirə bilər (bir neçə saniyə).
+
+**Hazırlıq**
+
+```powershell
+docker compose up --remove-orphans -d --build api converter       # Addım 6 API-si
+cd mobile
+flutter devices                                                    # S24 siyahıdadır (məs. R5CX...)
+flutter run -d <S24_id> --dart-define=NEOPRINT_API_URL=http://<kompüterin_IP>:5080/
+```
+
+Razılıq addımını görmək üçün **yeni test hesabı** açın (`dev-user`-də seed bütün razılıqları qəbul edib). Xətkeş və
+bir bank kartı / vəsiqə (və ya eyni ölçülü kart) lazımdır.
+
+**Vəziyyət (2026-10-05): yoxlanmayıb** — layihə sahibi S24-də icra edəcək. Avtomatik yoxlananlar: backend skan API-si,
+real ölçü (PDF-də 85.69 × 54.02 mm, `docs/screenshots/step-6/m2-*`, `m3-*`), mobil ekranların widget testləri
+(`test/document_scan_test.dart`), Android APK ML Kit ilə build olunur.
+
+| # | Addım | Gözlənilən |
+|---|---|---|
+| 1 | Fayllarım → **Fayl yüklə** | Alt vərəqdə üç sətir: "Fayl seç", "Şəkil çək", **"Sənəd skanı"** ("Vəsiqə, pasport, sənəd — kənarlar özü tapılır") |
+| 2 | **Sənəd skanı** (yeni hesab) | "Şəxsi sənədlərin skanı" vərəqi admin paneldə dərc olunmuş mətnlə; **İndi yox** — skaner açılmır, Fayllarım-a qayıdış |
+| 3 | Yenidən **Sənəd skanı** → **Qəbul edirəm** | ML Kit skaneri açılır (kamera görüntüsü, kənarlar avtomatik çərçivələnir). Admin → İstifadəçilər → hesab → Razılıqlar: `ScanNotice 0.1-draft` |
+| 4 | Kartın **ön** üzünü, sonra **arxa** üzünü skan edin → skanerdə **Yadda saxla / Save** | "Skanı hazırla" ekranı: "Səhifə 1", "Səhifə 2"; sənəd tipi "Şəxsiyyət vəsiqəsi / bank kartı" seçili; "Həssas sənəd" açıq və deaktiv ("Şəxsi sənəd — həmişə həssas"); yerləşmə **"Vəsiqə ön + arxa"**, A4 önizləməsində iki kart üst-alt, mərkəzdə |
+| 5 | Səhifə 1-ə toxunun → küncləri sürüşdürüb kəsin, **Fırlat**, filtr **Ağ-qara**, parlaqlıq +30 → **Hazır** | Redaktorda dəyişiklik dərhal görünür; qayıdanda kiçik şəkil və A4 önizləməsi yenilənir. Fırlatdıqdan sonra kart A4-də dik dayanır (54 × 85.6) |
+| 6 | **Səhifə əlavə et** → üçüncü səhifə → zibil qabı ilə silin | Səhifə sayı 3 → 2; yerləşmə yenə "Vəsiqə ön + arxa" |
+| 7 | Sənəd tipini **Xüsusi ölçü** edin, en 0 yazın | "1 ilə 1000 mm arasında yazın", **Yadda saxla** deaktiv; düzgün ölçüdən sonra aktiv. Sonra tipi yenidən vəsiqəyə qaytarın |
+| 8 | Telefonu təyyarə rejiminə keçirib **Yadda saxla** | Düymədə "Hazırlanır…", sonra qırmızı blok "Skan saxlanılmadı. …" — Fayllarım-da yeni fayl yoxdur; şəbəkəni qaytarıb **Yadda saxla** — uğurlu |
+| 9 | Uğurdan sonra | Snackbar "Skan saxlanıldı"; siyahıda "Vəsiqə…" faylı: `Skan`, `Həssas`, "Çapdan sonra silinəcək" chip-ləri; menyuda redaktə yoxdur |
+| 10 | Debug build-də: `adb shell run-as az.neoprint.neoprint ls cache` | `scan-*.jpg` qalmayıb (səhifələr saxlanandan sonra silinir) |
+| 11 | Faylın menyusu → **Kiosk üçün hazırla** | Yuxarıda info: "real ölçüdə (100%) A4 kağızında, vərəqdə 1 səhifə…"; kağız A4 və "1" seçili və dəyişdirilmir (`m3-mobile-prepare-real-size-lock.png` kimi) |
+| 12 | Kioskda (Linux konteyner KSK-9002 və ya real kiosk) şəxsi QR → faylı seçin → ödəyin → çap | Kioskda seçimlər kilidli (`m3-kiosk-real-size-lock.png`); çap edilmiş PDF (`spool/printed`) və ya real printerdə vərəq: **xətkeşlə kart 85.6 × 54 mm ± 1 mm** (real printer — MT-02 ilə birlikdə) |
+| 13 | Çapdan sonra | Fayl Fayllarım-dan gedir, push "Fayl silindi" (9.7, addım 5) |
+| 14 | Admin → Hüquqi sənədlər → **Sənəd skanı barədə məlumat** yeni versiya dərc edin; telefonda yenidən **Sənəd skanı** | Razılıq vərəqi yenidən çıxır (yeni versiya) |
+| 15 | Play xidmətləri olmayan / köhnə Android (mümkünsə ikinci cihaz) | "Bu telefonda sənəd skaneri işləmir…" xəbərdarlığı + **Şəkil çək** düyməsi kamera ekranını açır |
+| 16 | **iOS (T-187, Mac + real iPhone):** `flutter build ios` (və ya Xcode-da Run); №1–13 | `AppDelegate.swift`-dəki VisionKit skaneri compile olunur və işləyir: `VNDocumentCameraViewController` açılır, səhifələr eyni ekrana gəlir, ləğv edəndə heç nə yaranmır |
