@@ -40,7 +40,7 @@ abstract final class Readiness {
   static const bool documentScan = true;
 
   /// Sending a file to another user by their public code - step 6.
-  static const bool fileSharing = false;
+  static const bool fileSharing = true;
 
   /// Choosing the language in the profile, kept on the account - step 5
   /// (T-152).

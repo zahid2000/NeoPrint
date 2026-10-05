@@ -1109,6 +1109,25 @@ db.legal_documents.find({Content: /Tam mətn: docs\/legal\//}).forEach(d => db.l
 
 ---
 
+## 7k. Addım 6 — fayl paylaşımı (T-181)
+
+Yeni kod üçün: `docker compose up --remove-orphans -d --build api`. İki hesab lazımdır: `dev-user@neoprint.local` və
+tətbiqdə qeydiyyatdan keçən ikinci hesab (kod Mailpit-də — bölmə 4, "Mobil tətbiq — yeni hesab").
+
+1. Alıcı: **Fayllarım → Paylaşılanlar** (app bar-da qutu ikonu) — "Sizin ID-niz" (`NP-XXXXXX`), **Kopyala** / **QR kodum**.
+2. Göndərən: **Fayllarım → faylın menyusu → Paylaş** → alıcının ID-si (telefonda QR ikonu ilə alıcının QR-ını oxuyun) →
+   **Göndər**. Həssas faylda əvvəl xəbərdarlıq və təsdiq dialoqu.
+3. Alıcıda bildiriş "Sizə fayl göndərildi", **Paylaşılanlar → Alınanlar**-da "Yeni"; faylı açıb səhifələrinə baxın →
+   **Fayllarıma saxla** — nüsxə "Paylaşılıb" nişanı ilə Fayllarım-dadır.
+4. "Fayl artıq yoxdur" / "Dəyişdirilib": göndərən faylı silsin və ya redaktə etsin (alıcı saxlamamışdan əvvəl) —
+   alıcıda status dəyişir, saxlamaq olmur.
+
+Linklər: `neoprint://shares` (Paylaşılanlar), `neoprint://share/NP-XXXXXX` (Faylı paylaş, alıcı doldurulmuş). API:
+`docs/API.md` → "Fayl paylaşımı". Feature flag: Admin → Feature flag-lar → `file_sharing` (söndürüləndə yalnız yeni
+göndərmə bağlanır).
+
+---
+
 ## 8. Build, test, lint
 
 ```bash

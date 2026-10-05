@@ -32,7 +32,12 @@ enum _ScanProblem { noCamera, permission }
 /// opens its payment. Everything happens on the phone: the frames go to ML
 /// Kit on the device and nowhere else.
 class ScanScreen extends ConsumerStatefulWidget {
-  const ScanScreen({super.key});
+  const ScanScreen({super.key, this.pickShareId = false});
+
+  /// Reads a recipient's share QR for "Faylı paylaş" and closes with their
+  /// `NP-` id (docs/DESIGN_SYSTEM.md, "Mobil: fayl paylaşımı"); any other
+  /// code only says it is not one.
+  final bool pickShareId;
 
   @override
   ConsumerState<ScanScreen> createState() => _ScanScreenState();
@@ -150,7 +155,22 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
           continue;
         }
 
-        switch (ScannedCode.parse(raw)) {
+        final code = ScannedCode.parse(raw);
+
+        if (widget.pickShareId) {
+          if (code case ShareCode(:final publicId)) {
+            _done = true;
+            context.pop(publicId);
+            return;
+          }
+
+          if (!_foreign) {
+            setState(() => _foreign = true);
+          }
+          continue;
+        }
+
+        switch (code) {
           case PayCode()
               when !ref.read(
                 featureOnProvider(FeatureKey.mobilePaymentAtKiosk),
@@ -166,7 +186,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             _done = true;
             context.pushReplacement(Routes.kiosk(code));
             return;
-          case KioskCode() || ForeignCode():
+          case KioskCode() || ShareCode() || ForeignCode():
             if (!_foreign) {
               setState(() => _foreign = true);
             }
@@ -228,11 +248,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         ),
         null => _Viewfinder(
           controller: controller!,
-          instruction: l10n.scanInstruction,
+          instruction: widget.pickShareId
+              ? l10n.shareScanRecipient
+              : l10n.scanInstruction,
           warning: _payOff
               ? l10n.featureOffKioskPayment
               : _foreign
-              ? l10n.scanForeign
+              ? (widget.pickShareId ? l10n.scanNotShareCode : l10n.scanForeign)
               : null,
         ),
       },

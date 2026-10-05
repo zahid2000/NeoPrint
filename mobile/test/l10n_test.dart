@@ -39,6 +39,8 @@ void main() {
     'Azərbaycan',
     'English',
     'Русский',
+    // A sample public id (file sharing).
+    'NP-7KQ2MX',
     // Numbers and units: a template and a size (document scanner).
     '2 × 2',
     '×  mm',

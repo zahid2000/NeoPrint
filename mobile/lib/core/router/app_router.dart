@@ -33,6 +33,10 @@ import '../../features/prepared/prepare_screen.dart';
 import '../../features/prepared/prepared_list_screen.dart';
 import '../../features/schedule/schedule_create_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
+import '../../features/sharing/share_detail_screen.dart';
+import '../../features/sharing/share_models.dart';
+import '../../features/sharing/share_send_screen.dart';
+import '../../features/sharing/shares_screen.dart';
 import '../../shared/widgets/bottom_nav_shell.dart';
 import '../../shared/widgets/redirect_to.dart';
 import '../auth/auth_controller.dart';
@@ -70,6 +74,9 @@ abstract final class Routes {
   static const prepare = '/prepare';
   static const scheduleNew = '/schedule/new';
   static const notifications = '/notifications';
+  static const shares = '/shares';
+  static const shareSend = '/shares/send';
+  static String shareDetail(String id) => '/shares/received/$id';
   static const privacyExport = '/privacy/export';
   static const privacyDelete = '/privacy/delete';
   static const legalList = '/legal';
@@ -220,6 +227,29 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.notifications,
         builder: (_, __) => const NotificationsScreen(),
       ),
+      // Sharing a file with another user (plan section 8.2).
+      if (Readiness.fileSharing) ...[
+        GoRoute(path: Routes.shares, builder: (_, __) => const SharesScreen()),
+        GoRoute(
+          path: Routes.shareSend,
+          // From a file's menu with the file; from a share link with the
+          // recipient in `to` and the file chosen there.
+          builder: (_, state) => ShareSendScreen(
+            file: state.extra as UserFile?,
+            to: state.uri.queryParameters['to'],
+          ),
+        ),
+        GoRoute(
+          path: '${Routes.shares}/received/:id',
+          // The list hands over the share it has; a link from outside lands on the list.
+          redirect: (_, state) =>
+              state.extra is ShareItem ? null : Routes.shares,
+          builder: (_, state) => switch (state.extra) {
+            final ShareItem share => ShareDetailScreen(share: share),
+            _ => const RedirectTo(Routes.shares),
+          },
+        ),
+      ],
       // Printing in a session: choose the file, then its options (plan section 9.3).
       if (Readiness.mobileSession) ...[
         GoRoute(

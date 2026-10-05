@@ -23,11 +23,8 @@ class FilePreviewScreen extends StatefulWidget {
 }
 
 class _FilePreviewScreenState extends State<FilePreviewScreen> {
-  int _current = 1;
-
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final file = widget.file;
 
     return Scaffold(
@@ -38,48 +35,81 @@ class _FilePreviewScreenState extends State<FilePreviewScreen> {
           overflow: TextOverflow.ellipsis,
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: PageView.builder(
-              itemCount: file.pageCount,
-              onPageChanged: (index) => setState(() => _current = index + 1),
-              itemBuilder: (context, index) => _PageImage(
-                fileId: file.id,
-                page: index + 1,
-                total: file.pageCount,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(Spacing.x3),
-            child: Text(
-              l10n.filesPageOf(_current, file.pageCount),
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-        ],
+      body: Consumer(
+        builder: (context, ref, _) => PagedPreview(
+          pageCount: file.pageCount,
+          load: (page, width) =>
+              ref.read(filesRepositoryProvider).pageImage(file.id, page, width),
+        ),
       ),
     );
   }
 }
 
-class _PageImage extends ConsumerStatefulWidget {
+/// Loads one page at the width asked for, as a PNG.
+typedef PageLoader = Future<Uint8List> Function(int page, int width);
+
+/// Pages swiped one at a time with "1 / N" under them: a file's, or a
+/// shared file's before it is saved (docs/DESIGN_SYSTEM.md, "Mobil: fayl
+/// paylaşımı").
+class PagedPreview extends StatefulWidget {
+  const PagedPreview({super.key, required this.pageCount, required this.load});
+
+  final int pageCount;
+  final PageLoader load;
+
+  @override
+  State<PagedPreview> createState() => _PagedPreviewState();
+}
+
+class _PagedPreviewState extends State<PagedPreview> {
+  int _current = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return Column(
+      children: [
+        Expanded(
+          child: PageView.builder(
+            itemCount: widget.pageCount,
+            onPageChanged: (index) => setState(() => _current = index + 1),
+            itemBuilder: (context, index) => _PageImage(
+              load: widget.load,
+              page: index + 1,
+              total: widget.pageCount,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(Spacing.x3),
+          child: Text(
+            l10n.filesPageOf(_current, widget.pageCount),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PageImage extends StatefulWidget {
   const _PageImage({
-    required this.fileId,
+    required this.load,
     required this.page,
     required this.total,
   });
 
-  final String fileId;
+  final PageLoader load;
   final int page;
   final int total;
 
   @override
-  ConsumerState<_PageImage> createState() => _PageImageState();
+  State<_PageImage> createState() => _PageImageState();
 }
 
-class _PageImageState extends ConsumerState<_PageImage> {
+class _PageImageState extends State<_PageImage> {
   Future<Uint8List>? _image;
   int? _width;
 
@@ -99,9 +129,7 @@ class _PageImageState extends ConsumerState<_PageImage> {
 
   void _load() {
     setState(() {
-      _image = ref
-          .read(filesRepositoryProvider)
-          .pageImage(widget.fileId, widget.page, _width!);
+      _image = widget.load(widget.page, _width!);
     });
   }
 

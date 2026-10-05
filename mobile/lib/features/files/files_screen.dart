@@ -20,6 +20,7 @@ import 'files_controller.dart';
 import 'heic_converter.dart';
 import 'auto_delete_sheet.dart';
 import '../layout/layout_launcher.dart';
+import '../sharing/shares_controller.dart';
 import '../scanner/document_scanner.dart';
 import '../scanner/document_scan_screen.dart';
 
@@ -35,7 +36,10 @@ class FilesScreen extends ConsumerWidget {
     final controller = ref.read(filesControllerProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.navFiles)),
+      appBar: AppBar(
+        title: Text(l10n.navFiles),
+        actions: [if (Readiness.fileSharing) const _SharesButton()],
+      ),
       // The screen's one primary action (docs/DESIGN_SYSTEM.md section 4).
       floatingActionButton: state.files.isEmpty && state.uploads.isEmpty
           ? null
@@ -244,6 +248,27 @@ class FilesScreen extends ConsumerWidget {
 
 enum _Source { file, camera, scan, layout }
 
+/// "Paylaşılanlar", with how many received files wait to be looked at
+/// (docs/DESIGN_SYSTEM.md, "Mobil: fayl paylaşımı").
+class _SharesButton extends ConsumerWidget {
+  const _SharesButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(newSharesCountProvider);
+
+    return IconButton(
+      tooltip: AppLocalizations.of(context).sharesTitle,
+      onPressed: () => context.push(Routes.shares),
+      icon: Badge.count(
+        count: count,
+        isLabelVisible: count > 0,
+        child: const Icon(Icons.move_to_inbox_outlined),
+      ),
+    );
+  }
+}
+
 /// A file on the list: name, what it is, where it came from, and its state.
 class _FileCard extends ConsumerWidget {
   const _FileCard({required this.file});
@@ -354,6 +379,7 @@ class _FileCard extends ConsumerWidget {
                     LayoutSource(file),
                   ]),
                   'editLayout' => openLayoutFile(context, ref, file),
+                  'share' => context.push(Routes.shareSend, extra: file),
                   'autoDelete' => showAutoDeleteSheet(context, file),
                   _ => _delete(context, ref),
                 },
@@ -408,6 +434,20 @@ class _FileCard extends ConsumerWidget {
                           color: tokens.brand500,
                         ),
                         title: Text(l10n.schedMenu),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  if (Readiness.fileSharing &&
+                      flags.isOn(FeatureKey.fileSharing) &&
+                      file.status == FileStatus.ready)
+                    PopupMenuItem(
+                      value: 'share',
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.share_outlined,
+                          color: tokens.brand500,
+                        ),
+                        title: Text(l10n.shareMenu),
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),

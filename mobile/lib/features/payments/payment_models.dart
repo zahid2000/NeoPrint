@@ -173,8 +173,14 @@ sealed class ScannedCode {
 
   static final _kioskLink = RegExp(r'^neoprint://kiosk/([A-Za-z0-9-]{1,32})$');
 
+  static final _shareLink = RegExp(
+    r'^neoprint://share/(NP-[A-Z0-9]{6})$',
+    caseSensitive: false,
+  );
+
   /// `neoprint://pay/{id}` is an order to pay, `neoprint://kiosk/{code}` a
-  /// kiosk to open a session at (plan section 2.9); anything else is not ours.
+  /// kiosk to open a session at (plan section 2.9), `neoprint://share/{id}`
+  /// a user to send a file to; anything else is not ours.
   static ScannedCode parse(String raw) {
     final text = raw.trim();
 
@@ -184,6 +190,10 @@ sealed class ScannedCode {
 
     if (_kioskLink.firstMatch(text) case final kiosk?) {
       return KioskCode(kiosk.group(1)!.toUpperCase());
+    }
+
+    if (_shareLink.firstMatch(text) case final share?) {
+      return ShareCode(share.group(1)!.toUpperCase());
     }
 
     return const ForeignCode();
@@ -202,6 +212,13 @@ final class KioskCode extends ScannedCode {
   const KioskCode(this.code);
 
   final String code;
+}
+
+/// The QR in "Paylaşılanlar": the user it names is who a file goes to.
+final class ShareCode extends ScannedCode {
+  const ShareCode(this.publicId);
+
+  final String publicId;
 }
 
 /// A bank QR or any other code: not something this app pays.

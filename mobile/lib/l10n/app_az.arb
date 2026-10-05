@@ -379,6 +379,81 @@
   "scanForeign": "Bu QR NeoPrint ödənişi deyil. Bank QR kodunu bank tətbiqinizlə oxudun.",
   "scanNoPermission": "Kameraya icazə verilməyib, ona görə QR kodu oxuna bilmir. Telefonun tənzimləmələrində NeoPrint-ə kamera icazəsi verin.",
   "scanNoCamera": "Bu cihazda kamera tapılmadı, ona görə QR kodu oxuna bilmir.",
+  "scanNotShareCode": "Bu QR NeoPrint ID kodu deyil. Alıcıdan \"Paylaşılanlar\" bölməsindəki QR kodunu göstərməsini istəyin.",
+  "shareMenu": "Paylaş",
+  "shareSendTitle": "Faylı paylaş",
+  "shareChooseFile": "Fayl seç",
+  "shareChangeFile": "Dəyiş",
+  "shareNoReadyFiles": "Göndəriləcək hazır fayl yoxdur. Əvvəl \"Fayllarım\"-a fayl yükləyin.",
+  "shareRecipientLabel": "Alıcının ID-si",
+  "shareRecipientHint": "NP-7KQ2MX",
+  "shareRecipientHelp": "Alıcı öz ID-sini \"Paylaşılanlar\" bölməsində və ya Profildə tapır",
+  "shareScanRecipient": "Alıcının QR kodunu oxu",
+  "shareMessageLabel": "Qeyd (istəyə görə)",
+  "shareSensitiveWarning": "Bu şəxsi sənəddir. Alıcı onu öz fayllarına saxlayıb çap edə bilər; göndərdikdən sonra geri almaq olmur.",
+  "shareSend": "Göndər",
+  "shareConfirmTitle": "Şəxsi sənədi göndərək?",
+  "shareConfirmBody": "\"{name}\" {id} istifadəçisinə göndəriləcək. Göndərdikdən sonra geri almaq olmur.",
+  "@shareConfirmBody": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "id": { "type": "String" }
+    }
+  },
+  "shareSent": "Fayl {id} istifadəçisinə göndərildi",
+  "@shareSent": {
+    "placeholders": {
+      "id": { "type": "String" }
+    }
+  },
+  "shareNeedFile": "Göndərmək üçün fayl seçin",
+  "shareNeedRecipient": "Alıcının ID-sini yazın",
+  "shareInvalidRecipient": "ID \"NP-\" ilə başlayır və 6 hərf və ya rəqəmdən ibarətdir, məsələn NP-7KQ2MX",
+  "sharesTitle": "Paylaşılanlar",
+  "sharesReceived": "Alınanlar",
+  "sharesSent": "Göndərilənlər",
+  "sharesMyId": "Sizin ID-niz",
+  "sharesCopy": "Kopyala",
+  "sharesMyQr": "QR kodum",
+  "sharesQrHint": "Sizə fayl göndərmək istəyən bu kodu NeoPrint tətbiqində oxusun",
+  "sharesQrFailed": "QR kodu yüklənmədi: {reason}",
+  "@sharesQrFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "sharesLoadFailed": "Siyahı yüklənmədi: {reason}",
+  "@sharesLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "sharesReceivedEmpty": "Sizə hələ fayl göndərilməyib",
+  "sharesReceivedEmptyHint": "Fayl almaq üçün ID-nizi və ya QR kodunuzu göndərənə verin",
+  "sharesSentEmpty": "Hələ fayl göndərməmisiniz",
+  "sharesSentEmptyHint": "Faylın menyusunda \"Paylaş\" seçin",
+  "sharesStatusNew": "Yeni",
+  "sharesStatusSaved": "Saxlanılıb",
+  "sharesStatusGone": "Fayl artıq yoxdur",
+  "sharesStatusChanged": "Dəyişdirilib",
+  "sharesStatusWaiting": "Gözləyir",
+  "sharesStatusRecipientSaved": "Alıcı saxlayıb",
+  "sharesStatusYouDeleted": "Siz silmisiniz",
+  "sharesStatusYouChanged": "Siz dəyişmisiniz",
+  "shareFrom": "Göndərən: {id}",
+  "@shareFrom": {
+    "placeholders": {
+      "id": { "type": "String" }
+    }
+  },
+  "shareSave": "Fayllarıma saxla",
+  "shareSaving": "Saxlanılır…",
+  "shareSavedSnack": "Fayllarınıza saxlanıldı",
+  "shareOpen": "Aç",
+  "shareOpenInFiles": "Fayllarımda aç",
+  "shareSensitiveInfo": "Şəxsi sənəd — saxlanılan nüsxə çapdan sonra silinir",
+  "shareGoneBody": "Fayl artıq yoxdur — göndərən onu silib. Lazımdırsa, göndərəndən yenidən göndərməsini istəyin.",
+  "shareChangedBody": "Göndərən faylı göndərdikdən sonra dəyişib, ona görə bu fayl açılmır. Yeni versiyanı yenidən göndərməsini istəyin.",
   "payTitle": "Ödəniş",
   "payTimeLeft": "Ödəniş üçün {time} vaxtınız var",
   "@payTimeLeft": {
