@@ -47,3 +47,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // The document scanner (plan sections 2.0, 2.11): Google ML Kit through
+    // Google Play services - free, from Google itself; docs/THIRD_PARTY.md.
+    implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0")
+}

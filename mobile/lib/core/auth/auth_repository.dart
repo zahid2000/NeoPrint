@@ -156,18 +156,19 @@ final class AuthRepository {
         parse: (_) {},
       );
 
-  /// The documents the signed-in user still has to accept.
-  Future<List<PendingConsent>> pendingConsents({String language = 'az'}) =>
-      _api.send<List<PendingConsent>>(
-        method: 'GET',
-        path: 'api/consents/pending',
-        query: {'lang': language},
-        parse: (data) => (data as List<dynamic>)
-            .map(
-              (item) => PendingConsent.fromJson(item as Map<String, dynamic>),
-            )
-            .toList(),
-      );
+  /// The documents the signed-in user still has to accept; with [scan], the
+  /// scan notice too, which is asked before the first scan (plan section 2.11).
+  Future<List<PendingConsent>> pendingConsents({
+    String language = 'az',
+    bool scan = false,
+  }) => _api.send<List<PendingConsent>>(
+    method: 'GET',
+    path: 'api/consents/pending',
+    query: {'lang': language, if (scan) 'scan': true},
+    parse: (data) => (data as List<dynamic>)
+        .map((item) => PendingConsent.fromJson(item as Map<String, dynamic>))
+        .toList(),
+  );
 
   /// Fetches a legal document.
   Future<String> legalDocument(

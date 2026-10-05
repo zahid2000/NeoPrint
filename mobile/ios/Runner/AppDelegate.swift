@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import VisionKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -20,6 +21,126 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NeoPrintBrowser") {
       BrowserOpener.register(with: registrar)
     }
+
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NeoPrintDocumentScanner") {
+      DocumentScanner.register(with: registrar)
+    }
+  }
+}
+
+/// The document scanner (plan section 2.11): VisionKit finds the page edges,
+/// straightens the perspective and takes several pages in one go. Each page
+/// comes back as a JPEG in the app's temporary directory; the app crops,
+/// filters and sizes it afterwards, uploads it and deletes the file.
+///
+/// Written without a Mac to build it on: compiled and checked on a real
+/// iPhone before the pilot (T-187, docs/MANUAL_TESTS.md MT-08).
+final class DocumentScanner: NSObject, VNDocumentCameraViewControllerDelegate {
+  static let channelName = "az.neoprint/document_scanner"
+
+  /// The scan in progress, kept alive while VisionKit holds only a weak delegate.
+  private static var current: DocumentScanner?
+
+  private var result: FlutterResult?
+  private var pageLimit = 10
+
+  static func register(with registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
+
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "isAvailable":
+        result(VNDocumentCameraViewController.isSupported)
+
+      case "scan":
+        guard VNDocumentCameraViewController.isSupported else {
+          result(FlutterError(code: "UNAVAILABLE", message: "This device cannot scan documents.", details: nil))
+          return
+        }
+
+        guard current == nil else {
+          result(FlutterError(code: "BUSY", message: "A scan is already open.", details: nil))
+          return
+        }
+
+        guard let root = topViewController() else {
+          result(FlutterError(code: "FAILED", message: "There is no screen to show the scanner on.", details: nil))
+          return
+        }
+
+        let requested = ((call.arguments as? [String: Any])?["pageLimit"] as? Int) ?? 10
+        let scanner = DocumentScanner()
+        scanner.result = result
+        scanner.pageLimit = max(1, min(requested, 20))
+        current = scanner
+
+        let controller = VNDocumentCameraViewController()
+        controller.delegate = scanner
+        root.present(controller, animated: true)
+
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private static func topViewController() -> UIViewController? {
+    let window = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .flatMap { $0.windows }
+      .first { $0.isKeyWindow }
+    var top = window?.rootViewController
+
+    while let presented = top?.presentedViewController {
+      top = presented
+    }
+
+    return top
+  }
+
+  func documentCameraViewController(
+    _ controller: VNDocumentCameraViewController,
+    didFinishWith scan: VNDocumentCameraScan
+  ) {
+    let pages = (0..<min(scan.pageCount, pageLimit)).map { scan.imageOfPage(at: $0) }
+    controller.dismiss(animated: true)
+
+    // Encoding a dozen full-size pages takes a moment: off the main thread.
+    DispatchQueue.global(qos: .userInitiated).async {
+      var paths: [String] = []
+
+      for (index, page) in pages.enumerated() {
+        guard let data = page.jpegData(compressionQuality: 0.9) else { continue }
+
+        let output = FileManager.default.temporaryDirectory
+          .appendingPathComponent("scan-\(UUID().uuidString)-\(index).jpg")
+
+        if (try? data.write(to: output)) != nil {
+          paths.append(output.path)
+        }
+      }
+
+      DispatchQueue.main.async { self.finish(paths) }
+    }
+  }
+
+  func documentCameraViewControllerDidCancel(_ controller: VNDocumentCameraViewController) {
+    controller.dismiss(animated: true)
+    finish([String]())
+  }
+
+  func documentCameraViewController(
+    _ controller: VNDocumentCameraViewController,
+    didFailWithError error: Error
+  ) {
+    controller.dismiss(animated: true)
+    finish(FlutterError(code: "FAILED", message: error.localizedDescription, details: nil))
+  }
+
+  private func finish(_ value: Any) {
+    result?(value)
+    result = nil
+    DocumentScanner.current = nil
   }
 }
 

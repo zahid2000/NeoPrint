@@ -22,10 +22,12 @@ import java.util.concurrent.Executors
  */
 class MainActivity : FlutterActivity() {
     private val worker = Executors.newSingleThreadExecutor()
+    private val scanner = DocumentScanner(this, worker)
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         registerBrowser(flutterEngine)
+        scanner.register(flutterEngine.dartExecutor.binaryMessenger)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HEIC_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -79,6 +81,15 @@ class MainActivity : FlutterActivity() {
                     result.success(false)
                 }
             }
+    }
+
+    // The scanner is started with startIntentSenderForResult, whose result
+    // still arrives here on a FlutterActivity.
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (!scanner.onActivityResult(requestCode, resultCode, data)) {
+            super.onActivityResult(requestCode, resultCode, data)
+        }
     }
 
     override fun onDestroy() {

@@ -100,15 +100,21 @@ abstract final class ScanProcessing {
     ScanPageEdit edit, {
     double? widthMm,
     double? heightMm,
-  }) => compute(_processMessage, _Message(source, edit, widthMm, heightMm));
+    int? maxSide,
+  }) => compute(
+    _processMessage,
+    _Message(source, edit, widthMm, heightMm, maxSide),
+  );
 
   /// Applies [edit] and reduces the page to [maxDpi] for a document of
-  /// [widthMm] × [heightMm] (both or neither). Never enlarges.
+  /// [widthMm] × [heightMm] (both or neither), or to [maxSide] pixels on its
+  /// long side for a preview. Never enlarges.
   static ProcessedScanPage process(
     Uint8List source,
     ScanPageEdit edit, {
     double? widthMm,
     double? heightMm,
+    int? maxSide,
   }) {
     img.Image? decoded;
 
@@ -161,6 +167,15 @@ abstract final class ScanProcessing {
       page = _reduce(page, widthMm, heightMm);
     }
 
+    if (maxSide != null && math.max(page.width, page.height) > maxSide) {
+      page = img.copyResize(
+        page,
+        width: page.width >= page.height ? maxSide : null,
+        height: page.width >= page.height ? null : maxSide,
+        interpolation: img.Interpolation.average,
+      );
+    }
+
     return ProcessedScanPage(
       img.encodeJpg(page, quality: _jpegQuality),
       page.width,
@@ -198,12 +213,19 @@ abstract final class ScanProcessing {
 }
 
 final class _Message {
-  const _Message(this.source, this.edit, this.widthMm, this.heightMm);
+  const _Message(
+    this.source,
+    this.edit,
+    this.widthMm,
+    this.heightMm,
+    this.maxSide,
+  );
 
   final Uint8List source;
   final ScanPageEdit edit;
   final double? widthMm;
   final double? heightMm;
+  final int? maxSide;
 }
 
 ProcessedScanPage _processMessage(_Message message) => ScanProcessing.process(
@@ -211,4 +233,5 @@ ProcessedScanPage _processMessage(_Message message) => ScanProcessing.process(
   message.edit,
   widthMm: message.widthMm,
   heightMm: message.heightMm,
+  maxSide: message.maxSide,
 );
