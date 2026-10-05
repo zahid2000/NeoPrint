@@ -20,6 +20,9 @@ public sealed partial class StringsQualityTests
     {
         "NeoPrint", "Email", "PDF", "QR", "PIN", "USB", "OK", "A4", "A3",
         "Azərbaycan", "English", "Русский",
+
+        // The layout editor: a grid and a size are numbers and signs (docs/DESIGN_SYSTEM.md, "Səhifədə yerləşdir").
+        "2 × 2", "×  mm",
     };
 
     [GeneratedRegex(

@@ -172,6 +172,8 @@ Quraşdırma: `KIOSK_SETUP.md` bölmə 4. Sonra:
 | 5 | Gizli admin çıxışı → "Texniki giriş" | `tty1`-də konsol login; `sudo systemctl start neoprint-kiosk` kiosku qaytarır |
 | 6 | `sudo -u neoprint-convert curl -m 5 https://example.com` | Bağlantı rədd olunur (konvertorun şəbəkəsi yoxdur) |
 | 7 | `ls -l /var/lib/neoprint` | Sahiblər `KIOSK_PROVISIONING.md`-dəki kimi (`device` — `kiosk 700`) |
+| 8 | Flaşdan foto → **Səhifədə yerləşdir** (T-180): şəkli iki barmaqla böyüdüb-kiçildin, bir barmaqla sürüşdürün | Şəkil barmaqla birlikdə hərəkət edir, kənar boşluğa və mərkəzə yapışır (nazik xətt görünür); konteyner kioskunda yalnız bir göstərici var, iki barmaq real toxunma ekranında yoxlanır |
+| 9 | Eyni ekranda **Vəsiqə 85,6 × 54 mm** → **8 kart** → **Hazır** → real printerdə çap | Parametrlərdə A4, 100%, vərəqdə 1 səhifə kilidlidir; xətkeşlə hər kart 85,6 × 54 mm (±0,5 mm) |
 
 ## MT-05. Addım 4 — ödəniş və qaytarma, lokal stack (T-099)
 

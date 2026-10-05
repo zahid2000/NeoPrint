@@ -62,6 +62,13 @@ public static class Formats
     public static string Kilobytes(double value, string language)
         => $"{Math.Round(value).ToString("0", CultureInfo.InvariantCulture)}{NoBreakSpace}{(language == "ru" ? "КБ" : "KB")}";
 
+    /// <summary><c>85,6</c> (az, ru) or <c>85.6</c> (en): a length in millimetres, to a hundredth.</summary>
+    public static string Millimetres(double value, string language)
+    {
+        var text = value.ToString("0.##", CultureInfo.InvariantCulture);
+        return language == "en" ? text : text.Replace('.', ',');
+    }
+
     private static string Number(double value, string language)
     {
         var text = value.ToString(value >= 10 ? "0" : "0.#", CultureInfo.InvariantCulture);

@@ -61,6 +61,8 @@ public static class ScreenConverters
 
     public static readonly IValueConverter IsEdit = Stage(FlowStage.Edit);
 
+    public static readonly IValueConverter IsLayout = Stage(FlowStage.Layout);
+
     public static readonly IValueConverter IsOptions = Stage(FlowStage.Options);
 
     public static readonly IValueConverter IsPlaced = Stage(FlowStage.Placed);

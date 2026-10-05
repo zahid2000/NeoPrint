@@ -43,6 +43,9 @@ public enum FlowStage
 
     /// <summary>An order paid in the app, sent to the queue from screen 10.</summary>
     Collected = 13,
+
+    /// <summary>Screen 4a: the picture placed on the paper at a real size (plan section 2.11).</summary>
+    Layout = 14,
 }
 
 /// <summary>A folder or a file on the flash drive.</summary>
@@ -236,7 +239,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
     public ObservableCollection<PageTile> Pages { get; } = [];
 
-    public bool IsFromDrive => _driveRoot is not null && Stage is FlowStage.Preview or FlowStage.Edit or FlowStage.Options or FlowStage.Browse;
+    public bool IsFromDrive => _driveRoot is not null && Stage is FlowStage.Preview or FlowStage.Edit or FlowStage.Layout or FlowStage.Options or FlowStage.Browse;
 
     public bool IsImage => _document?.Format.Group == FormatGroup.Image;
 
@@ -447,6 +450,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         _driveRoot = null;
         _foundJob = null;
         ResetUserQr();
+        ResetLayout();
         Entries.Clear();
         Pages.Clear();
         LargePage = null;
@@ -596,6 +600,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         _orders.Discard(_workFolder);
         _workFolder = _orders.NewWorkFolder();
         _sourcePath = path;
+        ResetLayout();
         FileName = name;
 
         try
@@ -635,6 +640,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(IsImage));
+        OnPropertyChanged(nameof(CanStartLayout));
         OnPropertyChanged(nameof(IsText));
         OnPropertyChanged(nameof(IsPaged));
         OnPropertyChanged(nameof(PageCount));
@@ -726,6 +732,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         _orders.Discard(_workFolder);
         _workFolder = null;
         _document = null;
+        ResetLayout();
 
         if (CurrentFolder is not null)
         {
@@ -1286,7 +1293,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         _step = value switch
         {
             FlowStage.Browse or FlowStage.UserFiles => 0,
-            FlowStage.Preview or FlowStage.Edit => 1,
+            FlowStage.Preview or FlowStage.Edit or FlowStage.Layout => 1,
             FlowStage.Options => 2,
             FlowStage.PaymentMethod or FlowStage.QrPayment or FlowStage.PaymentExpired => 3,
             FlowStage.Placed or FlowStage.Collected => 4,

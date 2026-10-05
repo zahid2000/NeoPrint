@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+             xmlns:v="using:NeoPrint.Kiosk.Views"
              x:Class="NeoPrint.Kiosk.Views.FlowView"
              x:DataType="vm:PrintFlowViewModel">
 
@@ -241,6 +242,81 @@
                             <Button Classes="key" Command="{Binding TypeNewLineCommand}"><TextBlock Text="{Binding EnterKeyText}" /></Button>
                             <Button Classes="key" Command="{Binding TypeBackspaceCommand}"><TextBlock Text="{Binding BackspaceKeyText}" /></Button>
                         </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- ============ Screen 4a: place on a page (plan 2.11; docs/DESIGN_SYSTEM.md, "Səhifədə yerləşdir") ============ -->
+            <Grid ColumnDefinitions="560,*" RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsLayout}}">
+                <Grid.Styles>
+                    <Style Selector="WrapPanel.tools > Button">
+                        <Setter Property="Margin" Value="{DynamicResource KeyGap}" />
+                    </Style>
+                </Grid.Styles>
+
+                <TextBlock Text="{Binding LayoutTitle}" Classes="h1" Margin="{DynamicResource GapBelow4}" />
+                <TextBlock Grid.Row="1" Text="{Binding LayoutHint}" Classes="muted" TextWrapping="Wrap" Margin="{DynamicResource GapBelow4}" />
+
+                <Border Grid.Row="2" Classes="card" Margin="{DynamicResource GapBelow4}">
+                    <v:LayoutCanvas Project="{Binding Layout}" Picture="{Binding LayoutPreview}"
+                                    Selected="{Binding LayoutSelected}" Lines="{Binding LayoutLines}" />
+                </Border>
+
+                <!-- Always takes its line: the canvas must not change size under a moving finger. -->
+                <TextBlock Grid.Row="3" Text="{Binding LayoutSizeText, TargetNullValue=' '}" Classes="h2" HorizontalAlignment="Center" />
+
+                <!-- The tools scroll; the warnings stay below them, outside the canvas column. -->
+                <Grid Grid.Column="1" Grid.RowSpan="4" RowDefinitions="*,Auto" Margin="{DynamicResource GapStart8}">
+                    <ScrollViewer>
+                        <StackPanel>
+                            <TextBlock Text="{Binding LayoutSizeGroup}" Classes="h2" />
+                            <WrapPanel Classes="tools" IsEnabled="{Binding HasLayoutSelection}">
+                                <Button Classes="secondary" Command="{Binding LayoutSizeCommand}" CommandParameter="IdCard"><TextBlock Text="{Binding LayoutSizeIdCardText}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutSizeCommand}" CommandParameter="Photo3x4"><TextBlock Text="{Binding LayoutSizePhoto3x4Text}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutSizeCommand}" CommandParameter="Photo10x15"><TextBlock Text="{Binding LayoutSizePhoto10x15Text}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutSizeCommand}" CommandParameter="A6"><TextBlock Text="{Binding LayoutSizeA6Text}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutSizeCommand}" CommandParameter="A5"><TextBlock Text="{Binding LayoutSizeA5Text}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutSizeCommand}" CommandParameter="Fit"><TextBlock Text="{Binding LayoutSizeFitText}" /></Button>
+                            </WrapPanel>
+
+                            <TextBlock Text="{Binding LayoutTemplateGroup}" Classes="h2" />
+                            <WrapPanel Classes="tools">
+                                <Button Classes="secondary" Command="{Binding LayoutApplyTemplateCommand}" CommandParameter="Grid"><TextBlock Text="{Binding LayoutTemplateGridText}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutApplyTemplateCommand}" CommandParameter="Cards"><TextBlock Text="{Binding LayoutTemplateCardsText}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutApplyTemplateCommand}" CommandParameter="Photos"><TextBlock Text="{Binding LayoutTemplatePhotosText}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutApplyTemplateCommand}" CommandParameter="Centre"><TextBlock Text="{Binding LayoutTemplateCentreText}" /></Button>
+                            </WrapPanel>
+
+                            <TextBlock Text="{Binding LayoutActionGroup}" Classes="h2" />
+                            <WrapPanel Classes="tools" IsEnabled="{Binding HasLayoutSelection}">
+                                <Button Classes="secondary" Command="{Binding LayoutRotateCommand}"><TextBlock Text="{Binding LayoutRotateText}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutBiggerCommand}"><TextBlock Text="{Binding LayoutBiggerText}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutSmallerCommand}"><TextBlock Text="{Binding LayoutSmallerText}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutCentreCommand}"><TextBlock Text="{Binding LayoutCentreText}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutDuplicateCommand}"><TextBlock Text="{Binding LayoutDuplicateText}" /></Button>
+                                <Button Classes="secondary" Command="{Binding LayoutDeleteCommand}" IsVisible="{Binding CanDeleteLayoutPicture}"><TextBlock Text="{Binding LayoutDeleteText}" /></Button>
+                            </WrapPanel>
+
+                            <TextBlock Text="{Binding LayoutPaperGroup}" Classes="h2" />
+                            <WrapPanel Classes="tools">
+                                <Button Classes="choice" Classes.selected="{Binding IsLayoutA4}" Command="{Binding LayoutPaperSizeCommand}" CommandParameter="A4"><TextBlock Text="A4" /></Button>
+                                <Button Classes="choice" Classes.selected="{Binding IsLayoutA3}" Command="{Binding LayoutPaperSizeCommand}" CommandParameter="A3" IsVisible="{Binding CanA3}"><TextBlock Text="A3" /></Button>
+                            </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <StackPanel Grid.Row="1" Spacing="{DynamicResource Space4}">
+                        <Border Classes="warning" IsVisible="{Binding LayoutEdge, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <PathIcon Data="{StaticResource IconWarning}" Width="28" Height="28" Foreground="{DynamicResource Warning500}" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1" Margin="{DynamicResource GapStart4}" Text="{Binding LayoutEdge}" TextWrapping="Wrap" />
+                            </Grid>
+                        </Border>
+                        <Border Classes="error" IsVisible="{Binding LayoutOffPage, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <PathIcon Data="{StaticResource IconError}" Width="28" Height="28" Foreground="{DynamicResource Danger500}" VerticalAlignment="Top" />
+                                <TextBlock Grid.Column="1" Margin="{DynamicResource GapStart4}" Text="{Binding LayoutOffPage}" TextWrapping="Wrap" />
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </Grid>
             </Grid>
@@ -840,9 +916,27 @@
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
                     <TextBlock Text="{Binding BackText}" />
                 </Button>
-                <Button Classes="secondary" Command="{Binding EditCommand}"
-                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
+                <Button Classes="secondary" Command="{Binding EditCommand}">
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsPreview}" />
+                            <Binding Path="CanEditFile" />
+                        </MultiBinding>
+                    </Button.IsVisible>
                     <TextBlock Text="{Binding EditText}" />
+                </Button>
+                <Button Classes="secondary" Command="{Binding StartLayoutCommand}">
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsPreview}" />
+                            <Binding Path="CanStartLayout" />
+                        </MultiBinding>
+                    </Button.IsVisible>
+                    <TextBlock Text="{Binding LayoutStartText}" />
+                </Button>
+                <Button Classes="secondary" Command="{Binding LayoutCancelCommand}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsLayout}}">
+                    <TextBlock Text="{Binding CancelText}" />
                 </Button>
                 <Button Classes="secondary" Command="{Binding CancelEditCommand}"
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsEdit}}">
@@ -881,6 +975,10 @@
                 <Button Classes="primary" Command="{Binding SaveEditCommand}"
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsEdit}}">
                     <TextBlock Text="{Binding SaveText}" Foreground="{DynamicResource Neutral0}" />
+                </Button>
+                <Button Classes="primary" Command="{Binding LayoutDoneCommand}" IsEnabled="{Binding CanFinishLayout}"
+                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsLayout}}">
+                    <TextBlock Text="{Binding LayoutDoneText}" Foreground="{DynamicResource Neutral0}" />
                 </Button>
                 <Button Classes="primary" Command="{Binding PlaceCommand}" IsEnabled="{Binding CanPlace}"
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsOptions}}">
