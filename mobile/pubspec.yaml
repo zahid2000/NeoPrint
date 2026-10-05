@@ -60,6 +60,11 @@ dependencies:
   firebase_core: 4.15.0
   firebase_messaging: 16.7.0
 
+  # A scan's pages after the scanner: crop, turn, filter, brightness, and the
+  # JPEG at 300 dpi for the real size (MIT; plan sections 2.0, 2.11). Pure
+  # Dart, run off the UI thread.
+  image: 4.10.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
