@@ -224,17 +224,18 @@ class _DocumentScanScreenState extends ConsumerState<DocumentScanScreen> {
         ),
     };
 
-    final changed = await Navigator.of(context).push<LayoutProject>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => LayoutEditorScreen(
-          initial: layout,
-          pictures: pictures,
-          images: previews,
-          mode: LayoutEditorMode.scan,
-        ),
-      ),
-    );
+    final changed = await Navigator.of(context, rootNavigator: true)
+        .push<LayoutProject>(
+          MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (_) => LayoutEditorScreen(
+              initial: layout,
+              pictures: pictures,
+              images: previews,
+              mode: LayoutEditorMode.scan,
+            ),
+          ),
+        );
 
     if (changed != null && mounted) {
       setState(() => _custom = changed);

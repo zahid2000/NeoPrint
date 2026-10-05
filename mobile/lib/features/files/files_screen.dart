@@ -170,9 +170,10 @@ class FilesScreen extends ConsumerWidget {
 
     switch (choice) {
       case _Source.layout:
-        final sources = await Navigator.of(context).push<List<LayoutSource>>(
-          MaterialPageRoute(builder: (_) => const LayoutSourcesScreen()),
-        );
+        final sources = await Navigator.of(context, rootNavigator: true)
+            .push<List<LayoutSource>>(
+              MaterialPageRoute(builder: (_) => const LayoutSourcesScreen()),
+            );
         if (sources != null && sources.isNotEmpty && context.mounted) {
           await openNewLayout(context, ref, sources);
         }

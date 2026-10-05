@@ -47,7 +47,7 @@ Future<void> openNewLayout(
 ) async {
   final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
-  final navigator = Navigator.of(context);
+  final navigator = Navigator.of(context, rootNavigator: true);
   final files = ref.read(filesRepositoryProvider);
 
   final loaded = await _withProgress(context, () async {
@@ -59,20 +59,21 @@ Future<void> openNewLayout(
         960,
       );
     }
-    return images;
+    final pictures = {
+      for (final source in sources)
+        source.name: EditorPicture(
+          name: source.name,
+          aspect: await _aspect(images[source.name]!),
+        ),
+    };
+    return (images, pictures);
   });
 
   if (loaded == null || !context.mounted) {
     return;
   }
 
-  final pictures = {
-    for (final source in sources)
-      source.name: EditorPicture(
-        name: source.name,
-        aspect: await _aspect(loaded[source.name]!),
-      ),
-  };
+  final (images, pictures) = loaded;
 
   var project = const LayoutProject(marginMm: 10, pages: [LayoutPage([])]);
   for (final source in sources) {
@@ -85,7 +86,7 @@ Future<void> openNewLayout(
       builder: (_) => LayoutEditorScreen(
         initial: project,
         pictures: pictures,
-        images: loaded,
+        images: images,
         mode: LayoutEditorMode.newFile,
         title: sources.length == 1 ? _stem(sources.single.file.fileName) : null,
       ),
@@ -105,7 +106,7 @@ Future<void> openLayoutFile(
 ) async {
   final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
-  final navigator = Navigator.of(context);
+  final navigator = Navigator.of(context, rootNavigator: true);
   final repository = ref.read(layoutRepositoryProvider);
 
   final loaded = await _withProgress(context, () async {
@@ -114,18 +115,18 @@ Future<void> openLayoutFile(
       for (final name in opened.assets)
         name: await repository.asset(file.id, name),
     };
-    return (opened.project, images);
+    final pictures = {
+      for (final MapEntry(key: name, value: bytes) in images.entries)
+        name: EditorPicture(name: name, aspect: await _aspect(bytes)),
+    };
+    return (opened.project, images, pictures);
   });
 
   if (loaded == null || !context.mounted) {
     return;
   }
 
-  final (project, images) = loaded;
-  final pictures = {
-    for (final MapEntry(key: name, value: bytes) in images.entries)
-      name: EditorPicture(name: name, aspect: await _aspect(bytes)),
-  };
+  final (project, images, pictures) = loaded;
 
   final saved = await navigator.push<UserFile>(
     MaterialPageRoute(
@@ -168,17 +169,25 @@ Future<T?> _withProgress<T>(
       SnackBar(content: Text(l10n.layoutOpenFailed(apiErrorText(l10n, error)))),
     );
     return null;
+  } on Exception {
+    // A picture the phone could not decode: say so rather than nothing.
+    messenger.showSnackBar(
+      SnackBar(content: Text(l10n.layoutOpenFailed(l10n.errorServer))),
+    );
+    return null;
   } finally {
     navigator.pop();
   }
 }
 
+/// Width over height of an encoded picture. Through a codec, which the web
+/// build has too (ui.ImageDescriptor is not implemented there).
 Future<double> _aspect(Uint8List bytes) async {
-  final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-  final descriptor = await ui.ImageDescriptor.encoded(buffer);
-  final aspect = descriptor.width / descriptor.height;
-  descriptor.dispose();
-  buffer.dispose();
+  final codec = await ui.instantiateImageCodec(bytes);
+  final image = (await codec.getNextFrame()).image;
+  final aspect = image.width / image.height;
+  image.dispose();
+  codec.dispose();
   return aspect;
 }
 

@@ -301,6 +301,7 @@ real ölçü (PDF-də 85.69 × 54.02 mm, `docs/screenshots/step-6/m2-*`, `m3-*`)
 | 2 | **Sənəd skanı** (yeni hesab) | "Şəxsi sənədlərin skanı" vərəqi admin paneldə dərc olunmuş mətnlə; **İndi yox** — skaner açılmır, Fayllarım-a qayıdış |
 | 3 | Yenidən **Sənəd skanı** → **Qəbul edirəm** | ML Kit skaneri açılır (kamera görüntüsü, kənarlar avtomatik çərçivələnir). Admin → İstifadəçilər → hesab → Razılıqlar: `ScanNotice 0.1-draft` |
 | 4 | Kartın **ön** üzünü, sonra **arxa** üzünü skan edin → skanerdə **Yadda saxla / Save** | "Skanı hazırla" ekranı: "Səhifə 1", "Səhifə 2"; sənəd tipi "Şəxsiyyət vəsiqəsi / bank kartı" seçili; "Həssas sənəd" açıq və deaktiv ("Şəxsi sənəd — həmişə həssas"); yerləşmə **"Vəsiqə ön + arxa"**, A4 önizləməsində iki kart üst-alt, mərkəzdə |
+| 5a | Önizləmənin altında **Düzəliş et** → kartı sürüşdürün, **Hazır** | Yerləşmə chip-ləri "Öz yerləşməm" olur, önizləmə dəyişikliyi göstərir; saxlanan PDF də belədir |
 | 5 | Səhifə 1-ə toxunun → küncləri sürüşdürüb kəsin, **Fırlat**, filtr **Ağ-qara**, parlaqlıq +30 → **Hazır** | Redaktorda dəyişiklik dərhal görünür; qayıdanda kiçik şəkil və A4 önizləməsi yenilənir. Fırlatdıqdan sonra kart A4-də dik dayanır (54 × 85.6) |
 | 6 | **Səhifə əlavə et** → üçüncü səhifə → zibil qabı ilə silin | Səhifə sayı 3 → 2; yerləşmə yenə "Vəsiqə ön + arxa" |
 | 7 | Sənəd tipini **Xüsusi ölçü** edin, en 0 yazın | "1 ilə 1000 mm arasında yazın", **Yadda saxla** deaktiv; düzgün ölçüdən sonra aktiv. Sonra tipi yenidən vəsiqəyə qaytarın |
