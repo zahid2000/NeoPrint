@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -14,6 +15,9 @@ import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_primary_button.dart';
 import '../files/files_controller.dart';
+import '../layout/layout_editing.dart';
+import '../layout/layout_editor_screen.dart';
+import '../layout/layout_model.dart';
 import '../layout/layout_preview.dart';
 import '../layout/layout_templates.dart';
 import 'document_scanner.dart';
@@ -55,6 +59,10 @@ class _DocumentScanScreenState extends ConsumerState<DocumentScanScreen> {
   bool _sensitiveChosen = false;
   ScanArrangement _arrangement = ScanArrangement.onePerPage;
   bool _arrangementChosen = false;
+
+  /// The arrangement as changed in the editor ("Düzəliş et"); dropped when the
+  /// pages, the type or the template change underneath it.
+  LayoutProject? _custom;
   final _customWidth = TextEditingController();
   final _customHeight = TextEditingController();
   final _name = TextEditingController();
@@ -131,6 +139,7 @@ class _DocumentScanScreenState extends ConsumerState<DocumentScanScreen> {
       if (mounted) {
         setState(() {
           _error = null;
+          _custom = null;
           if (!_arrangementChosen) {
             _arrangement = ScanArrangement.forType(_type, _pages.length).first;
           }
@@ -172,7 +181,10 @@ class _DocumentScanScreenState extends ConsumerState<DocumentScanScreen> {
     final edit = await editScanPage(context, _pages[index], index + 1);
 
     if (edit != null && mounted) {
-      setState(() => _pages[index] = _pages[index].copyWith(edit: edit));
+      setState(() {
+        _pages[index] = _pages[index].copyWith(edit: edit);
+        _custom = null;
+      });
       unawaited(_refreshPreview(_pages[index]));
     }
   }
@@ -183,6 +195,7 @@ class _DocumentScanScreenState extends ConsumerState<DocumentScanScreen> {
     unawaited(_deleteQuietly(page.path));
 
     setState(() {
+      _custom = null;
       if (!_arrangementChosen ||
           !ScanArrangement.forType(
             _type,
@@ -193,8 +206,44 @@ class _DocumentScanScreenState extends ConsumerState<DocumentScanScreen> {
     });
   }
 
+  /// Opens the arrangement in the layout editor; "Hazır" brings it back here.
+  Future<void> _adjust(
+    LayoutProject layout,
+    Map<String, Uint8List> previews,
+  ) async {
+    final type = _effectiveType;
+    final long = math.max(type.widthMm!, type.heightMm!);
+    final short = math.min(type.widthMm!, type.heightMm!);
+    final pictures = {
+      for (final (index, page) in _pages.indexed)
+        scanPageName(index): EditorPicture(
+          name: scanPageName(index),
+          aspect: page.editedAspect,
+          realWidthMm: page.editedAspect >= 1 ? long : short,
+          realHeightMm: page.editedAspect >= 1 ? short : long,
+        ),
+    };
+
+    final changed = await Navigator.of(context).push<LayoutProject>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => LayoutEditorScreen(
+          initial: layout,
+          pictures: pictures,
+          images: previews,
+          mode: LayoutEditorMode.scan,
+        ),
+      ),
+    );
+
+    if (changed != null && mounted) {
+      setState(() => _custom = changed);
+    }
+  }
+
   void _chooseType(ScanType type) => setState(() {
     _type = type;
+    _custom = null;
     _nameFromType();
     final choices = ScanArrangement.forType(type, _pages.length);
     if (!choices.contains(_arrangement) || !_arrangementChosen) {
@@ -264,7 +313,7 @@ class _DocumentScanScreenState extends ConsumerState<DocumentScanScreen> {
           .read(scannerRepositoryProvider)
           .save(
             pages: images,
-            layout: scanLayout(_pages, type, _arrangement),
+            layout: _custom ?? scanLayout(_pages, type, _arrangement),
             documentType: type.wire,
             widthMm: type.isCustom ? type.widthMm : null,
             heightMm: type.isCustom ? type.heightMm : null,
@@ -347,7 +396,7 @@ class _DocumentScanScreenState extends ConsumerState<DocumentScanScreen> {
         _previews.length == _pages.length;
     final layout = _pages.isEmpty || !type.isValid
         ? null
-        : scanLayout(_pages, type, _arrangement);
+        : _custom ?? scanLayout(_pages, type, _arrangement);
     final previews = {
       for (final (index, page) in _pages.indexed)
         if (_previews[page.path] case final bytes?) scanPageName(index): bytes,
@@ -475,11 +524,18 @@ class _DocumentScanScreenState extends ConsumerState<DocumentScanScreen> {
               for (final value in ScanArrangement.forType(type, _pages.length))
                 ChoiceChip(
                   label: Text(_arrangementLabel(l10n, value)),
-                  selected: _arrangement == value,
+                  selected: _custom == null && _arrangement == value,
                   onSelected: (_) => setState(() {
                     _arrangement = value;
                     _arrangementChosen = true;
+                    _custom = null;
                   }),
+                ),
+              if (_custom != null)
+                ChoiceChip(
+                  label: Text(l10n.docScanArrangeCustom),
+                  selected: true,
+                  onSelected: (_) {},
                 ),
             ],
           ),
@@ -509,6 +565,17 @@ class _DocumentScanScreenState extends ConsumerState<DocumentScanScreen> {
                     ),
                   ],
                 ),
+              ),
+            ),
+            const SizedBox(height: Spacing.x2),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: _previews.length == _pages.length
+                    ? () => unawaited(_adjust(layout, previews))
+                    : null,
+                icon: const Icon(Icons.tune),
+                label: Text(l10n.docScanEditLayout),
               ),
             ),
           ],

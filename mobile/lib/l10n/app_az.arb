@@ -211,6 +211,66 @@
   "docScanBrightness": "Parlaqlıq",
   "docScanEditReset": "Sıfırla",
   "docScanEditDone": "Hazır",
+  "docScanEditLayout": "Düzəliş et",
+  "docScanArrangeCustom": "Öz yerləşməm",
+  "filesPlaceOnPage": "Səhifədə yerləşdir",
+  "filesEditLayout": "Tərtibatı redaktə et",
+  "filesNewLayout": "Yeni tərtibat",
+  "filesNewLayoutHint": "Şəkilləri və PDF səhifələrini bir vərəqdə yerləşdirin",
+  "layoutTitle": "Tərtibat",
+  "layoutTemplate": "Şablon",
+  "layoutPaper": "Kağız",
+  "layoutPortrait": "Portret",
+  "layoutLandscape": "Landşaft",
+  "layoutMargin": "Kənar boşluq: {mm} mm",
+  "@layoutMargin": {
+    "placeholders": {
+      "mm": { "type": "int" }
+    }
+  },
+  "layoutRotate90": "90°",
+  "layoutRealSize": "Real ölçü",
+  "layoutRatio": "Nisbət",
+  "layoutDuplicate": "Dublikat",
+  "layoutToFront": "Ön plan",
+  "layoutToBack": "Arxa plan",
+  "layoutCentre": "Ortala",
+  "layoutDelete": "Sil",
+  "layoutEdgeWarning": "Şəklin bir hissəsi printerin çatmadığı kənara düşür — çapda kəsilə bilər.",
+  "layoutOffPage": "Şəkillərdən biri kağızdan kənardadır və çap olunmazdı, ona görə tərtibat belə saxlanılmır. Onu kağızın üzərinə çəkin.",
+  "layoutDone": "Hazır",
+  "layoutSave": "Yadda saxla",
+  "layoutSaving": "Hazırlanır…",
+  "layoutSaved": "Tərtibat saxlanıldı",
+  "layoutSaveFailed": "Tərtibat saxlanılmadı. {reason}",
+  "@layoutSaveFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "layoutOpenFailed": "Tərtibat açılmadı. {reason}",
+  "@layoutOpenFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "layoutNameTitle": "Tərtibatın adı",
+  "layoutUnsavedTitle": "Dəyişikliklər saxlanılmayıb",
+  "layoutUnsavedBody": "Çıxsanız etdiyiniz dəyişikliklər itəcək.",
+  "layoutUnsavedLeave": "Çıx",
+  "layoutUnsavedStay": "Qal",
+  "layoutPageOf": "Səhifə {n} / {total}",
+  "@layoutPageOf": {
+    "placeholders": {
+      "n": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "layoutPickTitle": "Tərtibat üçün fayllar",
+  "layoutPickContinue": "Davam et",
+  "layoutPickPage": "Səhifə",
+  "layoutPickEmpty": "Tərtibat üçün hazır fayl yoxdur",
+  "layoutPickEmptyHint": "Əvvəl şəkil və ya PDF yükləyin; saxlanılmış skanlar tərtibata əlavə olunmur.",
   "filesEmpty": "Hələ faylınız yoxdur.",
   "filesEmptyHint": "Yüklədiyiniz fayllar burada saxlanılır və istənilən kioskda çap oluna bilər.",
   "filesLoadFailed": "Fayllar göstərilə bilmir.",

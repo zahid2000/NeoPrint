@@ -19,6 +19,7 @@ import 'file_models.dart';
 import 'files_controller.dart';
 import 'heic_converter.dart';
 import 'auto_delete_sheet.dart';
+import '../layout/layout_launcher.dart';
 import '../scanner/document_scanner.dart';
 import '../scanner/document_scan_screen.dart';
 
@@ -119,33 +120,44 @@ class FilesScreen extends ConsumerWidget {
     final choice = await showModalBottomSheet<_Source>(
       context: context,
       showDragHandle: true,
+      // Four ways in: scrollable, so a small or turned phone still reaches all.
+      isScrollControlled: true,
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.folder_open_outlined),
-              title: Text(l10n.filesPickFile),
-              subtitle: Text(l10n.filesPickFileHint),
-              onTap: () => Navigator.pop(context, _Source.file),
-            ),
-            if (!kIsWeb)
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               ListTile(
-                leading: const Icon(Icons.photo_camera_outlined),
-                title: Text(l10n.filesTakePhoto),
-                subtitle: Text(l10n.filesTakePhotoHint),
-                onTap: () => Navigator.pop(context, _Source.camera),
+                leading: const Icon(Icons.folder_open_outlined),
+                title: Text(l10n.filesPickFile),
+                subtitle: Text(l10n.filesPickFileHint),
+                onTap: () => Navigator.pop(context, _Source.file),
               ),
-            // The phone scanner (plan section 2.11): not on the web.
-            if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
+              if (!kIsWeb)
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_outlined),
+                  title: Text(l10n.filesTakePhoto),
+                  subtitle: Text(l10n.filesTakePhotoHint),
+                  onTap: () => Navigator.pop(context, _Source.camera),
+                ),
+              // The phone scanner (plan section 2.11): not on the web.
+              if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
+                ListTile(
+                  leading: const Icon(Icons.document_scanner_outlined),
+                  title: Text(l10n.filesScanDocument),
+                  subtitle: Text(l10n.filesScanDocumentHint),
+                  onTap: () => Navigator.pop(context, _Source.scan),
+                ),
+              // Pictures and PDF pages on one sheet (plan section 2.11).
               ListTile(
-                leading: const Icon(Icons.document_scanner_outlined),
-                title: Text(l10n.filesScanDocument),
-                subtitle: Text(l10n.filesScanDocumentHint),
-                onTap: () => Navigator.pop(context, _Source.scan),
+                leading: const Icon(Icons.dashboard_customize_outlined),
+                title: Text(l10n.filesNewLayout),
+                subtitle: Text(l10n.filesNewLayoutHint),
+                onTap: () => Navigator.pop(context, _Source.layout),
               ),
-            const SizedBox(height: Spacing.x4),
-          ],
+              const SizedBox(height: Spacing.x4),
+            ],
+          ),
         ),
       ),
     );
@@ -157,6 +169,13 @@ class FilesScreen extends ConsumerWidget {
     final controller = ref.read(filesControllerProvider.notifier);
 
     switch (choice) {
+      case _Source.layout:
+        final sources = await Navigator.of(context).push<List<LayoutSource>>(
+          MaterialPageRoute(builder: (_) => const LayoutSourcesScreen()),
+        );
+        if (sources != null && sources.isNotEmpty && context.mounted) {
+          await openNewLayout(context, ref, sources);
+        }
       case _Source.scan:
         final outcome = await context.push<ScanOutcome>(Routes.filesScanner);
         if (!context.mounted) {
@@ -222,7 +241,7 @@ class FilesScreen extends ConsumerWidget {
   }
 }
 
-enum _Source { file, camera, scan }
+enum _Source { file, camera, scan, layout }
 
 /// A file on the list: name, what it is, where it came from, and its state.
 class _FileCard extends ConsumerWidget {
@@ -330,10 +349,39 @@ class _FileCard extends ConsumerWidget {
                 onSelected: (choice) => switch (choice) {
                   'prepare' => context.push(Routes.prepare, extra: file),
                   'schedule' => context.push(Routes.scheduleNew, extra: file),
+                  'placeOnPage' => openNewLayout(context, ref, [
+                    LayoutSource(file),
+                  ]),
+                  'editLayout' => openLayoutFile(context, ref, file),
                   'autoDelete' => showAutoDeleteSheet(context, file),
                   _ => _delete(context, ref),
                 },
                 itemBuilder: (_) => [
+                  if (file.hasLayout && file.status == FileStatus.ready)
+                    PopupMenuItem(
+                      value: 'editLayout',
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.edit_outlined,
+                          color: tokens.brand500,
+                        ),
+                        title: Text(l10n.filesEditLayout),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  if (canUseInLayout(file) &&
+                      layoutImageExtensions.contains(file.extension))
+                    PopupMenuItem(
+                      value: 'placeOnPage',
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.dashboard_customize_outlined,
+                          color: tokens.brand500,
+                        ),
+                        title: Text(l10n.filesPlaceOnPage),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
                   if (Readiness.personalQr &&
                       flags.isOn(FeatureKey.userQrPrint) &&
                       file.status == FileStatus.ready)
