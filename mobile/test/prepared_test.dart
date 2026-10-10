@@ -329,7 +329,7 @@ void main() {
               options: const OrderOptions(),
               kioskCode: 'KSK-9002',
               amount: 0.30,
-              collectBy: DateTime(2026, 10, 10, 12),
+              collectBy: DateTime(2030, 10, 10, 12),
             ),
           ];
         await tester.pumpWidget(app(const PreparedListScreen(), prepared));
@@ -340,7 +340,7 @@ void main() {
           find.text('KSK-9002 kioskunda · ${money(0.30)}'),
           findsOneWidget,
         );
-        expect(find.textContaining('10.10.2026'), findsOneWidget);
+        expect(find.textContaining('10.10.2030'), findsOneWidget);
 
         await tester.tap(find.byType(PopupMenuButton<String>));
         await tester.pumpAndSettle();
