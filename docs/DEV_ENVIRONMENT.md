@@ -1128,6 +1128,37 @@ göndərmə bağlanır).
 
 ---
 
+## 7l. Addım 6 — referral (T-182)
+
+Yeni kod üçün: `docker compose up --remove-orphans -d --build api`. Tənzimləmələr (Admin → Tənzimləmələr):
+`Referral.BonusPages` (10), `Referral.InviteeBonusPages` (0), `Referral.MaxRewardsPerMonth` (20; 0 = limitsiz),
+`Referral.MaxBonusPagesPerJob` (5).
+
+1. Dəvət edənin kodu: `GET /api/referrals/me` (`code`, `link`, statistika), QR — `GET /api/referrals/me/qr.png`.
+
+   ```bash
+   T=$(curl -s -X POST http://localhost:5080/api/auth/login -H "Content-Type: application/json" \
+     -d '{"email":"dev-user@neoprint.local","password":"DevTest!2026","deviceId":"dev-shell"}' | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
+   curl -s http://localhost:5080/api/referrals/me -H "Authorization: Bearer $T"
+   ```
+
+2. Yeni hesab bu kodla qeydiyyatdan keçir (tətbiqdə qeydiyyat ekranı, kod sahəsi; təsdiq kodu Mailpit-də) — **başqa
+   cihazdan / brauzer profilindən**: dəvət edənin cihazı ilə eyni `deviceId` olsa bonus yazılmır (`Hold = SameDevice`).
+3. Yeni hesab **pulla** (balans / kart; yalnız bonus səhifə sayılmır) bir çap ödəyir və kiosk onu çap edir — məsələn
+   **Çapı planla** → kiosk `KSK-9002` (konteyner kiosku işləməlidir, bölmə 7j) → kartla ödə → **Çapa ver**.
+4. Çap `Completed` olan kimi dəvət edənin balansında +`Referral.BonusPages` bonus səhifə və "Dəvət bonusu qazandınız"
+   bildirişi; `GET /api/referrals/me`-də `rewarded` artır. Vəziyyəti bazada görmək:
+
+   ```bash
+   docker exec neoprint-mongo mongosh -u neoprint -p devMongoPassword --authenticationDatabase admin neoprint --quiet \
+     --eval 'db.referrals.find({}, {Status:1, Hold:1, QualifiedAt:1, InviterBonusPages:1}).sort({CreatedAt:-1}).limit(5).forEach(printjson)'
+   ```
+
+   `Status: "Registered"` + `Hold` (`SameDevice` / `MonthlyLimit` / `InviterInactive`) — ilk ödənişli çap oldu, amma bonus
+   yazılmadı; `QualifiedAt` yoxdursa ilk ödənişli çap hələ gözlənilir.
+
+---
+
 ## 8. Build, test, lint
 
 ```bash

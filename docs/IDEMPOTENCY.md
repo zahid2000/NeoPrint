@@ -58,7 +58,7 @@ Heç bir retry aşağıdakı vəziyyətləri yarada bilməz:
 -   double refund
 -   double wallet credit
 -   double fiscal receipt
--   double referral reward
+-   double referral reward (dəvət bir dəfə həll olunur — `Referral.QualifiedAt`; bonus ledger sətirlərinin dedup açarı `referral:{id}:inviter` / `referral:{id}:invitee`)
 
 ## Concurrency
 

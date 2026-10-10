@@ -1677,6 +1677,25 @@ ilə yaranır. Kolleksiya `file_shares`.
 
 ---
 
+## Referral (`/api/referrals`, `User` token, Addım 6)
+
+Plan 2.6, 6; qərarlar `DECISIONS.md` (2026-10-05, referral qaydaları və texniki model).
+
+- Qeydiyyat: `POST /api/auth/register` `referralCode` (böyük-kiçik hərf fərqi yoxdur). Naməlum kod qeydiyyatı dayandırmır, sadəcə
+  dəvət yaranmır; `referral` flag-i söndürülübsə kod nəzərə alınmır. Uyğun kodla `referrals`-da `Registered` qeyd yaranır.
+- Mükafat: `PrintJobCompleted` → `ReferralRewardConsumer`. Dəvət olunanın pulla ödənmiş (balans / kart / bank, `Parts.Money > 0`)
+  ilk `Completed` job-u dəvəti bir dəfə həll edir: dəvət edənə `Referral.BonusPages`, dəvət olunana `Referral.InviteeBonusPages`
+  (ledger `Bonus`, dedup `referral:{id}:inviter|invitee`). Yalnız bonus səhifə / 100% promokodla ödənən job sayılmır. Mane olan
+  hallar (bonus yazılmır, qeyd `Registered` qalır): eyni cihaz (dəvət edənin cihazı və ya artıq mükafatlanmış başqa dəvət olunanın
+  cihazı), `Referral.MaxRewardsPerMonth` (20; 0 = limitsiz, təqvim ayı UTC), dəvət edən bloklanıb / silinib. Sonra
+  `ReferralQualified` hadisəsi → `ReferralRewarded` bildirişi (dəvət edənə `neoprint://referral`, bonus aldısa dəvət olunana
+  `neoprint://wallet`).
+- `GET /me` → `{ code, link, invited, rewarded, waiting, bonusPagesEarned, bonusPagesPerInvite, inviteeBonusPages }`;
+  `link` = `https://neoprint.az/r/{code}`; `waiting` — ilk ödənişli çapı hələ olmayanlar.
+- `GET /me/qr.png` — linkin QR-ı (backend QRCoder).
+
+---
+
 ## Bildirişlər və push (`User` token, Addım 5)
 
 Plan 6, 8.2, 8.4; qərarlar `DECISIONS.md` (T-146). Başlıq və mətn serverdə mesaj açarı + arqumentlər kimi saxlanır,
@@ -1702,7 +1721,7 @@ oxuyanın dilində yazılır: siyahı `Accept-Language` ilə, push cihazın qeyd
 | `RefundCompleted` | Pul qaytarıldı (planlanmış çapın ləğvi istisna) | `neoprint://wallet` |
 | `JobInterruptedRefundOffer`, `KioskOutOfServiceRefundOffer` | Addım 7 (kiosk dayananda) | — |
 | `FileShared` | Başqa istifadəçi fayl göndərdi (`{from}` — onun `NP-` id-si, `{name}`) | `neoprint://shares` |
-| `ReferralRewarded` | Addım 6 (M8) | — |
+| `ReferralRewarded` | Dəvət mükafatlandı: dəvət edənə (`{pages}`), bonus aldısa dəvət olunana | `neoprint://referral` / `neoprint://wallet` |
 | `ExportReady`, `FileAutoDeleted` | Addım 5 / M6 (T-147) | — |
 
 ---

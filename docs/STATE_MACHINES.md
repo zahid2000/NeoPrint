@@ -162,6 +162,16 @@ Rollback:
 
 `PendingPayment` — planlama yaradılıb, onun job-u hələ ödənilməyib. Ödəniş gəlməsə (intent bitir) job `Expired` olur və planlama `Cancelled` olur, istifadəçinin siyahısında görünmür. Sifarişin özü `Source=Scheduled` job-dur. Bu job ödənişdən sonra `Paid` qalır (`HeldForUser`) və "Çapa ver" ilə `Paid → Queued` keçidini edir. Ləğv və `Expired` zamanı job ləğv olunur (`Paid → Cancelled`), pul balansa `RefundReason.ScheduleCancel` ilə qayıdır. Job başqa yolla ləğv olunsa (admin), planlama da `Cancelled` olur.
 
+## Referral
+
+`Registered → Rewarded`
+
+Dəvət olunan referral kodu ilə qeydiyyatdan keçəndə `Registered` yaranır (bir dəvət olunana bir qeyd, `InviteeId` unikal). Dəvət
+olunanın **ilk pulla ödənmiş** (`Parts.Money > 0`) `Completed` job-u onu **bir dəfə həll edir** (`QualifiedAt`, `QualifyingJobId`):
+heç nə mane olmursa `Rewarded` (bonuslar həmin an yazılır), mane olursa `Registered` qalır və `Hold` səbəbi yazılır —
+`SameDevice`, `MonthlyLimit`, `InviterInactive`. Həll olunmuş qeyd bir daha dəyişmir; job sonradan refund olunsa da bonus geri
+alınmır (`DECISIONS.md` 2026-10-05).
+
 ## Qaydalar
 
 - İcazəsiz state transition mümkün olmamalıdır.

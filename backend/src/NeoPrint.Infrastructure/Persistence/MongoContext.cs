@@ -133,6 +133,8 @@ public sealed class MongoContext
 
     public MongoSet<Domain.Sharing.Share> Shares => Set<Domain.Sharing.Share>("file_shares");
 
+    public MongoSet<Domain.Referrals.Referral> Referrals => Set<Domain.Referrals.Referral>("referrals");
+
     public MongoSet<Domain.Schedules.ScheduledPrint> ScheduledPrints => Set<Domain.Schedules.ScheduledPrint>("scheduled_prints");
     public MongoSet<Domain.Notifications.Notification> Notifications => Set<Domain.Notifications.Notification>("notifications");
     public MongoSet<Domain.Privacy.DataExport> DataExports => Set<Domain.Privacy.DataExport>("data_exports");
@@ -231,7 +233,9 @@ public sealed class MongoContext
             (Builders<User>.IndexKeys.Ascending(user => user.PublicId), Unique("ux_users_public_id")),
             (Builders<User>.IndexKeys.Ascending(user => user.ReferralCode), Unique("ux_users_referral_code")),
             // A push token is taken off whichever account has it (sign-in elsewhere, FCM forgot it).
-            (Builders<User>.IndexKeys.Ascending("FcmTokens.Token"), Named("ix_users_push_token")));
+            (Builders<User>.IndexKeys.Ascending("FcmTokens.Token"), Named("ix_users_push_token")),
+            // The referral check: another account on the same device (plan section 2.6).
+            (Builders<User>.IndexKeys.Ascending(user => user.DeviceIds), Named("ix_users_device_ids")));
 
         await CreateAsync(EmailConfirmations,
             (Builders<EmailConfirmation>.IndexKeys.Ascending(c => c.UserId), Named("ix_email_confirmations_user")),
@@ -470,6 +474,12 @@ public sealed class MongoContext
                 Named("ix_file_shares_to_created")),
             (Builders<Domain.Sharing.Share>.IndexKeys.Ascending(s => s.FileId).Ascending(s => s.ToUserId),
                 Named("ix_file_shares_file_to")));
+
+        // One invitation per invitee; the inviter's numbers and monthly limit (plan section 2.6).
+        await CreateAsync(Referrals,
+            (Builders<Domain.Referrals.Referral>.IndexKeys.Ascending(r => r.InviteeId), Unique("ux_referrals_invitee")),
+            (Builders<Domain.Referrals.Referral>.IndexKeys.Ascending(r => r.InviterId).Ascending(r => r.Status).Ascending(r => r.RewardedAt),
+                Named("ix_referrals_inviter_status_rewarded")));
 
         await CreateAsync(ScheduledPrints,
             // One schedule per order: the payment and cancellation events find it by its job.

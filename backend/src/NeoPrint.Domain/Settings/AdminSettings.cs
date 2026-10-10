@@ -66,6 +66,7 @@ public static class SettingKeys
     public const string ReferralBonusPages = "Referral.BonusPages";
     public const string ReferralInviteeBonusPages = "Referral.InviteeBonusPages";
     public const string ReferralMaxBonusPagesPerJob = "Referral.MaxBonusPagesPerJob";
+    public const string ReferralMaxRewardsPerMonth = "Referral.MaxRewardsPerMonth";
     public const string RefundVoucherValidDays = "Refund.VoucherValidDays";
     public const string RefundProviderMaxAttempts = "Refund.ProviderMaxAttempts";
     public const string JobSuspectedAfterMinutes = "Job.SuspectedAfterMinutes";
@@ -160,6 +161,7 @@ public static class SettingKeys
         new(ReferralBonusPages, "10", SettingValueType.Integer, "Dəvət edənə verilən bonus səhifə"),
         new(ReferralInviteeBonusPages, "0", SettingValueType.Integer, "Dəvət olunana verilən bonus"),
         new(ReferralMaxBonusPagesPerJob, "5", SettingValueType.Integer, "Bir çapda maksimum bonus səhifə"),
+        new(ReferralMaxRewardsPerMonth, "20", SettingValueType.Integer, "Bir dəvət edənin bir təqvim ayında (UTC) ala biləcəyi maksimum referral mükafatı; 0 = limitsiz"),
         new(RefundVoucherValidDays, "90", SettingValueType.Integer, "Anonim refund voucher-in etibarlılığı"),
         new(RefundProviderMaxAttempts, "3", SettingValueType.Integer, "Bank/kart refund-unun təkrar cəhd sayı"),
         new(JobSuspectedAfterMinutes, "15", SettingValueType.Integer, "Kioskdan bu qədər dəqiqə xəbər gəlməsə çap/növbə job-u Suspected olur (avtomatik refund yoxdur)"),

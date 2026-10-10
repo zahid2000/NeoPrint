@@ -30,6 +30,9 @@ public static class NotificationLinks
     /// <summary>The "Alınanlar" list of shared files.</summary>
     public const string Shares = "neoprint://shares";
 
+    /// <summary>The referral screen: the code, the link and what was earned.</summary>
+    public const string Referral = "neoprint://referral";
+
     public const string Export = "neoprint://privacy/export";
 }
 

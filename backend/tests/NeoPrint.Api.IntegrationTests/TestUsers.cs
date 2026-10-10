@@ -24,7 +24,10 @@ internal static class TestUsers
     public const string Password = "Wallet!Test2026";
 
     /// <summary>Registers, confirms with the emailed code and signs in (plan section 9.0 flow for the app).</summary>
-    public static async Task<TestUser> ConfirmedAsync(NeoPrintApiFixture fixture, string? email = null)
+    /// <param name="referralCode">An inviter's code, as the register screen sends it.</param>
+    /// <param name="deviceId">The phone it registers from (the referral device check).</param>
+    public static async Task<TestUser> ConfirmedAsync(
+        NeoPrintApiFixture fixture, string? email = null, string? referralCode = null, string? deviceId = null)
     {
         var client = fixture.CreateApiClient();
         email ??= $"wallet-{Guid.NewGuid():N}@neoprint.test";
@@ -37,6 +40,8 @@ internal static class TestUsers
             email,
             password = Password,
             language = "az",
+            referralCode,
+            deviceId,
             consents = new[]
             {
                 new { docType = "Privacy", version = privacy.GetProperty("version").GetString() },

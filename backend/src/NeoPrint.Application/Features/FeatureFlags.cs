@@ -252,6 +252,7 @@ public static class FeatureKeys
     public const string MobileSessionPrint = "mobile_session_print";
     public const string ScheduledPrint = "scheduled_print";
     public const string FileSharing = "file_sharing";
+    public const string Referral = "referral";
     public const string DataExport = "data_export";
 }
 

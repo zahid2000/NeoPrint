@@ -592,6 +592,26 @@ public sealed class ScheduleHandlers :
             throw new NotFoundException("schedule");
         }
 
+        // Paid, but the payment's news has not reached the schedule yet: a
+        // payment settled at once (wallet, bonus pages) and the button pressed
+        // straight after. The list already shows it as Scheduled (View), so
+        // the actions take it as that too (T-191). Saved here, before the
+        // action: when the payment's consumer got there first, its copy is
+        // the one to act on.
+        if (schedule.Status == ScheduledPrintStatus.PendingPayment && job.Status == PrintJobStatus.Paid)
+        {
+            try
+            {
+                schedule.Confirm(ActorContext.System(correlationId: _correlation.CorrelationId), _clock.UtcNow);
+                await _schedules.UpdateAsync(schedule, cancellationToken).ConfigureAwait(false);
+            }
+            catch (ConcurrencyException)
+            {
+                schedule = await _schedules.FindByIdAsync(scheduleId, cancellationToken).ConfigureAwait(false)
+                    ?? throw new NotFoundException("schedule");
+            }
+        }
+
         return (schedule, job);
     }
 

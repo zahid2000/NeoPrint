@@ -45,6 +45,8 @@ public sealed class RegisterUserHandler : IRequestHandler<RegisterUserCommand, R
     private readonly IPasswordHasher<User> _passwordHasher;
     private readonly ISecretHasher _secrets;
     private readonly IEmailSender _email;
+    private readonly Referrals.IReferralRepository _referrals;
+    private readonly Features.IFeatureFlagEvaluator _features;
     private readonly IClock _clock;
     private readonly ILogger<RegisterUserHandler> _logger;
 
@@ -58,10 +60,14 @@ public sealed class RegisterUserHandler : IRequestHandler<RegisterUserCommand, R
         IPasswordHasher<User> passwordHasher,
         ISecretHasher secrets,
         IEmailSender email,
+        Referrals.IReferralRepository referrals,
+        Features.IFeatureFlagEvaluator features,
         IClock clock,
         ILogger<RegisterUserHandler> logger)
     {
         _users = users;
+        _referrals = referrals;
+        _features = features;
         _confirmations = confirmations;
         _legal = legal;
         _passwordHasher = passwordHasher;
@@ -105,7 +111,10 @@ public sealed class RegisterUserHandler : IRequestHandler<RegisterUserCommand, R
 
         user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
 
-        if (!string.IsNullOrWhiteSpace(request.ReferralCode))
+        // With the programme switched off a code is ignored (plan section 2.16:
+        // only new usage stops), never refused.
+        if (!string.IsNullOrWhiteSpace(request.ReferralCode)
+            && await _features.IsEnabledAsync(Features.FeatureKeys.Referral, cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             var inviter = await _users
                 .FindByReferralCodeAsync(request.ReferralCode.Trim().ToUpperInvariant(), cancellationToken)
@@ -121,6 +130,14 @@ public sealed class RegisterUserHandler : IRequestHandler<RegisterUserCommand, R
         }
 
         await _users.AddAsync(user, cancellationToken).ConfigureAwait(false);
+
+        // The invitation is decided at the first paid print (plan section 2.6).
+        if (user.ReferredBy is { } inviterId)
+        {
+            await _referrals
+                .AddAsync(Domain.Referrals.Referral.Register(inviterId, user.Id, _clock.UtcNow), cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         await _legal.AddConsentsAsync(
                 request.Consents.Select(consent => new Consent

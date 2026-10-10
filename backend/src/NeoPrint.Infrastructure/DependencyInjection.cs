@@ -143,6 +143,7 @@ public static class DependencyInjection
         services.AddScoped<UserQr.UncollectedPrintJobsJob>();
         services.AddScoped<Application.Schedules.IScheduledPrintRepository, Schedules.ScheduledPrintRepository>();
         services.AddScoped<Application.Sharing.IShareRepository, Sharing.ShareRepository>();
+        services.AddScoped<Application.Referrals.IReferralRepository, Referrals.ReferralRepository>();
         services.AddScoped<Schedules.ScheduledPrintDueJob>();
         services.AddScoped<Schedules.ScheduledPrintAutoCancelJob>();
         services.AddScoped<Application.Files.FileEraser>();
@@ -371,6 +372,8 @@ public static class DependencyInjection
             bus.AddConsumer<Notifications.NotificationDeliveryConsumer>();
             bus.AddConsumer<Notifications.NotificationTriggerConsumer>();
             bus.AddConsumer<Files.FilePrintedConsumer>();
+            bus.AddConsumer<Referrals.ReferralRewardConsumer>();
+            bus.AddConsumer<Referrals.ReferralNotificationConsumer>();
             bus.AddConsumer<Privacy.DataExportConsumer>();
 
             // Every process caches the storage providers, so every process needs
