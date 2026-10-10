@@ -22,7 +22,8 @@ void main() {
     handle((call) async {
       calls.add(call.method);
       final arguments =
-          (call.arguments as Map<Object?, Object?>?) ?? const <Object?, Object?>{};
+          (call.arguments as Map<Object?, Object?>?) ??
+          const <Object?, Object?>{};
       final key = arguments['key'] as String?;
 
       switch (call.method) {
