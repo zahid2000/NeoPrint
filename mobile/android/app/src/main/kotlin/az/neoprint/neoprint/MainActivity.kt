@@ -27,6 +27,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         registerBrowser(flutterEngine)
+        registerShare(flutterEngine)
         scanner.register(flutterEngine.dartExecutor.binaryMessenger)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HEIC_CHANNEL)
@@ -83,6 +84,36 @@ class MainActivity : FlutterActivity() {
             }
     }
 
+    /**
+     * A third channel: text handed to the system share sheet (ACTION_SEND) -
+     * the referral code and link (plan sections 2.0, 8.2: our own channel, no
+     * plugin). Answers false when nothing on the phone can take it.
+     */
+    private fun registerShare(flutterEngine: FlutterEngine) {
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SHARE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                val text = call.argument<String>("text")
+
+                if (call.method != "text" || text.isNullOrBlank()) {
+                    result.error("BAD_ARGUMENT", "text is required", null)
+                    return@setMethodCallHandler
+                }
+
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, text)
+                    call.argument<String>("subject")?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
+                }
+
+                try {
+                    startActivity(Intent.createChooser(send, null))
+                    result.success(true)
+                } catch (error: ActivityNotFoundException) {
+                    result.success(false)
+                }
+            }
+    }
+
     // The scanner is started with startIntentSenderForResult, whose result
     // still arrives here on a FlutterActivity.
     @Deprecated("Deprecated in Java")
@@ -126,6 +157,7 @@ class MainActivity : FlutterActivity() {
     private companion object {
         const val HEIC_CHANNEL = "az.neoprint/heic"
         const val BROWSER_CHANNEL = "az.neoprint/browser"
+        const val SHARE_CHANNEL = "az.neoprint/share"
         const val JPEG_QUALITY = 90
     }
 }

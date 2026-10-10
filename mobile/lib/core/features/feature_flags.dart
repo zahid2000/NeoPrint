@@ -15,6 +15,7 @@ abstract final class FeatureKey {
   static const promoCodes = 'promo_codes';
   static const dataExport = 'data_export';
   static const fileSharing = 'file_sharing';
+  static const referral = 'referral';
 }
 
 /// The backend's answer to "which features are on for me" (`GET api/features`).

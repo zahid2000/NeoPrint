@@ -27,6 +27,8 @@ class ProfileScreen extends ConsumerWidget {
     final dataExport =
         Readiness.dataExport &&
         ref.watch(featureOnProvider(FeatureKey.dataExport));
+    final referral =
+        Readiness.referral && ref.watch(featureOnProvider(FeatureKey.referral));
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
@@ -98,6 +100,15 @@ class ProfileScreen extends ConsumerWidget {
               title: Text(l10n.profileReceipts),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push(Routes.receipts),
+            ),
+
+          // The referral code, its link and what it earned (plan section 2.6).
+          if (referral)
+            ListTile(
+              leading: const Icon(Icons.card_giftcard_outlined),
+              title: Text(l10n.referralTitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.referral),
             ),
 
           if (Readiness.printJobs)

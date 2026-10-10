@@ -22,6 +22,10 @@ import VisionKit
       BrowserOpener.register(with: registrar)
     }
 
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NeoPrintSystemShare") {
+      SystemShare.register(with: registrar)
+    }
+
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NeoPrintDocumentScanner") {
       DocumentScanner.register(with: registrar)
     }
@@ -218,5 +222,58 @@ final class BrowserOpener: NSObject {
 
       UIApplication.shared.open(url) { opened in result(opened) }
     }
+  }
+}
+
+/// Text handed to the system share sheet (UIActivityViewController): the
+/// referral code and link (plan sections 2.0, 8.2: our own channel, no
+/// plugin). Written without a Mac to build it on: compiled and checked with
+/// the rest of the iOS build before the pilot (docs/TASKS.md T-187).
+final class SystemShare: NSObject {
+  static let channelName = "az.neoprint/share"
+
+  static func register(with registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
+
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "text",
+        let arguments = call.arguments as? [String: Any],
+        let text = arguments["text"] as? String,
+        !text.isEmpty
+      else {
+        result(FlutterError(code: "BAD_ARGUMENT", message: "text is required", details: nil))
+        return
+      }
+
+      guard let presenter = topViewController() else {
+        result(false)
+        return
+      }
+
+      let sheet = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+      if let subject = arguments["subject"] as? String {
+        sheet.setValue(subject, forKey: "subject")
+      }
+
+      // On an iPad the sheet is a popover and needs somewhere to point.
+      if let popover = sheet.popoverPresentationController {
+        popover.sourceView = presenter.view
+        popover.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 0, height: 0)
+        popover.permittedArrowDirections = []
+      }
+
+      presenter.present(sheet, animated: true) { result(true) }
+    }
+  }
+
+  private static func topViewController() -> UIViewController? {
+    let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+    var top = scene?.windows.first(where: { $0.isKeyWindow })?.rootViewController
+
+    while let presented = top?.presentedViewController {
+      top = presented
+    }
+
+    return top
   }
 }

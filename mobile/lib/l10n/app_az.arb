@@ -454,6 +454,50 @@
   "shareSensitiveInfo": "Şəxsi sənəd — saxlanılan nüsxə çapdan sonra silinir",
   "shareGoneBody": "Fayl artıq yoxdur — göndərən onu silib. Lazımdırsa, göndərəndən yenidən göndərməsini istəyin.",
   "shareChangedBody": "Göndərən faylı göndərdikdən sonra dəyişib, ona görə bu fayl açılmır. Yeni versiyanı yenidən göndərməsini istəyin.",
+  "referralTitle": "Dostunu dəvət et",
+  "referralHow": "Dostunuz kodunuzla qeydiyyatdan keçib ilk ödənişli çapını edəndə siz {count} bonus səhifə qazanırsınız.",
+  "@referralHow": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "referralHowFriend": "Dostunuz da {count} bonus səhifə alır.",
+  "@referralHowFriend": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "referralBonusUnit": "1 bonus səhifə = 1 çap olunan üz.",
+  "referralCodeLabel": "Dəvət kodunuz",
+  "referralCopyLink": "Linki kopyala",
+  "referralLinkCopied": "Link kopyalandı",
+  "referralQrHint": "Dostunuz bu QR-ı telefonun kamerası ilə oxuya bilər",
+  "referralShare": "Paylaş",
+  "referralShareText": "NeoPrint ilə sənədlərini kioskda çap et. Qeydiyyatda dəvət kodumu yaz: {code} — {link}",
+  "@referralShareText": {
+    "placeholders": {
+      "code": { "type": "String" },
+      "link": { "type": "String" }
+    }
+  },
+  "referralShareFailed": "Bu telefonda paylaşım pəncərəsi açılmadı, ona görə link kopyalandı. Onu istədiyiniz tətbiqə yapışdırın.",
+  "referralStatsTitle": "Dəvətləriniz",
+  "referralStatRegistered": "Qeydiyyatdan keçib",
+  "referralStatRewarded": "İlk çapını edib, bonus yazılıb",
+  "referralStatWaiting": "İlk ödənişli çapı gözlənilir",
+  "referralEarned": "Qazandığınız bonus: {count} səhifə",
+  "@referralEarned": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "referralNobody": "Hələ heç kim kodunuzla qeydiyyatdan keçməyib — kodu paylaşın.",
+  "referralLoadFailed": "Dəvət məlumatı yüklənmədi: {reason}",
+  "@referralLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
   "payTitle": "Ödəniş",
   "payTimeLeft": "Ödəniş üçün {time} vaxtınız var",
   "@payTimeLeft": {

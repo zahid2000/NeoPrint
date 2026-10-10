@@ -21,6 +21,7 @@ import '../../features/privacy/account_deletion_screen.dart';
 import '../../features/privacy/data_export_screen.dart';
 import '../../features/payments/scan_screen.dart';
 import '../../features/receipts/receipts_screen.dart';
+import '../../features/referral/referral_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
 import '../../features/kiosk_search/kiosk_detail_screen.dart';
 import '../../features/kiosk_search/kiosk_models.dart';
@@ -75,6 +76,7 @@ abstract final class Routes {
   static const scheduleNew = '/schedule/new';
   static const notifications = '/notifications';
   static const shares = '/shares';
+  static const referral = '/referral';
   static const shareSend = '/shares/send';
   static String shareDetail(String id) => '/shares/received/$id';
   static const privacyExport = '/privacy/export';
@@ -227,6 +229,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.notifications,
         builder: (_, __) => const NotificationsScreen(),
       ),
+      if (Readiness.referral)
+        GoRoute(
+          path: Routes.referral,
+          builder: (_, __) => const ReferralScreen(),
+        ),
       // Sharing a file with another user (plan section 8.2).
       if (Readiness.fileSharing) ...[
         GoRoute(path: Routes.shares, builder: (_, __) => const SharesScreen()),

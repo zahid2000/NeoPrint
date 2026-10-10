@@ -22,6 +22,7 @@ final _code = RegExp(r'^[A-Za-z0-9-]{1,40}$');
 /// | `neoprint://files` | My files |
 /// | `neoprint://privacy/export` | Məlumatlarımı yüklə |
 /// | `neoprint://notifications` | the notifications |
+/// | `neoprint://referral` | Dostunu dəvət et |
 /// | `neoprint://shares` | Paylaşılanlar |
 /// | `neoprint://share/{NP-id}` | Faylı paylaş, to that user |
 ///
@@ -61,6 +62,7 @@ String? appLinkLocation(Uri uri) {
     'privacy' when segments.length == 1 && segments.single == 'export' =>
       Routes.privacyExport,
     'notifications' => Routes.notifications,
+    'referral' when Readiness.referral => Routes.referral,
     'shares' when Readiness.fileSharing => Routes.shares,
     'share' when Readiness.fileSharing && one != null =>
       '${Routes.shareSend}?to=${one.toUpperCase()}',

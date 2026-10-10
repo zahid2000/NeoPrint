@@ -24,6 +24,8 @@ import 'notification_repository.dart';
   'RefundCompleted' => (Icons.undo, StatusTone.success),
   'FileAutoDeleted' => (Icons.auto_delete_outlined, StatusTone.neutral),
   'ExportReady' => (Icons.inventory_2_outlined, StatusTone.success),
+  'FileShared' => (Icons.move_to_inbox_outlined, StatusTone.info),
+  'ReferralRewarded' => (Icons.card_giftcard_outlined, StatusTone.success),
   _ => (Icons.notifications, StatusTone.neutral),
 };
 

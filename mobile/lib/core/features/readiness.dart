@@ -42,6 +42,10 @@ abstract final class Readiness {
   /// Sending a file to another user by their public code - step 6.
   static const bool fileSharing = true;
 
+  /// "Dostunu dəvət et": the referral code, its link and QR, and what the
+  /// invitations earned - step 6.
+  static const bool referral = true;
+
   /// Choosing the language in the profile, kept on the account - step 5
   /// (T-152).
   static const bool languageSetting = true;
