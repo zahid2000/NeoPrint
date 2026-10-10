@@ -71,7 +71,8 @@ class BottomNavShell extends ConsumerWidget {
         NavigationDestination(
           icon: const Icon(Icons.schedule_outlined),
           selectedIcon: const Icon(Icons.schedule),
-          label: l10n.navScheduled,
+          // The section's full name does not fit a fifth of a phone's width.
+          label: l10n.navScheduledTab,
         ),
       NavigationDestination(
         icon: const Icon(Icons.person_outline),

@@ -225,7 +225,7 @@ void main() {
     ) async {
       await pumpShell(tester, items: const [], on: false);
 
-      expect(find.text('Planlanmışlar'), findsNothing);
+      expect(find.text('Planlı'), findsNothing);
       expect(
         find.byType(NavigationDestination),
         findsNWidgets(3 + (Readiness.kioskSearch ? 1 : 0)),
@@ -244,8 +244,8 @@ void main() {
         on: false,
       );
 
-      expect(find.text('Planlanmışlar'), findsOneWidget);
-      await tester.tap(find.text('Planlanmışlar'));
+      expect(find.text('Planlı'), findsOneWidget);
+      await tester.tap(find.text('Planlı'));
       await tester.pumpAndSettle();
       expect(find.text('/d'), findsOneWidget);
     }, skip: !Readiness.scheduledPrint || !Readiness.kioskSearch);

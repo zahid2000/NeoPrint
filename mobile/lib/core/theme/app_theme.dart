@@ -162,6 +162,8 @@ abstract final class AppTheme {
             fontSize: FontSizes.caption,
             fontWeight: FontWeights.medium,
             color: tokens.neutral600,
+            // A tab's label never takes a second line.
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),
