@@ -28,6 +28,7 @@ import {
   Wallet,
   WalletEntry,
 } from './step4.models';
+import { ReferralFilter, ReferralPage } from './step6.models';
 
 /** One action, one key: a double click or a retry is answered, not repeated (docs/IDEMPOTENCY.md). */
 function idempotent(): { headers: HttpHeaders } {
@@ -219,6 +220,16 @@ export class MoneyApiService {
     params = withOptional(params, 'search', search.trim());
     params = withOptional(params, 'status', status);
     return this.http.get<Page<CustomerRow>>('/api/admin/users', { params });
+  }
+
+  /** The referral programme: its numbers, the top inviters and one page of the history. */
+  listReferrals(status: ReferralFilter | null, page: number, pageSize: number): Observable<ReferralPage> {
+    const params = withOptional(
+      new HttpParams().set('page', page).set('pageSize', pageSize),
+      'status',
+      status ?? '',
+    );
+    return this.http.get<ReferralPage>('/api/admin/referrals', { params });
   }
 
   getCustomer(id: string): Observable<CustomerDetail> {

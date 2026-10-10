@@ -30,6 +30,8 @@ const EXTRA = [
   // live-indicator.component.ts states
   'sync',
   'link_off',
+  // customer-detail.component.ts: iconOverride on a personal document's chip
+  'lock',
 ];
 
 function files(dir) {

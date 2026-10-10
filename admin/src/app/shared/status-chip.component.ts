@@ -61,6 +61,10 @@ const tones: Record<string, StatusTone> = {
   Answered: 'success',
   Closed: 'neutral',
   Inactive: 'neutral',
+  // Referrals (step 6): the bonus was written, held back, or the first paid print is still to come
+  Rewarded: 'success',
+  Held: 'warning',
+  Waiting: 'neutral',
   // Promo codes (T-139): not started yet, used up
   Scheduled: 'neutral',
   Exhausted: 'warning',
@@ -162,7 +166,10 @@ export class StatusChipComponent {
     () => this.toneOverride() ?? tones[this.status()] ?? 'neutral',
   );
 
-  readonly icon = computed(() => icons[this.tone()]);
+  /** Overrides the icon the tone would pick: a lock on a personal document, say. */
+  readonly iconOverride = input<string | undefined>(undefined);
+
+  readonly icon = computed(() => this.iconOverride() ?? icons[this.tone()]);
 
   readonly label = computed(() => this.text() ?? this.status());
 }

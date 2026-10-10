@@ -42,7 +42,39 @@ public interface IReferralRepository
     /// </summary>
     Task<bool> AnyRewardedInviteeOnDevicesAsync(
         Guid inviteeId, IReadOnlyCollection<string> deviceIds, CancellationToken cancellationToken = default);
+
+    /// <summary>The inviter's invitations, newest first (the admin's customer detail).</summary>
+    Task<IReadOnlyList<Referral>> ListByInviterAsync(Guid inviterId, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>Every invitation, newest first, for the admin's history.</summary>
+    /// <param name="filter">Null for all of them.</param>
+    Task<(IReadOnlyList<Referral> Items, long Total)> SearchAsync(
+        ReferralFilter? filter, int skip, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>The whole programme in numbers.</summary>
+    Task<ReferralProgrammeTotals> ProgrammeTotalsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>The inviters with the most rewarded invitations.</summary>
+    Task<IReadOnlyList<TopInviter>> TopInvitersAsync(int take, CancellationToken cancellationToken = default);
 }
+
+/// <summary>Which invitations the admin's history shows.</summary>
+public enum ReferralFilter
+{
+    /// <summary>Registered; the first paid print is still to come.</summary>
+    Waiting = 0,
+
+    Rewarded = 1,
+
+    /// <summary>Decided without a reward: same device, monthly limit, inactive inviter.</summary>
+    Held = 2,
+}
+
+/// <param name="Held">Decided without a reward.</param>
+/// <param name="BonusPagesGiven">To inviters and invitees together.</param>
+public sealed record ReferralProgrammeTotals(long Registered, long Rewarded, long Waiting, long Held, long BonusPagesGiven);
+
+public sealed record TopInviter(Guid InviterId, long Invited, long Rewarded, long BonusPages);
 
 /// <param name="Registered">Everyone who registered with the code, rewarded or not.</param>
 /// <param name="Waiting">Registered and not decided yet: their first paid print is still to come.</param>
@@ -246,7 +278,7 @@ public sealed class ReferralHandlers :
                 $"referral:{referral.Id:N}:{side}",
                 actorId: null,
                 now,
-                $"referral:{side}",
+                new UserMessage($"wallet.notes.referral.{side}").Encode(),
                 cancellationToken)
             .ConfigureAwait(false);
     }

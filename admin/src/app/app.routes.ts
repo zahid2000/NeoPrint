@@ -130,6 +130,12 @@ export const routes: Routes = [
         canActivate: [permissionGuard(Permissions.promosManage)],
         loadComponent: () => import('./features/money/promos.component').then((m) => m.PromosComponent),
       },
+      // Step 6: the referral programme (plan section 8A.3).
+      {
+        path: 'referrals',
+        canActivate: [permissionGuard(Permissions.referralsView)],
+        loadComponent: () => import('./features/referrals/referrals.component').then((m) => m.ReferralsComponent),
+      },
       {
         path: 'customers',
         canActivate: [permissionGuard(Permissions.usersView)],

@@ -185,7 +185,7 @@ də işləyir, istifadəçinin IP-si CDN-ə getmir).
 | Fayl | Lisenziya | Müəllif / mənbə | İstifadə |
 |---|---|---|---|
 | `admin/public/fonts/inter-{latin,latin-ext,cyrillic}.woff2` | SIL OFL 1.1 | The Inter Project Authors (rsms) | Admin və operator panelinin şrifti. Subset: latin (əsas), latin-ext (`ə`, `ğ`, `ş` — Azərbaycan hərfləri), cyrillic (`ru` lokalı). Cəmi 152 KB |
-| `admin/public/fonts/material-symbols-rounded.woff2` | Apache-2.0 | Google | Panelin ikonları. Yalnız istifadə olunan 62 ikona subset edilib — 8.7 KB (tam variabel şrift ~3.5 MB-dır) |
+| `admin/public/fonts/material-symbols-rounded.woff2` | Apache-2.0 | Google | Panelin ikonları. Yalnız istifadə olunan 87 ikona subset edilib — 11.6 KB (tam variabel şrift ~3.5 MB-dır) |
 | `mobile/assets/fonts/Inter-Variable.ttf` | SIL OFL 1.1 | The Inter Project Authors (rsms) | Mobil tətbiqin şrifti. Variabel fayl, `wght` oxu 400/500/600 üçün. Lisenziya mətni yanındadır: `mobile/assets/fonts/OFL.txt` |
 | `backend/src/NeoPrint.Infrastructure/Receipts/Fonts/Inter-Variable.ttf` | SIL OFL 1.1 | The Inter Project Authors (rsms) | Qəbz PDF-inin şrifti (QuestPDF). Mobil tətbiqin eyni faylı (SHA-256 `29160a80…c559031`), assembly-yə resurs kimi daxil edilir; lisenziya mətni yanındadır (`OFL.txt`) və build çıxışına `licenses/Inter-OFL.txt` kimi kopyalanır |
 

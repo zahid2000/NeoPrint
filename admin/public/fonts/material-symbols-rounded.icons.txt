@@ -4,6 +4,7 @@ arrow_back
 block
 calculate
 cancel
+card_giftcard
 check_circle
 chevron_left
 chevron_right
@@ -33,6 +34,7 @@ light_mode
 link_off
 list
 local_offer
+lock
 lock_reset
 logout
 manage_search

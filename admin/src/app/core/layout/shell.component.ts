@@ -146,6 +146,12 @@ export class ShellComponent implements OnInit, OnDestroy {
       permissions: [Permissions.promosManage],
     },
     {
+      path: '/referrals',
+      labelKey: 'nav.referrals',
+      icon: 'card_giftcard',
+      permissions: [Permissions.referralsView],
+    },
+    {
       path: '/customers',
       labelKey: 'nav.customers',
       icon: 'people',

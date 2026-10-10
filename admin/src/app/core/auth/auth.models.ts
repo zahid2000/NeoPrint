@@ -96,4 +96,5 @@ export const Permissions = {
   usersBlock: 'users.block',
   walletsAdjust: 'wallets.adjust',
   promosManage: 'promos.manage',
+  referralsView: 'referrals.view',
 } as const;

@@ -5,6 +5,7 @@ using NeoPrint.Application.Behaviors;
 using NeoPrint.Application.Common;
 using NeoPrint.Application.Files;
 using NeoPrint.Application.PrintJobs;
+using NeoPrint.Application.Referrals;
 using NeoPrint.Application.Wallets;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Users;
@@ -48,6 +49,8 @@ public sealed record CustomerConsent(string DocType, string Version);
 /// One customer for the admin (plan section 8A.3): the profile, the wallet,
 /// recent jobs, file totals (never contents), referrals and consents.
 /// </summary>
+/// <param name="Files">The newest files as metadata, names masked (<see cref="FileNameMask"/>).</param>
+/// <param name="Referrals">Who invited the customer and whom they invited.</param>
 public sealed record CustomerDetail(
     CustomerRow Profile,
     string Language,
@@ -56,7 +59,28 @@ public sealed record CustomerDetail(
     long FileCount,
     long FileBytes,
     long Referred,
-    IReadOnlyList<CustomerConsent> Consents);
+    IReadOnlyList<CustomerConsent> Consents,
+    IReadOnlyList<CustomerFile> Files,
+    CustomerReferrals Referrals);
+
+/// <summary>A file as the admin sees it: what it is, never its content and never its name in full.</summary>
+public sealed record CustomerFile(
+    Guid Id,
+    string MaskedName,
+    string Extension,
+    long SizeBytes,
+    string Source,
+    bool IsSensitive,
+    string Status,
+    int PageCount,
+    DateTime CreatedAt);
+
+/// <param name="InvitedBy">Whose code the customer registered with; null when none.</param>
+/// <param name="Items">The newest invitations the customer made.</param>
+public sealed record CustomerReferrals(
+    ReferralParty? InvitedBy,
+    ReferralTotals Totals,
+    IReadOnlyList<AdminReferralRow> Items);
 
 public sealed record ListCustomersQuery(string? Search, string? Status, int Page, int PageSize) : IRequest<CustomerPage>;
 
@@ -84,10 +108,15 @@ public sealed class AdminCustomerHandlers :
     private const int MaxPageSize = 100;
     private const int MaxReasonLength = 500;
 
+    // How much of a customer the detail page lists; the totals count everything.
+    private const int DetailFiles = 50;
+    private const int DetailReferrals = 20;
+
     private readonly IUserRepository _users;
     private readonly IRefreshTokenRepository _refreshTokens;
     private readonly ILegalDocumentRepository _legal;
     private readonly IFileRepository _files;
+    private readonly IReferralRepository _referrals;
     private readonly WalletLedger _wallets;
     private readonly ISender _sender;
     private readonly IUserBlocklist _blocklist;
@@ -99,6 +128,7 @@ public sealed class AdminCustomerHandlers :
         IRefreshTokenRepository refreshTokens,
         ILegalDocumentRepository legal,
         IFileRepository files,
+        IReferralRepository referrals,
         WalletLedger wallets,
         ISender sender,
         IUserBlocklist blocklist,
@@ -109,6 +139,7 @@ public sealed class AdminCustomerHandlers :
         _refreshTokens = refreshTokens;
         _legal = legal;
         _files = files;
+        _referrals = referrals;
         _wallets = wallets;
         _sender = sender;
         _blocklist = blocklist;
@@ -148,6 +179,14 @@ public sealed class AdminCustomerHandlers :
         var wallet = await _wallets.ReadAsync(user.Id, cancellationToken).ConfigureAwait(false);
         var jobs = await _sender.Send(new ListMyPrintJobsQuery(user.Id), cancellationToken).ConfigureAwait(false);
         var consents = await _legal.GetAcceptedVersionsAsync(user.Id, cancellationToken).ConfigureAwait(false);
+        var files = await _files.ListAsync(user.Id, 0, DetailFiles, cancellationToken).ConfigureAwait(false);
+        var invited = await _referrals.ListByInviterAsync(user.Id, DetailReferrals, cancellationToken).ConfigureAwait(false);
+        var parties = await AdminReferralHandlers
+            .PartiesAsync(
+                _users,
+                [user.Id, .. invited.Select(r => r.InviteeId), .. user.ReferredBy is { } by ? new[] { by } : []],
+                cancellationToken)
+            .ConfigureAwait(false);
 
         return new CustomerDetail(
             Row(user),
@@ -157,7 +196,21 @@ public sealed class AdminCustomerHandlers :
             await _files.CountAsync(user.Id, cancellationToken).ConfigureAwait(false),
             await _files.TotalBytesAsync(user.Id, cancellationToken).ConfigureAwait(false),
             await _users.CountReferredAsync(user.Id, cancellationToken).ConfigureAwait(false),
-            consents.Select(c => new CustomerConsent(c.Key.ToString(), c.Value)).OrderBy(c => c.DocType, StringComparer.Ordinal).ToList());
+            consents.Select(c => new CustomerConsent(c.Key.ToString(), c.Value)).OrderBy(c => c.DocType, StringComparer.Ordinal).ToList(),
+            [.. files.Select(file => new CustomerFile(
+                file.Id,
+                FileNameMask.Mask(file.FileName, file.IsSensitive),
+                file.Extension,
+                file.Original.PlaintextLength,
+                file.Source.ToString(),
+                file.IsSensitive,
+                file.Status.ToString(),
+                file.PageCount,
+                file.CreatedAt))],
+            new CustomerReferrals(
+                user.ReferredBy is { } inviter ? parties[inviter] : null,
+                await _referrals.TotalsAsync(user.Id, cancellationToken).ConfigureAwait(false),
+                [.. invited.Select(r => AdminReferralHandlers.Row(r, parties))]));
     }
 
     /// <inheritdoc cref="BlockCustomerCommand" />

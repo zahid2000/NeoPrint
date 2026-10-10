@@ -96,6 +96,14 @@ app-filter-bar {
   justify-content: space-between;
 }
 
+/* The chips of one row, kept together at its end rather than spread along it. */
+.money__chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
 .money__error {
   display: flex;
   gap: var(--space-2);

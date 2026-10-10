@@ -4,6 +4,8 @@
  * the money figures. The shapes are the API's (docs/API.md).
  */
 
+import type { CustomerFile, CustomerReferrals } from './step6.models';
+
 export interface Page<T> {
   readonly items: readonly T[];
   readonly total: number;
@@ -324,6 +326,9 @@ export interface CustomerDetail {
   readonly fileBytes: number;
   readonly referred: number;
   readonly consents: readonly { readonly docType: string; readonly version: string }[];
+  /** The newest files as metadata, names masked by the server (step 6). */
+  readonly files: readonly CustomerFile[];
+  readonly referrals: CustomerReferrals;
 }
 
 export interface Wallet {

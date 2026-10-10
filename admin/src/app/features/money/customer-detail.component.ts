@@ -24,6 +24,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { MoneyApiService } from '../../core/api/money-api.service';
 import { CustomerDetail, WalletEntry } from '../../core/api/step4.models';
+import { referralOutcome } from '../../core/api/step6.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { confirmAction } from '../../shared/confirm.dialog';
@@ -150,9 +151,17 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
               <div class="money__item">
                 <div class="money__item-head">
                   <span>{{ 'money.walletType.' + e.type | translate }}</span>
-                  <strong class="money__number"
-                    >{{ e.amount > 0 ? '+' : '' }}{{ e.amount | money }}</strong
-                  >
+                  <strong class="money__number">
+                    @if (e.amount !== 0 || e.bonusPages === 0) {
+                      {{ e.amount > 0 ? '+' : '' }}{{ e.amount | money }}
+                    }
+                    @if (e.bonusPages !== 0) {
+                      {{
+                        'customerDetail.bonusDelta'
+                          | translate: { pages: (e.bonusPages > 0 ? '+' : '') + e.bonusPages }
+                      }}
+                    }
+                  </strong>
                 </div>
                 <span class="neo-caption"
                   >{{ e.createdAt | dateTime }} ·
@@ -189,6 +198,113 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
             <p class="neo-muted">{{ 'customerDetail.noJobs' | translate }}</p>
           }
         </section>
+
+        <div class="money__grid">
+          <!-- Who invited the customer and whom they invited (plan section 2.6). -->
+          <section class="neo-card">
+            <h2 class="money__card-title">{{ 'customerDetail.referralsTitle' | translate }}</h2>
+            <p>
+              @if (d.referrals.invitedBy; as by) {
+                {{ 'customerDetail.invitedBy' | translate }}
+                <a [routerLink]="['/customers', by.id]">{{
+                  by.publicId || ('referrals.deletedUser' | translate)
+                }}</a>
+              } @else {
+                <span class="neo-muted">{{ 'customerDetail.notInvited' | translate }}</span>
+              }
+            </p>
+            @if (d.referrals.items.length === 0) {
+              <p class="neo-muted">{{ 'customerDetail.noReferrals' | translate }}</p>
+            } @else {
+              <p class="neo-caption">
+                {{
+                  'customerDetail.referralSummary'
+                    | translate
+                      : {
+                          registered: d.referrals.totals.registered,
+                          rewarded: d.referrals.totals.rewarded,
+                          waiting: d.referrals.totals.waiting,
+                          pages: d.referrals.totals.bonusPagesEarned,
+                        }
+                }}
+              </p>
+              @for (r of d.referrals.items; track r.id) {
+                <div class="money__item">
+                  <div class="money__item-head">
+                    <a [routerLink]="['/customers', r.invitee.id]">{{
+                      r.invitee.publicId || ('referrals.deletedUser' | translate)
+                    }}</a>
+                    <app-status-chip
+                      [status]="outcome(r)"
+                      [text]="'referrals.outcome.' + outcome(r) | translate"
+                    />
+                  </div>
+                  <span class="neo-caption">
+                    {{ r.createdAt | dateTime }}
+                    @if (r.hold !== 'None') {
+                      · {{ 'referrals.hold.' + r.hold | translate }}
+                    }
+                  </span>
+                </div>
+              }
+            }
+          </section>
+
+          <!-- Files as metadata: the server masks the names, and nothing here opens a file. -->
+          <section class="neo-card">
+            <h2 class="money__card-title">{{ 'customerDetail.filesTitle' | translate }}</h2>
+            <p class="neo-caption">{{ 'customerDetail.filesNote' | translate }}</p>
+            @for (f of d.files; track f.id) {
+              <div class="money__item">
+                <div class="money__item-head">
+                  <span>{{ f.maskedName }}</span>
+                  <span class="money__chips">
+                    <app-status-chip
+                      [status]="f.source"
+                      toneOverride="neutral"
+                      [text]="'customerDetail.fileSource.' + f.source | translate"
+                    />
+                    @if (f.isSensitive) {
+                      <app-status-chip
+                        status="Sensitive"
+                        toneOverride="warning"
+                        iconOverride="lock"
+                        [text]="'customerDetail.fileSensitive' | translate"
+                      />
+                    }
+                    @if (f.status !== 'Ready') {
+                      <app-status-chip
+                        [status]="f.status"
+                        [toneOverride]="f.status === 'Failed' ? 'danger' : 'info'"
+                        [text]="'customerDetail.fileStatus.' + f.status | translate"
+                      />
+                    }
+                  </span>
+                </div>
+                <span class="neo-caption">{{
+                  'customerDetail.fileMeta'
+                    | translate
+                      : {
+                          type: f.extension.toUpperCase(),
+                          size: (f.sizeBytes | bytes),
+                          pages: f.pageCount,
+                          date: (f.createdAt | dateTime),
+                        }
+                }}</span>
+              </div>
+            } @empty {
+              <p class="neo-muted">{{ 'customerDetail.noFiles' | translate }}</p>
+            }
+            @if (d.fileCount > d.files.length) {
+              <p class="neo-caption">
+                {{
+                  'customerDetail.filesMore'
+                    | translate: { shown: d.files.length, total: d.fileCount }
+                }}
+              </p>
+            }
+          </section>
+        </div>
       }
     </div>
   `,
@@ -209,6 +325,8 @@ export class CustomerDetailComponent implements OnInit {
 
   readonly canBlock = computed(() => this.auth.can(Permissions.usersBlock));
   readonly canAdjust = computed(() => this.auth.can(Permissions.walletsAdjust));
+
+  readonly outcome = referralOutcome;
 
   ngOnInit(): void {
     void this.load();

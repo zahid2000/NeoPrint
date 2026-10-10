@@ -1156,6 +1156,9 @@ Yeni kod üçün: `docker compose up --remove-orphans -d --build api`. Tənziml�
 
    `Status: "Registered"` + `Hold` (`SameDevice` / `MonthlyLimit` / `InviterInactive`) — ilk ödənişli çap oldu, amma bonus
    yazılmadı; `QualifiedAt` yoxdursa ilk ödənişli çap hələ gözlənilir.
+5. Admin paneli: **Referral** (http://localhost:8080/referrals, `referrals.view` — `dev-admin`, `dev-superadmin`): rəqəmlər, ən çox
+   dəvət edənlər, tarixçə. **Müştərilər → müştəri**: "Referral" və "Fayllar" kartları (fayl adları maskalanmış gəlir).
+   Yeni kod üçün `docker compose up --remove-orphans -d --build api admin`.
 
 ---
 
