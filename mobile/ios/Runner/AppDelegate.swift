@@ -1,4 +1,5 @@
 import Flutter
+import Security
 import UIKit
 import VisionKit
 
@@ -28,6 +29,10 @@ import VisionKit
 
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NeoPrintDocumentScanner") {
       DocumentScanner.register(with: registrar)
+    }
+
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NeoPrintSecureStore") {
+      SecureStore.register(with: registrar)
     }
   }
 }
@@ -275,5 +280,107 @@ final class SystemShare: NSObject {
     }
 
     return top
+  }
+}
+
+/// The app's secure storage (plan sections 2.0 and 2.8, our own channel): the
+/// refresh token, the per-install id and the chosen language, each a generic
+/// password in the Keychain. This device only, readable after the first
+/// unlock (a push can wake the app while the phone is locked); never synced
+/// to iCloud and never restored to another phone. Nothing stored here is
+/// logged or put into an error message.
+///
+/// Written without a Mac to build it on: compiled and checked with the rest
+/// of the iOS build before the pilot (docs/TASKS.md T-187).
+final class SecureStore: NSObject {
+  static let channelName = "az.neoprint/secure_storage"
+  private static let service = "az.neoprint.secure_storage"
+
+  static func register(with registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
+
+    channel.setMethodCallHandler { call, result in
+      let arguments = call.arguments as? [String: Any]
+      let key = arguments?["key"] as? String
+
+      switch call.method {
+      case "clear":
+        answer(result, SecItemDelete(query(nil) as CFDictionary))
+      case "read":
+        guard let key = key, !key.isEmpty else { return bad(result) }
+        result(read(key))
+      case "write":
+        guard let key = key, !key.isEmpty, let value = arguments?["value"] as? String else {
+          return bad(result)
+        }
+        answer(result, write(key, value))
+      case "delete":
+        guard let key = key, !key.isEmpty else { return bad(result) }
+        answer(result, SecItemDelete(query(key) as CFDictionary))
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private static func query(_ key: String?) -> [String: Any] {
+    var query: [String: Any] = [
+      kSecClass as String: kSecClassGenericPassword,
+      kSecAttrService as String: service,
+    ]
+
+    if let key = key {
+      query[kSecAttrAccount as String] = key
+    }
+
+    return query
+  }
+
+  /// A value that cannot be read is absent: the app then asks to sign in.
+  private static func read(_ key: String) -> String? {
+    var query = query(key)
+    query[kSecReturnData as String] = true
+    query[kSecMatchLimit as String] = kSecMatchLimitOne
+
+    var item: CFTypeRef?
+
+    guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+      let data = item as? Data
+    else {
+      return nil
+    }
+
+    return String(data: data, encoding: .utf8)
+  }
+
+  private static func write(_ key: String, _ value: String) -> OSStatus {
+    let data = Data(value.utf8)
+    let status = SecItemUpdate(
+      query(key) as CFDictionary,
+      [kSecValueData as String: data] as CFDictionary
+    )
+
+    guard status == errSecItemNotFound else {
+      return status
+    }
+
+    var item = query(key)
+    item[kSecValueData as String] = data
+    item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+
+    return SecItemAdd(item as CFDictionary, nil)
+  }
+
+  private static func answer(_ result: FlutterResult, _ status: OSStatus) {
+    if status == errSecSuccess || status == errSecItemNotFound {
+      result(nil)
+    } else {
+      // The status code only: never the value or its name.
+      result(FlutterError(code: "FAILED", message: "OSStatus \(status)", details: nil))
+    }
+  }
+
+  private static func bad(_ result: FlutterResult) {
+    result(FlutterError(code: "BAD_ARGUMENT", message: "key and value are required", details: nil))
   }
 }

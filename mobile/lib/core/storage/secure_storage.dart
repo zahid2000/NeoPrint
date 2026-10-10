@@ -49,9 +49,13 @@ final class PlatformSecureStorage implements SecureStorage {
     try {
       return await _channel.invokeMethod<String>('read', {'key': key});
     } on MissingPluginException {
-      // The native side is not wired up on this platform yet. Reporting
-      // "nothing stored" is right: it makes the app ask the user to sign in
-      // rather than crash, and it never invents a token.
+      // No native side on this platform (the web build). Reporting "nothing
+      // stored" is right: it makes the app ask the user to sign in rather
+      // than crash, and it never invents a token.
+      return null;
+    } on PlatformException {
+      // The phone's key store refused (it answers with the kind of failure
+      // only). The same answer: nothing usable is stored.
       return null;
     }
   }
@@ -64,6 +68,9 @@ final class PlatformSecureStorage implements SecureStorage {
       // Deliberately swallowed rather than rethrown: a device that cannot
       // store the token still works, it just asks for the password again next
       // time. Failing sign-in outright would be worse.
+    } on PlatformException {
+      // As above: the key store refused, the session lives until the app
+      // is closed.
     }
   }
 

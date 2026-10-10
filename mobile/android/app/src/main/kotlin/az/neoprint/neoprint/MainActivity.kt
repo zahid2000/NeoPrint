@@ -23,12 +23,14 @@ import java.util.concurrent.Executors
 class MainActivity : FlutterActivity() {
     private val worker = Executors.newSingleThreadExecutor()
     private val scanner = DocumentScanner(this, worker)
+    private val secureStore = SecureStore(this)
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         registerBrowser(flutterEngine)
         registerShare(flutterEngine)
         scanner.register(flutterEngine.dartExecutor.binaryMessenger)
+        secureStore.register(flutterEngine.dartExecutor.binaryMessenger)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HEIC_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -125,6 +127,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         worker.shutdown()
+        secureStore.close()
         super.onDestroy()
     }
 
