@@ -195,6 +195,17 @@ internal static class Program
                 : machine;
         });
 
+        // What a printer says about itself (plan section 7.10): the fake
+        // printer answers for itself, the machine's inspector for the rest.
+        services.AddSingleton<SnmpPrinterReader>();
+        services.AddSingleton<IPrinterInspector>(provider => new RoutingPrinterInspector(
+            OperatingSystem.IsWindows() ? WindowsInspector(provider)
+            : OperatingSystem.IsLinux() ? LinuxInspector(provider)
+            : null,
+            provider.GetRequiredService<FakePrinterService>(),
+            provider.GetRequiredService<ILogger<RoutingPrinterInspector>>(),
+            provider.GetRequiredService<SnmpPrinterReader>()));
+
         // The page counter behind print_attempts (plan section 2.5): the fake
         // printer counts for itself, network printers answer over SNMP.
         services.AddSingleton<IPrinterPageCounter>(provider =>
@@ -206,6 +217,26 @@ internal static class Program
 
     private static SnmpPageCounter MachineCounter(IServiceProvider provider, IPrinterService machine)
         => new(machine as IPrinterAddressSource, provider.GetRequiredService<ILogger<SnmpPageCounter>>());
+
+    [SupportedOSPlatform("windows")]
+    private static IPrinterInspector? WindowsInspector(IServiceProvider provider)
+    {
+#if WINDOWS
+        return new Platform.Windows.WindowsPrinterInspector(provider.GetRequiredService<Platform.Windows.WindowsPrinterService>());
+#else
+        return null;
+#endif
+    }
+
+    [SupportedOSPlatform("linux")]
+    private static IPrinterInspector? LinuxInspector(IServiceProvider provider)
+    {
+#if LINUX
+        return new Platform.Linux.LinuxPrinterInspector(new Platform.Linux.ProcessCommandRunner());
+#else
+        return null;
+#endif
+    }
 
     [SupportedOSPlatform("windows")]
     private static IPrinterService? WindowsPrinter(IServiceProvider provider)

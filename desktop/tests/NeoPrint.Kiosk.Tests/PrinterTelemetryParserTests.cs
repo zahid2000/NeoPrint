@@ -1,4 +1,3 @@
-using NeoPrint.Kiosk.Core.Printing;
 using NeoPrint.Kiosk.Platform.Abstractions;
 
 namespace NeoPrint.Kiosk.Tests;

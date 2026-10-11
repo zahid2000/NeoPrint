@@ -204,6 +204,7 @@ public sealed class KioskSession
             _ = RunGuardedAsync("analytics", () => SendAnalyticsAsync(api, token), token);
             _ = RunGuardedAsync("flash uploads", () => SendUploadsAsync(orders, token), token);
             _ = RunGuardedAsync("telemetry", () => SendTelemetryAsync(runtime, hub, commands, drives, api, token), token);
+            _ = RunGuardedAsync("printer telemetry", () => SendPrinterTelemetryAsync(runtime, reporter, api, token), token);
 
             await HeartbeatLoopAsync(runtime, printers, token).ConfigureAwait(false);
         }
@@ -286,6 +287,41 @@ public sealed class KioskSession
                 .ConfigureAwait(false);
 
             await Task.Delay(runtime.TelemetryInterval, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Reports what the printers say about themselves (plan section 7.10): the
+    /// selected printer every minute, the other printers every ten.
+    /// </summary>
+    private async Task SendPrinterTelemetryAsync(
+        KioskRuntime runtime, PrinterReporter reporter, KioskApiClient api, CancellationToken cancellationToken)
+    {
+        var inspector = _services.GetRequiredService<IPrinterInspector>();
+        var schedule = new PrinterTelemetrySchedule();
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await TryAsync("printer telemetry", async () =>
+                {
+                    var due = schedule.Due(
+                        runtime.Configuration?.SelectedPrinter, reporter.Current.Select(printer => printer.Name), DateTime.UtcNow);
+
+                    var readings = new List<PrinterDetails>();
+
+                    foreach (var printer in due)
+                    {
+                        readings.Add(await inspector.InspectAsync(printer, cancellationToken).ConfigureAwait(false));
+                    }
+
+                    if (readings.Count > 0)
+                    {
+                        await api.SendPrinterTelemetryAsync(readings, cancellationToken).ConfigureAwait(false);
+                    }
+                })
+                .ConfigureAwait(false);
+
+            await Task.Delay(PrinterTelemetrySchedule.Interval, cancellationToken).ConfigureAwait(false);
         }
     }
 

@@ -140,7 +140,7 @@ public sealed class FakeMachineFingerprintProvider : IMachineFingerprintProvider
 /// printer and in CI. Enabled by <c>Kiosk:UseFakePrinter</c>, which is always
 /// false in a release build.
 /// </remarks>
-public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport, IPrintJobTracker, IPrinterPageCounter
+public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport, IPrintJobTracker, IPrinterPageCounter, IPrinterInspector
 {
     /// <summary>The name the fake printer is listed under (plan section 7.7).</summary>
     public const string FakePrinterName = "NeoPrint Fake Printer";
@@ -171,6 +171,52 @@ public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport,
 
     /// <summary>Makes the queue report itself offline, to exercise that path.</summary>
     public bool SimulateOffline { get; set; }
+
+    /// <summary>Whether a name is one of this service's own printers.</summary>
+    public bool Knows(string printer) => _printers.Any(known => known.Name == printer);
+
+    /// <summary>What telemetry reports for the fake printer; tests set it to play a real one.</summary>
+    public PrinterDetails? SimulatedDetails { get; set; }
+
+    /// <summary>
+    /// The fake printer described as a printer describes itself (plan section
+    /// 7.10), so the whole path to the panel works on a machine without one.
+    /// </summary>
+    public Task<PrinterDetails> InspectAsync(string printer, CancellationToken cancellationToken = default)
+    {
+        if (SimulatedDetails is { } simulated)
+        {
+            return Task.FromResult(simulated with { Name = printer });
+        }
+
+        var known = _printers.FirstOrDefault(candidate => candidate.Name == printer);
+        var state = SimulatedState ?? (SimulateOffline ? PrinterState.Offline : PrinterState.Online);
+
+        return Task.FromResult(new PrinterDetails(
+            printer,
+            Manufacturer: "NeoPrint",
+            Model: "Fake printer (prints into a folder)",
+            DriverName: known?.DriverName,
+            Connection: "Other",
+            Uri: _outputDirectory is null ? null : "file:" + _outputDirectory,
+            State: state is PrinterState.Online or PrinterState.TonerLow ? "idle" : "stopped",
+            StateReasons: state switch
+            {
+                PrinterState.Online => [],
+                PrinterState.TonerLow => ["toner-low"],
+                PrinterState.OutOfPaper => ["media-empty"],
+                PrinterState.PaperJam => ["media-jam"],
+                PrinterState.Offline => ["offline"],
+                _ => ["other"],
+            },
+            Online: state != PrinterState.Offline,
+            LifetimePages: Counter?.Value,
+            Features: new PrinterFeatures(
+                Color: known?.SupportsColor,
+                Duplex: known?.SupportsDuplex,
+                PaperSizes: known?.SupportsA3 == true ? ["A4", "A3"] : ["A4"],
+                NativeFormats: [.. NativeFormats])));
+    }
 
     /// <summary>A state to report, for tests; overrides the state file.</summary>
     public PrinterState? SimulatedState { get; set; }

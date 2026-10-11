@@ -476,6 +476,19 @@ public sealed partial class KioskApiClient
         ThrowIfRefused(response);
     }
 
+    /// <summary>Reports what the kiosk's printers say about themselves (plan section 7.10).</summary>
+    public async Task SendPrinterTelemetryAsync(IReadOnlyList<PrinterDetails> printers, CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateAuthenticatedRequestAsync(
+            HttpMethod.Post, "api/kiosks/me/printers/telemetry", cancellationToken).ConfigureAwait(false);
+
+        request.Content = JsonContent.Create(new { printers }, options: JsonOptions);
+
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        ThrowIfRefused(response);
+    }
+
     /// <summary>
     /// Forgets everything that identifies this installation: its token, its
     /// device id and the kiosk it was bound to.

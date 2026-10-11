@@ -364,6 +364,67 @@ public sealed class KioskClientContractTests
     }
 
     [DockerFact]
+    public async Task What_the_kiosk_read_from_a_printer_is_what_the_printer_detail_shows()
+    {
+        if (Skip) { return; }
+
+        // The kiosk's own PrinterDetails and client on one side, the admin API
+        // on the other: every field has to arrive under the name the server reads.
+        var paths = new FakeAppPaths();
+        var api = Client(paths);
+        var registration = await RegisterAsync(api, "contract-printer");
+        var kioskId = await ActivateAsync(registration.DeviceId, "Contract printer");
+
+        var details = new PrinterDetails(
+            "Test printer",
+            Manufacturer: "KYOCERA",
+            Model: "ECOSYS P3145dn",
+            SerialNumber: "R4P0123456",
+            Firmware: "2S0_2000.004.012",
+            DriverName: "Kyocera Classic Universaldriver PCL6",
+            DriverVersion: "8.2.1",
+            Connection: "Network",
+            Address: "10.0.0.9",
+            Uri: "ipp://10.0.0.9/ipp/print",
+            State: "stopped",
+            StateReasons: ["media-empty-error"],
+            Online: true,
+            LastError: "Cassette 1 is empty",
+            Supplies: [new PrinterSupply("TK-3160", "toner", "black", 20), new PrinterSupply("Waste Toner Box", "waste", null, null)],
+            Trays: [new PrinterTray("Cassette 1", "iso-a4", 0)],
+            LifetimePages: 152_340,
+            Features: new PrinterFeatures(Color: false, Duplex: true, PaperSizes: ["A4", "A5"], Trays: ["tray-1"], ResolutionDpi: 1200, NativeFormats: ["application/pdf"]),
+            SpoolerJobs: [new SpoolerJob("Test_printer-7", 2048, "pending", DateTime.UtcNow.AddSeconds(-30))]);
+
+        await api.SendPrinterTelemetryAsync([details]);
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        var printers = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kioskId}/printers/telemetry");
+        var sample = printers[0].GetProperty("sample");
+
+        sample.GetProperty("selected").GetBoolean().Should().BeTrue();
+        sample.GetProperty("manufacturer").GetString().Should().Be("KYOCERA");
+        sample.GetProperty("model").GetString().Should().Be("ECOSYS P3145dn");
+        sample.GetProperty("serialNumber").GetString().Should().Be("R4P0123456");
+        sample.GetProperty("firmware").GetString().Should().Be("2S0_2000.004.012");
+        sample.GetProperty("driverVersion").GetString().Should().Be("8.2.1");
+        sample.GetProperty("connection").GetString().Should().Be("Network");
+        sample.GetProperty("address").GetString().Should().Be("10.0.0.9");
+        sample.GetProperty("state").GetString().Should().Be("stopped");
+        sample.GetProperty("stateReasons")[0].GetString().Should().Be("media-empty-error");
+        sample.GetProperty("lastError").GetString().Should().Be("Cassette 1 is empty");
+        sample.GetProperty("supplies")[0].GetProperty("levelPercent").GetInt32().Should().Be(20);
+        sample.GetProperty("supplies")[0].GetProperty("color").GetString().Should().Be("black");
+        sample.GetProperty("supplies")[1].GetProperty("type").GetString().Should().Be("waste");
+        sample.GetProperty("trays")[0].GetProperty("levelPercent").GetInt32().Should().Be(0);
+        sample.GetProperty("lifetimePages").GetInt64().Should().Be(152_340);
+        sample.GetProperty("features").GetProperty("resolutionDpi").GetInt32().Should().Be(1200);
+        sample.GetProperty("features").GetProperty("paperSizes")[1].GetString().Should().Be("A5");
+        sample.GetProperty("spoolerJobs")[0].GetProperty("id").GetString().Should().Be("Test_printer-7");
+        sample.GetProperty("spoolerJobs")[0].GetProperty("sizeBytes").GetInt64().Should().Be(2048);
+    }
+
+    [DockerFact]
     public async Task A_report_made_by_the_kiosk_collector_is_what_the_panel_reads()
     {
         if (Skip) { return; }

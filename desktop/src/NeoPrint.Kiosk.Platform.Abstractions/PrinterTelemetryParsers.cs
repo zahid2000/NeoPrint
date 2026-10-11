@@ -1,9 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-using NeoPrint.Kiosk.Platform.Abstractions;
-
-namespace NeoPrint.Kiosk.Core.Printing;
+namespace NeoPrint.Kiosk.Platform.Abstractions;
 
 // ---------------------------------------------------------------------------
 // What printers answer, turned into PrinterDetails (plan section 7.10). Text or
