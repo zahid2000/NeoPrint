@@ -114,39 +114,45 @@ class _KioskSearchScreenState extends ConsumerState<KioskSearchScreen> {
               Spacing.x4,
               0,
             ),
-            child: Wrap(
-              spacing: Spacing.x2,
-              runSpacing: Spacing.x2,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                if (mapAvailable)
-                  SegmentedButton<KioskView>(
-                    segments: [
-                      ButtonSegment(
-                        value: KioskView.list,
-                        icon: const Icon(Icons.view_list_outlined),
-                        label: Text(l10n.kioskViewList),
-                      ),
-                      ButtonSegment(
-                        value: KioskView.map,
-                        icon: const Icon(Icons.map_outlined),
-                        label: Text(l10n.kioskViewMap),
-                      ),
-                    ],
-                    selected: {view},
-                    onSelectionChanged: (selected) =>
-                        controller.setView(selected.single),
+            // The whole width, so both rows start at the content's left edge:
+            // shrunk to its widest row the block sat in the middle with the
+            // second row hanging under the first one's left end.
+            child: SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                spacing: Spacing.x2,
+                runSpacing: Spacing.x2,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (mapAvailable)
+                    SegmentedButton<KioskView>(
+                      segments: [
+                        ButtonSegment(
+                          value: KioskView.list,
+                          icon: const Icon(Icons.view_list_outlined),
+                          label: Text(l10n.kioskViewList),
+                        ),
+                        ButtonSegment(
+                          value: KioskView.map,
+                          icon: const Icon(Icons.map_outlined),
+                          label: Text(l10n.kioskViewMap),
+                        ),
+                      ],
+                      selected: {view},
+                      onSelectionChanged: (selected) =>
+                          controller.setView(selected.single),
+                    ),
+                  FilterChip(
+                    // Chosen, the chip shows its tick instead of the icon.
+                    avatar: search.nearMe
+                        ? null
+                        : const Icon(Icons.near_me_outlined),
+                    label: Text(l10n.kioskNearMe),
+                    selected: search.nearMe,
+                    onSelected: (on) => unawaited(controller.setNearMe(on)),
                   ),
-                FilterChip(
-                  // Chosen, the chip shows its tick instead of the icon.
-                  avatar: search.nearMe
-                      ? null
-                      : const Icon(Icons.near_me_outlined),
-                  label: Text(l10n.kioskNearMe),
-                  selected: search.nearMe,
-                  onSelected: (on) => unawaited(controller.setNearMe(on)),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           if (search.nearMe) _NearMeBar(search: search),

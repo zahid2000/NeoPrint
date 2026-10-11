@@ -418,11 +418,16 @@ class _PayScreenState extends ConsumerState<PayScreen> {
                     ),
                     const SizedBox(width: Spacing.x1),
                   ],
-                  Text(
-                    l10n.payTimeLeft(formatCountdown(_secondsLeft)),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: low ? tokens.warning : tokens.neutral600,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+                  // Flexible: on a narrow phone, or in a longer language, the
+                  // sentence goes onto a second line instead of off the screen.
+                  Flexible(
+                    child: Text(
+                      l10n.payTimeLeft(formatCountdown(_secondsLeft)),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: low ? tokens.warning : tokens.neutral600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
                 ],

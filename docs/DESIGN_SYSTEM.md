@@ -306,6 +306,9 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 - Formalar tək sütun, sahə başına bir sual; uzun formalar addımlara bölünür.
 - Pul, tarix və status hər yerdə eyni formatda.
 - Boş vəziyyətlər hər siyahı üçün (fayl yoxdur, qəbz yoxdur, planlanmış çap yoxdur).
+- **Sətirdə (`Row`) mətn həmişə elastikdir** (`Expanded` / `Flexible`): dar ekranda və ya uzun dildə ikinci sətrə keçir və ya qısalır, ekrandan çıxmır. Status chip-i öz yerindən böyük mətni üç nöqtə ilə qısaldır; kartda chip sətrin ən çox 60%-ni tutur, qalanı ad üçündür.
+- **Bir neçə idarəetmə elementi (seqment, filtr chip-i) sola düzlənir** və sığmayan ikinci sətrə keçir; blok ortalanmır (ikinci sətir birincinin altında "asılı" qalmasın).
+- **Hər widget testi 360 × 800 dp ekranda çəkilir** (`test/flutter_test_config.dart`). Flutter daşmanı xəta kimi verir, test çərçivəsi də onu uğursuzluğa çevirir — yəni testdə çəkilən hər ekran dar telefonda sığmalıdır. Testin şrifti real şriftdən təxminən 1,8 dəfə enlidir, ona görə 360 dp-də keçən ekran 40% uzun (rus) mətnə də dözür. Başqa ölçü lazım olan test onu özü qoyur.
 - Dark tema tam dəstəklənir; şəkil və QR blokları dark temada ağ fon üzərində göstərilir (skan oluna bilməsi üçün).
 
 ### 5.3 Admin panel (Angular Material)

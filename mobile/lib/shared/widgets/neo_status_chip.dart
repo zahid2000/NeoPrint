@@ -44,12 +44,19 @@ class NeoStatusChip extends StatelessWidget {
         children: [
           Icon(icon ?? _icons[tone], size: 14, color: colours.foreground),
           const SizedBox(width: Spacing.x1),
-          Text(
-            label,
-            style: TextStyle(
-              color: colours.foreground,
-              fontSize: FontSizes.caption,
-              fontWeight: FontWeights.medium,
+          // Flexible: given less room than its words need, the chip
+          // shortens them; it never paints past its own edge.
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: colours.foreground,
+                fontSize: FontSizes.caption,
+                fontWeight: FontWeights.medium,
+              ),
             ),
           ),
         ],

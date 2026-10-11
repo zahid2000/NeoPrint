@@ -108,24 +108,33 @@ class JobCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    job.fileName ?? job.jobCode,
-                    style: theme.textTheme.titleMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+            // The status takes what it needs, up to a little over half the
+            // card; the name always keeps the rest. Without the limit a long
+            // status ("waiting for its time", in Russian) pushed past the
+            // card's edge on a narrow phone.
+            LayoutBuilder(
+              builder: (context, box) => Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      job.fileName ?? job.jobCode,
+                      style: theme.textTheme.titleMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-                const SizedBox(width: Spacing.x2),
-                NeoStatusChip(
-                  label: look.label,
-                  tone: look.tone,
-                  icon: look.icon,
-                ),
-              ],
+                  const SizedBox(width: Spacing.x2),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: box.maxWidth * 0.6),
+                    child: NeoStatusChip(
+                      label: look.label,
+                      tone: look.tone,
+                      icon: look.icon,
+                    ),
+                  ),
+                ],
+              ),
             ),
             if (kiosk.isNotEmpty) ...[
               const SizedBox(height: Spacing.x1),
