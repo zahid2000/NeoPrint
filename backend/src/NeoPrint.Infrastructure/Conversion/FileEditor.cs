@@ -59,6 +59,10 @@ public sealed class FileEditor : IFileEditor
             using var input = PdfReader.Open(scratch, PdfDocumentOpenMode.Import);
             using var result = new PdfSharp.Pdf.PdfDocument();
 
+            // PDFsharp 6.2 ends the streams it compresses itself without the
+            // final block and checksum (T-198); the pages keep their own.
+            result.Options.CompressContentStreams = false;
+
             foreach (var edit in pages)
             {
                 if (edit.Page < 1 || edit.Page > input.PageCount)

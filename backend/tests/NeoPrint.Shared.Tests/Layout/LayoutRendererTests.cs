@@ -185,6 +185,39 @@ public sealed class LayoutRendererTests
         render.Should().Throw<LayoutException>().WithMessage("layout.imageUnreadable");
     }
 
+    [Fact]
+    public void Every_stream_it_compresses_is_a_whole_zlib_stream()
+    {
+        // A renderer forgives a stream that stops short; a printer reading
+        // the PDF itself may not (T-198).
+        var pdf = Render(
+            Page(new LayoutElement("card", 62.2, 89.52, 85.6, 53.98), new LayoutElement("card", 62.2, 150, 85.6, 53.98)),
+            ("card", Solid(200, 126)));
+
+        PdfStreams.BrokenFlate(pdf).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void The_stream_check_tells_a_whole_stream_from_one_cut_short()
+    {
+        using var packed = new MemoryStream();
+
+        using (var zlib = new System.IO.Compression.ZLibStream(packed, System.IO.Compression.CompressionLevel.Optimal, leaveOpen: true))
+        {
+            zlib.Write("q 1 0 0 1 0 0 cm 50 50 200 100 re f Q"u8);
+        }
+
+        static byte[] Pdf(byte[] data) =>
+        [
+            .. System.Text.Encoding.Latin1.GetBytes($"1 0 obj\n<</Length {data.Length}/Filter/FlateDecode>>\nstream\n"),
+            .. data,
+            .. "\nendstream\nendobj\n"u8,
+        ];
+
+        PdfStreams.BrokenFlate(Pdf(packed.ToArray())).Should().BeEmpty();
+        PdfStreams.BrokenFlate(Pdf(packed.ToArray()[..^5])).Should().ContainSingle();
+    }
+
     private static LayoutProject Page(params LayoutElement[] elements)
         => new(LayoutProject.CurrentVersion, LayoutPaper.A4, LayoutOrientation.Portrait, 10, [new LayoutPage(elements)]);
 

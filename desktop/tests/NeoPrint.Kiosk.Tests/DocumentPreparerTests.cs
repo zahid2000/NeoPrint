@@ -233,6 +233,37 @@ public sealed class DocumentPreparerTests : IDisposable
         PdfTools.PageCount(target).Should().Be(3);
     }
 
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(1, true)]
+    public void Every_stream_the_print_file_compresses_is_a_whole_zlib_stream(int perSheet, bool actualSize)
+    {
+        // A renderer forgives a stream that stops short; a printer reading
+        // the PDF itself may not (T-198).
+        var source = Path.Combine(_folder, "drawn.pdf");
+        using (var document = new PdfSharp.Pdf.PdfDocument())
+        {
+            document.Options.CompressContentStreams = false;
+
+            for (var number = 0; number < 2; number++)
+            {
+                using var graphics = PdfSharp.Drawing.XGraphics.FromPdfPage(document.AddPage());
+                graphics.DrawRectangle(PdfSharp.Drawing.XBrushes.Black, 50, 50, 200, 100);
+            }
+
+            document.Save(source);
+        }
+
+        var print = Path.Combine(_folder, "print-streams.pdf");
+        PdfTools.BuildForPrint(source, print, [1, 2], perSheet, "A4", actualSize);
+        PdfStreams.BrokenFlate(File.ReadAllBytes(print)).Should().BeEmpty();
+
+        var edited = Path.Combine(_folder, "edited-streams.pdf");
+        PdfTools.ApplyChanges(source, edited, [new PageChange(2, 90), new PageChange(1, 0)]);
+        PdfStreams.BrokenFlate(File.ReadAllBytes(edited)).Should().BeEmpty();
+    }
+
     [Fact]
     public void At_actual_size_an_a5_page_goes_onto_an_a4_sheet_unscaled_and_a4_stays_a4()
     {

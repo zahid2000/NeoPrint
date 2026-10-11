@@ -1,5 +1,8 @@
+using System.IO.Compression;
+
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
+using PdfSharp.Pdf.Advanced;
 using PdfSharp.Pdf.IO;
 
 using NeoPrint.Kiosk.Platform.Abstractions;
@@ -21,6 +24,55 @@ public static class PdfTools
         ["A4"] = (595.28, 841.89),
         ["A3"] = (841.89, 1190.55),
     };
+
+    /// <summary>
+    /// A document whose own streams are written as they are: PDFsharp 6.2
+    /// ends the streams it compresses without the final block and checksum,
+    /// which a renderer forgives and a printer reading the PDF may not
+    /// (T-198). What comes from the source file keeps its own compression.
+    /// </summary>
+    private static PdfDocument NewDocument()
+    {
+        var document = new PdfDocument();
+        document.Options.CompressContentStreams = false;
+
+        return document;
+    }
+
+    /// <summary>
+    /// Saves the document with every stream PDFsharp compressed made whole.
+    /// </summary>
+    /// <remarks>
+    /// A source page drawn onto a sheet becomes a form, and PDFsharp zips a
+    /// form on the spot whatever the options say - short of its end, like the
+    /// rest (T-198). It is taken back out and compressed again by .NET.
+    /// </remarks>
+    private static void Save(PdfDocument document, string targetPath)
+    {
+        foreach (var form in document.Internals.GetAllObjects().OfType<PdfFormXObject>())
+        {
+            if (form.Stream is not { } stream
+                || form.Elements[PdfDictionary.PdfStream.Keys.Filter] is not PdfName { Value: "/FlateDecode" })
+            {
+                continue;
+            }
+
+            var plain = stream.UnfilteredValue;
+            using var packed = new MemoryStream();
+
+            using (var zlib = new ZLibStream(packed, CompressionLevel.Optimal, leaveOpen: true))
+            {
+                zlib.Write(plain);
+            }
+
+            // Still Flate, now with its end; the length is not kept in step
+            // with the value by itself.
+            stream.Value = packed.ToArray();
+            form.Elements.SetInteger(PdfDictionary.PdfStream.Keys.Length, stream.Value.Length);
+        }
+
+        document.Save(targetPath);
+    }
 
     /// <summary>Pages in the document.</summary>
     /// <exception cref="PrintingException">It is not a PDF PDFsharp can open (<c>pdf.damaged</c>).</exception>
@@ -53,7 +105,7 @@ public static class PdfTools
         try
         {
             using var input = PdfReader.Open(sourcePath, PdfDocumentOpenMode.Import);
-            using var result = new PdfDocument();
+            using var result = NewDocument();
 
             foreach (var change in changes)
             {
@@ -66,7 +118,7 @@ public static class PdfTools
                 page.Rotate = (((page.Rotate + change.Rotate) % 360) + 360) % 360;
             }
 
-            result.Save(targetPath);
+            Save(result, targetPath);
         }
         catch (PrintingException)
         {
@@ -127,7 +179,7 @@ public static class PdfTools
         try
         {
             using var form = XPdfForm.FromFile(sourcePath);
-            using var result = new PdfDocument();
+            using var result = NewDocument();
 
             for (var start = 0; start < pages.Count; start += pagesPerSheet)
             {
@@ -156,7 +208,7 @@ public static class PdfTools
                 }
             }
 
-            result.Save(targetPath);
+            Save(result, targetPath);
         }
         catch (PrintingException)
         {
@@ -176,7 +228,7 @@ public static class PdfTools
         try
         {
             using var form = XPdfForm.FromFile(sourcePath);
-            using var result = new PdfDocument();
+            using var result = NewDocument();
 
             foreach (var number in pages)
             {
@@ -196,7 +248,7 @@ public static class PdfTools
                 graphics.DrawImage(form, new XRect(place.X, place.Y, place.Width, place.Height));
             }
 
-            result.Save(targetPath);
+            Save(result, targetPath);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

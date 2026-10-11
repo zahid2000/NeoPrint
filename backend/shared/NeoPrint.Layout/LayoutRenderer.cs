@@ -84,6 +84,12 @@ public static class LayoutRenderer
 
             using var document = new PdfDocument();
 
+            // PDFsharp 6.2 ends the streams it compresses without the final
+            // block and checksum (T-198). A page here is a few drawing
+            // operators; the pictures are JPEG and are not touched by this.
+            document.Options.CompressContentStreams = false;
+
+
             foreach (var page in project.Pages)
             {
                 var pdfPage = document.AddPage();
