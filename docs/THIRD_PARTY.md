@@ -31,7 +31,7 @@ mənbə və səbəblə burada qeyd olunur.
 | `Hangfire.Mongo` | 1.16.3 | MIT | sergeyzwezdin | Hangfire üçün Mongo storage. Paketin nuspec-ində lisenziya elan olunmur; MIT layihə deposundakı `LICENSE` faylı ilə təsdiqləndi və `allowlist.json` → `packageLicenses`-ə yazıldı |
 | `QuestPDF` | 2026.9.0 | **Community** | QuestPDF | Qəbz və hesabat PDF-ləri. **Şərt:** illik gəliri 1M USD-dən az olan şirkətlər üçün pulsuzdur. Bu şərt pozulduqda kommersiya lisenziyası alınmalıdır — `allowlist.json`-da adla istisna |
 | `PDFsharp` | 6.2.4 | MIT | empira (rəsmi) | PDF səhifə əməliyyatları, tərtibat PDF-i (`NeoPrint.Layout` — backend və kiosk eyni renderer, Addım 6) |
-| `SkiaSharp`, `SkiaSharp.NativeAssets.Linux` | 2.88.9 | MIT | Microsoft | Şəkil emalı, şəkil → PDF, preview; `NeoPrint.Layout`-da şəkillərin 300 DPI-a endirilməsi və EXIF oriyentasiyası. Avalonia 11.3 ilə eyni versiya |
+| `SkiaSharp`, `SkiaSharp.NativeAssets.Linux` | 2.88.9 | MIT | Microsoft | Şəkil emalı, şəkil → PDF, preview; `NeoPrint.Layout`-da şəkillərin 300 DPI-a endirilməsi və EXIF oriyentasiyası. Avalonia 11.3 ilə eyni versiya. Backend-də yalnız converter alətində (`NeoPrint.Converter`) işlənir — API prosesində yox (T-051, ADR-0005) |
 | `QRCoder` | 1.8.0 | MIT | Raffael Herrmann | QR generasiya |
 | `Swashbuckle.AspNetCore` | 7.3.2 | MIT | domaindrivendev | Swagger UI — **yalnız Development mühitində** qeydiyyatdan keçir |
 | `System.Management` | 8.0.0 | MIT | Microsoft | Windows WMI (kiosk telemetriyası) |

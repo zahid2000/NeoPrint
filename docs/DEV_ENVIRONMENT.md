@@ -731,9 +731,13 @@ görünən fayllar **şifrəlidir**, endirsəniz açılmaz (gözlənilən haldı
 
 ### Konvertasiya — izolyasiya olunmuş `converter` konteyneri
 
-Word/Excel/PowerPoint/PS/PCL/XPS faylları API-də yox, `neoprint-converter`
-konteynerində çevrilir (şəbəkəsiz, read-only, CPU/RAM limitli —
-`docs/adr/ADR-0005-isolated-converter.md`). Portu yoxdur.
+İstifadəçi faylını açan **hər şey** API-də yox, `neoprint-converter`
+konteynerində işləyir (şəbəkəsiz, read-only, CPU/RAM limitli —
+`docs/adr/ADR-0005-isolated-converter.md`): Word/Excel/PowerPoint/PS/PCL/XPS
+konvertasiyası və Addım 7A-dan (T-051) bəri PDF-in səhifə sayı, önizləmə
+şəkilləri, şəkil → PDF, səhifə / şəkil redaktəsi, skan və tərtibatın PDF-ə
+çəkilməsi. Sonuncuları converter aləti (`NeoPrint.Converter.dll`) edir — hər
+fayl üçün bir qısa proses. Portu yoxdur.
 
 ```bash
 docker compose logs -f converter                       # hər iş üçün bir sətir: proqram, nəticə, müddət
@@ -747,9 +751,41 @@ docker inspect neoprint-converter --format '{{.HostConfig.Memory}} {{.HostConfig
 
 Converter dayanıbsa fayllar "Hazırlanır" statusunda gözləyir və converter qalxanda
 çevrilir (təxminən 90 saniyədən çox gözlədisə "Açılmadı" olur — faylı yenidən yükləyin).
+Önizləmə, redaktə və tərtibat isə gözləmir: dərhal `503` və "Sənəd emalı xidməti
+hazırda işləmir… bir az sonra yenidən cəhd edin" cavabı gəlir.
+
+**Hamısını bir əmrlə yoxlamaq (T-051):** skript `dev-user` kimi hər format
+qrupundan bir fayl yükləyir (PDF, TXT, RTF, CSV, ODP, PNG, BMP, PS — özü yaradır),
+`Ready` olmasını və səhifə şəklini gözləyir, səhifə və şəkil redaktəsi, tərtibat və
+skan edir, zədəli PDF-in izahla `Failed` olduğuna baxır, sonra API prosesinin
+yaddaş xəritəsində (`/proc/1/maps`) PDFium / SkiaSharp / PDFsharp olmadığını və altı
+alət əməliyyatının converter-in log-unda olduğunu yoxlayır. Yaratdığı faylları silir.
+
+```bash
+node tools/dev-converter/check.mjs            # 24 yoxlama, ~1 dəqiqə
+node tools/dev-converter/check.mjs --down     # + converter-i dayandırır: 503, health Degraded, sonra yenidən qaldırır (30 yoxlama)
+```
+
+Əl ilə:
+
+```bash
+docker exec neoprint-api sh -c 'grep -c -i -E "libpdfium|libSkiaSharp|PdfSharp|NeoPrint.Converter" /proc/1/maps'   # 0 olmalıdır
+docker exec neoprint-converter sh -c 'ls /app/NeoPrint.Converter.dll'                                              # alət image-dədir
+docker logs --since 5m neoprint-converter | grep -o 'with [a-z-]*: [A-Za-z]* in [0-9.]* s'                         # hər iş: əməliyyat, nəticə, müddət
+
+docker stop neoprint-converter      # 20 saniyədən sonra: önizləmə / redaktə → 503 files.processingUnavailable
+docker start neoprint-converter     # eyni sorğu yenidən işləyir
+```
+
+**Addım 6-dan keçid (T-051):** kod yeniləndikdən sonra image-i yenidən qurun —
+`docker compose up -d --build api converter`. Hər iki konteyner eyni image-dəndir;
+biri köhnə qalsa önizləmə `503` verər (köhnə converter `neoprint-tool` işini rədd edir).
+Compose faylında, seed-də və konfiqurasiyada dəyişiklik yoxdur.
 
 Docker-siz `dotnet run` ilə API-ni işlədəndə konvertasiya lokal child prosesdə gedir
-(`Conversion:Mode=Local`, yalnız Development-də icazəlidir).
+(`Conversion:Mode=Local`, yalnız Development-də icazəlidir). Converter aləti də
+belədir: API onu `dotnet NeoPrint.Converter.dll` kimi ayrıca proses kimi işə salır —
+bu rejimdə də PDFium / SkiaSharp API prosesinə yüklənmir.
 
 ### Şifrələməni storage-dan birbaşa yoxlamaq
 

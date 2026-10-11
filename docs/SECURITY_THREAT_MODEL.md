@@ -36,6 +36,14 @@ Controls: - isolated converter - no network access - timeout -
 CPU/memory limits - restricted filesystem - temporary directory -
 antivirus/malware scanning where planned
 
+**Vəziyyət (Addım 7A, T-051):** istifadəçi faylını parse edən hər şey —
+LibreOffice, Ghostscript ailəsi **və** PDFium, SkiaSharp, PDFsharp (səhifə
+sayı, preview, şəkil → PDF, səhifə / şəkil redaktəsi, skan və tərtibatın PDF-ə
+çəkilməsi) — yalnız şəbəkəsiz `converter` konteynerində, hər fayl üçün ayrıca
+prosesdə işləyir. API prosesi bu kitabxanalara istinad etmir
+(`ParserIsolationTests` bunu assembly metadata-sından yoxlayır). Təfərrüat:
+`docs/adr/ADR-0005-isolated-converter.md` bənd 6.
+
 ### Stolen kiosk credentials
 
 Controls: - device keypair - private key never leaves device - revoke

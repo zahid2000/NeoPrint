@@ -123,6 +123,20 @@ Converter: - timeout ilə dayandırılmalıdır; - resource limit tətbiq
 edilməlidir; - temp files təmizlənməlidir; - failed conversion
 retry-safe olmalıdır; - istifadəçiyə təhlükəsiz error göstərilməlidir.
 
+**Converter konteyneri dayananda (Addım 7A, T-051):**
+
+| Nə | Nə baş verir |
+|---|---|
+| Yeni yüklənən fayl | "Hazırlanır" statusunda gözləyir; converter ~90 saniyə ərzində qayıtmasa "Açılmadı" (`conversion.notStarted`) olur — fayl yenidən yüklənir |
+| Hazır faylın önizləməsi (səhifə şəkli) | Dərhal `503`, `code: files.processingUnavailable` — "Sənəd emalı xidməti hazırda işləmir… bir az sonra yenidən cəhd edin". Mobil tətbiq bu cümləni və "Yenidən cəhd et" düyməsini göstərir |
+| Redaktə (səhifə / şəkil), skan və tərtibatın saxlanması | Eyni `503`; heç nə saxlanmır, fayl və əvvəlki versiyalar yerindədir |
+| Çap, ödəniş, artıq hazır PDF-in endirilməsi | Təsirlənmir — converter-ə ehtiyacı yoxdur |
+| API `/health` | `converter: Degraded` |
+
+Converter qalxandan sonra eyni sorğu heç nə dəyişmədən işləyir. Alət bir
+faylda çökərsə (parser xətası, yaddaş limiti) yalnız həmin əməliyyat
+"alınmadı" cavabı alır; worker və digər istifadəçilərin işləri davam edir.
+
 ## Recovery test
 
 Ən azı bunlar avtomatlaşdırılmış test/simulyasiya kimi yoxlanmalıdır:

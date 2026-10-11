@@ -73,6 +73,48 @@ məcburidir. API tərəfində `IProcessSandbox` abstraksiyası: `SandboxedProces
 alır, consumer asılı qalmır. Converter-in heartbeat-i yoxdursa, API health-i
 `Degraded` göstərir.
 
+**6. PDFium, SkiaSharp və PDFsharp da yalnız converter-də işləyir (Addım 7A,
+T-051, 2026-10-11).** İstifadəçi faylını parse edən bütün qalan əməliyyatlar —
+səhifə sayı, səhifə şəkli (preview), şəkil → PDF, səhifə redaktəsi, şəkil
+redaktəsi, tərtibatın (skan / layout) PDF-ə çəkilməsi — API prosesindən
+çıxarılıb. Onları **converter aləti** edir: ayrıca .NET proqramı
+(`backend/src/NeoPrint.Converter`, `NeoPrint.Converter.dll`), hər fayl üçün bir
+qısa ömürlü proses.
+
+- **Kim işə salır:** converter konteynerindəki worker — eyni spool protokolu
+  ilə, icazə siyahısındakı yeni "proqram" `neoprint-tool` kimi; worker onu
+  `dotnet NeoPrint.Converter.dll <əməliyyat>` kimi başladır. Docker-siz
+  development maşınında (`Conversion:Mode=Local`) eyni aləti API child proses
+  kimi işə salır — yəni heç bir rejimdə parser API prosesinin içində deyil.
+- **Protokol:** əməliyyatın öz spool qovluğunda `tool-request.json` (API yazır)
+  və `tool-response.json` (alət yazır) + adı sorğuda çəkilən fayllar. Alət
+  yalnız öz iş qovluğundakı **sadə fayl adlarını** qəbul edir (yol, `..`,
+  disk hərfi rədd olunur); worker alətdən yalnız altı məlum əməliyyatı və tək
+  arqumenti qəbul edir. Cavabda istifadəçi üçün mesaj açarı (`pdf.damaged`,
+  `conversion.imageTooLarge` …) gəlir; stderr-ə yalnız xətanın növü yazılır.
+- **Limitlər:** alət .NET prosesidir və runtime bir neçə GB ünvan sahəsi
+  rezerv edir, ona görə `prlimit --as` altında başlamır (yoxlanıb: 1–3 GB
+  ilə "Failed to create CoreCLR"). Onun üçün `prlimit --data` (yazıla bilən
+  yaddaş, 1280 MB) + `--cpu` tətbiq olunur — bu, native parser-lərin
+  `malloc`-unu da bağlayır (yoxlanıb: 64 MB ilə proses "Out of memory" ilə
+  dayanır). GC-yə limit `DOTNET_GCHeapHardLimit` ilə bildirilir. Alət öz
+  `oom_score_adj`-unu 1000 edir ki, konteynerin yaddaşı bitəndə kernel
+  worker-i yox, faylı tutan prosesi öldürsün.
+- **Növbə:** worker-də alət işlərinin öz 3 yeri var — preview və səhifə sayı
+  iki uzun Office konvertasiyasının arxasında gözləmir.
+- **Converter dayananda:** kiminsə gözlədiyi sorğular (preview, redaktə,
+  tərtibat) heartbeat 20 saniyədən köhnədirsə **dərhal** `503`
+  (`code: files.processingUnavailable`, "Sənəd emalı xidməti hazırda
+  işləmir… bir az sonra yenidən cəhd edin") alır — fayl "zədəli" kimi
+  göstərilmir və sorğu timeout-u gözləmir. Yüklənən faylın konvertasiyası
+  əvvəlki kimidir (bənd 5).
+- **Sübut:** `NeoPrint.Infrastructure` artıq PDFsharp, SkiaSharp və
+  `NeoPrint.Pdfium`-a istinad etmir. `ParserIsolationTests` API prosesini
+  təşkil edən assembly-lərin metadata-sını oxuyur: heç biri bu kitabxanaların
+  (və `NeoPrint.Layout.LayoutRenderer`-in) heç bir tipinə müraciət etmir;
+  alətin assembly-si isə edir. İki tərəfin ortaq yeganə kodu
+  `ToolContract.cs`-dir (hər ikisinə mənbə faylı kimi daxil edilir).
+
 ### Alternatives
 
 - **API konteynerinə `CAP_SYS_ADMIN` verib `unshare -n`** — rədd: bütün API-yə
@@ -80,21 +122,32 @@ alır, consumer asılı qalmır. Converter-in heartbeat-i yoxdursa, API health-i
 - **Ayrıca şəbəkədə HTTP converter servisi** (`internal: true` şəbəkə) — rədd:
   konvertor API-yə və şəbəkədəki digər servisə qoşula bilərdi; spool ilə
   `network_mode: none` mümkün olan ən sərt variantdır.
-- **Ayrıca .NET layihəsi (`NeoPrint.Converter`)** — təxirə salındı: plan
-  Bölmə 3-dəki repo strukturunda yoxdur; eyni image-in ayrıca rejimi yeni
-  layihə, ayrıca publish və image tələb etmir.
+- **Ayrıca .NET layihəsi (`NeoPrint.Converter`)** — Addım 2-də təxirə
+  salınmışdı (plan Bölmə 3-dəki repo strukturunda yoxdur). **Addım 7A-da
+  əlavə olundu (bənd 6):** yalnız alət üçün — worker yenə API image-inin
+  `--converter-worker` rejimidir, ayrıca image yoxdur. Səbəb: (a) parser
+  kitabxanalarının API assembly-lərindən **kompilyasiya səviyyəsində**
+  ayrılması yalnız ayrı assembly ilə test oluna bilir; (b) hər fayl üçün bir
+  proses başladığından alətin açılış vaxtı vacibdir — kiçik proqram API-nin
+  öz binarından xeyli tez açılır.
+- **Parser-ləri worker prosesinin içində çağırmaq** (child proses olmadan) —
+  rədd: bir faylın yaratdığı yaddaş pozuntusu worker-i və ondan sonrakı
+  bütün istifadəçilərin fayllarını vurardı; fayl başına proses həm çökməni,
+  həm də bir faylın vəziyyətinin növbətiyə keçməsini bağlayır.
+- **Alətə də `prlimit --as`** — mümkün deyil (bənd 6, "Limitlər").
 
 ### Consequences
 
 - LibreOffice / Ghostscript / GhostPCL / GhostXPS istismarı şəbəkəyə, API-nin
   secret-lərinə, DB-yə çata bilmir; resurs tükəndirmə yalnız converter
   konteynerini (cgroup) və həmin konvertasiyanı (prlimit) vurur.
-- **Qalıq risk:** PDFium (səhifə sayı, səhifə şəkilləri, redaktə) və SkiaSharp
-  (şəkil → PDF) hələ API prosesinin içindədir. Bunlar da untrusted faylı parse
-  edir; onların converter-ə köçürülməsi **Addım 7-də, pilotdan əvvəl** edilir
-  (`docs/TASKS.md` T-051, layihə sahibinin 2026-09-28 qərarı). İndiki qoruyucu:
-  PDFium yalnız artıq çevrilmiş/yoxlanmış PDF-i açır, Skia piksel limiti
-  (100 MP, header-dən) tətbiq edir.
+- **Qalıq risk bağlandı (Addım 7A, T-051):** PDFium, SkiaSharp və PDFsharp
+  artıq API prosesində deyil (bənd 6). Qalan: (a) layout-un **JSON-u** API-də
+  oxunur — bu `System.Text.Json` ilə idarə olunan koddur, native parser
+  deyil; (b) qəbz PDF-ləri (QuestPDF) API-də yaradılır — onlar bizim öz
+  məlumatımızdandır, istifadəçi faylı deyil; (c) preview indi hər səhifə üçün
+  bir proses başladır — in-process render-dən yavaşdır (ölçü
+  `docs/DECISIONS.md`-də).
 - Windows development maşınında (Docker-siz `dotnet run`) `Local` rejim işləyir:
   prlimit yoxdur, şəbəkə izolyasiyası yoxdur — yalnız Development-də icazəlidir.
 
@@ -108,7 +161,8 @@ baxır.
 ### Operational Impact
 
 Yeni konteyner: `neoprint-converter` (compose ilə avtomatik qalxır). Log-lar JSON:
-`docker compose logs converter`. Converter dayanıbsa konvertasiyalar gözləyir,
+`docker compose logs converter` — alət işləri də orada, əməliyyatın adı ilə
+(`pdf-render`, `pdf-info` …). Converter dayanıbsa konvertasiyalar gözləyir,
 sonra "çevrilə bilmədi" ilə bitir; API `/health` `converter: Degraded` göstərir.
 
 ### Migration
@@ -124,4 +178,4 @@ köçürülməsi Addım 7-də (pilotdan əvvəl) edilir.
 
 ### Date
 
-2026-09-27
+2026-09-27; bənd 6 — 2026-10-11 (Addım 7A, T-051)

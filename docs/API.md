@@ -940,6 +940,24 @@ izah; olmayan səhifə `400`; başqasının faylı `404`.
 `Cache-Control: private, max-age=86400` və PDF məzmununa bağlı `ETag` — eyni
 səhifə üçün `If-None-Match` göndərilsə `304`, yenidən render olunmur.
 
+Səhifəni API özü çəkmir: şəbəkəsiz `converter` konteynerindəki alət çəkir
+(ADR-0005). Converter işləmirsə cavab **`503`**-dür:
+
+```json
+{
+  "title": "Sənəd emalı xidməti cavab vermir",
+  "detail": "Sənəd emalı xidməti hazırda işləmir, ona görə bu əməliyyat alınmadı. Fayllarınız yerindədir — bir az sonra yenidən cəhd edin.",
+  "status": 503,
+  "code": "files.processingUnavailable"
+}
+```
+
+Eyni `503` converter-ə ehtiyacı olan bütün sorğularda gəlir: `POST
+files/{id}/edit` (səhifə və şəkil redaktəsi), `POST files/scan`, `POST
+files/layout`, `PUT files/{id}/layout`, `GET shares/{id}/pages/{n}.png`.
+Klient bunu "faylda problem var" kimi yox, "bir az sonra yenidən cəhd et" kimi
+göstərir; sorğu təkrar göndərilə bilər.
+
 ### `POST /api/files/{id}/edit`
 
 Redaktəni **yeni versiya** kimi saxlayır (plan 2.2). Orijinal toxunulmaz qalır;
