@@ -627,6 +627,8 @@ bash tools/dev-mobile/emu.sh install && bash tools/dev-mobile/emu.sh start
 bash tools/dev-mobile/emu.sh shot ekran.png        # ekran görüntüsü; tap / text / key / swipe də var
 bash tools/dev-mobile/emu.sh cache                 # skandan sonra burada şəkil qalmamalıdır (T-196)
 bash tools/dev-mobile/emu.sh storage               # möhürlənmiş dəyərlərin adları (T-195)
+adb shell wm density 480                           # ekranı 360 dp enə gətirir (1080 px / 3) — ən dar telefon; UI yoxlaması belə aparılır
+adb shell wm density reset                         # əvvəlki sıxlığa (440) qaytarır
 ```
 
 Bilməli olduqlarınız: (1) təzə image-də Play xidmətləri köhnədir (23.18) və skaner modulunu endirə bilmir —
