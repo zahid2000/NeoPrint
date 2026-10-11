@@ -1415,6 +1415,37 @@ dotnet test backend/tests/NeoPrint.Api.IntegrationTests --logger "console;verbos
 > Kiosk build-i "file is locked" xətası verirsə, işləyən kiosk tətbiqi DLL-ləri
 > tutub saxlayır: `Stop-Process -Name NeoPrint.Kiosk -Force`.
 
+### UI yoxlamaları (xam açar, sığmayan mətn, ekran şəkilləri — T-228)
+
+Hər üç tətbiqdə avtomatikdir və CI-da işləyir; lokalda:
+
+```bash
+# Admin — statik: hər açar lüğətdə, serverin hər dəyərinin (enum, ayar, funksiya açarı) tərcüməsi var
+cd admin && node scripts/i18n-check.mjs
+
+# Admin — render: yığılmış panel real brauzerdə, az / en / ru; şəkillər admin/e2e/screenshots-da
+cd admin && npx ng build --configuration production && npm run e2e
+# Brauzer: maşındakı Chrome və ya Edge. Başqa birini göstərmək üçün:
+#   E2E_CHROME="C:/…/chrome.exe" npm run e2e
+
+# Admin — render testinin API cavablarını yenidən yazmaq (lokal stack qalxmış olmalıdır, ~2 dəqiqə)
+cd admin && npm run e2e:record        # sonra: git diff e2e/fixtures/api.json — commit-dən əvvəl baxın
+
+# Kiosk — 33 ekran × 3 dil, 1920×1080; şəkillər tests/NeoPrint.Kiosk.ScreenTests/bin/…/screens-da
+dotnet test desktop/tests/NeoPrint.Kiosk.ScreenTests
+#   NEOPRINT_SCREENS_DIR=<qovluq> ilə şəkillərin yeri dəyişir
+
+# Mobil — bütün widget testləri 360 × 800 dp ekranda (daşma = uğursuz test)
+cd mobile && flutter test
+```
+
+- `npm run e2e:record` cavabları repoya yazmazdan əvvəl təmizləyir (token, email, host adı, IP, MAC, seriya
+  nömrəsi əvəz olunur; cədvəllər ilk 4 sətrə kəsilir) və API-nin sürət həddinə (`429`) düşsə heç nə yazmır.
+  Yenidən yazmaq yalnız səhifə API-dən yeni bir şey istəyəndə lazımdır — test bunu özü deyir.
+- Render testi `dev-admin`-in görə bildiyi səhifələri açır; `/admins`, `/roles` və `/storage` onun
+  icazəsində deyil və bu testdə yoxdur (statik yoxlama onları da əhatə edir).
+- Layihə sahibinin gördüyü xırda UI problemləri `docs/UI_BUGS.md`-yə yazılır.
+
 ---
 
 ## 9. Tez-tez lazım olan yoxlamalar

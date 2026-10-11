@@ -1,0 +1,2461 @@
+{
+ "recordedAt": "2026-10-11",
+ "routes": [
+  "",
+  "kiosks",
+  "kiosks/new",
+  "print-jobs",
+  "suspected",
+  "payments",
+  "refunds",
+  "fiscal",
+  "receipts",
+  "vouchers",
+  "promos",
+  "referrals",
+  "customers",
+  "revenue",
+  "devices",
+  "pricing",
+  "formats",
+  "features",
+  "settings",
+  "legal",
+  "kiosks/07b60a14-f48c-432a-a815-19c68d09e250",
+  "print-jobs/7d351843-74e5-452f-b6c4-e3c344f889bc",
+  "payments/5d3ad532-0f1d-4254-8733-313ce562792c",
+  "customers/8a16e4e8-e0f2-438b-9e45-a3f98999048c"
+ ],
+ "api": {
+  "POST /api/auth/admin/login": {
+   "accessToken": "recorded-value-removed",
+   "accessTokenExpiresAt": "recorded-value-removed",
+   "admin": {
+    "id": "2bb2fb17-5791-435f-845f-9e4f0c237d6e",
+    "email": "person1@example.test",
+    "fullName": "Test Admin",
+    "roles": [
+     "Admin"
+    ],
+    "permissions": [
+     "dashboard.view",
+     "reports.view",
+     "analytics.view",
+     "kiosks.view",
+     "kiosks.status.view",
+     "kiosks.create",
+     "kiosks.edit",
+     "kiosks.delete",
+     "kiosks.activate",
+     "devices.view",
+     "devices.revoke",
+     "devices.enroll",
+     "releases.view",
+     "releases.manage",
+     "kiosks.commands.update",
+     "kiosks.logs.download",
+     "kiosks.limits.manage",
+     "kiosks.commands.pause",
+     "kiosks.commands.restart",
+     "kiosks.commands.reboot",
+     "printers.view",
+     "printers.select",
+     "printers.capabilities.manage",
+     "printers.testprint",
+     "printers.refresh",
+     "supplies.view",
+     "paper.refill",
+     "supply.rules.manage",
+     "service.tasks.view",
+     "service.tasks.manage",
+     "service.tasks.complete",
+     "inventory.view",
+     "inventory.manage",
+     "operator.panel",
+     "jobs.view",
+     "jobs.cancel",
+     "payments.view",
+     "payments.refund",
+     "refunds.view",
+     "refunds.retry",
+     "receipts.view",
+     "vouchers.view",
+     "fiscal.view",
+     "fiscal.manage",
+     "users.view",
+     "users.block",
+     "wallets.adjust",
+     "pricing.manage",
+     "settings.manage",
+     "promos.manage",
+     "referrals.view",
+     "formats.manage",
+     "features.manage",
+     "legal.manage",
+     "incidents.view",
+     "incidents.acknowledge",
+     "incidents.resolve"
+    ],
+    "allKiosks": true,
+    "kioskIds": [],
+    "mustChangePassword": false
+   }
+  },
+  "POST /api/auth/admin/refresh": {
+   "accessToken": "recorded-value-removed",
+   "accessTokenExpiresAt": "recorded-value-removed",
+   "admin": {
+    "id": "2bb2fb17-5791-435f-845f-9e4f0c237d6e",
+    "email": "person43@example.test",
+    "fullName": "Test Admin",
+    "roles": [
+     "Admin"
+    ],
+    "permissions": [
+     "dashboard.view",
+     "reports.view",
+     "analytics.view",
+     "kiosks.view",
+     "kiosks.status.view",
+     "kiosks.create",
+     "kiosks.edit",
+     "kiosks.delete",
+     "kiosks.activate",
+     "devices.view",
+     "devices.revoke",
+     "devices.enroll",
+     "releases.view",
+     "releases.manage",
+     "kiosks.commands.update",
+     "kiosks.logs.download",
+     "kiosks.limits.manage",
+     "kiosks.commands.pause",
+     "kiosks.commands.restart",
+     "kiosks.commands.reboot",
+     "printers.view",
+     "printers.select",
+     "printers.capabilities.manage",
+     "printers.testprint",
+     "printers.refresh",
+     "supplies.view",
+     "paper.refill",
+     "supply.rules.manage",
+     "service.tasks.view",
+     "service.tasks.manage",
+     "service.tasks.complete",
+     "inventory.view",
+     "inventory.manage",
+     "operator.panel",
+     "jobs.view",
+     "jobs.cancel",
+     "payments.view",
+     "payments.refund",
+     "refunds.view",
+     "refunds.retry",
+     "receipts.view",
+     "vouchers.view",
+     "fiscal.view",
+     "fiscal.manage",
+     "users.view",
+     "users.block",
+     "wallets.adjust",
+     "pricing.manage",
+     "settings.manage",
+     "promos.manage",
+     "referrals.view",
+     "formats.manage",
+     "features.manage",
+     "legal.manage",
+     "incidents.view",
+     "incidents.acknowledge",
+     "incidents.resolve"
+    ],
+    "allKiosks": true,
+    "kioskIds": [],
+    "mustChangePassword": false
+   }
+  },
+  "GET /api/admin/kiosks": [
+   {
+    "id": "07b60a14-f48c-432a-a815-19c68d09e250",
+    "code": "KSK-1001",
+    "name": "Test",
+    "status": "NotActivated",
+    "platform": "Windows",
+    "address": "Baki",
+    "defaultLanguage": "az",
+    "appVersion": "0.1.0",
+    "selectedPrinter": "NeoPrint Fake Printer",
+    "lastHeartbeatAt": "2026-09-27T19:01:45.892Z",
+    "lat": 40.4093,
+    "lng": 49.8671,
+    "paperA4Current": 0,
+    "paperA4Capacity": 500
+   },
+   {
+    "id": "a3efb1e6-cce9-4385-b161-ea0f7d9ed350",
+    "code": "KSK-9001",
+    "name": "Test kiosk — Windows",
+    "status": "NotActivated",
+    "platform": "Unknown",
+    "address": "Bakı, 28 May metro",
+    "defaultLanguage": "az",
+    "lat": 40.3793,
+    "lng": 49.8486,
+    "paperA4Current": 500,
+    "paperA4Capacity": 500
+   },
+   {
+    "id": "b901d45a-61ea-493c-a532-fb2b41e53408",
+    "code": "KSK-9002",
+    "name": "Test kiosk — Linux",
+    "status": "Online",
+    "platform": "Linux",
+    "address": "Bakı, Elmlər Akademiyası metro",
+    "defaultLanguage": "az",
+    "activeDeviceId": "84716ef1-0260-4a39-9fc2-2b851ee59393",
+    "appVersion": "0.1.0",
+    "selectedPrinter": "NeoPrint Fake Printer",
+    "lastHeartbeatAt": "2026-10-11T20:30:02.887Z",
+    "lat": 40.3752,
+    "lng": 49.8342,
+    "paperA4Current": 447,
+    "paperA4Capacity": 500
+   },
+   {
+    "id": "9823c79f-26b3-4e62-909c-373126a3f43a",
+    "code": "KSK-9003",
+    "name": "test",
+    "status": "NotActivated",
+    "platform": "Windows",
+    "address": "test",
+    "defaultLanguage": "az",
+    "appVersion": "0.1.0",
+    "selectedPrinter": "NeoPrint Fake Printer",
+    "lastHeartbeatAt": "2026-09-27T19:40:10.895Z",
+    "lat": 40.4093,
+    "lng": 49.8671,
+    "paperA4Current": 0,
+    "paperA4Capacity": 500
+   }
+  ],
+  "GET /api/admin/devices?status=Pending": [],
+  "GET /api/admin/devices": [],
+  "GET /api/admin/dashboard": {
+   "files": {
+    "count": 50,
+    "totalBytes": 2186586,
+    "inProgress": 0,
+    "failedLast24Hours": 5,
+    "failedLast7Days": 5
+   }
+  },
+  "GET /api/admin/dashboard/payments": {
+   "today": {
+    "sales": 0,
+    "payments": 0,
+    "refunds": 0,
+    "net": 0,
+    "discounts": 0,
+    "topUps": 0
+   },
+   "lastSevenDays": [
+    {
+     "day": "2026-10-06",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    },
+    {
+     "day": "2026-10-07",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    },
+    {
+     "day": "2026-10-08",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    },
+    {
+     "day": "2026-10-09",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    }
+   ],
+   "failedRefunds": 0,
+   "failedFiscal": 0,
+   "openMoneyIncidents": 1
+  },
+  "GET /api/admin/pricing-profiles": [
+   {
+    "id": "3e592007-9521-4d60-aedb-ad1539c3c96e",
+    "name": "Default",
+    "isDefault": true,
+    "bwPricePerSide": 0.1,
+    "colorPricePerSide": 0.3,
+    "minOrder": 0.2,
+    "paperMultipliers": {
+     "A4": 1,
+     "A3": 2
+    },
+    "volumeTiers": [
+     {
+      "minSides": 50,
+      "discountPercent": 10
+     },
+     {
+      "minSides": 100,
+      "discountPercent": 15
+     }
+    ],
+    "kioskCount": 1,
+    "updatedAt": "2026-09-29T06:03:21.574Z",
+    "revision": 2
+   },
+   {
+    "id": "769934a5-a206-41c2-8224-4db31f33c725",
+    "name": "Cresent",
+    "isDefault": false,
+    "bwPricePerSide": 0.15,
+    "colorPricePerSide": 0.35,
+    "minOrder": 0.2,
+    "paperMultipliers": {
+     "A4": 1,
+     "A3": 2
+    },
+    "volumeTiers": [],
+    "kioskCount": 1,
+    "updatedAt": "2026-10-03T20:49:59.806Z",
+    "revision": 0
+   }
+  ],
+  "GET /api/admin/print-jobs?page=1&pageSize=20": {
+   "items": [
+    {
+     "id": "7d351843-74e5-452f-b6c4-e3c344f889bc",
+     "jobCode": "818241",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "status": "Completed",
+     "source": "MobileSession",
+     "fileName": "Şəxsiyyət vəsiqəsi - bank kartı.pdf",
+     "selectedPages": 1,
+     "copies": 1,
+     "total": 0.2,
+     "currency": "AZN",
+     "paymentSkipped": false,
+     "createdAt": "2026-10-11T12:16:47.102Z",
+     "finishedAt": "2026-10-11T12:16:49.968Z"
+    },
+    {
+     "id": "02261982-c5c8-4be9-9225-55d72f5b0cc7",
+     "jobCode": "836109",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "status": "Completed",
+     "source": "MobileSession",
+     "fileName": "Şəxsiyyət vəsiqəsi - bank kartı.pdf",
+     "selectedPages": 1,
+     "copies": 1,
+     "total": 0.2,
+     "currency": "AZN",
+     "paymentSkipped": false,
+     "createdAt": "2026-10-11T09:49:15.422Z",
+     "finishedAt": "2026-10-11T09:49:30.301Z"
+    },
+    {
+     "id": "03e5775f-f3c3-466f-8a37-917a8aa10a18",
+     "jobCode": "294081",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "status": "Completed",
+     "source": "UserQr",
+     "fileName": "Şəxsiyyət vəsiqəsi - bank kartı.pdf",
+     "selectedPages": 1,
+     "copies": 1,
+     "total": 0.2,
+     "currency": "AZN",
+     "paymentSkipped": false,
+     "createdAt": "2026-10-11T00:04:36.311Z",
+     "finishedAt": "2026-10-11T00:05:45.205Z"
+    },
+    {
+     "id": "440d0162-82a6-4dd9-ad2d-9a2a4fe25af4",
+     "jobCode": "338437",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "status": "Completed",
+     "source": "UserQr",
+     "fileName": "bank kartı.pdf",
+     "selectedPages": 1,
+     "copies": 1,
+     "total": 0.2,
+     "currency": "AZN",
+     "paymentSkipped": false,
+     "createdAt": "2026-10-10T22:57:10.067Z",
+     "finishedAt": "2026-10-10T22:59:03.389Z"
+    }
+   ],
+   "total": 67,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/print-jobs": {
+   "items": [
+    {
+     "id": "7d351843-74e5-452f-b6c4-e3c344f889bc",
+     "jobCode": "818241",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "status": "Completed",
+     "source": "MobileSession",
+     "fileName": "Şəxsiyyət vəsiqəsi - bank kartı.pdf",
+     "selectedPages": 1,
+     "copies": 1,
+     "total": 0.2,
+     "currency": "AZN",
+     "paymentSkipped": false,
+     "createdAt": "2026-10-11T12:16:47.102Z",
+     "finishedAt": "2026-10-11T12:16:49.968Z"
+    },
+    {
+     "id": "02261982-c5c8-4be9-9225-55d72f5b0cc7",
+     "jobCode": "836109",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "status": "Completed",
+     "source": "MobileSession",
+     "fileName": "Şəxsiyyət vəsiqəsi - bank kartı.pdf",
+     "selectedPages": 1,
+     "copies": 1,
+     "total": 0.2,
+     "currency": "AZN",
+     "paymentSkipped": false,
+     "createdAt": "2026-10-11T09:49:15.422Z",
+     "finishedAt": "2026-10-11T09:49:30.301Z"
+    },
+    {
+     "id": "03e5775f-f3c3-466f-8a37-917a8aa10a18",
+     "jobCode": "294081",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "status": "Completed",
+     "source": "UserQr",
+     "fileName": "Şəxsiyyət vəsiqəsi - bank kartı.pdf",
+     "selectedPages": 1,
+     "copies": 1,
+     "total": 0.2,
+     "currency": "AZN",
+     "paymentSkipped": false,
+     "createdAt": "2026-10-11T00:04:36.311Z",
+     "finishedAt": "2026-10-11T00:05:45.205Z"
+    },
+    {
+     "id": "440d0162-82a6-4dd9-ad2d-9a2a4fe25af4",
+     "jobCode": "338437",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "status": "Completed",
+     "source": "UserQr",
+     "fileName": "bank kartı.pdf",
+     "selectedPages": 1,
+     "copies": 1,
+     "total": 0.2,
+     "currency": "AZN",
+     "paymentSkipped": false,
+     "createdAt": "2026-10-10T22:57:10.067Z",
+     "finishedAt": "2026-10-10T22:59:03.389Z"
+    }
+   ],
+   "total": 67,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/support/claims?page=1&pageSize=20&status=Open": {
+   "items": [],
+   "total": 0,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/support/claims": {
+   "items": [],
+   "total": 0,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/print-jobs/suspected": [],
+  "GET /api/admin/payments?page=1&pageSize=20": {
+   "items": [
+    {
+     "id": "5d3ad532-0f1d-4254-8733-313ce562792c",
+     "status": "Succeeded",
+     "method": "Mixed",
+     "channel": "Mobile",
+     "purpose": "PrintJob",
+     "amount": 0.1,
+     "refunded": 0,
+     "currency": "AZN",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "jobId": "7d351843-74e5-452f-b6c4-e3c344f889bc",
+     "jobCode": "818241",
+     "userId": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+     "createdAt": "2026-10-11T12:16:47.102Z",
+     "paidAt": "2026-10-11T12:16:49.031Z"
+    },
+    {
+     "id": "b3a05341-18ed-41fe-9531-257a1c3b17db",
+     "status": "Succeeded",
+     "method": "Mixed",
+     "channel": "Mobile",
+     "purpose": "PrintJob",
+     "amount": 0.1,
+     "refunded": 0,
+     "currency": "AZN",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "jobId": "02261982-c5c8-4be9-9225-55d72f5b0cc7",
+     "jobCode": "836109",
+     "userId": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+     "createdAt": "2026-10-11T09:49:15.422Z",
+     "paidAt": "2026-10-11T09:49:28.772Z"
+    },
+    {
+     "id": "df5db9e8-43c6-4387-97af-98dcc2198bd8",
+     "status": "Succeeded",
+     "method": "BankQr",
+     "channel": "Kiosk",
+     "purpose": "PrintJob",
+     "amount": 0.2,
+     "refunded": 0,
+     "currency": "AZN",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "jobId": "03e5775f-f3c3-466f-8a37-917a8aa10a18",
+     "jobCode": "294081",
+     "createdAt": "2026-10-11T00:05:06.266Z",
+     "paidAt": "2026-10-11T00:05:42.329Z"
+    },
+    {
+     "id": "9f04cc79-fb45-4298-b7fc-e0786d2ddb02",
+     "status": "Succeeded",
+     "method": "BankQr",
+     "channel": "Kiosk",
+     "purpose": "PrintJob",
+     "amount": 0.2,
+     "refunded": 0,
+     "currency": "AZN",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "jobId": "440d0162-82a6-4dd9-ad2d-9a2a4fe25af4",
+     "jobCode": "338437",
+     "createdAt": "2026-10-10T22:58:19.653Z",
+     "paidAt": "2026-10-10T22:58:59.035Z"
+    }
+   ],
+   "total": 72,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/payments": {
+   "items": [
+    {
+     "id": "5d3ad532-0f1d-4254-8733-313ce562792c",
+     "status": "Succeeded",
+     "method": "Mixed",
+     "channel": "Mobile",
+     "purpose": "PrintJob",
+     "amount": 0.1,
+     "refunded": 0,
+     "currency": "AZN",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "jobId": "7d351843-74e5-452f-b6c4-e3c344f889bc",
+     "jobCode": "818241",
+     "userId": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+     "createdAt": "2026-10-11T12:16:47.102Z",
+     "paidAt": "2026-10-11T12:16:49.031Z"
+    },
+    {
+     "id": "b3a05341-18ed-41fe-9531-257a1c3b17db",
+     "status": "Succeeded",
+     "method": "Mixed",
+     "channel": "Mobile",
+     "purpose": "PrintJob",
+     "amount": 0.1,
+     "refunded": 0,
+     "currency": "AZN",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "jobId": "02261982-c5c8-4be9-9225-55d72f5b0cc7",
+     "jobCode": "836109",
+     "userId": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+     "createdAt": "2026-10-11T09:49:15.422Z",
+     "paidAt": "2026-10-11T09:49:28.772Z"
+    },
+    {
+     "id": "df5db9e8-43c6-4387-97af-98dcc2198bd8",
+     "status": "Succeeded",
+     "method": "BankQr",
+     "channel": "Kiosk",
+     "purpose": "PrintJob",
+     "amount": 0.2,
+     "refunded": 0,
+     "currency": "AZN",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "jobId": "03e5775f-f3c3-466f-8a37-917a8aa10a18",
+     "jobCode": "294081",
+     "createdAt": "2026-10-11T00:05:06.266Z",
+     "paidAt": "2026-10-11T00:05:42.329Z"
+    },
+    {
+     "id": "9f04cc79-fb45-4298-b7fc-e0786d2ddb02",
+     "status": "Succeeded",
+     "method": "BankQr",
+     "channel": "Kiosk",
+     "purpose": "PrintJob",
+     "amount": 0.2,
+     "refunded": 0,
+     "currency": "AZN",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "jobId": "440d0162-82a6-4dd9-ad2d-9a2a4fe25af4",
+     "jobCode": "338437",
+     "createdAt": "2026-10-10T22:58:19.653Z",
+     "paidAt": "2026-10-10T22:58:59.035Z"
+    }
+   ],
+   "total": 72,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/refunds?page=1&pageSize=1&status=Failed": {
+   "items": [],
+   "total": 0,
+   "page": 1,
+   "pageSize": 1
+  },
+  "GET /api/admin/refunds": {
+   "items": [],
+   "total": 0,
+   "page": 1,
+   "pageSize": 1
+  },
+  "GET /api/admin/refunds?page=1&pageSize=20": {
+   "items": [
+    {
+     "id": "e5817d2b-d6f4-411c-9f12-86ea4b805388",
+     "paymentId": "fd687483-8d0c-4ff5-b510-7114a6e13e4c",
+     "jobId": "328d6895-e196-452f-a0ec-c07d2d790755",
+     "userId": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+     "amount": 0.45,
+     "bonusPages": 0,
+     "source": "Wallet",
+     "destination": "Wallet",
+     "reason": "NotCollected",
+     "initiatedBy": "System",
+     "status": "Succeeded",
+     "attempts": 0,
+     "createdAt": "2026-10-10T22:00:10.594Z",
+     "completedAt": "2026-10-10T22:00:10.847Z"
+    },
+    {
+     "id": "4e81456b-979c-40d7-b2c7-2113cad1dd86",
+     "paymentId": "8c63a59d-1c85-473a-93d2-b3b86d2e15fa",
+     "jobId": "045594ed-d1fc-4d49-9b68-0e1effd63db6",
+     "userId": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+     "amount": 0.2,
+     "bonusPages": 0,
+     "source": "Wallet",
+     "destination": "Wallet",
+     "reason": "UserCancel",
+     "initiatedBy": "System",
+     "status": "Succeeded",
+     "attempts": 0,
+     "createdAt": "2026-10-04T18:40:53.861Z",
+     "completedAt": "2026-10-04T18:40:53.907Z"
+    },
+    {
+     "id": "a456910a-5e64-4566-9b95-1ad3cda5aa8a",
+     "paymentId": "bbff035c-8f3f-4dc8-9a45-4aaf91441d99",
+     "jobId": "5a6871db-f90b-4915-8d29-ac83c2bf4ec5",
+     "userId": "dd60a6a3-88d6-4823-bbe3-1fac73c42f26",
+     "amount": 0.2,
+     "bonusPages": 0,
+     "source": "Wallet",
+     "destination": "Wallet",
+     "reason": "AdminManual",
+     "initiatedBy": "System",
+     "status": "Succeeded",
+     "attempts": 0,
+     "createdAt": "2026-10-04T17:40:50.245Z",
+     "completedAt": "2026-10-04T17:40:50.308Z"
+    },
+    {
+     "id": "e046acd1-d085-4a4f-983b-92b9082ef724",
+     "paymentId": "d2f2f094-e00f-4142-a9a9-680549bf614c",
+     "jobId": "a4b2a08f-0837-4e85-92a4-10dcaeba366c",
+     "userId": "dd60a6a3-88d6-4823-bbe3-1fac73c42f26",
+     "amount": 0.2,
+     "bonusPages": 0,
+     "source": "Wallet",
+     "destination": "Wallet",
+     "reason": "AdminManual",
+     "initiatedBy": "System",
+     "status": "Succeeded",
+     "attempts": 0,
+     "createdAt": "2026-10-04T17:35:40.751Z",
+     "completedAt": "2026-10-04T17:35:40.891Z"
+    }
+   ],
+   "total": 22,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/fiscal/settings": [
+   {
+    "key": "Fiscal.Enabled",
+    "value": "true",
+    "defaultValue": "true",
+    "valueType": "Boolean",
+    "description": "Fiskallaşdırma aktivdir",
+    "isDefault": true
+   },
+   {
+    "key": "Fiscal.MaxPendingMinutes",
+    "value": "15",
+    "defaultValue": "15",
+    "valueType": "Integer",
+    "description": "Fiskallaşmayan satış üçün incident həddi",
+    "isDefault": true,
+    "updatedBy": "ec6c59c8-a3ef-4f5e-8ad0-ea0adc31269f"
+   },
+   {
+    "key": "Fiscal.OnlineTerminalId",
+    "value": "ONLINE-DEV-01",
+    "defaultValue": "",
+    "valueType": "String",
+    "description": "Mobil (onlayn) satışlar üçün fiskal terminal ID",
+    "isDefault": false,
+    "updatedAt": "2026-09-27T14:05:47.138Z"
+   },
+   {
+    "key": "Fiscal.TopUpReceiptMode",
+    "value": "OnTopUp",
+    "defaultValue": "OnTopUp",
+    "valueType": "String",
+    "description": "Balans artırılanda (OnTopUp) və ya xidmətdə (OnService) fiskal çek",
+    "isDefault": true
+   }
+  ],
+  "GET /api/admin/fiscal-receipts?page=1&pageSize=20": {
+   "items": [
+    {
+     "id": "0f6bc2c0-7679-4bea-8d38-64a15d8ec9a2",
+     "type": "Sale",
+     "status": "Issued",
+     "paymentId": "5d3ad532-0f1d-4254-8733-313ce562792c",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "terminalId": "ONLINE-DEV-01",
+     "amount": 0.1,
+     "currency": "AZN",
+     "lines": [
+      {
+       "name": "Çap xidməti (sifariş 818241)",
+       "quantity": 1,
+       "unitPrice": 0.1,
+       "total": 0.1
+      }
+     ],
+     "paidWith": [
+      {
+       "kind": "Advance",
+       "amount": 0.1
+      }
+     ],
+     "fiscalDocumentNumber": "20261011-0F6BC2C0",
+     "fiscalId": "MF0F6BC2C076794BEA",
+     "verificationUrl": "https://e-kassa.mock/check/MF0F6BC2C076794BEA",
+     "attempts": 1,
+     "createdAt": "2026-10-11T12:16:49.607Z",
+     "issuedAt": "2026-10-11T12:16:49.875Z"
+    },
+    {
+     "id": "fb2d37ab-8fff-4a84-965e-c303a2140bfc",
+     "type": "Sale",
+     "status": "Issued",
+     "paymentId": "b3a05341-18ed-41fe-9531-257a1c3b17db",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "terminalId": "ONLINE-DEV-01",
+     "amount": 0.1,
+     "currency": "AZN",
+     "lines": [
+      {
+       "name": "Çap xidməti (sifariş 836109)",
+       "quantity": 1,
+       "unitPrice": 0.1,
+       "total": 0.1
+      }
+     ],
+     "paidWith": [
+      {
+       "kind": "Advance",
+       "amount": 0.1
+      }
+     ],
+     "fiscalDocumentNumber": "20261011-FB2D37AB",
+     "fiscalId": "MFFB2D37AB8FFF4A84",
+     "verificationUrl": "https://e-kassa.mock/check/MFFB2D37AB8FFF4A84",
+     "attempts": 1,
+     "createdAt": "2026-10-11T09:49:29.092Z",
+     "issuedAt": "2026-10-11T09:49:29.816Z"
+    },
+    {
+     "id": "fcd93f77-f3d9-46a3-a9c6-5cb052059c5e",
+     "type": "Sale",
+     "status": "Issued",
+     "paymentId": "df5db9e8-43c6-4387-97af-98dcc2198bd8",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "terminalId": "TERM-KSK-9002",
+     "amount": 0.2,
+     "currency": "AZN",
+     "lines": [
+      {
+       "name": "Çap xidməti (sifariş 294081)",
+       "quantity": 1,
+       "unitPrice": 0.2,
+       "total": 0.2
+      }
+     ],
+     "paidWith": [
+      {
+       "kind": "BankQr",
+       "amount": 0.2
+      }
+     ],
+     "fiscalDocumentNumber": "20261011-FCD93F77",
+     "fiscalId": "MFFCD93F77F3D946A3",
+     "verificationUrl": "https://e-kassa.mock/check/MFFCD93F77F3D946A3",
+     "attempts": 1,
+     "createdAt": "2026-10-11T00:05:43.882Z",
+     "issuedAt": "2026-10-11T00:05:44.37Z"
+    },
+    {
+     "id": "719f8c32-5987-401c-a30f-26f4aef69b0a",
+     "type": "Sale",
+     "status": "Issued",
+     "paymentId": "9f04cc79-fb45-4298-b7fc-e0786d2ddb02",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "terminalId": "TERM-KSK-9002",
+     "amount": 0.2,
+     "currency": "AZN",
+     "lines": [
+      {
+       "name": "Çap xidməti (sifariş 338437)",
+       "quantity": 1,
+       "unitPrice": 0.2,
+       "total": 0.2
+      }
+     ],
+     "paidWith": [
+      {
+       "kind": "BankQr",
+       "amount": 0.2
+      }
+     ],
+     "fiscalDocumentNumber": "20261010-719F8C32",
+     "fiscalId": "MF719F8C325987401C",
+     "verificationUrl": "https://e-kassa.mock/check/MF719F8C325987401C",
+     "attempts": 1,
+     "createdAt": "2026-10-10T22:59:00.787Z",
+     "issuedAt": "2026-10-10T22:59:01.093Z"
+    }
+   ],
+   "total": 86,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/fiscal-receipts": {
+   "items": [
+    {
+     "id": "0f6bc2c0-7679-4bea-8d38-64a15d8ec9a2",
+     "type": "Sale",
+     "status": "Issued",
+     "paymentId": "5d3ad532-0f1d-4254-8733-313ce562792c",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "terminalId": "ONLINE-DEV-01",
+     "amount": 0.1,
+     "currency": "AZN",
+     "lines": [
+      {
+       "name": "Çap xidməti (sifariş 818241)",
+       "quantity": 1,
+       "unitPrice": 0.1,
+       "total": 0.1
+      }
+     ],
+     "paidWith": [
+      {
+       "kind": "Advance",
+       "amount": 0.1
+      }
+     ],
+     "fiscalDocumentNumber": "20261011-0F6BC2C0",
+     "fiscalId": "MF0F6BC2C076794BEA",
+     "verificationUrl": "https://e-kassa.mock/check/MF0F6BC2C076794BEA",
+     "attempts": 1,
+     "createdAt": "2026-10-11T12:16:49.607Z",
+     "issuedAt": "2026-10-11T12:16:49.875Z"
+    },
+    {
+     "id": "fb2d37ab-8fff-4a84-965e-c303a2140bfc",
+     "type": "Sale",
+     "status": "Issued",
+     "paymentId": "b3a05341-18ed-41fe-9531-257a1c3b17db",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "terminalId": "ONLINE-DEV-01",
+     "amount": 0.1,
+     "currency": "AZN",
+     "lines": [
+      {
+       "name": "Çap xidməti (sifariş 836109)",
+       "quantity": 1,
+       "unitPrice": 0.1,
+       "total": 0.1
+      }
+     ],
+     "paidWith": [
+      {
+       "kind": "Advance",
+       "amount": 0.1
+      }
+     ],
+     "fiscalDocumentNumber": "20261011-FB2D37AB",
+     "fiscalId": "MFFB2D37AB8FFF4A84",
+     "verificationUrl": "https://e-kassa.mock/check/MFFB2D37AB8FFF4A84",
+     "attempts": 1,
+     "createdAt": "2026-10-11T09:49:29.092Z",
+     "issuedAt": "2026-10-11T09:49:29.816Z"
+    },
+    {
+     "id": "fcd93f77-f3d9-46a3-a9c6-5cb052059c5e",
+     "type": "Sale",
+     "status": "Issued",
+     "paymentId": "df5db9e8-43c6-4387-97af-98dcc2198bd8",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "terminalId": "TERM-KSK-9002",
+     "amount": 0.2,
+     "currency": "AZN",
+     "lines": [
+      {
+       "name": "Çap xidməti (sifariş 294081)",
+       "quantity": 1,
+       "unitPrice": 0.2,
+       "total": 0.2
+      }
+     ],
+     "paidWith": [
+      {
+       "kind": "BankQr",
+       "amount": 0.2
+      }
+     ],
+     "fiscalDocumentNumber": "20261011-FCD93F77",
+     "fiscalId": "MFFCD93F77F3D946A3",
+     "verificationUrl": "https://e-kassa.mock/check/MFFCD93F77F3D946A3",
+     "attempts": 1,
+     "createdAt": "2026-10-11T00:05:43.882Z",
+     "issuedAt": "2026-10-11T00:05:44.37Z"
+    },
+    {
+     "id": "719f8c32-5987-401c-a30f-26f4aef69b0a",
+     "type": "Sale",
+     "status": "Issued",
+     "paymentId": "9f04cc79-fb45-4298-b7fc-e0786d2ddb02",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "terminalId": "TERM-KSK-9002",
+     "amount": 0.2,
+     "currency": "AZN",
+     "lines": [
+      {
+       "name": "Çap xidməti (sifariş 338437)",
+       "quantity": 1,
+       "unitPrice": 0.2,
+       "total": 0.2
+      }
+     ],
+     "paidWith": [
+      {
+       "kind": "BankQr",
+       "amount": 0.2
+      }
+     ],
+     "fiscalDocumentNumber": "20261010-719F8C32",
+     "fiscalId": "MF719F8C325987401C",
+     "verificationUrl": "https://e-kassa.mock/check/MF719F8C325987401C",
+     "attempts": 1,
+     "createdAt": "2026-10-10T22:59:00.787Z",
+     "issuedAt": "2026-10-10T22:59:01.093Z"
+    }
+   ],
+   "total": 86,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/incidents?page=1&pageSize=50&status=Open&status=Acknowledged&type=FiscalFailed": {
+   "items": [],
+   "total": 0,
+   "page": 1,
+   "pageSize": 50
+  },
+  "GET /api/admin/incidents": {
+   "items": [],
+   "total": 0,
+   "page": 1,
+   "pageSize": 50
+  },
+  "GET /api/admin/receipts?page=1&pageSize=20": {
+   "items": [
+    {
+     "id": "5d3ad532-0f1d-4254-8733-313ce562792c",
+     "number": "NP-2026-000064",
+     "paymentId": "5d3ad532-0f1d-4254-8733-313ce562792c",
+     "jobId": "7d351843-74e5-452f-b6c4-e3c344f889bc",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "amount": 0.1,
+     "currency": "AZN",
+     "purpose": "PrintJob",
+     "fiscalStatus": "Issued",
+     "fiscalShown": true,
+     "emailedCount": 0,
+     "createdAt": "2026-10-11T12:16:49.613Z"
+    },
+    {
+     "id": "b3a05341-18ed-41fe-9531-257a1c3b17db",
+     "number": "NP-2026-000063",
+     "paymentId": "b3a05341-18ed-41fe-9531-257a1c3b17db",
+     "jobId": "02261982-c5c8-4be9-9225-55d72f5b0cc7",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "amount": 0.1,
+     "currency": "AZN",
+     "purpose": "PrintJob",
+     "fiscalStatus": "Issued",
+     "fiscalShown": true,
+     "emailedCount": 0,
+     "createdAt": "2026-10-11T09:49:29.089Z"
+    },
+    {
+     "id": "df5db9e8-43c6-4387-97af-98dcc2198bd8",
+     "number": "NP-2026-000062",
+     "paymentId": "df5db9e8-43c6-4387-97af-98dcc2198bd8",
+     "jobId": "03e5775f-f3c3-466f-8a37-917a8aa10a18",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "amount": 0.2,
+     "currency": "AZN",
+     "purpose": "PrintJob",
+     "fiscalStatus": "Issued",
+     "fiscalShown": true,
+     "emailedCount": 0,
+     "createdAt": "2026-10-11T00:05:43.892Z"
+    },
+    {
+     "id": "9f04cc79-fb45-4298-b7fc-e0786d2ddb02",
+     "number": "NP-2026-000061",
+     "paymentId": "9f04cc79-fb45-4298-b7fc-e0786d2ddb02",
+     "jobId": "440d0162-82a6-4dd9-ad2d-9a2a4fe25af4",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "amount": 0.2,
+     "currency": "AZN",
+     "purpose": "PrintJob",
+     "fiscalStatus": "Issued",
+     "fiscalShown": true,
+     "emailedCount": 0,
+     "createdAt": "2026-10-10T22:59:00.828Z"
+    }
+   ],
+   "total": 64,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/receipts": {
+   "items": [
+    {
+     "id": "5d3ad532-0f1d-4254-8733-313ce562792c",
+     "number": "NP-2026-000064",
+     "paymentId": "5d3ad532-0f1d-4254-8733-313ce562792c",
+     "jobId": "7d351843-74e5-452f-b6c4-e3c344f889bc",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "amount": 0.1,
+     "currency": "AZN",
+     "purpose": "PrintJob",
+     "fiscalStatus": "Issued",
+     "fiscalShown": true,
+     "emailedCount": 0,
+     "createdAt": "2026-10-11T12:16:49.613Z"
+    },
+    {
+     "id": "b3a05341-18ed-41fe-9531-257a1c3b17db",
+     "number": "NP-2026-000063",
+     "paymentId": "b3a05341-18ed-41fe-9531-257a1c3b17db",
+     "jobId": "02261982-c5c8-4be9-9225-55d72f5b0cc7",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "amount": 0.1,
+     "currency": "AZN",
+     "purpose": "PrintJob",
+     "fiscalStatus": "Issued",
+     "fiscalShown": true,
+     "emailedCount": 0,
+     "createdAt": "2026-10-11T09:49:29.089Z"
+    },
+    {
+     "id": "df5db9e8-43c6-4387-97af-98dcc2198bd8",
+     "number": "NP-2026-000062",
+     "paymentId": "df5db9e8-43c6-4387-97af-98dcc2198bd8",
+     "jobId": "03e5775f-f3c3-466f-8a37-917a8aa10a18",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "amount": 0.2,
+     "currency": "AZN",
+     "purpose": "PrintJob",
+     "fiscalStatus": "Issued",
+     "fiscalShown": true,
+     "emailedCount": 0,
+     "createdAt": "2026-10-11T00:05:43.892Z"
+    },
+    {
+     "id": "9f04cc79-fb45-4298-b7fc-e0786d2ddb02",
+     "number": "NP-2026-000061",
+     "paymentId": "9f04cc79-fb45-4298-b7fc-e0786d2ddb02",
+     "jobId": "440d0162-82a6-4dd9-ad2d-9a2a4fe25af4",
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "amount": 0.2,
+     "currency": "AZN",
+     "purpose": "PrintJob",
+     "fiscalStatus": "Issued",
+     "fiscalShown": true,
+     "emailedCount": 0,
+     "createdAt": "2026-10-10T22:59:00.828Z"
+    }
+   ],
+   "total": 64,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/vouchers?page=1&pageSize=20": {
+   "items": [
+    {
+     "id": "496d25ea-edb6-40eb-8b0c-d56a2235ec9d",
+     "code": "RF-FJ4P-GPTB",
+     "amount": 0.3,
+     "currency": "AZN",
+     "status": "Redeemed",
+     "paymentId": "b976322e-4258-426c-84dc-886cd30f1595",
+     "refundId": "e7b56766-6673-4b12-90ef-ea97189273d8",
+     "createdAt": "2026-10-01T21:52:47.038Z",
+     "expiresAt": "2026-12-30T21:52:47.038Z",
+     "redeemedBy": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+     "redeemedAt": "2026-10-03T23:27:23.087Z"
+    }
+   ],
+   "total": 1,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/vouchers": {
+   "items": [
+    {
+     "id": "496d25ea-edb6-40eb-8b0c-d56a2235ec9d",
+     "code": "RF-FJ4P-GPTB",
+     "amount": 0.3,
+     "currency": "AZN",
+     "status": "Redeemed",
+     "paymentId": "b976322e-4258-426c-84dc-886cd30f1595",
+     "refundId": "e7b56766-6673-4b12-90ef-ea97189273d8",
+     "createdAt": "2026-10-01T21:52:47.038Z",
+     "expiresAt": "2026-12-30T21:52:47.038Z",
+     "redeemedBy": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+     "redeemedAt": "2026-10-03T23:27:23.087Z"
+    }
+   ],
+   "total": 1,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/promos?page=1&pageSize=20": {
+   "items": [
+    {
+     "id": "0a367f5d-e2a3-4f14-8a9b-a948810d40f8",
+     "code": "YAY20",
+     "kind": "Percent",
+     "value": 20,
+     "minAmount": 0,
+     "kioskIds": [],
+     "profileIds": [],
+     "isActive": true,
+     "usedCount": 2,
+     "confirmedCount": 2,
+     "totalDiscount": 0.12,
+     "description": "QA T-130: etibarlı",
+     "createdAt": "2026-10-02T05:53:03.533Z"
+    },
+    {
+     "id": "d3b08e64-e050-4789-b579-2552229515ec",
+     "code": "K9001",
+     "kind": "Fixed",
+     "value": 0.1,
+     "minAmount": 0,
+     "kioskIds": [
+      "a3efb1e6-cce9-4385-b161-ea0f7d9ed350"
+     ],
+     "profileIds": [],
+     "isActive": true,
+     "usedCount": 0,
+     "confirmedCount": 0,
+     "totalDiscount": 0,
+     "description": "QA T-130: yalnız KSK-9001",
+     "createdAt": "2026-10-02T05:52:35.051Z"
+    },
+    {
+     "id": "5ed6e91d-38ef-4285-9a06-3a200d25572d",
+     "code": "KOHNE",
+     "kind": "Percent",
+     "value": 50,
+     "startsAt": "2026-09-01T00:00:00Z",
+     "endsAt": "2026-09-30T19:59:59Z",
+     "minAmount": 0,
+     "kioskIds": [],
+     "profileIds": [],
+     "isActive": true,
+     "usedCount": 0,
+     "confirmedCount": 0,
+     "totalDiscount": 0,
+     "description": "QA T-130: vaxtı bitmiş",
+     "createdAt": "2026-10-02T05:52:33.811Z"
+    },
+    {
+     "id": "4fdd585c-f549-46ac-a885-04f1ee4dc2d7",
+     "code": "JKGGB",
+     "kind": "Fixed",
+     "value": 1,
+     "startsAt": "2026-10-04T20:00:00Z",
+     "endsAt": "2026-10-07T19:59:59.999Z",
+     "totalLimit": 22,
+     "perUserLimit": 1,
+     "minAmount": 0.66,
+     "kioskIds": [
+      "07b60a14-f48c-432a-a815-19c68d09e250",
+      "a3efb1e6-cce9-4385-b161-ea0f7d9ed350",
+      "b901d45a-61ea-493c-a532-fb2b41e53408",
+      "9823c79f-26b3-4e62-909c-373126a3f43a",
+      "f0f08125-2a9f-4c09-b150-0afea64aefb8",
+      "22e3d7eb-0b25-4f17-92e7-13ddd5b23704"
+     ],
+     "profileIds": [
+      "3e592007-9521-4d60-aedb-ad1539c3c96e"
+     ],
+     "isActive": true,
+     "usedCount": 0,
+     "confirmedCount": 0,
+     "totalDiscount": 0,
+     "description": "jjhj",
+     "createdAt": "2026-10-01T20:20:46.17Z"
+    }
+   ],
+   "total": 4,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/promos": {
+   "items": [
+    {
+     "id": "0a367f5d-e2a3-4f14-8a9b-a948810d40f8",
+     "code": "YAY20",
+     "kind": "Percent",
+     "value": 20,
+     "minAmount": 0,
+     "kioskIds": [],
+     "profileIds": [],
+     "isActive": true,
+     "usedCount": 2,
+     "confirmedCount": 2,
+     "totalDiscount": 0.12,
+     "description": "QA T-130: etibarlı",
+     "createdAt": "2026-10-02T05:53:03.533Z"
+    },
+    {
+     "id": "d3b08e64-e050-4789-b579-2552229515ec",
+     "code": "K9001",
+     "kind": "Fixed",
+     "value": 0.1,
+     "minAmount": 0,
+     "kioskIds": [
+      "a3efb1e6-cce9-4385-b161-ea0f7d9ed350"
+     ],
+     "profileIds": [],
+     "isActive": true,
+     "usedCount": 0,
+     "confirmedCount": 0,
+     "totalDiscount": 0,
+     "description": "QA T-130: yalnız KSK-9001",
+     "createdAt": "2026-10-02T05:52:35.051Z"
+    },
+    {
+     "id": "5ed6e91d-38ef-4285-9a06-3a200d25572d",
+     "code": "KOHNE",
+     "kind": "Percent",
+     "value": 50,
+     "startsAt": "2026-09-01T00:00:00Z",
+     "endsAt": "2026-09-30T19:59:59Z",
+     "minAmount": 0,
+     "kioskIds": [],
+     "profileIds": [],
+     "isActive": true,
+     "usedCount": 0,
+     "confirmedCount": 0,
+     "totalDiscount": 0,
+     "description": "QA T-130: vaxtı bitmiş",
+     "createdAt": "2026-10-02T05:52:33.811Z"
+    },
+    {
+     "id": "4fdd585c-f549-46ac-a885-04f1ee4dc2d7",
+     "code": "JKGGB",
+     "kind": "Fixed",
+     "value": 1,
+     "startsAt": "2026-10-04T20:00:00Z",
+     "endsAt": "2026-10-07T19:59:59.999Z",
+     "totalLimit": 22,
+     "perUserLimit": 1,
+     "minAmount": 0.66,
+     "kioskIds": [
+      "07b60a14-f48c-432a-a815-19c68d09e250",
+      "a3efb1e6-cce9-4385-b161-ea0f7d9ed350",
+      "b901d45a-61ea-493c-a532-fb2b41e53408",
+      "9823c79f-26b3-4e62-909c-373126a3f43a",
+      "f0f08125-2a9f-4c09-b150-0afea64aefb8",
+      "22e3d7eb-0b25-4f17-92e7-13ddd5b23704"
+     ],
+     "profileIds": [
+      "3e592007-9521-4d60-aedb-ad1539c3c96e"
+     ],
+     "isActive": true,
+     "usedCount": 0,
+     "confirmedCount": 0,
+     "totalDiscount": 0,
+     "description": "jjhj",
+     "createdAt": "2026-10-01T20:20:46.17Z"
+    }
+   ],
+   "total": 4,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/referrals?page=1&pageSize=20": {
+   "totals": {
+    "registered": 4,
+    "rewarded": 1,
+    "waiting": 3,
+    "held": 0,
+    "bonusPagesGiven": 10
+   },
+   "top": [
+    {
+     "inviter": {
+      "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+      "publicId": "NP-QD5B9C"
+     },
+     "invited": 4,
+     "rewarded": 1,
+     "bonusPages": 10
+    }
+   ],
+   "items": [
+    {
+     "id": "25f91b32-054b-44ef-95f7-94a3f3db90d4",
+     "inviter": {
+      "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+      "publicId": "NP-QD5B9C"
+     },
+     "invitee": {
+      "id": "8a16e4e8-e0f2-438b-9e45-a3f98999048c",
+      "publicId": "NP-UHSS4Y"
+     },
+     "status": "Registered",
+     "hold": "None",
+     "createdAt": "2026-10-10T18:16:41.881Z",
+     "inviterBonusPages": 0,
+     "inviteeBonusPages": 0
+    },
+    {
+     "id": "5d059cc5-d1f5-4afc-a250-ec7ded78c601",
+     "inviter": {
+      "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+      "publicId": "NP-QD5B9C"
+     },
+     "invitee": {
+      "id": "6d2a1b35-4fc8-40c1-a58d-ef482ff7b633",
+      "publicId": "NP-A3KDYW"
+     },
+     "status": "Rewarded",
+     "hold": "None",
+     "createdAt": "2026-10-05T06:43:12.933Z",
+     "qualifiedAt": "2026-10-05T06:43:19.742Z",
+     "inviterBonusPages": 10,
+     "inviteeBonusPages": 0
+    },
+    {
+     "id": "0d64d990-d166-4f6b-b564-5c63f6fa856d",
+     "inviter": {
+      "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+      "publicId": "NP-QD5B9C"
+     },
+     "invitee": {
+      "id": "ab2a5731-09d8-4c99-91be-7863f9698078",
+      "publicId": "NP-P4ZBKG"
+     },
+     "status": "Registered",
+     "hold": "None",
+     "createdAt": "2026-10-05T06:42:56.333Z",
+     "inviterBonusPages": 0,
+     "inviteeBonusPages": 0
+    },
+    {
+     "id": "fd54c8e1-137c-43e7-b19d-01a6a497f73d",
+     "inviter": {
+      "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+      "publicId": "NP-QD5B9C"
+     },
+     "invitee": {
+      "id": "c2af1197-d36e-4fea-8a85-d7d0d731df51",
+      "publicId": "NP-884VCA"
+     },
+     "status": "Registered",
+     "hold": "None",
+     "createdAt": "2026-10-05T06:42:34.811Z",
+     "inviterBonusPages": 0,
+     "inviteeBonusPages": 0
+    }
+   ],
+   "total": 4,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/referrals": {
+   "totals": {
+    "registered": 4,
+    "rewarded": 1,
+    "waiting": 3,
+    "held": 0,
+    "bonusPagesGiven": 10
+   },
+   "top": [
+    {
+     "inviter": {
+      "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+      "publicId": "NP-QD5B9C"
+     },
+     "invited": 4,
+     "rewarded": 1,
+     "bonusPages": 10
+    }
+   ],
+   "items": [
+    {
+     "id": "25f91b32-054b-44ef-95f7-94a3f3db90d4",
+     "inviter": {
+      "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+      "publicId": "NP-QD5B9C"
+     },
+     "invitee": {
+      "id": "8a16e4e8-e0f2-438b-9e45-a3f98999048c",
+      "publicId": "NP-UHSS4Y"
+     },
+     "status": "Registered",
+     "hold": "None",
+     "createdAt": "2026-10-10T18:16:41.881Z",
+     "inviterBonusPages": 0,
+     "inviteeBonusPages": 0
+    },
+    {
+     "id": "5d059cc5-d1f5-4afc-a250-ec7ded78c601",
+     "inviter": {
+      "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+      "publicId": "NP-QD5B9C"
+     },
+     "invitee": {
+      "id": "6d2a1b35-4fc8-40c1-a58d-ef482ff7b633",
+      "publicId": "NP-A3KDYW"
+     },
+     "status": "Rewarded",
+     "hold": "None",
+     "createdAt": "2026-10-05T06:43:12.933Z",
+     "qualifiedAt": "2026-10-05T06:43:19.742Z",
+     "inviterBonusPages": 10,
+     "inviteeBonusPages": 0
+    },
+    {
+     "id": "0d64d990-d166-4f6b-b564-5c63f6fa856d",
+     "inviter": {
+      "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+      "publicId": "NP-QD5B9C"
+     },
+     "invitee": {
+      "id": "ab2a5731-09d8-4c99-91be-7863f9698078",
+      "publicId": "NP-P4ZBKG"
+     },
+     "status": "Registered",
+     "hold": "None",
+     "createdAt": "2026-10-05T06:42:56.333Z",
+     "inviterBonusPages": 0,
+     "inviteeBonusPages": 0
+    },
+    {
+     "id": "fd54c8e1-137c-43e7-b19d-01a6a497f73d",
+     "inviter": {
+      "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+      "publicId": "NP-QD5B9C"
+     },
+     "invitee": {
+      "id": "c2af1197-d36e-4fea-8a85-d7d0d731df51",
+      "publicId": "NP-884VCA"
+     },
+     "status": "Registered",
+     "hold": "None",
+     "createdAt": "2026-10-05T06:42:34.811Z",
+     "inviterBonusPages": 0,
+     "inviteeBonusPages": 0
+    }
+   ],
+   "total": 4,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/users?page=1&pageSize=20": {
+   "items": [
+    {
+     "id": "8a16e4e8-e0f2-438b-9e45-a3f98999048c",
+     "publicId": "NP-UHSS4Y",
+     "email": "person38@example.test",
+     "status": "Active",
+     "emailConfirmed": false,
+     "createdAt": "2026-10-10T18:16:41.729Z"
+    },
+    {
+     "id": "6d2a1b35-4fc8-40c1-a58d-ef482ff7b633",
+     "publicId": "NP-A3KDYW",
+     "email": "person39@example.test",
+     "fullName": "Dəvət Olunan",
+     "status": "Active",
+     "emailConfirmed": true,
+     "createdAt": "2026-10-05T06:43:12.374Z"
+    },
+    {
+     "id": "ab2a5731-09d8-4c99-91be-7863f9698078",
+     "publicId": "NP-P4ZBKG",
+     "email": "person40@example.test",
+     "fullName": "Dəvət Olunan",
+     "status": "Active",
+     "emailConfirmed": true,
+     "createdAt": "2026-10-05T06:42:56.072Z"
+    },
+    {
+     "id": "c2af1197-d36e-4fea-8a85-d7d0d731df51",
+     "publicId": "NP-884VCA",
+     "email": "person41@example.test",
+     "fullName": "Dəvət Olunan",
+     "status": "Active",
+     "emailConfirmed": true,
+     "createdAt": "2026-10-05T06:42:34.467Z"
+    }
+   ],
+   "total": 24,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/users": {
+   "items": [
+    {
+     "id": "8a16e4e8-e0f2-438b-9e45-a3f98999048c",
+     "publicId": "NP-UHSS4Y",
+     "email": "person15@example.test",
+     "status": "Active",
+     "emailConfirmed": false,
+     "createdAt": "2026-10-10T18:16:41.729Z"
+    },
+    {
+     "id": "6d2a1b35-4fc8-40c1-a58d-ef482ff7b633",
+     "publicId": "NP-A3KDYW",
+     "email": "person16@example.test",
+     "fullName": "Dəvət Olunan",
+     "status": "Active",
+     "emailConfirmed": true,
+     "createdAt": "2026-10-05T06:43:12.374Z"
+    },
+    {
+     "id": "ab2a5731-09d8-4c99-91be-7863f9698078",
+     "publicId": "NP-P4ZBKG",
+     "email": "person17@example.test",
+     "fullName": "Dəvət Olunan",
+     "status": "Active",
+     "emailConfirmed": true,
+     "createdAt": "2026-10-05T06:42:56.072Z"
+    },
+    {
+     "id": "c2af1197-d36e-4fea-8a85-d7d0d731df51",
+     "publicId": "NP-884VCA",
+     "email": "person18@example.test",
+     "fullName": "Dəvət Olunan",
+     "status": "Active",
+     "emailConfirmed": true,
+     "createdAt": "2026-10-05T06:42:34.467Z"
+    }
+   ],
+   "total": 24,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/reports/revenue?from=2026-09-13&to=2026-10-12": {
+   "from": "2026-09-13",
+   "to": "2026-10-12",
+   "currency": "AZN",
+   "totals": {
+    "sales": 15.23,
+    "payments": 55,
+    "refunds": 6.05,
+    "net": 9.18,
+    "discounts": 0.12,
+    "topUps": 38
+   },
+   "days": [
+    {
+     "day": "2026-09-13",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    },
+    {
+     "day": "2026-09-14",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    },
+    {
+     "day": "2026-09-15",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    },
+    {
+     "day": "2026-09-16",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    }
+   ],
+   "methods": [
+    {
+     "method": "Wallet",
+     "sales": 9.89,
+     "payments": 32
+    },
+    {
+     "method": "BankQr",
+     "sales": 3.54,
+     "payments": 14
+    },
+    {
+     "method": "Card",
+     "sales": 1.6,
+     "payments": 7
+    },
+    {
+     "method": "Mixed",
+     "sales": 0.2,
+     "payments": 2
+    }
+   ],
+   "kiosks": [
+    {
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "sales": 11.48,
+     "payments": 48
+    },
+    {
+     "kioskId": "9f8c196c-ac2e-41f6-85bf-30ff5cc1f6e3",
+     "kioskCode": "KSK-9006",
+     "sales": 3.75,
+     "payments": 7
+    }
+   ]
+  },
+  "GET /api/admin/reports/revenue": {
+   "from": "2026-09-13",
+   "to": "2026-10-12",
+   "currency": "AZN",
+   "totals": {
+    "sales": 15.23,
+    "payments": 55,
+    "refunds": 6.05,
+    "net": 9.18,
+    "discounts": 0.12,
+    "topUps": 38
+   },
+   "days": [
+    {
+     "day": "2026-09-13",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    },
+    {
+     "day": "2026-09-14",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    },
+    {
+     "day": "2026-09-15",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    },
+    {
+     "day": "2026-09-16",
+     "sales": 0,
+     "refunds": 0,
+     "net": 0,
+     "payments": 0
+    }
+   ],
+   "methods": [
+    {
+     "method": "Wallet",
+     "sales": 9.89,
+     "payments": 32
+    },
+    {
+     "method": "BankQr",
+     "sales": 3.54,
+     "payments": 14
+    },
+    {
+     "method": "Card",
+     "sales": 1.6,
+     "payments": 7
+    },
+    {
+     "method": "Mixed",
+     "sales": 0.2,
+     "payments": 2
+    }
+   ],
+   "kiosks": [
+    {
+     "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "kioskCode": "KSK-9002",
+     "sales": 11.48,
+     "payments": 48
+    },
+    {
+     "kioskId": "9f8c196c-ac2e-41f6-85bf-30ff5cc1f6e3",
+     "kioskCode": "KSK-9006",
+     "sales": 3.75,
+     "payments": 7
+    }
+   ]
+  },
+  "GET /api/admin/devices?status=Active": [
+   {
+    "id": "84716ef1-0260-4a39-9fc2-2b851ee59393",
+    "status": "Active",
+    "platform": "Linux",
+    "appVersion": "0.1.0",
+    "agentVersion": "0.1.0",
+    "hostname": "kiosk-host",
+    "os": "Debian GNU/Linux 12 (bookworm)",
+    "lastIp": "10.0.0.10",
+    "registeredAt": "2026-10-04T16:28:19.148Z",
+    "lastSeenAt": "2026-10-11T20:29:02.76Z",
+    "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+    "kioskCode": "KSK-9002",
+    "hasValidPairingCode": false,
+    "reportedPrinters": [
+     "NeoPrint Fake Printer"
+    ]
+   },
+   {
+    "id": "7789f5ed-9aab-479e-bd31-19668014edbc",
+    "status": "Active",
+    "platform": "Windows",
+    "appVersion": "0.1.0",
+    "agentVersion": "0.1.0",
+    "hostname": "kiosk-host",
+    "os": "Windows",
+    "lastIp": "10.0.0.10",
+    "registeredAt": "2026-10-03T14:46:42.764Z",
+    "lastSeenAt": "2026-10-04T18:42:06.926Z",
+    "kioskId": "9f8c196c-ac2e-41f6-85bf-30ff5cc1f6e3",
+    "kioskCode": "KSK-9006",
+    "hasValidPairingCode": false,
+    "reportedPrinters": [
+     "Отправить в OneNote 2013",
+     "OneNote for Windows 10",
+     "OneNote (Desktop)",
+     "Microsoft XPS Document Writer",
+     "Microsoft Print to PDF",
+     "Fax",
+     "NeoPrint Fake Printer"
+    ]
+   }
+  ],
+  "GET /api/admin/devices?status=Revoked": [
+   {
+    "id": "6d34933a-02f7-43f6-8602-5bcc6aebdc86",
+    "status": "Revoked",
+    "platform": "Windows",
+    "appVersion": "0.1.0",
+    "agentVersion": "0.1.0",
+    "hostname": "kiosk-host",
+    "os": "Windows",
+    "lastIp": "10.0.0.10",
+    "registeredAt": "2026-10-01T19:31:18.282Z",
+    "lastSeenAt": "2026-10-01T19:44:18.385Z",
+    "hasValidPairingCode": false,
+    "reportedPrinters": [
+     "Отправить в OneNote 2013",
+     "OneNote for Windows 10",
+     "OneNote (Desktop)",
+     "Microsoft XPS Document Writer",
+     "Microsoft Print to PDF",
+     "Fax",
+     "NeoPrint Fake Printer"
+    ]
+   },
+   {
+    "id": "b801c5f5-5a9e-4b8e-ad60-add1524df5ba",
+    "status": "Revoked",
+    "platform": "Linux",
+    "appVersion": "0.1.0",
+    "agentVersion": "0.1.0",
+    "hostname": "kiosk-host",
+    "os": "Debian GNU/Linux 12 (bookworm)",
+    "lastIp": "10.0.0.10",
+    "registeredAt": "2026-10-01T19:28:40.41Z",
+    "lastSeenAt": "2026-10-04T16:27:59.029Z",
+    "hasValidPairingCode": false,
+    "reportedPrinters": [
+     "NeoPrint Fake Printer"
+    ]
+   },
+   {
+    "id": "bb112446-eb68-4ff6-9513-2ee9c15af494",
+    "status": "Revoked",
+    "platform": "Linux",
+    "appVersion": "0.1.0",
+    "agentVersion": "0.1.0",
+    "hostname": "kiosk-host",
+    "os": "Debian GNU/Linux 12 (bookworm)",
+    "lastIp": "10.0.0.10",
+    "registeredAt": "2026-09-28T23:00:12.632Z",
+    "lastSeenAt": "2026-10-01T19:28:19.998Z",
+    "hasValidPairingCode": false,
+    "reportedPrinters": [
+     "NeoPrint Fake Printer"
+    ]
+   },
+   {
+    "id": "56590f99-bc0a-4cf9-a7ca-d10c750c8e31",
+    "status": "Revoked",
+    "platform": "Linux",
+    "appVersion": "0.1.0",
+    "hostname": "kiosk-host",
+    "os": "Debian GNU/Linux 12 (bookworm)",
+    "lastIp": "10.0.0.10",
+    "registeredAt": "2026-09-28T22:52:10.428Z",
+    "lastSeenAt": "2026-09-28T22:52:11.183Z",
+    "hasValidPairingCode": false,
+    "reportedPrinters": [
+     "NeoPrint Fake Printer"
+    ]
+   }
+  ],
+  "GET /api/admin/enrollment-tokens": [
+   {
+    "id": "b440f7a3-4b9d-4923-88b3-715da8a096c5",
+    "kioskId": "a3efb1e6-cce9-4385-b161-ea0f7d9ed350",
+    "kioskCode": "KSK-9001",
+    "createdAt": "2026-10-10T17:52:04.385Z",
+    "expiresAt": "2026-10-13T17:52:04.386Z",
+    "isUsable": true
+   },
+   {
+    "id": "e58a1657-68e5-4363-a157-5f20fcdb2ee4",
+    "newKioskName": "T-165 açar",
+    "createdAt": "2026-10-04T17:36:40.095Z",
+    "expiresAt": "2026-10-04T18:36:40.095Z",
+    "revokedAt": "2026-10-04T17:36:40.181Z",
+    "isUsable": false
+   },
+   {
+    "id": "9810b57f-ddad-4964-ba2c-74ac230c6bbf",
+    "kioskId": "a3efb1e6-cce9-4385-b161-ea0f7d9ed350",
+    "kioskCode": "KSK-9001",
+    "createdAt": "2026-10-04T17:12:36.757Z",
+    "expiresAt": "2026-10-07T17:12:36.758Z",
+    "isUsable": false
+   },
+   {
+    "id": "66c33b6d-e70e-485f-971d-efd8c41bb6b7",
+    "kioskId": "a3efb1e6-cce9-4385-b161-ea0f7d9ed350",
+    "kioskCode": "KSK-9001",
+    "createdAt": "2026-10-01T16:11:49.755Z",
+    "expiresAt": "2026-10-04T16:11:49.756Z",
+    "isUsable": false
+   }
+  ],
+  "GET /api/admin/pricing-profiles/3e592007-9521-4d60-aedb-ad1539c3c96e": {
+   "profile": {
+    "id": "3e592007-9521-4d60-aedb-ad1539c3c96e",
+    "name": "Default",
+    "isDefault": true,
+    "bwPricePerSide": 0.1,
+    "colorPricePerSide": 0.3,
+    "minOrder": 0.2,
+    "paperMultipliers": {
+     "A4": 1,
+     "A3": 2
+    },
+    "volumeTiers": [
+     {
+      "minSides": 50,
+      "discountPercent": 10
+     },
+     {
+      "minSides": 100,
+      "discountPercent": 15
+     }
+    ],
+    "kioskCount": 1,
+    "updatedAt": "2026-09-29T06:03:21.574Z",
+    "revision": 2
+   },
+   "kiosks": [
+    {
+     "id": "07b60a14-f48c-432a-a815-19c68d09e250",
+     "code": "KSK-1001",
+     "name": "Test"
+    },
+    {
+     "id": "a3efb1e6-cce9-4385-b161-ea0f7d9ed350",
+     "code": "KSK-9001",
+     "name": "Test kiosk — Windows"
+    },
+    {
+     "id": "b901d45a-61ea-493c-a532-fb2b41e53408",
+     "code": "KSK-9002",
+     "name": "Test kiosk — Linux"
+    },
+    {
+     "id": "9823c79f-26b3-4e62-909c-373126a3f43a",
+     "code": "KSK-9003",
+     "name": "test"
+    }
+   ]
+  },
+  "GET /api/admin/files/formats": {
+   "formats": [
+    {
+     "extension": "pdf",
+     "mediaType": "application/pdf",
+     "group": "Pdf",
+     "route": "None",
+     "printerNative": true,
+     "enabled": true
+    },
+    {
+     "extension": "doc",
+     "mediaType": "application/msword",
+     "group": "TextDocument",
+     "route": "LibreOffice",
+     "printerNative": false,
+     "enabled": true
+    },
+    {
+     "extension": "docm",
+     "mediaType": "application/vnd.ms-word.document.macroEnabled.12",
+     "group": "TextDocument",
+     "route": "LibreOffice",
+     "printerNative": false,
+     "enabled": true
+    },
+    {
+     "extension": "docx",
+     "mediaType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+     "group": "TextDocument",
+     "route": "LibreOffice",
+     "printerNative": false,
+     "enabled": true
+    }
+   ],
+   "defaultMaxSizeMb": 50,
+   "defaultMaxPages": 200,
+   "userQuotaGb": 1
+  },
+  "GET /api/admin/features": [
+   {
+    "id": "9a650689-8654-4a65-a092-cfd08d5bec7a",
+    "key": "data_export",
+    "description": "Məlumatlarımı yüklə",
+    "defaultEnabled": true,
+    "platforms": [
+     "Mobile"
+    ],
+    "kioskOverrides": {},
+    "userAllowlist": [],
+    "rolloutPercent": 100,
+    "updatedAt": "2026-10-04T08:26:38.155Z"
+   },
+   {
+    "id": "1d3237fa-6ab7-4aab-a95e-d198377b6390",
+    "key": "document_scan",
+    "description": "Mobil sənəd skanı",
+    "defaultEnabled": true,
+    "platforms": [
+     "Mobile"
+    ],
+    "kioskOverrides": {},
+    "userAllowlist": [],
+    "rolloutPercent": 100,
+    "updatedAt": "2026-09-27T14:05:47.527Z"
+   },
+   {
+    "id": "4c8469e8-0719-47d5-8ba6-5c3aae49c354",
+    "key": "file_sharing",
+    "description": "Fayl paylaşımı",
+    "defaultEnabled": true,
+    "platforms": [
+     "Mobile"
+    ],
+    "kioskOverrides": {},
+    "userAllowlist": [],
+    "rolloutPercent": 100,
+    "updatedAt": "2026-09-27T14:05:47.527Z"
+   },
+   {
+    "id": "35aec083-6567-4e92-a059-7593856444f1",
+    "key": "layout_editor",
+    "description": "Səhifə tərtibatı redaktoru",
+    "defaultEnabled": true,
+    "platforms": [
+     "Kiosk",
+     "Mobile"
+    ],
+    "kioskOverrides": {},
+    "userAllowlist": [],
+    "rolloutPercent": 100,
+    "updatedAt": "2026-09-27T14:05:47.527Z"
+   }
+  ],
+  "GET /api/admin/settings": [
+   {
+    "key": "Analytics.RetentionDays",
+    "value": "180",
+    "defaultValue": "180",
+    "valueType": "Integer",
+    "description": "Analitika hadisələrinin saxlanma müddəti",
+    "isDefault": true
+   },
+   {
+    "key": "Enrollment.TokenTtlHours",
+    "value": "72",
+    "defaultValue": "72",
+    "valueType": "Integer",
+    "description": "Enrollment token-inin etibarlılıq müddəti",
+    "isDefault": true
+   },
+   {
+    "key": "Files.AllowedFormats",
+    "value": "pdf,doc,docx,docm,dot,dotx,odt,ott,rtf,wps,txt,html,htm,xml,xls,xlsx,xlsm,xltx,ods,csv,ppt,pptx,pps,ppsx,potx,odp,jpg,jpeg,png,bmp,gif,webp,ps,eps,pcl,prn,xps,oxps",
+    "defaultValue": "pdf,doc,docx,docm,dot,dotx,odt,ott,rtf,wps,txt,html,htm,xml,xls,xlsx,xlsm,xltx,ods,csv,ppt,pptx,pps,ppsx,potx,odp,jpg,jpeg,png,bmp,gif,webp,ps,eps,pcl,prn,xps,oxps",
+    "valueType": "StringList",
+    "description": "İcazəli fayl formatları",
+    "isDefault": true
+   },
+   {
+    "key": "Files.DefaultMaxPages",
+    "value": "200",
+    "defaultValue": "200",
+    "valueType": "Integer",
+    "description": "Default maksimum səhifə sayı",
+    "isDefault": true
+   }
+  ],
+  "GET /api/admin/legal-documents": [
+   {
+    "id": "9f6c8979-7b4e-4e2d-b5a2-564ea161a7b4",
+    "docType": "ScanNotice",
+    "version": "0.1-draft",
+    "language": "az",
+    "content": "# Sənəd skanı barədə məlumat\n\n> **QARALAMA — hüquqşünas təsdiqi tələb olunur.**\n\nŞəxsiyyət vəsiqəsi, sürücülük vəsiqəsi, pasport və bank kartı kimi sənədləri\nskan edirsinizsə:\n\n- Skan **həssas** işarələnir və cihazdan serverə şifrəli göndərilir.\n- Saxlama serverində **şifrəli** qalır; birbaşa serverdən götürülən fayl oxunmur.\n- Default olaraq **çapdan sonra avtomatik silinir**. Bunu hər fayl üçün\n  dəyişə bilərsiniz: `Heç vaxt` / `Çapdan sonra` / `N gün sonra`.\n- Admin işçilərimizin bu fayla baxmaq imkanı **yoxdur**.\n\nHəssas faylı başqa istifadəçi ilə paylaşdıqda ayrıca xəbərdarlıq göstərilir.\n\nƏtraflı: Məxfilik siyasəti.",
+    "publishedAt": "2026-09-27T14:05:47.59Z",
+    "isCurrent": true,
+    "acceptances": 2
+   },
+   {
+    "id": "0ccab916-8f25-44f7-aa81-19d3df5e4e6c",
+    "docType": "Terms",
+    "version": "0.1-draft",
+    "language": "az",
+    "content": "# İstifadə şərtləri\n\n> **QARALAMA — hüquqşünas təsdiqi tələb olunur.**\n\n## Qiymətlər\nQiymət çapdan əvvəl göstərilir və sifariş yaradılarkən sabitlənir. Sonrakı\nqiymət dəyişiklikləri mövcud sifarişə təsir etmir.\n\n## Balans (Wallet)\nNeoPrint balansı **əvvəlcədən ödənilmiş xidmət kreditidir (avansdır)**.\nBalansa yüklənən məbləğ **heç bir halda geri qaytarılmır, nağdlaşdırılmır və\nkarta çıxarılmır** — nə istifadəçi, nə də operator tərəfindən. Balansa düşən\nqaytarmalar da eyni qaydaya tabedir. Hesab silinərkən balans itir.\n\n## Bonus səhifələr\nBonus səhifələr pul deyil və nağdlaşdırıla bilməz. 1 bonus = 1 çap olunan üz.\nHesab silinərkən bonus səhifələr itir.\n\n## Qaytarma\nSistem xətası baş verərsə məbləğ avtomatik qaytarılır: kioskda bank ilə\nödənilibsə karta (bankdan asılı olaraq 1–3 iş günü), mobil tətbiqdə\nödənilibsə balansa. Hissəvi çap olunmuş sifarişdə yalnız çap olunmamış\nhissənin dəyəri qaytarılır.\n\n## Məzmun\nÇap etdiyiniz məzmunun qanuniliyinə siz cavabdehsiniz.\n",
+    "publishedAt": "2026-09-27T14:05:47.582Z",
+    "isCurrent": true,
+    "acceptances": 26
+   },
+   {
+    "id": "128f1360-8782-4c10-abac-2b6b80a12e92",
+    "docType": "Privacy",
+    "version": "0.1-draft",
+    "language": "az",
+    "content": "# Məxfilik siyasəti\n\n> **QARALAMA — hüquqşünas təsdiqi tələb olunur.**\n\n## Hansı məlumatları toplayırıq\nEmail və profil məlumatları, cihaz identifikatoru, çap üçün yüklədiyiniz fayllar,\nödəniş qeydləri və (icazə versəniz) yaxınlıqdakı kioskları tapmaq üçün məkan.\nKart məlumatlarını saxlamırıq.\n\n## Anonim kiosk istifadəsi\nFlash kartdan çap edərkən hesab tələb olunmur. Sənədiniz kioskda lokal, şifrəli\nşəkildə emal olunur və çapdan sonra dərhal silinir. Serverə yalnız metadata gedir.\nNeoPrint mobil tətbiqi ilə ödəsəniz, sənəd və qəbz hesabınıza əlavə olunur.\n\n## Şəxsi sənəd skanları\nŞəxsiyyət vəsiqəsi, pasport və oxşar sənədlərin skanları həssas işarələnir,\nşifrələnir və default olaraq çapdan sonra avtomatik silinir. Bu davranışı hər\nfayl üçün dəyişə bilərsiniz.\n\n## Fayllarınıza kimin çıxışı var\nYalnız siz və paylaşdığınız istifadəçi. Admin işçilərimizin fayl məzmununa\nçıxışı yoxdur — sistemdə belə bir imkan mövcud deyil. Bütün obyektlər saxlama\nserverinə yazılmazdan əvvəl şifrələnir.\n\n## Hüquqlarınız\nMəlumatlarınızı ZIP arxivi kimi yükləyə və hesabınızı silə bilərsiniz. Hesab\nsilindikdə bütün fayllar 24 saat ərzində fiziki olaraq silinir və profil\nanonimləşdirilir. **Balansınız və bonus səhifələriniz itir.**\n",
+    "publishedAt": "2026-09-27T14:05:47.569Z",
+    "isCurrent": true,
+    "acceptances": 26
+   }
+  ],
+  "GET /api/admin/kiosks/07b60a14-f48c-432a-a815-19c68d09e250": {
+   "id": "07b60a14-f48c-432a-a815-19c68d09e250",
+   "code": "KSK-1001",
+   "name": "Test",
+   "status": "NotActivated",
+   "lat": 40.4093,
+   "lng": 49.8671,
+   "address": "Baki",
+   "defaultLanguage": "az",
+   "maxFileSizeMb": {
+    "default": 50,
+    "effective": 50
+   },
+   "maxPages": {
+    "default": 200,
+    "effective": 200
+   },
+   "pricingProfileName": "Default",
+   "paper": {
+    "A4": {
+     "capacity": 500,
+     "current": 0
+    },
+    "A3": {
+     "capacity": 250,
+     "current": 0
+    }
+   },
+   "hasAdminPin": true,
+   "platform": "Windows",
+   "appVersion": "0.1.0",
+   "selectedPrinter": "NeoPrint Fake Printer",
+   "lastHeartbeatAt": "2026-09-27T19:01:45.892Z",
+   "configurationChangedAt": "2026-09-27T14:17:01.58Z",
+   "createdAt": "2026-09-27T14:17:01.568Z",
+   "revision": 1125
+  },
+  "GET /api/admin/kiosks/07b60a14-f48c-432a-a815-19c68d09e250/devices": [
+   {
+    "id": "97f00035-dc3b-42e0-8592-4272e2a1c440",
+    "status": "Revoked",
+    "platform": "Windows",
+    "appVersion": "0.1.0",
+    "hostname": "kiosk-host",
+    "activatedAt": "2026-09-27T14:17:01.568Z",
+    "revokedAt": "2026-09-27T19:01:57.626Z",
+    "revokeReason": "test",
+    "lastSeenAt": "2026-09-27T19:01:45.892Z",
+    "isActive": false
+   }
+  ],
+  "GET /api/admin/kiosks/07b60a14-f48c-432a-a815-19c68d09e250/printers": {
+   "kioskId": "07b60a14-f48c-432a-a815-19c68d09e250",
+   "status": "NotActivated",
+   "selectedPrinter": "NeoPrint Fake Printer",
+   "printers": [
+    {
+     "name": "NeoPrint Fake Printer",
+     "driverName": "neoprint-fake",
+     "isOnline": true,
+     "detectedCapabilities": {
+      "color": true,
+      "duplex": true,
+      "a3": true
+     }
+    }
+   ],
+   "detected": {
+    "color": true,
+    "duplex": true,
+    "a3": true
+   },
+   "overrides": {},
+   "effective": {
+    "color": true,
+    "duplex": true,
+    "a3": true
+   }
+  },
+  "GET /api/admin/kiosks/07b60a14-f48c-432a-a815-19c68d09e250/commands": [],
+  "GET /api/admin/kiosks/07b60a14-f48c-432a-a815-19c68d09e250/queue": [],
+  "GET /api/admin/print-jobs?page=1&pageSize=20&kioskId=07b60a14-f48c-432a-a815-19c68d09e250": {
+   "items": [],
+   "total": 0,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/kiosks/07b60a14-f48c-432a-a815-19c68d09e250/supplies": {
+   "paper": {
+    "A4": {
+     "capacity": 500,
+     "current": 0
+    },
+    "A3": {
+     "capacity": 250,
+     "current": 0
+    }
+   },
+   "events": []
+  },
+  "GET /api/admin/print-jobs/7d351843-74e5-452f-b6c4-e3c344f889bc": {
+   "job": {
+    "id": "7d351843-74e5-452f-b6c4-e3c344f889bc",
+    "jobCode": "818241",
+    "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+    "status": "Completed",
+    "source": "MobileSession",
+    "fileName": "Şəxsiyyət vəsiqəsi - bank kartı.pdf",
+    "pageCount": 1,
+    "selectedPages": 1,
+    "options": {
+     "copies": 1,
+     "color": false,
+     "duplex": false,
+     "paper": "A4",
+     "orientation": "Auto",
+     "pagesPerSheet": 1,
+     "scaling": "Actual"
+    },
+    "price": {
+     "total": 0.2,
+     "currency": "AZN",
+     "basePrice": 0.1,
+     "volumeDiscount": 0,
+     "discountPercent": 0,
+     "minimumApplied": true,
+     "sides": 1,
+     "sheets": 1,
+     "profileId": "3e592007-9521-4d60-aedb-ad1539c3c96e",
+     "profileName": "Default",
+     "takenAt": "2026-10-11T12:16:47.102Z",
+     "promoDiscount": 0,
+     "amountDue": 0.2
+    },
+    "requiredSheets": 1,
+    "printedSides": 1,
+    "printedSheets": 1,
+    "paymentSkipped": false,
+    "createdAt": "2026-10-11T12:16:47.102Z",
+    "queuedAt": "2026-10-11T12:16:49.031Z",
+    "finishedAt": "2026-10-11T12:16:49.968Z"
+   },
+   "kioskCode": "KSK-9002",
+   "history": [
+    {
+     "from": "Draft",
+     "to": "PendingPayment",
+     "actorType": "User",
+     "at": "2026-10-11T12:16:47.102Z"
+    },
+    {
+     "from": "PendingPayment",
+     "to": "Paid",
+     "actorType": "User",
+     "reason": "NeoPrint tətbiqi ilə ödənildi",
+     "at": "2026-10-11T12:16:49.031Z"
+    },
+    {
+     "from": "Paid",
+     "to": "Queued",
+     "actorType": "User",
+     "reason": "NeoPrint tətbiqi ilə ödənildi",
+     "at": "2026-10-11T12:16:49.031Z"
+    },
+    {
+     "from": "Queued",
+     "to": "Printing",
+     "actorType": "Kiosk",
+     "at": "2026-10-11T12:16:49.785Z"
+    }
+   ],
+   "attempts": [
+    {
+     "number": 1,
+     "printer": "NeoPrint Fake Printer",
+     "spoolerJobId": "NeoPrint-818241",
+     "startedAt": "2026-10-11T12:16:49.684Z",
+     "finishedAt": "2026-10-11T12:16:49.936Z",
+     "reportedSides": 1,
+     "reportedSheets": 1,
+     "status": "Completed",
+     "recovered": false
+    }
+   ]
+  },
+  "GET /api/admin/payments/5d3ad532-0f1d-4254-8733-313ce562792c": {
+   "payment": {
+    "id": "5d3ad532-0f1d-4254-8733-313ce562792c",
+    "status": "Succeeded",
+    "method": "Mixed",
+    "channel": "Mobile",
+    "purpose": "PrintJob",
+    "amount": 0.1,
+    "refunded": 0,
+    "currency": "AZN",
+    "kioskId": "b901d45a-61ea-493c-a532-fb2b41e53408",
+    "kioskCode": "KSK-9002",
+    "jobId": "7d351843-74e5-452f-b6c4-e3c344f889bc",
+    "jobCode": "818241",
+    "userId": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+    "createdAt": "2026-10-11T12:16:47.102Z",
+    "paidAt": "2026-10-11T12:16:49.031Z"
+   },
+   "split": {
+    "gross": 0.2,
+    "volumeDiscount": 0,
+    "promoDiscount": 0,
+    "external": 0,
+    "wallet": 0.1,
+    "bonusPages": 1,
+    "bonusValue": 0.1
+   },
+   "refundable": 0.1,
+   "expiresAt": "2026-10-11T12:21:47.102Z",
+   "kioskName": "Test kiosk — Linux",
+   "job": {
+    "id": "7d351843-74e5-452f-b6c4-e3c344f889bc",
+    "jobCode": "818241",
+    "status": "Completed",
+    "fileName": "Şəxsiyyət vəsiqəsi - bank kartı.pdf",
+    "pages": 1,
+    "copies": 1,
+    "color": false,
+    "paper": "A4"
+   },
+   "user": {
+    "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+    "publicId": "NP-QD5B9C",
+    "email": "person36@example.test"
+   },
+   "receiptNumber": "NP-2026-000064",
+   "fiscal": [
+    {
+     "id": "0f6bc2c0-7679-4bea-8d38-64a15d8ec9a2",
+     "type": "Sale",
+     "status": "Issued",
+     "amount": 0.1,
+     "fiscalId": "MF0F6BC2C076794BEA",
+     "terminalId": "ONLINE-DEV-01",
+     "issuedAt": "2026-10-11T12:16:49.875Z"
+    }
+   ],
+   "refunds": [],
+   "timeline": [
+    {
+     "at": "2026-10-11T12:16:47.102Z",
+     "event": "created",
+     "details": "MobileApp"
+    },
+    {
+     "at": "2026-10-11T12:16:47.102Z",
+     "event": "appQrShown"
+    },
+    {
+     "at": "2026-10-11T12:16:49.031Z",
+     "event": "promo",
+     "details": "none"
+    },
+    {
+     "at": "2026-10-11T12:16:49.031Z",
+     "event": "reserved",
+     "details": "Mixed"
+    }
+   ]
+  },
+  "GET /api/admin/wallets/8a16e4e8-e0f2-438b-9e45-a3f98999048c/transactions?page=1&pageSize=20": {
+   "items": [],
+   "total": 0,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/wallets/8a16e4e8-e0f2-438b-9e45-a3f98999048c/transactions": {
+   "items": [],
+   "total": 0,
+   "page": 1,
+   "pageSize": 20
+  },
+  "GET /api/admin/users/8a16e4e8-e0f2-438b-9e45-a3f98999048c": {
+   "profile": {
+    "id": "8a16e4e8-e0f2-438b-9e45-a3f98999048c",
+    "publicId": "NP-UHSS4Y",
+    "email": "person44@example.test",
+    "status": "Active",
+    "emailConfirmed": false,
+    "createdAt": "2026-10-10T18:16:41.729Z"
+   },
+   "language": "az",
+   "wallet": {
+    "balance": 0,
+    "bonusPages": 0,
+    "currency": "AZN"
+   },
+   "recentJobs": [],
+   "fileCount": 0,
+   "fileBytes": 0,
+   "referred": 0,
+   "consents": [
+    {
+     "docType": "Privacy",
+     "version": "0.1-draft"
+    },
+    {
+     "docType": "Terms",
+     "version": "0.1-draft"
+    }
+   ],
+   "files": [],
+   "referrals": {
+    "invitedBy": {
+     "id": "a0d3b220-e2cd-4b51-a8f0-9a6039a7b1b7",
+     "publicId": "NP-QD5B9C"
+    },
+    "totals": {
+     "registered": 0,
+     "rewarded": 0,
+     "waiting": 0,
+     "bonusPagesEarned": 0
+    },
+    "items": []
+   }
+  }
+ }
+}

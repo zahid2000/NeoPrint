@@ -44,6 +44,7 @@ BenchmarkDotNet.Artifacts/
 
 # ---------------------------------------------------------------------------
 # Node / Angular (admin/)
+admin/e2e/screenshots/
 # ---------------------------------------------------------------------------
 node_modules/
 npm-debug.log*

@@ -124,6 +124,7 @@ Birbaşa asılılıqlar (`admin/package.json`), versiyalar pinli.
 | `prettier` | 3.8.1 | MIT | Tərtibat / lint / test |
 | `typescript` | 5.9.2 | Apache-2.0 | Tərtibat / lint / test |
 | `typescript-eslint` | 8.46.0 | MIT | Tərtibat / lint / test |
+| `playwright-core` | 1.55.1 | Apache-2.0 | Render testi (`admin/e2e`): hər səhifə real brauzerdə üç dildə — xam açar, başlıq, screenshot. Yalnız kitabxana: öz brauzerini endirmir, maşındakı / CI runner-indəki Chrome-u idarə edir; öz asılılığı yoxdur. Layihə sahibi 2026-10-11 təsdiqləyib (T-228) |
 | `vitest` | 4.0.8 | MIT | Unit testlər |
 
 Material Symbols Rounded şrifti self-host edilib və istifadə olunan ikonlara subset edilib (`admin/scripts/icon-subset.mjs`).

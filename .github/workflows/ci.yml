@@ -280,6 +280,22 @@ jobs:
         run: npx ng build --configuration production
         working-directory: admin
 
+      # The built panel in the runner's own Chrome, every page in az, en and
+      # ru, the API played back from a recording: no raw translation key, a
+      # heading, no "could not load" banner, no sideways scroll - and a
+      # picture of each page.
+      - name: Rendered pages
+        run: node --test e2e/render.test.mjs
+        working-directory: admin
+
+      - name: Upload page pictures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-pages
+          path: admin/e2e/screenshots
+          if-no-files-found: ignore
+
   # --------------------------------------------------------------------
   # Design rules
   # --------------------------------------------------------------------
