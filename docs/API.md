@@ -1025,7 +1025,7 @@ Skan — bitmiş PDF kimi saxlanılır, **sonra redaktə olunmur** (`editLocked`
 | `documentType` | `IdCard`, `Id2`, `Passport`, `Photo3x4`, `Photo10x15`, `A6`, `A5`, `A4` və ya `Custom` |
 | `physicalWidthMm`, `physicalHeightMm` | Yalnız `Custom` üçün, 1–1000 |
 | `isSensitive` | `IdCard` / `Id2` / `Passport` üçün göndərilməsə də `true` olur |
-| `fileName` | Göstərilən ad; `.pdf` əlavə olunur |
+| `fileName` | Göstərilən ad — başlıqdır, fayl yolu deyil: `/` və `\` " - " ilə əvəz olunur, sondakı `.pdf` təkrarlanmır, başqa nöqtələr qalır ("Dr. Əliyev arayış" → `Dr. Əliyev arayış.pdf`); boşdursa `scan-<tarix>.pdf`. `POST files/layout`-da da belədir (T-197) |
 
 → `201` + fayl obyekti (`source` = `Scan`, `extension` = `pdf`). Şərt: istifadəçi
 `ScanNotice`-in **cari versiyasını** qəbul edib (`GET /api/consents/pending?scan=true`

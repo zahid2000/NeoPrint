@@ -113,12 +113,30 @@ public sealed class FileIntake
         return candidate.Length > 200 ? candidate[..200] : candidate;
     }
 
-    /// <summary><see cref="SafeName"/>, ending in <paramref name="extension"/> whatever it was given.</summary>
+    /// <summary>
+    /// The name of a scan or a layout: a title the user typed, ending in
+    /// <paramref name="extension"/> whatever it was given.
+    /// </summary>
+    /// <remarks>
+    /// A title is not a path: "Vəsiqə / bank kartı" and "Dr. Əliyev arayış"
+    /// keep every word. Separators become a dash, and only the extension the
+    /// name is about to get is taken off its end.
+    /// </remarks>
     public static string SafeNameWithExtension(string? fileName, string fallbackStem, string extension)
     {
-        var stem = Path.GetFileNameWithoutExtension(Path.GetFileName(fileName ?? string.Empty)).Trim();
+        var suffix = $".{extension}";
+        var stem = (fileName ?? string.Empty).Trim();
 
-        return SafeName($"{(string.IsNullOrWhiteSpace(stem) ? fallbackStem : stem)}.{extension}", extension);
+        if (stem.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+        {
+            stem = stem[..^suffix.Length];
+        }
+
+        stem = string.Join(
+            " - ",
+            stem.Split(['/', '\\'],StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+        return SafeName($"{(string.IsNullOrWhiteSpace(stem) ? fallbackStem : stem)}{suffix}", extension);
     }
 
     public static long Megabytes(long bytes) => bytes / (1024 * 1024);
