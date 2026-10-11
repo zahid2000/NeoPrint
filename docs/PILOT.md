@@ -13,7 +13,7 @@ Pilot aşağıdakıların hamısı bağlanmadan başlamır. Hər sətrin mənbə
 
 | # | Nə | Kim | Nə lazımdır | Tapşırıq | Addımlar | Vəziyyət |
 |---|---|---|---|---|---|---|
-| 1 | Mobil tətbiqin real telefonda əl ilə yoxlanması: kamera ilə QR, push bildirişi, sənəd skanı | Layihə sahibi | Samsung S24 (USB) | T-186, T-225 | MT-07, MT-08 — yalnız "yalnız real telefonda" qeydli sətirlər | Açıq — Addım 7-nin sonunda |
+| 1 | Mobil tətbiqin real telefonda əl ilə yoxlanması: kamera ilə QR, push bildirişi, sənəd skanı | Layihə sahibi | Samsung S24 (USB) | T-186, T-225 | MT-07, MT-08 — "Harada yoxlanır" sütununda **"Yalnız real telefonda"** yazılmış sətirlər (MT-07: №6, 11–13, 19–25 və bir neçəsinin push / kamera hissəsi; MT-08: №5–7, 16–19, 22, 25 və bir neçəsinin kamera hissəsi) | Açıq — Addım 7-nin sonunda |
 | 2 | Real printer: aşkarlama, imkanlar, test çap, hər format qrupu, printer telemetriyası (SNMP / WMI) | Layihə sahibi + Claude | Pilot printeri (model və qoşulma növü layihə sahibindən) | T-092 | MT-02 | Açıq — printer lazımdır |
 | 3 | Windows kiosk provisioning-i: Shell Launcher, Keyboard Filter, autologon, Agent servisi, Firewall | Layihə sahibi + Claude | Windows IoT Enterprise VM və ya cihaz | T-093, T-220 | MT-03 | Açıq — cihaz lazımdır |
 | 4 | Linux kiosk cihazı və real flaş: avtomount, fayl siyahısı, reboot-dan sonra cage | Layihə sahibi + Claude | Ubuntu 24.04 kiosk cihazı, USB flaş | T-094 | MT-04 | Açıq — cihaz lazımdır |
