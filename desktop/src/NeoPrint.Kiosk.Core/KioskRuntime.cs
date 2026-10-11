@@ -166,8 +166,11 @@ public sealed class KioskRuntime
 
             return true;
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            // The kiosk is stopping. A cancellation nobody asked for - a
+            // timeout somewhere below - is a beat that did not get through,
+            // and is handled as one further down.
             throw;
         }
         catch (DeviceRevokedException)

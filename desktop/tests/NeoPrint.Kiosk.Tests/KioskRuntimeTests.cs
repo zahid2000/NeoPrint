@@ -262,6 +262,34 @@ public sealed class KioskRuntimeTests
     }
 
     [Fact]
+    public async Task A_heartbeat_that_times_out_is_a_lost_link_not_the_kiosk_stopping()
+    {
+        var (runtime, handler, _) = await CreateAsync();
+        handler.OnConfig(_ => ScriptedHandler.Json(Configuration(cacheTtlHours: 24)));
+        await runtime.LoadConfigurationAsync();
+
+        // What HttpClient throws when its own timeout runs out: a cancellation
+        // nobody asked for. On the real stack this ended the kiosk's main loop.
+        handler.OnHeartbeat(_ => throw new TaskCanceledException(
+            "The request was canceled due to the configured HttpClient.Timeout of 30 seconds elapsing.", new TimeoutException()));
+
+        (await runtime.BeatAsync(printerOnline: true)).Should().BeFalse();
+        runtime.IsBackendReachable.Should().BeFalse();
+
+        // The next beat gets through and the kiosk is back.
+        handler.OnHeartbeat(_ => ScriptedHandler.Json(Heartbeat(Start)));
+        (await runtime.BeatAsync(printerOnline: true)).Should().BeTrue();
+        runtime.IsBackendReachable.Should().BeTrue();
+
+        // Really stopping is still a cancellation.
+        using var stopping = new CancellationTokenSource();
+        await stopping.CancelAsync();
+        handler.OnHeartbeat(_ => throw new OperationCanceledException(stopping.Token));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runtime.BeatAsync(printerOnline: true, stopping.Token));
+    }
+
+    [Fact]
     public async Task Losing_the_link_past_the_cache_window_is_offline()
     {
         var (runtime, handler, clock) = await CreateAsync();

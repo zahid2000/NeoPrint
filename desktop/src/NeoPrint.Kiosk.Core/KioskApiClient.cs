@@ -211,6 +211,30 @@ public sealed partial class KioskApiClient
     public bool IsActivated { get; private set; }
 
     /// <summary>
+    /// Waits for a request, and turns the HTTP client's own timeout into what
+    /// it is: a request that did not get through.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="HttpClient"/> reports its timeout as a
+    /// <see cref="TaskCanceledException"/> although nobody cancelled anything.
+    /// Left like that, every loop that treats cancellation as "the kiosk is
+    /// shutting down" stops for good the first time the backend is slow to
+    /// answer - the heartbeat did, on the real stack, and the kiosk sat there
+    /// silent until it was restarted. A real cancellation is passed on as it is.
+    /// </remarks>
+    private static async Task<HttpResponseMessage> Sent(Task<HttpResponseMessage> sending, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await sending.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new HttpRequestException("The request to the backend timed out.", exception);
+        }
+    }
+
+    /// <summary>
     /// Registers this installation. Safe to call on every start: the backend
     /// recognises the key and keeps the same device.
     /// </summary>
@@ -222,7 +246,7 @@ public sealed partial class KioskApiClient
         IReadOnlyCollection<DetectedPrinter> printers,
         CancellationToken cancellationToken = default)
     {
-        var response = await _http.PostAsJsonAsync(
+        var response = await Sent(_http.PostAsJsonAsync(
                 "api/devices/register",
                 new
                 {
@@ -252,7 +276,7 @@ public sealed partial class KioskApiClient
                     }),
                 },
                 JsonOptions,
-                cancellationToken)
+                cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.Conflict)
@@ -302,7 +326,7 @@ public sealed partial class KioskApiClient
                             .ConfigureAwait(false)
                         ?? throw new InvalidOperationException("The challenge response was empty.");
 
-        var tokenResponse = await _http.PostAsJsonAsync(
+        var tokenResponse = await Sent(_http.PostAsJsonAsync(
                 "api/devices/token",
                 new
                 {
@@ -311,7 +335,7 @@ public sealed partial class KioskApiClient
                     signature = _keys.Sign(challenge.Nonce),
                 },
                 JsonOptions,
-                cancellationToken)
+                cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
         if (tokenResponse.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.Unauthorized)
@@ -353,7 +377,7 @@ public sealed partial class KioskApiClient
         using var request = await CreateAuthenticatedRequestAsync(
             HttpMethod.Get, "api/devices/me", cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
 
         ThrowIfRefused(response);
 
@@ -374,7 +398,7 @@ public sealed partial class KioskApiClient
         using var request = await CreateAuthenticatedRequestAsync(
             HttpMethod.Post, "api/devices/me/pairing-code", cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
 
         response.EnsureSuccessStatusCode();
 
@@ -406,7 +430,7 @@ public sealed partial class KioskApiClient
             },
             options: JsonOptions);
 
-        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
 
         response.EnsureSuccessStatusCode();
     }
@@ -423,7 +447,7 @@ public sealed partial class KioskApiClient
         using var request = await CreateAuthenticatedRequestAsync(
             HttpMethod.Get, "api/kiosks/me/config", cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
 
         ThrowIfRefused(response);
 
@@ -453,7 +477,7 @@ public sealed partial class KioskApiClient
         request.Content = JsonContent.Create(
             new { appVersion, agentVersion, printerOnline, safeMode }, options: JsonOptions);
 
-        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
 
         ThrowIfRefused(response);
 
@@ -471,7 +495,7 @@ public sealed partial class KioskApiClient
 
         request.Content = JsonContent.Create(report, options: JsonOptions);
 
-        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
 
         ThrowIfRefused(response);
     }
@@ -484,7 +508,7 @@ public sealed partial class KioskApiClient
 
         request.Content = JsonContent.Create(new { printers }, options: JsonOptions);
 
-        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
 
         ThrowIfRefused(response);
     }

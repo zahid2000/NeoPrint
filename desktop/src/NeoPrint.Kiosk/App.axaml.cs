@@ -161,9 +161,9 @@ public sealed partial class App : Application
     {
         var logger = Services.GetRequiredService<ILogger<App>>();
 
-        try
+        while (!cancellationToken.IsCancellationRequested)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
                 if (!await RunEnrollmentLoopAsync(model, cancellationToken).ConfigureAwait(false))
                 {
@@ -177,15 +177,33 @@ public sealed partial class App : Application
                     return;
                 }
             }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
-        catch (Exception exception)
-        {
-            logger.LogCritical(exception, "The kiosk's main loop stopped.");
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception exception)
+            {
+                // Whatever it was, a kiosk that stays up but no longer beats,
+                // takes its queue or reports is worse than one that failed:
+                // nobody is told and nothing restarts it. The session has put
+                // away what it started (its finally), so begin again.
+                logger.LogCritical(
+                    exception, "The kiosk's main loop failed; starting it again in {Seconds} s.", MainLoopRestartDelay.TotalSeconds);
+
+                try
+                {
+                    await Task.Delay(MainLoopRestartDelay, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+            }
         }
     }
+
+    /// <summary>How long the main loop waits before it starts again after failing.</summary>
+    private static readonly TimeSpan MainLoopRestartDelay = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// Keeps trying to advance the device's state until it is activated.
