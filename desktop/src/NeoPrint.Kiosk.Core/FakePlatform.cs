@@ -322,6 +322,25 @@ public sealed class FakeRemovableDriveWatcher : IRemovableDriveWatcher
         => Task.FromResult<IReadOnlyList<RemovableDrive>>(Drives);
 }
 
+/// <summary>A machine with fixed readings, for tests and for running without a platform.</summary>
+public sealed class FakeSystemMetrics : ISystemMetrics
+{
+    public SystemSnapshot Snapshot { get; set; } = new(
+        Os: "Fake OS",
+        OsVersion: "1.0",
+        Hostname: "fake-kiosk",
+        CpuPercent: 7.5,
+        MemoryUsedBytes: 2L * 1024 * 1024 * 1024,
+        MemoryTotalBytes: 8L * 1024 * 1024 * 1024,
+        SystemDiskFreeBytes: 50L * 1024 * 1024 * 1024,
+        SpoolDiskFreeBytes: 50L * 1024 * 1024 * 1024,
+        UptimeSeconds: 3600,
+        ConnectionType: "Ethernet",
+        LocalIp: "192.168.0.10");
+
+    public Task<SystemSnapshot> ReadAsync(CancellationToken cancellationToken = default) => Task.FromResult(Snapshot);
+}
+
 /// <summary>Records what it was asked to do, for tests.</summary>
 public sealed class FakeSystemControl : ISystemControl
 {

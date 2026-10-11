@@ -424,18 +424,40 @@ public interface IRemovableDriveWatcher
 /// <param name="AvailableBytes">Free space.</param>
 public sealed record RemovableDrive(string Path, string? Label, long TotalBytes, long AvailableBytes);
 
-/// <summary>Machine telemetry (plan section 7.9).</summary>
+/// <summary>
+/// Machine telemetry (plan section 7.9): Windows reads it from the system's
+/// own counters, Linux from <c>/proc</c> and <c>/sys</c>.
+/// </summary>
 public interface ISystemMetrics
 {
+    /// <summary>
+    /// The machine as it is now. Never throws for a value it cannot read:
+    /// that value is null, and the panel says "no data" for it.
+    /// </summary>
     Task<SystemSnapshot> ReadAsync(CancellationToken cancellationToken = default);
 }
 
-/// <param name="CpuPercent">Processor use, 0-100.</param>
-/// <param name="MemoryUsedPercent">Memory in use, 0-100.</param>
-/// <param name="DiskFreeBytes">Free space on the volume holding the spool.</param>
+/// <param name="Os">The system's name, e.g. <c>Ubuntu 24.04.1 LTS</c> or <c>Microsoft Windows 10 IoT Enterprise</c>.</param>
+/// <param name="OsVersion">The kernel or build version.</param>
+/// <param name="CpuPercent">Processor use, 0-100, since the previous reading; null on the first one.</param>
+/// <param name="SystemDiskFreeBytes">Free space on the volume the system is on.</param>
+/// <param name="SpoolDiskFreeBytes">Free space on the volume holding the spool.</param>
 /// <param name="UptimeSeconds">How long the machine has been running.</param>
+/// <param name="ConnectionType"><c>Ethernet</c>, <c>WiFi</c> or <c>Other</c>; null with no connection.</param>
+/// <param name="WifiSignalPercent">0-100, on Wi-Fi where the system tells.</param>
 public sealed record SystemSnapshot(
-    double CpuPercent, double MemoryUsedPercent, long DiskFreeBytes, long UptimeSeconds);
+    string? Os = null,
+    string? OsVersion = null,
+    string? Hostname = null,
+    double? CpuPercent = null,
+    long? MemoryUsedBytes = null,
+    long? MemoryTotalBytes = null,
+    long? SystemDiskFreeBytes = null,
+    long? SpoolDiskFreeBytes = null,
+    long? UptimeSeconds = null,
+    string? ConnectionType = null,
+    int? WifiSignalPercent = null,
+    string? LocalIp = null);
 
 /// <summary>The message keys a printer state stops a job with (plan section 7.4).</summary>
 public static class PrinterErrors

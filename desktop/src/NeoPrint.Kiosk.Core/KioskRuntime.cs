@@ -39,6 +39,18 @@ public sealed class KioskRuntime
     /// <summary>Whether the last exchange with the backend succeeded.</summary>
     public bool IsBackendReachable { get; private set; }
 
+    /// <summary>How long the last heartbeat took to be answered; null until one has been (plan section 7.9).</summary>
+    public int? LastBackendLatencyMs { get; private set; }
+
+    /// <summary>When the configuration in use was fetched from the backend.</summary>
+    public DateTime? ConfigurationFetchedAt => _configurationFetchedAt;
+
+    /// <summary>How long to wait before the next telemetry report (<c>Kiosk.TelemetrySeconds</c>).</summary>
+    public TimeSpan TelemetryInterval => TimeSpan.FromSeconds(Math.Max(5, _configuration?.TelemetrySeconds ?? 30));
+
+    /// <summary>This build's version, as the heartbeat and telemetry report it.</summary>
+    public static string AppVersion => ThisAppVersion;
+
     /// <summary>A new configuration was loaded: the printer, limits or prices may have changed.</summary>
     public event Action<KioskConfiguration>? ConfigurationChanged;
 
@@ -126,6 +138,8 @@ public sealed class KioskRuntime
     {
         try
         {
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+
             var response = await _api
                 .SendHeartbeatAsync(
                     _configuration is null ? null : ThisAppVersion,
@@ -136,6 +150,7 @@ public sealed class KioskRuntime
                 .ConfigureAwait(false);
 
             IsBackendReachable = true;
+            LastBackendLatencyMs = (int)Math.Min(int.MaxValue, timer.ElapsedMilliseconds);
 
             if (_configurationChangedAt is null)
             {

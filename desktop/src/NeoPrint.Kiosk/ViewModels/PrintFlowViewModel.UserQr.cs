@@ -49,6 +49,9 @@ public sealed partial class PrintFlowViewModel
 
     public bool HasUserFiles => UserFiles.Count > 0;
 
+    /// <summary>A registered user opened this order with their personal QR (plan section 9.4).</summary>
+    public bool IsUserQrSession => _userQr is not null;
+
     public bool HasNoUserFiles => _userQr is not null && _userQr.Items.Count == 0;
 
     public bool HasMoreUserFiles => _userQr is not null && (_userPage + 1) * UserFilesPerPage < _userQr.Items.Count;

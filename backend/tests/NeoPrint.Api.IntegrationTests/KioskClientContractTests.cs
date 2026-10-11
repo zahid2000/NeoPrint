@@ -362,4 +362,72 @@ public sealed class KioskClientContractTests
         var unknown = () => api.FindPrintJobByCodeAsync("000000");
         (await unknown.Should().ThrowAsync<KioskApiException>()).Which.Status.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [DockerFact]
+    public async Task A_report_made_by_the_kiosk_collector_is_what_the_panel_reads()
+    {
+        if (Skip) { return; }
+
+        // The kiosk's own collector and client on one side, the admin API on
+        // the other: every group has to arrive under the name the server reads.
+        var paths = new FakeAppPaths();
+        var api = Client(paths);
+        var registration = await RegisterAsync(api, "contract-telemetry");
+        var kioskId = await ActivateAsync(registration.DeviceId, "Contract telemetry");
+
+        var clock = new SystemClock();
+        var runtime = new KioskRuntime(api, clock, NullLogger<KioskRuntime>.Instance);
+        var configuration = await runtime.LoadConfigurationAsync();
+        configuration.TelemetrySeconds.Should().Be(30, "the interval reaches the kiosk with its configuration");
+        runtime.TelemetryInterval.Should().Be(TimeSpan.FromSeconds(30));
+
+        (await runtime.BeatAsync(printerOnline: true)).Should().BeTrue();
+        runtime.LastBackendLatencyMs.Should().NotBeNull("the heartbeat is how the kiosk measures the backend");
+
+        var counters = new TelemetryCounters(clock);
+        counters.JobFinished(6);
+        counters.Printing("551203");
+
+        var collector = new KioskTelemetryCollector(new FakeSystemMetrics(), runtime, counters, clock);
+
+        var report = await collector.CollectAsync(new TelemetrySources
+        {
+            Screen = () => new TelemetryScreenState("Home", "Mobile", QueueLength: 1, ScreenWidth: 1920, ScreenHeight: 1080),
+            Hub = () => new HubState(Connected: true, LastReconnectAt: null, DisconnectedSince: null),
+            FlashInserted = _ => Task.FromResult<bool?>(false),
+            SpoolFiles = () => 4,
+            FailedFlashUploads = () => 0,
+            PendingCommands = () => 0,
+            LibreOffice = () => true,
+            Ghostscript = () => true,
+        });
+
+        await api.SendTelemetryAsync(report);
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        var view = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kioskId}/telemetry");
+        var sample = view.GetProperty("sample");
+
+        view.GetProperty("stale").GetBoolean().Should().BeFalse();
+        sample.GetProperty("app").GetProperty("screen").GetString().Should().Be("Home");
+        sample.GetProperty("app").GetProperty("session").GetString().Should().Be("Mobile");
+        sample.GetProperty("app").GetProperty("version").GetString().Should().Be(KioskRuntime.AppVersion);
+        sample.GetProperty("system").GetProperty("hostname").GetString().Should().Be("fake-kiosk");
+        sample.GetProperty("system").GetProperty("cpuPercent").GetDouble().Should().Be(7.5);
+        sample.GetProperty("system").GetProperty("memoryUsedPercent").GetDouble().Should().Be(25);
+        sample.GetProperty("system").GetProperty("spoolDiskFreeBytes").GetInt64().Should().Be(50L * 1024 * 1024 * 1024);
+        sample.GetProperty("network").GetProperty("connectionType").GetString().Should().Be("Ethernet");
+        sample.GetProperty("network").GetProperty("localIp").GetString().Should().Be("192.168.0.10");
+        sample.GetProperty("network").GetProperty("hubConnected").GetBoolean().Should().BeTrue();
+        sample.GetProperty("network").GetProperty("backendLatencyMs").GetInt32().Should().Be(runtime.LastBackendLatencyMs);
+        sample.GetProperty("peripherals").GetProperty("flashInserted").GetBoolean().Should().BeFalse();
+        sample.GetProperty("peripherals").GetProperty("screenWidth").GetInt32().Should().Be(1920);
+        sample.GetProperty("work").GetProperty("queueLength").GetInt32().Should().Be(1);
+        sample.GetProperty("work").GetProperty("currentJob").GetString().Should().Be("551203");
+        sample.GetProperty("work").GetProperty("jobsToday").GetInt32().Should().Be(1);
+        sample.GetProperty("work").GetProperty("sheetsToday").GetInt32().Should().Be(6);
+        sample.GetProperty("work").GetProperty("spoolFiles").GetInt32().Should().Be(4);
+        sample.GetProperty("services").GetProperty("libreOffice").GetBoolean().Should().BeTrue();
+        sample.GetProperty("services").GetProperty("configurationAt").GetDateTime().Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromMinutes(1));
+    }
 }

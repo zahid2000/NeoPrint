@@ -52,6 +52,9 @@ public sealed class CrashLoopGuard
     /// <summary>Since when the kiosk is in safe mode; null when it is not.</summary>
     public DateTime? SafeModeSince => Read().SafeModeSince;
 
+    /// <summary>The last time a run ended without closing cleanly, within <see cref="Window"/>; telemetry reports it.</summary>
+    public DateTime? LastCrashAt => Read().Crashes is { Count: > 0 } crashes ? crashes.Max() : null;
+
     /// <summary>
     /// Called once at start: counts the last run if it did not end cleanly,
     /// and says whether this run is in safe mode.

@@ -129,14 +129,19 @@ public sealed class KioskSession
             // A phone joined or left (plan section 9.3): the header says so, never who.
             Func<Guid, DateTime, Task> sessionOpened = (sessionId, expiresAt) => OnUiAsync(() => _model.SessionOpened(sessionId, expiresAt));
             Func<Guid, string, Task> sessionClosed = (sessionId, _) => OnUiAsync(() => _model.SessionClosed(sessionId));
+            var counters = _services.GetRequiredService<TelemetryCounters>();
             Action<PrinterActivity> activityChanged = activity =>
+            {
+                counters.Printing(activity.JobCode);
                 Dispatcher.UIThread.Post(() => _model.SetPrinterProblem(activity.LastErrorCode));
+            };
 
             // How each job ended, for the pilot report (plan section 2.17);
             // the order's own visit is over by then, so it goes under the job.
             var analytics = _services.GetRequiredService<IKioskAnalytics>();
             Action<JournalEntry> jobFinished = entry =>
             {
+                counters.JobFinished(entry.PrintedSheets);
                 analytics.Track(
                     entry.State == JournalState.Printed ? "print_completed" : "print_failed",
                     new Dictionary<string, string?>
@@ -198,6 +203,7 @@ public sealed class KioskSession
             _ = RunGuardedAsync("printer reports", () => ReportPrintersAsync(reporter, token), token);
             _ = RunGuardedAsync("analytics", () => SendAnalyticsAsync(api, token), token);
             _ = RunGuardedAsync("flash uploads", () => SendUploadsAsync(orders, token), token);
+            _ = RunGuardedAsync("telemetry", () => SendTelemetryAsync(runtime, hub, commands, drives, api, token), token);
 
             await HeartbeatLoopAsync(runtime, printers, token).ConfigureAwait(false);
         }
@@ -232,6 +238,98 @@ public sealed class KioskSession
     }
 
     /// <summary>Flash files of app-paid orders that could not be sent yet, again every few minutes.</summary>
+    /// <summary>
+    /// Reports the kiosk's own state every <c>Kiosk.TelemetrySeconds</c> (plan
+    /// section 7.9). A report that does not get through is simply the next
+    /// one's job: nothing is queued, the state it described is already old.
+    /// </summary>
+    private async Task SendTelemetryAsync(
+        KioskRuntime runtime,
+        KioskHubClient hub,
+        CommandProcessor commands,
+        IRemovableDriveWatcher drives,
+        KioskApiClient api,
+        CancellationToken cancellationToken)
+    {
+        var collector = _services.GetRequiredService<KioskTelemetryCollector>();
+        var paths = _services.GetRequiredService<IAppPaths>();
+        var uploads = _services.GetRequiredService<FlashUploads>();
+        var crashes = _services.GetRequiredService<CrashLoopGuard>();
+        var converters = _services.GetRequiredService<ConverterPaths>();
+
+        TelemetryScreenState screen = new();
+
+        var sources = new TelemetrySources
+        {
+            Screen = () => screen,
+            Hub = () => hub.State,
+            FlashInserted = async token => (await drives.ListAsync(token).ConfigureAwait(false)).Count > 0,
+            SpoolFiles = () => CountFiles(paths.SpoolDirectory),
+            FailedFlashUploads = () => uploads.Pending,
+            PendingCommands = () => commands.InProgress,
+            LastCrashAt = () => crashes.LastCrashAt,
+            LibreOffice = () => ProgramExists(converters.LibreOfficeExecutable),
+            Ghostscript = () => ProgramExists(converters.GhostscriptFor("ps")),
+        };
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await TryAsync("telemetry", async () =>
+                {
+                    // The screen is read where it lives; the rest needs no thread of its own.
+                    screen = await Dispatcher.UIThread.InvokeAsync(ReadScreen).GetTask().ConfigureAwait(false);
+
+                    var report = await collector.CollectAsync(sources, cancellationToken).ConfigureAwait(false);
+
+                    await api.SendTelemetryAsync(report, cancellationToken).ConfigureAwait(false);
+                })
+                .ConfigureAwait(false);
+
+            await Task.Delay(runtime.TelemetryInterval, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private TelemetryScreenState ReadScreen()
+    {
+        var bounds = (Avalonia.Application.Current?.ApplicationLifetime as
+                Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+            ?.MainWindow?.Screens.Primary?.Bounds;
+
+        // The window reads the scanner and the model keeps when; the collector
+        // takes it from the counters.
+        if (_model.LastScanAt is { } scanned)
+        {
+            _services.GetRequiredService<TelemetryCounters>().QrRead(scanned);
+        }
+
+        return _model.TelemetryState(bounds?.Width, bounds?.Height);
+    }
+
+    private static int? CountFiles(string directory)
+    {
+        try
+        {
+            return Directory.Exists(directory) ? Directory.EnumerateFiles(directory).Count() : 0;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Whether a converter is installed: a full path as it is, a bare name on PATH.</summary>
+    private static bool ProgramExists(string program)
+    {
+        if (program.Contains(Path.DirectorySeparatorChar) || program.Contains(Path.AltDirectorySeparatorChar))
+        {
+            return File.Exists(program);
+        }
+
+        return (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Any(directory => File.Exists(Path.Combine(directory, program)));
+    }
+
     private async Task SendUploadsAsync(KioskOrderService orders, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)

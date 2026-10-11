@@ -84,6 +84,9 @@ public sealed class CommandProcessor
     private readonly Func<KioskConfiguration, string, DateTime, IReadOnlyList<string>> _testPageText;
     private readonly ILogger<CommandProcessor> _logger;
     private readonly HashSet<Guid> _done = [];
+
+    /// <summary>Commands received and still being carried out; telemetry reports the count (plan section 7.9).</summary>
+    public int InProgress => _done.Count;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     public CommandProcessor(

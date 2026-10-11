@@ -292,6 +292,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// <returns>Whether it was taken.</returns>
     public bool Scanned(string line)
     {
+        // Any read shows the scanner works, whatever was on the code.
+        LastScanAt = DateTime.UtcNow;
+
         if (!line.StartsWith("NPU:", StringComparison.Ordinal) || !CanPrintFromFlash || IsSafeMode)
         {
             return false;
@@ -391,6 +394,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public string ClockText => Localization.Formats.Time(Now);
 
     // ---- phones joined in a session (plan section 9.3; docs/DESIGN_SYSTEM.md "Telefon qoşulub")
+
+    /// <summary>The last time the QR scanner read anything; telemetry reports it (plan section 7.9).</summary>
+    public DateTime? LastScanAt { get; private set; }
+
+    /// <summary>
+    /// Where the customer is, for telemetry: the screen, who is at the kiosk
+    /// and how long the queue is. Never who they are or what they print.
+    /// </summary>
+    public TelemetryScreenState TelemetryState(int? screenWidth, int? screenHeight) => new(
+        Screen == KioskScreen.Flow && Flow is { } flow ? $"Flow.{flow.Stage}" : Screen.ToString(),
+        HasConnectedPhones ? "Mobile"
+        : Flow is { IsUserQrSession: true } ? "UserQr"
+        : Screen == KioskScreen.Flow ? "Anonymous"
+        : null,
+        Queue.Count,
+        screenWidth,
+        screenHeight);
 
     /// <summary>Open sessions at this kiosk and when each ends; never whose.</summary>
     private readonly Dictionary<Guid, DateTime> _sessions = [];

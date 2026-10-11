@@ -97,6 +97,8 @@ internal static class Program
             provider.GetRequiredService<IAppPaths>(),
             provider.GetRequiredService<IClock>(),
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value.CrashLoopThreshold));
+        services.AddSingleton<TelemetryCounters>();
+        services.AddSingleton<KioskTelemetryCollector>();
         services.AddSingleton(provider => new KioskRuntime(
             provider.GetRequiredService<KioskApiClient>(),
             provider.GetRequiredService<IClock>(),
@@ -171,6 +173,7 @@ internal static class Program
         // in this build): the fake implementations, so the application can be
         // composed and worked on anywhere.
         services.TryAddSingleton<ISpoolKeyStore, FakeSpoolKeyStore>();
+        services.TryAddSingleton<ISystemMetrics, FakeSystemMetrics>();
         services.TryAddSingleton<IConverterProcessRunner, PlainConverterRunner>();
 
         // The fake printer prints into a folder, so the whole flow works on a
@@ -236,6 +239,7 @@ internal static class Program
         services.AddSingleton<ISystemControl, Platform.Windows.WindowsSystemControl>();
         services.AddSingleton<IRemovableDriveWatcher, Platform.Windows.WindowsRemovableDriveWatcher>();
         services.AddSingleton<IKioskLockdown, Platform.Windows.WindowsKioskLockdown>();
+        services.AddSingleton<ISystemMetrics, Platform.Windows.WindowsSystemMetrics>();
         services.AddSingleton<ISpoolKeyStore, Platform.Windows.WindowsSpoolKeyStore>();
         services.AddSingleton<IConverterProcessRunner, Platform.Windows.WindowsConverterRunner>();
         services.AddSingleton<Platform.Windows.WindowsPrinterService>();
@@ -259,6 +263,7 @@ internal static class Program
         services.AddSingleton<ISystemControl, Platform.Linux.LinuxSystemControl>();
         services.AddSingleton<IRemovableDriveWatcher, Platform.Linux.LinuxRemovableDriveWatcher>();
         services.AddSingleton<IKioskLockdown, Platform.Linux.LinuxKioskLockdown>();
+        services.AddSingleton<ISystemMetrics, Platform.Linux.LinuxSystemMetrics>();
         services.AddSingleton<ISpoolKeyStore, Platform.Linux.LinuxSpoolKeyStore>();
         services.AddSingleton<IConverterProcessRunner>(provider => new Platform.Linux.LinuxConverterRunner(
             provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value.ConverterUser));

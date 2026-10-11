@@ -42,6 +42,15 @@ public abstract class HubClientBase : IAsyncDisposable
 
     public bool IsConnected => _connection?.State == HubConnectionState.Connected;
 
+    /// <summary>When the connection last came back after a drop; null if it never dropped.</summary>
+    public DateTime? LastReconnectAt { get; private set; }
+
+    /// <summary>Since when the connection has been down; null while it is up.</summary>
+    public DateTime? DisconnectedSince { get; private set; }
+
+    /// <summary>The connection as telemetry reports it (plan section 7.9).</summary>
+    public HubState State => new(IsConnected, LastReconnectAt, IsConnected ? null : DisconnectedSince);
+
     /// <summary>Connected again after a drop: whatever was missed has to be fetched.</summary>
     public event Func<Task>? Reconnected;
 
@@ -60,9 +69,18 @@ public abstract class HubClientBase : IAsyncDisposable
             _running = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _connection = Build();
             Register(_connection);
+            DisconnectedSince = DateTime.UtcNow;
+
+            _connection.Reconnecting += _ =>
+            {
+                DisconnectedSince ??= DateTime.UtcNow;
+                return Task.CompletedTask;
+            };
 
             _connection.Reconnected += async _ =>
             {
+                DisconnectedSince = null;
+                LastReconnectAt = DateTime.UtcNow;
                 _logger.LogInformation("{Hub}: reconnected.", Path);
                 await RaiseReconnectedAsync().ConfigureAwait(false);
             };
@@ -72,7 +90,9 @@ public abstract class HubClientBase : IAsyncDisposable
                 // The automatic reconnect gave up (or the server closed it):
                 // start again, forever, until told to stop.
                 _logger.LogWarning(exception, "{Hub}: connection closed; starting it again.", Path);
+                DisconnectedSince ??= DateTime.UtcNow;
                 await ConnectLoopAsync(_running.Token).ConfigureAwait(false);
+                LastReconnectAt = IsConnected ? DateTime.UtcNow : LastReconnectAt;
                 await RaiseReconnectedAsync().ConfigureAwait(false);
             };
         }
@@ -148,6 +168,7 @@ public abstract class HubClientBase : IAsyncDisposable
             try
             {
                 await connection.StartAsync(cancellationToken).ConfigureAwait(false);
+                DisconnectedSince = null;
                 _logger.LogInformation("{Hub}: connected.", Path);
                 return;
             }

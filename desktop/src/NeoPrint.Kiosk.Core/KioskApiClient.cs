@@ -84,7 +84,8 @@ public sealed record KioskConfiguration(
     KioskPrices? Prices = null,
     IReadOnlyList<string>? AllowedFormats = null,
     bool PaperBlockWhenInsufficient = true,
-    int IdleResetSeconds = 90)
+    int IdleResetSeconds = 90,
+    int TelemetrySeconds = 30)
 {
     /// <summary>
     /// Whether a feature flag is on for this kiosk (plan section 2.16, T-160). A key
@@ -460,6 +461,19 @@ public sealed partial class KioskApiClient
                    .ReadFromJsonAsync<KioskHeartbeatResponse>(JsonOptions, cancellationToken)
                    .ConfigureAwait(false)
                ?? throw new InvalidOperationException("The heartbeat response was empty.");
+    }
+
+    /// <summary>Reports the kiosk's current state (plan section 7.9).</summary>
+    public async Task SendTelemetryAsync(TelemetryReport report, CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateAuthenticatedRequestAsync(
+            HttpMethod.Post, "api/kiosks/me/telemetry", cancellationToken).ConfigureAwait(false);
+
+        request.Content = JsonContent.Create(report, options: JsonOptions);
+
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        ThrowIfRefused(response);
     }
 
     /// <summary>
