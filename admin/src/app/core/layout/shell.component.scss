@@ -14,6 +14,20 @@
     font-weight: var(--font-weight-semibold);
   }
 
+  // A label that does not fit ("Baxış gözləyən sifarişlər", "Переключатели
+  // функций") goes onto a second line; it is never cut with an ellipsis.
+  & &__nav-item {
+    height: auto;
+    min-height: var(--space-12);
+    padding-block: var(--space-2);
+  }
+
+  & &__nav-label {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
   &__toolbar {
     position: sticky;
     top: 0;

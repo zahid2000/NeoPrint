@@ -34,6 +34,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'nav.settings': 'Tənzimləmələr',
     'nav.features': 'Funksiya açarları',
     'nav.legal': 'Hüquqi sənədlər',
+    'nav.toggleMenu': 'Menyunu aç və ya bağla',
 
     'language.az': 'Azərbaycan',
     'language.en': 'İngilis',
@@ -300,6 +301,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'legal.currentHint': 'Qüvvədə olan versiya',
     'legal.view': 'Bax',
     'legal.none': 'Sənəd yoxdur.',
+    'legal.type.ScanNotice': 'Sənəd skanı barədə məlumat',
 
     'common.save': 'Yadda saxla',
     'common.cancel': 'Ləğv et',
@@ -351,6 +353,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'nav.settings': 'Settings',
     'nav.features': 'Feature flags',
     'nav.legal': 'Legal documents',
+    'nav.toggleMenu': 'Open or close the menu',
 
     'language.az': 'Azerbaijani',
     'language.en': 'English',
@@ -617,6 +620,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'legal.currentHint': 'The version in force',
     'legal.view': 'View',
     'legal.none': 'No documents.',
+    'legal.type.ScanNotice': 'Document scan notice',
 
     'common.save': 'Save',
     'common.cancel': 'Cancel',
@@ -668,6 +672,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'nav.settings': 'Настройки',
     'nav.features': 'Переключатели функций',
     'nav.legal': 'Правовые документы',
+    'nav.toggleMenu': 'Открыть или закрыть меню',
 
     'language.az': 'Азербайджанский',
     'language.en': 'Английский',
@@ -936,6 +941,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'legal.currentHint': 'Действующая версия',
     'legal.view': 'Открыть',
     'legal.none': 'Документов нет.',
+    'legal.type.ScanNotice': 'Уведомление о сканировании документов',
 
     'common.save': 'Сохранить',
     'common.cancel': 'Отмена',

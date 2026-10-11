@@ -16,6 +16,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { HasPermissionDirective } from '../../core/auth/has-permission.directive';
 import { AdminHubService } from '../../core/realtime/admin-hub.service';
 import { BytesPipe, CountPipe, DateTimePipe } from '../../shared/format.pipes';
+import { PageHeaderComponent } from '../../shared/page-header.component';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
 
 /** Why a kiosk needs looking at, most urgent first. */
@@ -158,6 +159,7 @@ const attentionOrder: readonly AttentionReason[] = [
     MatProgressBarModule,
     TranslatePipe,
     HasPermissionDirective,
+    PageHeaderComponent,
     StatusChipComponent,
     MoneyCardComponent,
     BytesPipe,

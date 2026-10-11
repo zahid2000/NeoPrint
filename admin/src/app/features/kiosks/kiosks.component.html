@@ -36,6 +36,7 @@
     </mat-form-field>
 
     <mat-button-toggle-group
+      class="kiosks__view"
       [attr.aria-label]="'kiosks.view' | translate"
       [ngModel]="view()"
       (ngModelChange)="view.set($event)"

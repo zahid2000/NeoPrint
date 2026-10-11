@@ -336,6 +336,16 @@ a {
   gap: var(--space-6);
 }
 
+/* "Back to the list" on a detail page: first on the page, at the left. */
+.neo-back {
+  align-self: flex-start;
+}
+
+/* A code, a date or an amount: broken over two lines it is no longer one thing. */
+.neo-nowrap {
+  white-space: nowrap;
+}
+
 .neo-actions {
   display: flex;
   flex-wrap: wrap;

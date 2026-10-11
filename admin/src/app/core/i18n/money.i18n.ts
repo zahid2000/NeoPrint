@@ -46,6 +46,7 @@ export const moneyTranslations: PageTranslations = {
 
     'money.destination.OriginalMethod': 'Karta (ödəniş üsuluna)',
     'money.destination.Wallet': 'Balansa',
+    'money.destination.Bonus': 'Bonus səhifələrə',
     'money.destination.Voucher': 'Voucher kodu',
 
     'money.refundReason.SystemError': 'Sistem xətası',
@@ -60,6 +61,7 @@ export const moneyTranslations: PageTranslations = {
     'money.initiatedBy.System': 'Sistem',
     'money.initiatedBy.Admin': 'Administrator',
     'money.initiatedBy.Kiosk': 'Kiosk',
+    'money.initiatedBy.AnonymousKioskSession': 'Qonaq (kioskda)',
     'money.initiatedBy.User': 'Müştəri',
 
     'money.fiscalType.Sale': 'Satış çeki',
@@ -78,6 +80,7 @@ export const moneyTranslations: PageTranslations = {
 
     'money.customerStatus.Active': 'Aktiv',
     'money.customerStatus.Blocked': 'Bloklanıb',
+    'money.customerStatus.Deleted': 'Silinib',
 
     'money.claimStatus.Open': 'Baxılır',
     'money.claimStatus.Answered': 'Cavablanıb',
@@ -103,6 +106,7 @@ export const moneyTranslations: PageTranslations = {
     'money.event.expired': 'Vaxtı bitdi',
     'money.event.reconciled': 'Bankla uzlaşdırıldı',
     'money.event.promo': 'Promokod tətbiq olundu',
+    'money.event.promoNone': 'Promokodsuz',
     'money.event.amountMismatch': 'Bankın məbləği fərqlidir',
     'money.event.confirmedAgain': 'Bank yenidən təsdiqlədi',
     'money.event.refundRequested': 'Qaytarma istəndi',
@@ -521,6 +525,7 @@ export const moneyTranslations: PageTranslations = {
 
     'money.destination.OriginalMethod': 'To the card (how it was paid)',
     'money.destination.Wallet': 'To the balance',
+    'money.destination.Bonus': 'To bonus pages',
     'money.destination.Voucher': 'Voucher code',
 
     'money.refundReason.SystemError': 'System fault',
@@ -535,6 +540,7 @@ export const moneyTranslations: PageTranslations = {
     'money.initiatedBy.System': 'System',
     'money.initiatedBy.Admin': 'Admin',
     'money.initiatedBy.Kiosk': 'Kiosk',
+    'money.initiatedBy.AnonymousKioskSession': 'Guest at the kiosk',
     'money.initiatedBy.User': 'Customer',
 
     'money.fiscalType.Sale': 'Sale receipt',
@@ -553,6 +559,7 @@ export const moneyTranslations: PageTranslations = {
 
     'money.customerStatus.Active': 'Active',
     'money.customerStatus.Blocked': 'Blocked',
+    'money.customerStatus.Deleted': 'Deleted',
 
     'money.claimStatus.Open': 'Being reviewed',
     'money.claimStatus.Answered': 'Answered',
@@ -578,6 +585,7 @@ export const moneyTranslations: PageTranslations = {
     'money.event.expired': 'Expired',
     'money.event.reconciled': 'Reconciled with the bank',
     'money.event.promo': 'Promo code applied',
+    'money.event.promoNone': 'No promo code',
     'money.event.amountMismatch': 'The bank reports another amount',
     'money.event.confirmedAgain': 'The bank confirmed again',
     'money.event.refundRequested': 'Refund requested',
@@ -1001,6 +1009,7 @@ export const moneyTranslations: PageTranslations = {
 
     'money.destination.OriginalMethod': 'На карту (способ оплаты)',
     'money.destination.Wallet': 'На баланс',
+    'money.destination.Bonus': 'На бонусные страницы',
     'money.destination.Voucher': 'Код ваучера',
 
     'money.refundReason.SystemError': 'Сбой системы',
@@ -1015,6 +1024,7 @@ export const moneyTranslations: PageTranslations = {
     'money.initiatedBy.System': 'Система',
     'money.initiatedBy.Admin': 'Администратор',
     'money.initiatedBy.Kiosk': 'Киоск',
+    'money.initiatedBy.AnonymousKioskSession': 'Гость у киоска',
     'money.initiatedBy.User': 'Клиент',
 
     'money.fiscalType.Sale': 'Чек продажи',
@@ -1033,6 +1043,7 @@ export const moneyTranslations: PageTranslations = {
 
     'money.customerStatus.Active': 'Активен',
     'money.customerStatus.Blocked': 'Заблокирован',
+    'money.customerStatus.Deleted': 'Удалён',
 
     'money.claimStatus.Open': 'На рассмотрении',
     'money.claimStatus.Answered': 'Есть ответ',
@@ -1058,6 +1069,7 @@ export const moneyTranslations: PageTranslations = {
     'money.event.expired': 'Истёк',
     'money.event.reconciled': 'Сверен с банком',
     'money.event.promo': 'Применён промокод',
+    'money.event.promoNone': 'Без промокода',
     'money.event.amountMismatch': 'Банк сообщает другую сумму',
     'money.event.confirmedAgain': 'Банк подтвердил повторно',
     'money.event.refundRequested': 'Запрошен возврат',

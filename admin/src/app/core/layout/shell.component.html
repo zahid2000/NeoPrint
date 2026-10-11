@@ -11,6 +11,7 @@
       @for (item of navItems(); track item.path) {
         <a
           mat-list-item
+          class="shell__nav-item"
           [routerLink]="item.path"
           routerLinkActive
           #link="routerLinkActive"
@@ -18,7 +19,7 @@
           [activated]="link.isActive"
         >
           <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-          <span matListItemTitle>{{ item.labelKey | translate }}</span>
+          <span matListItemTitle class="shell__nav-label">{{ item.labelKey | translate }}</span>
         </a>
       }
     </mat-nav-list>
@@ -30,7 +31,7 @@
         mat-icon-button
         type="button"
         (click)="toggleSidenav()"
-        [attr.aria-label]="'nav.dashboard' | translate"
+        [attr.aria-label]="'nav.toggleMenu' | translate"
       >
         <mat-icon>menu</mat-icon>
       </button>

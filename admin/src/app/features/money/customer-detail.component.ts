@@ -56,13 +56,14 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
   ],
   template: `
     <div class="neo-page">
+      <a mat-button routerLink="/customers" class="neo-back"
+        ><mat-icon>arrow_back</mat-icon>{{ 'customerDetail.back' | translate }}</a
+      >
+
       <app-page-header
         [title]="'customerDetail.title' | translate"
         [description]="'customerDetail.description' | translate"
       />
-      <a mat-button routerLink="/customers"
-        ><mat-icon>arrow_back</mat-icon>{{ 'customerDetail.back' | translate }}</a
-      >
 
       @if (problem(); as problem) {
         <app-error-banner
@@ -103,7 +104,7 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
               <dt>{{ 'customerDetail.publicId' | translate }}</dt>
               <dd>{{ d.profile.publicId }}</dd>
               <dt>{{ 'customerDetail.language' | translate }}</dt>
-              <dd>{{ d.language }}</dd>
+              <dd>{{ languageName(d.language) }}</dd>
               <dt>{{ 'customerDetail.created' | translate }}</dt>
               <dd>{{ d.profile.createdAt | dateTime }}</dd>
               @if (d.profile.blockedAt) {
@@ -121,13 +122,7 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
               <dd>{{ d.referred }}</dd>
             </dl>
             <p class="neo-caption">
-              {{ 'customerDetail.consents' | translate }}:
-              @for (c of d.consents; track c.docType) {
-                {{ 'customerDetail.consent.' + c.docType | translate }} {{ c.version }}
-                @if (!$last) {
-                  ,
-                }
-              }
+              {{ 'customerDetail.consents' | translate }}: {{ consentsText(d.consents) }}
             </p>
           </section>
 
@@ -146,7 +141,7 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
                 </button>
               </div>
             }
-            <h3 class="neo-caption">{{ 'customerDetail.ledger' | translate }}</h3>
+            <h3 class="neo-caption money__subhead">{{ 'customerDetail.ledger' | translate }}</h3>
             @for (e of entries(); track e.id) {
               <div class="money__item">
                 <div class="money__item-head">
@@ -372,6 +367,20 @@ export class CustomerDetailComponent implements OnInit {
     } catch (error) {
       this.problem.set(toProblem(error));
     }
+  }
+
+  /** "Azərbaycan", not "az"; a language the panel has no name for is shown as its code. */
+  languageName(code: string): string {
+    const key = `language.${code}`;
+    const text = this.translate.instant(key) as string;
+    return text === key ? code : text;
+  }
+
+  /** "Privacy policy 1.0, Terms of use 1.0": one sentence, without stray spaces before the commas. */
+  consentsText(consents: readonly { docType: string; version: string }[]): string {
+    return consents
+      .map((c) => `${this.translate.instant('customerDetail.consent.' + c.docType) as string} ${c.version}`)
+      .join(', ');
   }
 
   async adjust(): Promise<void> {

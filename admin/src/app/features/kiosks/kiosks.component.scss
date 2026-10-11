@@ -6,3 +6,8 @@
   padding: 0;
   list-style: none;
 }
+
+// The switch is lower than a form field; this puts their middles on one line.
+.kiosks__view {
+  margin-block-start: var(--space-1);
+}

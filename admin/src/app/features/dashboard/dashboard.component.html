@@ -1,8 +1,7 @@
-<h1 class="page__title">{{ 'dashboard.title' | translate }}</h1>
-
-<p class="page__subtitle">
-  {{ 'dashboard.welcome' | translate: { name: admin()?.fullName || admin()?.email } }}
-</p>
+<app-page-header
+  [title]="'dashboard.title' | translate"
+  [description]="'dashboard.welcome' | translate: { name: admin()?.fullName || admin()?.email }"
+/>
 
 @if (failed()) {
   <p class="neo-field-error" role="alert">{{ 'dashboard.loadFailed' | translate }}</p>

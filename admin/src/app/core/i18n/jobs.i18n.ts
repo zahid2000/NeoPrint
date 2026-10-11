@@ -96,6 +96,7 @@ export const jobsTranslations: PageTranslations = {
     'jobs.actor.User': 'İstifadəçi',
     'jobs.actor.Admin': 'Administrator',
     'jobs.actor.Kiosk': 'Kiosk',
+    'jobs.actor.AnonymousKioskSession': 'Qonaq (kioskda)',
     'jobs.attemptsTitle': 'Çap cəhdləri',
     'jobs.attemptsHint':
       'Çapın olub-olmadığını təsdiqləyən sübut: printer, spooler istinadı və printerin öz sayğacı.',
@@ -318,6 +319,7 @@ export const jobsTranslations: PageTranslations = {
     'jobs.actor.User': 'User',
     'jobs.actor.Admin': 'Admin',
     'jobs.actor.Kiosk': 'Kiosk',
+    'jobs.actor.AnonymousKioskSession': 'Guest at the kiosk',
     'jobs.attemptsTitle': 'Print attempts',
     'jobs.attemptsHint':
       "The evidence of whether it printed: the printer, the spooler reference and the printer's own counter.",
@@ -541,6 +543,7 @@ export const jobsTranslations: PageTranslations = {
     'jobs.actor.User': 'Пользователь',
     'jobs.actor.Admin': 'Админ',
     'jobs.actor.Kiosk': 'Киоск',
+    'jobs.actor.AnonymousKioskSession': 'Гость у киоска',
     'jobs.attemptsTitle': 'Попытки печати',
     'jobs.attemptsHint':
       'Доказательство того, напечатан ли заказ: принтер, номер в спулере и собственный счётчик принтера.',

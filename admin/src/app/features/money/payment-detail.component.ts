@@ -41,14 +41,14 @@ import { RefundDialogComponent, RefundDialogData } from './refund-dialog.compone
   ],
   template: `
     <div class="neo-page">
+      <a mat-button routerLink="/payments" class="neo-back"
+        ><mat-icon>arrow_back</mat-icon>{{ 'paymentDetail.back' | translate }}</a
+      >
+
       <app-page-header
         [title]="'paymentDetail.title' | translate"
         [description]="'paymentDetail.description' | translate"
       />
-
-      <a mat-button routerLink="/payments"
-        ><mat-icon>arrow_back</mat-icon>{{ 'paymentDetail.back' | translate }}</a
-      >
 
       @if (problem(); as problem) {
         <app-error-banner
@@ -244,9 +244,9 @@ import { RefundDialogComponent, RefundDialogData } from './refund-dialog.compone
             @for (e of d.timeline; track $index) {
               <dt>{{ e.at | dateTime }}</dt>
               <dd>
-                {{ eventText(e.event) }}
-                @if (e.details) {
-                  <span class="neo-caption">{{ e.details }}</span>
+                {{ eventText(e.event, e.details) }}
+                @if (detailText(e.details); as text) {
+                  <span class="neo-caption">{{ text }}</span>
                 }
               </dd>
             }
@@ -309,10 +309,26 @@ export class PaymentDetailComponent implements OnInit {
   }
 
   /** The event's name in the reader's language; one the panel does not know yet shows as it is. */
-  eventText(event: string): string {
-    const key = `money.event.${event}`;
+  eventText(event: string, details?: string | null): string {
+    // The payment notes "promo: none" on every try that carries no code.
+    const key = event === 'promo' && details === 'none' ? 'money.event.promoNone' : `money.event.${event}`;
     const text = this.translate.instant(key) as string;
     return text === key ? event : text;
+  }
+
+  /**
+   * The detail of a history entry in words: a payment method is named as it
+   * is everywhere else, "none" says nothing and is left out, and anything
+   * else - a promo code and its amount, a bank's code - is shown as it is.
+   */
+  detailText(details: string | null | undefined): string | null {
+    if (!details || details === 'none') {
+      return null;
+    }
+
+    const key = `money.method.${details}`;
+    const text = this.translate.instant(key) as string;
+    return text === key ? details : text;
   }
 
   retryDestination(refund: PaymentRefund): string {

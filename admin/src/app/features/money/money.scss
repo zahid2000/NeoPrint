@@ -120,6 +120,11 @@ app-filter-bar {
   margin-block-start: var(--space-3);
 }
 
+// A small heading inside a card, under a button or a figure.
+.money__subhead {
+  margin-block-start: var(--space-4);
+}
+
 // The timeline: time in its own column, the event, the detail in grey.
 .money__timeline {
   display: grid;

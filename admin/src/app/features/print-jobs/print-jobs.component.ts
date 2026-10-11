@@ -172,7 +172,7 @@ const endOfDay = (date: Date | null): string | null =>
             </ng-container>
             <ng-container matColumnDef="kiosk">
               <th mat-header-cell *matHeaderCellDef>{{ 'jobs.colKiosk' | translate }}</th>
-              <td mat-cell *matCellDef="let job">{{ job.kioskCode }}</td>
+              <td mat-cell *matCellDef="let job" class="neo-nowrap">{{ job.kioskCode }}</td>
             </ng-container>
             <ng-container matColumnDef="status">
               <th mat-header-cell *matHeaderCellDef>{{ 'jobs.colStatus' | translate }}</th>
@@ -207,11 +207,11 @@ const endOfDay = (date: Date | null): string | null =>
             </ng-container>
             <ng-container matColumnDef="created">
               <th mat-header-cell *matHeaderCellDef>{{ 'jobs.colCreated' | translate }}</th>
-              <td mat-cell *matCellDef="let job">{{ job.createdAt | dateTime }}</td>
+              <td mat-cell *matCellDef="let job" class="neo-nowrap">{{ job.createdAt | dateTime }}</td>
             </ng-container>
             <ng-container matColumnDef="finished">
               <th mat-header-cell *matHeaderCellDef>{{ 'jobs.colFinished' | translate }}</th>
-              <td mat-cell *matCellDef="let job">
+              <td mat-cell *matCellDef="let job" class="neo-nowrap">
                 @if (job.finishedAt) {
                   {{ job.finishedAt | dateTime }}
                 }

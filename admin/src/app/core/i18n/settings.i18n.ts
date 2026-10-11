@@ -29,6 +29,8 @@ export const settingsTranslations: PageTranslations = {
       'Dəvət olunan istifadəçiyə verilən bonus səhifə sayı.',
     'settings.description.Referral.MaxBonusPagesPerJob':
       'Bir çap sifarişində istifadə oluna bilən ən çox bonus səhifə.',
+    'settings.description.Referral.MaxRewardsPerMonth':
+      'Bir dəvət edənin bir təqvim ayında ala biləcəyi referral mükafatlarının sayı; 0 — limitsiz.',
     'settings.description.Refund.VoucherValidDays':
       'Anonim geri qaytarma vauçerinin etibarlılıq müddəti.',
     'settings.description.Refund.ProviderMaxAttempts':
@@ -47,6 +49,8 @@ export const settingsTranslations: PageTranslations = {
       'Kiosk vəziyyət məlumatlarını bu intervalla göndərir.',
     'settings.description.Kiosk.TelemetryRetentionDays':
       'Kiosk vəziyyət tarixçəsi bu qədər gün saxlanılır.',
+    'settings.description.Kiosk.PrinterEventRetentionDays':
+      'Printer hadisələri (toner dəyişdi, kağız dolduruldu, sıxılma) neçə gün saxlanılır.',
     'settings.description.Kiosk.ConfigCacheTtlHours':
       'Kioskun yadda saxladığı konfiqurasiya bu qədər etibarlıdır; köhnələndə kiosk məhdud rejimə keçir.',
     'settings.description.Payment.ReconcileAfterMinutes':
@@ -126,6 +130,8 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Referral.InviteeBonusPages': 'Bonus pages given to the invited user.',
     'settings.description.Referral.MaxBonusPagesPerJob':
       'The most bonus pages one print order can use.',
+    'settings.description.Referral.MaxRewardsPerMonth':
+      'How many referral rewards one inviter can get in a calendar month; 0 means no limit.',
     'settings.description.Refund.VoucherValidDays':
       'How long an anonymous refund voucher stays valid.',
     'settings.description.Refund.ProviderMaxAttempts':
@@ -143,6 +149,8 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Kiosk.TelemetrySeconds': 'How often the kiosk sends its status readings.',
     'settings.description.Kiosk.TelemetryRetentionDays':
       'How many days of kiosk status history are kept.',
+    'settings.description.Kiosk.PrinterEventRetentionDays':
+      'How many days printer events (supply replaced, paper refilled, a jam) are kept.',
     'settings.description.Kiosk.ConfigCacheTtlHours':
       'How long the configuration the kiosk remembers stays valid; once stale, the kiosk runs in a limited mode.',
     'settings.description.Payment.ReconcileAfterMinutes':
@@ -219,6 +227,8 @@ export const settingsTranslations: PageTranslations = {
       'Бонусные страницы приглашённому пользователю.',
     'settings.description.Referral.MaxBonusPagesPerJob':
       'Максимум бонусных страниц в одном заказе печати.',
+    'settings.description.Referral.MaxRewardsPerMonth':
+      'Сколько реферальных наград может получить один пригласивший за календарный месяц; 0 — без ограничения.',
     'settings.description.Refund.VoucherValidDays': 'Срок действия анонимного ваучера на возврат.',
     'settings.description.Refund.ProviderMaxAttempts':
       'Сколько раз повторяется неудачный возврат на карту.',
@@ -236,6 +246,8 @@ export const settingsTranslations: PageTranslations = {
       'Как часто киоск отправляет данные о своём состоянии.',
     'settings.description.Kiosk.TelemetryRetentionDays':
       'Сколько дней хранится история состояния киосков.',
+    'settings.description.Kiosk.PrinterEventRetentionDays':
+      'Сколько дней хранятся события принтера (замена картриджа, загрузка бумаги, замятие).',
     'settings.description.Kiosk.ConfigCacheTtlHours':
       'Сколько действует конфигурация, сохранённая в киоске; устаревшая переводит киоск в ограниченный режим.',
     'settings.description.Payment.ReconcileAfterMinutes':

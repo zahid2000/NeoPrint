@@ -259,6 +259,14 @@ jobs:
         run: node scripts/icon-subset.mjs --check
         working-directory: admin
 
+      # A key with no translation is shown as the key itself and fails nothing
+      # else: every key written in a template, and every value the server
+      # sends that a key is built from (an enum member, a setting, a feature
+      # flag), must be in the dictionaries.
+      - name: Translation keys
+        run: node scripts/i18n-check.mjs
+        working-directory: admin
+
       # The tests run in jsdom, so no browser is needed on the runner.
       - name: Test
         run: npx ng test --watch=false
