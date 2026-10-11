@@ -89,6 +89,7 @@ public sealed class CommandProcessor
     private readonly Func<CancellationToken, Task<long?>> _uptimeSeconds;
     private readonly IClock _clock;
     private readonly DateTime _startedAt;
+    private readonly Func<bool> _safeMode;
     private readonly HashSet<Guid> _done = [];
 
     /// <summary>How long a reboot may take to take the application down before it is called a failure.</summary>
@@ -112,8 +113,10 @@ public sealed class CommandProcessor
         ISystemControl? system = null,
         Action? leavingOnPurpose = null,
         Func<CancellationToken, Task<long?>>? uptimeSeconds = null,
-        IClock? clock = null)
+        IClock? clock = null,
+        Func<bool>? safeMode = null)
     {
+        _safeMode = safeMode ?? (() => false);
         _reloadConfiguration = reloadConfiguration ?? (_ => Task.CompletedTask);
         _system = system ?? new FakeSystemControl();
         _leavingOnPurpose = leavingOnPurpose ?? (() => { });
@@ -147,6 +150,15 @@ public sealed class CommandProcessor
     /// </param>
     public async Task HandleAsync(Guid commandId, string type, CancellationToken cancellationToken, DateTime? sentAt = null)
     {
+        // In safe mode the kiosk prints nothing (plan section 7.12), so a
+        // printer command waits - it is still open when safe mode is cleared.
+        // Pausing, restarting and rebooting are what a kiosk in safe mode
+        // most needs to be reachable for.
+        if (_safeMode() && type is "RefreshPrinters" or "TestPrint")
+        {
+            return;
+        }
+
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         try

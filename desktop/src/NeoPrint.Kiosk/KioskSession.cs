@@ -113,7 +113,8 @@ public sealed class KioskSession
                 return Task.CompletedTask;
             };
             Func<Task> configChanged = () => RefreshConfigurationAsync(runtime, token);
-            Func<Guid, string, Task> commandReceived = (id, type) => safeMode ? Task.CompletedTask : commands.HandleAsync(id, type, token);
+            // In safe mode too: the processor itself leaves the printer commands for later.
+            Func<Guid, string, Task> commandReceived = (id, type) => commands.HandleAsync(id, type, token);
             Func<Task> reconnected = async () =>
             {
                 await CatchUpAsync(runtime, commands, api, token).ConfigureAwait(false);
@@ -592,10 +593,7 @@ public sealed class KioskSession
     {
         await TryAsync("configuration", () => runtime.RefreshAsync(cancellationToken)).ConfigureAwait(false);
 
-        if (!runtime.SafeMode)
-        {
-            await TryAsync("open commands", () => commands.CatchUpAsync(cancellationToken)).ConfigureAwait(false);
-        }
+        await TryAsync("open commands", () => commands.CatchUpAsync(cancellationToken)).ConfigureAwait(false);
 
         await TryAsync("queue", async () =>
             {

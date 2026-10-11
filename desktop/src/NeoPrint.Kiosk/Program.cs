@@ -348,7 +348,8 @@ internal static class Program
             leavingOnPurpose: () => provider.GetRequiredService<CrashLoopGuard>().Stop(),
             uptimeSeconds: async cancellationToken =>
                 (await provider.GetRequiredService<ISystemMetrics>().ReadAsync(cancellationToken).ConfigureAwait(false)).UptimeSeconds,
-            clock: provider.GetRequiredService<IClock>()));
+            clock: provider.GetRequiredService<IClock>(),
+            safeMode: () => provider.GetRequiredService<KioskRuntime>().SafeMode));
         services.AddSingleton<KioskHubClient>();
         services.AddSingleton<ProvisioningHubClient>();
         services.AddSingleton(provider =>

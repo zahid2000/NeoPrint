@@ -26,6 +26,7 @@ public sealed class CommandProcessorTests : IDisposable
     private PrintQueueWorker? _worker;
     private int _reloads;
     private int _leftOnPurpose;
+    private bool _safeMode;
 
     public CommandProcessorTests() => _paths.EnsureCreated();
 
@@ -142,7 +143,8 @@ public sealed class CommandProcessorTests : IDisposable
             system: system ?? _system,
             leavingOnPurpose: () => _leftOnPurpose++,
             uptimeSeconds: _ => Task.FromResult(uptimeSeconds),
-            clock: _clock)
+            clock: _clock,
+            safeMode: () => _safeMode)
         {
             RebootGrace = TimeSpan.FromMilliseconds(40),
         };
@@ -284,6 +286,31 @@ public sealed class CommandProcessorTests : IDisposable
         // The next command is taken as usual.
         await processor.HandleAsync(Guid.NewGuid(), "Pause", CancellationToken.None);
         _reloads.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_kiosk_in_safe_mode_can_still_be_restarted_and_leaves_printer_commands_for_later()
+    {
+        var processor = await ProcessorAsync();
+        _safeMode = true;
+
+        // A kiosk that keeps crashing is the one that most needs this.
+        var restart = Guid.NewGuid();
+        await processor.HandleAsync(restart, "RestartApp", CancellationToken.None);
+        _system.ApplicationRestarts.Should().Be(1);
+
+        await processor.HandleAsync(Guid.NewGuid(), "Pause", CancellationToken.None);
+        _reloads.Should().Be(1);
+
+        // It prints nothing in safe mode: the test page is neither printed nor refused.
+        var testPage = Guid.NewGuid();
+        await processor.HandleAsync(testPage, "TestPrint", CancellationToken.None);
+        _backend.Answers.Should().NotContain(answer => answer.Id == testPage.ToString());
+
+        // Safe mode cleared: the command, still open, is taken now.
+        _safeMode = false;
+        await processor.HandleAsync(testPage, "TestPrint", CancellationToken.None);
+        _backend.Answers.Should().Contain(answer => answer.Id == testPage.ToString());
     }
 
     [Fact]

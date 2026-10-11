@@ -156,6 +156,7 @@ Quraşdırma: `KIOSK_SETUP.md` bölmə 3 (`-EnrollmentToken` ilə). Sonra:
 | 6 | Gizli admin çıxışı (loqoya 5 toxunuş → PIN → "Texniki giriş") | Logon ekranı, administrator ilə Explorer açılır; restart → yenidən kiosk |
 | 7 | Skripti ikinci dəfə işə salın | Xətasız bitir, heç nəyi təkrarlamır (idempotent) |
 | 8 | `C:\ProgramData\NeoPrint` ACL-i | Yalnız `SYSTEM` və `kiosk`; adi istifadəçi `device`-i oxuya bilmir |
+| 9 | Uzaqdan əmrlər (T-208): kiosk işləyərkən `node tools/dev-kiosk/command.mjs restart-app <kod>`, sonra `… reboot <kod>`; bir sifariş çap olunarkən də `restart-app` göndərin | `restart-app`: tətbiq bağlanır, Shell Launcher onu dərhal yenidən açır, `… list`-də əmr `Succeeded` — "Kiosk tətbiqi yenidən başladı". `reboot`: Windows yenidən yüklənir, autologon-dan sonra kiosk açılır, əmr `Succeeded` — "Kiosk kompüteri yenidən yükləndi". Çap gedərkən göndərilən əmr `Acknowledged` qalır və yalnız vərəq çıxandan sonra icra olunur. `reboot` `Failed` olarsa mətni yazın (kiosk hesabının `shutdown` icazəsi) |
 
 ## MT-04. Linux kiosk cihazı və real flaş (T-094)
 
@@ -175,6 +176,7 @@ Quraşdırma: `KIOSK_SETUP.md` bölmə 4. Sonra:
 | 7 | `ls -l /var/lib/neoprint` | Sahiblər `KIOSK_PROVISIONING.md`-dəki kimi (`device` — `kiosk 700`) |
 | 8 | Flaşdan foto → **Səhifədə yerləşdir** (T-180): şəkli iki barmaqla böyüdüb-kiçildin, bir barmaqla sürüşdürün | Şəkil barmaqla birlikdə hərəkət edir, kənar boşluğa və mərkəzə yapışır (nazik xətt görünür); konteyner kioskunda yalnız bir göstərici var, iki barmaq real toxunma ekranında yoxlanır |
 | 9 | Eyni ekranda **Vəsiqə 85,6 × 54 mm** → **8 kart** → **Hazır** → real printerdə çap | Parametrlərdə A4, 100%, vərəqdə 1 səhifə kilidlidir; xətkeşlə hər kart 85,6 × 54 mm (±0,5 mm) |
+| 10 | Uzaqdan əmrlər (T-208): `node tools/dev-kiosk/command.mjs pause <kod>` → `resume` → `restart-app` → `reboot` | `pause`: ekranda "Texniki xidmət", növbədəki iş çap olunur, yeni sifariş alınmır; `resume`: ana ekran. `restart-app`: tətbiq bağlanır, Agent 3 saniyəyə yenidən açır, əmr `Succeeded`. `reboot`: maşın yenidən yüklənir (`sudoers` qaydası `systemctl reboot`-a icazə verir), `cage` kioskun ekranını açır, əmr `Succeeded` — "Kiosk kompüteri yenidən yükləndi". `Failed — kompüter yenidən yüklənmədi` çıxarsa `/etc/sudoers.d/neoprint`-ə baxın |
 
 ## MT-05. Addım 4 — ödəniş və qaytarma, lokal stack (T-099)
 
