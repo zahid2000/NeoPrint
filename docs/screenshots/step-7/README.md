@@ -8,3 +8,4 @@ Hamısı `docker compose up -d --build api converter` edilmiş stack-dən çəki
 | Qrup | Fayllar | Nə göstərir | Tapşırıq |
 |---|---|---|---|
 | 7A / M1 — fayl parse-ının tam izolyasiyası | `m1-01-preview-converter-down`, `m1-02-preview-after-retry` | Converter konteyneri dayandırılıb: faylın önizləməsi "Sənəd emalı xidməti hazırda işləmir… bir az sonra yenidən cəhd edin" cümləsini və "Yenidən cəhd et" düyməsini göstərir (`503 files.processingUnavailable`); converter qalxandan sonra eyni düymə ilə səhifə açılır — onu indi API yox, converter-dəki alət çəkir | T-205 (T-051) |
+- `m4-01-kiosk-paused.png` — T-208: administratorun fasiləsindən sonra Linux konteyner kiosku (KSK-9002) restart olunub; ekran "Texniki xidmət" göstərir, növbə paneli yerindədir.
