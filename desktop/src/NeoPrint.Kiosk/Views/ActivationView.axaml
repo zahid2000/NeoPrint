@@ -55,7 +55,9 @@
                                Foreground="{DynamicResource Neutral900}"
                                Margin="{DynamicResource GapBelow4}" />
 
-                    <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <!-- The label column takes what its longest label needs (ru "Обнаруженные принтеры"); a fixed width cut it. -->
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto"
+                          ColumnSpacing="{DynamicResource Space6}">
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding HostnameLabel}"
                                    Classes="caption" />
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Hostname}"

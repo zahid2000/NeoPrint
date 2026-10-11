@@ -351,7 +351,7 @@
 
                         <!-- Copies -->
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
-                            <TextBlock Text="{Binding CopiesLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding CopiesLabel}" Classes="h2" Width="{DynamicResource OptionLabelWidth}" TextWrapping="Wrap" VerticalAlignment="Center" />
                             <Button Classes="secondary" Command="{Binding FewerCopiesCommand}"><TextBlock Text="−" /></Button>
                             <TextBlock Text="{Binding Copies}" Classes="h1" VerticalAlignment="Center" MinWidth="64" TextAlignment="Center" />
                             <Button Classes="secondary" Command="{Binding MoreCopiesCommand}"><TextBlock Text="+" /></Button>
@@ -359,7 +359,7 @@
 
                         <!-- Pages: all, or a range typed on the keypad -->
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
-                            <TextBlock Text="{Binding PagesLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding PagesLabel}" Classes="h2" Width="{DynamicResource OptionLabelWidth}" TextWrapping="Wrap" VerticalAlignment="Center" />
                             <Button Classes="choice" Classes.selected="{Binding AllPages}" Command="{Binding ChooseAllPagesCommand}">
                                 <TextBlock Text="{Binding AllPagesText}" />
                             </Button>
@@ -406,7 +406,7 @@
 
                         <!-- Colour -->
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
-                            <TextBlock Text="{Binding ColourLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ColourLabel}" Classes="h2" Width="{DynamicResource OptionLabelWidth}" TextWrapping="Wrap" VerticalAlignment="Center" />
                             <Button Classes="choice" Classes.selected="{Binding !Color}" Command="{Binding ChooseColorCommand}" CommandParameter="false">
                                 <TextBlock Text="{Binding BwText}" />
                             </Button>
@@ -419,7 +419,7 @@
 
                         <!-- Sides -->
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
-                            <TextBlock Text="{Binding SidesLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding SidesLabel}" Classes="h2" Width="{DynamicResource OptionLabelWidth}" TextWrapping="Wrap" VerticalAlignment="Center" />
                             <Button Classes="choice" Classes.selected="{Binding !Duplex}" Command="{Binding ChooseDuplexCommand}" CommandParameter="false">
                                 <TextBlock Text="{Binding SimplexText}" />
                             </Button>
@@ -432,7 +432,7 @@
 
                         <!-- Paper -->
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" IsEnabled="{Binding CanChooseSheet}">
-                            <TextBlock Text="{Binding PaperLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding PaperLabel}" Classes="h2" Width="{DynamicResource OptionLabelWidth}" TextWrapping="Wrap" VerticalAlignment="Center" />
                             <Button Classes="choice" Classes.selected="{Binding Paper, Converter={x:Static vm:ScreenConverters.IsA4}}"
                                     Command="{Binding ChoosePaperCommand}" CommandParameter="A4">
                                 <TextBlock Text="A4" />
@@ -446,7 +446,7 @@
 
                         <!-- Pages per sheet -->
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" IsEnabled="{Binding CanChooseSheet}">
-                            <TextBlock Text="{Binding PerSheetLabel}" Classes="h2" Width="280" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding PerSheetLabel}" Classes="h2" Width="{DynamicResource OptionLabelWidth}" TextWrapping="Wrap" VerticalAlignment="Center" />
                             <Button Classes="choice" Classes.selected="{Binding PagesPerSheet, Converter={x:Static vm:ScreenConverters.IsOne}}"
                                     Command="{Binding ChoosePerSheetCommand}" CommandParameter="1"><TextBlock Text="1" /></Button>
                             <Button Classes="choice" Classes.selected="{Binding PagesPerSheet, Converter={x:Static vm:ScreenConverters.IsTwo}}"

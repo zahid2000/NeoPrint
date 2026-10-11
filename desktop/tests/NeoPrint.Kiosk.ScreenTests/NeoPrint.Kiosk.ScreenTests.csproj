@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The kiosk's screens, drawn without a screen (docs/DESIGN_SYSTEM.md, "Ekran
+    testi"). A project - a process - of its own on purpose: Avalonia has one
+    dispatcher per process, and it belongs to whoever touches it first. Among
+    the three hundred ordinary tests of NeoPrint.Kiosk.Tests that was sometimes
+    a view model's test rather than the headless session, and the drawing then
+    failed with "Operation is not supported on this platform".
+  -->
+  <PropertyGroup>
+    <!-- Follows the UI project's framework, like NeoPrint.Kiosk.Tests (plan section 7.6). -->
+    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(TargetFramework)' == ''">net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Kiosk.ScreenTests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <!-- Pinned to 7.x: v8 and later are commercially licensed. -->
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Avalonia.Headless.XUnit" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The kiosk on a temporary folder against a hand-answered backend: the same kit the flow tests use. -->
+    <Compile Include="..\NeoPrint.Kiosk.Tests\OrderTestKit.cs" Link="OrderTestKit.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NeoPrint.Kiosk.Core\NeoPrint.Kiosk.Core.csproj" />
+    <ProjectReference Include="..\..\src\NeoPrint.Kiosk\NeoPrint.Kiosk.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -143,6 +143,8 @@
     <CornerRadius x:Key="StatusIconRadius">60</CornerRadius>
     <sys:Double x:Key="FooterHeight">96</sys:Double>
     <sys:Double x:Key="QueuePanelWidth">280</sys:Double>
+    <!-- The label column of the print options: wide enough for the longest label in any language (ru "Страниц на листе"). -->
+    <sys:Double x:Key="OptionLabelWidth">340</sys:Double>
     <sys:Double x:Key="StatusChipHeight">40</sys:Double>
 
 </ResourceDictionary>

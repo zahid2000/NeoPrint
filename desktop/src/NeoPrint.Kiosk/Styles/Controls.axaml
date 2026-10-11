@@ -81,6 +81,10 @@
         <Setter Property="MinHeight" Value="{DynamicResource PayMethodMinHeight}" />
         <Setter Property="Width" Value="{DynamicResource PayMethodWidth}" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <!-- Side by side the cards are one height, their content starting at the top: a title that
+             wraps in one language must not leave its card taller and lower than its neighbour. -->
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Top" />
     </Style>
 
     <Style Selector="Button.pay-method:pointerover /template/ ContentPresenter">

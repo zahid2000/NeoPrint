@@ -149,6 +149,10 @@ jobs:
           -p:EnableWindowsTargeting=true
           --logger "trx;LogFileName=desktop.trx"
           --results-directory artifacts/test-results
+        # ScreenRenderTests draws every kiosk screen in three languages; the
+        # pictures go out with the test results.
+        env:
+          NEOPRINT_SCREENS_DIR: ${{ github.workspace }}/artifacts/test-results/kiosk-screens
 
       - name: Upload test results
         if: always()

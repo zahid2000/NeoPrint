@@ -36,7 +36,8 @@ case "$command" in
   install)
     apk="$root/mobile/build/app/outputs/flutter-apk/app-debug.apk"
     [ -f "$apk" ] || { echo "No debug APK - run: cd mobile && flutter build apk --debug"; exit 1; }
-    MSYS_NO_PATHCONV=0 "$adb" install -r "$apk"
+    # adb.exe wants a Windows path; with path conversion off (above) Git Bash no longer makes one.
+    "$adb" install -r "$(cygpath -w "$apk" 2>/dev/null || echo "$apk")"
     ;;
   start)
     "$adb" shell monkey -p "$app" -c android.intent.category.LAUNCHER 1 >/dev/null
