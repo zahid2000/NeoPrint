@@ -140,7 +140,8 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
                 ? null
                 : [.. allowed.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)],
             await _settings.GetBoolAsync(SettingKeys.PaperBlockWhenInsufficient, true, cancellationToken).ConfigureAwait(false),
-            await _settings.GetIntAsync(SettingKeys.KioskIdleResetSeconds, 90, cancellationToken).ConfigureAwait(false));
+            await _settings.GetIntAsync(SettingKeys.KioskIdleResetSeconds, 90, cancellationToken).ConfigureAwait(false),
+            await _settings.GetIntAsync(SettingKeys.KioskTelemetrySeconds, 30, cancellationToken).ConfigureAwait(false));
     }
 }
 

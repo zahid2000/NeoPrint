@@ -80,6 +80,11 @@ public sealed class SignalRAdminNotifier : IAdminNotifier
         => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(kioskId)])
             .SendAsync("KioskPrintersUpdated", new { kioskId }, cancellationToken);
 
+    public Task KioskTelemetryUpdatedAsync(
+        Application.Kiosks.KioskTelemetryView telemetry, CancellationToken cancellationToken = default)
+        => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(telemetry.KioskId)])
+            .SendAsync("KioskTelemetryUpdated", telemetry, cancellationToken);
+
     public Task CommandResultAsync(
         Guid kioskId, Application.Kiosks.KioskCommandView command, CancellationToken cancellationToken = default)
         => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(kioskId)])

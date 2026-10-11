@@ -84,6 +84,9 @@ public interface IIncidentRepository
 
     Task<long> CountOpenAsync(IncidentType type, CancellationToken cancellationToken = default);
 
+    /// <summary>How many incidents of a kiosk are not resolved yet.</summary>
+    Task<long> CountOpenForKioskAsync(Guid kioskId, CancellationToken cancellationToken = default);
+
     Task<Incident?> FindOpenByDedupKeyAsync(string dedupKey, CancellationToken cancellationToken = default);
 
     /// <summary>A kiosk's incidents raised between the two times, newest first: what else happened there.</summary>

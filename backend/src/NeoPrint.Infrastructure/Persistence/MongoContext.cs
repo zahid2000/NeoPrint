@@ -159,6 +159,9 @@ public sealed class MongoContext
     /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 2.17).</summary>
     public MongoSet<Domain.Analytics.AnalyticsEvent> AnalyticsEvents => Set<Domain.Analytics.AnalyticsEvent>("analytics_events");
 
+    /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 7.9).</summary>
+    public MongoSet<KioskTelemetrySample> KioskTelemetry => Set<KioskTelemetrySample>("kiosk_telemetry");
+
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
     public MongoSet<AuditLog> AuditLogs => Set<AuditLog>("audit_logs");
@@ -585,9 +588,30 @@ public sealed class MongoContext
     /// large collection recreating is not instant.
     /// </remarks>
     public async Task ApplyRetentionAsync(
-        TimeSpan stateTransitions, TimeSpan providerEvents, TimeSpan analytics = default, CancellationToken cancellationToken = default)
+        TimeSpan stateTransitions,
+        TimeSpan providerEvents,
+        TimeSpan analytics = default,
+        TimeSpan kioskTelemetry = default,
+        CancellationToken cancellationToken = default)
     {
-        await EnsureAnalyticsAsync(analytics, cancellationToken).ConfigureAwait(false);
+        await EnsureTimeSeriesAsync(
+                "analytics_events",
+                nameof(Domain.Analytics.AnalyticsEvent.Timestamp),
+                nameof(Domain.Analytics.AnalyticsEvent.KioskId),
+                TimeSeriesGranularity.Minutes,
+                analytics,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        // A sample every half minute per kiosk (plan section 7.9).
+        await EnsureTimeSeriesAsync(
+                "kiosk_telemetry",
+                nameof(KioskTelemetrySample.Timestamp),
+                nameof(KioskTelemetrySample.KioskId),
+                TimeSeriesGranularity.Seconds,
+                kioskTelemetry,
+                cancellationToken)
+            .ConfigureAwait(false);
 
         await EnsureTtlAsync(
                 "state_transitions", nameof(StateTransition.CreatedAt),
@@ -601,22 +625,27 @@ public sealed class MongoContext
     }
 
     /// <summary>
-    /// The analytics events: a time-series collection that expires by itself
-    /// after <c>Analytics.RetentionDays</c> (plan section 2.17). Created here,
-    /// before the first insert, because an insert into a missing collection
-    /// would make an ordinary one.
+    /// A time-series collection that expires by itself: the analytics events
+    /// after <c>Analytics.RetentionDays</c> (plan section 2.17), kiosk
+    /// telemetry after <c>Kiosk.TelemetryRetentionDays</c> (plan section 7.9).
+    /// Created here, before the first insert, because an insert into a
+    /// missing collection would make an ordinary one.
     /// </summary>
-    private async Task EnsureAnalyticsAsync(TimeSpan expireAfter, CancellationToken cancellationToken)
+    private async Task EnsureTimeSeriesAsync(
+        string name,
+        string timeField,
+        string metaField,
+        TimeSeriesGranularity granularity,
+        TimeSpan expireAfter,
+        CancellationToken cancellationToken)
     {
-        const string Name = "analytics_events";
-
         if (expireAfter <= TimeSpan.Zero)
         {
             return;
         }
 
         var existing = await (await _database
-                .ListCollectionNamesAsync(new ListCollectionNamesOptions { Filter = new BsonDocument("name", Name) }, cancellationToken)
+                .ListCollectionNamesAsync(new ListCollectionNamesOptions { Filter = new BsonDocument("name", name) }, cancellationToken)
                 .ConfigureAwait(false))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -627,13 +656,10 @@ public sealed class MongoContext
             {
                 await _database
                     .CreateCollectionAsync(
-                        Name,
+                        name,
                         new CreateCollectionOptions
                         {
-                            TimeSeriesOptions = new TimeSeriesOptions(
-                                nameof(Domain.Analytics.AnalyticsEvent.Timestamp),
-                                nameof(Domain.Analytics.AnalyticsEvent.KioskId),
-                                TimeSeriesGranularity.Minutes),
+                            TimeSeriesOptions = new TimeSeriesOptions(timeField, metaField, granularity),
                             ExpireAfter = expireAfter,
                         },
                         cancellationToken)
@@ -649,7 +675,7 @@ public sealed class MongoContext
 
         await _database
             .RunCommandAsync<BsonDocument>(
-                new BsonDocument { ["collMod"] = Name, ["expireAfterSeconds"] = (long)expireAfter.TotalSeconds },
+                new BsonDocument { ["collMod"] = name, ["expireAfterSeconds"] = (long)expireAfter.TotalSeconds },
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
     }

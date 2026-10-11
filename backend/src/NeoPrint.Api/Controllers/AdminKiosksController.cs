@@ -182,6 +182,23 @@ public sealed class AdminKiosksController : ControllerBase
             new RefillKioskPaperCommand(AdminId, id, request.Paper ?? string.Empty, request.Mode, request.Sheets), cancellationToken));
     }
 
+    /// <summary>The kiosk's current state as it last reported it (plan section 7.9).</summary>
+    [HttpGet("{id:guid}/telemetry")]
+    [HasPermission(Permissions.KiosksView)]
+    public async Task<ActionResult<KioskTelemetryView>> Telemetry(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new GetKioskTelemetryQuery(AdminId, id), cancellationToken));
+
+    /// <summary>The graphs: averaged points between two times, the last hour by default.</summary>
+    [HttpGet("{id:guid}/telemetry/history")]
+    [HasPermission(Permissions.KiosksView)]
+    public async Task<ActionResult<IReadOnlyList<KioskTelemetryPoint>>> TelemetryHistory(
+        Guid id,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int points = 120,
+        CancellationToken cancellationToken = default)
+        => Ok(await _sender.Send(new GetKioskTelemetryHistoryQuery(AdminId, id, from, to, points), cancellationToken));
+
     [HttpGet("{id:guid}/commands")]
     [HasPermission(Permissions.KiosksView)]
     public async Task<ActionResult<IReadOnlyList<KioskCommandView>>> Commands(Guid id, CancellationToken cancellationToken)

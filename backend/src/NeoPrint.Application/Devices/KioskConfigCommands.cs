@@ -41,7 +41,8 @@ public sealed record KioskConfigResponse(
     KioskPricesDto? Prices = null,
     IReadOnlyList<string>? AllowedFormats = null,
     bool PaperBlockWhenInsufficient = true,
-    int IdleResetSeconds = 90);
+    int IdleResetSeconds = 90,
+    int TelemetrySeconds = 30);
 
 /// <summary>
 /// The rates of the kiosk's pricing profile, so the options screen shows a

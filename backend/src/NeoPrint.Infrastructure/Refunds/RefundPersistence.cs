@@ -194,6 +194,9 @@ public sealed class IncidentRepository : IIncidentRepository
     public Task<long> CountOpenAsync(IncidentType type, CancellationToken cancellationToken = default)
         => _context.Incidents.CountDocumentsAsync(i => i.Type == type && i.Open, cancellationToken);
 
+    public Task<long> CountOpenForKioskAsync(Guid kioskId, CancellationToken cancellationToken = default)
+        => _context.Incidents.CountDocumentsAsync(i => i.KioskId == kioskId && i.Open, cancellationToken);
+
     public Task<Incident?> FindOpenByDedupKeyAsync(string dedupKey, CancellationToken cancellationToken = default)
         => _context.Incidents.Find(i => i.DedupKey == dedupKey && i.Open).FirstOrDefaultAsync(cancellationToken)!;
 

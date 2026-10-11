@@ -22,6 +22,15 @@ public enum IncidentType
     JobSuspected = 12,
 
     Other = 13,
+
+    /// <summary>A kiosk's disk is nearly full (plan section 7.9).</summary>
+    DiskLow = 14,
+
+    /// <summary>A kiosk's memory has been nearly full for minutes (plan section 7.9).</summary>
+    MemoryHigh = 15,
+
+    /// <summary>A kiosk has been getting slow answers from the backend for minutes (plan section 7.9).</summary>
+    BackendSlow = 16,
 }
 
 public enum IncidentSeverity

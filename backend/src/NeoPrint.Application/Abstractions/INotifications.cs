@@ -70,6 +70,9 @@ public interface IAdminNotifier
     /// <summary>A kiosk reported a different list of printers (plan section 7.7).</summary>
     Task KioskPrintersUpdatedAsync(Guid kioskId, CancellationToken cancellationToken = default);
 
+    /// <summary>A kiosk sent a new report of its state (plan section 7.9): the kiosk detail updates live.</summary>
+    Task KioskTelemetryUpdatedAsync(Kiosks.KioskTelemetryView telemetry, CancellationToken cancellationToken = default);
+
     /// <summary>A kiosk answered a command (plan section 7.8).</summary>
     Task CommandResultAsync(Guid kioskId, Kiosks.KioskCommandView command, CancellationToken cancellationToken = default);
 

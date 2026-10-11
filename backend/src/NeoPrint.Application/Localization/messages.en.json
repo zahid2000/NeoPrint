@@ -638,5 +638,11 @@
   "shares.notSaving": "The file was not saved and nothing was added to your files. Press \"Save to my files\" again.",
   "shares.publicIdInvalid": "An ID starts with \"NP-\" followed by 6 letters or digits, for example NP-7KQ2MX. Check the recipient's ID and type it again.",
   "shares.sensitiveNeedsConfirmation": "\"{name}\" is a personal document and was not sent. It is sent once you read the warning and confirm.",
-  "shares.toSelf": "You cannot send a file to yourself. Type the recipient's ID."
+  "shares.toSelf": "You cannot send a file to yourself. Type the recipient's ID.",
+  "incidents.resolution.telemetryRecovered": "The reading is back within its limit; the incident was closed automatically.",
+  "incidents.telemetry.backendSlow": "The kiosk has been getting slow answers from the server for {minutes} minutes (last: {ms} ms). Check the kiosk's internet connection.",
+  "incidents.telemetry.diskLow": "The kiosk has {freeMb} MB of free disk space left (limit: 2 GB). With less, files cannot be prepared - free up the disk.",
+  "incidents.telemetry.hubDown": "The kiosk's live connection (SignalR) has been down for {minutes} minutes. Commands and the queue may be late - check the network.",
+  "incidents.telemetry.memoryHigh": "The kiosk's memory has been {percent}% full for {minutes} minutes (limit: 90%). If it continues, restart the application.",
+  "telemetry.rangeInvalid": "The start time must be before the end time."
 }

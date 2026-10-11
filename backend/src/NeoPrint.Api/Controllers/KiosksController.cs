@@ -78,6 +78,27 @@ public sealed class KiosksController : ControllerBase
         return Accepted(await _sender.Send(new RecordKioskAnalyticsCommand(deviceId, request.Events ?? []), cancellationToken));
     }
 
+    /// <summary>
+    /// The kiosk's report of its own state, every <c>Kiosk.TelemetrySeconds</c>
+    /// (plan section 7.9). Every value is optional: what the kiosk cannot read
+    /// it leaves out.
+    /// </summary>
+    [HttpPost("me/telemetry")]
+    [Authorize(Policy = AuthorizationPolicies.Kiosk)]
+    public async Task<IActionResult> Telemetry([FromBody] KioskTelemetryReport report, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+
+        if (_currentUser.DeviceId is not { } deviceId)
+        {
+            return Forbid();
+        }
+
+        await _sender.Send(new ReportKioskTelemetryCommand(deviceId, report), cancellationToken);
+
+        return NoContent();
+    }
+
     /// <summary>The printers the kiosk can see: on start, when the list changes, on RefreshPrinters (plan section 7.7).</summary>
     [HttpPut("me/printers")]
     [Authorize(Policy = AuthorizationPolicies.Kiosk)]
