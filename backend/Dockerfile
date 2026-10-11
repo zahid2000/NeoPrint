@@ -3,7 +3,10 @@
 #
 # The runtime needs more than the .NET runtime: document conversion runs as
 # separate processes (plan section 2.2), so LibreOffice, the Ghostscript family
-# and the PDFium native library are part of the image.
+# and the PDFium native library are part of the image. The same image is the
+# API and the converter container; everything that parses a user's file -
+# those programs and the converter tool, NeoPrint.Converter.dll, published
+# next to the API - runs only in the converter (docs/adr/ADR-0005-isolated-converter.md).
 #
 # The build context is the REPOSITORY ROOT, not backend/, because the build
 # needs global.json and the central MSBuild property files:

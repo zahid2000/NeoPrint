@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
 
+using NeoPrint.Application.Abstractions;
+using NeoPrint.Converter;
 using NeoPrint.Documents;
 using NeoPrint.Domain.Files;
-
-using SkiaSharp;
 
 namespace NeoPrint.Infrastructure.Conversion;
 
@@ -215,104 +215,56 @@ public sealed class GhostscriptConverter : IDocumentConverter
 /// Raster images, wrapped into a one-page PDF (plan section 2.2).
 /// </summary>
 /// <remarks>
-/// <para>
-/// In-process with SkiaSharp rather than through a child process. Skia is
-/// what the kiosk and the layout editor already decode images with, the
-/// decoders are memory-safe enough to be the everyday path in browsers, and
-/// spawning a process per photo would dominate the cost of a one-page job.
-/// The size guard below is what keeps a decompression bomb from mattering.
-/// </para>
-/// <para>
-/// The image is placed on a page of its own size at 96 dpi rather than
-/// stretched onto A4: the print options decide the paper, and scaling twice
-/// would soften the result.
-/// </para>
+/// Decoded by the converter tool (SkiaSharp), like every other parser of a
+/// user's file - in the converter container, not in this process
+/// (docs/adr/ADR-0005-isolated-converter.md). The tool checks the pixel count
+/// from the header before it decodes anything.
 /// </remarks>
 public sealed class ImageConverter : IDocumentConverter
 {
-    /// <summary>
-    /// The largest image that will be decoded, in pixels.
-    /// </summary>
-    /// <remarks>
-    /// 100 megapixels is far above any phone camera and well below what a
-    /// crafted file can claim. A PNG header can promise 4 GB of pixels in a
-    /// few kilobytes of file, so the dimensions are checked before the decode.
-    /// </remarks>
-    public const long MaxPixels = 100_000_000;
+    private const string Output = "converted.pdf";
 
+    private readonly ConverterTools _tools;
     private readonly ILogger<ImageConverter> _logger;
 
-    public ImageConverter(ILogger<ImageConverter> logger) => _logger = logger;
+    public ImageConverter(ConverterTools tools, ILogger<ImageConverter> logger)
+    {
+        _tools = tools;
+        _logger = logger;
+    }
 
     public ConversionRoute Route => ConversionRoute.Image;
 
-    public Task<ConversionResult> ConvertAsync(
+    public async Task<ConversionResult> ConvertAsync(
         string inputPath, SandboxLimits limits, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(inputPath);
         ArgumentNullException.ThrowIfNull(limits);
 
-        cancellationToken.ThrowIfCancellationRequested();
-
         try
         {
-            using var codec = SKCodec.Create(inputPath);
+            var response = await _tools.RunAsync(
+                    limits.WorkingDirectory,
+                    ToolContract.ImageToPdf,
+                    new ToolRequest(Path.GetFileName(inputPath), Output),
+                    limits.Timeout,
+                    failFast: false,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
-            if (codec is null)
+            if (response.Ok)
             {
-                return Task.FromResult(ConversionResult.Failed(
-                    "conversion.imageUnreadable"));
+                return ConversionResult.Ok(Path.Combine(limits.WorkingDirectory, Output));
             }
 
-            var info = codec.Info;
+            _logger.LogWarning(
+                "Converting {Input} to PDF failed: {Reason}.", Path.GetFileName(inputPath), response.Error ?? "the tool failed");
 
-            // Checked from the header, before anything is decoded: this is
-            // what stops a decompression bomb.
-            if ((long)info.Width * info.Height > MaxPixels)
-            {
-                _logger.LogWarning(
-                    "Refused an image of {Width}x{Height} pixels, above the {Max} limit.",
-                    info.Width,
-                    info.Height,
-                    MaxPixels);
-
-                return Task.FromResult(ConversionResult.Failed(
-                    "conversion.imageTooLarge"));
-            }
-
-            using var bitmap = SKBitmap.Decode(inputPath);
-
-            if (bitmap is null)
-            {
-                return Task.FromResult(ConversionResult.Failed(
-                    "conversion.imageUnsupported"));
-            }
-
-            var output = Path.Combine(limits.WorkingDirectory, "converted.pdf");
-
-            // 96 dpi is what a screen pixel means on paper; the print options
-            // decide the actual paper size later.
-            var widthPoints = bitmap.Width * 72f / 96f;
-            var heightPoints = bitmap.Height * 72f / 96f;
-
-            using (var stream = new SKFileWStream(output))
-            using (var document = SKDocument.CreatePdf(stream))
-            {
-                var canvas = document.BeginPage(widthPoints, heightPoints);
-                canvas.Clear(SKColors.White);
-                canvas.DrawBitmap(bitmap, new SKRect(0, 0, widthPoints, heightPoints));
-                document.EndPage();
-                document.Close();
-            }
-
-            return Task.FromResult(ConversionResult.Ok(output));
+            return ConversionResult.Failed(response.Error ?? "conversion.imageToPdfFailed");
         }
-        catch (Exception exception)
+        catch (FileProcessingUnavailableException)
         {
-            _logger.LogWarning(exception, "Converting {Input} to PDF failed.", Path.GetFileName(inputPath));
-
-            return Task.FromResult(ConversionResult.Failed(
-                "conversion.imageToPdfFailed"));
+            return ConversionResult.Failed("conversion.notStarted");
         }
     }
 }

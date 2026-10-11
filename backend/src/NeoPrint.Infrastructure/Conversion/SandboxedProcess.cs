@@ -1,8 +1,11 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 
 using Microsoft.Extensions.Logging;
+
+using NeoPrint.Converter;
 
 namespace NeoPrint.Infrastructure.Conversion;
 
@@ -68,6 +71,12 @@ public sealed record SandboxLimits(
     /// <summary>The defaults from plan section 2.2: 60 seconds, 1 GB, and 120 CPU seconds.</summary>
     public static SandboxLimits Default(string workingDirectory) =>
         new(TimeSpan.FromSeconds(60), 1024L * 1024 * 1024, workingDirectory);
+
+    /// <summary>
+    /// Someone is waiting for the answer: when the converter container is not
+    /// running, report that at once rather than waiting out the timeout.
+    /// </summary>
+    public bool FailFast { get; init; }
 }
 
 /// <summary>
@@ -113,11 +122,28 @@ public sealed class SandboxedProcess : IProcessSandbox
         ArgumentNullException.ThrowIfNull(arguments);
         ArgumentNullException.ThrowIfNull(limits);
 
+        // The converter tool is ours and is started through the dotnet host.
+        var managed = string.Equals(fileName, ToolContract.Program, StringComparison.Ordinal);
+
+        if (managed)
+        {
+            if (ConverterToolCommand.Find() is not { } tool)
+            {
+                _logger.LogError("The converter tool ({Assembly}) is not installed next to the application.", ToolContract.AssemblyFile);
+
+                return new SandboxResult(
+                    SandboxOutcome.NotStarted, null, "The converter tool was not found.", TimeSpan.Zero);
+            }
+
+            arguments = [tool.Assembly, .. arguments];
+            fileName = tool.Host;
+        }
+
         // The limits are applied by the wrapper before exec, so they bind the
         // converter itself rather than a shell that started it.
         var wrapped = false;
 
-        if (LimitCommand(limits) is { } wrapper)
+        if (LimitCommand(limits, managed) is { } wrapper)
         {
             // Under the wrapper a missing converter would surface as the
             // wrapper's exit code - "the document failed" - rather than as
@@ -151,7 +177,7 @@ public sealed class SandboxedProcess : IProcessSandbox
             startInfo.ArgumentList.Add(argument);
         }
 
-        Harden(startInfo, limits);
+        Harden(startInfo, limits, managed);
 
         using var process = new Process { StartInfo = startInfo };
         var stderr = new StringBuilder();
@@ -250,7 +276,7 @@ public sealed class SandboxedProcess : IProcessSandbox
     /// not be handed any of it. Only what the tools genuinely need is put
     /// back.
     /// </remarks>
-    private static void Harden(ProcessStartInfo startInfo, SandboxLimits limits)
+    private static void Harden(ProcessStartInfo startInfo, SandboxLimits limits, bool managed)
     {
         startInfo.Environment.Clear();
 
@@ -267,6 +293,17 @@ public sealed class SandboxedProcess : IProcessSandbox
         // change with it.
         startInfo.Environment["LC_ALL"] = "C";
         startInfo.Environment["LANG"] = "C";
+
+        if (managed)
+        {
+            // The tool is a .NET process that lives for one file. The collector
+            // is told the limit it works under, so it collects rather than
+            // running into it; no diagnostic pipes, no first-run output.
+            startInfo.Environment["DOTNET_gcServer"] = "0";
+            startInfo.Environment["DOTNET_GCHeapHardLimit"] = "0x" + (limits.MemoryLimitBytes / 4 * 3).ToString("X", CultureInfo.InvariantCulture);
+            startInfo.Environment["DOTNET_EnableDiagnostics"] = "0";
+            startInfo.Environment["DOTNET_NOLOGO"] = "1";
+        }
 
         if (OperatingSystem.IsWindows())
         {
@@ -307,15 +344,6 @@ public sealed class SandboxedProcess : IProcessSandbox
     }
 
     /// <summary>
-    /// The command that applies the memory and CPU-time limits on this
-    /// platform, or null.
-    /// </summary>
-    /// <remarks>
-    /// <c>prlimit</c> is in util-linux and is present in the backend image. It
-    /// sets the limits before exec, which is the only way to have them apply
-    /// to the tool itself rather than to a shell that started it.
-    /// </remarks>
-    /// <summary>
     /// The full path a program name resolves to, the way the OS would find
     /// it: an absolute or relative path as it is, a bare name on PATH.
     /// </summary>
@@ -342,7 +370,23 @@ public sealed class SandboxedProcess : IProcessSandbox
         return null;
     }
 
-    public static (string FileName, string[] Prefix)? LimitCommand(SandboxLimits limits)
+    /// <summary>
+    /// The command that applies the memory and CPU-time limits on this
+    /// platform, or null.
+    /// </summary>
+    /// <remarks>
+    /// <c>prlimit</c> is in util-linux and is present in the backend image. It
+    /// sets the limits before exec, which is the only way to have them apply
+    /// to the tool itself rather than to a shell that started it.
+    /// </remarks>
+    /// <param name="managed">
+    /// The program is the converter tool, a .NET process. The runtime reserves
+    /// several gigabytes of address space it never touches, so an
+    /// address-space cap would stop it starting; the cap is put on the memory
+    /// it can actually write to instead (<c>RLIMIT_DATA</c>), which binds the
+    /// native parsers' allocations just the same.
+    /// </param>
+    public static (string FileName, string[] Prefix)? LimitCommand(SandboxLimits limits, bool managed = false)
     {
         ArgumentNullException.ThrowIfNull(limits);
 
@@ -351,7 +395,9 @@ public sealed class SandboxedProcess : IProcessSandbox
             return null;
         }
 
-        return ("prlimit", [$"--as={limits.MemoryLimitBytes}", $"--cpu={limits.CpuSeconds}", "--"]);
+        var memory = managed ? $"--data={limits.MemoryLimitBytes}" : $"--as={limits.MemoryLimitBytes}";
+
+        return ("prlimit", [memory, $"--cpu={limits.CpuSeconds}", "--"]);
     }
 
     private void Kill(Process process)

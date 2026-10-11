@@ -6,7 +6,6 @@ using NeoPrint.Documents;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Files;
 using NeoPrint.Domain.Settings;
-using NeoPrint.Pdfium;
 
 namespace NeoPrint.Infrastructure.Conversion;
 
@@ -35,6 +34,7 @@ public sealed class DocumentConversionService
     private readonly ISettingsReader _settings;
     private readonly IClock _clock;
     private readonly IReadOnlyDictionary<ConversionRoute, IDocumentConverter> _converters;
+    private readonly ConverterTools _tools;
     private readonly ILogger<DocumentConversionService> _logger;
 
     /// <summary>The spool in Isolated mode, the temp folder otherwise (ConversionOptions).</summary>
@@ -46,6 +46,7 @@ public sealed class DocumentConversionService
         ISettingsReader settings,
         IClock clock,
         IEnumerable<IDocumentConverter> converters,
+        ConverterTools tools,
         Microsoft.Extensions.Options.IOptions<ConversionOptions> conversion,
         ILogger<DocumentConversionService> logger)
     {
@@ -58,6 +59,7 @@ public sealed class DocumentConversionService
         _settings = settings;
         _clock = clock;
         _converters = converters.ToDictionary(converter => converter.Route);
+        _tools = tools;
         _logger = logger;
     }
 
@@ -174,21 +176,18 @@ public sealed class DocumentConversionService
             pdfPath = result.PdfPath!;
         }
 
-        int pageCount;
+        // Counted by the converter tool, never in this process
+        // (docs/adr/ADR-0005-isolated-converter.md): the PDF is in the
+        // conversion's own directory either way.
+        var (pageCount, unreadable) = await _tools
+            .CountPagesAsync(workspace, Path.GetFileName(pdfPath), cancellationToken)
+            .ConfigureAwait(false);
 
-        try
+        if (unreadable is not null)
         {
-            using var document = await PdfDocument.LoadAsync(pdfPath, cancellationToken)
-                .ConfigureAwait(false);
+            _logger.LogWarning("The PDF produced for file {FileId} could not be read: {Reason}.", file.Id, unreadable.Key);
 
-            pageCount = document.PageCount;
-        }
-        catch (PdfiumException exception)
-        {
-            _logger.LogWarning(
-                exception, "PDFium refused the PDF produced for file {FileId}.", file.Id);
-
-            file.Fail(new UserMessage(exception.MessageKey), actor, _clock.UtcNow);
+            file.Fail(unreadable, actor, _clock.UtcNow);
             await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
             return;
         }

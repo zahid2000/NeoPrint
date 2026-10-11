@@ -23,6 +23,15 @@
     <ProjectReference Include="..\NeoPrint.Workers\NeoPrint.Workers.csproj" />
   </ItemGroup>
 
+  <ItemGroup Label="Converter tool">
+    <!--
+      Shipped next to the API so the converter container - the same image -
+      and a development machine can start it. The API never loads it: nothing
+      here uses its types (docs/adr/ADR-0005-isolated-converter.md).
+    -->
+    <ProjectReference Include="..\NeoPrint.Converter\NeoPrint.Converter.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="NeoPrint.Api.IntegrationTests" />
   </ItemGroup>

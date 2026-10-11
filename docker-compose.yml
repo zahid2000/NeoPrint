@@ -309,11 +309,13 @@ services:
 
   # Document conversion, isolated (plan section 10, CLAUDE.md "İstifadəçi
   # faylları untrusted input", docs/adr/ADR-0005-isolated-converter.md).
-  # The API image, started as the spool worker: LibreOffice and Ghostscript run
-  # here, with no network at all, a read-only root, no capabilities, no
-  # secrets, and CPU / memory / process count capped by the cgroup (prlimit
-  # caps each conversion again inside). The only thing it shares with the API
-  # is the spool, a tmpfs volume, so no document is ever written to disk.
+  # The API image, started as the spool worker: LibreOffice, Ghostscript and
+  # the converter tool (PDFium, SkiaSharp, PDFsharp - page counts, previews,
+  # image and page edits, layouts) run here, with no network at all, a
+  # read-only root, no capabilities, no secrets, and CPU / memory / process
+  # count capped by the cgroup (prlimit caps each job again inside). The API
+  # process itself parses no user file. The only thing the two share is the
+  # spool, a tmpfs volume, so no document is ever written to disk.
   converter:
     build:
       context: .

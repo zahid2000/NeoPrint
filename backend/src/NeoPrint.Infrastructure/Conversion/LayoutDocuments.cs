@@ -1,20 +1,25 @@
 using NeoPrint.Application.Files;
 using NeoPrint.Application.Common;
+using NeoPrint.Converter;
 using NeoPrint.Layout;
 
 namespace NeoPrint.Infrastructure.Conversion;
 
 /// <summary>
-/// <see cref="ILayoutDocuments"/> on <c>NeoPrint.Layout</c>, the renderer the
-/// kiosk runs too (plan section 2.11).
+/// <see cref="ILayoutDocuments"/>: the layout's JSON is read here, with
+/// <c>NeoPrint.Layout</c>; drawing it - which decodes the user's pictures - is
+/// done by the converter tool, with the renderer the kiosk runs too
+/// (plan section 2.11, docs/adr/ADR-0005-isolated-converter.md).
 /// </summary>
-/// <remarks>
-/// Pictures are decoded in-process by SkiaSharp with the pixel count checked
-/// from the header first - the same treatment as the image converter; moving
-/// both out of the API process is step 7 (ADR-0005).
-/// </remarks>
 public sealed class LayoutDocuments : ILayoutDocuments
 {
+    private const string LayoutFile = "input.json";
+    private const string Output = "output.pdf";
+
+    private readonly ConverterTools _tools;
+
+    public LayoutDocuments(ConverterTools tools) => _tools = tools;
+
     public LayoutOutline Read(string layoutJson)
     {
         var project = Parse(layoutJson);
@@ -45,21 +50,49 @@ public sealed class LayoutDocuments : ILayoutDocuments
             ? new ScanDocumentType(preset.Key, preset.WidthMm, preset.HeightMm, preset.Sensitive)
             : null;
 
-    public Task RenderAsync(
+    public async Task RenderAsync(
         string layoutJson, Func<string, byte[]?> images, Stream output, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(images);
+        ArgumentNullException.ThrowIfNull(output);
+
+        // Checked here first, so a malformed layout never reaches the tool.
         var project = Parse(layoutJson);
 
-        cancellationToken.ThrowIfCancellationRequested();
+        using var workspace = await _tools.OpenWorkspaceAsync(cancellationToken).ConfigureAwait(false);
 
-        // CPU-bound and synchronous; the request thread waits either way.
-        Wrap(() =>
+        await File.WriteAllTextAsync(workspace.PathOf(LayoutFile), layoutJson, cancellationToken).ConfigureAwait(false);
+
+        var pictures = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var name in project.Images())
         {
-            LayoutRenderer.Render(project, images, output);
-            return 0;
-        });
+            var bytes = images(name) ?? throw Invalid("layout.imageMissing");
+            var file = $"picture-{pictures.Count}";
 
-        return Task.CompletedTask;
+            await File.WriteAllBytesAsync(workspace.PathOf(file), bytes, cancellationToken).ConfigureAwait(false);
+            pictures[name] = file;
+        }
+
+        var response = await _tools.RunAsync(
+                workspace.Directory,
+                ToolContract.LayoutRender,
+                new ToolRequest(LayoutFile, Output, Pictures: pictures),
+                ConverterTools.InteractiveTimeout,
+                failFast: true,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!response.Ok)
+        {
+            throw new ValidationException(
+                [new ValidationError("layout", ConverterTools.Describe(response, "layout.renderFailed"))]);
+        }
+
+        await using var pdf = new FileStream(
+            workspace.PathOf(Output), FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.Asynchronous);
+
+        await pdf.CopyToAsync(output, cancellationToken).ConfigureAwait(false);
     }
 
     private static LayoutProject Parse(string layoutJson) => Wrap(() => LayoutJson.Parse(layoutJson ?? string.Empty));
@@ -73,7 +106,9 @@ public sealed class LayoutDocuments : ILayoutDocuments
         }
         catch (LayoutException exception)
         {
-            throw new ValidationException([new ValidationError("layout", exception.Message)]);
+            throw Invalid(exception.Message);
         }
     }
+
+    private static ValidationException Invalid(string key) => new([new ValidationError("layout", key)]);
 }

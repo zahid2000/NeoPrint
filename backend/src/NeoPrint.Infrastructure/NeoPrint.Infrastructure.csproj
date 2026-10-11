@@ -32,9 +32,6 @@
     <PackageReference Include="QRCoder" />
     <!-- Receipt PDFs. Community licence: see docs/THIRD_PARTY.md. -->
     <PackageReference Include="QuestPDF" />
-    <PackageReference Include="PDFsharp" />
-    <PackageReference Include="SkiaSharp" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
   </ItemGroup>
 
   <ItemGroup Label="Hosting">
@@ -56,8 +53,23 @@
   <ItemGroup>
     <ProjectReference Include="..\NeoPrint.Application\NeoPrint.Application.csproj" />
     <ProjectReference Include="..\..\shared\NeoPrint.Crypto\NeoPrint.Crypto.csproj" />
-    <ProjectReference Include="..\..\shared\NeoPrint.Pdfium\NeoPrint.Pdfium.csproj" />
+    <!-- For the layout's JSON only. Drawing it is the converter tool's job. -->
     <ProjectReference Include="..\..\shared\NeoPrint.Layout\NeoPrint.Layout.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The converter tool's client is internal; its tests run the real tool through it. -->
+    <InternalsVisibleTo Include="NeoPrint.Api.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup Label="Converter tool">
+    <!--
+      PDFium, SkiaSharp and PDFsharp are deliberately not referenced here: a
+      user's file is parsed only by the converter tool, a separate process
+      (docs/adr/ADR-0005-isolated-converter.md, ParserIsolationTests). What the
+      two sides say to each other is this one file, compiled into both.
+    -->
+    <Compile Include="..\NeoPrint.Converter\ToolContract.cs" Link="Conversion\ToolContract.cs" />
   </ItemGroup>
 
 </Project>

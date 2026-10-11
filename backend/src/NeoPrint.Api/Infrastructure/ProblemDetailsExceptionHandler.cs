@@ -159,6 +159,15 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
                 Status = StatusCodes.Status503ServiceUnavailable,
             },
 
+            // The converter is down: nothing is wrong with the request or the
+            // file, and the same request works once it is back.
+            FileProcessingUnavailableException => new ProblemDetails
+            {
+                Title = Title("problem.processingUnavailable"),
+                Detail = Messages.Write(FileProcessingUnavailableException.Text),
+                Status = StatusCodes.Status503ServiceUnavailable,
+            },
+
             OperationCanceledException => new ProblemDetails
             {
                 Title = Title("problem.cancelled"),
@@ -179,6 +188,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             AuthenticationException authentication => authentication.Text.Key,
             PaymentProviderUnavailableException => "payments.providerUnavailable",
             PaymentOutcomeUnknownException => "payments.outcomeUnknown",
+            FileProcessingUnavailableException => FileProcessingUnavailableException.MessageKey,
             ValidationException { Errors.Count: 1 } validation => validation.Errors.First().Message.Key,
             _ => null,
         };

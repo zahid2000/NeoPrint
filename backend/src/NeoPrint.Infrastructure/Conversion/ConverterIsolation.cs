@@ -4,6 +4,8 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using NeoPrint.Converter;
+
 namespace NeoPrint.Infrastructure.Conversion;
 
 /// <summary>Runs a converter program under limits; where it runs is the implementation's business.</summary>
@@ -96,6 +98,27 @@ public static class ConverterSpool
 
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
+    /// <summary>
+    /// The worker touches its heartbeat every five seconds; this long without
+    /// one and the converter counts as down - for the health check, and for a
+    /// request someone is waiting on, which is then told so instead of queued.
+    /// One value for both, so health never says "healthy" about a converter
+    /// that requests are already being refused for.
+    /// </summary>
+    public static readonly TimeSpan DownAfter = TimeSpan.FromSeconds(20);
+
+    /// <summary>Whether the worker has stopped touching its heartbeat.</summary>
+    public static bool IsDown(string spoolRoot) => HeartbeatAge(spoolRoot) is not { } age || age > DownAfter;
+
+    /// <summary>How long ago the worker last touched its heartbeat, or null when it never has.</summary>
+    public static TimeSpan? HeartbeatAge(string spoolRoot)
+    {
+        var heartbeat = Path.Combine(spoolRoot, HeartbeatFile);
+
+        // A missing file has the year 1601 as its time rather than an error.
+        return File.Exists(heartbeat) ? DateTime.UtcNow - File.GetLastWriteTimeUtc(heartbeat) : null;
+    }
+
     /// <summary>Writes a file so that a reader sees all of it or none of it.</summary>
     public static async Task WriteAtomicallyAsync<T>(string path, T value, CancellationToken cancellationToken)
     {
@@ -129,7 +152,11 @@ public static class ConverterSpool
 /// </remarks>
 public sealed class IsolatedProcessSandbox : IProcessSandbox
 {
-    private static readonly TimeSpan Poll = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan FirstPoll = TimeSpan.FromMilliseconds(10);
+    private static readonly TimeSpan SlowestPoll = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>How long past its timeout a request someone is waiting on is given.</summary>
+    private static readonly TimeSpan FailFastGrace = TimeSpan.FromSeconds(5);
 
     private readonly ConversionOptions _options;
     private readonly ILogger<IsolatedProcessSandbox> _logger;
@@ -164,6 +191,20 @@ public sealed class IsolatedProcessSandbox : IProcessSandbox
                 $"The conversion directory must be a direct child of the spool {root}.");
         }
 
+        if (limits.FailFast && ConverterSpool.IsDown(root))
+        {
+            return new SandboxResult(
+                SandboxOutcome.NotStarted, null, "The isolated converter is not running.", TimeSpan.Zero);
+        }
+
+        // A directory can carry more than one job, one after another - a
+        // conversion and then the page count of its result. What the previous
+        // one left would be read as this one's answer.
+        foreach (var leftover in new[] { ConverterSpool.ResultFile, ConverterSpool.ClaimedFile, ConverterSpool.CancelFile })
+        {
+            File.Delete(Path.Combine(directory, leftover));
+        }
+
         var job = new ConverterJob(
             fileName, [.. arguments], limits.Timeout.TotalSeconds, limits.MemoryLimitBytes, limits.CpuSeconds);
 
@@ -172,23 +213,44 @@ public sealed class IsolatedProcessSandbox : IProcessSandbox
             .ConfigureAwait(false);
 
         var resultPath = Path.Combine(directory, ConverterSpool.ResultFile);
-        var deadline = DateTime.UtcNow + limits.Timeout + TimeSpan.FromSeconds(_options.IsolatedGraceSeconds);
+        var patience = limits.Timeout
+                       + (limits.FailFast ? FailFastGrace : TimeSpan.FromSeconds(_options.IsolatedGraceSeconds));
+        var deadline = DateTime.UtcNow + patience;
+        var poll = FirstPoll;
+        var nextLifeCheck = DateTime.UtcNow + TimeSpan.FromSeconds(1);
 
         try
         {
             while (!File.Exists(resultPath))
             {
-                if (DateTime.UtcNow > deadline)
+                var now = DateTime.UtcNow;
+
+                if (now > deadline)
                 {
                     _logger.LogError(
-                        "The converter container did not answer within {Seconds} s; is it running?",
-                        (limits.Timeout + TimeSpan.FromSeconds(_options.IsolatedGraceSeconds)).TotalSeconds);
+                        "The converter container did not answer within {Seconds} s; is it running?", patience.TotalSeconds);
 
                     return new SandboxResult(
                         SandboxOutcome.NotStarted, null, "The isolated converter did not answer.", limits.Timeout);
                 }
 
-                await Task.Delay(Poll, cancellationToken).ConfigureAwait(false);
+                if (limits.FailFast && now > nextLifeCheck)
+                {
+                    if (ConverterSpool.IsDown(root))
+                    {
+                        _logger.LogError("The converter container stopped while a request was waiting on it.");
+
+                        return new SandboxResult(
+                            SandboxOutcome.NotStarted, null, "The isolated converter stopped.", limits.Timeout);
+                    }
+
+                    nextLifeCheck = now + TimeSpan.FromSeconds(1);
+                }
+
+                // Short operations are answered in tens of milliseconds; long
+                // ones are not worth looking at that often.
+                await Task.Delay(poll, cancellationToken).ConfigureAwait(false);
+                poll = poll < SlowestPoll ? poll * 2 : SlowestPoll;
             }
         }
         catch (OperationCanceledException)
@@ -226,7 +288,21 @@ public sealed class ConverterWorker
 
     /// <summary>The converter programs the image carries (backend/Dockerfile).</summary>
     public static readonly IReadOnlySet<string> DefaultPrograms =
-        new HashSet<string>(StringComparer.Ordinal) { "/usr/bin/soffice", "soffice", "gs", "gpcl6", "gxps" };
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "/usr/bin/soffice", "soffice", "gs", "gpcl6", "gxps", ToolContract.Program,
+        };
+
+    /// <summary>What the converter tool can be asked to do; anything else is refused.</summary>
+    private static readonly HashSet<string> ToolOperations = new(StringComparer.Ordinal)
+    {
+        ToolContract.PdfInfo,
+        ToolContract.PdfRender,
+        ToolContract.ImageToPdf,
+        ToolContract.EditPages,
+        ToolContract.EditImage,
+        ToolContract.LayoutRender,
+    };
 
     private static readonly TimeSpan HeartbeatEvery = TimeSpan.FromSeconds(5);
 
@@ -235,6 +311,7 @@ public sealed class ConverterWorker
     private readonly IReadOnlySet<string> _programs;
     private readonly ILogger _logger;
     private readonly SemaphoreSlim _slots;
+    private readonly SemaphoreSlim _toolSlots;
     private readonly TimeSpan _poll;
 
     public ConverterWorker(
@@ -243,14 +320,19 @@ public sealed class ConverterWorker
         IReadOnlySet<string> allowedPrograms,
         ILogger logger,
         int parallelJobs = 2,
-        TimeSpan? poll = null)
+        TimeSpan? poll = null,
+        int parallelTools = 3)
     {
         _root = Path.GetFullPath(spoolRoot);
         _sandbox = sandbox;
         _programs = allowedPrograms;
         _logger = logger;
         _slots = new SemaphoreSlim(parallelJobs, parallelJobs);
-        _poll = poll ?? TimeSpan.FromMilliseconds(200);
+
+        // A preview or a page count takes a fraction of a second and must not
+        // queue behind two office documents that each take a minute.
+        _toolSlots = new SemaphoreSlim(parallelTools, parallelTools);
+        _poll = poll ?? TimeSpan.FromMilliseconds(50);
     }
 
     public async Task RunAsync(CancellationToken cancellationToken)
@@ -272,27 +354,12 @@ public sealed class ConverterWorker
 
             foreach (var directory in Directory.EnumerateDirectories(_root))
             {
-                if (_slots.CurrentCount == 0)
-                {
-                    break;
-                }
-
+                // Claimed at once; the job then waits inside ProcessAsync for
+                // a slot of its own kind.
                 if (Claim(directory) is { } claimed)
                 {
-                    await _slots.WaitAsync(cancellationToken).ConfigureAwait(false);
                     running.Add(Task.Run(
-                        async () =>
-                        {
-                            try
-                            {
-                                await ProcessAsync(directory, claimed, cancellationToken).ConfigureAwait(false);
-                            }
-                            finally
-                            {
-                                _slots.Release();
-                            }
-                        },
-                        CancellationToken.None));
+                        () => ProcessAsync(directory, claimed, cancellationToken), CancellationToken.None));
                 }
             }
 
@@ -350,29 +417,18 @@ public sealed class ConverterWorker
             }
             else
             {
-                using var cancel = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                var watch = WatchForCancelAsync(directory, cancel);
+                var slots = string.Equals(job!.Program, ToolContract.Program, StringComparison.Ordinal) ? _toolSlots : _slots;
 
-                var limits = new SandboxLimits(
-                    TimeSpan.FromSeconds(job!.TimeoutSeconds), job.MemoryLimitBytes, directory, job.CpuSeconds);
+                await slots.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                var outcome = await _sandbox.RunAsync(job.Program, job.Arguments, limits, cancel.Token)
-                    .ConfigureAwait(false);
-
-                await cancel.CancelAsync().ConfigureAwait(false);
-                await watch.ConfigureAwait(false);
-
-                result = new ConverterJobResult(
-                    outcome.Outcome, outcome.ExitCode, outcome.StandardError, outcome.Duration.TotalSeconds);
-
-                // The program and the outcome only: never the document, its
-                // name or the tool's stderr, which can echo either.
-                _logger.LogInformation(
-                    "Conversion job {Job} with {Program}: {Outcome} in {Seconds:0.0} s.",
-                    Path.GetFileName(directory),
-                    Path.GetFileName(job.Program),
-                    outcome.Outcome,
-                    outcome.Duration.TotalSeconds);
+                try
+                {
+                    result = await RunJobAsync(directory, job, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    slots.Release();
+                }
             }
         }
         catch (Exception exception) when (exception is JsonException or IOException)
@@ -391,6 +447,37 @@ public sealed class ConverterWorker
         }
     }
 
+    private async Task<ConverterJobResult> RunJobAsync(string directory, ConverterJob job, CancellationToken cancellationToken)
+    {
+        // The caller gave up while the job waited for its slot.
+        if (!Directory.Exists(directory) || File.Exists(Path.Combine(directory, ConverterSpool.CancelFile)))
+        {
+            return new ConverterJobResult(SandboxOutcome.Failed, null, "Cancelled.", 0);
+        }
+
+        using var cancel = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var watch = WatchForCancelAsync(directory, cancel);
+
+        var limits = new SandboxLimits(
+            TimeSpan.FromSeconds(job.TimeoutSeconds), job.MemoryLimitBytes, directory, job.CpuSeconds);
+
+        var outcome = await _sandbox.RunAsync(job.Program, job.Arguments, limits, cancel.Token).ConfigureAwait(false);
+
+        await cancel.CancelAsync().ConfigureAwait(false);
+        await watch.ConfigureAwait(false);
+
+        // The program and the outcome only: never the document, its name or
+        // the tool's stderr, which can echo either.
+        _logger.LogInformation(
+            "Conversion job {Job} with {Program}: {Outcome} in {Seconds:0.0} s.",
+            Path.GetFileName(directory),
+            job.Program == ToolContract.Program ? job.Arguments[0] : Path.GetFileName(job.Program),
+            outcome.Outcome,
+            outcome.Duration.TotalSeconds);
+
+        return new ConverterJobResult(outcome.Outcome, outcome.ExitCode, outcome.StandardError, outcome.Duration.TotalSeconds);
+    }
+
     /// <summary>Why a job is not run, or null when it may be.</summary>
     public string? Refuse(string directory, ConverterJob? job)
     {
@@ -402,6 +489,14 @@ public sealed class ConverterWorker
         if (!_programs.Contains(job.Program))
         {
             return $"'{job.Program}' is not a converter this container runs";
+        }
+
+        // The tool is ours, but the job file is not trusted any more for it:
+        // one known operation, and nothing else on its command line.
+        if (string.Equals(job.Program, ToolContract.Program, StringComparison.Ordinal)
+            && (job.Arguments is not [var operation] || !ToolOperations.Contains(operation)))
+        {
+            return "not an operation of the converter tool";
         }
 
         if (!string.Equals(Path.GetDirectoryName(Path.GetFullPath(directory)), _root, StringComparison.Ordinal))
@@ -444,24 +539,18 @@ public sealed class ConverterWorker
 /// <summary>Whether the converter container is alive, from the age of its heartbeat file.</summary>
 public sealed class ConverterHealthCheck : IHealthCheck
 {
-    private static readonly TimeSpan MaxAge = TimeSpan.FromSeconds(30);
-
     private readonly ConversionOptions _options;
 
     public ConverterHealthCheck(IOptions<ConversionOptions> options) => _options = options.Value;
 
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        var heartbeat = Path.Combine(_options.ResolveWorkRoot(), ConverterSpool.HeartbeatFile);
-
-        if (!File.Exists(heartbeat))
+        if (ConverterSpool.HeartbeatAge(_options.ResolveWorkRoot()) is not { } age)
         {
             return Task.FromResult(HealthCheckResult.Degraded("The converter container has not started."));
         }
 
-        var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(heartbeat);
-
-        return Task.FromResult(age <= MaxAge
+        return Task.FromResult(age <= ConverterSpool.DownAfter
             ? HealthCheckResult.Healthy($"Heartbeat {age.TotalSeconds:0} s ago.")
             : HealthCheckResult.Degraded($"No heartbeat for {age.TotalSeconds:0} s; conversions will wait."));
     }

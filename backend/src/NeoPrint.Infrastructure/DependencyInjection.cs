@@ -321,8 +321,12 @@ public static class DependencyInjection
         services.AddSingleton<IDocumentConverter, GhostscriptConverter>();
         services.AddSingleton<IDocumentConverter, ImageConverter>();
         services.AddScoped<DocumentConversionService>();
-        services.AddSingleton<IPageRenderer, PdfiumPageRenderer>();
-        services.AddSingleton<NeoPrint.Application.Files.IFileEditor, FileEditor>();
+
+        // Everything that parses a user's PDF or image goes through the
+        // converter tool, a process of its own - none of it runs in here.
+        services.AddSingleton<ConverterTools>();
+        services.AddSingleton<IPageRenderer, ToolPageRenderer>();
+        services.AddSingleton<NeoPrint.Application.Files.IFileEditor, ToolFileEditor>();
         services.AddSingleton<NeoPrint.Application.Files.ILayoutDocuments, LayoutDocuments>();
         services.AddScoped<IEventPublisher, Messaging.MassTransitEventPublisher>();
 

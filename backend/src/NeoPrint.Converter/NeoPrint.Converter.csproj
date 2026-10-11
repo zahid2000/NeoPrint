@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The converter tool (docs/adr/ADR-0005-isolated-converter.md): the only
+    program in the backend that hands a user's file to PDFium, SkiaSharp or
+    PDFsharp. One short-lived process per file, started by the converter
+    worker (or, on a development machine without Docker, by the API) under a
+    memory and CPU limit. The API itself references none of these libraries.
+
+    It is started through the dotnet host with its DLL, so no apphost is built.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.Converter</RootNamespace>
+    <UseAppHost>false</UseAppHost>
+
+    <!-- A process that lives for one file: start fast, stay small. -->
+    <ServerGarbageCollector>false</ServerGarbageCollector>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- MIT, empira (official): page operations on a PDF. -->
+    <PackageReference Include="PDFsharp" />
+    <!-- MIT, Microsoft: decoding and encoding images. -->
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\shared\NeoPrint.Pdfium\NeoPrint.Pdfium.csproj" />
+    <ProjectReference Include="..\..\shared\NeoPrint.Layout\NeoPrint.Layout.csproj" />
+  </ItemGroup>
+
+</Project>

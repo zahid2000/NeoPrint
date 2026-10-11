@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using NeoPrint.Converter;
 using NeoPrint.Infrastructure.Conversion;
 
 namespace NeoPrint.Api.IntegrationTests;
@@ -51,11 +52,14 @@ public sealed class ConverterIsolationTests : IDisposable
         }),
         NullLogger<IsolatedProcessSandbox>.Instance);
 
-    private ConverterWorker Worker(params string[] programs) => new(
+    private ConverterWorker Worker(params string[] programs) => Worker(2, programs);
+
+    private ConverterWorker Worker(int parallelJobs, params string[] programs) => new(
         _spool,
         new SandboxedProcess(NullLogger<SandboxedProcess>.Instance),
         new HashSet<string>(programs, StringComparer.Ordinal),
         NullLogger.Instance,
+        parallelJobs,
         poll: TimeSpan.FromMilliseconds(50));
 
     private string JobDirectory()
@@ -177,6 +181,116 @@ public sealed class ConverterIsolationTests : IDisposable
 
         await stop.CancelAsync();
         await worker;
+    }
+
+    [Fact]
+    public async Task A_directory_carries_one_job_after_another()
+    {
+        // A conversion and then the page count of its result share a
+        // directory; the second job must not be answered with the first one's
+        // result, nor left unclaimed because the first one's claim is there.
+        using var stop = new CancellationTokenSource();
+        var worker = Worker(ShellProgram).RunAsync(stop.Token);
+        var directory = JobDirectory();
+        var limits = new SandboxLimits(TimeSpan.FromSeconds(20), 512L * 1024 * 1024, directory);
+
+        var (program, first) = Shell("exit 0");
+        var (_, second) = Shell("exit 3");
+
+        var firstResult = await Client().RunAsync(program, first, limits);
+        var secondResult = await Client().RunAsync(program, second, limits);
+
+        await stop.CancelAsync();
+        await worker;
+
+        firstResult.Succeeded.Should().BeTrue(firstResult.StandardError);
+        secondResult.Outcome.Should().Be(SandboxOutcome.Failed);
+        secondResult.ExitCode.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task A_request_someone_is_waiting_on_is_told_at_once_that_no_converter_is_running()
+    {
+        // A preview must not hang for its whole timeout when the converter
+        // container is down: the answer is "try again shortly", straight away.
+        var directory = JobDirectory();
+        var (program, arguments) = Shell("exit 0");
+        var started = DateTime.UtcNow;
+
+        var result = await Client().RunAsync(
+            program,
+            arguments,
+            new SandboxLimits(TimeSpan.FromSeconds(30), 512L * 1024 * 1024, directory) { FailFast = true });
+
+        result.Outcome.Should().Be(SandboxOutcome.NotStarted);
+        (DateTime.UtcNow - started).Should().BeLessThan(TimeSpan.FromSeconds(5));
+        File.Exists(Path.Combine(directory, ConverterSpool.JobFile)).Should().BeFalse("nothing was queued for a converter that is not there");
+    }
+
+    [Fact]
+    public async Task A_short_tool_job_does_not_queue_behind_a_long_conversion()
+    {
+        // One conversion slot, taken for fifteen seconds by an "office
+        // document"; a page count asked for meanwhile has slots of its own.
+        using var stop = new CancellationTokenSource();
+        var worker = Worker(1, ShellProgram, ToolContract.Program).RunAsync(stop.Token);
+
+        var (program, arguments) = OperatingSystem.IsWindows()
+            ? ("cmd.exe", new[] { "/c", "ping -n 16 127.0.0.1 > nul" })
+            : ("/bin/sh", new[] { "-c", "sleep 15" });
+
+        var slowDirectory = JobDirectory();
+        var slow = Client().RunAsync(
+            program, arguments, new SandboxLimits(TimeSpan.FromSeconds(60), 512L * 1024 * 1024, slowDirectory));
+
+        await Task.Delay(TimeSpan.FromSeconds(1));
+
+        // No request file: the tool answers "usage" and exits - a real run of
+        // the real tool that needs no document.
+        var quick = await Client().RunAsync(
+            ToolContract.Program,
+            [ToolContract.PdfInfo],
+            new SandboxLimits(TimeSpan.FromSeconds(30), ConverterTools.MemoryLimitBytes, JobDirectory()));
+
+        quick.Outcome.Should().Be(SandboxOutcome.Failed, quick.StandardError);
+        quick.ExitCode.Should().Be(64);
+        slow.IsCompleted.Should().BeFalse("the tool job was answered while the conversion was still running");
+
+        File.WriteAllText(Path.Combine(slowDirectory, ConverterSpool.CancelFile), string.Empty);
+        await slow;
+        await stop.CancelAsync();
+        await worker;
+    }
+
+    [Fact]
+    public void The_converter_tool_is_asked_only_for_its_own_operations()
+    {
+        var worker = Worker(ToolContract.Program);
+        var directory = JobDirectory();
+
+        ConverterJob Tool(params string[] arguments) => new(ToolContract.Program, arguments, 30, 1024, 60);
+
+        worker.Refuse(directory, Tool(ToolContract.PdfRender)).Should().BeNull();
+        worker.Refuse(directory, Tool("run-anything")).Should().Be("not an operation of the converter tool");
+        worker.Refuse(directory, Tool(ToolContract.PdfRender, "--extra")).Should().Be("not an operation of the converter tool");
+        worker.Refuse(directory, Tool()).Should().Be("not an operation of the converter tool");
+    }
+
+    [Fact]
+    public void The_tool_is_capped_by_the_memory_it_writes_to_not_by_address_space()
+    {
+        if (!OperatingSystem.IsLinux())
+        {
+            SandboxedProcess.LimitCommand(SandboxLimits.Default("/tmp"), managed: true).Should().BeNull();
+            return;
+        }
+
+        // A .NET process reserves gigabytes of address space it never touches
+        // and does not start under --as; --data caps what it can really use.
+        var limits = new SandboxLimits(TimeSpan.FromSeconds(30), 1024, "/tmp", CpuSeconds: 60);
+
+        SandboxedProcess.LimitCommand(limits, managed: true)!.Value.Prefix.Should().Equal("--data=1024", "--cpu=60", "--");
+        SandboxedProcess.LimitCommand(limits)!.Value.Prefix.Should().Equal("--as=1024", "--cpu=60", "--");
     }
 
     [Fact]
