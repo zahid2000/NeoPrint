@@ -34,6 +34,9 @@ public enum IncidentType
 
     /// <summary>A job has been sitting in a kiosk's system spooler for minutes (plan section 7.10).</summary>
     SpoolerStuck = 17,
+
+    /// <summary>A kiosk's clock has been a minute or more off the server's for minutes (plan section 7.9).</summary>
+    ClockOff = 18,
 }
 
 public enum IncidentSeverity

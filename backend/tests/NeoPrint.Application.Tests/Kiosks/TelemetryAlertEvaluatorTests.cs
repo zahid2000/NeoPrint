@@ -22,7 +22,8 @@ public sealed class TelemetryAlertEvaluatorTests
         double memoryPercent = 40,
         int? latencyMs = 80,
         bool? hub = true,
-        int? hubDownSeconds = null)
+        int? hubDownSeconds = null,
+        long? clockOffsetMs = 150)
         => new()
         {
             Timestamp = Start.AddSeconds(secondsIn),
@@ -32,6 +33,7 @@ public sealed class TelemetryAlertEvaluatorTests
                 SpoolDiskFreeBytes = spoolDisk,
                 MemoryTotalBytes = 8 * Gb,
                 MemoryUsedBytes = (long)(8 * Gb * memoryPercent / 100),
+                ClockOffsetMs = clockOffsetMs,
             },
             Network = new TelemetryNetwork { BackendLatencyMs = latencyMs, HubConnected = hub, HubDisconnectedSeconds = hubDownSeconds },
         };
@@ -128,6 +130,45 @@ public sealed class TelemetryAlertEvaluatorTests
         alert.Severity.Should().Be(IncidentSeverity.Medium);
 
         Run(Sample(0, latencyMs: 2000), Sample(300, latencyMs: 2000)).Raise.Should().BeEmpty("2000 ms is the limit, not over it");
+    }
+
+    [Fact]
+    public void A_clock_a_minute_off_for_five_minutes_is_raised_whichever_way_it_is_off()
+    {
+        var ahead = Enumerable.Range(0, 11).Select(i => Sample(i * 30, clockOffsetMs: 95_000)).ToArray();
+
+        var alert = Run(ahead).Raise.Should().ContainSingle().Which;
+        alert.Type.Should().Be(IncidentType.ClockOff);
+        alert.Severity.Should().Be(IncidentSeverity.Medium);
+        alert.Details.Key.Should().Be("incidents.telemetry.clockAhead");
+        alert.Details.Arguments!["seconds"].Should().Be("95");
+
+        var behind = Enumerable.Range(0, 11).Select(i => Sample(i * 30, clockOffsetMs: -60_000)).ToArray();
+        Run(behind).Raise.Should().ContainSingle().Which.Details.Key.Should().Be("incidents.telemetry.clockBehind");
+
+        // Back in time: cleared, so the incident closes.
+        Run([.. ahead, Sample(330, clockOffsetMs: 400)]).Cleared.Should().Equal(TelemetryCondition.ClockOff);
+    }
+
+    [Fact]
+    public void A_report_that_was_slow_to_arrive_is_not_a_wrong_clock()
+    {
+        // Under a minute is within the limit however long it lasts: the
+        // offset includes the time the report took on the network.
+        var nearly = Enumerable.Range(0, 30).Select(i => Sample(i * 30, clockOffsetMs: -59_999)).ToArray();
+        Run(nearly).Raise.Should().BeEmpty();
+
+        // One report held up for two minutes, among punctual ones.
+        var held = Enumerable.Range(0, 30).Select(i => Sample(i * 30, clockOffsetMs: i == 12 ? -120_000 : -200)).ToArray();
+        Run(held).Raise.Should().BeEmpty();
+
+        // A minute off, but not yet for five minutes.
+        var young = Enumerable.Range(0, 9).Select(i => Sample(i * 30, clockOffsetMs: 70_000)).ToArray();
+        Run(young).Raise.Should().BeEmpty();
+
+        // A kiosk that sent no time of its own is not judged.
+        var silent = Enumerable.Range(0, 30).Select(i => Sample(i * 30, clockOffsetMs: null)).ToArray();
+        Run(silent).Raise.Should().BeEmpty();
     }
 
     [Fact]

@@ -97,7 +97,8 @@ public sealed record TelemetryEvaluation(IReadOnlyList<TelemetryAlert> Raise, IR
 /// <summary>
 /// Checks a telemetry sample against the limits of plan section 7.9: disk
 /// below 2 GB, memory above 90% for five minutes, the backend slower than
-/// 2000 ms for five minutes, SignalR down for two minutes.
+/// 2000 ms for five minutes, SignalR down for two minutes - and the kiosk's
+/// clock a minute or more off the server's for five minutes.
 /// </summary>
 /// <remarks>
 /// Pure: the only state is in the samples themselves. Each sample records
@@ -111,9 +112,23 @@ public static class TelemetryAlertEvaluator
     public const double MemoryHighPercent = 90;
     public const int BackendSlowMs = 2000;
 
+    /// <summary>
+    /// How far a kiosk's clock may be off. The offset is measured from the
+    /// time the kiosk wrote on its report, so it includes the time the report
+    /// took to arrive: a limit below a minute would call a slow network a
+    /// wrong clock.
+    /// </summary>
+    public const long ClockOffMs = 60_000;
+
     public static readonly TimeSpan MemoryHighFor = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan BackendSlowFor = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan HubDownFor = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// One report that was a minute on its way is not a wrong clock; ten in a
+    /// row, each a minute off, is.
+    /// </summary>
+    public static readonly TimeSpan ClockOffFor = TimeSpan.FromMinutes(5);
 
     /// <summary>
     /// A gap this long between two samples breaks a streak: the kiosk was not
@@ -218,6 +233,21 @@ public static class TelemetryAlertEvaluator
             current.Network.HubDisconnectedSeconds is > 0 and var seconds
                 ? current.Timestamp - TimeSpan.FromSeconds(seconds)
                 : null);
+
+        var offset = current.System.ClockOffsetMs;
+
+        Check(
+            TelemetryCondition.ClockOff,
+            offset is { } off && Math.Abs(off) >= ClockOffMs,
+            ClockOffFor,
+            lasted => new TelemetryAlert(
+                TelemetryCondition.ClockOff,
+                IncidentType.ClockOff,
+                IncidentSeverity.Medium,
+                UserMessage.Of(
+                    offset > 0 ? "incidents.telemetry.clockAhead" : "incidents.telemetry.clockBehind",
+                    ("seconds", Math.Abs(offset ?? 0) / 1000),
+                    ("minutes", (int)lasted.TotalMinutes))));
 
         // Cleared is judged against the previous sample whatever the gap: an
         // incident opened before a silence still closes when the kiosk comes

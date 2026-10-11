@@ -18,6 +18,7 @@ public sealed class PrinterTelemetryChangesTests
         string[]? reasons = null,
         string? error = null,
         int? black = 40,
+        int? tray = null,
         params PrinterSpoolerJob[] jobs)
         => new()
         {
@@ -28,6 +29,8 @@ public sealed class PrinterTelemetryChangesTests
             StateReasons = [.. reasons ?? []],
             LastError = error,
             Supplies = [new PrinterSupplyLevel("Black", "toner", "black", black)],
+            Trays = tray is null ? [] : [new PrinterTrayLevel("Tray 1", "A4", tray)],
+            LifetimePages = 1000 + minute,
             SpoolerJobs = [.. jobs],
         };
 
@@ -50,6 +53,7 @@ public sealed class PrinterTelemetryChangesTests
             ("Online", "online", "offline"),
             ("State", "printing", "stopped"),
             ("Reasons", null, "media-empty"),
+            ("PaperOutStarted", null, "media-empty"),
             ("Error", null, "Tray 1 is empty"),
             ("State", "idle", "printing"));
 
@@ -65,6 +69,70 @@ public sealed class PrinterTelemetryChangesTests
         replaced.Kind.Should().Be("SupplyReplaced");
         replaced.From.Should().Be("Black: 6%");
         replaced.To.Should().Be("Black: 100%");
+    }
+
+    [Fact]
+    public void A_replaced_cartridge_is_written_with_its_levels_and_the_page_counter_of_that_moment()
+    {
+        var replaced = PrinterTelemetryChanges.Between(Sample(0, black: 3), Sample(7, black: 100)).Should().ContainSingle().Which;
+
+        replaced.Kind.Should().Be(PrinterEventKind.SupplyReplaced);
+        replaced.Subject.Should().Be("Black");
+        replaced.FromLevel.Should().Be(3);
+        replaced.ToLevel.Should().Be(100);
+        replaced.LifetimePages.Should().Be(1007, "pages per cartridge are counted from here");
+        replaced.At.Should().Be(Start.AddMinutes(7));
+        replaced.PrinterName.Should().Be("P");
+    }
+
+    [Fact]
+    public void Paper_put_in_a_tray_is_an_event_and_paper_running_down_is_not()
+    {
+        var events = PrinterTelemetryChanges.Between([Sample(0, tray: 60), Sample(1, tray: 10), Sample(2, tray: 100), Sample(3, tray: 98)]);
+
+        var refilled = events.Should().ContainSingle().Which;
+        refilled.Kind.Should().Be(PrinterEventKind.PaperRefilled);
+        refilled.Subject.Should().Be("Tray 1");
+        refilled.FromLevel.Should().Be(10);
+        refilled.ToLevel.Should().Be(100);
+    }
+
+    [Theory]
+    [InlineData("media-jam", "JamStarted", "JamEnded")]
+    [InlineData("media-jam-error", "JamStarted", "JamEnded")]
+    [InlineData("media-empty-error", "PaperOutStarted", "PaperOutEnded")]
+    [InlineData("media-needed", "PaperOutStarted", "PaperOutEnded")]
+    [InlineData("cover-open", "CoverOpened", "CoverClosed")]
+    [InlineData("door-open", "CoverOpened", "CoverClosed")]
+    public void A_jam_no_paper_and_an_open_cover_each_have_a_beginning_and_an_end(string reason, string started, string ended)
+    {
+        var begins = PrinterTelemetryChanges.Between(Sample(0), Sample(1, reasons: [reason, "toner-low"]));
+        begins.Select(e => e.Kind).Should().Equal("Reasons", started);
+        begins[1].Subject.Should().Be(reason);
+
+        // Still there a minute later, while another reason goes: no second beginning.
+        PrinterTelemetryChanges.Between(Sample(1, reasons: [reason, "toner-low"]), Sample(2, reasons: [reason]))
+            .Select(e => e.Kind).Should().Equal("Reasons");
+
+        var ends = PrinterTelemetryChanges.Between(Sample(2, reasons: [reason]), Sample(3));
+        ends.Select(e => e.Kind).Should().Equal("Reasons", ended);
+        ends[1].Subject.Should().Be(reason);
+    }
+
+    [Fact]
+    public void The_same_change_found_twice_from_the_same_reading_is_the_same_event()
+    {
+        var before = Sample(0, black: 3);
+
+        var first = PrinterTelemetryChanges.Between(before, Sample(1, state: "stopped", black: 100));
+        var again = PrinterTelemetryChanges.Between(before, Sample(2, state: "stopped", black: 100));
+
+        again.Select(e => e.Id).Should().Equal(first.Select(e => e.Id), "a repeated report writes the same rows");
+        first.Select(e => e.Id).Should().OnlyHaveUniqueItems();
+
+        // From another reading it is another event.
+        PrinterTelemetryChanges.Between(Sample(0, black: 3), Sample(1, state: "stopped", black: 100))
+            .Select(e => e.Id).Should().NotIntersectWith(first.Select(e => e.Id));
     }
 
     [Fact]

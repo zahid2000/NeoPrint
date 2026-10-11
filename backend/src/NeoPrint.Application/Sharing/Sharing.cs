@@ -99,6 +99,7 @@ public sealed partial class ShareHandlers :
     private readonly IUserRepository _users;
     private readonly IFileStorage _storage;
     private readonly IPageRenderer _renderer;
+    private readonly IPagePreviewCache _previews;
     private readonly FileIntake _intake;
     private readonly IQrImages _qr;
     private readonly ISender _sender;
@@ -111,6 +112,7 @@ public sealed partial class ShareHandlers :
         IUserRepository users,
         IFileStorage storage,
         IPageRenderer renderer,
+        IPagePreviewCache previews,
         FileIntake intake,
         IQrImages qr,
         ISender sender,
@@ -122,6 +124,7 @@ public sealed partial class ShareHandlers :
         _users = users;
         _storage = storage;
         _renderer = renderer;
+        _previews = previews;
         _intake = intake;
         _qr = qr;
         _sender = sender;
@@ -347,7 +350,7 @@ public sealed partial class ShareHandlers :
         }
 
         return await GetFilePageImageHandler
-            .RenderAsync(sent, request.Page, request.Width, request.IfNoneMatch, _storage, _renderer, cancellationToken)
+            .RenderAsync(sent, request.Page, request.Width, request.IfNoneMatch, _storage, _renderer, _previews, cancellationToken)
             .ConfigureAwait(false);
     }
 

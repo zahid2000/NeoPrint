@@ -76,6 +76,7 @@ public static class SettingKeys
     public const string KioskOfflineAfterSeconds = "Kiosk.OfflineAfterSeconds";
     public const string KioskTelemetrySeconds = "Kiosk.TelemetrySeconds";
     public const string KioskTelemetryRetentionDays = "Kiosk.TelemetryRetentionDays";
+    public const string KioskPrinterEventRetentionDays = "Kiosk.PrinterEventRetentionDays";
 
     /// <summary>
     /// How long a kiosk may act on its cached configuration once the backend is
@@ -171,6 +172,7 @@ public static class SettingKeys
         new(KioskOfflineAfterSeconds, "60", SettingValueType.Integer, "Heartbeat gəlməzsə offline sayılır"),
         new(KioskTelemetrySeconds, "30", SettingValueType.Integer, "Telemetriya göndərmə intervalı"),
         new(KioskTelemetryRetentionDays, "30", SettingValueType.Integer, "Telemetriya tarixçəsinin saxlanma müddəti"),
+        new(KioskPrinterEventRetentionDays, "365", SettingValueType.Integer, "Printer hadisələrinin saxlanma müddəti"),
         new(KioskConfigCacheTtlHours, "24", SettingValueType.Integer,
             "Kioskun lokal konfiqurasiya keşinin etibarlılığı; köhnədirsə kiosk Degraded rejimə keçir"),
         new(PaymentReconcileAfterMinutes, "10", SettingValueType.Integer,

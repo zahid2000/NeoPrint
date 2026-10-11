@@ -75,11 +75,19 @@ public sealed class ConverterTools : IDisposable
     private readonly string _workRoot;
     private readonly ILogger<ConverterTools> _logger;
 
+    /// <summary>When a refused request is told to come back.</summary>
+    public const int RetryAfterSeconds = 3;
+
     /// <summary>
-    /// Requests that are waiting on someone - a preview, an edit - each hold
-    /// a decrypted document in the spool; only a few at once, the rest wait.
+    /// One slot per tool process that may run at once for a request somebody
+    /// is waiting on. A request without a slot has written nothing yet: no
+    /// decrypted document waits in the spool.
     /// </summary>
-    private readonly SemaphoreSlim _gate = new(6);
+    private readonly SemaphoreSlim _gate;
+
+    private readonly int _queueLength;
+    private readonly TimeSpan _queueWait;
+    private int _waiting;
 
     public ConverterTools(IProcessSandbox sandbox, IOptions<ConversionOptions> options, ILogger<ConverterTools> logger)
     {
@@ -88,12 +96,45 @@ public sealed class ConverterTools : IDisposable
         _sandbox = sandbox;
         _workRoot = options.Value.ResolveWorkRoot();
         _logger = logger;
+
+        var parallel = Math.Max(1, options.Value.InteractiveParallel);
+        _gate = new SemaphoreSlim(parallel, parallel);
+        _queueLength = Math.Max(0, options.Value.InteractiveQueueLength);
+        _queueWait = TimeSpan.FromSeconds(Math.Max(0, options.Value.InteractiveQueueSeconds));
     }
 
-    /// <summary>A directory for one operation, deleted when disposed.</summary>
+    /// <summary>How many requests are waiting for a slot right now.</summary>
+    public int Waiting => Volatile.Read(ref _waiting);
+
+    /// <summary>
+    /// A directory for one operation, deleted when disposed. Holding one is
+    /// holding a slot: at most <see cref="ConversionOptions.InteractiveParallel"/>
+    /// tool processes run at once, a bounded number of requests wait behind
+    /// them for a bounded time, and the rest are refused.
+    /// </summary>
+    /// <exception cref="FileProcessingBusyException">The queue is full, or the wait in it ran out.</exception>
     public async Task<ToolWorkspace> OpenWorkspaceAsync(CancellationToken cancellationToken)
     {
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _gate.WaitAsync(TimeSpan.Zero, cancellationToken).ConfigureAwait(false))
+        {
+            if (Interlocked.Increment(ref _waiting) > _queueLength)
+            {
+                Interlocked.Decrement(ref _waiting);
+                throw Busy("the queue is full");
+            }
+
+            try
+            {
+                if (!await _gate.WaitAsync(_queueWait, cancellationToken).ConfigureAwait(false))
+                {
+                    throw Busy("no slot came free in time");
+                }
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _waiting);
+            }
+        }
 
         try
         {
@@ -107,6 +148,18 @@ public sealed class ConverterTools : IDisposable
             _gate.Release();
             throw;
         }
+    }
+
+    private FileProcessingBusyException Busy(string reason)
+    {
+        _logger.LogWarning(
+            "A document request was refused as busy: {Reason} ({Waiting} waiting, limit {QueueLength}, {QueueSeconds} s).",
+            reason,
+            Waiting,
+            _queueLength,
+            _queueWait.TotalSeconds);
+
+        return new FileProcessingBusyException(RetryAfterSeconds);
     }
 
     /// <summary>

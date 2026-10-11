@@ -70,9 +70,18 @@ public sealed record PrinterTelemetryView(Guid KioskId, PrinterTelemetrySample S
 /// <summary>One point of a printer's graphs: the last reading in its slice of time.</summary>
 public sealed record PrinterTelemetryPoint(DateTime At, long? LifetimePages, IReadOnlyDictionary<string, int?> SupplyLevels);
 
-/// <summary>Something that changed between two readings of a printer.</summary>
-/// <param name="Kind"><c>State</c>, <c>Online</c>, <c>Reasons</c>, <c>Error</c> or <c>SupplyReplaced</c>.</param>
-public sealed record PrinterTelemetryEvent(DateTime At, string Kind, string? From, string? To);
+/// <summary>Something that happened to a printer (<see cref="PrinterEvent"/>), as the panel reads it.</summary>
+/// <param name="Kind">One of <see cref="PrinterEventKind"/>.</param>
+/// <param name="Subject">The supply, the tray or the printer's reason it is about.</param>
+public sealed record PrinterTelemetryEvent(
+    DateTime At,
+    string Kind,
+    string? From,
+    string? To,
+    string? Subject = null,
+    int? FromLevel = null,
+    int? ToLevel = null,
+    long? LifetimePages = null);
 
 /// <summary>The latest reading of every printer of a kiosk, the selected one first.</summary>
 public sealed record GetPrinterTelemetryQuery(Guid AdminUserId, Guid KioskId) : IRequest<IReadOnlyList<PrinterTelemetryView>>;
@@ -98,16 +107,23 @@ public interface IPrinterTelemetryStore
     /// <summary>The last sample of each slice of <paramref name="sliceSeconds"/>, oldest first.</summary>
     Task<IReadOnlyList<PrinterTelemetrySample>> SlicesAsync(
         Guid kioskId, string printer, DateTime from, DateTime to, int sliceSeconds, CancellationToken cancellationToken = default);
+}
 
-    /// <summary>Every sample between the two times, oldest first, at most <paramref name="take"/>.</summary>
-    Task<IReadOnlyList<PrinterTelemetrySample>> RangeAsync(
+/// <summary>The <c>printer_events</c> collection: what happened to a kiosk's printers, kept long after the readings.</summary>
+public interface IPrinterEventStore
+{
+    /// <summary>Writes the events; one that is already there (same <see cref="PrinterEvent.Id"/>) is left as it is.</summary>
+    Task AddManyAsync(IReadOnlyCollection<PrinterEvent> events, CancellationToken cancellationToken = default);
+
+    /// <summary>A printer's events between the two times, newest first, at most <paramref name="take"/>.</summary>
+    Task<IReadOnlyList<PrinterEvent>> ListAsync(
         Guid kioskId, string printer, DateTime from, DateTime to, int take, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
-/// What a sequence of readings of one printer says happened to it (plan
-/// section 7.10): pure, so the history is the series itself and needs no log
-/// of its own.
+/// What two readings of one printer say happened to it between them (plan
+/// section 7.10). Pure: the handler writes what this finds into
+/// <c>printer_events</c> the moment a reading arrives.
 /// </summary>
 public static class PrinterTelemetryChanges
 {
@@ -119,60 +135,143 @@ public static class PrinterTelemetryChanges
 
     public static string SpoolerDedupKey(Guid kioskId, string printer) => $"spooler:{kioskId:N}:{printer}";
 
-    public static IReadOnlyList<PrinterTelemetryEvent> Between(IReadOnlyList<PrinterTelemetrySample> oldestFirst)
+    /// <summary>
+    /// What happened between two readings of one printer, in a fixed order:
+    /// state, reachability, reasons, error, supplies, trays.
+    /// </summary>
+    public static IReadOnlyList<PrinterEvent> Between(PrinterTelemetrySample before, PrinterTelemetrySample after)
+    {
+        ArgumentNullException.ThrowIfNull(before);
+        ArgumentNullException.ThrowIfNull(after);
+
+        var events = new List<PrinterEvent>();
+
+        void Add(string kind, string? subject, string? from, string? to, int? fromLevel = null, int? toLevel = null)
+            => events.Add(new PrinterEvent
+            {
+                Id = EventId(before.Id, kind, subject),
+                KioskId = after.Printer.KioskId,
+                PrinterName = after.Printer.PrinterName,
+                At = after.Timestamp,
+                Kind = kind,
+                Subject = subject,
+                From = from,
+                To = to,
+                FromLevel = fromLevel,
+                ToLevel = toLevel,
+                LifetimePages = after.LifetimePages,
+            });
+
+        if (before.State != after.State && after.State is not null)
+        {
+            Add(PrinterEventKind.State, null, before.State, after.State);
+        }
+
+        if (before.Online != after.Online && after.Online is not null)
+        {
+            Add(PrinterEventKind.Online, null, Text(before.Online), Text(after.Online));
+        }
+
+        var reasonsBefore = string.Join(", ", before.StateReasons.Order(StringComparer.Ordinal));
+        var reasonsAfter = string.Join(", ", after.StateReasons.Order(StringComparer.Ordinal));
+
+        if (reasonsBefore != reasonsAfter)
+        {
+            Add(PrinterEventKind.Reasons, null, Empty(reasonsBefore), Empty(reasonsAfter));
+
+            // The reasons the rest of the system acts on, each as an event of
+            // its own with a beginning and an end.
+            foreach (var (matches, started, ended) in Conditions)
+            {
+                var was = before.StateReasons.FirstOrDefault(matches);
+                var isNow = after.StateReasons.FirstOrDefault(matches);
+
+                if (was is null && isNow is not null)
+                {
+                    Add(started, isNow, null, isNow);
+                }
+                else if (was is not null && isNow is null)
+                {
+                    Add(ended, was, was, null);
+                }
+            }
+        }
+
+        if (after.LastError is not null && after.LastError != before.LastError)
+        {
+            Add(PrinterEventKind.Error, null, before.LastError, after.LastError);
+        }
+
+        foreach (var supply in after.Supplies)
+        {
+            var was = before.Supplies.FirstOrDefault(candidate => candidate.Name == supply.Name)?.LevelPercent;
+
+            if (was is { } old && supply.LevelPercent is { } now && now - old >= ReplacedByPoints)
+            {
+                Add(PrinterEventKind.SupplyReplaced, supply.Name, $"{supply.Name}: {old}%", $"{supply.Name}: {now}%", old, now);
+            }
+        }
+
+        foreach (var tray in after.Trays)
+        {
+            var was = before.Trays.FirstOrDefault(candidate => candidate.Name == tray.Name)?.LevelPercent;
+
+            if (was is { } old && tray.LevelPercent is { } now && now - old >= ReplacedByPoints)
+            {
+                Add(PrinterEventKind.PaperRefilled, tray.Name, $"{tray.Name}: {old}%", $"{tray.Name}: {now}%", old, now);
+            }
+        }
+
+        return events;
+    }
+
+    /// <summary>
+    /// The same over a run of readings, the newest reading's events first -
+    /// what the series itself says happened, without the log.
+    /// </summary>
+    public static IReadOnlyList<PrinterEvent> Between(IReadOnlyList<PrinterTelemetrySample> oldestFirst)
     {
         ArgumentNullException.ThrowIfNull(oldestFirst);
 
-        // One group per reading: the newest reading first, and within a
-        // reading always in the same order - state, reachability, reasons,
-        // error, supplies.
-        var readings = new List<List<PrinterTelemetryEvent>>();
+        var readings = new List<IReadOnlyList<PrinterEvent>>();
 
         for (var i = 1; i < oldestFirst.Count; i++)
         {
-            var before = oldestFirst[i - 1];
-            var after = oldestFirst[i];
-            var at = after.Timestamp;
-            var events = new List<PrinterTelemetryEvent>();
-            readings.Add(events);
-
-            if (before.State != after.State && after.State is not null)
-            {
-                events.Add(new PrinterTelemetryEvent(at, "State", before.State, after.State));
-            }
-
-            if (before.Online != after.Online && after.Online is not null)
-            {
-                events.Add(new PrinterTelemetryEvent(at, "Online", Text(before.Online), Text(after.Online)));
-            }
-
-            var reasonsBefore = string.Join(", ", before.StateReasons.Order(StringComparer.Ordinal));
-            var reasonsAfter = string.Join(", ", after.StateReasons.Order(StringComparer.Ordinal));
-
-            if (reasonsBefore != reasonsAfter)
-            {
-                events.Add(new PrinterTelemetryEvent(at, "Reasons", Empty(reasonsBefore), Empty(reasonsAfter)));
-            }
-
-            if (after.LastError is not null && after.LastError != before.LastError)
-            {
-                events.Add(new PrinterTelemetryEvent(at, "Error", before.LastError, after.LastError));
-            }
-
-            foreach (var supply in after.Supplies)
-            {
-                var was = before.Supplies.FirstOrDefault(candidate => candidate.Name == supply.Name)?.LevelPercent;
-
-                if (was is { } old && supply.LevelPercent is { } now && now - old >= ReplacedByPoints)
-                {
-                    events.Add(new PrinterTelemetryEvent(at, "SupplyReplaced", $"{supply.Name}: {old}%", $"{supply.Name}: {now}%"));
-                }
-            }
+            readings.Add(Between(oldestFirst[i - 1], oldestFirst[i]));
         }
 
         readings.Reverse();
 
         return [.. readings.SelectMany(events => events)];
+    }
+
+    /// <summary>
+    /// A printer's reasons, as IPP words them (<c>media-jam-error</c>) and as
+    /// the kiosk words what Windows reports (<c>media-jam</c>, <c>door-open</c>).
+    /// </summary>
+    private static readonly (Func<string, bool> Matches, string Started, string Ended)[] Conditions =
+    [
+        (reason => reason.Contains("jam", StringComparison.OrdinalIgnoreCase), PrinterEventKind.JamStarted, PrinterEventKind.JamEnded),
+        (reason => reason.StartsWith("media-empty", StringComparison.OrdinalIgnoreCase)
+                   || reason.StartsWith("media-needed", StringComparison.OrdinalIgnoreCase),
+            PrinterEventKind.PaperOutStarted,
+            PrinterEventKind.PaperOutEnded),
+        (reason => reason.StartsWith("cover-open", StringComparison.OrdinalIgnoreCase)
+                   || reason.StartsWith("door-open", StringComparison.OrdinalIgnoreCase),
+            PrinterEventKind.CoverOpened,
+            PrinterEventKind.CoverClosed),
+    ];
+
+    /// <summary>
+    /// The same change, found from the same earlier reading, is the same
+    /// event: writing it twice writes it once.
+    /// </summary>
+    private static Guid EventId(Guid readingBefore, string kind, string? subject)
+    {
+        var hash = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes($"{readingBefore:N}:{kind}:{subject}"));
+
+        return new Guid(hash.AsSpan(0, 16));
     }
 
     /// <summary>
@@ -232,11 +331,18 @@ public sealed class PrinterTelemetryHandlers :
     /// <summary>Other printers are reported every ten minutes.</summary>
     public static readonly TimeSpan StaleAfterWhenIdle = TimeSpan.FromMinutes(30);
 
+    /// <summary>The most events one history request returns.</summary>
+    public const int MaxEvents = 500;
+
+    /// <summary>The events are kept for a year, so a look back may be as long.</summary>
+    public static readonly TimeSpan LongestEventHistory = TimeSpan.FromDays(366);
+
     private const int MaxText = 128;
 
     private readonly IKioskDeviceRepository _devices;
     private readonly IKioskRepository _kiosks;
     private readonly IPrinterTelemetryStore _store;
+    private readonly IPrinterEventStore _events;
     private readonly IIncidentRepository _incidents;
     private readonly IncidentReporter _reporter;
     private readonly IAdminNotifier _admins;
@@ -247,6 +353,7 @@ public sealed class PrinterTelemetryHandlers :
         IKioskDeviceRepository devices,
         IKioskRepository kiosks,
         IPrinterTelemetryStore store,
+        IPrinterEventStore events,
         IIncidentRepository incidents,
         IncidentReporter reporter,
         IAdminNotifier admins,
@@ -256,6 +363,7 @@ public sealed class PrinterTelemetryHandlers :
         _devices = devices;
         _kiosks = kiosks;
         _store = store;
+        _events = events;
         _incidents = incidents;
         _reporter = reporter;
         _admins = admins;
@@ -281,6 +389,7 @@ public sealed class PrinterTelemetryHandlers :
 
         var now = _clock.UtcNow;
         var samples = new List<PrinterTelemetrySample>();
+        var happened = new List<PrinterEvent>();
 
         foreach (var report in request.Printers.Take(MaxPrinters))
         {
@@ -294,6 +403,12 @@ public sealed class PrinterTelemetryHandlers :
 
             var previous = await _store.LatestAsync(kioskId, sample.Printer.PrinterName, cancellationToken).ConfigureAwait(false);
             var stuck = PrinterTelemetryChanges.StuckJob(previous, sample);
+
+            if (previous is not null)
+            {
+                happened.AddRange(PrinterTelemetryChanges.Between(previous, sample));
+            }
+
             var key = PrinterTelemetryChanges.SpoolerDedupKey(kioskId, sample.Printer.PrinterName);
 
             if (stuck is { } found)
@@ -324,6 +439,14 @@ public sealed class PrinterTelemetryHandlers :
         if (samples.Count == 0)
         {
             return;
+        }
+
+        // The events before the readings they were found from: if the second
+        // write fails, the kiosk's next report is compared with the same
+        // earlier reading, finds the same events and writes the same rows.
+        if (happened.Count > 0)
+        {
+            await _events.AddManyAsync(happened, cancellationToken).ConfigureAwait(false);
         }
 
         await _store.AddManyAsync(samples, cancellationToken).ConfigureAwait(false);
@@ -383,15 +506,25 @@ public sealed class PrinterTelemetryHandlers :
         ArgumentNullException.ThrowIfNull(request);
 
         var kiosk = await VisibleKioskAsync(request.AdminUserId, request.KioskId, cancellationToken).ConfigureAwait(false);
-        var (from, to) = Range(request.From, request.To, TimeSpan.FromDays(7));
+        var (from, to) = Range(request.From, request.To, TimeSpan.FromDays(30), LongestEventHistory);
 
-        // A week of one-minute readings; a longer look is cut at the newest ones' expense never - the oldest are dropped.
-        var samples = await _store.RangeAsync(kiosk.Id, request.Printer, from, to, 12_000, cancellationToken).ConfigureAwait(false);
+        var events = await _events.ListAsync(kiosk.Id, request.Printer, from, to, MaxEvents, cancellationToken).ConfigureAwait(false);
 
-        return PrinterTelemetryChanges.Between(samples);
+        return
+        [
+            .. events.Select(happened => new PrinterTelemetryEvent(
+                happened.At,
+                happened.Kind,
+                happened.From,
+                happened.To,
+                happened.Subject,
+                happened.FromLevel,
+                happened.ToLevel,
+                happened.LifetimePages)),
+        ];
     }
 
-    private (DateTime From, DateTime To) Range(DateTime? from, DateTime? to, TimeSpan byDefault)
+    private (DateTime From, DateTime To) Range(DateTime? from, DateTime? to, TimeSpan byDefault, TimeSpan? longest = null)
     {
         var end = to ?? _clock.UtcNow;
         var start = from ?? end - byDefault;
@@ -401,7 +534,9 @@ public sealed class PrinterTelemetryHandlers :
             throw new ValidationException([new ValidationError("from", "telemetry.rangeInvalid")]);
         }
 
-        return (end - start > KioskTelemetryHandlers.LongestHistory ? end - KioskTelemetryHandlers.LongestHistory : start, end);
+        var most = longest ?? KioskTelemetryHandlers.LongestHistory;
+
+        return (end - start > most ? end - most : start, end);
     }
 
     private async Task<Kiosk> VisibleKioskAsync(Guid adminUserId, Guid kioskId, CancellationToken cancellationToken)

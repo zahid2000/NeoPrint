@@ -506,7 +506,8 @@ await using (var scope = app.Services.CreateAsyncScope())
         TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.RetentionStateTransitionDays, 365)),
         TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.RetentionProviderEventDays, 180)),
         TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.AnalyticsRetentionDays, 180)),
-        TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.KioskTelemetryRetentionDays, 30)));
+        TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.KioskTelemetryRetentionDays, 30)),
+        TimeSpan.FromDays(await settings.GetIntAsync(SettingKeys.KioskPrinterEventRetentionDays, 365)));
 
     if (app.Environment.IsDevelopment())
     {

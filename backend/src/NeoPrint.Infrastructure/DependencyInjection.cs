@@ -131,6 +131,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Kiosks.IKioskTelemetryStore, Kiosks.KioskTelemetryStore>();
         services.AddScoped<Application.Kiosks.IKioskStatusCache, Kiosks.RedisKioskStatusCache>();
         services.AddScoped<Application.Kiosks.IPrinterTelemetryStore, Kiosks.PrinterTelemetryStore>();
+        services.AddScoped<Application.Kiosks.IPrinterEventStore, Kiosks.PrinterEventStore>();
         services.AddScoped<IPrintQueue, RedisPrintQueue>();
         services.AddScoped<ITransitionHistory, TransitionHistory>();
         services.AddScoped<PrintQueueService>();
@@ -329,6 +330,7 @@ public static class DependencyInjection
         // converter tool, a process of its own - none of it runs in here.
         services.AddSingleton<ConverterTools>();
         services.AddSingleton<IPageRenderer, ToolPageRenderer>();
+        services.AddSingleton<IPagePreviewCache>(provider => new PagePreviewCache(provider.GetRequiredService<IOptions<ConversionOptions>>()));
         services.AddSingleton<NeoPrint.Application.Files.IFileEditor, ToolFileEditor>();
         services.AddSingleton<NeoPrint.Application.Files.ILayoutDocuments, LayoutDocuments>();
         services.AddScoped<IEventPublisher, Messaging.MassTransitEventPublisher>();

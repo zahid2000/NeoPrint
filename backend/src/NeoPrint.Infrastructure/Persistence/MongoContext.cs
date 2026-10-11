@@ -165,6 +165,9 @@ public sealed class MongoContext
     /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 7.10).</summary>
     public MongoSet<PrinterTelemetrySample> PrinterTelemetry => Set<PrinterTelemetrySample>("printer_telemetry");
 
+    /// <summary>What happened to the printers; its lifetime is set by <see cref="ApplyRetentionAsync"/> (plan section 7.10).</summary>
+    public MongoSet<PrinterEvent> PrinterEvents => Set<PrinterEvent>("printer_events");
+
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
     public MongoSet<AuditLog> AuditLogs => Set<AuditLog>("audit_logs");
@@ -540,6 +543,12 @@ public sealed class MongoContext
                 .Ascending(attempt => attempt.JobId).Ascending(attempt => attempt.AttemptNo),
                 Unique("ux_print_attempts_job_attempt")));
 
+        // A printer's history, newest first (plan section 7.10).
+        await CreateAsync(PrinterEvents,
+            (Builders<PrinterEvent>.IndexKeys
+                .Ascending(happened => happened.KioskId).Ascending(happened => happened.PrinterName).Descending(happened => happened.At),
+                Named("ix_printer_events_printer_at")));
+
         await CreateAsync(StorageSyncJobs,
             (Builders<Domain.Storage.StorageSyncJob>.IndexKeys.Ascending(job => job.Status), Named("ix_storage_sync_jobs_status")));
 
@@ -595,6 +604,7 @@ public sealed class MongoContext
         TimeSpan providerEvents,
         TimeSpan analytics = default,
         TimeSpan kioskTelemetry = default,
+        TimeSpan printerEvents = default,
         CancellationToken cancellationToken = default)
     {
         await EnsureTimeSeriesAsync(
@@ -635,6 +645,13 @@ public sealed class MongoContext
         await EnsureTtlAsync(
                 "provider_events", nameof(ProviderEvent.ProcessedAt),
                 "ttl_provider_events", providerEvents, cancellationToken)
+            .ConfigureAwait(false);
+
+        // What happened to the printers outlives the readings it was found
+        // in: "when was this cartridge last replaced" is asked months later.
+        await EnsureTtlAsync(
+                "printer_events", nameof(PrinterEvent.At),
+                "ttl_printer_events", printerEvents, cancellationToken)
             .ConfigureAwait(false);
     }
 

@@ -78,23 +78,54 @@ public sealed class PrinterTelemetryStore : IPrinterTelemetryStore
 
         return [.. slices.Select(group => BsonSerializer.Deserialize<PrinterTelemetrySample>(group["sample"].AsBsonDocument))];
     }
+}
 
-    public async Task<IReadOnlyList<PrinterTelemetrySample>> RangeAsync(
-        Guid kioskId, string printer, DateTime from, DateTime to, int take, CancellationToken cancellationToken = default)
+/// <summary>
+/// The <c>printer_events</c> collection (plan section 7.10): an ordinary
+/// collection with a TTL index (<c>Kiosk.PrinterEventRetentionDays</c>), small
+/// - a printer has a few events a day - and written outside any unit of work,
+/// like the readings the events are found from.
+/// </summary>
+public sealed class PrinterEventStore : IPrinterEventStore
+{
+    private readonly MongoContext _context;
+
+    public PrinterEventStore(MongoContext context) => _context = context;
+
+    public async Task AddManyAsync(IReadOnlyCollection<PrinterEvent> events, CancellationToken cancellationToken = default)
     {
-        // The newest "take" of the range, handed back oldest first.
-        var newest = await Samples
-            .Find(sample => sample.Printer.KioskId == kioskId
-                            && sample.Printer.PrinterName == printer
-                            && sample.Timestamp >= from
-                            && sample.Timestamp <= to)
-            .SortByDescending(sample => sample.Timestamp)
+        ArgumentNullException.ThrowIfNull(events);
+
+        if (events.Count == 0)
+        {
+            return;
+        }
+
+        var writes = events.Select(happened => new InsertOneModel<PrinterEvent>(happened)).ToList();
+
+        try
+        {
+            await _context.PrinterEvents
+                .BulkWriteAsync(writes, new BulkWriteOptions { IsOrdered = false }, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (MongoBulkWriteException<PrinterEvent> exception)
+            when (exception.WriteErrors.All(error => error.Category == ServerErrorCategory.DuplicateKey))
+        {
+            // The same change found again from the same earlier reading - a
+            // report repeated after a failure: the row is already there.
+        }
+    }
+
+    public async Task<IReadOnlyList<PrinterEvent>> ListAsync(
+        Guid kioskId, string printer, DateTime from, DateTime to, int take, CancellationToken cancellationToken = default)
+        => await _context.PrinterEvents
+            .Find(happened => happened.KioskId == kioskId
+                              && happened.PrinterName == printer
+                              && happened.At >= from
+                              && happened.At <= to)
+            .SortByDescending(happened => happened.At)
             .Limit(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-
-        newest.Reverse();
-
-        return newest;
-    }
 }

@@ -6,7 +6,10 @@ using System.Text.Json;
 
 using Amazon.S3.Model;
 
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace NeoPrint.Api.IntegrationTests;
 
@@ -578,6 +581,109 @@ public sealed class FilesApiTests
         var again = new HttpRequestMessage(HttpMethod.Get, $"/api/files/{id}/pages/2.png?width=600");
         again.Headers.IfNoneMatch.Add(response.Headers.ETag!);
         (await user.SendAsync(again)).StatusCode.Should().Be(HttpStatusCode.NotModified);
+    }
+
+    /// <summary>Counts the drawings and draws nothing.</summary>
+    private sealed class CountingRenderer : NeoPrint.Application.Abstractions.IPageRenderer
+    {
+        private int _drawn;
+
+        public int Drawn => Volatile.Read(ref _drawn);
+
+        public bool IsAvailable => true;
+
+        public Task<byte[]> RenderPngAsync(Stream pdf, int pageIndex, int width, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _drawn);
+            return Task.FromResult(new byte[] { 0x89, 0x50, 0x4E, 0x47, (byte)pageIndex });
+        }
+    }
+
+    [PdfiumFact]
+    public async Task A_page_already_drawn_is_served_again_without_a_second_drawing()
+    {
+        using var owner = await SignedInAsync();
+        var id = await UploadReadyPdfAsync(owner, pages: 2);
+
+        var renderer = new CountingRenderer();
+        await using var host = _fixture.WithHttpOnlyHost(builder => builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<NeoPrint.Application.Abstractions.IPageRenderer>();
+            services.AddSingleton<NeoPrint.Application.Abstractions.IPageRenderer>(renderer);
+        }));
+        using var user = host.CreateClient();
+        user.DefaultRequestHeaders.Authorization = owner.DefaultRequestHeaders.Authorization;
+
+        // A client without a copy of its own - a second phone, a cleared
+        // cache - asks three times for the same page.
+        for (var i = 0; i < 3; i++)
+        {
+            var response = await user.GetAsync($"/api/files/{id}/pages/1.png?width=320");
+            response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+            (await response.Content.ReadAsByteArrayAsync()).Should().HaveCount(5);
+        }
+
+        renderer.Drawn.Should().Be(1);
+
+        // Another page and another width are other pictures.
+        (await user.GetAsync($"/api/files/{id}/pages/2.png?width=320")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await user.GetAsync($"/api/files/{id}/pages/1.png?width=640")).StatusCode.Should().Be(HttpStatusCode.OK);
+        renderer.Drawn.Should().Be(3);
+
+        // Memory answers only after the usual checks: a stranger still gets 404.
+        using var stranger = await SignedInAsync();
+        using var other = host.CreateClient();
+        other.DefaultRequestHeaders.Authorization = stranger.DefaultRequestHeaders.Authorization;
+        (await other.GetAsync($"/api/files/{id}/pages/1.png?width=320")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // And a deleted file's page is gone for its owner too.
+        (await owner.DeleteAsync($"/api/files/{id}")).EnsureSuccessStatusCode();
+        (await user.GetAsync($"/api/files/{id}/pages/1.png?width=320")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        renderer.Drawn.Should().Be(3);
+    }
+
+    [PdfiumFact]
+    public async Task When_the_converter_has_no_room_the_answer_is_503_busy_with_a_time_to_come_back()
+    {
+        using var owner = await SignedInAsync();
+        var id = await UploadReadyPdfAsync(owner, pages: 3);
+
+        // One process at a time and nobody may wait: the second request has no room.
+        var sandbox = new HeldSandbox();
+        await using var host = _fixture.WithHttpOnlyHost(builder => builder
+            .UseSetting("Conversion:InteractiveParallel", "1")
+            .UseSetting("Conversion:InteractiveQueueLength", "0")
+            .ConfigureTestServices(services =>
+            {
+                services.RemoveAll<NeoPrint.Infrastructure.Conversion.IProcessSandbox>();
+                services.AddSingleton<NeoPrint.Infrastructure.Conversion.IProcessSandbox>(sandbox);
+            }));
+        using var user = host.CreateClient();
+        user.DefaultRequestHeaders.Authorization = owner.DefaultRequestHeaders.Authorization;
+        user.DefaultRequestHeaders.AcceptLanguage.ParseAdd("az");
+
+        var first = user.GetAsync($"/api/files/{id}/pages/1.png?width=320");
+        await sandbox.UntilRunningAsync(1);
+
+        var refused = await user.GetAsync($"/api/files/{id}/pages/2.png?width=320");
+
+        refused.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        refused.Headers.RetryAfter!.Delta.Should().Be(TimeSpan.FromSeconds(3));
+
+        var problem = await refused.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("files.processingBusy");
+        problem.GetProperty("title").GetString().Should().Be("Sənəd emalı xidməti məşğuldur");
+        problem.GetProperty("detail").GetString().Should().Contain("bir neçə saniyədən sonra yenidən cəhd edin");
+
+        // The same goes for an edit: it is refused, not left hanging.
+        var edit = await user.PostAsJsonAsync($"/api/files/{id}/edit", new { pages = new[] { new { page = 2 } } });
+        edit.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable, await edit.Content.ReadAsStringAsync());
+        (await edit.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString().Should().Be("files.processingBusy");
+
+        sandbox.Runs.Should().Be(1, "neither refused request started a process");
+
+        sandbox.Release();
+        (await first).StatusCode.Should().Be(HttpStatusCode.BadRequest, "the held sandbox drew nothing");
     }
 
     [PdfiumFact]

@@ -41,6 +41,29 @@ public sealed class ConversionOptions
     /// <summary>How long past a conversion's own timeout the API waits for the converter to answer.</summary>
     public int IsolatedGraceSeconds { get; set; } = 30;
 
+    /// <summary>
+    /// How many converter tool processes run at once for requests somebody is
+    /// waiting on - a preview, an edit, a layout. The same number as the
+    /// converter container's tool slots: a request beyond it would only wait
+    /// there instead, with its decrypted document already in the spool.
+    /// </summary>
+    public int InteractiveParallel { get; set; } = 3;
+
+    /// <summary>How many such requests may wait for a slot. One more is refused as "busy" at once.</summary>
+    public int InteractiveQueueLength { get; set; } = 48;
+
+    /// <summary>How long a request waits for a slot before it is refused as "busy".</summary>
+    public int InteractiveQueueSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// How much memory the page images drawn a moment ago may take
+    /// (<see cref="PagePreviewCache"/>). Zero keeps none.
+    /// </summary>
+    public int PreviewCacheMegabytes { get; set; } = 64;
+
+    /// <summary>How long a page image is kept after it was last asked for.</summary>
+    public int PreviewCacheMinutes { get; set; } = 10;
+
     public bool IsIsolated => string.Equals(Mode, IsolatedMode, StringComparison.OrdinalIgnoreCase);
 
     public string ResolveWorkRoot() => string.IsNullOrWhiteSpace(WorkRoot) ? Path.GetTempPath() : WorkRoot;

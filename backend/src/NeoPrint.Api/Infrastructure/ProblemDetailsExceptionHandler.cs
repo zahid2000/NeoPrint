@@ -49,7 +49,15 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             .GetRequiredService<ICorrelationContext>()
             .CorrelationId;
 
-        if (problem.Status >= StatusCodes.Status500InternalServerError)
+        if (exception is FileProcessingBusyException busy)
+        {
+            // Expected under load and already counted by the caller: a
+            // warning without a stack trace, and the client is told when to
+            // come back.
+            httpContext.Response.Headers.RetryAfter = busy.RetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            _logger.LogWarning("{Operation} {Status} with {ErrorCode}.", operation, problem.Status, exception.GetType().Name);
+        }
+        else if (problem.Status >= StatusCodes.Status500InternalServerError)
         {
             _logger.LogError(
                 exception,
@@ -168,6 +176,15 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
                 Status = StatusCodes.Status503ServiceUnavailable,
             },
 
+            // The converter is at its limit: the same request works in a
+            // few seconds, and the Retry-After header says when.
+            FileProcessingBusyException => new ProblemDetails
+            {
+                Title = Title("problem.processingBusy"),
+                Detail = Messages.Write(FileProcessingBusyException.Text),
+                Status = StatusCodes.Status503ServiceUnavailable,
+            },
+
             OperationCanceledException => new ProblemDetails
             {
                 Title = Title("problem.cancelled"),
@@ -189,6 +206,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             PaymentProviderUnavailableException => "payments.providerUnavailable",
             PaymentOutcomeUnknownException => "payments.outcomeUnknown",
             FileProcessingUnavailableException => FileProcessingUnavailableException.MessageKey,
+            FileProcessingBusyException => FileProcessingBusyException.MessageKey,
             ValidationException { Errors.Count: 1 } validation => validation.Errors.First().Message.Key,
             _ => null,
         };

@@ -30,3 +30,20 @@ public interface IPageRenderer
     /// <exception cref="PageRenderException">The page could not be drawn.</exception>
     Task<byte[]> RenderPngAsync(Stream pdf, int pageIndex, int width, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Page images that were drawn a moment ago, so that scrolling back through a
+/// document - or a second phone looking at the same shared file - does not
+/// start a converter process for a picture that already exists.
+/// </summary>
+/// <remarks>
+/// A cache and nothing more: an image that is not there is drawn again. The
+/// caller checks that the user may see the file before asking.
+/// </remarks>
+public interface IPagePreviewCache
+{
+    /// <param name="key">Names the content, not the file: the PDF's hash, the page and the width.</param>
+    /// <param name="render">Draws the image when it is not cached. Requests for the same key share one drawing.</param>
+    Task<byte[]> GetOrAddAsync(
+        string key, Func<CancellationToken, Task<byte[]>> render, CancellationToken cancellationToken = default);
+}

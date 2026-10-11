@@ -5,17 +5,19 @@
 //
 //   node tools/dev-converter/check.mjs            # the whole check
 //   node tools/dev-converter/check.mjs --down     # also: stop the converter, look at the answers, start it again
+//   node tools/dev-converter/check.mjs --load     # also: a hundred previews at once - who is drawn, who is told "busy" (takes a minute longer)
 //
 // Needs the compose stack up and the development account of
 // docs/DEV_ENVIRONMENT.md section 4. No dependencies: Node 20 or later.
 
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { deflateSync } from 'node:zlib';
 
 const api = process.env.NEOPRINT_API ?? 'http://localhost:5080';
 const email = process.env.NEOPRINT_DEV_EMAIL ?? 'dev-user@neoprint.local';
 const password = process.env.NEOPRINT_DEV_PASSWORD ?? 'DevTest!2026';
 const withDown = process.argv.includes('--down');
+const withLoad = process.argv.includes('--load');
 
 const results = [];
 let failed = false;
@@ -381,6 +383,96 @@ console.log('\n== The API process holds no parser ==');
 
   const sorted = [...timings].sort((a, b) => a - b);
   if (sorted.length) console.log(`      page images: median ${sorted[Math.floor(sorted.length / 2)]} ms, slowest ${sorted.at(-1)} ms (${sorted.length} requests)`);
+}
+
+// One log line per job, with the operation as a field of its own.
+const renders = () => (tryDocker('logs', '--since', '15m', 'neoprint-converter').match(/"Program":"pdf-render"/g) ?? []).length;
+
+if (ready['check.odp']) {
+  console.log('\n== A page drawn once is not drawn again ==');
+
+  // No If-None-Match: a client without a copy of its own, asking six times.
+  const path = `/api/files/${ready['check.odp'].id}/pages/2.png?width=1280`;
+  const before = renders();
+  const first = await call('GET', path, { raw: true });
+  const repeats = [];
+
+  for (let i = 0; i < 5; i++) {
+    repeats.push(await call('GET', path, { raw: true }));
+  }
+
+  const drawn = renders() - before;
+  const slowest = Math.max(...repeats.map((reply) => reply.ms));
+
+  report(
+    'Six requests for one page start one converter process',
+    first.status === 200 && repeats.every((reply) => reply.status === 200 && reply.bytes.equals(first.bytes)) && drawn === 1,
+    `${drawn} drawing(s); first ${first.ms} ms, then at most ${slowest} ms`);
+}
+
+if (withLoad) {
+  console.log('\n== More requests at once than the converter takes ==');
+
+  const big = await upload({ name: 'load.pdf', type: 'application/pdf', bytes: pdf(50) });
+  if (big.data?.id) created.push(big.data.id);
+  const file = big.status === 201 ? await waitFor(big.data.id) : null;
+
+  if (file?.status !== 'Ready') {
+    report('A 50-page PDF is Ready', false, `${big.status} ${file?.status ?? ''}`);
+  } else {
+    // The API allows one caller 120 requests a minute (429 beyond that);
+    // this is about the converter's own limit, so start in a fresh minute.
+    console.log('      waiting 61 s for a fresh rate-limit minute');
+    await new Promise((resolve) => setTimeout(resolve, 61_000));
+
+    // A hundred different pictures asked for in the same instant.
+    const paths = [];
+    for (let page = 1; page <= 50; page++) {
+      for (const width of [320, 640]) paths.push(`/api/files/${file.id}/pages/${page}.png?width=${width}`);
+    }
+
+    let most = 0;
+    let watching = true;
+    const watch = (async () => {
+      while (watching) {
+        const top = await new Promise((resolve) =>
+          execFile('docker', ['top', 'neoprint-converter'], { encoding: 'utf8' }, (_, out) => resolve(out ?? '')));
+        most = Math.max(most, (top.match(/NeoPrint\.Converter\.dll pdf-render/g) ?? []).length);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    })();
+
+    const started = Date.now();
+    const replies = await Promise.all(paths.map(async (path) => {
+      const reply = await fetch(`${api}${path}`, { headers: { Authorization: `Bearer ${token}`, 'Accept-Language': 'az' } });
+      const bytes = Buffer.from(await reply.arrayBuffer());
+      let problem = null;
+      if (reply.status !== 200) { try { problem = JSON.parse(bytes.toString('utf8')); } catch { /* not JSON */ } }
+      return { status: reply.status, ok: reply.status === 200 && isPng(bytes), problem, retryAfter: reply.headers.get('retry-after'), ms: Date.now() - started };
+    }));
+
+    watching = false;
+    await watch;
+
+    const drawn = replies.filter((reply) => reply.ok);
+    const busy = replies.filter((reply) => reply.status === 503);
+    const other = replies.filter((reply) => !reply.ok && reply.status !== 503);
+    const slowest = Math.max(...replies.map((reply) => reply.ms));
+
+    report('Every request is answered with a picture or with 503, nothing else', other.length === 0, `${drawn.length} drawn, ${busy.length} refused, ${other.length} other (${[...new Set(other.map((reply) => reply.status))].join(', ')})`);
+    report('The refused ones are told "busy" and when to come back', busy.length > 0 && busy.every((reply) => reply.problem?.code === 'files.processingBusy' && reply.retryAfter === '3'), `${busy[0]?.problem?.title ?? ''} - ${busy[0]?.problem?.detail ?? ''} (Retry-After: ${busy[0]?.retryAfter ?? '-'})`);
+    report('Nobody was left hanging', slowest < 25_000, `slowest answer ${slowest} ms`);
+    report('No more than three converter processes drew at once', most > 0 && most <= 3, `at most ${most} seen in the container`);
+
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+    const refused = paths[replies.findIndex((reply) => reply.status === 503)];
+    const again = refused ? await call('GET', refused, { raw: true }) : null;
+    report('A refused request works when tried again', again?.status === 200 && isPng(again.bytes), `${again?.status}, ${again?.ms} ms`);
+
+    const health = await call('GET', '/health');
+    const converter = health.data?.checks?.find((check) => check.name === 'converter');
+    report('The converter is healthy after the rush', converter?.status === 'Healthy', converter?.description ?? '');
+  }
 }
 
 if (withDown && ready['check.pdf']) {

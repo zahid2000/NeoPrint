@@ -182,4 +182,7 @@ public static class TelemetryCondition
 
     /// <summary>The SignalR connection down for two minutes.</summary>
     public const string HubDown = "hub";
+
+    /// <summary>The kiosk's clock a minute or more off the server's, for five minutes.</summary>
+    public const string ClockOff = "clock";
 }

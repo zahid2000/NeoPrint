@@ -43,12 +43,14 @@ public sealed class GetFilePageImageHandler : IRequestHandler<GetFilePageImageQu
     private readonly IFileRepository _files;
     private readonly IFileStorage _storage;
     private readonly IPageRenderer _renderer;
+    private readonly IPagePreviewCache _cache;
 
-    public GetFilePageImageHandler(IFileRepository files, IFileStorage storage, IPageRenderer renderer)
+    public GetFilePageImageHandler(IFileRepository files, IFileStorage storage, IPageRenderer renderer, IPagePreviewCache cache)
     {
         _files = files;
         _storage = storage;
         _renderer = renderer;
+        _cache = cache;
     }
 
     public async Task<FilePageImage> Handle(GetFilePageImageQuery request, CancellationToken cancellationToken)
@@ -62,7 +64,7 @@ public sealed class GetFilePageImageHandler : IRequestHandler<GetFilePageImageQu
             throw new NotFoundException("file");
         }
 
-        return await RenderAsync(file, request.Page, request.Width, request.IfNoneMatch, _storage, _renderer, cancellationToken)
+        return await RenderAsync(file, request.Page, request.Width, request.IfNoneMatch, _storage, _renderer, _cache, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -77,6 +79,7 @@ public sealed class GetFilePageImageHandler : IRequestHandler<GetFilePageImageQu
         string? ifNoneMatch,
         IFileStorage storage,
         IPageRenderer renderer,
+        IPagePreviewCache cache,
         CancellationToken cancellationToken)
     {
         if (file.Status != FileStatus.Ready || file.Pdf is null)
@@ -107,21 +110,29 @@ public sealed class GetFilePageImageHandler : IRequestHandler<GetFilePageImageQu
             throw Invalid(new UserMessage("files.previewUnavailable"));
         }
 
-        await using var pdf = await storage.OpenReadAsync(
-                new StoredObject(
-                    file.Pdf.ProviderId,
-                    file.Pdf.Key,
-                    file.Pdf.Sha256,
-                    file.Pdf.EncryptedLength,
-                    file.Pdf.PlaintextLength,
-                    file.Pdf.KekId),
-                StorageBucket.Files,
-                cancellationToken)
-            .ConfigureAwait(false);
+        var stored = new StoredObject(
+            file.Pdf.ProviderId,
+            file.Pdf.Key,
+            file.Pdf.Sha256,
+            file.Pdf.EncryptedLength,
+            file.Pdf.PlaintextLength,
+            file.Pdf.KekId);
 
         try
         {
-            var png = await renderer.RenderPngAsync(pdf, page - 1, width, cancellationToken)
+            // The whole hash names the content: the same PDF drawn at the
+            // same size is the same picture, whoever asks and under whatever
+            // file. That the caller may see it was settled before this point.
+            var png = await cache.GetOrAddAsync(
+                    $"{file.Pdf.Sha256}:{page}:{width}",
+                    async token =>
+                    {
+                        await using var pdf = await storage.OpenReadAsync(stored, StorageBucket.Files, token)
+                            .ConfigureAwait(false);
+
+                        return await renderer.RenderPngAsync(pdf, page - 1, width, token).ConfigureAwait(false);
+                    },
+                    cancellationToken)
                 .ConfigureAwait(false);
 
             return new FilePageImage(png, etag, NotModified: false);
