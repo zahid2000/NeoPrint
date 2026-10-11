@@ -257,6 +257,9 @@ public static class Strings
                 ["jobStatus.Cancelled"] = "Ləğv edilib",
                 ["jobStatus.Interrupted"] = "Dayandı",
                 ["jobStatus.Suspected"] = "Yoxlanılır",
+                ["maintenance.title"] = "Texniki xidmət",
+                ["maintenance.body"] =
+                    "Kiosk hazırda yeni sifariş qəbul etmir. Növbədəki sifarişlər çap olunur. Bir azdan yenidən yaxınlaşın və ya yaxınlıqdakı başqa kioskdan istifadə edin.",
                 ["outOfService.title"] = "Kiosk müvəqqəti dayanmışdır",
                 ["outOfService.body"] = "{0} Növbədəki sifarişlər itmir: printer düzələn kimi çap davam edəcək. Operator xəbərdar edilir.",
                 ["printer.error"] = "Printer xətası.",
@@ -532,6 +535,9 @@ public static class Strings
                 ["jobStatus.Cancelled"] = "Cancelled",
                 ["jobStatus.Interrupted"] = "Stopped",
                 ["jobStatus.Suspected"] = "Under review",
+                ["maintenance.title"] = "Under maintenance",
+                ["maintenance.body"] =
+                    "This kiosk is not taking new orders right now. Orders already in the queue are being printed. Come back a little later, or use another kiosk nearby.",
                 ["outOfService.title"] = "The kiosk is paused for now",
                 ["outOfService.body"] = "{0} Orders in the queue are kept: printing carries on as soon as the printer is fixed. The operator is being told.",
                 ["printer.error"] = "Printer error.",
@@ -812,6 +818,9 @@ public static class Strings
                 ["jobStatus.Cancelled"] = "Отменён",
                 ["jobStatus.Interrupted"] = "Остановлен",
                 ["jobStatus.Suspected"] = "На проверке",
+                ["maintenance.title"] = "Техническое обслуживание",
+                ["maintenance.body"] =
+                    "Киоск сейчас не принимает новые заказы. Заказы из очереди печатаются. Подойдите немного позже или воспользуйтесь другим киоском поблизости.",
                 ["outOfService.title"] = "Киоск временно остановлен",
                 ["outOfService.body"] = "{0} Заказы в очереди сохраняются: печать продолжится, как только принтер будет исправлен. Оператор уведомлён.",
                 ["printer.error"] = "Ошибка принтера.",

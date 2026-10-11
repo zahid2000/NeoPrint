@@ -222,9 +222,52 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         Screen = KioskScreen.SafeMode;
     }
 
-    public string OutOfServiceTitle => T("outOfService.title");
+    /// <summary>
+    /// Whether an administrator has the kiosk paused (plan section 7.8,
+    /// <c>Pause</c>): it takes no new orders and finishes its queue. Comes
+    /// with the configuration, so it is still known after a restart.
+    /// </summary>
+    public bool IsMaintenance { get; private set; }
 
-    public string OutOfServiceBody => PrinterProblem is null ? string.Empty : T("outOfService.body", T(PrinterProblem));
+    /// <summary>Whether the home screen may be offered: no printer problem and no pause.</summary>
+    private bool TakesOrders => PrinterProblem is null && !IsMaintenance;
+
+    public string OutOfServiceTitle => IsMaintenance ? T("maintenance.title") : T("outOfService.title");
+
+    public string OutOfServiceBody => IsMaintenance
+        ? T("maintenance.body")
+        : PrinterProblem is null ? string.Empty : T("outOfService.body", T(PrinterProblem));
+
+    /// <summary>
+    /// Puts the "maintenance" screen up or takes it away. Somebody in the
+    /// middle of an order finishes it: the screen changes when they are done.
+    /// </summary>
+    public void SetMaintenance(bool on)
+    {
+        if (IsMaintenance == on)
+        {
+            return;
+        }
+
+        IsMaintenance = on;
+        OnPropertyChanged(nameof(IsMaintenance));
+        OnPropertyChanged(nameof(OutOfServiceTitle));
+        OnPropertyChanged(nameof(OutOfServiceBody));
+
+        if (IsSafeMode || Screen == KioskScreen.Admin)
+        {
+            return;
+        }
+
+        if (on && Screen == KioskScreen.Home)
+        {
+            Screen = KioskScreen.OutOfService;
+        }
+        else if (!on && Screen == KioskScreen.OutOfService && PrinterProblem is null)
+        {
+            Screen = KioskScreen.Home;
+        }
+    }
 
     // ---- RefundInfo after the printer stopped a paid order (plan sections 2.5, 7.3)
 
@@ -331,7 +374,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         {
             Screen = KioskScreen.OutOfService;
         }
-        else if (problemKey is null && Screen == KioskScreen.OutOfService)
+        else if (problemKey is null && Screen == KioskScreen.OutOfService && !IsMaintenance)
         {
             Screen = KioskScreen.Home;
         }
@@ -518,6 +561,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // its ways in now, not at the next order.
         Flow?.ConfigurationChanged();
 
+        // An administrator paused the kiosk, or lifted the pause (plan 7.8).
+        SetMaintenance(string.Equals(configuration.Status, "Maintenance", StringComparison.Ordinal));
+
         // A kiosk with no printer chosen yet waits on screen 14 rather than
         // offering to print (plan section 7.3).
         if (Screen is KioskScreen.Flow or KioskScreen.SafeMode or KioskScreen.Admin)
@@ -529,7 +575,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         Screen = configuration.SelectedPrinter is null
             ? KioskScreen.NotConfigured
-            : PrinterProblem is null ? KioskScreen.Home : KioskScreen.OutOfService;
+            : TakesOrders ? KioskScreen.Home : KioskScreen.OutOfService;
     }
 
     /// <summary>
@@ -560,7 +606,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             // Back online: the home screen unless a printer still has to be
             // chosen.
             _ when Screen is KioskScreen.Degraded or KioskScreen.Offline =>
-                SelectedPrinterName is null ? KioskScreen.NotConfigured : KioskScreen.Home,
+                SelectedPrinterName is null ? KioskScreen.NotConfigured : TakesOrders ? KioskScreen.Home : KioskScreen.OutOfService,
 
             // Online and already on a working screen: leave it where it is, so
             // a heartbeat does not interrupt somebody mid-order.

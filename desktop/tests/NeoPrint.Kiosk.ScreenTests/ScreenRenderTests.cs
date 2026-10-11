@@ -281,6 +281,9 @@ public sealed partial class ScreenRenderTests : IDisposable
             screens.Add(($"12-out-of-service-{problem}", Shell(language, KioskScreen.Home, shell => shell.SetPrinterProblem(ProblemKey(problem)))));
         }
 
+        // An administrator paused the kiosk (plan section 7.8).
+        screens.Add(("14-maintenance", Shell(language, KioskScreen.Home, shell => shell.SetMaintenance(true))));
+
         foreach (var destination in new[] { "Card", "Wallet", "Voucher" })
         {
             screens.Add(($"13-refund-{destination}", Shell(language, KioskScreen.Home, shell =>

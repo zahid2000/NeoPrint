@@ -83,7 +83,16 @@ public sealed class CommandProcessor
     private readonly Func<KioskConfiguration?> _configuration;
     private readonly Func<KioskConfiguration, string, DateTime, IReadOnlyList<string>> _testPageText;
     private readonly ILogger<CommandProcessor> _logger;
+    private readonly Func<CancellationToken, Task> _reloadConfiguration;
+    private readonly ISystemControl _system;
+    private readonly Action _leavingOnPurpose;
+    private readonly Func<CancellationToken, Task<long?>> _uptimeSeconds;
+    private readonly IClock _clock;
+    private readonly DateTime _startedAt;
     private readonly HashSet<Guid> _done = [];
+
+    /// <summary>How long a reboot may take to take the application down before it is called a failure.</summary>
+    public TimeSpan RebootGrace { get; init; } = TimeSpan.FromSeconds(90);
 
     /// <summary>Commands received and still being carried out; telemetry reports the count (plan section 7.9).</summary>
     public int InProgress => _done.Count;
@@ -98,8 +107,19 @@ public sealed class CommandProcessor
         SpoolStore spool,
         Func<KioskConfiguration?> configuration,
         Func<KioskConfiguration, string, DateTime, IReadOnlyList<string>> testPageText,
-        ILogger<CommandProcessor> logger)
+        ILogger<CommandProcessor> logger,
+        Func<CancellationToken, Task>? reloadConfiguration = null,
+        ISystemControl? system = null,
+        Action? leavingOnPurpose = null,
+        Func<CancellationToken, Task<long?>>? uptimeSeconds = null,
+        IClock? clock = null)
     {
+        _reloadConfiguration = reloadConfiguration ?? (_ => Task.CompletedTask);
+        _system = system ?? new FakeSystemControl();
+        _leavingOnPurpose = leavingOnPurpose ?? (() => { });
+        _uptimeSeconds = uptimeSeconds ?? (_ => Task.FromResult<long?>(null));
+        _clock = clock ?? new SystemClock();
+        _startedAt = _clock.UtcNow;
         _testPageText = testPageText;
         _api = api;
         _reporter = reporter;
@@ -116,11 +136,16 @@ public sealed class CommandProcessor
     {
         foreach (var command in await _api.GetOpenCommandsAsync(cancellationToken).ConfigureAwait(false))
         {
-            await HandleAsync(command.Id, command.Type, cancellationToken).ConfigureAwait(false);
+            await HandleAsync(command.Id, command.Type, cancellationToken, command.CreatedAt).ConfigureAwait(false);
         }
     }
 
-    public async Task HandleAsync(Guid commandId, string type, CancellationToken cancellationToken)
+    /// <param name="sentAt">
+    /// When the command was sent, for one read back from the backend. A
+    /// command that arrives live over the hub has none: it is newer than this
+    /// process by definition.
+    /// </param>
+    public async Task HandleAsync(Guid commandId, string type, CancellationToken cancellationToken, DateTime? sentAt = null)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
@@ -133,12 +158,23 @@ public sealed class CommandProcessor
 
             _logger.LogInformation("Command {CommandId}: {Type}.", commandId, type);
 
-            var (succeeded, messageKey, sheets) = type switch
+            var answer = type switch
             {
                 "RefreshPrinters" => await RefreshAsync(cancellationToken).ConfigureAwait(false),
                 "TestPrint" => await TestPrintAsync(cancellationToken).ConfigureAwait(false),
+                "Pause" => await ReloadAsync("kioskCommands.paused", cancellationToken).ConfigureAwait(false),
+                "Resume" => await ReloadAsync("kioskCommands.resumed", cancellationToken).ConfigureAwait(false),
+                "RestartApp" => await RestartAsync(commandId, sentAt, cancellationToken).ConfigureAwait(false),
+                "Reboot" => await RebootAsync(commandId, sentAt, cancellationToken).ConfigureAwait(false),
                 _ => (false, "kioskCommands.unsupported", 0),
             };
+
+            // No answer yet: the application is on its way down, and the one
+            // that comes up afterwards answers (see RestartAsync).
+            if (answer is not var (succeeded, messageKey, sheets))
+            {
+                return;
+            }
 
             await _api.CompleteCommandAsync(commandId, succeeded, messageKey, sheets, cancellationToken).ConfigureAwait(false);
         }
@@ -154,18 +190,113 @@ public sealed class CommandProcessor
         }
     }
 
-    private async Task<(bool, string, int)> RefreshAsync(CancellationToken cancellationToken)
+    private async Task<(bool, string, int)?> RefreshAsync(CancellationToken cancellationToken)
     {
         await _reporter.ReportAsync(force: true, cancellationToken).ConfigureAwait(false);
         return (true, "kioskCommands.printersReported", 0);
     }
 
     /// <summary>
+    /// Pause and resume are decided on the backend and are part of the
+    /// configuration (its status): the kiosk reads it again and its screen
+    /// follows. A kiosk that missed the command finds the same thing at its
+    /// next heartbeat.
+    /// </summary>
+    private async Task<(bool, string, int)?> ReloadAsync(string done, CancellationToken cancellationToken)
+    {
+        await _reloadConfiguration(cancellationToken).ConfigureAwait(false);
+        return (true, done, 0);
+    }
+
+    /// <summary>
+    /// Restarts the application once the printer is free (plan section 7.8).
+    /// A command sent before this process started has been carried out by the
+    /// start itself - that is how the restarted application answers it, and
+    /// why a kiosk that was off when it was sent does not restart once more.
+    /// </summary>
+    private async Task<(bool, string, int)?> RestartAsync(Guid commandId, DateTime? sentAt, CancellationToken cancellationToken)
+    {
+        if (sentAt is { } sent && sent < _startedAt)
+        {
+            return (true, "kioskCommands.restarted", 0);
+        }
+
+        await _api.AcknowledgeCommandAsync(commandId, cancellationToken).ConfigureAwait(false);
+
+        await _worker.WithPrinterAsync(
+                async () =>
+                {
+                    _logger.LogWarning("Command {CommandId}: restarting the application.", commandId);
+
+                    // Not a crash: the crash-loop guard must not count it.
+                    _leavingOnPurpose();
+                    await _system.RestartApplicationAsync(cancellationToken).ConfigureAwait(false);
+
+                    return (true, string.Empty, 0);
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return null;
+    }
+
+    /// <summary>
+    /// Restarts the machine once the printer is free. Answered after the
+    /// reboot, by the machine's own uptime: shorter than the command is old
+    /// means it did restart.
+    /// </summary>
+    private async Task<(bool, string, int)?> RebootAsync(Guid commandId, DateTime? sentAt, CancellationToken cancellationToken)
+    {
+        var now = _clock.UtcNow;
+
+        if (sentAt is { } sent)
+        {
+            if (await _uptimeSeconds(cancellationToken).ConfigureAwait(false) is { } uptime && sent < now.AddSeconds(-uptime))
+            {
+                return (true, "kioskCommands.rebooted", 0);
+            }
+
+            if (sent < _startedAt)
+            {
+                // The application came back and the machine never went down.
+                return (false, "kioskCommands.rebootNotDone", 0);
+            }
+        }
+
+        await _api.AcknowledgeCommandAsync(commandId, cancellationToken).ConfigureAwait(false);
+
+        return await _worker.WithPrinterAsync<(bool, string, int)?>(
+                async () =>
+                {
+                    _logger.LogWarning("Command {CommandId}: restarting the machine.", commandId);
+
+                    try
+                    {
+                        await _system.RebootAsync(cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        _logger.LogError(exception, "Command {CommandId}: the machine could not be restarted.", commandId);
+                        return (false, "kioskCommands.rebootNotDone", 0);
+                    }
+
+                    // The reboot takes this process with it. Still here after
+                    // a while means it was refused or never happened.
+                    await Task.Delay(RebootGrace, cancellationToken).ConfigureAwait(false);
+
+                    _logger.LogError("Command {CommandId}: the machine did not restart.", commandId);
+                    return (false, "kioskCommands.rebootNotDone", 0);
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Waits for the job at the printer, then prints the test page before the
     /// next one; it takes no place in the queue and costs nothing (plan 7.7).
     /// </summary>
-    private Task<(bool, string, int)> TestPrintAsync(CancellationToken cancellationToken)
-        => _worker.WithPrinterAsync(
+    private Task<(bool, string, int)?> TestPrintAsync(CancellationToken cancellationToken)
+        => _worker.WithPrinterAsync<(bool, string, int)?>(
             async () =>
             {
                 var configuration = _configuration();

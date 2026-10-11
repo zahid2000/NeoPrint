@@ -165,6 +165,19 @@ public sealed partial class KioskApiClient
     public Task<IReadOnlyList<KioskCommandInfo>> GetOpenCommandsAsync(CancellationToken cancellationToken = default)
         => GetAsync<IReadOnlyList<KioskCommandInfo>>("api/kiosks/me/commands", cancellationToken);
 
+    /// <summary>
+    /// "I have it and will do it": for a command answered only later - a
+    /// restart is answered by the application that starts afterwards.
+    /// </summary>
+    public async Task AcknowledgeCommandAsync(Guid commandId, CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateAuthenticatedRequestAsync(
+                HttpMethod.Post, $"api/kiosks/me/commands/{commandId}/ack", cancellationToken)
+            .ConfigureAwait(false);
+
+        await SendAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Answers a command; answering twice is harmless.</summary>
     public async Task CompleteCommandAsync(
         Guid commandId, bool succeeded, string? messageKey, int sheetsUsed, CancellationToken cancellationToken = default)

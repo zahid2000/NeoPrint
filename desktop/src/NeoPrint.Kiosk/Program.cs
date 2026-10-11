@@ -342,7 +342,13 @@ internal static class Program
             provider.GetRequiredService<SpoolStore>(),
             () => provider.GetRequiredService<KioskRuntime>().Configuration,
             TestPageText,
-            provider.GetRequiredService<ILogger<CommandProcessor>>()));
+            provider.GetRequiredService<ILogger<CommandProcessor>>(),
+            reloadConfiguration: cancellationToken => provider.GetRequiredService<KioskRuntime>().LoadConfigurationAsync(cancellationToken),
+            system: provider.GetRequiredService<ISystemControl>(),
+            leavingOnPurpose: () => provider.GetRequiredService<CrashLoopGuard>().Stop(),
+            uptimeSeconds: async cancellationToken =>
+                (await provider.GetRequiredService<ISystemMetrics>().ReadAsync(cancellationToken).ConfigureAwait(false)).UptimeSeconds,
+            clock: provider.GetRequiredService<IClock>()));
         services.AddSingleton<KioskHubClient>();
         services.AddSingleton<ProvisioningHubClient>();
         services.AddSingleton(provider =>
