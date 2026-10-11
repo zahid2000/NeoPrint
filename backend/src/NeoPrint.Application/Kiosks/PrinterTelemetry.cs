@@ -16,7 +16,27 @@ namespace NeoPrint.Application.Kiosks;
 // GET admin/kiosks/{id}/printers/telemetry (+ /history, /events)
 // ---------------------------------------------------------------------------
 
-/// <summary>What a kiosk reports about one printer. Everything but the name is optional.</summary>
+/// <summary>A consumable as the kiosk relays it; an entry without a name is dropped, not refused.</summary>
+public sealed record PrinterSupplyReport(string? Name, string? Type = null, string? Color = null, int? LevelPercent = null);
+
+public sealed record PrinterTrayReport(string? Name, string? Media = null, int? LevelPercent = null);
+
+public sealed record PrinterFeaturesReport(
+    bool? Color = null,
+    bool? Duplex = null,
+    IReadOnlyList<string>? PaperSizes = null,
+    IReadOnlyList<string>? Trays = null,
+    int? ResolutionDpi = null,
+    IReadOnlyList<string>? NativeFormats = null);
+
+public sealed record PrinterJobReport(string? Id, long? SizeBytes = null, string? State = null, DateTime? SubmittedAt = null);
+
+/// <summary>
+/// What a kiosk reports about one printer. Everything but the name is
+/// optional, and nothing in it is required: these are the kiosk's own shapes
+/// rather than the stored ones, so a null list or a nameless entry is cleaned
+/// away instead of failing the whole report.
+/// </summary>
 public sealed record PrinterTelemetryReport(
     string? Name,
     string? Manufacturer = null,
@@ -33,13 +53,13 @@ public sealed record PrinterTelemetryReport(
     IReadOnlyList<string>? StateReasons = null,
     bool? Online = null,
     string? LastError = null,
-    IReadOnlyList<PrinterSupplyLevel>? Supplies = null,
-    IReadOnlyList<PrinterTrayLevel>? Trays = null,
+    IReadOnlyList<PrinterSupplyReport>? Supplies = null,
+    IReadOnlyList<PrinterTrayReport>? Trays = null,
     long? LifetimePages = null,
     long? ColorPages = null,
     long? MonoPages = null,
-    PrinterFeatureSet? Features = null,
-    IReadOnlyList<PrinterSpoolerJob>? SpoolerJobs = null);
+    PrinterFeaturesReport? Features = null,
+    IReadOnlyList<PrinterJobReport>? SpoolerJobs = null);
 
 /// <summary>Stores what the kiosk's printers said, checks the spooler for a stuck job and tells the panel.</summary>
 public sealed record ReportPrinterTelemetryCommand(Guid DeviceId, IReadOnlyList<PrinterTelemetryReport> Printers) : IRequest;
@@ -423,7 +443,7 @@ public sealed class PrinterTelemetryHandlers :
             MacAddress = Text(report.MacAddress, 32),
             Uri = Text(report.Uri, 512),
             State = report.State is "idle" or "printing" or "stopped" ? report.State : null,
-            StateReasons = [.. (report.StateReasons ?? []).Select(reason => Text(reason, 64)).OfType<string>().Distinct(StringComparer.Ordinal).Take(32)],
+            StateReasons = Names(report.StateReasons, 32),
             Online = report.Online,
             LastError = Text(report.LastError, 256),
             Supplies =

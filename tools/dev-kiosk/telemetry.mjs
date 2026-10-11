@@ -64,3 +64,25 @@ console.log(`\nLast hour, ${history.length} point(s):`);
 for (const point of history) {
   console.log(`  ${point.at}  CPU ${show(point.cpuPercent, '%')}  memory ${show(point.memoryUsedPercent, '%')}  backend ${show(point.backendLatencyMs, ' ms')}  queue ${show(point.queueLength)}  (${point.samples} sample(s))`);
 }
+
+// What the kiosk's printers said about themselves (plan section 7.10).
+const printers = await get(`/api/admin/kiosks/${kiosk.id}/printers/telemetry`);
+console.log(`\nPrinters, ${printers.length}:`);
+
+for (const { sample: printer, stale } of printers) {
+  const unknown = 'the printer does not report this';
+  console.log(`  ${printer.printer.printerName}${printer.selected ? '  (selected)' : ''}${stale ? '  (STALE)' : ''}  read ${printer.timestamp}`);
+  console.log(`    identity   ${[printer.manufacturer, printer.model].filter(Boolean).join(' ') || unknown}; serial ${printer.serialNumber ?? unknown}; firmware ${printer.firmware ?? unknown}; driver ${printer.driverName ?? unknown}${printer.driverVersion ? ' ' + printer.driverVersion : ''}`);
+  console.log(`    connection ${printer.connection ?? unknown}${printer.address ? ' ' + printer.address : ''}${printer.uri ? '  ' + printer.uri : ''}`);
+  console.log(`    state      ${printer.state ?? unknown}, ${printer.online == null ? unknown : printer.online ? 'online' : 'OFFLINE'}; reasons: ${printer.stateReasons?.length ? printer.stateReasons.join(', ') : 'none'}${printer.lastError ? '; last error: ' + printer.lastError : ''}`);
+  console.log(`    supplies   ${printer.supplies?.length ? printer.supplies.map((s) => `${s.name} [${s.type}${s.color ? ' ' + s.color : ''}] ${s.levelPercent == null ? 'level not reported' : s.levelPercent + '%'}`).join('; ') : unknown}`);
+  console.log(`    trays      ${printer.trays?.length ? printer.trays.map((t) => `${t.name}${t.media ? ' ' + t.media : ''} ${t.levelPercent == null ? 'level not reported' : t.levelPercent + '%'}`).join('; ') : unknown}`);
+  console.log(`    counters   lifetime ${printer.lifetimePages ?? unknown}`);
+  console.log(`    can do     colour ${show(printer.features?.color)}, duplex ${show(printer.features?.duplex)}, ${show(printer.features?.resolutionDpi, ' dpi')}; paper ${printer.features?.paperSizes?.join(', ') || unknown}; native ${printer.features?.nativeFormats?.join(', ') || unknown}`);
+  console.log(`    spooler    ${printer.spoolerJobs?.length ? printer.spoolerJobs.map((j) => `${j.id} ${j.state ?? ''} ${j.submittedAt ?? ''}`).join('; ') : 'empty'}`);
+
+  const events = await get(`/api/admin/kiosks/${kiosk.id}/printers/telemetry/events?printer=${encodeURIComponent(printer.printer.printerName)}`);
+  for (const event of events.slice(0, 5)) {
+    console.log(`    ${event.at}  ${event.kind}: ${event.from ?? '-'} -> ${event.to ?? '-'}`);
+  }
+}

@@ -112,6 +112,59 @@ public sealed class PrinterTelemetryParserTests
         details.Online.Should().BeFalse();
     }
 
+    /// <summary>
+    /// The answer of a real IPP Everywhere printer, as <c>ipptool -tv</c> printed
+    /// it: CUPS 2.4.2's <c>ippeveprinter</c> ("NeoPrint Test Laser 4000", duplex,
+    /// PDF and JPEG), asked on 2026-10-11. Unlike a CUPS queue it has no
+    /// <c>marker-*</c> attributes - its supplies are in <c>printer-supply</c> -
+    /// and its single-valued attributes are not written as <c>1setOf</c>.
+    /// </summary>
+    private const string RealIppEverywhere =
+        "        color-supported (boolean) = true\n"
+        + "        media-supported (1setOf keyword) = na_letter_8.5x11in,na_legal_8.5x14in,iso_a4_210x297mm,na_number-10_4.125x9.5in,iso_dl_110x220mm,na_index-3x5_3x5in,oe_photo-l_3.5x5in,na_index-4x6_4x6in,iso_a6_105x148mm,na_5x7_5x7in,iso_a5_148x210mm\n"
+        + "        media-source-supported (1setOf keyword) = auto,main,photo\n"
+        + "        printer-device-id (textWithoutLanguage) = MFG:Example;MDL:NeoPrint Test Laser 4000;CMD:PDF,JPEG;\n"
+        + "        printer-input-tray (1setOf octetString) = type=sheetFeedAutoRemovableTray;mediafeed=0;mediaxfeed=0;maxcapacity=-2;level=-2;status=0;name=auto,type=sheetFeedAutoRemovableTray;mediafeed=0;mediaxfeed=0;maxcapacity=250;level=-2;status=0;name=main,type=sheetFeedAutoRemovableTray;mediafeed=0;mediaxfeed=0;maxcapacity=25;level=-2;status=0;name=photo\n"
+        + "        printer-make-and-model (textWithoutLanguage) = Example NeoPrint Test Laser 4000\n"
+        + "        printer-resolution-supported (resolution) = 600dpi\n"
+        + "        printer-supply (1setOf octetString) = index=1;class=receptacleThatIsFilled;type=wasteInk;unit=percent;maxcapacity=100;level=25;colorantname=unknown;,index=2;class=supplyThatIsConsumed;type=ink;unit=percent;maxcapacity=100;level=75;colorantname=black;,index=3;class=supplyThatIsConsumed;type=ink;unit=percent;maxcapacity=100;level=50;colorantname=cyan;,\n"
+        + "        printer-supply-description (1setOf textWithoutLanguage) = Ink Waste Tank,Black Ink,Cyan Ink,Magenta Ink,Yellow Ink\n"
+        + "        sides-supported (1setOf keyword) = one-sided,two-sided-long-edge,two-sided-short-edge\n"
+        + "        document-format-supported (1setOf mimeMediaType) = application/octet-stream,application/pdf,image/jpeg\n"
+        + "        printer-state (enum) = idle\n"
+        + "        printer-state-reasons (keyword) = none\n"
+        + "        printer-uri-supported (1setOf uri) = ipp://localhost:8631/ipp/print,ipps://localhost:8631/ipp/print\n";
+
+    [Fact]
+    public void A_real_ipp_everywhere_printer_answer_is_read_whole()
+    {
+        var details = IppPrinter.Describe("Sim Printer", IppAttributes.Parse(RealIppEverywhere));
+
+        details.Manufacturer.Should().Be("Example");
+        details.Model.Should().Be("NeoPrint Test Laser 4000", "the device id is one value: the comma in CMD:PDF,JPEG does not cut it");
+        details.SerialNumber.Should().BeNull("this printer gives none");
+        details.State.Should().Be("idle");
+        details.StateReasons.Should().BeEmpty();
+        details.Online.Should().BeTrue();
+
+        details.Supplies.Should().Equal(
+            new PrinterSupply("Ink Waste Tank", "waste", null, 25),
+            new PrinterSupply("Black Ink", "ink", "black", 75),
+            new PrinterSupply("Cyan Ink", "ink", "cyan", 50));
+
+        details.Trays.Should().Equal(
+            new PrinterTray("auto", null, null),
+            new PrinterTray("main", null, null),
+            new PrinterTray("photo", null, null));
+
+        details.Features!.Color.Should().BeTrue();
+        details.Features.Duplex.Should().BeTrue();
+        details.Features.PaperSizes.Should().Contain(["A4", "A5", "A6", "Letter", "Legal"]);
+        details.Features.Trays.Should().Equal("auto", "main", "photo");
+        details.Features.ResolutionDpi.Should().Be(600);
+        details.Features.NativeFormats.Should().Equal("application/octet-stream", "application/pdf", "image/jpeg");
+    }
+
     [Theory]
     [InlineData("usb://HP/LaserJet%201020", "Usb")]
     [InlineData("ipp://10.0.0.5/ipp/print", "Network")]

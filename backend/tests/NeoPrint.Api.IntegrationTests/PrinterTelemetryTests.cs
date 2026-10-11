@@ -176,10 +176,29 @@ public sealed class PrinterTelemetryTests
             .Should().BeOneOf(HttpStatusCode.Forbidden, HttpStatusCode.Unauthorized);
         (await admin.GetAsync($"/api/admin/kiosks/{Guid.NewGuid()}/printers/telemetry")).StatusCode.Should().Be(HttpStatusCode.NotFound);
 
+        // What a printer leaves out arrives as null, and an entry without a
+        // name is dropped: neither refuses the whole report (found on the
+        // real stack - the fake printer's first report came back 400).
+        await SendAsync(kiosk.Client, new
+        {
+            name = "Sparse printer",
+            stateReasons = (string[]?)null,
+            supplies = new object?[] { new { name = (string?)null, levelPercent = 50 }, new { name = "Black", levelPercent = 70 } },
+            trays = (object[]?)null,
+            features = new { color = true, paperSizes = (string[]?)null, trays = (string[]?)null, nativeFormats = (string[]?)null },
+            spoolerJobs = new object?[] { new { id = (string?)null } },
+        });
+
+        var sparse = (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kiosk.KioskId}/printers/telemetry"))[0].GetProperty("sample");
+        sparse.GetProperty("supplies").GetArrayLength().Should().Be(1);
+        sparse.GetProperty("supplies")[0].GetProperty("name").GetString().Should().Be("Black");
+        sparse.GetProperty("spoolerJobs").GetArrayLength().Should().Be(0);
+        sparse.GetProperty("features").GetProperty("trays").GetArrayLength().Should().Be(0);
+
         // Nothing to say is not an error, and a reading without a name is dropped.
         (await kiosk.Client.PostAsJsonAsync("/api/kiosks/me/printers/telemetry", new { })).StatusCode.Should().Be(HttpStatusCode.NoContent);
         await SendAsync(kiosk.Client, new { name = "   ", state = "idle" });
 
-        (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kiosk.KioskId}/printers/telemetry")).GetArrayLength().Should().Be(0);
+        (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kiosk.KioskId}/printers/telemetry")).GetArrayLength().Should().Be(1);
     }
 }

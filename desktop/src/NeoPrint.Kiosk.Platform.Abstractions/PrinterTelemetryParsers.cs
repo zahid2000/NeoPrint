@@ -134,13 +134,21 @@ public static class IppPrinter
     }
 
     /// <summary>
-    /// <c>marker-names</c>, <c>-types</c>, <c>-colors</c> and <c>-levels</c>
-    /// are parallel lists. A level below zero is not a level: -1 "other",
+    /// A CUPS queue gives <c>marker-names</c>, <c>-types</c>, <c>-colors</c>
+    /// and <c>-levels</c> as parallel lists; an IPP Everywhere printer asked
+    /// directly gives <c>printer-supply</c> and <c>printer-supply-description</c>
+    /// (PWG 5100.13) instead. A level below zero is not a level: -1 "other",
     /// -2 "unknown", -3 "some left".
     /// </summary>
     private static List<PrinterSupply> Supplies(IReadOnlyDictionary<string, IReadOnlyList<string>> attributes)
     {
         var names = attributes.All("marker-names");
+
+        if (names.Count == 0)
+        {
+            return SuppliesFromPrinterSupply(attributes);
+        }
+
         var types = attributes.All("marker-types");
         var colors = attributes.All("marker-colors");
         var levels = attributes.All("marker-levels");
@@ -155,6 +163,49 @@ public static class IppPrinter
         ];
     }
 
+    /// <summary>
+    /// <c>printer-supply</c>: one <c>key=value;</c> string per consumable -
+    /// <c>type=ink;unit=percent;maxcapacity=100;level=75;colorantname=black;</c> -
+    /// named by the entry at the same place in <c>printer-supply-description</c>.
+    /// </summary>
+    private static List<PrinterSupply> SuppliesFromPrinterSupply(IReadOnlyDictionary<string, IReadOnlyList<string>> attributes)
+    {
+        var descriptions = attributes.All("printer-supply-description");
+        var supplies = new List<PrinterSupply>();
+
+        foreach (var (value, index) in attributes.All("printer-supply").Select((value, index) => (value, index)))
+        {
+            var fields = Fields(value);
+
+            if (fields.Count == 0)
+            {
+                continue;
+            }
+
+            var type = fields.GetValueOrDefault("type");
+            var level = Number(fields.GetValueOrDefault("level"));
+            var capacity = Number(fields.GetValueOrDefault("maxcapacity"));
+            var color = fields.GetValueOrDefault("colorantname");
+
+            supplies.Add(new PrinterSupply(
+                index < descriptions.Count && descriptions[index].Length > 0 ? descriptions[index] : type ?? $"Supply {index + 1}",
+                SupplyType.FromIpp(type),
+                color is null or "unknown" or "other" or "none" ? null : color,
+                fields.GetValueOrDefault("unit") == "percent"
+                    ? level is >= 0 and <= 100 ? (int)level.Value : null
+                    : PrinterMib.Percent(level, capacity)));
+        }
+
+        return supplies;
+    }
+
+    private static Dictionary<string, string> Fields(string value)
+        => value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(field => field.Split('=', 2))
+            .Where(pair => pair.Length == 2)
+            .GroupBy(pair => pair[0], StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First()[1], StringComparer.Ordinal);
+
     /// <summary><c>printer-input-tray</c>: one <c>key=value;</c> string per tray (PWG 5100.13).</summary>
     private static List<PrinterTray> Trays(IReadOnlyDictionary<string, IReadOnlyList<string>> attributes)
     {
@@ -162,11 +213,7 @@ public static class IppPrinter
 
         foreach (var value in attributes.All("printer-input-tray"))
         {
-            var fields = value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(field => field.Split('=', 2))
-                .Where(pair => pair.Length == 2)
-                .GroupBy(pair => pair[0], StringComparer.Ordinal)
-                .ToDictionary(group => group.Key, group => group.First()[1], StringComparer.Ordinal);
+            var fields = Fields(value);
 
             if (!fields.TryGetValue("name", out var name) || name.Length == 0)
             {
@@ -262,13 +309,18 @@ public static class PrinterConnection
 /// <summary>What a consumable is, in the six words the panel knows.</summary>
 public static class SupplyType
 {
-    public static string FromIpp(string? markerType) => markerType?.ToLowerInvariant() switch
+    /// <summary>
+    /// A <c>marker-types</c> keyword (<c>toner-cartridge</c>, <c>waste-toner</c>)
+    /// or a <c>printer-supply</c> type (<c>tonerCartridge</c>, <c>wasteToner</c>):
+    /// the same words, written two ways.
+    /// </summary>
+    public static string FromIpp(string? type) => type?.Replace("-", string.Empty, StringComparison.Ordinal).ToLowerInvariant() switch
     {
-        "toner" or "toner-cartridge" => "toner",
-        "ink" or "ink-cartridge" or "ink-ribbon" => "ink",
+        "toner" or "tonercartridge" => "toner",
+        "ink" or "inkcartridge" or "inkribbon" => "ink",
         "opc" or "drum" or "developer" => "drum",
-        "fuser" or "fuser-oil" or "fuser-cleaning-pad" => "fuser",
-        "waste-toner" or "waste-ink" or "waste-wax" or "waste-water" => "waste",
+        "fuser" or "fuseroil" or "fusercleaningpad" or "fuseroiler" or "fuseroilwick" => "fuser",
+        "wastetoner" or "wasteink" or "wastewax" or "wastewater" => "waste",
         _ => "other",
     };
 

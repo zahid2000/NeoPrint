@@ -742,6 +742,24 @@ docker exec neoprint-redis redis-cli -a devRedisPassword --no-auth-warning --sca
 docker exec neoprint-mongo mongosh -u neoprint -p devMongoPassword --authenticationDatabase admin neoprint --quiet --eval "db.kiosk_telemetry.countDocuments()"   # tarixçədəki sətirlər
 ```
 
+Eyni skript printerləri də göstərir (plan 7.10, T-207): kimlik, vəziyyət və səbəblər, sərf
+materialları, lotoklar, sayğac, imkanlar, sistem növbəsi və son 5 dəyişiklik. Konteyner kioskunda
+yalnız saxta printer var (CUPS quraşdırılmayıb) — o özü haqqında cavab verir, real printerin
+sahələri "the printer does not report this" kimi çıxır.
+
+**Həqiqi IPP cavabı almaq** (parser-i yoxlamaq üçün; real printer olmadan): CUPS-un
+`ippeveprinter` simulyatoru müvəqqəti konteynerdə —
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm debian:bookworm-slim sh -c 'apt-get update -qq && apt-get install -y -qq --no-install-recommends cups-ipp-utils avahi-daemon dbus >/dev/null
+  mkdir -p /run/dbus /tmp/spool; dbus-daemon --system --fork; avahi-daemon -D --no-drop-root --no-chroot; sleep 2
+  (ippeveprinter -p 8631 -d /tmp/spool -m "NeoPrint Test Laser 4000" -f application/pdf,image/jpeg -2 -s 30,25 "Sim Printer" &) ; sleep 5
+  ipptool -T 10 -t -v ipp://localhost:8631/ipp/print get-printer-attributes.test'
+```
+
+(`ippeveprinter` DNS-SD-siz başlamır, ona görə `dbus` və `avahi-daemon` da qaldırılır.) Bu cavab
+`PrinterTelemetryParserTests.A_real_ipp_everywhere_printer_answer_is_read_whole`-da saxlanılıb.
+
 Intervalı dəyişmək: admin panel → Tənzimləmələr → `Kiosk.TelemetrySeconds` (kiosk yeni dəyəri
 konfiqurasiyası ilə alır). Hədd incident-ləri (disk < 2 GB, yaddaş > 90% 5 dəq, backend > 2000 ms
 5 dəq, SignalR 2 dəq qopuq) `GET /api/admin/incidents?type=DiskLow` ilə görünür.

@@ -90,6 +90,10 @@ Son hesabat Redis-də (`kiosk:status:{id}`) 20 interval (default 10 dəqiqə) sa
 Telemetriyada istifadəçi və ya fayl haqqında heç nə yoxdur: ekranın adı, sessiyanın
 növü (kimin olduğu yox), növbənin uzunluğu və çap olunan sifarişin kodu.
 
+`printer_telemetry` — eyni qayda ilə (time-series, `Kiosk.TelemetryRetentionDays`): printerin
+modeli, seriya nömrəsi, vəziyyəti, sərf səviyyələri, sayğacları və sistem növbəsindəki işlərin
+nömrəsi / ölçüsü. İşin adı və ya məzmunu yoxdur.
+
 ## Financial data
 
 Do not apply generic user-file retention rules to payments/fiscal

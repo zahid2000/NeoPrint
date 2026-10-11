@@ -149,14 +149,15 @@ public sealed class PrinterTelemetryChangesTests
                 StateReasons: ["toner-low", "toner-low", string.Empty, new string('r', 200)],
                 Supplies:
                 [
-                    new PrinterSupplyLevel("Black", "toner", "black", 140),
-                    new PrinterSupplyLevel("  ", "toner", null, 50),
-                    new PrinterSupplyLevel("Glitter", "confetti", null, 30),
+                    new PrinterSupplyReport("Black", "toner", "black", 140),
+                    new PrinterSupplyReport("  ", "toner", null, 50),
+                    new PrinterSupplyReport(null, "toner", null, 50),
+                    new PrinterSupplyReport("Glitter", "confetti", null, 30),
                 ],
-                Trays: [new PrinterTrayLevel("Tray 1", "A4", -3)],
+                Trays: [new PrinterTrayReport("Tray 1", "A4", -3), new PrinterTrayReport(null)],
                 LifetimePages: -5,
-                Features: new PrinterFeatureSet { ResolutionDpi = -600, PaperSizes = ["A4", "A4", "A3"] },
-                SpoolerJobs: [new PrinterSpoolerJob("P-1", -10, "pending", Start.AddYears(3))]),
+                Features: new PrinterFeaturesReport(ResolutionDpi: -600, PaperSizes: ["A4", "A4", "A3"], Trays: null),
+                SpoolerJobs: [new PrinterJobReport("P-1", -10, "pending", Start.AddYears(3)), new PrinterJobReport(null)]),
             Guid.NewGuid(),
             Guid.NewGuid(),
             Start)!;
@@ -174,6 +175,7 @@ public sealed class PrinterTelemetryChangesTests
         sample.LifetimePages.Should().BeNull();
         sample.Features!.ResolutionDpi.Should().BeNull();
         sample.Features.PaperSizes.Should().Equal("A4", "A3");
+        sample.Features.Trays.Should().BeEmpty("a list the kiosk left out is an empty list");
         sample.SpoolerJobs.Should().Equal(new PrinterSpoolerJob("P-1", null, "pending", null));
 
         PrinterTelemetryHandlers.Clean(new PrinterTelemetryReport("   "), Guid.NewGuid(), Guid.NewGuid(), Start)

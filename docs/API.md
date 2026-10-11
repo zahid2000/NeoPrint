@@ -620,6 +620,55 @@ Dilimdə həmin göstərici üçün dəyər yoxdursa sahə göndərilmir. `from`
 `/hubs/admin` → **`KioskTelemetryUpdated`** (`GET …/telemetry`-nin cavabı ilə eyni gövdə): hər
 hesabat gələndə `admins` və `admin-kiosk:{kioskId}` qruplarına.
 
+### `POST /api/kiosks/me/printers/telemetry`
+
+Kiosk token-i. Printerlərin özləri haqqında dedikləri (plan 7.10): seçilmiş printer hər 60
+saniyədə, digər aşkarlanan printerlər hər 10 dəqiqədə. → `204`.
+
+```json
+{ "printers": [ {
+    "name": "HP_LaserJet",
+    "manufacturer", "model", "serialNumber", "firmware", "driverName", "driverVersion",
+    "connection": "Usb | Network | Other", "address", "macAddress", "uri",
+    "state": "idle | printing | stopped", "stateReasons": ["media-empty", "toner-low"], "online", "lastError",
+    "supplies": [ { "name", "type": "toner | ink | drum | fuser | waste | other", "color", "levelPercent" } ],
+    "trays": [ { "name", "media", "levelPercent" } ],
+    "lifetimePages", "colorPages", "monoPages",
+    "features": { "color", "duplex", "paperSizes": [], "trays": [], "resolutionDpi", "nativeFormats": [] },
+    "spoolerJobs": [ { "id", "sizeBytes", "state", "submittedAt" } ]
+} ] }
+```
+
+- **Yalnız `name` məcburidir.** Printerin vermədiyi dəyər göndərilmir (`null`) — paneldə "Printer
+  bu məlumatı vermir". Adsız sərf / lotok / iş sətri atılır, bütün hesabat rədd olunmur; ən çox
+  16 printer, 32 sərf materialı, 16 lotok, 50 spooler işi; mətnlər kəsilir, idarəetmə simvolları atılır.
+- Mənbələr (kiosk tərəfində): Linux — IPP `get-printer-attributes` (`ipptool`) və `lpstat`;
+  Windows — WMI (`Win32_Printer`, `Win32_PrinterDriver`, `Win32_PrintJob`); şəbəkə printerində
+  hər ikisində SNMP (Printer MIB, RFC 3805) sistemin vermədiyini doldurur.
+- Sistem spooler-ində **5 dəqiqədən çox** qalan iş → printer üçün **bir** `SpoolerStuck` (High)
+  incident; növbə hərəkət edəndə özü bağlanır.
+
+### `GET /api/admin/kiosks/{id}/printers/telemetry`
+
+`printers.view`. Kioskun hər printerinin son oxunuşu, seçilmiş printer birinci (7 gündən köhnə
+oxunuşu olan printer siyahıdan düşür): `[ { "kioskId", "sample": { …yuxarıdakı sahələr…, "timestamp",
+"printer": { "kioskId", "printerName" }, "selected" }, "stale" } ]`. `stale` — seçilmiş printer üçün
+3 dəqiqə, digərləri üçün 30 dəqiqə xəbər yoxdursa.
+
+### `GET /api/admin/kiosks/{id}/printers/telemetry/history?printer=&from=&to=&points=120`
+
+`printers.view`. Qrafik üçün: aralıq (default son 1 gün, ən çox 31 gün) dilimlərə bölünür, hər
+dilimin son oxunuşu: `[ { "at", "lifetimePages", "supplyLevels": { "Black Cartridge": 40 } } ]`.
+
+### `GET /api/admin/kiosks/{id}/printers/telemetry/events?printer=&from=&to=`
+
+`printers.view`. Printerin tarixçəsi (default son 7 gün), yenidən köhnəyə — oxunuşlar arasındakı
+dəyişikliklər: `[ { "at", "kind": "State | Online | Reasons | Error | SupplyReplaced", "from", "to" } ]`.
+`SupplyReplaced` — səviyyə bir oxunuşda ≥ 20 faiz bəndi qalxıb (yeni kartric). Test çaplar
+`GET …/commands`-da, printer seçimi dəyişiklikləri audit log-dadır.
+
+`/hubs/admin` → **`PrinterTelemetryUpdated`** `{ kioskId, printers: [ …GET-dəki kimi… ] }`.
+
 ---
 
 ## Kiosk axtarışı (mobil tətbiq, Addım 5)
