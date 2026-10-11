@@ -228,6 +228,34 @@ public sealed class AdminKiosksController : ControllerBase
         CancellationToken cancellationToken = default)
         => Ok(await _sender.Send(new GetPrinterTelemetryEventsQuery(AdminId, id, printer ?? string.Empty, from, to), cancellationToken));
 
+    /// <summary>
+    /// "Pause": no new orders from this moment, the queue is finished, the
+    /// kiosk's screen says maintenance (plan section 7.8). Pressing it again
+    /// changes nothing.
+    /// </summary>
+    [HttpPost("{id:guid}/pause")]
+    [HasPermission(Permissions.KioskCommandsPause)]
+    public async Task<ActionResult<KioskCommandView>> Pause(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Pause), cancellationToken));
+
+    /// <summary>"Resume": the kiosk takes orders again.</summary>
+    [HttpPost("{id:guid}/resume")]
+    [HasPermission(Permissions.KioskCommandsPause)]
+    public async Task<ActionResult<KioskCommandView>> Resume(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Resume), cancellationToken));
+
+    /// <summary>Restarts the kiosk application once the job at the printer is done.</summary>
+    [HttpPost("{id:guid}/restart-app")]
+    [HasPermission(Permissions.KioskCommandsRestart)]
+    public async Task<ActionResult<KioskCommandView>> RestartApp(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RestartApp), cancellationToken));
+
+    /// <summary>Restarts the kiosk machine once the job at the printer is done.</summary>
+    [HttpPost("{id:guid}/reboot")]
+    [HasPermission(Permissions.KioskCommandsReboot)]
+    public async Task<ActionResult<KioskCommandView>> Reboot(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Reboot), cancellationToken));
+
     [HttpGet("{id:guid}/commands")]
     [HasPermission(Permissions.KiosksView)]
     public async Task<ActionResult<IReadOnlyList<KioskCommandView>>> Commands(Guid id, CancellationToken cancellationToken)

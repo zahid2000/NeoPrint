@@ -172,6 +172,21 @@ public sealed class Kiosk : Entity
     public bool SafeModeSetMaintenance { get; private set; }
 
     /// <summary>
+    /// Since when an administrator has the kiosk paused (plan section 7.8,
+    /// <c>Pause</c>); null when they do not. While it is set the kiosk takes
+    /// no new orders and finishes its queue - whatever its connection or its
+    /// printer are doing - until <see cref="ResumeByAdmin"/>.
+    /// </summary>
+    public DateTime? PausedByAdminSince { get; private set; }
+
+    /// <summary>
+    /// The status of a kiosk that works and is reachable: Online, unless an
+    /// administrator has it paused. What a kiosk goes back to when its
+    /// heartbeat returns or its test page prints.
+    /// </summary>
+    public KioskStatus WorkingStatus => PausedByAdminSince is null ? KioskStatus.Online : KioskStatus.Maintenance;
+
+    /// <summary>
     /// When the kiosk's configuration last changed.
     /// </summary>
     /// <remarks>
@@ -217,7 +232,7 @@ public sealed class Kiosk : Entity
     public static readonly StateMachine<KioskStatus> Transitions =
         new StateMachine<KioskStatus>(nameof(Kiosk))
             .Allow(KioskStatus.NotActivated, KioskStatus.NotConfigured, KioskStatus.Online)
-            .Allow(KioskStatus.NotConfigured, KioskStatus.Online, KioskStatus.NotActivated, KioskStatus.Offline)
+            .Allow(KioskStatus.NotConfigured, KioskStatus.Online, KioskStatus.NotActivated, KioskStatus.Offline, KioskStatus.Maintenance)
             .Allow(
                 KioskStatus.Online,
                 KioskStatus.Paused,
@@ -225,9 +240,9 @@ public sealed class Kiosk : Entity
                 KioskStatus.Maintenance,
                 KioskStatus.NotConfigured,
                 KioskStatus.NotActivated)
-            .Allow(KioskStatus.Paused, KioskStatus.Online, KioskStatus.Offline, KioskStatus.NotActivated)
-            .Allow(KioskStatus.Offline, KioskStatus.Online, KioskStatus.Paused, KioskStatus.NotActivated)
-            .Allow(KioskStatus.Maintenance, KioskStatus.Online, KioskStatus.NotActivated)
+            .Allow(KioskStatus.Paused, KioskStatus.Online, KioskStatus.Offline, KioskStatus.NotActivated, KioskStatus.Maintenance)
+            .Allow(KioskStatus.Offline, KioskStatus.Online, KioskStatus.Paused, KioskStatus.NotActivated, KioskStatus.Maintenance)
+            .Allow(KioskStatus.Maintenance, KioskStatus.Online, KioskStatus.NotActivated, KioskStatus.NotConfigured)
             .Allow(KioskStatus.Disabled, KioskStatus.NotActivated)
             .AllowFromAny(KioskStatus.Disabled);
 
@@ -392,7 +407,9 @@ public sealed class Kiosk : Entity
             return;
         }
 
-        var ownMaintenance = SafeModeSetMaintenance && Status == KioskStatus.Maintenance;
+        // An administrator's pause outlives safe mode: PauseByAdmin took the
+        // maintenance over, so there is nothing of safe mode's own to undo.
+        var ownMaintenance = SafeModeSetMaintenance && Status == KioskStatus.Maintenance && PausedByAdminSince is null;
 
         SafeModeSince = null;
         SafeModeSetMaintenance = false;
@@ -401,6 +418,73 @@ public sealed class Kiosk : Entity
         {
             MoveTo(KioskStatus.Online, actor.Because("kiosks.safeModeCleared"), utcNow);
         }
+    }
+
+    /// <summary>
+    /// An administrator pauses the kiosk (plan section 7.8): from now it takes
+    /// no new orders - the backend refuses them at once, also for a kiosk that
+    /// is offline and has not heard yet - and the queue is finished.
+    /// </summary>
+    /// <returns>False when it was paused already.</returns>
+    public bool PauseByAdmin(ActorContext actor, DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        if (PausedByAdminSince is not null)
+        {
+            return false;
+        }
+
+        PausedByAdminSince = utcNow;
+        ConfigurationChangedAt = utcNow;
+
+        // The maintenance is the administrator's from here on: the kiosk
+        // leaving safe mode does not open it again.
+        SafeModeSetMaintenance = false;
+
+        if (Status is KioskStatus.Online or KioskStatus.Paused or KioskStatus.Offline)
+        {
+            MoveTo(KioskStatus.Maintenance, actor.Because("kiosks.reason.pausedByAdmin"), utcNow);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The administrator lifts their pause. A kiosk still in safe mode stays
+    /// in maintenance - that is now safe mode's again - and one without a
+    /// printer goes back to waiting for one.
+    /// </summary>
+    /// <returns>False when it was not paused.</returns>
+    public bool ResumeByAdmin(ActorContext actor, DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        if (PausedByAdminSince is null)
+        {
+            return false;
+        }
+
+        PausedByAdminSince = null;
+        ConfigurationChangedAt = utcNow;
+
+        if (Status != KioskStatus.Maintenance)
+        {
+            return true;
+        }
+
+        if (SafeModeSince is not null)
+        {
+            SafeModeSetMaintenance = true;
+            return true;
+        }
+
+        MoveTo(
+            SelectedPrinter is null ? KioskStatus.NotConfigured : KioskStatus.Online,
+            actor.Because("kiosks.reason.resumedByAdmin"),
+            utcNow);
+
+        return true;
     }
 
     /// <summary>

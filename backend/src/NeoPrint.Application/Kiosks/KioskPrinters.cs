@@ -63,7 +63,15 @@ public sealed record SetCapabilityOverridesCommand(Guid AdminUserId, Guid KioskI
     : IRequest<KioskPrintersView>;
 
 /// <summary>Sends a printer command: refresh the list, or print the test page.</summary>
-public sealed record SendKioskCommandCommand(Guid AdminUserId, Guid KioskId, KioskCommandType Type) : IRequest<KioskCommandView>;
+public sealed record SendKioskCommandCommand(Guid AdminUserId, Guid KioskId, KioskCommandType Type)
+    : IRequest<KioskCommandView>, Behaviors.ITransactionalRequest;
+
+/// <summary>
+/// The kiosk has a command and will carry it out; the result follows later -
+/// for a restart, from the application that comes up afterwards (plan section 7.8).
+/// </summary>
+public sealed record AcknowledgeKioskCommandCommand(Guid DeviceId, Guid CommandId)
+    : IRequest<KioskCommandView>, Behaviors.ITransactionalRequest;
 
 /// <summary>The kiosk's recent commands, for the panel.</summary>
 public sealed record ListKioskCommandsQuery(Guid AdminUserId, Guid KioskId) : IRequest<IReadOnlyList<KioskCommandView>>;
@@ -93,6 +101,7 @@ public sealed class KioskPrinterHandlers :
     IRequestHandler<ReportKioskPrintersCommand, Unit>,
     IRequestHandler<GetOpenKioskCommandsQuery, IReadOnlyList<KioskCommandView>>,
     IRequestHandler<CompleteKioskCommandCommand, KioskCommandView>,
+    IRequestHandler<AcknowledgeKioskCommandCommand, KioskCommandView>,
     IRequestHandler<GetKioskPrintersQuery, KioskPrintersView>,
     IRequestHandler<SelectKioskPrinterCommand, KioskPrintersView>,
     IRequestHandler<SetCapabilityOverridesCommand, KioskPrintersView>,
@@ -225,7 +234,7 @@ public sealed class KioskPrinterHandlers :
             throw new NotFoundException("kioskCommand");
         }
 
-        if (command.Status != KioskCommandStatus.Sent)
+        if (!command.IsOpen)
         {
             // The same answer again after a lost response: nothing more to do.
             return View(command);
@@ -244,6 +253,33 @@ public sealed class KioskPrinterHandlers :
         {
             await ApplyTestPrintAsync(kiosk, request, actor, now, cancellationToken).ConfigureAwait(false);
         }
+
+        await _admins.CommandResultAsync(kiosk.Id, View(command), cancellationToken).ConfigureAwait(false);
+
+        return View(command);
+    }
+
+    /// <inheritdoc cref="AcknowledgeKioskCommandCommand" />
+    public async Task<KioskCommandView> Handle(AcknowledgeKioskCommandCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var kiosk = await KioskOfAsync(request.DeviceId, cancellationToken).ConfigureAwait(false);
+        var command = await _commands.FindByIdAsync(request.CommandId, cancellationToken).ConfigureAwait(false);
+
+        if (command is null || command.KioskId != kiosk.Id)
+        {
+            throw new NotFoundException("kioskCommand");
+        }
+
+        if (command.Status != KioskCommandStatus.Sent)
+        {
+            // Acknowledged before, or answered already: the same reply.
+            return View(command);
+        }
+
+        command.Acknowledge(ActorContext.Kiosk(request.DeviceId, correlationId: _correlation.CorrelationId), _clock.UtcNow);
+        await _commands.UpdateAsync(command, cancellationToken).ConfigureAwait(false);
 
         await _admins.CommandResultAsync(kiosk.Id, View(command), cancellationToken).ConfigureAwait(false);
 
@@ -373,12 +409,40 @@ public sealed class KioskPrinterHandlers :
             throw new DomainException("printer.notSelected");
         }
 
+        var now = _clock.UtcNow;
+
+        // Pausing and resuming are the backend's own state first: orders are
+        // refused from this moment, whether or not the kiosk has heard. The
+        // command is how the kiosk is told to change its screen.
+        if (request.Type is KioskCommandType.Pause or KioskCommandType.Resume)
+        {
+            var actor = ActorContext.Admin(request.AdminUserId, correlationId: _correlation.CorrelationId);
+
+            var changed = request.Type == KioskCommandType.Pause
+                ? kiosk.PauseByAdmin(actor, now)
+                : kiosk.ResumeByAdmin(actor, now);
+
+            if (changed)
+            {
+                await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        // Pressed twice, or sent again after a lost answer: the command that
+        // is still open is the answer - not a second restart behind the first.
+        var open = await _commands.ListOpenAsync(kiosk.Id, cancellationToken).ConfigureAwait(false);
+
+        if (open.LastOrDefault(existing => existing.Type == request.Type && !existing.IsOverdue(now)) is { } pending)
+        {
+            return View(pending);
+        }
+
         var command = new KioskCommand
         {
             KioskId = kiosk.Id,
             Type = request.Type,
             CreatedBy = request.AdminUserId,
-            CreatedAt = _clock.UtcNow,
+            CreatedAt = now,
         };
 
         // Stored first: a kiosk that is offline now reads it when it is back.
@@ -425,7 +489,7 @@ public sealed class KioskPrinterHandlers :
 
         if (request.Succeeded && kiosk.Status == KioskStatus.NotConfigured && kiosk.SelectedPrinter is not null)
         {
-            kiosk.MoveTo(KioskStatus.Online, actor.Because("kiosks.reason.testPrintPassed"), now);
+            kiosk.MoveTo(kiosk.WorkingStatus, actor.Because("kiosks.reason.testPrintPassed"), now);
             changed = true;
         }
 

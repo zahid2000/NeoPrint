@@ -23,7 +23,8 @@ public sealed class KioskCommandRepository : IKioskCommandRepository
 
     public async Task<IReadOnlyList<KioskCommand>> ListOpenAsync(Guid kioskId, CancellationToken cancellationToken = default)
         => await _context.KioskCommands
-            .Find(command => command.KioskId == kioskId && command.Status == KioskCommandStatus.Sent)
+            .Find(command => command.KioskId == kioskId
+                             && (command.Status == KioskCommandStatus.Sent || command.Status == KioskCommandStatus.Acknowledged))
             .SortBy(command => command.CreatedAt)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

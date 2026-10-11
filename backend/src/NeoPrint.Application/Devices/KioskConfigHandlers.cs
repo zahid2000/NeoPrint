@@ -212,9 +212,10 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
         // does not undo them.
         if (kiosk.Status == KioskStatus.Offline)
         {
-            var recovered = kiosk.SelectedPrinter is null
+            // Back, but an administrator's pause is still theirs to lift.
+            var recovered = kiosk.SelectedPrinter is null && kiosk.PausedByAdminSince is null
                 ? KioskStatus.NotConfigured
-                : KioskStatus.Online;
+                : kiosk.WorkingStatus;
 
             kiosk.MoveTo(
                 recovered,

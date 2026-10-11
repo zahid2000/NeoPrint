@@ -166,6 +166,37 @@ public sealed class RbacTests
     }
 
     [DockerFact]
+    public async Task Pausing_restarting_and_rebooting_a_kiosk_are_three_permissions()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SuperAdminAsync();
+        using var kiosk = await TestKiosks.ActivatedAsync(_fixture, $"rbac-cmd-{Guid.NewGuid():N}"[..22]);
+
+        // An operator who may pause a kiosk, and nothing heavier (plan section 7.8).
+        var roleId = await CreateRoleAsync(
+            admin, $"Pause only {Guid.NewGuid():N}", Permissions.KiosksView, Permissions.KioskCommandsPause);
+
+        var (client, _) = await CreateAdminWithRoleAsync(admin, roleId);
+        using var scoped = client;
+
+        (await scoped.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/pause", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await scoped.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/resume", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        (await scoped.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/restart-app", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await scoped.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/reboot", null)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // Refused means nothing was sent: the kiosk has no restart waiting for it.
+        var open = await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/commands");
+        open.EnumerateArray().Select(command => command.GetProperty("type").GetString())
+            .Should().NotContain(["RestartApp", "Reboot"]);
+
+        // And without signing in there is no command at all.
+        using var anonymous = _fixture.CreateApiClient();
+        (await anonymous.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/reboot", null)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [DockerFact]
     public async Task Granting_a_permission_takes_effect_without_signing_in_again()
     {
         if (Skip) { return; }

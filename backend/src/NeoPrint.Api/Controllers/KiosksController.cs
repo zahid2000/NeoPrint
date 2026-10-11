@@ -145,6 +145,17 @@ public sealed class KiosksController : ControllerBase
             ? Ok(await _sender.Send(new GetOpenKioskCommandsQuery(deviceId), cancellationToken))
             : Forbid();
 
+    /// <summary>
+    /// "I have it and will do it": for a command whose result can only come
+    /// later - a restart is answered by the application that starts afterwards.
+    /// </summary>
+    [HttpPost("me/commands/{id:guid}/ack")]
+    [Authorize(Policy = AuthorizationPolicies.Kiosk)]
+    public async Task<ActionResult<KioskCommandView>> CommandAcknowledged(Guid id, CancellationToken cancellationToken)
+        => _currentUser.DeviceId is { } deviceId
+            ? Ok(await _sender.Send(new AcknowledgeKioskCommandCommand(deviceId, id), cancellationToken))
+            : Forbid();
+
     /// <summary>The kiosk's answer to a command; repeating it changes nothing.</summary>
     [HttpPost("me/commands/{id:guid}/result")]
     [Authorize(Policy = AuthorizationPolicies.Kiosk)]
