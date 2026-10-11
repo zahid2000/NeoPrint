@@ -82,7 +82,7 @@ for (const { sample: printer, stale } of printers) {
   console.log(`    spooler    ${printer.spoolerJobs?.length ? printer.spoolerJobs.map((j) => `${j.id} ${j.state ?? ''} ${j.submittedAt ?? ''}`).join('; ') : 'empty'}`);
 
   const events = await get(`/api/admin/kiosks/${kiosk.id}/printers/telemetry/events?printer=${encodeURIComponent(printer.printer.printerName)}`);
-  for (const event of events.slice(0, 5)) {
+  for (const event of events.slice(0, 8)) {
     console.log(`    ${event.at}  ${event.kind}: ${event.from ?? '-'} -> ${event.to ?? '-'}`);
   }
 }

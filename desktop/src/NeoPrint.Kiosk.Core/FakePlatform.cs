@@ -182,17 +182,22 @@ public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport,
     /// The fake printer described as a printer describes itself (plan section
     /// 7.10), so the whole path to the panel works on a machine without one.
     /// </summary>
-    public Task<PrinterDetails> InspectAsync(string printer, CancellationToken cancellationToken = default)
+    public async Task<PrinterDetails> InspectAsync(string printer, CancellationToken cancellationToken = default)
     {
         if (SimulatedDetails is { } simulated)
         {
-            return Task.FromResult(simulated with { Name = printer });
+            return simulated with { Name = printer };
         }
 
         var known = _printers.FirstOrDefault(candidate => candidate.Name == printer);
-        var state = SimulatedState ?? (SimulateOffline ? PrinterState.Offline : PrinterState.Online);
 
-        return Task.FromResult(new PrinterDetails(
+        // The same state a print would meet - printer-state.txt included -
+        // so what the panel is told and what the kiosk does agree.
+        var state = known is null
+            ? SimulatedState ?? (SimulateOffline ? PrinterState.Offline : PrinterState.Online)
+            : await GetStateAsync(printer, cancellationToken).ConfigureAwait(false);
+
+        return new PrinterDetails(
             printer,
             Manufacturer: "NeoPrint",
             Model: "Fake printer (prints into a folder)",
@@ -215,7 +220,7 @@ public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport,
                 Color: known?.SupportsColor,
                 Duplex: known?.SupportsDuplex,
                 PaperSizes: known?.SupportsA3 == true ? ["A4", "A3"] : ["A4"],
-                NativeFormats: [.. NativeFormats])));
+                NativeFormats: [.. NativeFormats]));
     }
 
     /// <summary>A state to report, for tests; overrides the state file.</summary>

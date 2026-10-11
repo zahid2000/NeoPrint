@@ -96,6 +96,34 @@ public sealed class PrinterInspectionTests
     }
 
     [Fact]
+    public async Task The_fake_printer_reports_the_state_its_state_file_puts_it_in()
+    {
+        var folder = Directory.CreateTempSubdirectory("neoprint-fake-printer-").FullName;
+
+        try
+        {
+            var fake = new FakePrinterService(outputDirectory: folder);
+            var stateFile = Path.Combine(folder, "printer-state.txt");
+
+            // The file a developer writes to make a print fail is also what
+            // the panel is told: the two cannot disagree.
+            await File.WriteAllTextAsync(stateFile, "PaperJam");
+            var jammed = await Routing(null, fake).InspectAsync(FakePrinterService.FakePrinterName);
+            jammed.State.Should().Be("stopped");
+            jammed.StateReasons.Should().Equal("media-jam");
+
+            File.Delete(stateFile);
+            var cleared = await Routing(null, fake).InspectAsync(FakePrinterService.FakePrinterName);
+            cleared.State.Should().Be("idle");
+            cleared.StateReasons.Should().BeEmpty();
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task A_machine_printer_goes_to_the_machine_inspector_and_a_failure_there_is_not_an_exception()
     {
         var asked = new List<string>();
