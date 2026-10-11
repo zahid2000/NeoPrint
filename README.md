@@ -88,6 +88,10 @@ Kiosku lokal stack-ə qarşı işə salmaq (Windows, administrator PowerShell):
 `tools\dev-kiosk\start-kiosk.ps1` / `stop-kiosk.ps1` / `reset-kiosk.ps1` —
 ətraflı [`docs/DEV_ENVIRONMENT.md`](docs/DEV_ENVIRONMENT.md) bölmə 5.
 
+Mobil tətbiqi Android emulyatorunda (və ya USB ilə telefonda) qabıqdan idarə etmək —
+ekran görüntüsü, toxunuş, tətbiqin keşinə baxış: `bash tools/dev-mobile/emu.sh`
+(bölmə 6, "Emulyatorda real axın").
+
 CI (`.github/workflows/ci.yml`) eyni addımları `windows-latest` və `ubuntu-latest` üzərində icra edir.
 
 ---
