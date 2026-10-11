@@ -102,6 +102,20 @@ qısa ömürlü proses.
   worker-i yox, faylı tutan prosesi öldürsün.
 - **Növbə:** worker-də alət işlərinin öz 3 yeri var — preview və səhifə sayı
   iki uzun Office konvertasiyasının arxasında gözləmir.
+- **Yük həddi (T-222):** API tərəfində də eyni say var
+  (`Conversion:InteractiveParallel` = 3): kiminsə gözlədiyi sorğu yalnız yer
+  tutandan sonra faylı açıb spool-a yazır. Yer gözləyənlərin sayı
+  (`InteractiveQueueLength` = 48) və gözləmə müddəti
+  (`InteractiveQueueSeconds` = 10) sərhədlidir; sığmayan sorğu `503`
+  (`code: files.processingBusy`) + `Retry-After: 3` alır. Ölçülüb (Docker
+  Desktop, converter 2 CPU): eyni anda 100 müxtəlif səhifə istənəndə 52-si
+  çəkildi, 48-i rədd olundu, ən gec cavab 9,9 saniyədə gəldi, konteynerdə
+  eyni anda 3-dən çox alət prosesi görünmədi.
+- **Səhifə şəkillərinin keşi (T-222):** çəkilmiş şəkil API-nin yaddaşında
+  qalır (PDF hash-i + səhifə + en; 64 MB, 10 dəqiqə). Ölçülüb: ilk sorğu
+  326 ms, təkrar sorğular ≤ 8 ms və converter-də yeni proses yoxdur. Keş
+  yalnız yaddaşdadır — fayl məzmununun şifrəsiz nüsxəsi Redis-ə və diskə
+  düşmür. `crossgen2` (ReadyToRun) əlavə olunmadı (layihə sahibi, 2026-10-11).
 - **Converter dayananda:** kiminsə gözlədiyi sorğular (preview, redaktə,
   tərtibat) heartbeat 20 saniyədən köhnədirsə **dərhal** `503`
   (`code: files.processingUnavailable`, "Sənəd emalı xidməti hazırda

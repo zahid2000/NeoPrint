@@ -797,8 +797,9 @@ yaddaş xəritəsində (`/proc/1/maps`) PDFium / SkiaSharp / PDFsharp olmadığ�
 alət əməliyyatının converter-in log-unda olduğunu yoxlayır. Yaratdığı faylları silir.
 
 ```bash
-node tools/dev-converter/check.mjs            # 24 yoxlama, ~1 dəqiqə
-node tools/dev-converter/check.mjs --down     # + converter-i dayandırır: 503, health Degraded, sonra yenidən qaldırır (30 yoxlama)
+node tools/dev-converter/check.mjs            # 25 yoxlama, ~1 dəqiqə (sonuncusu: bir səhifəyə 6 sorğu → converter-də 1 proses)
+node tools/dev-converter/check.mjs --down     # + converter-i dayandırır: 503, health Degraded, sonra yenidən qaldırır (+6 yoxlama)
+node tools/dev-converter/check.mjs --load     # + eyni anda 100 önizləmə: kim çəkilir, kim 503 "məşğul" alır (+6 yoxlama, ~1,5 dəqiqə artıq)
 ```
 
 Əl ilə:
@@ -811,6 +812,20 @@ docker logs --since 5m neoprint-converter | grep -o 'with [a-z-]*: [A-Za-z]* in 
 docker stop neoprint-converter      # 20 saniyədən sonra: önizləmə / redaktə → 503 files.processingUnavailable
 docker start neoprint-converter     # eyni sorğu yenidən işləyir
 ```
+
+`--load` bir dəqiqə gözləyir (bir çağıranın dəqiqədə 120 sorğu həddi təzələnsin), sonra 50
+səhifəlik PDF-in 100 müxtəlif şəklini eyni anda istəyir və yoxlayır: hər cavab ya şəkildir, ya
+`503 files.processingBusy` + `Retry-After: 3`; heç kim asılı qalmır; konteynerdə eyni anda
+3-dən çox alət prosesi yoxdur; rədd olunan sorğu təkrar göndəriləndə işləyir.
+
+Hədlər konfiqurasiyadan dəyişir (compose-da `api` servisinin mühit dəyişəni kimi, məs.
+`Conversion__InteractiveQueueLength=16`): `Conversion:InteractiveParallel` (3),
+`InteractiveQueueLength` (48), `InteractiveQueueSeconds` (10), `PreviewCacheMegabytes`
+(64; 0 keşi söndürür), `PreviewCacheMinutes` (10).
+
+**M3-dən keçid (T-222 … T-224):** `docker compose up -d --build api converter` və
+`bash tools/dev-kiosk/update-linux-kiosk.sh`. Yeni `printer_events` kolleksiyası və onun TTL
+indeksi API başlayanda özü yaranır; compose faylında və seed-də dəyişiklik yoxdur.
 
 **Addım 6-dan keçid (T-051):** kod yeniləndikdən sonra image-i yenidən qurun —
 `docker compose up -d --build api converter`. Hər iki konteyner eyni image-dəndir;
@@ -1018,7 +1033,7 @@ müştərinin hesabında qalsın. Şəbəkə yoxdursa kiosk hər 2 dəqiqədən 
 
 | Fayl (məzmunu vəziyyət adıdır) | Nə edir | Nəticə |
 |---|---|---|
-| `printer-state.txt` — `PaperJam`, `OutOfPaper`, `Offline` | Printer **çapdan əvvəl** xətadadır | Sifariş növbədə gözləyir, refund olmur; faylı silin → çap olunur |
+| `printer-state.txt` — `PaperJam`, `OutOfPaper`, `Offline` | Printer **çapdan əvvəl** xətadadır; printer telemetriyası da bunu göndərir (`stopped`, `media-jam` və s.) | Sifariş növbədə gözləyir, refund olmur; faylı silin → çap olunur. Bir dəqiqə sonra `node tools/dev-kiosk/telemetry.mjs` hadisələrdə `JamStarted` / `JamEnded` göstərir |
 | `printer-fail-next.txt` — `PaperJam` və s. | **Növbəti** iş printerdə qırılır, fayl özü silinir (birdəfəlik) | Ssenari A: iş `Interrupted` → avtomatik karta qaytarma, kioskda "Çap tamamlanmadı" |
 
 ```bash

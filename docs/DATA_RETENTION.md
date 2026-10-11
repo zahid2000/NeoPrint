@@ -94,6 +94,21 @@ növü (kimin olduğu yox), növbənin uzunluğu və çap olunan sifarişin kodu
 modeli, seriya nömrəsi, vəziyyəti, sərf səviyyələri, sayğacları və sistem növbəsindəki işlərin
 nömrəsi / ölçüsü. İşin adı və ya məzmunu yoxdur.
 
+`printer_events` — adi kolleksiya, TTL indeksi ilə (`Kiosk.PrinterEventRetentionDays`, default
+365; ayar dəyişəndə növbəti başlanğıcda `collMod` ilə tətbiq olunur). Printerə nə baş verdiyi:
+toner dəyişdi, kağız dolduruldu, sıxılma başladı / bitdi, vəziyyət dəyişdi. Xam oxunuşlar
+(dəqiqədə bir sətir) 30 gündən sonra silinir; hadisələr isə kiçikdir (printer üçün gündə bir neçə
+sətir) və sərf proqnozu, servis tapşırıqları üçün bir il qalır. İstifadəçi və ya fayl haqqında heç
+nə yoxdur.
+
+## Səhifə şəkillərinin keşi
+
+Önizləmə üçün çəkilmiş səhifə şəkli istifadəçi faylının məzmunudur. O, yalnız API prosesinin
+yaddaşında saxlanılır: ən çox 64 MB, son istəkdən 10 dəqiqə sonra unudulur, proses dayananda
+yox olur. Redis-ə və diskə yazılmır — orada şifrəli saxlanan faylın yanında şifrəsiz qalardı.
+Fayl silinəndə keşdəki şəkil ən çox 10 dəqiqə yaddaşda qalır, amma əlçatmazdır: sorğu əvvəlcə
+faylı və icazəni yoxlayır, silinmiş fayl üçün `404` qaytarır.
+
 ## Financial data
 
 Do not apply generic user-file retention rules to payments/fiscal

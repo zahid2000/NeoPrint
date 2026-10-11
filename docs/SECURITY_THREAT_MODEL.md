@@ -44,6 +44,15 @@ prosesdə işləyir. API prosesi bu kitabxanalara istinad etmir
 (`ParserIsolationTests` bunu assembly metadata-sından yoxlayır). Təfərrüat:
 `docs/adr/ADR-0005-isolated-converter.md` bənd 6.
 
+**Converter-i yükləmək (T-222):** önizləmə və redaktə sorğuları converter
+prosesi başladır, yəni onları çoxaltmaq xidməti yormağın yoludur. Üç sərhəd
+var: bir çağıran dəqiqədə 120 sorğu göndərə bilər (`429`); eyni anda ən çox 3
+alət prosesi işləyir, arxasında ən çox 48 sorğu ən çox 10 saniyə gözləyir,
+qalanı dərhal `503` + `Retry-After` alır; rədd olunan sorğu proses
+başlatmır və açılmış faylı spool-a yazmır. Çəkilmiş səhifə şəkilləri yalnız
+API-nin yaddaşında keşlənir (64 MB, 10 dəqiqə) — Redis-də və diskdə fayl
+məzmununun şifrəsiz nüsxəsi yaranmır; keş icazə yoxlamasından sonra oxunur.
+
 ### Stolen kiosk credentials
 
 Controls: - device keypair - private key never leaves device - revoke

@@ -133,6 +133,14 @@ retry-safe olmalıdır; - istifadəçiyə təhlükəsiz error göstərilməlidir
 | Çap, ödəniş, artıq hazır PDF-in endirilməsi | Təsirlənmir — converter-ə ehtiyacı yoxdur |
 | API `/health` | `converter: Degraded` |
 
+**Converter məşğul olanda (T-222):** eyni anda 3 alət prosesi işləyir, 48 sorğu
+ən çox 10 saniyə növbədə gözləyir. Sığmayan sorğu dərhal `503`,
+`code: files.processingBusy`, `Retry-After: 3` alır — "Sənəd emalı xidməti
+hazırda məşğuldur… bir neçə saniyədən sonra yenidən cəhd edin". Heç nə
+saxlanmır, heç nə itmir; eyni sorğu bir neçə saniyə sonra işləyir. Artıq
+çəkilmiş səhifələr API-nin yaddaşındakı keşdən gəlir və bu vəziyyətdən (həm də
+converter-in dayanmasından) təsirlənmir.
+
 Converter qalxandan sonra eyni sorğu heç nə dəyişmədən işləyir. Alət bir
 faylda çökərsə (parser xətası, yaddaş limiti) yalnız həmin əməliyyat
 "alınmadı" cavabı alır; worker və digər istifadəçilərin işləri davam edir.

@@ -274,6 +274,7 @@ price      = max(MinOrder, base * (1 - tier.DiscountPercent/100))
 | `Kiosk.OfflineAfterSeconds` | 60 | Heartbeat gəlməzsə offline sayılır |
 | `Kiosk.TelemetrySeconds` | 30 | Kiosk telemetriya göndərmə intervalı |
 | `Kiosk.TelemetryRetentionDays` | 30 | Telemetriya tarixçəsinin saxlanma müddəti |
+| `Kiosk.PrinterEventRetentionDays` | 365 | Printer hadisələrinin (toner dəyişdi, kağız dolduruldu, sıxılma və s.) saxlanma müddəti |
 | `Files.DefaultMaxSizeMb` | 50 | Default maksimum fayl ölçüsü (kiosk override edə bilər) |
 | `Files.DefaultMaxPages` | 200 | Default maksimum səhifə sayı (kiosk override edə bilər) |
 | `Files.UserQuotaGb` | 1 | İstifadəçi başına saxlama kvotası |
@@ -653,6 +654,7 @@ NeoPrint/
 │   │   ├── NeoPrint.Application/      # CQRS (MediatR 12), validator-lar, interface-lər
 │   │   ├── NeoPrint.Domain/           # Entities, Enums, ValueObjects, DomainEvents
 │   │   ├── NeoPrint.Infrastructure/   # Mongo, Redis, S3, MassTransit (RabbitMQ + Mongo outbox), FCM, Email, Crypto, Providers
+│   │   ├── NeoPrint.Converter/        # Converter aləti: istifadəçi PDF-ini / şəklini açan yeganə proses (PDFium, SkiaSharp, PDFsharp); yalnız şəbəkəsiz `converter` konteynerində, hər fayl üçün ayrıca proses (ADR-0005). API ona istinad etmir
 │   │   ├── NeoPrint.Workers/          # Hangfire job-ları, MassTransit consumer-ləri
 │   │   └── NeoPrint.Contracts/        # Paylaşılan DTO və mesaj kontraktları (desktop istifadə edir)
 │   ├── shared/
@@ -789,7 +791,7 @@ Backend secret-ləri OpenBao-dan; `api` konteyneri yalnız `BAO_ADDR`, role_id v
 | `promo_usages` | `PromoCodeId`, `UserId?`, `PaymentId` |
 | `refund_vouchers` | `Code`, `Amount`, `PaymentId`, `RedeemedBy?`, `ExpiresAt` |
 | `pricing_profiles` | Bölmə 2.3 |
-| `incidents` | `Id`, `KioskId`, `Type (PrinterOffline/PaperOut/PaperLow/TonerLow/PaperJam/ConnectionLost/AppCrash/NoPrinterDetected/SelectedPrinterMissing/FiscalFailed/RefundFailed/StorageUnhealthy/Other)`, `Severity (Critical/High/Medium)`, `Status (Open/Acknowledged/Resolved)`, `Details`, `CreatedAt`, `ResolvedAt` |
+| `incidents` | `Id`, `KioskId`, `Type (PrinterOffline/PaperOut/PaperLow/TonerLow/PaperJam/ConnectionLost/AppCrash/NoPrinterDetected/SelectedPrinterMissing/FiscalFailed/RefundFailed/StorageUnhealthy/DiskLow/MemoryHigh/BackendSlow/SpoolerStuck/ClockOff/Other)`, `Severity (Critical/High/Medium)`, `Status (Open/Acknowledged/Resolved)`, `Details`, `CreatedAt`, `ResolvedAt` |
 | `supply_alert_rules`, `supply_alerts`, `supply_events` | Bölmə 2.15 (`supply_alerts`: aktiv Warning/Critical vəziyyətləri; `supply_events`: doldurma, dəyişmə, sayğac düzəlişləri) |
 | `service_tasks` | Bölmə 2.15 |
 | `inventory_items`, `inventory_movements` | Bölmə 2.15 |
@@ -800,7 +802,8 @@ Backend secret-ləri OpenBao-dan; `api` konteyneri yalnız `BAO_ADDR`, role_id v
 | `admin_users` | `Id`, `Email`, `FullName`, `PasswordHash`, `RoleIds[]`, `KioskScope (All / KioskIds[])`, `IsActive`, `MustChangePassword`, `FailedLoginCount`, `LockedUntil`, `LastLoginAt`, `TelegramChatId?` |
 | `kiosk_commands` | `Id`, `KioskId`, `Type (RefreshPrinters/TestPrint/Pause/Resume/RestartApp/Reboot/UpdateNow/RollbackVersion/UploadLogs/ReapplyProvisioning/RestartAgent)`, `Payload`, `Status (Sent/Acknowledged/Succeeded/Failed/Expired)`, `Result`, `CreatedBy`, `CreatedAt` |
 | `kiosk_telemetry` | Mongo time-series (`timeField: Timestamp`, `metaField: KioskId`), TTL `Kiosk.TelemetryRetentionDays`; Bölmə 7.9 sahələri |
-| `printer_telemetry` | Mongo time-series (`metaField: {KioskId, PrinterName}`); Bölmə 7.10 sahələri |
+| `printer_telemetry` | Mongo time-series (`metaField: {KioskId, PrinterName}`), TTL `Kiosk.TelemetryRetentionDays`; Bölmə 7.10 sahələri (xam oxunuşlar) |
+| `printer_events` | `Id` (əvvəlki oxunuş + növ + subyektdən törəyir — eyni hadisə iki dəfə yazılmır), `KioskId`, `PrinterName`, `At`, `Kind (State/Online/Reasons/Error/SupplyReplaced/PaperRefilled/JamStarted/JamEnded/PaperOutStarted/PaperOutEnded/CoverOpened/CoverClosed)`, `Subject`, `From`, `To`, `FromLevel`, `ToLevel`, `LifetimePages`; TTL `Kiosk.PrinterEventRetentionDays`. Oxunuş gələndə əvvəlki ilə müqayisədən yazılır; sərf proqnozu və servis tapşırıqları buradan oxuyur |
 | `storage_providers`, `storage_sync_jobs`, `storage_sync_failures` | Bölmə 2.10 |
 | MassTransit outbox / inbox | MassTransit.MongoDb tərəfindən idarə olunan kolleksiyalar |
 | `audit_logs` | `AdminUserId`, `Action`, `EntityType`, `EntityId`, `Before`, `After`, `Ip`, `CreatedAt` |
@@ -1055,7 +1058,7 @@ Kiosk hər `Kiosk.TelemetrySeconds` (default 30 san) `POST kiosks/me/telemetry` 
 | Qrup | Sahələr |
 |---|---|
 | Tətbiq | App versiyası, işə düşmə vaxtı / uptime, cari ekran, aktiv sessiya (mobil / istifadəçi QR / anonim), son crash vaxtı |
-| Sistem | OS və versiya, hostname, CPU %, RAM (istifadə / cəmi), disk boş yer (sistem və spool), sistem uptime, saat sinxronu (NTP fərqi) |
+| Sistem | OS və versiya, hostname, CPU %, RAM (istifadə / cəmi), disk boş yer (sistem və spool), sistem uptime, saat fərqi (kioskun hesabata yazdığı göndərilmə vaxtı ilə serverin onu aldığı vaxtın fərqi; kioskda ayrıca NTP sorğusu yoxdur) |
 | Şəbəkə | İnternet var/yox, bağlantı tipi (Ethernet / Wi-Fi + siqnal), lokal IP, backend-ə gecikmə (ms), SignalR bağlantı statusu və son reconnect |
 | Periferiya | Flash taxılıb / yox, QR skaner qoşulub / son oxuma vaxtı, ekran ölçüsü |
 | İş | Queue uzunluğu, cari çap olunan job, bugünkü job sayı / vərəq, spool-da gözləyən fayllar, uğursuz flash yükləmələri, gözləyən əmrlər |
@@ -1063,7 +1066,7 @@ Kiosk hər `Kiosk.TelemetrySeconds` (default 30 san) `POST kiosks/me/telemetry` 
 | Xidmətlər | LibreOffice / Ghostscript mövcudluğu, lokal konfiqurasiya versiyası, feature flag versiyası |
 | Status | Kiosk statusu, açıq incident-lər, son heartbeat |
 
-Hədd aşımları (`TelemetryAlertEvaluator`): disk < 2 GB → Medium, RAM > 90% 5 dəq → Medium, backend gecikməsi > 2000 ms 5 dəq → Medium, SignalR 2 dəq qopuq → High.
+Hədd aşımları (`TelemetryAlertEvaluator`): disk < 2 GB → Medium, RAM > 90% 5 dəq → Medium, backend gecikməsi > 2000 ms 5 dəq → Medium, SignalR 2 dəq qopuq → High, kioskun saatı server saatından ≥ 60 san fərqli 5 dəq → Medium (hədd 60 saniyədən aşağı olmur: fərqə hesabatın yolda keçirdiyi vaxt da daxildir). Incident növləri: `DiskLow`, `MemoryHigh`, `BackendSlow`, `ConnectionLost`, `ClockOff`.
 
 ### 7.10 Printer detalları və telemetriyası
 Kiosk hər 60 saniyədə aktiv printer üçün (digər aşkarlanan printerlər üçün hər 10 dəq) `POST kiosks/me/printers/telemetry` göndərir.
@@ -1075,13 +1078,13 @@ Kiosk hər 60 saniyədə aktiv printer üçün (digər aşkarlanan printerlər �
 | Sayğaclar | Ümumi çap olunmuş səhifə (lifetime), rəngli / ağ-qara sayğac (dəstəklənirsə), NeoPrint vasitəsilə çap olunan səhifələr |
 | İmkanlar | Rəng, duplex, dəstəklənən kağız ölçüləri, lotoklar, rezolyusiya (DPI), native formatlar, çap kənarları |
 | Spooler | Sistem spooler-dəki job-lar (ID, ölçü, status), ilişib qalmış job-lar |
-| Tarixçə | Status dəyişiklikləri, xətalar, test çaplar, printer seçim dəyişiklikləri, toner dəyişmələri |
+| Tarixçə | Status dəyişiklikləri, xətalar, test çaplar, printer seçim dəyişiklikləri, toner dəyişmələri, kağız doldurulması, sıxılmanın başlaması / bitməsi — aşkar olunanda `printer_events`-ə yazılır (xam oxunuşlardan uzun saxlanılır) |
 
 Mənbələr:
 - Windows: `System.Printing` (`PrintQueue`, `PrintCapabilities`), WMI `Win32_Printer` / `Win32_PrinterDriver` (`System.Management`); şəbəkə printerlərində SNMP (Printer MIB, RFC 3805: `prtMarkerSuppliesLevel`, `prtMarkerLifeCount`, `prtInputCurrentLevel`) — `Lextm.SharpSnmpLib`.
 - Linux: IPP `get-printer-attributes` (`printer-make-and-model`, `printer-firmware-string-version`, `printer-device-id`, `marker-names`, `marker-levels`, `marker-colors`, `printer-supply`, `printer-state-reasons`), `lpstat -o` (spooler), şəbəkə printerlərində eyni SNMP.
 - Məlumat əldə edilə bilməyən sahələr `null` göndərilir, paneldə "Printer bu məlumatı vermir" kimi göstərilir.
-- Toner səviyyələri xəbərdarlıq qaydaları ilə qiymətləndirilir (Bölmə 2.15); ilişib qalmış spooler job-u (> 5 dəq) → High incident.
+- Toner səviyyələri xəbərdarlıq qaydaları ilə qiymətləndirilir (Bölmə 2.15); ilişib qalmış spooler job-u (> 5 dəq) → High incident (`SpoolerStuck`).
 
 ### 7.11 Universal build və cihaz aktivləşdirmə
 **Prinsip:** kiosk tətbiqinin **bir build-i** (hər OS üçün bir paket: `win-x64`, `linux-x64`) bütün kiosklara quraşdırılır. Kiosk üçün ayrıca build, konfiqurasiya faylı, env dəyişəni və ya əl ilə daxil edilən açar yoxdur. Kioskun "kim olduğu" və bütün parametrləri admin paneldən təyin edilir.

@@ -15,6 +15,10 @@
 -   API/Host layer yalnız transport, authentication/authorization və
     composition işlərini görür.
 -   Controller-lərdə business logic yazılmamalıdır.
+-   Backend layihələri: `Api`, `Application`, `Domain`, `Infrastructure`,
+    `Workers`, `Contracts` və `Converter`. `NeoPrint.Converter` ayrıca
+    icra olunan alətdir (istifadəçi faylını açan yeganə proses); API onu
+    image-də daşıyır, amma heç bir tipinə istinad etmir (ADR-0005).
 -   External provider-lər həmişə interface arxasında olmalıdır.
 -   UI birbaşa MongoDB, storage və ya provider-lərə çıxmamalıdır.
 -   Bir modul digər modulun DB kolleksiyasını birbaşa dəyişməməlidir.
@@ -52,6 +56,16 @@ Kiosk untrusted edge device kimi qəbul edilir.
 -   User faylları untrusted input sayılır.
 -   Converter-lər təhlükəsiz olmayan fayllarla işləyir və sandbox/limit
     tətbiq etməlidir.
+-   İstifadəçi faylını parse edən kitabxanalar (PDFium, SkiaSharp,
+    PDFsharp, LibreOffice, Ghostscript) yalnız şəbəkəsiz `converter`
+    konteynerində, hər fayl üçün ayrıca prosesdə işləyir. `Api`,
+    `Application` və `Infrastructure` bu kitabxanalara istinad etmir —
+    `ParserIsolationTests` bunu yoxlayır (ADR-0005).
+-   Converter-in gücü sərhədlidir: eyni anda işləyən proseslərin sayı və
+    onların arxasındakı növbə sabitdir. Yer olmayanda sorğu limitsiz
+    gözlədilmir — `503` + `Retry-After` alır.
+-   Açılmış fayl məzmunu (məs. səhifə şəkli) yalnız proses yaddaşında və
+    qısa müddət keşlənə bilər; Redis-ə və ya diskə şifrəsiz yazılmır.
 -   Log-larda token, secret, file content və lazımsız PII olmamalıdır.
 
 ## 5. Error/retry

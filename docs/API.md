@@ -583,7 +583,9 @@ Kiosk token-i. Kioskun öz vəziyyəti haqqında hesabatı, hər `Kiosk.Telemetr
 - `session`: `Mobile` / `UserQr` / `Anonymous`; `connectionType`: `Ethernet` / `WiFi` / `Other`.
 - Kiosk etibarsız cihazdır: server hər dəyəri saxlamazdan əvvəl sərhədləyir — aralıqdan
   kənar rəqəm "məlumat yoxdur" olur, mətn 128 simvola kəsilir, idarəetmə simvolları atılır.
-- Saat fərqi (`system.clockOffsetMs`) `sentAt`-dan server tərəfində hesablanır.
+- Saat fərqi (`system.clockOffsetMs`) `sentAt`-dan server tərəfində hesablanır: kioskun
+  hesabata yazdığı vaxt minus serverin onu aldığı vaxt. Fərqə hesabatın yolda keçirdiyi vaxt
+  da daxildir, ona görə onun həddi 60 saniyədən aşağı qoyulmur.
 - 5 saniyədən tez gələn ikinci hesabat saxlanmır (`204` qaytarılır).
 - Hədlər (plan 7.9) hər hesabatda yoxlanır və kiosk + hədd üçün **bir** açıq incident
   yaradır; göstərici normaya qayıdanda incident özü bağlanır
@@ -595,6 +597,7 @@ Kiosk token-i. Kioskun öz vəziyyəti haqqında hesabatı, hər `Kiosk.Telemetr
 | Yaddaş > 90% | 5 dəqiqə fasiləsiz | `MemoryHigh`, Medium |
 | Backend gecikməsi > 2000 ms | 5 dəqiqə fasiləsiz | `BackendSlow`, Medium |
 | SignalR bağlantısı qopuq | 2 dəqiqə | `ConnectionLost`, High |
+| Kioskun saatı server saatından ≥ 60 saniyə irəli və ya geri | 5 dəqiqə fasiləsiz | `ClockOff`, Medium |
 
   İki hesabat arasında 3 dəqiqədən çox fasilə "fasiləsiz"i pozur.
 
@@ -662,10 +665,32 @@ dilimin son oxunuşu: `[ { "at", "lifetimePages", "supplyLevels": { "Black Cartr
 
 ### `GET /api/admin/kiosks/{id}/printers/telemetry/events?printer=&from=&to=`
 
-`printers.view`. Printerin tarixçəsi (default son 7 gün), yenidən köhnəyə — oxunuşlar arasındakı
-dəyişikliklər: `[ { "at", "kind": "State | Online | Reasons | Error | SupplyReplaced", "from", "to" } ]`.
-`SupplyReplaced` — səviyyə bir oxunuşda ≥ 20 faiz bəndi qalxıb (yeni kartric). Test çaplar
-`GET …/commands`-da, printer seçimi dəyişiklikləri audit log-dadır.
+`printers.view`. Printerin tarixçəsi (default son 30 gün, ən çox 366 gün, ən çox 500 sətir),
+yenidən köhnəyə:
+
+```json
+[ { "at", "kind", "subject", "from", "to", "fromLevel", "toLevel", "lifetimePages" } ]
+```
+
+Hadisələr hesabat gələn anda — əvvəlki oxunuşla müqayisədən — `printer_events` kolleksiyasına
+yazılır və xam oxunuşlar silinəndən sonra da qalır (`Kiosk.PrinterEventRetentionDays`, default 365).
+Printerin ilk oxunuşu hadisə yaratmır: tarixçə ondan başlayır.
+
+| `kind` | Nə vaxt | `subject` |
+|---|---|---|
+| `State` | `idle` / `printing` / `stopped` dəyişdi | — |
+| `Online` | Printer əlçatan / əlçatmaz oldu | — |
+| `Reasons` | Printerin öz səbəb siyahısı dəyişdi (hər dəyişiklik) | — |
+| `Error` | Yeni xəta mətni | — |
+| `SupplyReplaced` | Sərf materialının səviyyəsi bir oxunuşda ≥ 20 faiz bəndi qalxdı (yeni kartric); `fromLevel` / `toLevel` faizlə | Materialın adı |
+| `PaperRefilled` | Lotokun səviyyəsi ≥ 20 faiz bəndi qalxdı | Lotokun adı |
+| `JamStarted` / `JamEnded` | Səbəblərdə "jam" göründü / itdi | Printerin səbəbi (məs. `media-jam-error`) |
+| `PaperOutStarted` / `PaperOutEnded` | `media-empty…` / `media-needed…` göründü / itdi | Printerin səbəbi |
+| `CoverOpened` / `CoverClosed` | `cover-open…` / `door-open…` göründü / itdi | Printerin səbəbi |
+
+`lifetimePages` — həmin andakı ümumi sayğac ("bir kartric neçə səhifə getdi" buradan hesablanır).
+Eyni dəyişiklik eyni əvvəlki oxunuşdan iki dəfə tapılsa (hesabat təkrarlansa) bir sətir olur.
+Test çaplar `GET …/commands`-da, printer seçimi dəyişiklikləri audit log-dadır.
 
 `/hubs/admin` → **`PrinterTelemetryUpdated`** `{ kioskId, printers: [ …GET-dəki kimi… ] }`.
 
@@ -1051,6 +1076,13 @@ izah; olmayan səhifə `400`; başqasının faylı `404`.
 `Cache-Control: private, max-age=86400` və PDF məzmununa bağlı `ETag` — eyni
 səhifə üçün `If-None-Match` göndərilsə `304`, yenidən render olunmur.
 
+**Server keşi.** Çəkilmiş səhifə şəkli API-nin yaddaşında saxlanılır (açar: PDF-in hash-i +
+səhifə + en; ən çox 64 MB, son istəkdən 10 dəqiqə sonra unudulur —
+`Conversion:PreviewCacheMegabytes`, `Conversion:PreviewCacheMinutes`). `ETag`-ı olmayan
+klient (ikinci telefon, təmizlənmiş keş, paylaşılan faylın alıcısı) eyni səhifəni istəyəndə
+converter prosesi başlamır. Keş yalnız icazə yoxlamasından sonra oxunur; Redis-ə və diskə
+yazılmır; eyni səhifə üçün eyni anda gələn sorğular bir çəkilişi paylaşır.
+
 Səhifəni API özü çəkmir: şəbəkəsiz `converter` konteynerindəki alət çəkir
 (ADR-0005). Converter işləmirsə cavab **`503`**-dür:
 
@@ -1068,6 +1100,24 @@ files/{id}/edit` (səhifə və şəkil redaktəsi), `POST files/scan`, `POST
 files/layout`, `PUT files/{id}/layout`, `GET shares/{id}/pages/{n}.png`.
 Klient bunu "faylda problem var" kimi yox, "bir az sonra yenidən cəhd et" kimi
 göstərir; sorğu təkrar göndərilə bilər.
+
+**Converter məşğul olanda.** Kiminsə gözlədiyi sorğular üçün eyni anda ən çox
+`Conversion:InteractiveParallel` (3) converter prosesi işləyir; onların arxasında ən çox
+`Conversion:InteractiveQueueLength` (48) sorğu, hər biri ən çox
+`Conversion:InteractiveQueueSeconds` (10 saniyə) gözləyir. Növbəyə sığmayan və ya vaxtı
+bitən sorğu **`503`** + **`Retry-After: 3`** alır — asılı qalmır:
+
+```json
+{
+  "title": "Sənəd emalı xidməti məşğuldur",
+  "detail": "Sənəd emalı xidməti hazırda məşğuldur, ona görə bu əməliyyat növbəyə sığmadı. Fayllarınız yerindədir — bir neçə saniyədən sonra yenidən cəhd edin.",
+  "status": 503,
+  "code": "files.processingBusy"
+}
+```
+
+Rədd olunan sorğu heç bir proses başlatmır və spool-a heç nə yazmır. Bu, converter-in
+ümumi həddidir; bir çağıranın öz həddi ayrıdır — dəqiqədə 120 sorğu, aşanda `429`.
 
 ### `POST /api/files/{id}/edit`
 

@@ -21,6 +21,10 @@ Hər sessiyanın əvvəlində oxu: plandakı təlimat bölməsi, Bölmə 2.0 (ki
 - Addım hesabatında plan DoD-undan əlavə həmin addım zamanı verilən bütün tapşırıqlar ayrıca yoxlanılır.
 - Tapşırıq heç vaxt siyahıdan silinmir.
 
+## Xırda UI problemləri (`docs/UI_BUGS.md`)
+- Layihə sahibi xırda UI problemlərini `docs/UI_BUGS.md`-yə bir sətirlə yazır. Hər M-dən (addımın hissəsindən) sonra fayl oxunur, "Açıq" sətirlər düzəldilir və "Həll olundu (commit)" kimi qeyd olunur; böyük düzəliş üçün `docs/TASKS.md`-də T-xxx açılır.
+- Pilot-bloklayıcılar `docs/PILOT.md`-də saxlanılır; belə bir iş yarananda və ya bağlananda siyahı yenilənir.
+
 ## Lokal mühit dəyişiklikləri
 - Compose-dan servis çıxarılanda, adı dəyişəndə və ya seed/konfiqurasiya strukturu dəyişəndə `docs/DEV_ENVIRONMENT.md`-də keçid addımları yazılır, addım hesabatında isə "Lokal mühitinizdə etməli olduğunuz" bölməsi olur.
 - Layihə sahibinə verilən hər faydalı əmr və ya skript söhbətdə qalmır: həmin işdə `docs/DEV_ENVIRONMENT.md`-yə yazılır, təkrar istifadə olunanlar isə `tools/` altında skript olur (məs. `tools/dev-kiosk/`).

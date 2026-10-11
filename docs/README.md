@@ -29,5 +29,7 @@ Ziddiyyət görünürsə: dayan, uyğunsuzluğu göstər, təhlükəsiz variant�
 | `KIOSK_SETUP.md` | Kioskun sıfırdan quraşdırılması (texnik üçün): paket, provisioning, aktivləşdirmə, texniki giriş, golden image |
 | `KIOSK_PROVISIONING.md` | Provisioning skriptlərinin OS-də etdiyi hər dəyişiklik və səbəbi |
 | `MANUAL_TESTS.md` | Real printer / cihaz tələb edən əl ilə yoxlamalar (məs. çapın ortasında elektrik kəsilməsi): hazırlıq, addımlar, gözlənilən nəticə |
+| `UI_BUGS.md` | Layihə sahibinin bir sətirlə yazdığı xırda UI problemləri; hər M-dən sonra oxunur və bağlanır |
+| `PILOT.md` | Pilot: pilot-bloklayıcılar siyahısı (yoxlama siyahıları və uğur meyarları Addım 7B-də) |
 | `CLAUDE_CODE_EXECUTION_RULES.md` | Task icrası, scope, definition of done |
 | `adr/TEMPLATE.md` | Arxitektura qərar şablonu |
