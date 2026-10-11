@@ -293,9 +293,17 @@ flutter run -d <S24_id> --dart-define=NEOPRINT_API_URL=http://<kompüterin_IP>:5
 Razılıq addımını görmək üçün **yeni test hesabı** açın (`dev-user`-də seed bütün razılıqları qəbul edib). Xətkeş və
 bir bank kartı / vəsiqə (və ya eyni ölçülü kart) lazımdır.
 
-**Vəziyyət (2026-10-05): yoxlanmayıb** — layihə sahibi S24-də icra edəcək. Avtomatik yoxlananlar: backend skan API-si,
-real ölçü (PDF-də 85.69 × 54.02 mm, `docs/screenshots/step-6/m2-*`, `m3-*`), mobil ekranların widget testləri
-(`test/document_scan_test.dart`), Android APK ML Kit ilə build olunur.
+**Vəziyyət (2026-10-11): Android emulyatorunda (API 34, Google Play, real ML Kit skaneri) yoxlanıb; S24-də layihə
+sahibinin yoxlaması qalır.** Emulyatorda keçənlər (`docs/screenshots/step-6/m4-*`, `m11-*`): №1, №3-ün skaner
+hissəsi, №4 (iki səhifə, "Vəsiqə ön + arxa"), №9, №10, №11, №12 (KSK-9002: çap olunan A4-də hər kart
+**85,60 × 54,02 mm**, Ghostscript 300 dpi), №13 (fayl silindi + bildiriş), №15 (köhnə Play xidmətləri ilə
+"skaner işləmir" xəbərdarlığı; "Şəkil çək" düyməsinə basılmayıb), №20 (paylaşım vərəqi), №23-ün birinci hissəsi
+(bağla-aç), №24 (az dilində). Bu yoxlama beş baq tapdı və düzəltdi (T-194 … T-198). **Emulyatorda yoxlanmayanlar —
+S24-də baxın:** real kameranın real kartın kənarlarını tapması və xətkeşlə ölçü (№4, №12 real printerdə), razılıq
+vərəqi yeni hesabda (№2, №3, №14), səhifə redaktoru və "Düzəliş et" (№5, №5a, №6, №7 — emulyatorun virtual kamerası
+ikinci sessiyada dondu), şəbəkəsiz saxlama (№8), QR-ı kamera ilə oxuma və push (№17–19, №21), telefonu söndürüb
+yandırandan sonra sessiya və çıxış (№23), en / ru etiketləri cihazda (№24 — testlə ölçülüb). Avtomatik yoxlananlar:
+backend skan API-si, real ölçü, mobil ekranların widget testləri (`test/document_scan_test.dart`).
 
 | # | Addım | Gözlənilən |
 |---|---|---|
@@ -309,7 +317,7 @@ real ölçü (PDF-də 85.69 × 54.02 mm, `docs/screenshots/step-6/m2-*`, `m3-*`)
 | 7 | Sənəd tipini **Xüsusi ölçü** edin, en 0 yazın | "1 ilə 1000 mm arasında yazın", **Yadda saxla** deaktiv; düzgün ölçüdən sonra aktiv. Sonra tipi yenidən vəsiqəyə qaytarın |
 | 8 | Telefonu təyyarə rejiminə keçirib **Yadda saxla** | Düymədə "Hazırlanır…", sonra qırmızı blok "Skan saxlanılmadı. …" — Fayllarım-da yeni fayl yoxdur; şəbəkəni qaytarıb **Yadda saxla** — uğurlu |
 | 9 | Uğurdan sonra | Snackbar "Skan saxlanıldı"; siyahıda "Vəsiqə…" faylı: `Skan`, `Həssas`, "Çapdan sonra silinəcək" chip-ləri; menyuda redaktə yoxdur |
-| 10 | Debug build-də: `adb shell run-as az.neoprint.neoprint ls cache` | `scan-*.jpg` qalmayıb (səhifələr saxlanandan sonra silinir) |
+| 10 | Debug build-də: `bash tools/dev-mobile/emu.sh cache` (və ya `adb shell run-as az.neoprint.neoprint ls -R cache`) | `scan-*.jpg` qalmayıb və `mlkit_docscan_ui_client/` boşdur (səhifələr saxlanandan sonra silinir; skanerin öz nüsxələri də — T-196). Skaneri saxlamadan bağlayanda da eynidir |
 | 11 | Faylın menyusu → **Kiosk üçün hazırla** | Yuxarıda info: "real ölçüdə (100%) A4 kağızında, vərəqdə 1 səhifə…"; kağız A4 və "1" seçili və dəyişdirilmir (`m3-mobile-prepare-real-size-lock.png` kimi) |
 | 12 | Kioskda (Linux konteyner KSK-9002 və ya real kiosk) şəxsi QR → faylı seçin → ödəyin → çap | Kioskda seçimlər kilidli (`m3-kiosk-real-size-lock.png`); çap edilmiş PDF (`spool/printed`) və ya real printerdə vərəq: **xətkeşlə kart 85.6 × 54 mm ± 1 mm** (real printer — MT-02 ilə birlikdə) |
 | 13 | Çapdan sonra | Fayl Fayllarım-dan gedir, push "Fayl silindi" (9.7, addım 5) |

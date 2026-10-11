@@ -17,6 +17,14 @@ Supported auto-delete modes from the plan:
 
 Deletion must be idempotent.
 
+### Telefonda skan səhifələri (Addım 6, T-196)
+
+Skan səhifələri telefonda yalnız skan sessiyası boyu, tətbiqin öz keşində (`cache/scan-*.jpg`) yaşayır:
+skan saxlananda və ya ekrandan çıxılanda silinir. Android-də Google Play xidmətlərinin skaneri hər səhifənin
+öz nüsxəsini də həmin keşdə (`cache/mlkit_docscan_ui_client/`) yaradır — kanal onları səhifələr tətbiqə
+verilən kimi, skaner saxlamadan bağlananda və növbəti skan başlamazdan əvvəl silir. Qalereyaya heç nə
+yazılmır. Yoxlama: `bash tools/dev-mobile/emu.sh cache` (debug build).
+
 ## Delete process
 
 1.  Mark file as deleting/deleted according to domain rules.

@@ -606,6 +606,47 @@ flutter run -d emulator-5554               # və ya sadəcə: flutter run
 
 Ünvan avtomatik `10.0.2.2:5080`-dir, heç nə vermək lazım deyil.
 
+**Emulyatorda real axın (skaner, secure storage, paylaşım vərəqi).** Sənəd skaneri Google Play xidmətlərinin
+içindədir, ona görə **Google Play** image-i lazımdır (`google_apis_playstore`); Google hesabı lazım deyil:
+
+```bash
+SDK="$LOCALAPPDATA/Android/Sdk"
+"$SDK/cmdline-tools/latest/bin/sdkmanager.bat" "system-images/android-34/google_apis_playstore/x86_64"   # ~1,5 GB, tərəqqi yazmır
+```
+
+`avdmanager.bat` bu maşında paket adındakı `;`-i bölür və AVD yarada bilmir — AVD əl ilə yaradılır: mövcud
+AVD-nin `config.ini`-si `%USERPROFILE%\.android\avd\neoprint_api34.avd\`-yə kopyalanır, orada
+`image.sysdir.1 = system-images\android-34\google_apis_playstore\x86_64\`, `tag.id = google_apis_playstore`,
+`PlayStore.enabled = true`, `hw.ramSize = 4096`, `hw.camera.back = virtualscene` yazılır; yanında
+`neoprint_api34.ini` (`path=` həmin qovluq, `target=android-34`). Sonra:
+
+```bash
+"$SDK/emulator/emulator.exe" -avd neoprint_api34 -no-snapshot -no-boot-anim -no-audio -gpu swiftshader_indirect &
+cd mobile && flutter build apk --debug && cd ..
+bash tools/dev-mobile/emu.sh install && bash tools/dev-mobile/emu.sh start
+bash tools/dev-mobile/emu.sh shot ekran.png        # ekran görüntüsü; tap / text / key / swipe də var
+bash tools/dev-mobile/emu.sh cache                 # skandan sonra burada şəkil qalmamalıdır (T-196)
+bash tools/dev-mobile/emu.sh storage               # möhürlənmiş dəyərlərin adları (T-195)
+```
+
+Bilməli olduqlarınız: (1) təzə image-də Play xidmətləri köhnədir (23.18) və skaner modulunu endirə bilmir —
+tətbiq "Bu telefonda sənəd skaneri işləmir" göstərir; emulyator internetdə ~1 saat açıq qalanda Play xidmətləri
+özü yenilənir və növbəti "Sənəd skanı" modulu endirir ("Downloading updates to Google Play services…").
+(2) Debug build proqram GPU-su ilə çox yavaşdır: "isn't responding" dialoqunda **Wait** seçin, uzun mətni
+`text` ilə hissə-hissə yazın. (3) Virtual kamera otaqdakı şahmat lövhəsini "sənəd" kimi tapır — kənar tapma və
+real ölçü üçün bu kifayətdir, real kartın oxunaqlılığı üçün yox (MT-08, S24). (4) Kamera qara qalsa emulyatoru
+yenidən başladın.
+
+**Çap olunan vərəqi ölçmək** (Linux konteyner kioskunda Ghostscript və ImageMagick var):
+
+```bash
+docker exec neoprint-kshot sh -c 'F=$(ls -t /var/lib/neoprint/spool/printed/*.pdf | head -1)
+  gs -q -dNOPAUSE -dBATCH -sDEVICE=pnggray -r300 -sOutputFile=/tmp/p-%d.png "$F"     # xəbərdarlıq yazmamalıdır (T-198)
+  convert /tmp/p-1.png -threshold 97% -negate -define connected-components:verbose=true \
+    -define connected-components:area-threshold=20000 -connected-components 8 null:'
+# hər blok "EN x HÜNDÜRLÜK+x+y" pikseldir; mm = piksel × 25,4 / 300 (vəsiqə: 1011 × 638 → 85,6 × 54,0 mm)
+```
+
 ### Real telefon (Android, USB və ya eyni Wi-Fi)
 
 1. Kompüterin yerli şəbəkə IP-sini tapın: Windows `ipconfig` → "IPv4 Address"
