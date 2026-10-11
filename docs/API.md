@@ -1443,6 +1443,7 @@ Kiosk (kiosk token):
 
 - `PUT /api/kiosks/me/printers` — `{ printers: [{ name, driverName, isOnline, color, duplex, a3 }] }`: işə düşəndə, siyahı dəyişəndə və `RefreshPrinters` əmri gələndə. Siyahı dəyişibsə panelə `KioskPrintersUpdated`.
 - `GET /api/kiosks/me/commands` — cavablanmamış əmrlər (kiosk offline olanda göndərilənlər). 24 saatdan köhnə əmr `Expired` olur və icra edilmir.
+- `POST /api/kiosks/me/commands/{id}/ack` — "aldım, icra edəcəyəm" (`Sent → Acknowledged`); `RestartApp` və `Reboot` üçün: nəticəni yenidən qalxan tətbiq göndərir. Təkrar çağırış heç nə dəyişmir; başqa kioskun əmri — `404`. `/hubs/admin` `CommandResult` ilə panelə bildirilir.
 - `POST /api/kiosks/me/commands/{id}/result` — `{ succeeded, messageKey, sheetsUsed }`; təkrar cavab heç nə dəyişmir. Uğurlu `TestPrint`: `NotConfigured` kiosk → `Online`; istifadə olunan vərəq A4 sayğacından çıxılır.
 - `GET /api/kiosks/me/config` indi `prices` (profil adı, ağ-qara/rəngli üz qiyməti, kağız əmsalları, minimum sifariş, pillələr — seçim ekranında canlı qiymət üçün; sifarişin əsl qiymətini server hesablayır), `allowedFormats` (boşdursa bütün kataloq), `paperBlockWhenInsufficient`, `idleResetSeconds` da qaytarır.
 
@@ -1455,7 +1456,16 @@ Admin:
 | `PUT /api/admin/kiosks/{id}/capabilities` | `printers.capabilities.manage` | `{ color?, duplex?, a3? }` — yalnız söndürmək olar (`false`); printerin olmayan imkanını yandırmaq `400 printers.cannotEnable` |
 | `POST /api/admin/kiosks/{id}/printers/refresh` | `printers.refresh` | `RefreshPrinters` əmri |
 | `POST /api/admin/kiosks/{id}/test-print` | `printers.testprint` | `TestPrint` əmri; printer seçilməyibsə `409 printer.notSelected`; nəticə `/hubs/admin` `CommandResult` |
+| `POST /api/admin/kiosks/{id}/pause` | `kiosks.commands.pause` | `Pause`: kiosk **dərhal** `Maintenance` olur və yeni sifariş rədd edilir (kiosk offline olsa da); növbə çap olunur, ekranda "Texniki xidmət". Heartbeat və safe mode-dan çıxış fasiləni götürmür |
+| `POST /api/admin/kiosks/{id}/resume` | `kiosks.commands.pause` | `Resume`: `Maintenance → Online` (printer seçilməyibsə `NotConfigured`) |
+| `POST /api/admin/kiosks/{id}/restart-app` | `kiosks.commands.restart` | `RestartApp`: kiosk təsdiqləyir (`Acknowledged`), cari çap bitəndə tətbiq yenidən başlayır və özü `Succeeded` yazır |
+| `POST /api/admin/kiosks/{id}/reboot` | `kiosks.commands.reboot` | `Reboot`: eyni qayda ilə kompüter yenidən yüklənir; kompüter yüklənməyibsə `Failed` — "tətbiq yenidən başladı, amma kompüter yenidən yüklənmədi" |
 | `GET /api/admin/kiosks/{id}/commands` | `kiosks.view` | Son 20 əmr |
+
+Dörd əmrin hamısı `200` + əmrin özünü qaytarır (`{ id, kioskId, type, status, result, createdAt, completedAt }`),
+audit log-a `kiosks.command.<Növ>` yazılır. **Təkrar göndərmə təkrar əmr yaratmır:** eyni növdən hələ açıq
+(`Sent` / `Acknowledged`) əmr varsa o qaytarılır. Kioska cihaz bağlı deyilsə `409 kioskCommands.noDevice`.
+`status`: `Sent`, `Acknowledged`, `Succeeded`, `Failed`, `Expired`.
 | `GET /api/admin/kiosks/{id}/supplies?limit=50` | `supplies.view` | "Sərf" tabı: `paper` (ölçü üzrə `capacity`, `current`, `lastRefillAt`) + `events[]` (`resource` `PaperA4`/`PaperA3`, `type` `JobPrinted`/`TestPrint`/`Refill`/`Recount`, `delta`, `before`, `after`, `jobId`, `by`, `at`), ən yenilər əvvəl |
 | `POST /api/admin/kiosks/{id}/paper/refill` | `paper.refill` | `Idempotency-Key`. `{ "paper": "A4", "mode": "Add" \| "Full" \| "Exact", "sheets": 200 }` — əlavə edilən vərəq / tutuma qədər (sheets nəzərə alınmır) / sayılmış dəqiq say. Tutumdan çox → `409 kiosks.paperRefillInvalid`; lotok tutumu 0 → `409 kiosks.paperNoTray`. `supply_events` + audit (`paper.refill`); kioska `KioskConfigChanged`. Cavab: "Sərf" tabının özü |
 

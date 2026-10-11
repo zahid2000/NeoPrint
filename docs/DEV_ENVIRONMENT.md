@@ -740,6 +740,13 @@ ilə eyni məlumata terminaldan baxmaq:
 node tools/dev-kiosk/telemetry.mjs             # KSK-9002 — Linux konteyner kioskunun son hesabatı + son 1 saatın nöqtələri
 node tools/dev-kiosk/telemetry.mjs KSK-0001    # başqa kiosk, kodu ilə
 
+# Uzaqdan əmrlər (plan 7.8) — panelin düymələrinin etdiyi; dev-admin kimi göndərir və son əmrləri göstərir
+node tools/dev-kiosk/command.mjs pause         # KSK-9002: yeni sifariş yox, ekranda "Texniki xidmət"
+node tools/dev-kiosk/command.mjs resume
+node tools/dev-kiosk/command.mjs restart-app   # konteynerdə kiosk prosesi PID 1-dir: konteyner dayanır → docker start neoprint-kshot
+node tools/dev-kiosk/command.mjs reboot        # konteyner kompüteri yenidən yükləyə bilmir: əmr "Failed — kompüter yenidən yüklənmədi" olur
+node tools/dev-kiosk/command.mjs list          # son 8 əmr və nəticələri
+
 docker exec neoprint-redis redis-cli -a devRedisPassword --no-auth-warning --scan --pattern 'kiosk:status:*'                                   # Redis-dəki son snapshot-lar
 docker exec neoprint-mongo mongosh -u neoprint -p devMongoPassword --authenticationDatabase admin neoprint --quiet --eval "db.kiosk_telemetry.countDocuments()"   # tarixçədəki sətirlər
 ```

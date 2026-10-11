@@ -425,7 +425,7 @@ public sealed class KioskSession
 
         flow.Finished += () =>
         {
-            _model.Screen = _model.PrinterProblem is null ? KioskScreen.Home : KioskScreen.OutOfService;
+            _model.Screen = _model.RestingScreen;
         };
 
         _model.Flow = flow;

@@ -277,7 +277,7 @@ public sealed class CommandProcessor
                     catch (Exception exception) when (exception is not OperationCanceledException)
                     {
                         _logger.LogError(exception, "Command {CommandId}: the machine could not be restarted.", commandId);
-                        return (false, "kioskCommands.rebootNotDone", 0);
+                        return (false, "kioskCommands.rebootRefused", 0);
                     }
 
                     // The reboot takes this process with it. Still here after
@@ -285,7 +285,7 @@ public sealed class CommandProcessor
                     await Task.Delay(RebootGrace, cancellationToken).ConfigureAwait(false);
 
                     _logger.LogError("Command {CommandId}: the machine did not restart.", commandId);
-                    return (false, "kioskCommands.rebootNotDone", 0);
+                    return (false, "kioskCommands.rebootRefused", 0);
                 },
                 cancellationToken)
             .ConfigureAwait(false);

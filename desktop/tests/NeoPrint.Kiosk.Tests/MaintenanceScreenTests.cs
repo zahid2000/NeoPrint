@@ -39,7 +39,15 @@ public sealed class MaintenanceScreenTests
         shell.SetMaintenance(true);
 
         shell.Screen.Should().Be(KioskScreen.Flow);
-        shell.IsMaintenance.Should().BeTrue("the next customer does not get the home screen");
+        shell.IsMaintenance.Should().BeTrue();
+
+        // When they are done - or walk away - the kiosk does not offer the
+        // home screen to the next customer (found on the real stack: the
+        // container kiosk sat in its flash browser and would have gone home).
+        shell.RestingScreen.Should().Be(KioskScreen.OutOfService);
+
+        shell.SetMaintenance(false);
+        shell.RestingScreen.Should().Be(KioskScreen.Home);
     }
 
     [Fact]

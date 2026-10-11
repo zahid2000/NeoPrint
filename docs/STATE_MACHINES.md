@@ -108,6 +108,29 @@ Refund nəticəsi:
 
 `Online ↔ Paused`, `Online ↔ Offline`, `Online → Maintenance`, `* → Disabled`
 
+**Administratorun fasiləsi (plan 7.8, `Pause` / `Resume`; T-208).** `Kiosk.PauseByAdmin` bayraq qoyur
+(`PausedByAdminSince`) və kioskun statusunu `Maintenance` edir: `Online | Paused | Offline → Maintenance`.
+`NotConfigured` kiosk statusunu saxlayır (onsuz da sifariş almır), bayraq isə qalır: test çapı keçəndə
+`NotConfigured → Maintenance` olur. Bayraq durduqca:
+
+- heartbeat-in qayıtması `Maintenance`-i götürmür (bu, kiminsə qərarıdır);
+- kioskun safe mode-dan çıxması da götürmür — fasilə administratorundur;
+- yeni sifariş serverdə dərhal rədd olunur (`Status != Online`), kiosk hələ xəbər tutmasa belə.
+
+`Kiosk.ResumeByAdmin`: `Maintenance → Online` (printer seçilməyibsə `Maintenance → NotConfigured`); kiosk
+hələ safe mode-dadırsa `Maintenance` qalır və yenidən safe mode-un olur.
+
+## Kiosk əmri (`KioskCommand`)
+
+`Sent → Acknowledged → Succeeded | Failed`
+
+`Sent → Succeeded | Failed` (dərhal cavablanan əmrlər: `RefreshPrinters`, `TestPrint`, `Pause`, `Resume`)
+
+`Sent | Acknowledged → Expired` (24 saat cavabsız)
+
+`Acknowledged` — "aldım, icra edəcəyəm": `RestartApp` və `Reboot`-u ondan sonra qalxan tətbiq cavablayır.
+Təkrar təsdiq və təkrar cavab heç nə dəyişmir.
+
 Cihaz ayrıldıqda: `* → NotActivated`.
 
 ## Fayl (`StoredFile`)

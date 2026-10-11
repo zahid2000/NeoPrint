@@ -268,7 +268,7 @@ public sealed class CommandProcessorTests : IDisposable
 
         // The fake machine stays up; a real one takes this process with it.
         // Still here after the grace period is a reboot that did not happen.
-        _backend.Answers.Should().Equal((id.ToString(), false, "kioskCommands.rebootNotDone"));
+        _backend.Answers.Should().Equal((id.ToString(), false, "kioskCommands.rebootRefused"));
     }
 
     [Fact]
@@ -279,7 +279,7 @@ public sealed class CommandProcessorTests : IDisposable
 
         await processor.HandleAsync(id, "Reboot", CancellationToken.None);
 
-        _backend.Answers.Should().Equal((id.ToString(), false, "kioskCommands.rebootNotDone"));
+        _backend.Answers.Should().Equal((id.ToString(), false, "kioskCommands.rebootRefused"));
 
         // The next command is taken as usual.
         await processor.HandleAsync(Guid.NewGuid(), "Pause", CancellationToken.None);

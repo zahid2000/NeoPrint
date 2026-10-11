@@ -232,6 +232,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// <summary>Whether the home screen may be offered: no printer problem and no pause.</summary>
     private bool TakesOrders => PrinterProblem is null && !IsMaintenance;
 
+    /// <summary>
+    /// Where the kiosk goes when an order ends or is abandoned: the home screen,
+    /// or the notice that it takes no orders - a pause that arrived while
+    /// somebody was at the kiosk shows up here, when they are done.
+    /// </summary>
+    public KioskScreen RestingScreen => TakesOrders ? KioskScreen.Home : KioskScreen.OutOfService;
+
     public string OutOfServiceTitle => IsMaintenance ? T("maintenance.title") : T("outOfService.title");
 
     public string OutOfServiceBody => IsMaintenance
@@ -409,7 +416,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         if (Screen == KioskScreen.Flow && Flow is { Stage: not (FlowStage.Working or FlowStage.QrPayment) } flow && idle > limit)
         {
             flow.Abandon();
-            Screen = PrinterProblem is null ? KioskScreen.Home : KioskScreen.OutOfService;
+            Screen = RestingScreen;
             reset = true;
         }
 
