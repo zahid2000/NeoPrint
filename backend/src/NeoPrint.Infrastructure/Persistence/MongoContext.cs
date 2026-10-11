@@ -162,6 +162,9 @@ public sealed class MongoContext
     /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 7.9).</summary>
     public MongoSet<KioskTelemetrySample> KioskTelemetry => Set<KioskTelemetrySample>("kiosk_telemetry");
 
+    /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 7.10).</summary>
+    public MongoSet<PrinterTelemetrySample> PrinterTelemetry => Set<PrinterTelemetrySample>("printer_telemetry");
+
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
     public MongoSet<AuditLog> AuditLogs => Set<AuditLog>("audit_logs");
@@ -609,6 +612,17 @@ public sealed class MongoContext
                 nameof(KioskTelemetrySample.Timestamp),
                 nameof(KioskTelemetrySample.KioskId),
                 TimeSeriesGranularity.Seconds,
+                kioskTelemetry,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        // The selected printer every minute, the others every ten (plan
+        // section 7.10); kept as long as the kiosk's own telemetry.
+        await EnsureTimeSeriesAsync(
+                "printer_telemetry",
+                nameof(PrinterTelemetrySample.Timestamp),
+                nameof(PrinterTelemetrySample.Printer),
+                TimeSeriesGranularity.Minutes,
                 kioskTelemetry,
                 cancellationToken)
             .ConfigureAwait(false);

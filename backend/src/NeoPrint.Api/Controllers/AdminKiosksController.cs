@@ -199,6 +199,35 @@ public sealed class AdminKiosksController : ControllerBase
         CancellationToken cancellationToken = default)
         => Ok(await _sender.Send(new GetKioskTelemetryHistoryQuery(AdminId, id, from, to, points), cancellationToken));
 
+    /// <summary>The latest reading of each of the kiosk's printers, the selected one first (plan section 7.10).</summary>
+    [HttpGet("{id:guid}/printers/telemetry")]
+    [HasPermission(Permissions.PrintersView)]
+    public async Task<ActionResult<IReadOnlyList<PrinterTelemetryView>>> PrinterTelemetry(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new GetPrinterTelemetryQuery(AdminId, id), cancellationToken));
+
+    /// <summary>A printer's supply levels and lifetime counter over time, the last day by default.</summary>
+    [HttpGet("{id:guid}/printers/telemetry/history")]
+    [HasPermission(Permissions.PrintersView)]
+    public async Task<ActionResult<IReadOnlyList<PrinterTelemetryPoint>>> PrinterTelemetryHistory(
+        Guid id,
+        [FromQuery] string printer,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int points = 120,
+        CancellationToken cancellationToken = default)
+        => Ok(await _sender.Send(new GetPrinterTelemetryHistoryQuery(AdminId, id, printer ?? string.Empty, from, to, points), cancellationToken));
+
+    /// <summary>What changed about a printer - state, reasons, errors, a replaced cartridge - the last week by default.</summary>
+    [HttpGet("{id:guid}/printers/telemetry/events")]
+    [HasPermission(Permissions.PrintersView)]
+    public async Task<ActionResult<IReadOnlyList<PrinterTelemetryEvent>>> PrinterTelemetryEvents(
+        Guid id,
+        [FromQuery] string printer,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        CancellationToken cancellationToken = default)
+        => Ok(await _sender.Send(new GetPrinterTelemetryEventsQuery(AdminId, id, printer ?? string.Empty, from, to), cancellationToken));
+
     [HttpGet("{id:guid}/commands")]
     [HasPermission(Permissions.KiosksView)]
     public async Task<ActionResult<IReadOnlyList<KioskCommandView>>> Commands(Guid id, CancellationToken cancellationToken)

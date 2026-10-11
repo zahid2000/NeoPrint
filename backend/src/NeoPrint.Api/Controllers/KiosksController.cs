@@ -99,6 +99,27 @@ public sealed class KiosksController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// What the kiosk's printers say about themselves (plan section 7.10): the
+    /// selected printer every minute, the others every ten.
+    /// </summary>
+    [HttpPost("me/printers/telemetry")]
+    [Authorize(Policy = AuthorizationPolicies.Kiosk)]
+    public async Task<IActionResult> PrinterTelemetry(
+        [FromBody] KioskPrinterTelemetryRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (_currentUser.DeviceId is not { } deviceId)
+        {
+            return Forbid();
+        }
+
+        await _sender.Send(new ReportPrinterTelemetryCommand(deviceId, request.Printers ?? []), cancellationToken);
+
+        return NoContent();
+    }
+
     /// <summary>The printers the kiosk can see: on start, when the list changes, on RefreshPrinters (plan section 7.7).</summary>
     [HttpPut("me/printers")]
     [Authorize(Policy = AuthorizationPolicies.Kiosk)]
@@ -189,6 +210,8 @@ public sealed class KiosksController : ControllerBase
     public sealed record HeartbeatRequest(
         string? AppVersion, string? AgentVersion, bool PrinterOnline, bool SafeMode = false);
 }
+
+public sealed record KioskPrinterTelemetryRequest(IReadOnlyList<PrinterTelemetryReport>? Printers);
 
 public sealed record KioskPrintersRequest(IReadOnlyCollection<ReportedPrinterDto>? Printers);
 

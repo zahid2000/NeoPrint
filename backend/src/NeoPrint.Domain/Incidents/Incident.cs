@@ -31,6 +31,9 @@ public enum IncidentType
 
     /// <summary>A kiosk has been getting slow answers from the backend for minutes (plan section 7.9).</summary>
     BackendSlow = 16,
+
+    /// <summary>A job has been sitting in a kiosk's system spooler for minutes (plan section 7.10).</summary>
+    SpoolerStuck = 17,
 }
 
 public enum IncidentSeverity
