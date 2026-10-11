@@ -3,8 +3,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/network/api_client.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/api_error_text.dart';
 import 'file_models.dart';
 import 'files_controller.dart';
 
@@ -142,6 +144,17 @@ class _PageImageState extends State<_PageImage> {
       future: _image,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
+          // The server's own sentence when it sent one - "the document
+          // service is not running, try again shortly" tells more than "the
+          // page could not be shown" - and no connection in the app's words.
+          final error = snapshot.error;
+          final reason =
+              error is ApiException &&
+                  (error.kind != ApiErrorKind.server ||
+                      error.message.isNotEmpty)
+              ? apiErrorText(l10n, error)
+              : l10n.filesPageFailed;
+
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(Spacing.x6),
@@ -150,7 +163,7 @@ class _PageImageState extends State<_PageImage> {
                 children: [
                   Icon(Icons.broken_image_outlined, color: tokens.danger),
                   const SizedBox(height: Spacing.x2),
-                  Text(l10n.filesPageFailed, textAlign: TextAlign.center),
+                  Text(reason, textAlign: TextAlign.center),
                   const SizedBox(height: Spacing.x3),
                   OutlinedButton(
                     onPressed: _load,

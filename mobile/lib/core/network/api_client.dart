@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -364,8 +365,20 @@ final class ApiClient {
     return const ApiException.unreachable();
   }
 
+  static Object? _decodeJson(List<int> bytes) {
+    try {
+      return jsonDecode(utf8.decode(bytes));
+    } on FormatException {
+      return null;
+    }
+  }
+
   /// Reads an RFC 7807 problem document (plan section 6).
-  static ApiException _fromProblemDetails(int status, dynamic data) {
+  static ApiException _fromProblemDetails(int status, dynamic body) {
+    // A request for bytes - a page image - gets its refusal as bytes too. It
+    // is still a problem document, and its sentence is what the screen shows.
+    final data = body is List<int> ? _decodeJson(body) : body;
+
     if (data is! Map<String, dynamic>) {
       return ApiException(statusCode: status, message: '');
     }

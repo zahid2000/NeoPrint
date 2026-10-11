@@ -114,6 +114,43 @@ void main() {
     );
   });
 
+  test('a refused request for bytes still carries the server words', () async {
+    // A page image that could not be drawn: the answer is a problem document,
+    // but it arrives as bytes because bytes were asked for.
+    const body =
+        '{"title":"Sənəd emalı xidməti cavab vermir",'
+        '"detail":"Sənəd emalı xidməti hazırda işləmir. Bir az sonra yenidən cəhd edin.",'
+        '"code":"files.processingUnavailable"}';
+
+    final api = _client(
+      _RecordingAdapter(
+        503,
+        body,
+        contentType: 'application/problem+json; charset=utf-8',
+      ),
+    );
+
+    ApiException? error;
+
+    try {
+      await api.send<List<int>?>(
+        method: 'GET',
+        path: 'api/files/1/pages/1.png',
+        responseType: ResponseType.bytes,
+        parse: (data) => data as List<int>?,
+      );
+    } on ApiException catch (caught) {
+      error = caught;
+    }
+
+    expect(error?.statusCode, 503);
+    expect(error?.code, 'files.processingUnavailable');
+    expect(
+      apiErrorText(lookupAppLocalizations(const Locale('az')), error!),
+      startsWith('Sənəd emalı xidməti hazırda işləmir'),
+    );
+  });
+
   test('a refusal is shown in the server words', () async {
     final error = await _failure(
       _client(
