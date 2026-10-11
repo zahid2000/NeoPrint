@@ -21,6 +21,11 @@ import java.util.concurrent.ExecutorService
  * the app applies the plan's filters, brightness and real size afterwards.
  * Each page comes back as a JPEG in the app's cache; the app deletes it once
  * the scan is saved or abandoned.
+ *
+ * The scanner also keeps a copy of its own of every page, in a folder under
+ * the same cache. A scanned ID is not left lying there: those copies are
+ * removed as soon as the pages are handed over, when the scan is closed
+ * without saving, and before the next scan starts (T-196).
  */
 class DocumentScanner(
     private val activity: Activity,
@@ -55,6 +60,9 @@ class DocumentScanner(
 
         pending = result
 
+        // Whatever an earlier scan left behind, had the app been closed mid-way.
+        worker.execute { purgeScannerCopies() }
+
         GmsDocumentScanning.getClient(options)
             .getStartScanIntent(activity)
             .addOnSuccessListener { sender ->
@@ -82,6 +90,7 @@ class DocumentScanner(
 
         if (resultCode != Activity.RESULT_OK) {
             // Closed without saving: no pages, not an error.
+            worker.execute { purgeScannerCopies() }
             result.success(emptyList<String>())
             return true
         }
@@ -102,10 +111,17 @@ class DocumentScanner(
                 activity.runOnUiThread { result.success(paths) }
             } catch (error: Exception) {
                 activity.runOnUiThread { result.error("FAILED", error.message, null) }
+            } finally {
+                purgeScannerCopies()
             }
         }
 
         return true
+    }
+
+    /** The scanner's own copies of the pages; the app works from its own. */
+    private fun purgeScannerCopies() {
+        File(activity.cacheDir, SCANNER_CACHE).listFiles()?.forEach { it.delete() }
     }
 
     private fun fail(code: String, message: String?) {
@@ -119,5 +135,8 @@ class DocumentScanner(
         const val REQUEST_CODE = 0x5CA7
         const val DEFAULT_PAGE_LIMIT = 10
         const val MAX_PAGE_LIMIT = 20
+
+        // Where Google Play services' scanner writes its result pages.
+        const val SCANNER_CACHE = "mlkit_docscan_ui_client"
     }
 }
