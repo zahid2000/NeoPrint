@@ -558,6 +558,68 @@ olmadan (Bölmə 7.9).
 kiosk yenidən yayımlanmır. `configurationChangedAt` irəli gedibsə kiosk
 konfiqurasiyanı yenidən çəkir — bütün konfiqurasiyanı poll etmək lazım deyil.
 
+### `POST /api/kiosks/me/telemetry`
+
+Kiosk token-i. Kioskun öz vəziyyəti haqqında hesabatı, hər `Kiosk.TelemetrySeconds`
+(default 30; `GET kiosks/me/config` → `telemetrySeconds`) saniyədə (plan 7.9). → `204`.
+
+```json
+{
+  "sentAt": "2026-10-11T13:58:53Z",
+  "app": { "version", "startedAt", "screen", "session", "lastCrashAt" },
+  "system": { "os", "osVersion", "hostname", "cpuPercent", "memoryUsedBytes", "memoryTotalBytes",
+              "systemDiskFreeBytes", "spoolDiskFreeBytes", "uptimeSeconds" },
+  "network": { "connectionType", "wifiSignalPercent", "localIp", "backendLatencyMs",
+               "hubConnected", "hubLastReconnectAt", "hubDisconnectedSeconds" },
+  "peripherals": { "flashInserted", "qrScannerLastReadAt", "screenWidth", "screenHeight" },
+  "work": { "queueLength", "currentJob", "jobsToday", "sheetsToday", "spoolFiles",
+            "failedFlashUploads", "pendingCommands" },
+  "services": { "libreOffice", "ghostscript", "configurationAt", "featureFlags" }
+}
+```
+
+- **Hər qrup və hər sahə istəyə bağlıdır.** Kioskun oxuya bilmədiyi dəyər göndərilmir
+  (`null`) — panel onu "məlumat yoxdur" kimi göstərir, sıfır kimi yox.
+- `session`: `Mobile` / `UserQr` / `Anonymous`; `connectionType`: `Ethernet` / `WiFi` / `Other`.
+- Kiosk etibarsız cihazdır: server hər dəyəri saxlamazdan əvvəl sərhədləyir — aralıqdan
+  kənar rəqəm "məlumat yoxdur" olur, mətn 128 simvola kəsilir, idarəetmə simvolları atılır.
+- Saat fərqi (`system.clockOffsetMs`) `sentAt`-dan server tərəfində hesablanır.
+- 5 saniyədən tez gələn ikinci hesabat saxlanmır (`204` qaytarılır).
+- Hədlər (plan 7.9) hər hesabatda yoxlanır və kiosk + hədd üçün **bir** açıq incident
+  yaradır; göstərici normaya qayıdanda incident özü bağlanır
+  (`incidents.resolution.telemetryRecovered`):
+
+| Hədd | Nə vaxt | Incident |
+|---|---|---|
+| Sistem və ya spool diskində < 2 GB | dərhal | `DiskLow`, Medium |
+| Yaddaş > 90% | 5 dəqiqə fasiləsiz | `MemoryHigh`, Medium |
+| Backend gecikməsi > 2000 ms | 5 dəqiqə fasiləsiz | `BackendSlow`, Medium |
+| SignalR bağlantısı qopuq | 2 dəqiqə | `ConnectionLost`, High |
+
+  İki hesabat arasında 3 dəqiqədən çox fasilə "fasiləsiz"i pozur.
+
+### `GET /api/admin/kiosks/{id}/telemetry`
+
+`kiosks.view`. Kioskun son hesabatı (Redis `kiosk:status:{id}`; Redis boşdursa
+`kiosk_telemetry`-nin son sətri) + serverin özünün bildiyi:
+
+`{ "kioskId", "sample": { …hesabat…, "timestamp", "breaches": { "disk": "<nə vaxtdan>" } }, "stale", "intervalSeconds", "status": { "status", "lastHeartbeatAt", "openIncidents", "paper": { "A4": { "capacity", "current", "lastRefillAt" } } } }`
+
+`sample` yoxdursa kiosk hələ heç nə göndərməyib; `stale: true` — son hesabat üç
+intervaldan köhnədir (rəqəmlər "indi" deyil). `system.memoryUsedPercent` hesablanmış sahədir.
+
+### `GET /api/admin/kiosks/{id}/telemetry/history?from=&to=&points=120`
+
+`kiosks.view`. Qrafiklər üçün: aralıq (default son 1 saat, ən çox 31 gün) `points`
+(10–500) dilimə bölünür, hər dilimin ortalaması qaytarılır:
+
+`[ { "at", "cpuPercent", "memoryUsedPercent", "systemDiskFreeBytes", "spoolDiskFreeBytes", "backendLatencyMs", "queueLength", "samples" } ]`
+
+Dilimdə həmin göstərici üçün dəyər yoxdursa sahə göndərilmir. `from` ≥ `to` → `400 telemetry.rangeInvalid`.
+
+`/hubs/admin` → **`KioskTelemetryUpdated`** (`GET …/telemetry`-nin cavabı ilə eyni gövdə): hər
+hesabat gələndə `admins` və `admin-kiosk:{kioskId}` qruplarına.
+
 ---
 
 ## Kiosk axtarışı (mobil tətbiq, Addım 5)

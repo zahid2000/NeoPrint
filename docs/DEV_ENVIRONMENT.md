@@ -729,6 +729,23 @@ SuperAdmin: `admin@neoprint.local`.
 RustFS konsolunda obyektlərə baxmaq: http://localhost:9001/rustfs/console/ — orada
 görünən fayllar **şifrəlidir**, endirsəniz açılmaz (gözlənilən haldır).
 
+### Kiosk telemetriyası
+
+Kiosk hər 30 saniyədə öz vəziyyətini göndərir (plan 7.9, T-206). Admin panelinin oxuduğu
+ilə eyni məlumata terminaldan baxmaq:
+
+```bash
+node tools/dev-kiosk/telemetry.mjs             # KSK-9002 — Linux konteyner kioskunun son hesabatı + son 1 saatın nöqtələri
+node tools/dev-kiosk/telemetry.mjs KSK-0001    # başqa kiosk, kodu ilə
+
+docker exec neoprint-redis redis-cli -a devRedisPassword --no-auth-warning --scan --pattern 'kiosk:status:*'                                   # Redis-dəki son snapshot-lar
+docker exec neoprint-mongo mongosh -u neoprint -p devMongoPassword --authenticationDatabase admin neoprint --quiet --eval "db.kiosk_telemetry.countDocuments()"   # tarixçədəki sətirlər
+```
+
+Intervalı dəyişmək: admin panel → Tənzimləmələr → `Kiosk.TelemetrySeconds` (kiosk yeni dəyəri
+konfiqurasiyası ilə alır). Hədd incident-ləri (disk < 2 GB, yaddaş > 90% 5 dəq, backend > 2000 ms
+5 dəq, SignalR 2 dəq qopuq) `GET /api/admin/incidents?type=DiskLow` ilə görünür.
+
 ### Konvertasiya — izolyasiya olunmuş `converter` konteyneri
 
 İstifadəçi faylını açan **hər şey** API-də yox, `neoprint-converter`

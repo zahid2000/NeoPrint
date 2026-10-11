@@ -81,6 +81,15 @@ Published legal document versions must remain identifiable.
 dəyişəndə növbəti başlanğıcda `collMod` ilə tətbiq olunur). Hadisələrdə fayl
 adı və şəxsi məlumat yoxdur — yalnız kataloqdakı sahələr saxlanılır.
 
+## Kiosk telemetriyası
+
+`kiosk_telemetry` — MongoDB time-series kolleksiyası (hər kioskdan 30 saniyədə bir
+sətir), `Kiosk.TelemetryRetentionDays` (default 30) keçəndən sonra MongoDB özü silir
+(`expireAfterSeconds`; ayar dəyişəndə növbəti başlanğıcda `collMod` ilə tətbiq olunur).
+Son hesabat Redis-də (`kiosk:status:{id}`) 20 interval (default 10 dəqiqə) saxlanır.
+Telemetriyada istifadəçi və ya fayl haqqında heç nə yoxdur: ekranın adı, sessiyanın
+növü (kimin olduğu yox), növbənin uzunluğu və çap olunan sifarişin kodu.
+
 ## Financial data
 
 Do not apply generic user-file retention rules to payments/fiscal

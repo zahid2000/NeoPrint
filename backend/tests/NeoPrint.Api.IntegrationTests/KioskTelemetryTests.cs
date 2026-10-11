@@ -176,6 +176,56 @@ public sealed class KioskTelemetryTests
     }
 
     [DockerFact]
+    public async Task An_open_panel_hears_each_report_as_it_arrives()
+    {
+        if (Skip) { return; }
+
+        using var kiosk = await TestKiosks.ActivatedAsync(_fixture, $"tele-{Guid.NewGuid():N}"[..20]);
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+
+        await using var hub = await RawHubConnection.ConnectAsync(
+            _fixture, "admin", admin.DefaultRequestHeaders.Authorization!.Parameter!);
+
+        // The kiosk detail updates without a reload (plan section 6, /hubs/admin).
+        // The connection joins its groups a moment after the handshake, so a
+        // report sent in that moment is not heard; the next one is.
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
+
+        JsonElement? mine = null;
+
+        for (var attempt = 0; attempt < 3 && mine is null; attempt++)
+        {
+            if (attempt > 0)
+            {
+                await NextSampleAsync();
+            }
+
+            await SendAsync(kiosk.Client, Report(cpu: 42, queue: 5));
+
+            try
+            {
+                var event_ = await hub.WaitForAsync("KioskTelemetryUpdated", TimeSpan.FromSeconds(3));
+
+                if (event_.GetProperty("kioskId").GetGuid() == kiosk.KioskId)
+                {
+                    mine = event_;
+                }
+            }
+            catch (Exception exception) when (exception is OperationCanceledException or TimeoutException)
+            {
+                // Not heard this time.
+            }
+        }
+
+        mine.Should().NotBeNull("the panel is told about the report");
+        var heard = mine!.Value;
+
+        heard.GetProperty("sample").GetProperty("system").GetProperty("cpuPercent").GetDouble().Should().Be(42);
+        heard.GetProperty("sample").GetProperty("work").GetProperty("queueLength").GetInt32().Should().Be(5);
+        heard.GetProperty("status").GetProperty("status").GetString().Should().Be("Online");
+    }
+
+    [DockerFact]
     public async Task Only_the_kiosk_reports_and_only_the_panel_reads()
     {
         if (Skip) { return; }

@@ -33,8 +33,9 @@ public sealed record KioskTelemetryReport(
 public sealed record ReportKioskTelemetryCommand(Guid DeviceId, KioskTelemetryReport Report) : IRequest;
 
 /// <summary>What the server itself knows about the kiosk, shown next to what the kiosk reported.</summary>
+/// <param name="Status">The kiosk status by name: the same text over REST and over the hub, which writes enums as numbers.</param>
 public sealed record KioskTelemetryStatus(
-    KioskStatus Status,
+    string Status,
     DateTime? LastHeartbeatAt,
     long OpenIncidents,
     IReadOnlyDictionary<string, PaperStockDto> Paper);
@@ -432,7 +433,7 @@ public sealed class KioskTelemetryHandlers :
             sample is null || now - sample.Timestamp > TimeSpan.FromSeconds(interval * 3),
             interval,
             new KioskTelemetryStatus(
-                kiosk.Status,
+                kiosk.Status.ToString(),
                 kiosk.LastHeartbeatAt,
                 open,
                 kiosk.PaperStock.ToDictionary(

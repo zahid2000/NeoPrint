@@ -291,9 +291,15 @@ public sealed class KioskSession
 
     private TelemetryScreenState ReadScreen()
     {
-        var bounds = (Avalonia.Application.Current?.ApplicationLifetime as
+        var window = (Avalonia.Application.Current?.ApplicationLifetime as
                 Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
-            ?.MainWindow?.Screens.Primary?.Bounds;
+            ?.MainWindow;
+
+        // The screen the window is on; a display server that names no primary
+        // screen (a kiosk compositor, Xvfb) still has the one it draws on.
+        var bounds = window is null
+            ? null
+            : (window.Screens.ScreenFromWindow(window) ?? window.Screens.Primary ?? window.Screens.All.FirstOrDefault())?.Bounds;
 
         // The window reads the scanner and the model keeps when; the collector
         // takes it from the counters.

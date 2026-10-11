@@ -90,7 +90,7 @@ public sealed class TelemetrySystem
     public long? ClockOffsetMs { get; set; }
 
     public double? MemoryUsedPercent
-        => MemoryUsedBytes is { } used && MemoryTotalBytes is > 0 and var total ? 100.0 * used / total : null;
+        => MemoryUsedBytes is { } used && MemoryTotalBytes is > 0 and var total ? Math.Round(100.0 * used / total, 1) : null;
 }
 
 /// <summary>The kiosk's connections.</summary>
