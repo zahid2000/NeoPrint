@@ -133,8 +133,8 @@ jurnalını saxlayın, `TASKS.md`-yə tapıntı kimi yazın.
 | 3 | Rəngli printerdə "Rəng"i söndürün (imkanı söndür) | Kioskun parametr ekranında rəngli seçim deaktivdir, yanında səbəb |
 | 4 | Flaşdan 3 səhifəlik PDF, ikitərəfli (printer bacarırsa) | Kağız sayı, üzlər və admin → sifariş → "Çap cəhdləri" uyğundur |
 | 5 | SNMP sayğacı olan printerdə sifariş | "Printer sayğacı" sütununda əvvəl → sonra, fərq çıxan vərəqlərə bərabərdir |
-| 6 | Çap zamanı kağız qutusunu boşaldın / qapağı açın | Job `Interrupted`, kiosk `Paused`, ekranda "printer dayandı" izahı; admin dashboard-da kiosk "Diqqət tələb edir"-də |
-| 7 | Printerin kabelini çıxarın, 1 dəq sonra taxın | Kiosk printerin itdiyini göstərir, qoşulanda özü `Online` olur, növbə davam edir |
+| 6 | Çap zamanı kağız qutusunu boşaldın / qapağı açın (T-209) | Job `Interrupted`, kiosk **dərhal** `Paused`, ekranda "Kiosk müvəqqəti dayanmışdır" + səbəb (kağız bitib / sıxılıb); `node tools/dev-kiosk/incidents.mjs <kod>` — incident `PaperOut` / `PaperJam` (Critical); admin dashboard-da kiosk "Diqqət tələb edir"-də. Kağızı qoyun / qapağı bağlayın → ≤ 15 saniyəyə kiosk `Online`, incident özü bağlanır; qeydiyyatlı istifadəçinin sifarişi yenidən çap olunur (qonağın pulu artıq qaytarılıb) |
+| 7 | Printerin kabelini çıxarın, 1 dəq sonra taxın (T-209) | ~45 saniyəyə kiosk `Paused`, incident `PrinterOffline` (Critical); kabel taxılanda özü `Online` olur, incident bağlanır, növbə davam edir. **Yoxlayın:** real printer bir anlıq "offline" cavab verəndə (yuxu rejimindən oyananda) kiosk dayanmır — `Kiosk.PrinterFaultAfterSeconds` (30) bunun üçündür; real printer bundan uzun oyanırsa dəyəri artırın |
 | 8 | Real printer yoxdursa: Windows-da "Microsoft Print to PDF", Linux-da `cups-pdf` printerini seçin; flaşdan hər format qrupundan bir fayl (PDF, DOCX, XLSX, PPTX, JPG/PNG, TXT, PS) | Hər biri açılır, baxış və qiymət düzgündür, PDF faylı çıxır (plan Addım 3 DoD, "hər iki OS-də") |
 | 9 | Printer detalları (T-207): kiosk işləyərkən `node tools/dev-kiosk/telemetry.mjs <kiosk kodu>` | "Printers" bölməsində real printerin modeli, seriya nömrəsi, vəziyyəti, toner səviyyələri (şəbəkə printerində SNMP açıqdırsa), lotoklar və ümumi sayğac görünür; kağızı çıxaranda bir dəqiqə içində səbəb (`media-empty`) və tarixçədə dəyişiklik çıxır; printer vermədiyi sahə "the printer does not report this" kimidir — hansılar boşdursa qeyd edin |
 
@@ -234,6 +234,7 @@ Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-də
 | 5 | Tətbiqdə **QR oxut** (ML Kit) | QR 2 saniyə ərzində tanınır, ödəniş ekranı açılır |
 | 6 | Fiskal çekin QR-ını telefonla oxudun | e-kassa saytında çek açılır, məbləğ və tarix düzgündür |
 | 7 | Balansdan və bonus səhifələrlə ödəniş | Fiskal çekdə bonus hissəsi 0 ₼, yalnız pulla ödənilən hissə; balans heç vaxt karta çıxarılmır |
+| 8 | Incident bildirişləri (T-209): staging-də real SMTP və Telegram bot token-i (OpenBao `NEOPRINT_TELEGRAM_BOT_TOKEN`); admin hesabında email və Telegram chat ID; printerin kabelini çıxarın | ~1 dəqiqəyə həmin kioskun əhatəsindəki hesaba email ("NeoPrint — Critical incident: <kiosk kodu>") və Telegram mesajı gəlir; başqa kioskun operatoruna gəlmir; eyni incident üçün ikinci məktub gəlmir. API loqunda bot token-i yoxdur (`docker logs neoprint-api \| grep -c bot<token-in ilk rəqəmləri>` → 0) |
 
 ## MT-07. Addım 5 — real telefon, kamera, FCM (T-149)
 

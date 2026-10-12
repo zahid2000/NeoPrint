@@ -35,7 +35,11 @@ const login = await fetch(`${api}/api/auth/admin/login`, {
 });
 
 if (!login.ok) {
-  console.error(`Could not sign in as ${email}: ${login.status}. Is the stack up (docker compose up -d)?`);
+  console.error(
+    login.status === 429
+      ? `Too many sign-ins in a minute (the API allows 10): wait a minute and run it again.`
+      : `Could not sign in as ${email}: ${login.status}. Is the stack up (docker compose up -d)?`,
+  );
   process.exit(2);
 }
 

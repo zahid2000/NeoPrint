@@ -5,7 +5,7 @@
 # at what the app keeps on the device (docs/DEV_ENVIRONMENT.md, section 6,
 # "Emulyatorda real axın"). Run from Git Bash, WSL or Linux:
 #
-#   bash tools/dev-mobile/emu.sh install              # the debug APK that flutter built
+#   bash tools/dev-mobile/emu.sh install              # the debug APK that flutter built (for the emulator: --target-platform android-x64)
 #   bash tools/dev-mobile/emu.sh start                # open the app
 #   bash tools/dev-mobile/emu.sh shot out.png         # screenshot (1080x2220 on the Pixel AVD)
 #   bash tools/dev-mobile/emu.sh tap 540 2090         # device pixels, not the scaled picture's
@@ -35,7 +35,7 @@ shift || true
 case "$command" in
   install)
     apk="$root/mobile/build/app/outputs/flutter-apk/app-debug.apk"
-    [ -f "$apk" ] || { echo "No debug APK - run: cd mobile && flutter build apk --debug"; exit 1; }
+    [ -f "$apk" ] || { echo "No debug APK - run: cd mobile && flutter build apk --debug --target-platform android-x64 (the emulator is x86_64)"; exit 1; }
     # adb.exe wants a Windows path; with path conversion off (above) Git Bash no longer makes one.
     "$adb" install -r "$(cygpath -w "$apk" 2>/dev/null || echo "$apk")"
     ;;

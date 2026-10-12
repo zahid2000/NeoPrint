@@ -622,11 +622,14 @@ AVD-nin `config.ini`-si `%USERPROFILE%\.android\avd\neoprint_api34.avd\`-yə kop
 
 ```bash
 "$SDK/emulator/emulator.exe" -avd neoprint_api34 -no-snapshot -no-boot-anim -no-audio -gpu swiftshader_indirect &
-cd mobile && flutter build apk --debug && cd ..
+cd mobile && flutter build apk --debug --target-platform android-x64 && cd ..   # emulyator x86_64-dir; real telefon üçün --target-platform-suz
 bash tools/dev-mobile/emu.sh install && bash tools/dev-mobile/emu.sh start
 bash tools/dev-mobile/emu.sh shot ekran.png        # ekran görüntüsü; tap / text / key / swipe də var
 bash tools/dev-mobile/emu.sh cache                 # skandan sonra burada şəkil qalmamalıdır (T-196)
 bash tools/dev-mobile/emu.sh storage               # möhürlənmiş dəyərlərin adları (T-195)
+# Tətbiq açılıb dərhal bağlanırsa: adb logcat -d | grep "libflutter.so" — "is for EM_AARCH64 instead of EM_X86_64"
+# yazırsa APK-da x86_64 üçün libflutter.so yoxdur (APK yuxarıdakı --target-platform ilə qurulmayıb). Yenidən qurun,
+# quraşdırın və köhnə çıxarılmış kitabxananı silin: adb shell run-as az.neoprint.neoprint rm -rf app_lib
 adb shell wm density 480                           # ekranı 360 dp enə gətirir (1080 px / 3) — ən dar telefon; UI yoxlaması belə aparılır
 adb shell wm density reset                         # əvvəlki sıxlığa (440) qaytarır
 ```
@@ -1042,7 +1045,7 @@ müştərinin hesabında qalsın. Şəbəkə yoxdursa kiosk hər 2 dəqiqədən 
 
 | Fayl (məzmunu vəziyyət adıdır) | Nə edir | Nəticə |
 |---|---|---|
-| `printer-state.txt` — `PaperJam`, `OutOfPaper`, `Offline` | Printer **çapdan əvvəl** xətadadır; printer telemetriyası da bunu göndərir (`stopped`, `media-jam` və s.) | Sifariş növbədə gözləyir, refund olmur; faylı silin → çap olunur. Bir dəqiqə sonra `node tools/dev-kiosk/telemetry.mjs` hadisələrdə `JamStarted` / `JamEnded` göstərir |
+| `printer-state.txt` — `PaperJam`, `OutOfPaper`, `Offline` | Printer **çapdan əvvəl** xətadadır; printer telemetriyası da bunu göndərir (`stopped`, `media-jam` və s.) | Sifariş növbədə gözləyir. **30 saniyədən sonra** (`Kiosk.PrinterFaultAfterSeconds`) kiosk `Paused` olur, incident (Critical) açılır, **qonağın gözləyən bank ödənişi karta qaytarılır**, qeydiyyatlı istifadəçiyə seçim təklif olunur (Bölmə 7m). Faylı silin → kiosk özü `Online` olur, qalan sifarişlər çap olunur. Bir dəqiqə sonra `node tools/dev-kiosk/telemetry.mjs` hadisələrdə `JamStarted` / `JamEnded` göstərir |
 | `printer-fail-next.txt` — `PaperJam` və s. | **Növbəti** iş printerdə qırılır, fayl özü silinir (birdəfəlik) | Ssenari A: iş `Interrupted` → avtomatik karta qaytarma, kioskda "Çap tamamlanmadı" |
 
 ```bash
@@ -1295,6 +1298,78 @@ Yeni kod üçün: `docker compose up --remove-orphans -d --build api`. Tənziml�
 5. Admin paneli: **Referral** (http://localhost:8080/referrals, `referrals.view` — `dev-admin`, `dev-superadmin`): rəqəmlər, ən çox
    dəvət edənlər, tarixçə. **Müştərilər → müştəri**: "Referral" və "Fayllar" kartları (fayl adları maskalanmış gəlir).
    Yeni kod üçün `docker compose up --remove-orphans -d --build api admin`.
+
+---
+
+## 7m. Addım 7A — kiosk dayananda: incident-lər, qaytarma, bərpa (plan 9.6; T-209)
+
+Linux konteyner kioskunda (KSK-9002, fake printer) plan 9.6-nın hər iki ssenarisi əllə keçilir. Printerin
+vəziyyəti Bölmə 7c-dəki iki faylla idarə olunur (`printer-state.txt`, `printer-fail-next.txt`).
+
+**Alətlər** (compose stack qalxmış olmalıdır; asılılıq yoxdur, Node 20+):
+
+```bash
+node tools/dev-kiosk/incidents.mjs                       # KSK-9002: status və açıq incident-lər
+node tools/dev-kiosk/incidents.mjs all                   # bağlananlar da (necə bağlandığı ilə)
+node tools/dev-kiosk/incidents.mjs show <incidentId>     # toxunduğu sifarişlər, ödənişlər, refund-lar
+node tools/dev-kiosk/incidents.mjs ack <incidentId>
+node tools/dev-kiosk/incidents.mjs resolve <incidentId> "nə edildi"
+
+node tools/dev-kiosk/app-order.mjs                       # dev-user: ilk hazır faylı KSK-9002-də sifariş edir, balansdan ödəyir
+node tools/dev-kiosk/app-order.mjs list                  # sifarişlərim: status, "can cancel", "KIOSK STOPPED"
+node tools/dev-kiosk/app-order.mjs cancel <jobId>        # "Ləğv et və məbləği qaytar"
+node tools/dev-kiosk/app-order.mjs notifications         # son bildirişlər (refund təklifi)
+```
+
+Giriş endpoint-i dəqiqədə 10 sorğu qəbul edir — alətləri dalbadal çox işlətsəniz "Too many sign-ins"
+yazır; bir dəqiqə gözləyin.
+
+**Ssenari A, printer çapdan əvvəl dayanır** (qeydiyyatlı istifadəçinin sifarişi gözləyir):
+
+```bash
+docker exec neoprint-kshot sh -c 'echo OutOfPaper > /var/lib/neoprint/spool/printed/printer-state.txt'
+node tools/dev-kiosk/app-order.mjs          # 30 saniyə ərzində: kiosk hələ Online-dır, sifariş qəbul olunur
+# ~40 saniyə sonra:
+node tools/dev-kiosk/incidents.mjs          # KSK-9002 is Paused; PaperOut (Critical), "Printerdə kağız bitib"
+node tools/dev-kiosk/app-order.mjs list     # sifariş: Queued, can cancel, KIOSK STOPPED
+docker exec neoprint-kshot rm /var/lib/neoprint/spool/printed/printer-state.txt
+# ~20 saniyə sonra: kiosk Online, incident "Printer yenidən hazırdır; incident avtomatik bağlandı", sifariş Completed
+```
+
+Kioskun ekranı: "Kiosk müvəqqəti dayanmışdır — Printerdə kağız bitib. Növbədəki sifarişlər itmir…"
+(`docs/screenshots/step-7/m5-01-kiosk-printer-stopped.png`). Mobil tətbiqdə sifariş kartında xəbərdarlıq
+və "Ləğv et və məbləği qaytar" (`m5-02` … `m5-04`).
+
+**Ssenari A, çap ortasında xəta** (sifariş kəsilir, kiosk **dərhal** dayanır, printer hazır olanda sifariş
+yenidən çap olunur):
+
+```bash
+docker exec neoprint-kshot sh -c 'echo PaperJam > /var/lib/neoprint/spool/printed/printer-fail-next.txt'
+node tools/dev-kiosk/app-order.mjs          # sifariş: Interrupted, can cancel, KIOSK STOPPED
+# növbəti heartbeat-də (≤ 15 saniyə) printer "hazırdır": kiosk Online, sifariş yenidən Queued → Completed
+```
+
+**Ssenari A, qonaq (bank QR)** — kioskun öz ekranından: fləş qovluğuna fayl qoyun
+(`docker exec neoprint-kshot cp <pdf> /media/kiosk/NEOSTICK/hesabat.pdf`; konteyner yenidən başlayanda
+qovluq boşalır), ekranda **Flash kartdan çap et** → fayl → **Davam et** → **Sifariş et** → **Bank kartı və
+ya bank tətbiqi**; QR ekranında printeri dayandırın (`printer-state.txt`) və ödənişi mock bankla edin
+(Bölmə 7c, `POST /api/dev/payments/<id>/simulate-success`). ~40 saniyə sonra sifariş `Cancelled`, refund
+`Succeeded` (karta); qəbz ekranında "Çap tamamlanmadı — 0,20 ₼ kartınıza qaytarılır", ekran özü bağlanandan
+sonra bildiriş "Kiosk müvəqqəti dayanmışdır" ekranında qalır (`m5-05`, `m5-06`).
+
+**Ssenari B, kiosk susur:** `docker stop neoprint-kshot` → 60 saniyədən sonra (`Kiosk.OfflineAfterSeconds`;
+monitor 15 saniyədə bir işləyir) kiosk `Offline`, incident `ConnectionLost` (Critical). Heç nə ləğv olunmur
+və qaytarılmır. `docker start neoprint-kshot` → kiosk `Online`, incident "Kiosk yenidən əlaqədədir…".
+
+**Tətbiqin çöküşü:** `docker kill -s KILL neoprint-kshot` + `docker start` → incident `AppCrash` (High).
+`docker restart` (SIGTERM) çöküş sayılmır (T-236). 10 dəqiqədə üç çöküş → təhlükəsiz rejim, incident
+`AppCrash` (Critical); konteynerdə təhlükəsiz rejimdən çıxmaq üçün:
+`docker exec neoprint-kshot sh -c 'rm -f /var/lib/neoprint/state/runs.json'` və `docker restart neoprint-kshot`.
+
+**Email / Telegram:** lokal mühitdə SMTP host-u yoxdursa məktub göndərilmir (loqda xəbərdarlıq); Telegram
+bot token-i (`NEOPRINT_TELEGRAM_BOT_TOKEN`, OpenBao `neoprint/backend/providers`) yoxdursa kanal söndürülmüşdür.
+Yalnız `Critical` və `High` incident-lər göndərilir, `incidents.view` icazəsi olan və həmin kioskun
+əhatəsindəki hesablara; Telegram üçün hesabda chat ID olmalıdır.
 
 ---
 
