@@ -237,13 +237,54 @@ public sealed class KioskConfigTests
 
         // A kiosk is an untrusted edge device: no signing key, no storage
         // credential, no SMTP password (docs/SECURITY_THREAT_MODEL.md).
-        foreach (var forbidden in new[]
-                 {
-                     "signingKey", "jwt", "mongodb://", "redis", "amqp://",
-                     "secretId", "roleId", "kek", "smtp",
-                 })
+        //
+        // A secret would arrive as a field of that name, so the names are
+        // what is searched - at every depth. Searching the whole text for
+        // three letters fails by chance: the salt of the PIN hash is random
+        // base64, and one day it reads "...jwT0aYTW..." (T-250).
+        using var document = JsonDocument.Parse(raw);
+        var names = PropertyNames(document.RootElement).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        names.Should().NotBeEmpty();
+
+        foreach (var forbidden in new[] { "signingKey", "jwt", "secret", "roleId", "kek", "smtp", "redis", "mongo", "amqp", "password", "privateKey" })
         {
-            raw.Should().NotContainEquivalentOf(forbidden);
+            names.Should().NotContain(
+                name => name.Contains(forbidden, StringComparison.OrdinalIgnoreCase), $"the configuration has no field about \"{forbidden}\"");
+        }
+
+        // And no connection string as a value, whatever its field is called.
+        foreach (var scheme in new[] { "mongodb://", "mongodb+srv://", "redis://", "amqp://", "amqps://", "smtp://" })
+        {
+            raw.Should().NotContainEquivalentOf(scheme);
+        }
+    }
+
+    /// <summary>Every property name in a JSON document, at any depth.</summary>
+    private static IEnumerable<string> PropertyNames(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                {
+                    yield return property.Name;
+
+                    foreach (var inner in PropertyNames(property.Value))
+                    {
+                        yield return inner;
+                    }
+                }
+
+                break;
+
+            case JsonValueKind.Array:
+                foreach (var inner in element.EnumerateArray().SelectMany(PropertyNames))
+                {
+                    yield return inner;
+                }
+
+                break;
         }
     }
 
