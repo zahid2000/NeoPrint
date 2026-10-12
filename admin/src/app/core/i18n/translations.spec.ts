@@ -68,6 +68,7 @@ describe('translations', () => {
     'English',
     'Kiosk',
     'Printer',
+    'Toner',
     'Status',
     'Region',
     'Admin PIN',

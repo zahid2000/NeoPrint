@@ -175,7 +175,7 @@ const papers = ['A4', 'A3'] as const;
             </ng-container>
             <ng-container matColumnDef="paper">
               <th mat-header-cell *matHeaderCellDef>{{ 'supplies.colPaper' | translate }}</th>
-              <td mat-cell *matCellDef="let event">{{ resourceKey(event.resource) | translate }}</td>
+              <td mat-cell *matCellDef="let event">{{ resourceKey(event.resource) | translate }}{{ variantOf(event.resource) }}</td>
             </ng-container>
             <ng-container matColumnDef="change">
               <th mat-header-cell *matHeaderCellDef>{{ 'supplies.colChange' | translate }}</th>
@@ -332,9 +332,22 @@ export class KioskSuppliesComponent implements OnInit {
     return sheets !== null && Number.isInteger(sheets) && sheets >= minimum && sheets <= this.maxSheets();
   });
 
-  /** The ledger names a tray PaperA4; the panel says "A4 kağızı" (supplies.paperA4). */
+  /**
+   * The ledger names a tray PaperA4; the panel says "A4 kağızı" (supplies.paperA4).
+   * A changed cartridge is written with which one it was - "Toner:Black Cartridge" -
+   * and only the kind before the colon is a word of ours.
+   */
   resourceKey(resource: string): string {
-    return `supplies.${resource.charAt(0).toLowerCase()}${resource.slice(1)}`;
+    const kind = resource.split(':')[0];
+
+    return `supplies.${kind.charAt(0).toLowerCase()}${kind.slice(1)}`;
+  }
+
+  /** Which cartridge, as the printer names it: " (Black Cartridge)"; nothing for paper. */
+  variantOf(resource: string): string {
+    const colon = resource.indexOf(':');
+
+    return colon < 0 ? '' : ` (${resource.slice(colon + 1)})`;
   }
 
   ngOnInit(): void {

@@ -215,6 +215,11 @@ describe('KioskSuppliesComponent', () => {
 
     expect(component.refillable()).toEqual(['A4']);
     expect(component.resourceKey('PaperA4')).toBe('supplies.paperA4');
+    expect(component.variantOf('PaperA4')).toBe('');
+
+    // A changed cartridge: the kind is ours to translate, the name is the printer's.
+    expect(component.resourceKey('Toner:Black Cartridge')).toBe('supplies.toner');
+    expect(component.variantOf('Toner:Black Cartridge')).toBe(' (Black Cartridge)');
   });
 
   it('checks the count the way the server does', async () => {
