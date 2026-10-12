@@ -27,6 +27,9 @@ public enum SupplyEventType
 
     /// <summary>Somebody counted the tray and set the number.</summary>
     Recount = 3,
+
+    /// <summary>A cartridge or a drum was changed: no count moves, the row says when and by whom.</summary>
+    Replaced = 4,
 }
 
 /// <summary>
@@ -49,7 +52,7 @@ public sealed class SupplyEvent
 
     public Guid KioskId { get; set; }
 
-    /// <summary>"PaperA4" or "PaperA3".</summary>
+    /// <summary>"PaperA4" or "PaperA3"; for a replacement the supply, "Toner:black".</summary>
     public string Resource { get; set; } = string.Empty;
 
     public SupplyEventType Type { get; set; }

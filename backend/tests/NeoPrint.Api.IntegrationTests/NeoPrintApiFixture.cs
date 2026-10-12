@@ -111,8 +111,22 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         // in fifteen: now and then the monitor took such a kiosk Offline
         // before the test placed its next order there (T-251). Here the tests
         // run the monitor's command themselves, when they mean to.
-        Services.GetRequiredService<Hangfire.IRecurringJobManager>()
-            .RemoveIfExists(NeoPrint.Infrastructure.Kiosks.KioskHeartbeatMonitor.JobId);
+        var recurring = Services.GetRequiredService<Hangfire.IRecurringJobManager>();
+
+        recurring.RemoveIfExists(NeoPrint.Infrastructure.Kiosks.KioskHeartbeatMonitor.JobId);
+
+        // The supply module's sweeps too: a test that puts a kiosk's paper low
+        // decides when the evaluator, the forecast and the escalation look at it.
+        foreach (var job in new[]
+                 {
+                     NeoPrint.Infrastructure.Supplies.SupplyJobs.EvaluatorJobId,
+                     NeoPrint.Infrastructure.Supplies.SupplyJobs.ForecastJobId,
+                     NeoPrint.Infrastructure.Supplies.SupplyJobs.EscalationJobId,
+                     NeoPrint.Infrastructure.Supplies.SupplyJobs.LowStockJobId,
+                 })
+        {
+            recurring.RemoveIfExists(job);
+        }
     }
 
     public new async Task DisposeAsync()

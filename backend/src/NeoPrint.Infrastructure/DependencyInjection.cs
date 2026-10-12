@@ -127,6 +127,16 @@ public static class DependencyInjection
         services.AddScoped<IPrintJobRepository, PrintJobRepository>();
         services.AddScoped<IPrintAttemptRepository, PrintAttemptRepository>();
         services.AddScoped<Application.Kiosks.ISupplyEventRepository, SupplyEventRepository>();
+
+        // Supplies, service tasks and the warehouse (plan section 2.15)
+        services.AddScoped<Application.Supplies.ISupplyAlertRuleRepository, Supplies.SupplyAlertRuleRepository>();
+        services.AddScoped<Application.Supplies.ISupplyAlertRepository, Supplies.SupplyAlertRepository>();
+        services.AddScoped<Application.Supplies.IServiceTaskRepository, Supplies.ServiceTaskRepository>();
+        services.AddScoped<Application.Supplies.IInventoryRepository, Supplies.InventoryRepository>();
+        services.AddScoped<Application.Supplies.ISupplyUsageReader, Supplies.SupplyUsageReader>();
+        services.AddScoped<Application.Supplies.ServiceTaskDesk>();
+        services.AddScoped<Application.Supplies.SupplyOutlook>();
+        services.AddScoped<Supplies.SupplyJobs>();
         services.AddScoped<Application.Analytics.IAnalyticsEventRepository, AnalyticsEventRepository>();
         services.AddScoped<Application.Kiosks.IKioskTelemetryStore, Kiosks.KioskTelemetryStore>();
         services.AddScoped<Application.Kiosks.IKioskStatusCache, Kiosks.RedisKioskStatusCache>();
@@ -382,6 +392,7 @@ public static class DependencyInjection
             bus.AddConsumer<Kiosks.KioskFaultOnInterruptedJobConsumer>();
             bus.AddConsumer<Kiosks.AffectedUsersNotificationConsumer>();
             bus.AddConsumer<Kiosks.IncidentNotificationConsumer>();
+            bus.AddConsumer<Supplies.SupplyEvaluatorConsumer>();
             bus.AddConsumer<Refunds.PrintJobCancelledConsumer>();
             bus.AddConsumer<Fiscal.PaymentFiscalizationConsumer>();
             bus.AddConsumer<Fiscal.RefundFiscalizationConsumer>();

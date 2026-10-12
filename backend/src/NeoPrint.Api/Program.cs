@@ -486,6 +486,25 @@ await using (var scope = app.Services.CreateAsyncScope())
         job => job.RunAsync(CancellationToken.None),
         Cron.Minutely());
 
+    // Supplies (plan sections 2.15, 6): the evaluator's sweep, the forecast,
+    // Critical tasks nobody started, and the warehouse's low stock.
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Supplies.SupplyJobs>(
+        NeoPrint.Infrastructure.Supplies.SupplyJobs.EvaluatorJobId,
+        jobs => jobs.EvaluateAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Supplies.SupplyJobs.EveryFiveMinutes);
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Supplies.SupplyJobs>(
+        NeoPrint.Infrastructure.Supplies.SupplyJobs.ForecastJobId,
+        jobs => jobs.ForecastAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Supplies.SupplyJobs.Hourly);
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Supplies.SupplyJobs>(
+        NeoPrint.Infrastructure.Supplies.SupplyJobs.EscalationJobId,
+        jobs => jobs.EscalateAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Supplies.SupplyJobs.EveryFiveMinutes);
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Supplies.SupplyJobs>(
+        NeoPrint.Infrastructure.Supplies.SupplyJobs.LowStockJobId,
+        jobs => jobs.LowStockAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Supplies.SupplyJobs.HourlyAtHalfPast);
+
     // Which providers answer: for the panel, and for noticing a primary that
     // has gone quiet (plan section 2.10).
     recurring.AddOrUpdate<StorageMirrorJobs>(

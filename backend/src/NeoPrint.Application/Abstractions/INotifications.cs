@@ -92,6 +92,18 @@ public interface IAdminNotifier
     /// </summary>
     Task AccountChangedAsync(Guid adminUserId, CancellationToken cancellationToken = default);
 
+    /// <summary>A supply fell below its rule, or its level changed (plan section 2.15): to those who see the kiosk.</summary>
+    Task SupplyAlertRaisedAsync(Supplies.SupplyAlertView alert, CancellationToken cancellationToken = default);
+
+    /// <summary>A supply is back above its rule.</summary>
+    Task SupplyAlertClearedAsync(Supplies.SupplyAlertView alert, CancellationToken cancellationToken = default);
+
+    /// <summary>A service task was given to an operator: to them, and to those who see the kiosk.</summary>
+    Task ServiceTaskAssignedAsync(Supplies.ServiceTaskView task, CancellationToken cancellationToken = default);
+
+    /// <summary>A service task was opened, started, finished, cancelled or made more urgent.</summary>
+    Task ServiceTaskUpdatedAsync(Supplies.ServiceTaskView task, CancellationToken cancellationToken = default);
+
     /// <summary>A kiosk answered a command (plan section 7.8).</summary>
     Task CommandResultAsync(Guid kioskId, Kiosks.KioskCommandView command, CancellationToken cancellationToken = default);
 

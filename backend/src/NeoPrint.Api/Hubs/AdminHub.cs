@@ -156,6 +156,31 @@ public sealed class SignalRAdminNotifier : IAdminNotifier
         _connections.Close(adminUserId);
     }
 
+    public Task SupplyAlertRaisedAsync(Application.Supplies.SupplyAlertView alert, CancellationToken cancellationToken = default)
+        => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(alert.KioskId)])
+            .SendAsync("SupplyAlertRaised", alert, cancellationToken);
+
+    public Task SupplyAlertClearedAsync(Application.Supplies.SupplyAlertView alert, CancellationToken cancellationToken = default)
+        => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(alert.KioskId)])
+            .SendAsync("SupplyAlertCleared", alert, cancellationToken);
+
+    public Task ServiceTaskAssignedAsync(Application.Supplies.ServiceTaskView task, CancellationToken cancellationToken = default)
+    {
+        // The kiosk's groups already hold the operator when the kiosk is theirs; their own group is for the one whose scope it is not.
+        var groups = new List<string> { AdminHub.AllKiosksGroup, AdminHub.KioskGroup(task.KioskId) };
+
+        if (task.AssignedTo is { } operatorId)
+        {
+            groups.Add(AdminHub.OperatorGroup(operatorId));
+        }
+
+        return _hub.Clients.Groups(groups).SendAsync("ServiceTaskAssigned", task, cancellationToken);
+    }
+
+    public Task ServiceTaskUpdatedAsync(Application.Supplies.ServiceTaskView task, CancellationToken cancellationToken = default)
+        => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(task.KioskId)])
+            .SendAsync("ServiceTaskUpdated", task, cancellationToken);
+
     public Task KioskStatusChangedAsync(Guid kioskId, string status, CancellationToken cancellationToken = default)
         => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(kioskId)])
             .SendAsync("KioskStatusChanged", new { kioskId, status }, cancellationToken);

@@ -75,4 +75,66 @@ public sealed class SupplyAlertRule : Entity
     public bool IsActive { get; set; } = true;
 
     public bool IsGlobal => KioskIds.Count == 0;
+
+    /// <summary>Whether the rule is about paper in a tray - the one supply counted in sheets.</summary>
+    public bool IsPaper => Resource is SupplyResource.PaperA4 or SupplyResource.PaperA3;
+
+    /// <summary>
+    /// Where a reading stands against the rule: below the critical threshold,
+    /// below the warning one, or neither ("A4 qalıq 200-dən aşağı", plan
+    /// section 9.9 - a tray with exactly 200 sheets is not below 200).
+    /// </summary>
+    public SupplyAlertLevel? LevelOf(decimal value)
+        => value < CriticalThreshold ? SupplyAlertLevel.Critical
+            : value < WarningThreshold ? SupplyAlertLevel.Warning
+            : null;
+
+    /// <summary>Whether the rule watches this supply of a printer: its kind and, when the rule names one, its colour or name.</summary>
+    public bool Watches(SupplyResource resource, string? variant)
+        => Resource == resource
+           && (string.IsNullOrWhiteSpace(ResourceVariant)
+               || string.Equals(ResourceVariant.Trim(), variant?.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// What a rule has to be before it is saved.
+    /// </summary>
+    /// <exception cref="DomainException">The rule could never fire, or could not be told apart.</exception>
+    public void EnsureValid()
+    {
+        if (string.IsNullOrWhiteSpace(Name) || Name.Trim().Length > 100)
+        {
+            throw new DomainException("supplyRules.nameInvalid");
+        }
+
+        // Only paper is counted; everything else is what the printer reports - a percentage.
+        if (!IsPaper && Unit != SupplyUnit.Percent)
+        {
+            throw new DomainException("supplyRules.unitPercentOnly");
+        }
+
+        if (CriticalThreshold <= 0 || WarningThreshold <= CriticalThreshold)
+        {
+            throw new DomainException("supplyRules.thresholdsOrder");
+        }
+
+        if (Unit == SupplyUnit.Percent && WarningThreshold > 100)
+        {
+            throw new DomainException("supplyRules.percentTooHigh");
+        }
+
+        if (Unit == SupplyUnit.Sheets && (WarningThreshold != decimal.Truncate(WarningThreshold) || CriticalThreshold != decimal.Truncate(CriticalThreshold)))
+        {
+            throw new DomainException("supplyRules.sheetsWhole");
+        }
+
+        if (IsPaper && !string.IsNullOrWhiteSpace(ResourceVariant))
+        {
+            throw new DomainException("supplyRules.paperHasNoVariant");
+        }
+
+        if (Channels == AlertChannels.None)
+        {
+            throw new DomainException("supplyRules.channelRequired");
+        }
+    }
 }

@@ -174,6 +174,16 @@ public sealed class MongoContext
 
     public MongoSet<Domain.Supplies.SupplyAlertRule> SupplyAlertRules => Set<Domain.Supplies.SupplyAlertRule>("supply_alert_rules");
 
+    /// <summary>What is below its rule now, and what was (plan section 2.15).</summary>
+    public MongoSet<Domain.Supplies.SupplyAlert> SupplyAlerts => Set<Domain.Supplies.SupplyAlert>("supply_alerts");
+
+    public MongoSet<Domain.Supplies.ServiceTask> ServiceTasks => Set<Domain.Supplies.ServiceTask>("service_tasks");
+
+    public MongoSet<Domain.Supplies.InventoryItem> InventoryItems => Set<Domain.Supplies.InventoryItem>("inventory_items");
+
+    public MongoSet<Domain.Supplies.InventoryMovement> InventoryMovements
+        => Set<Domain.Supplies.InventoryMovement>("inventory_movements");
+
     public MongoSet<AuditLog> AuditLogs => Set<AuditLog>("audit_logs");
 
     /// <summary>
@@ -330,6 +340,45 @@ public sealed class MongoContext
         await CreateAsync(SupplyAlertRules,
             (Builders<Domain.Supplies.SupplyAlertRule>.IndexKeys.Ascending(r => r.IsActive),
                 Named("ix_supply_alert_rules_active")));
+
+        await CreateAsync(SupplyAlerts,
+            // One active alert per kiosk and supply; a cleared one does not stop the next.
+            (Builders<Domain.Supplies.SupplyAlert>.IndexKeys.Ascending(a => a.Key),
+                new CreateIndexOptions<Domain.Supplies.SupplyAlert>
+                {
+                    Name = "ux_supply_alerts_active_key",
+                    Unique = true,
+                    PartialFilterExpression = Builders<Domain.Supplies.SupplyAlert>.Filter.Eq(a => a.Active, true),
+                }),
+            (Builders<Domain.Supplies.SupplyAlert>.IndexKeys.Ascending(a => a.KioskId).Ascending(a => a.Active),
+                Named("ix_supply_alerts_kiosk_active")),
+            (Builders<Domain.Supplies.SupplyAlert>.IndexKeys.Ascending(a => a.Active).Descending(a => a.LevelSince),
+                Named("ix_supply_alerts_active_since")));
+
+        await CreateAsync(ServiceTasks,
+            // One task the system opened per kiosk and supply while it is still
+            // to be done. A task opened by hand has no key and is not counted.
+            (Builders<Domain.Supplies.ServiceTask>.IndexKeys.Ascending(t => t.Key),
+                new CreateIndexOptions<Domain.Supplies.ServiceTask>
+                {
+                    Name = "ux_service_tasks_active_key",
+                    Unique = true,
+                    PartialFilterExpression = Builders<Domain.Supplies.ServiceTask>.Filter.Eq(t => t.Active, true)
+                                              & Builders<Domain.Supplies.ServiceTask>.Filter.Type(t => t.Key, MongoDB.Bson.BsonType.String),
+                }),
+            (Builders<Domain.Supplies.ServiceTask>.IndexKeys.Ascending(t => t.Active).Ascending(t => t.KioskId),
+                Named("ix_service_tasks_active_kiosk")),
+            (Builders<Domain.Supplies.ServiceTask>.IndexKeys.Ascending(t => t.AssignedTo).Ascending(t => t.Active),
+                Named("ix_service_tasks_assignee_active")));
+
+        await CreateAsync(InventoryItems,
+            (Builders<Domain.Supplies.InventoryItem>.IndexKeys.Ascending(i => i.Sku), Unique("ux_inventory_items_sku")));
+
+        await CreateAsync(InventoryMovements,
+            (Builders<Domain.Supplies.InventoryMovement>.IndexKeys.Ascending(m => m.ItemId).Descending(m => m.At),
+                Named("ix_inventory_movements_item_at")),
+            (Builders<Domain.Supplies.InventoryMovement>.IndexKeys.Ascending(m => m.KioskId).Descending(m => m.At),
+                Named("ix_inventory_movements_kiosk_at")));
 
         await CreateAsync(AuditLogs,
             (Builders<AuditLog>.IndexKeys.Descending(a => a.CreatedAt), Named("ix_audit_logs_created")),

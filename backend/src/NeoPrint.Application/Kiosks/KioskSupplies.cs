@@ -33,7 +33,15 @@ public sealed record GetKioskSuppliesQuery(Guid AdminUserId, Guid KioskId, int L
 
 /// <param name="Paper">The counters by size: capacity, sheets in the tray, last refill.</param>
 /// <param name="Events">The latest movements, newest first.</param>
-public sealed record KioskSuppliesView(IReadOnlyDictionary<string, PaperStockDto> Paper, IReadOnlyList<SupplyEventView> Events);
+/// <param name="Levels">What the selected printer last said about its toner and the like.</param>
+/// <param name="Forecasts">When each tray and each cartridge is expected to run out (plan section 2.15).</param>
+/// <param name="Alerts">What is below its rule now.</param>
+public sealed record KioskSuppliesView(
+    IReadOnlyDictionary<string, PaperStockDto> Paper,
+    IReadOnlyList<SupplyEventView> Events,
+    IReadOnlyList<Supplies.SupplyLevelView> Levels,
+    IReadOnlyList<Supplies.SupplyForecastView> Forecasts,
+    IReadOnlyList<Supplies.SupplyAlertView> Alerts);
 
 public sealed record SupplyEventView(string Resource, string Type, int Delta, int Before, int After, Guid? JobId, Guid? By, DateTime At);
 
@@ -70,6 +78,8 @@ public sealed class KioskSupplyHandlers :
     private readonly IKioskRepository _kiosks;
     private readonly ISupplyEventRepository _supplies;
     private readonly IKioskNotifier _kiosk;
+    private readonly Supplies.SupplyOutlook _outlook;
+    private readonly Supplies.ISupplyAlertRepository _alerts;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
 
@@ -78,6 +88,8 @@ public sealed class KioskSupplyHandlers :
         IKioskRepository kiosks,
         ISupplyEventRepository supplies,
         IKioskNotifier kiosk,
+        Supplies.SupplyOutlook outlook,
+        Supplies.ISupplyAlertRepository alerts,
         IAuditWriter audit,
         IClock clock)
     {
@@ -85,6 +97,8 @@ public sealed class KioskSupplyHandlers :
         _kiosks = kiosks;
         _supplies = supplies;
         _kiosk = kiosk;
+        _outlook = outlook;
+        _alerts = alerts;
         _audit = audit;
         _clock = clock;
     }
@@ -132,6 +146,8 @@ public sealed class KioskSupplyHandlers :
     private async Task<KioskSuppliesView> ViewAsync(Kiosk kiosk, int limit, CancellationToken cancellationToken)
     {
         var events = await _supplies.ListForKioskAsync(kiosk.Id, limit, cancellationToken).ConfigureAwait(false);
+        var now = _clock.UtcNow;
+        var alerts = await _alerts.ListActiveForKioskAsync(kiosk.Id, cancellationToken).ConfigureAwait(false);
 
         return new KioskSuppliesView(
             kiosk.PaperStock.ToDictionary(
@@ -141,7 +157,10 @@ public sealed class KioskSupplyHandlers :
             [
                 .. events.Select(movement => new SupplyEventView(
                     movement.Resource, movement.Type.ToString(), movement.Delta, movement.Before, movement.After, movement.JobId, movement.By, movement.At)),
-            ]);
+            ],
+            await _outlook.LevelsAsync(kiosk, now, cancellationToken).ConfigureAwait(false),
+            await _outlook.ForecastAsync(kiosk, now, cancellationToken).ConfigureAwait(false),
+            [.. alerts.OrderByDescending(alert => alert.Level).Select(alert => Supplies.SupplyAlertView.Of(alert, kiosk.Code))]);
     }
 
     private async Task<Kiosk> VisibleKioskAsync(Guid adminUserId, Guid kioskId, CancellationToken cancellationToken)
