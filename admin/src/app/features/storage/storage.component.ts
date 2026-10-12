@@ -19,6 +19,7 @@ import {
   activeSyncStatuses,
 } from '../../core/api/step2.models';
 import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { confirmAction } from '../../shared/confirm.dialog';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
@@ -129,6 +130,10 @@ export class StorageComponent {
     ];
 
     inject(DestroyRef).onDestroy(() => off.forEach((unsubscribe) => unsubscribe()));
+
+    // A sync's progress and a provider's health are events; after a gap in
+    // the connection they are asked for again.
+    liveRefresh({ events: [], reload: () => this.load() });
 
     void this.load();
   }

@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -14,6 +14,8 @@ import { firstValueFrom } from 'rxjs';
 import { AdminApiService, KioskListItem, KioskStatus } from '../../core/api/admin-api.service';
 import { Permissions } from '../../core/auth/auth.models';
 import { HasPermissionDirective } from '../../core/auth/has-permission.directive';
+import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
@@ -74,6 +76,7 @@ export const kioskTone: Record<KioskStatus, StatusTone> = {
 })
 export class KiosksComponent {
   private readonly api = inject(AdminApiService);
+  private readonly hub = inject(AdminHubService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
 
@@ -130,16 +133,42 @@ export class KiosksComponent {
 
   constructor() {
     void this.load();
+
+    // A kiosk went offline, came back, was paused: the row says so at once,
+    // from what the event carries (T-248) ...
+    inject(DestroyRef).onDestroy(
+      this.hub.on<{ kioskId: string; status: KioskStatus }>('KioskStatusChanged', (event) =>
+        this.kiosks.update((list) =>
+          list.map((kiosk) => (kiosk.id === event.kioskId ? { ...kiosk, status: event.status } : kiosk)),
+        ),
+      ),
+    );
+
+    // ... and the rest of the row - the device, the last heartbeat - follows.
+    liveRefresh({
+      events: ['KioskStatusChanged', 'DeviceActivated', 'DeviceRevoked'],
+      reload: () => this.load(true),
+    });
   }
 
-  async load(): Promise<void> {
-    this.loading.set(true);
-    this.problem.set(null);
+  /**
+   * Fetches the list. A quiet fetch is one nobody asked for - an event, the
+   * connection coming back: the table stays as it is until the answer comes,
+   * and an answer that does not come changes nothing.
+   */
+  async load(quiet = false): Promise<void> {
+    if (!quiet) {
+      this.loading.set(true);
+      this.problem.set(null);
+    }
 
     try {
       this.kiosks.set(await firstValueFrom(this.api.listKiosks()));
+      this.problem.set(null);
     } catch (error) {
-      this.problem.set(toProblem(error));
+      if (!quiet) {
+        this.problem.set(toProblem(error));
+      }
     } finally {
       this.loading.set(false);
     }

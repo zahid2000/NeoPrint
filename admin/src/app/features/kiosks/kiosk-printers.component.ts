@@ -13,6 +13,7 @@ import { CapabilityOverrides, KioskCommand, KioskPrinters, PrinterCapabilities }
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { DateTimePipe } from '../../shared/format.pipes';
@@ -302,6 +303,10 @@ export class KioskPrintersComponent implements OnInit {
       }),
     ];
     inject(DestroyRef).onDestroy(() => off.forEach((unsubscribe) => unsubscribe()));
+
+    // After a gap in the connection the list and the commands are asked for
+    // again - unless a choice on this page is waiting to be saved.
+    liveRefresh({ events: [], reload: () => (this.changed() ? null : this.load()) });
   }
 
   ngOnInit(): void {

@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { AdminApiService } from '../../core/api/admin-api.service';
 import { QueueEntry } from '../../core/api/step3.models';
 import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { DateTimePipe } from '../../shared/format.pipes';
@@ -91,6 +92,9 @@ export class KioskQueueComponent implements OnInit {
       }
     });
     inject(DestroyRef).onDestroy(off);
+
+    // The event carries the queue; after a gap in the connection it is asked for.
+    liveRefresh({ events: [], reload: () => this.load() });
   }
 
   ngOnInit(): void {

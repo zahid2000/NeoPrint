@@ -12,6 +12,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { MoneyApiService } from '../../core/api/money-api.service';
 import { RefundRow, refundReasons, refundStatuses } from '../../core/api/step4.models';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
@@ -186,6 +187,11 @@ export class RefundsComponent implements OnInit {
   readonly loading = signal(true);
   readonly problem = signal<Problem | null>(null);
 
+  constructor() {
+    // A refund moves by itself: sent, confirmed by the bank, failed (T-248).
+    liveRefresh({ events: ['RefundStatusChanged'], reload: () => this.load(true) });
+  }
+
   ngOnInit(): void {
     void this.load();
   }
@@ -210,9 +216,12 @@ export class RefundsComponent implements OnInit {
     void this.router.navigate(['/payments', row.paymentId]);
   }
 
-  async load(): Promise<void> {
-    this.loading.set(true);
-    this.problem.set(null);
+  /** Fetches the page; quietly when nobody asked - see `liveRefresh`. */
+  async load(quiet = false): Promise<void> {
+    if (!quiet) {
+      this.loading.set(true);
+      this.problem.set(null);
+    }
 
     try {
       const [list, failed] = await Promise.all([
@@ -230,7 +239,9 @@ export class RefundsComponent implements OnInit {
       this.total.set(list.total);
       this.failedCount.set(failed.total);
     } catch (error) {
-      this.problem.set(toProblem(error));
+      if (!quiet) {
+        this.problem.set(toProblem(error));
+      }
     } finally {
       this.loading.set(false);
     }

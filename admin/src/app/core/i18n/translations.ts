@@ -264,10 +264,12 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.group.Kiosk': 'Kiosk',
     'settings.group.KioskSession': 'Kiosk sessiyası',
     'settings.group.Layout': 'Tərtibat',
+    'settings.group.Notification': 'Incident bildirişləri',
     'settings.group.Paper': 'Kağız',
     'settings.group.Payment': 'Ödəniş',
     'settings.group.Privacy': 'Məxfilik',
     'settings.group.PreparedPrint': 'Tətbiqdə ödənilən sifarişlər',
+    'settings.group.PrintJob': 'Çap cəhdləri',
     'settings.group.Public': 'İctimai səhifələr',
     'settings.group.Queue': 'Növbə',
     'settings.group.Referral': 'Dəvət proqramı',
@@ -334,9 +336,10 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'live.connectedHint': 'Məlumat serverdən avtomatik yenilənir.',
     'live.reconnecting': 'Yenidən qoşulur',
     'live.reconnectingHint':
-      'Əlaqə kəsildi, yenidən qoşulmağa çalışırıq. Ekrandakı məlumat köhnə ola bilər.',
+      'Əlaqə kəsildi, yenidən qoşulmağa çalışırıq. Bu vaxt açıq səhifə məlumatı hər 30 saniyədən bir özü təzələyir.',
     'live.disconnected': 'Əlaqə yoxdur',
-    'live.disconnectedHint': 'Avtomatik yenilənmə işləmir. Səhifəni yeniləyib məlumatı təzələyin.',
+    'live.disconnectedHint':
+      'Serverlə canlı əlaqə yoxdur. Açıq səhifə məlumatı hər 30 saniyədən bir özü təzələyir; əlaqə qayıdanda canlı yenilənmə davam edir.',
 
     'error.network': 'Şəbəkə xətası. Bağlantınızı yoxlayın.',
     'error.server': 'Serverdə xəta baş verdi.',
@@ -583,10 +586,12 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.group.Kiosk': 'Kiosk',
     'settings.group.KioskSession': 'Kiosk session',
     'settings.group.Layout': 'Layout',
+    'settings.group.Notification': 'Incident notifications',
     'settings.group.Paper': 'Paper',
     'settings.group.Payment': 'Payment',
     'settings.group.Privacy': 'Privacy',
     'settings.group.PreparedPrint': 'Orders paid in the app',
+    'settings.group.PrintJob': 'Print attempts',
     'settings.group.Public': 'Public pages',
     'settings.group.Queue': 'Queue',
     'settings.group.Referral': 'Referrals',
@@ -653,9 +658,10 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'live.connectedHint': 'The data updates from the server on its own.',
     'live.reconnecting': 'Reconnecting',
     'live.reconnectingHint':
-      'The connection dropped and is being re-established. What is on screen may be out of date.',
+      'The connection dropped and is being re-established. Meanwhile an open page fetches its data again every 30 seconds.',
     'live.disconnected': 'No connection',
-    'live.disconnectedHint': 'Automatic updates are off. Reload the page to see current data.',
+    'live.disconnectedHint':
+      'There is no live connection to the server. An open page fetches its data again every 30 seconds; live updates resume when the connection is back.',
 
     'error.network': 'Network error. Check your connection.',
     'error.server': 'Something went wrong on the server.',
@@ -904,10 +910,12 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'settings.group.Kiosk': 'Киоск',
     'settings.group.KioskSession': 'Сеанс киоска',
     'settings.group.Layout': 'Макет',
+    'settings.group.Notification': 'Уведомления об инцидентах',
     'settings.group.Paper': 'Бумага',
     'settings.group.Payment': 'Оплата',
     'settings.group.Privacy': 'Конфиденциальность',
     'settings.group.PreparedPrint': 'Заказы, оплаченные в приложении',
+    'settings.group.PrintJob': 'Попытки печати',
     'settings.group.Public': 'Публичные страницы',
     'settings.group.Queue': 'Очередь',
     'settings.group.Referral': 'Реферальная программа',
@@ -974,10 +982,10 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'live.connectedHint': 'Данные обновляются с сервера автоматически.',
     'live.reconnecting': 'Переподключение',
     'live.reconnectingHint':
-      'Связь прервана, восстанавливаем. Данные на экране могут быть устаревшими.',
+      'Связь прервана, восстанавливаем. Пока что открытая страница сама обновляет данные каждые 30 секунд.',
     'live.disconnected': 'Нет связи',
     'live.disconnectedHint':
-      'Автообновление не работает. Обновите страницу, чтобы увидеть актуальные данные.',
+      'Нет живой связи с сервером. Открытая страница сама обновляет данные каждые 30 секунд; когда связь вернётся, живое обновление продолжится.',
 
     'error.network': 'Ошибка сети. Проверьте подключение.',
     'error.server': 'На сервере произошла ошибка.',

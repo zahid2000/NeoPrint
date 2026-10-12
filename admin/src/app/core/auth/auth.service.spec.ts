@@ -263,4 +263,65 @@ describe('AuthService', () => {
     expect(service.isSignedIn()).toBe(false);
     expect(service.token).toBeNull();
   });
+
+  // ---------------------------------------------------------------------
+  // The token for the live connection (T-248)
+  // ---------------------------------------------------------------------
+
+  /** Signs in with a token that runs out `secondsLeft` from now. */
+  function signInFor(secondsLeft: number): void {
+    service.signIn('admin@neoprint.test', 'pw').subscribe();
+
+    http.expectOne('/api/auth/admin/login').flush({
+      ...loginResponse(),
+      accessTokenExpiresAt: new Date(Date.now() + secondsLeft * 1000).toISOString(),
+    });
+  }
+
+  it('hands the live connection the token it holds while that token is good', async () => {
+    signInFor(600);
+
+    expect(await service.freshToken()).toBe('header.payload.signature');
+
+    // Nothing was asked of the server for it.
+    http.expectNone('/api/admin/me');
+  });
+
+  it('asks the server first when the token has run out, so that it is exchanged on the way', async () => {
+    signInFor(-60);
+
+    const token = service.freshToken();
+
+    // An ordinary request: with an expired token the interceptor exchanges it,
+    // and the interceptor is what keeps the exchange to one at a time.
+    http.expectOne('/api/admin/me').flush(admin({ kioskIds: ['k-1'], allKiosks: false }));
+
+    expect(await token).toBe('header.payload.signature');
+    expect(service.admin()?.kioskIds).toEqual(['k-1']);
+  });
+
+  it('does the same for a token that is about to run out', async () => {
+    signInFor(10);
+
+    const token = service.freshToken();
+    http.expectOne('/api/admin/me').flush(admin());
+
+    await token;
+  });
+
+  it('gives the connection no token when nobody is signed in', async () => {
+    expect(await service.freshToken()).toBe('');
+
+    http.expectNone('/api/admin/me');
+  });
+
+  it('a profile that cannot be re-read leaves the one on screen', async () => {
+    signInFor(600);
+
+    const reload = service.reloadProfile();
+    http.expectOne('/api/admin/me').flush(null, { status: 503, statusText: 'Unavailable' });
+    await reload;
+
+    expect(service.admin()?.email).toBe('admin@neoprint.test');
+  });
 });

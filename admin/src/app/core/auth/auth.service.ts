@@ -6,6 +6,9 @@ import { tap } from 'rxjs/operators';
 
 import { AdminLoginResponse, AdminSummary } from './auth.models';
 
+/** A token with less than this left is exchanged before it is used for a new connection. */
+const tokenMarginMs = 30_000;
+
 /**
  * Sign-in state for the admin panel (plan sections 2.8, 8A.1).
  *
@@ -20,6 +23,9 @@ export class AuthService {
   private readonly router = inject(Router);
 
   private readonly accessToken = signal<string | null>(null);
+
+  /** When the access token stops being accepted, in epoch milliseconds. */
+  private accessTokenExpiresAt = 0;
   private readonly currentAdmin = signal<AdminSummary | null>(null);
   private readonly restoring = signal(true);
 
@@ -139,6 +145,42 @@ export class AuthService {
     await this.router.navigate(['/login']);
   }
 
+  /**
+   * Re-reads the administrator's profile - permissions and kiosk scope - with
+   * the token the panel holds.
+   *
+   * An ordinary request on purpose: if the token has run out, the interceptor
+   * exchanges it on the way, and it is the interceptor that makes sure only
+   * one exchange is in flight. Calling {@link refresh} from here as well
+   * could send two at once, and the server answers a replayed refresh token
+   * by ending the whole session (plan section 2.8).
+   */
+  async reloadProfile(): Promise<void> {
+    try {
+      this.currentAdmin.set(await firstValueFrom(this.http.get<AdminSummary>('/api/admin/me')));
+    } catch {
+      // The profile on screen stays; the server enforces whatever it says.
+    }
+  }
+
+  /**
+   * The access token for a connection that is about to be opened, exchanged
+   * first if it has run out or is about to.
+   *
+   * The live connection outlives the token it was opened with, and when it
+   * has to be opened again - the API restarted, the laptop woke up, the
+   * server closed it with the token - nothing else may have asked the API
+   * for anything in the meantime. Handing over the old token would be
+   * refused, again and again, for as long as the panel sat idle (T-248).
+   */
+  async freshToken(): Promise<string> {
+    if (this.accessToken() && this.accessTokenExpiresAt - Date.now() < tokenMarginMs) {
+      await this.reloadProfile();
+    }
+
+    return this.accessToken() ?? '';
+  }
+
   /** Called by the interceptor when the session cannot be recovered. */
   onSessionExpired(): void {
     this.clear();
@@ -147,11 +189,16 @@ export class AuthService {
 
   private apply(response: AdminLoginResponse): void {
     this.accessToken.set(response.accessToken);
+
+    // Unreadable is "unknown", not "already over": the server is the judge.
+    const expiresAt = Date.parse(response.accessTokenExpiresAt);
+    this.accessTokenExpiresAt = Number.isNaN(expiresAt) ? Number.MAX_SAFE_INTEGER : expiresAt;
     this.currentAdmin.set(response.admin);
   }
 
   private clear(): void {
     this.accessToken.set(null);
+    this.accessTokenExpiresAt = 0;
     this.currentAdmin.set(null);
   }
 }

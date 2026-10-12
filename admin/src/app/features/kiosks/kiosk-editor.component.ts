@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,6 +20,8 @@ import { AdminApiService } from '../../core/api/admin-api.service';
 import { KioskDetail, KioskDeviceHistoryItem, PricingProfile } from '../../core/api/step2.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
+import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { supportedLanguages } from '../../core/i18n/translations';
 import { confirmAction } from '../../shared/confirm.dialog';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
@@ -81,6 +83,7 @@ const pinPattern = /^[0-9]{4,12}$/;
 export class KioskEditorComponent implements OnInit {
   private readonly api = inject(AdminApiService);
   private readonly auth = inject(AuthService);
+  private readonly hub = inject(AdminHubService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotifyService);
@@ -215,9 +218,59 @@ export class KioskEditorComponent implements OnInit {
       this.saving() === null,
   );
 
+  constructor() {
+    const mine = (payload: unknown): boolean =>
+      (payload as { kioskId?: string } | null)?.kioskId === this.id();
+
+    // The status in the header follows the kiosk: offline, back, paused (T-248).
+    inject(DestroyRef).onDestroy(
+      this.hub.on<{ kioskId: string; status: string }>('KioskStatusChanged', (event) => {
+        if (mine(event)) {
+          this.onStatus(event.status);
+        }
+      }),
+    );
+
+    liveRefresh({
+      events: ['KioskStatusChanged'],
+      accepts: (_event, payload) => mine(payload),
+      reload: () => this.refreshState(),
+    });
+  }
+
   /** After the route has set the id input. */
   ngOnInit(): void {
     void this.load();
+  }
+
+  /**
+   * Fetches what the kiosk changes by itself - its status, safe mode, its last
+   * heartbeat, its paper - and nothing else: the fields on this page may hold
+   * edits that are not saved yet, and a full reload would throw them away.
+   */
+  private async refreshState(): Promise<void> {
+    const id = this.id();
+
+    if (!id || !this.kiosk()) {
+      return;
+    }
+
+    try {
+      const fresh = await firstValueFrom(this.api.getKiosk(id));
+
+      this.kiosk.update(
+        (kiosk) =>
+          kiosk && {
+            ...kiosk,
+            status: fresh.status,
+            safeModeSince: fresh.safeModeSince,
+            lastHeartbeatAt: fresh.lastHeartbeatAt,
+            paper: fresh.paper,
+          },
+      );
+    } catch {
+      // What is on screen stays; the header's indicator says the panel is cut off.
+    }
   }
 
   /** A tab learned that the kiosk's status changed (a printer was chosen, a test print passed). */

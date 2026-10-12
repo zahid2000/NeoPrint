@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { RetryContext } from '@microsoft/signalr';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AuthService } from '../auth/auth.service';
 import { AdminHubService, ForeverRetryPolicy, HUB_CONNECTION_BUILDER } from './admin-hub.service';
 
 /**
@@ -32,6 +33,10 @@ class FakeConnection {
     this.startBehaviour = () => Promise.reject(new Error('no route to host'));
   }
 
+  succeedFromNowOn(): void {
+    this.startBehaviour = () => Promise.resolve();
+  }
+
   on(event: string, handler: (payload: unknown) => void): void {
     this.handlers.set(event, handler);
   }
@@ -55,9 +60,13 @@ class FakeConnection {
 
 let connection: FakeConnection;
 
+/** What the service asked the connection to be opened with. */
+let urlOptions: { accessTokenFactory?: () => string | Promise<string> } | undefined;
+
 /** Builds the fake connection the test controls. */
 class FakeBuilder {
-  withUrl() {
+  withUrl(_url: string, options?: { accessTokenFactory?: () => string | Promise<string> }) {
+    urlOptions = options;
     return this;
   }
   withAutomaticReconnect() {
@@ -183,6 +192,112 @@ describe('AdminHubService', () => {
     connection.emit('DeviceRevoked', { deviceId: 'd-9' });
 
     expect(handler).toHaveBeenCalled();
+  });
+
+  it('says so when the connection comes back, but not when it first opens', async () => {
+    const reconnected = vi.fn();
+    const states: string[] = [];
+
+    service.onReconnect(reconnected);
+    service.onState((state) => states.push(state));
+
+    await service.start();
+
+    // A page has just loaded its data: nothing was missed.
+    expect(reconnected).not.toHaveBeenCalled();
+
+    // The API restarts: SignalR reports the drop, then the return.
+    (connection.onreconnecting.mock.calls[0][0] as () => void)();
+    expect(service.connectionState()).toBe('reconnecting');
+
+    (connection.onreconnected.mock.calls[0][0] as () => void)();
+    expect(service.connectionState()).toBe('connected');
+
+    // Events sent in between were not heard: the pages fetch again.
+    expect(reconnected).toHaveBeenCalledTimes(1);
+    expect(states).toEqual(['connected', 'reconnecting', 'connected']);
+  });
+
+  it('a first connect that only succeeds later counts as coming back', async () => {
+    vi.useFakeTimers();
+
+    try {
+      const reconnected = vi.fn();
+      service.onReconnect(reconnected);
+
+      connection.failNextStart();
+      await service.start();
+      expect(service.connectionState()).toBe('disconnected');
+
+      // The pages loaded while there was no connection; the retry gets through.
+      connection.succeedFromNowOn();
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      expect(service.connectionState()).toBe('connected');
+      expect(reconnected).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a listener that was removed is not called, and one that throws does not stop the rest', async () => {
+    const removed = vi.fn();
+    const broken = vi.fn(() => {
+      throw new Error('a page failed to refresh');
+    });
+    const working = vi.fn();
+
+    service.onReconnect(removed)();
+    service.onReconnect(broken);
+    service.onReconnect(working);
+
+    await service.start();
+    (connection.onreconnected.mock.calls[0][0] as () => void)();
+
+    expect(removed).not.toHaveBeenCalled();
+    expect(working).toHaveBeenCalledTimes(1);
+  });
+
+  it('restarting opens a new connection and tells the pages to catch up', async () => {
+    const reconnected = vi.fn();
+    service.onReconnect(reconnected);
+
+    await service.start();
+
+    const first = connection;
+    connection = new FakeConnection();
+
+    // The account's kiosks changed: the server decides the groups on connect.
+    await service.restart();
+
+    expect(first.stopCalls).toBe(1);
+    expect(connection.startCalls).toBe(1);
+    expect(service.connectionState()).toBe('connected');
+    expect(reconnected).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the handlers of the pages across a restart', async () => {
+    const handler = vi.fn();
+    service.on('KioskStatusChanged', handler);
+
+    await service.start();
+    connection = new FakeConnection();
+    await service.restart();
+
+    connection.emit('KioskStatusChanged', { kioskId: 'k-1', status: 'Online' });
+
+    expect(handler).toHaveBeenCalledWith({ kioskId: 'k-1', status: 'Online' });
+  });
+
+  it('opens every connection with a token that is good now', async () => {
+    const fresh = vi.spyOn(TestBed.inject(AuthService), 'freshToken').mockResolvedValue('a-new-token');
+
+    await service.start();
+
+    // SignalR calls the factory on the first connect and on every reconnect.
+    expect(await urlOptions?.accessTokenFactory?.()).toBe('a-new-token');
+    expect(await urlOptions?.accessTokenFactory?.()).toBe('a-new-token');
+    expect(fresh).toHaveBeenCalledTimes(2);
   });
 
   it('stopping closes the connection and clears the state', async () => {

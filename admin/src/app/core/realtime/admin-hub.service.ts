@@ -50,9 +50,14 @@ export class ForeverRetryPolicy implements IRetryPolicy {
  * the handler again. That keeps one connection for the whole application
  * rather than one per page, which is what the hub's group membership assumes.
  *
- * The access token lives fifteen minutes and the connection outlives it, so
- * `accessTokenFactory` is read again on every (re)connect rather than once at
- * startup.
+ * The access token lives fifteen minutes, and the server ends the connection
+ * when the token it was opened with runs out - the kiosks an account hears
+ * about are decided at that moment (T-249). So `accessTokenFactory` is asked
+ * on every (re)connect, and what it hands over is a token that is good now.
+ *
+ * An event is only heard while the connection is up. A feature that shows
+ * live data therefore also listens for {@link onReconnect} and fetches its
+ * data again - through `liveRefresh`, which does that and the rest.
  */
 @Injectable({ providedIn: 'root' })
 export class AdminHubService {
@@ -65,6 +70,9 @@ export class AdminHubService {
   private readonly handlers = new Map<string, Set<(payload: unknown) => void>>();
 
   private readonly state = signal<ConnectionState>('disconnected');
+
+  private readonly stateListeners = new Set<(state: ConnectionState) => void>();
+  private readonly reconnectListeners = new Set<() => void>();
 
   /** What to show next to live data: connected, reconnecting or offline. */
   readonly connectionState = this.state.asReadonly();
@@ -94,17 +102,18 @@ export class AdminHubService {
 
     const connection = this.createBuilder()
       .withUrl('/hubs/admin', {
-        // Read per connection attempt, not captured once: the access token
-        // rotates every fifteen minutes.
-        accessTokenFactory: () => this.auth.token ?? '',
+        // Asked per connection attempt, not captured once: the access token
+        // rotates every fifteen minutes, and one that has run out is
+        // exchanged before it is handed over.
+        accessTokenFactory: () => this.auth.freshToken(),
       })
       .withAutomaticReconnect(new ForeverRetryPolicy())
       .configureLogging(LogLevel.Warning)
       .build();
 
-    connection.onreconnecting(() => this.state.set('reconnecting'));
-    connection.onreconnected(() => this.state.set('connected'));
-    connection.onclose(() => this.state.set('disconnected'));
+    connection.onreconnecting(() => this.setState('reconnecting'));
+    connection.onreconnected(() => this.connectedAgain());
+    connection.onclose(() => this.setState('disconnected'));
 
     this.connection = connection;
 
@@ -115,14 +124,59 @@ export class AdminHubService {
 
     try {
       await connection.start();
-      this.state.set('connected');
+      this.setState('connected');
     } catch {
       // A failed first connect is not an error worth showing: the panel works
       // without real-time, it just does not update on its own. The indicator
       // says so, and the retry below picks it up.
-      this.state.set('disconnected');
+      this.setState('disconnected');
       this.scheduleRetry();
     }
+  }
+
+  /**
+   * Closes the connection and opens a new one.
+   *
+   * The server decides which kiosks a connection hears about when it opens,
+   * so a change to the account's scope takes a new connection to apply.
+   */
+  async restart(): Promise<void> {
+    if (!this.connection) {
+      return;
+    }
+
+    await this.stop();
+    await this.start();
+
+    if (this.state() === 'connected') {
+      this.announceReconnect();
+    }
+  }
+
+  /**
+   * Calls the listener whenever the connection state changes, and returns
+   * the function that removes it. A plain callback next to the signal, for
+   * code that starts and stops timers rather than renders.
+   */
+  onState(listener: (state: ConnectionState) => void): () => void {
+    this.stateListeners.add(listener);
+
+    return () => {
+      this.stateListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Calls the listener each time the connection comes back after having been
+   * away - events sent in between were not heard, so what is on screen has to
+   * be fetched again. Not called for the first connect of a session.
+   */
+  onReconnect(listener: () => void): () => void {
+    this.reconnectListeners.add(listener);
+
+    return () => {
+      this.reconnectListeners.delete(listener);
+    };
   }
 
   /**
@@ -161,7 +215,35 @@ export class AdminHubService {
       await connection.stop();
     }
 
-    this.state.set('disconnected');
+    this.setState('disconnected');
+  }
+
+  private setState(next: ConnectionState): void {
+    if (this.state() === next) {
+      return;
+    }
+
+    this.state.set(next);
+
+    for (const listener of [...this.stateListeners]) {
+      listener(next);
+    }
+  }
+
+  private connectedAgain(): void {
+    this.setState('connected');
+    this.announceReconnect();
+  }
+
+  private announceReconnect(): void {
+    for (const listener of [...this.reconnectListeners]) {
+      // One page failing to refresh must not keep the others stale.
+      try {
+        listener();
+      } catch {
+        // Deliberately swallowed - see above.
+      }
+    }
   }
 
   /**
@@ -195,7 +277,9 @@ export class AdminHubService {
     setTimeout(() => {
       if (this.connection?.state === HubConnectionState.Disconnected) {
         void this.connection.start().then(
-          () => this.state.set('connected'),
+          // The pages loaded their data while there was no connection, so
+          // this late first connect counts as coming back.
+          () => this.connectedAgain(),
           () => this.scheduleRetry(),
         );
       }

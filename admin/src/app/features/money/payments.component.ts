@@ -14,6 +14,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { AdminApiService, KioskListItem } from '../../core/api/admin-api.service';
 import { MoneyApiService } from '../../core/api/money-api.service';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { PaymentRow, paymentChannels, paymentMethods, paymentStatuses } from '../../core/api/step4.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
@@ -298,6 +299,14 @@ export class PaymentsComponent implements OnInit {
 
   private lastQuery = '';
 
+  constructor() {
+    // A payment arrives and a refund moves while the list is open (T-248).
+    liveRefresh({
+      events: ['PaymentSucceeded', 'RefundStatusChanged'],
+      reload: () => this.load(true),
+    });
+  }
+
   ngOnInit(): void {
     // A link from the dashboard ("uğursuz refund-lar") arrives with its filter set.
     const refund = this.route.snapshot.queryParamMap.get('refund');
@@ -345,7 +354,8 @@ export class PaymentsComponent implements OnInit {
     void this.router.navigate(['/payments', row.id]);
   }
 
-  async load(): Promise<void> {
+  /** Fetches the page; quietly when nobody asked - see `liveRefresh`. */
+  async load(quiet = false): Promise<void> {
     const filter = {
       search: this.search(),
       statuses: this.statuses(),
@@ -361,20 +371,25 @@ export class PaymentsComponent implements OnInit {
     };
 
     const query = JSON.stringify(filter);
-    if (query === this.lastQuery && !this.problem() && !this.loading()) {
+    if (!quiet && query === this.lastQuery && !this.problem() && !this.loading()) {
       return;
     }
 
     this.lastQuery = query;
-    this.loading.set(true);
-    this.problem.set(null);
+
+    if (!quiet) {
+      this.loading.set(true);
+      this.problem.set(null);
+    }
 
     try {
       const result = await firstValueFrom(this.money.listPayments(filter));
       this.rows.set(result.items);
       this.total.set(result.total);
     } catch (error) {
-      this.problem.set(toProblem(error));
+      if (!quiet) {
+        this.problem.set(toProblem(error));
+      }
     } finally {
       this.loading.set(false);
     }

@@ -16,6 +16,7 @@ import { PrintJobListItem, printJobStatuses } from '../../core/api/step3.models'
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
@@ -348,6 +349,9 @@ export class PrintJobsComponent implements OnInit {
       off();
       clearTimeout(this.refreshTimer);
     });
+
+    // After a gap in the connection the list is asked for again.
+    liveRefresh({ events: [], reload: () => this.load(false) });
   }
 
   ngOnInit(): void {

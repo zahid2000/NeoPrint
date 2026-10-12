@@ -14,6 +14,7 @@ import { MoneyApiService } from '../../core/api/money-api.service';
 import { FiscalRow, IncidentRow } from '../../core/api/step4.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
@@ -294,6 +295,16 @@ export class FiscalComponent implements OnInit {
   readonly canSeeIncidents = computed(() => this.auth.can(Permissions.incidentsView));
   readonly dirty = computed(() => this.settings().some((s) => s.value !== this.values()[s.key]));
 
+  constructor() {
+    // A receipt is accepted or refused by the e-kassa while the page is open,
+    // and its incident opens and closes with it (T-248). The settings form is
+    // left alone: it may hold values that are not saved yet.
+    liveRefresh({
+      events: ['FiscalStatusChanged', 'IncidentRaised', 'IncidentResolved'],
+      reload: () => Promise.all([this.load(true), this.loadIncidents()]),
+    });
+  }
+
   ngOnInit(): void {
     if (this.canManage()) {
       void this.loadSettings();
@@ -324,9 +335,12 @@ export class FiscalComponent implements OnInit {
     this.values.update((all) => ({ ...all, [key]: value }));
   }
 
-  async load(): Promise<void> {
-    this.loading.set(true);
-    this.problem.set(null);
+  /** Fetches the page; quietly when nobody asked - see `liveRefresh`. */
+  async load(quiet = false): Promise<void> {
+    if (!quiet) {
+      this.loading.set(true);
+      this.problem.set(null);
+    }
 
     try {
       const status = this.status();
@@ -337,7 +351,9 @@ export class FiscalComponent implements OnInit {
       this.rows.set(result.items);
       this.total.set(result.total);
     } catch (error) {
-      this.problem.set(toProblem(error));
+      if (!quiet) {
+        this.problem.set(toProblem(error));
+      }
     } finally {
       this.loading.set(false);
     }

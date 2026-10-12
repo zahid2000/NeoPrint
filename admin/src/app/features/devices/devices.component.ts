@@ -24,6 +24,7 @@ import {
 } from '../../core/api/admin-api.service';
 import { Permissions } from '../../core/auth/auth.models';
 import { HasPermissionDirective } from '../../core/auth/has-permission.directive';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { describeError } from '../login/login.component';
 import { ActivateDeviceDialogComponent } from './activate-device.dialog';
 import { EnrollmentTokenDialogComponent } from './enrollment-token.dialog';
@@ -105,11 +106,21 @@ export class DevicesComponent {
 
   constructor() {
     void this.reload();
+
+    // A kiosk that has just been switched on for the first time appears in
+    // "waiting" by itself; one activated or revoked elsewhere moves (T-248).
+    liveRefresh({
+      events: ['DeviceRegistered', 'DeviceActivated', 'DeviceRevoked'],
+      reload: () => this.reload(true),
+    });
   }
 
-  async reload(): Promise<void> {
-    this.loading.set(true);
-    this.errorMessage.set(null);
+  /** Fetches the lists; quietly when nobody asked - see `liveRefresh`. */
+  async reload(quiet = false): Promise<void> {
+    if (!quiet) {
+      this.loading.set(true);
+      this.errorMessage.set(null);
+    }
 
     try {
       const [pending, active, revoked] = await Promise.all([
@@ -124,7 +135,9 @@ export class DevicesComponent {
 
       await this.reloadTokens();
     } catch (error) {
-      this.errorMessage.set(describeError(error));
+      if (!quiet) {
+        this.errorMessage.set(describeError(error));
+      }
     } finally {
       this.loading.set(false);
     }

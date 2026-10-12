@@ -49,6 +49,12 @@ export const settingsTranslations: PageTranslations = {
       'Kiosk vəziyyət məlumatlarını bu intervalla göndərir.',
     'settings.description.Kiosk.PrinterFaultAfterSeconds':
       'Printer bu qədər saniyə hazır olmasa kiosk dayandırılır: yeni sifariş almır, qonaqların gözləyən ödənişləri qaytarılır.',
+    'settings.description.PrintJob.MaxAutoRetries':
+      'Printerin dayandırdığı sifariş cəmi neçə dəfə çapa göndərilir (1–10). Bu qədər cəhddən sonra sifariş özü davam etmir: incident açılır, sahibi isə onu ləğv edib məbləği geri ala bilər.',
+    'settings.description.Notification.MinSeverity':
+      'Incident bu səviyyədən başlayaraq kioska baxan hesablara email ilə bildirilir: Critical, High və ya Medium. Aşağı səviyyəlilər yalnız paneldə görünür.',
+    'settings.description.Notification.TelegramEnabled':
+      'Incident bildirişlərinin Telegram kanalı. Söndürülüdür: kanal pilotdan sonra açılacaq, bunun üçün bot token-i də lazımdır.',
     'settings.description.Kiosk.TelemetryRetentionDays':
       'Kiosk vəziyyət tarixçəsi bu qədər gün saxlanılır.',
     'settings.description.Kiosk.PrinterEventRetentionDays':
@@ -151,6 +157,12 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Kiosk.TelemetrySeconds': 'How often the kiosk sends its status readings.',
     'settings.description.Kiosk.PrinterFaultAfterSeconds':
       "A printer not ready for this many seconds pauses the kiosk: no new orders, and guests' waiting payments are refunded.",
+    'settings.description.PrintJob.MaxAutoRetries':
+      'How many times in all an order the printer stopped is sent to the printer (1–10). After that it no longer resumes by itself: an incident is opened, and its owner can cancel it and take the money back.',
+    'settings.description.Notification.MinSeverity':
+      'From this severity up an incident is e-mailed to the accounts that look after the kiosk: Critical, High or Medium. Anything below is shown in the panel only.',
+    'settings.description.Notification.TelegramEnabled':
+      'The Telegram channel for incident notifications. Off: the channel opens after the pilot and also needs a bot token.',
     'settings.description.Kiosk.TelemetryRetentionDays':
       'How many days of kiosk status history are kept.',
     'settings.description.Kiosk.PrinterEventRetentionDays':
@@ -250,6 +262,12 @@ export const settingsTranslations: PageTranslations = {
       'Как часто киоск отправляет данные о своём состоянии.',
     'settings.description.Kiosk.PrinterFaultAfterSeconds':
       'Если принтер не готов столько секунд, киоск останавливается: новые заказы не принимаются, ожидающие платежи гостей возвращаются.',
+    'settings.description.PrintJob.MaxAutoRetries':
+      'Сколько всего раз заказ, остановленный принтером, отправляется на печать (1–10). После этого он сам не продолжается: открывается инцидент, а владелец может отменить заказ и вернуть деньги.',
+    'settings.description.Notification.MinSeverity':
+      'Начиная с этого уровня инцидент отправляется по email учётным записям, которые следят за киоском: Critical, High или Medium. Менее серьёзные видны только в панели.',
+    'settings.description.Notification.TelegramEnabled':
+      'Канал Telegram для уведомлений об инцидентах. Выключен: канал откроется после пилота, для него нужен ещё и токен бота.',
     'settings.description.Kiosk.TelemetryRetentionDays':
       'Сколько дней хранится история состояния киосков.',
     'settings.description.Kiosk.PrinterEventRetentionDays':

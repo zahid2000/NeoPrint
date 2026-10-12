@@ -13,6 +13,7 @@ import { PrintAttempt, PrintJobDetail, cancellableStatuses } from '../../core/ap
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { confirmAction } from '../../shared/confirm.dialog';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
@@ -349,6 +350,9 @@ export class PrintJobDetailComponent {
       }
     });
     inject(DestroyRef).onDestroy(off);
+
+    // After a gap in the connection the job is asked for again.
+    liveRefresh({ events: [], reload: () => this.load(false) });
   }
 
   async load(showSkeleton = true): Promise<void> {

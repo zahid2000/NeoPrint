@@ -15,6 +15,7 @@ import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { HasPermissionDirective } from '../../core/auth/has-permission.directive';
 import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { BytesPipe, CountPipe, DateTimePipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
@@ -225,26 +226,54 @@ export class DashboardComponent {
   constructor() {
     // Only fetched when the account may see devices at all; asking otherwise
     // would produce a 403 in the console for no reason.
-    if (this.auth.can(Permissions.devicesView)) {
+    const devices = this.auth.can(Permissions.devicesView);
+    const figures = this.auth.can(Permissions.dashboardView);
+
+    if (devices) {
       void this.loadPendingDevices();
     }
 
     if (this.canKiosks()) {
       void this.loadKiosks();
+
+      // The counts and the "needs attention" list follow a kiosk at once,
+      // from what the event carries (T-248); the fetch below brings the rest.
+      inject(DestroyRef).onDestroy(
+        this.hub.on<{ kioskId: string; status: KioskStatus }>('KioskStatusChanged', (event) =>
+          this.kiosks.update(
+            (list) =>
+              list?.map((kiosk) =>
+                kiosk.id === event.kioskId ? { ...kiosk, status: event.status } : kiosk,
+              ) ?? null,
+          ),
+        ),
+      );
     }
 
-    if (this.auth.can(Permissions.dashboardView)) {
+    if (figures) {
       void this.load();
-
-      // Sync progress and provider health arrive live; the figures are
-      // fetched again when they change rather than recomputed here.
-      const off = [
-        this.hub.on('StorageSyncProgress', () => void this.load()),
-        this.hub.on('StorageSyncCompleted', () => void this.load()),
-        this.hub.on('StorageHealthChanged', () => void this.load()),
-      ];
-      inject(DestroyRef).onDestroy(() => off.forEach((unsubscribe) => unsubscribe()));
     }
+
+    // Everything on this page changes by itself: a kiosk's status, a device
+    // waiting to be activated, a sync's progress, a provider's health. The
+    // figures are fetched again when they change rather than recomputed here.
+    liveRefresh({
+      events: [
+        'KioskStatusChanged',
+        'DeviceRegistered',
+        'DeviceActivated',
+        'DeviceRevoked',
+        'StorageSyncProgress',
+        'StorageSyncCompleted',
+        'StorageHealthChanged',
+      ],
+      reload: () =>
+        Promise.all([
+          this.canKiosks() ? this.loadKiosks() : null,
+          devices ? this.loadPendingDevices() : null,
+          figures ? this.load() : null,
+        ]),
+    });
   }
 
   percent(job: StorageSyncJob): number {
