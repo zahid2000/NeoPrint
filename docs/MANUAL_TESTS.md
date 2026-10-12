@@ -234,7 +234,15 @@ Bank və fiskal provayder mock-dur. Əmrlər `DEV_ENVIRONMENT.md` bölmə 7c-də
 | 5 | Tətbiqdə **QR oxut** (ML Kit) | QR 2 saniyə ərzində tanınır, ödəniş ekranı açılır |
 | 6 | Fiskal çekin QR-ını telefonla oxudun | e-kassa saytında çek açılır, məbləğ və tarix düzgündür |
 | 7 | Balansdan və bonus səhifələrlə ödəniş | Fiskal çekdə bonus hissəsi 0 ₼, yalnız pulla ödənilən hissə; balans heç vaxt karta çıxarılmır |
-| 8 | Incident bildirişləri (T-209): staging-də real SMTP və Telegram bot token-i (OpenBao `NEOPRINT_TELEGRAM_BOT_TOKEN`); admin hesabında email və Telegram chat ID; printerin kabelini çıxarın | ~1 dəqiqəyə həmin kioskun əhatəsindəki hesaba email ("NeoPrint — Critical incident: <kiosk kodu>") və Telegram mesajı gəlir; başqa kioskun operatoruna gəlmir; eyni incident üçün ikinci məktub gəlmir. API loqunda bot token-i yoxdur (`docker logs neoprint-api \| grep -c bot<token-in ilk rəqəmləri>` → 0) |
+| 8 | Incident emaili (T-209, T-241): staging-də real SMTP (göndərən domen, SPF / DKIM — `docs/PILOT.md` №10); admin hesabında email; printerin kabelini çıxarın | ~1 dəqiqəyə həmin kioskun əhatəsindəki hesaba email ("NeoPrint — Critical incident: <kiosk kodu>") gəlir, "Spam" qovluğuna düşmür (başlıqlarda `spf=pass`, `dkim=pass`); başqa kioskun operatoruna gəlmir; eyni incident üçün ikinci məktub gəlmir. `Notification.MinSeverity` = `Critical` ediləndə `High` incident üçün məktub gəlmir. Lokalda eyni yoxlama Mailpit ilə aparılıb (`docs/DEV_ENVIRONMENT.md` 7m) |
+
+### Faza 2-yə köçürülənlər
+
+Pilotda yoxlanmır; Faza 2-də müvafiq iş açılanda bu cədvəl həmin işin yoxlama siyahısı olur.
+
+| # | Haradan köçüb | Addım | Gözlənilən | Tapşırıq |
+|---|---|---|---|---|
+| F2-1 | MT-06 №8 (Telegram hissəsi; qərar 2026-10-12) | Incident Telegram bildirişi: OpenBao-da `NEOPRINT_TELEGRAM_BOT_TOKEN`, Tənzimləmələr → `Notification.TelegramEnabled` = `true`, admin hesabında Telegram chat ID; printerin kabelini çıxarın | ~1 dəqiqəyə həmin kioskun əhatəsindəki hesaba Telegram mesajı gəlir; başqa kioskun operatoruna gəlmir; eyni incident üçün ikinci mesaj gəlmir. API loqunda bot token-i yoxdur (`docker logs neoprint-api \| grep -c bot<token-in ilk rəqəmləri>` → 0). Tənzimləmə `false` ediləndə mesaj getmir | T-243 |
 
 ## MT-07. Addım 5 — real telefon, kamera, FCM (T-149)
 

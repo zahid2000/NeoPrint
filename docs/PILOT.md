@@ -22,3 +22,16 @@ Pilot aşağıdakıların hamısı bağlanmadan başlamır. Hər sətrin mənbə
 | 7 | Admin test dəstinin başqa kompüterdə işlədilməsi (bu maşında `vitest` forks işə düşmür; CI yaşıldır) | Layihə sahibi | Başqa Windows / Linux kompüteri | T-171 | `docs/DEV_ENVIRONMENT.md` — admin testləri | Açıq |
 | 8 | "Production-da məcburi açar silinəndə API başlamır" — ayrıca (staging) OpenBao-da | Claude | Staging mühiti | T-169 | — | Açıq — Addım 7B |
 | 9 | Vizual yenidən dizayn, açılış ekranı və ikon | Layihə sahibi (nümunələr) + Claude | Nümunələr | T-022, T-201 | — | Açıq — Addım 7B |
+| 10 | Production SMTP: göndərən domen, SPF / DKIM (və DMARC) — istifadəçi emaili (qeydiyyat kodu, qəbz) və incident emaili (Critical / High, kioskun əhatəsindəki hesablara) spam-a düşmədən çatmalıdır | Layihə sahibi (domen, SMTP provayderi) + Claude | Domen, SMTP hesabı; OpenBao-da SMTP açarları | T-219, T-241 | MT-06 №8 (email hissəsi) | Açıq — Addım 7B |
+
+**Pilot tələbi deyil (qərar 2026-10-12):** incident-lərin Telegram botu Faza 2-yə keçirilib (T-243) — kanal
+tənzimləmə ilə söndürülüdür (`Notification.TelegramEnabled`), pilot üçün bot token-i və qrup lazım deyil.
+Incident-lər pilotda panel (canlı) və email ilə bildirilir.
+
+## Hüquqşünasa suallar
+
+Layihə sahibi hüquqşünasla dəqiqləşdirir; cavab gələndə müvafiq tapşırıq və hüquqi sənəd yenilənir.
+
+| # | Sual | Niyə soruşulur | Sistemdə indi | Tapşırıq | Vəziyyət |
+|---|---|---|---|---|---|
+| 1 | **İstehlakçının ödəniş üsuluna qaytarma hüququ.** İstifadəçi çap olunmamış sifarişini özü ləğv edəndə məbləğin **ödənilən üsula (karta)** qaytarılmasını tələb edə bilərmi, yoxsa tətbiqdəki balansa qaytarma (balansın nağdlaşdırılmaması şərti ilə) qanuni sayılır? Kartla artırılmış balansdan ödənilən sifariş üçün cavab fərqlidirmi? | Plan 2.5 ləğvdə "Karta qaytar" seçimini nəzərdə tutur; MVP-də tətbiqlə ödənilən sifarişin məbləği balansa qayıdır (qonağın bank QR ödənişi isə həmişə karta) | `POST print-jobs/my/{id}/cancel` → balansa qaytarma; `docs/legal/REFUND_POLICY.az.md` qaralaması | T-242 (7B, real bank adapterindən sonra), T-162 | Açıq |

@@ -316,7 +316,7 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 - Sol sidebar (icazəyə görə menyu, qruplaşdırılmış), yuxarıda axtarış + dil + bildiriş zəngi + profil.
 - Səhifə şablonu: başlıq + qısa izah → filtr paneli → cədvəl → pagination. Detal səhifələri tab-larla.
 - Dashboard kartları: rəqəm + izah + trend; kritik kartlar (incident, uğursuz refund) yuxarıda və semantik rənglə.
-- Real-time yenilənən sahələrdə "canlı" göstəricisi və son yenilənmə vaxtı.
+- Real-time yenilənən sahələrdə "canlı" göstəricisi və son yenilənmə vaxtı. Admin paneldə göstərici başlıqdadır (`app-live-indicator`: Canlı / Yenidən qoşulur / Əlaqə yoxdur). Serverin özü dəyişdiyi məlumatı göstərən hər səhifə `liveRefresh` ilə qurulur: hadisə gələndə, bağlantı qayıdanda və canlı bağlantı olmadıqda hər 30 saniyədən bir məlumatı **səssiz** təzələyir — cədvəl boşalmır, skeleton görünmür, uğursuz cəhd xəta banneri göstərmir (bağlantının vəziyyətini göstərici deyir). "Yenilə" düyməsi tələb edən canlı səhifə qüsur sayılır (T-248).
 - **Hər səhifənin başlığı `app-page-header`-dir** (idarə paneli də): başlıq ölçüsü, izah və altındakı boşluq bir yerdən gəlir. Səhifənin kökü `.neo-page`-dir (və ya onun bərabəri — sütun, `--space-6` aralıq).
 - **Detal səhifəsində "siyahıya qayıt" keçidi** səhifənin ən üstündə, solda dayanır (`.neo-back`), başlıqdan əvvəl. Mərkəzdə və ya başlığın altında olmur.
 - **Yan menyu:** sığmayan ad ikinci sətrə keçir, üç nöqtə ilə kəsilmir ("Baxış gözləyən sifarişlər", "Переключатели функций").

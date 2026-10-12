@@ -150,7 +150,7 @@ NeoPrint — çoxfunksiyalı terminal (kiosk) printer platformasıdır. 4 hissə
 | Fiskal qəbz | `IFiscalProvider` interface + `MockFiscalProvider` (Bölmə 2.12). Hər uğurlu satış və refund fiskallaşdırılır |
 | Email | MailKit (SMTP). Development-də Mailpit konteyneri |
 | Push | FCM HTTP v1 (öz klientimiz). FCM konfiqi yoxdursa `LoggingPushSender` işləyir (xəta vermir) |
-| Admin təcili bildirişi | Admin/Operator panelində real-time (SignalR `/hubs/admin`, səsli bildiriş + brauzer Notification API) + Email + Telegram bot (`NEOPRINT_TELEGRAM_BOT_TOKEN` boşdursa söndürülür) |
+| Admin təcili bildirişi | Admin/Operator panelində real-time (SignalR `/hubs/admin`, səsli bildiriş + brauzer Notification API) + Email (hədd `Notification.MinSeverity`, default `High`). **Telegram kanalı Faza 2-dədir** (qərar 2026-10-12): kod yazılıb, `Notification.TelegramEnabled` (default `false`) açılana və `NEOPRINT_TELEGRAM_BOT_TOKEN` verilənə qədər heç nə göndərilmir |
 | Fayl saxlama | İstənilən S3-uyğun provayder — **aktiv provayder admin web paneldən seçilir**, aralarında migrasiya və davamlı sinxronizasiya var (Bölmə 2.10). Hamısı S3 API ilə (`AWSSDK.S3`). Development, test və pilotda RustFS. **Bütün obyektlər tətbiq səviyyəsində şifrələnir** (Bölmə 2.13) |
 | Feature flag | Öz sistemimiz, kiosk / platforma / istifadəçi səviyyəsində (Bölmə 2.16) |
 
@@ -274,6 +274,9 @@ price      = max(MinOrder, base * (1 - tier.DiscountPercent/100))
 | `Kiosk.OfflineAfterSeconds` | 60 | Heartbeat gəlməzsə offline sayılır |
 | `Kiosk.TelemetrySeconds` | 30 | Kiosk telemetriya göndərmə intervalı |
 | `Kiosk.PrinterFaultAfterSeconds` | 30 | Heartbeat bu qədər saniyə "printer hazır deyil" deyərsə kiosk `Paused` olur və Bölmə 9.6 A axını başlayır; bir pis oxunuş nasazlıq sayılmır. Çap zamanı printer xətası ilə kəsilən job üçün gözləmə yoxdur |
+| `PrintJob.MaxAutoRetries` | 3 | Printerin dayandırdığı sifariş cəmi neçə dəfə çapa göndərilir (1–10): ilk çap və printer qayıdanda sistemin özünün başlatdıqları. Bu qədər cəhddən sonra sifariş `Interrupted` qalır, `High` incident açılır, sahibi ləğv edib məbləği geri ala bilər (Bölmə 9.6) |
+| `Notification.MinSeverity` | High | Incident bu səviyyədən başlayaraq kioskun əhatəsindəki hesablara email ilə bildirilir: `Critical`, `High` və ya `Medium`. Aşağı səviyyəlilər yalnız paneldə görünür |
+| `Notification.TelegramEnabled` | false | Incident bildirişlərinin Telegram kanalı. Faza 2: açıq olmalı **və** bot token-i verilməlidir; MVP-də söndürülüdür |
 | `Kiosk.TelemetryRetentionDays` | 30 | Telemetriya tarixçəsinin saxlanma müddəti |
 | `Kiosk.PrinterEventRetentionDays` | 365 | Printer hadisələrinin (toner dəyişdi, kağız dolduruldu, sıxılma və s.) saxlanma müddəti |
 | `Files.DefaultMaxSizeMb` | 50 | Default maksimum fayl ölçüsü (kiosk override edə bilər) |
@@ -1641,6 +1644,18 @@ Mənbələr:
 - **Office mətn redaktəsi — Collabora Online CODE:** compose-a `collabora/code` konteyneri; backend WOPI host (`/wopi/files/{id}` — CheckFileInfo, GetFile, PutFile, Lock/Unlock/RefreshLock; lock-lar Redis-də), `POST files/{id}/edit-session` → Collabora URL + 30 dəq-lik WOPI access token. Kiosk: `CefGlue.Avalonia` (MIT) WebView + ekran klaviaturası; mobil: `webview_flutter` (rəsmi). Flash faylları üçün müvəqqəti `POST kiosks/me/temp-files` (şifrəli, TTL 1 saat). Saxlama orijinal formatda yeni versiya kimi, sonra avtomatik PDF-ə çevrilmə. Collabora əlçatmaz olduqda "Redaktə et" deaktiv olur. Feature flag: `office_editor`.
 - **Formatlar:** TIFF, SVG, kioskda HEIC.
 - Hər yeni asılılıq Bölmə 2.0 siyasəti ilə yoxlanılır. Collabora CODE-un pulsuz edition limitləri (eyni anda istifadəçi / sənəd sayı) pilot yükünə görə yoxlanılır və `docs/DECISIONS.md`-də qeyd olunur.
+
+#### Faza 2-yə əlavə olunan işlər (layihə sahibi, 2026-10-12; addım nömrəsi Faza 2 planlananda verilir)
+
+**Incident Telegram bildirişləri (T-243).** Kanal MVP-də yazılıb və söndürülüdür (`Notification.TelegramEnabled`). Açılması üçün: bot token-i (OpenBao `NEOPRINT_TELEGRAM_BOT_TOKEN`), admin qrupunun / hesabların chat ID-si, real çatdırılmanın yoxlanması (`docs/MANUAL_TESTS.md` — Faza 2-yə köçürülənlər). Aşağıdakı botla birlikdə planlanır.
+
+**Telegram bot / Mini App: istifadəçi Telegram-da da çap edə bilsin (T-244).** Qaralama əhatə — Faza 2-də dəqiqləşir, indi kod yazılmır:
+- **Hesabın bağlanması:** Telegram hesabı mövcud NeoPrint hesabı ilə birdəfəlik kodla əlaqələndirilir (`initData` imza yoxlaması ilə).
+- **Fayl göndərmə:** istifadəçi Telegram-dan fayl yükləyir, kiosk seçir (axtarış / xəritə), seçimlər (ixtiyari). "Kiosk üçün hazırla" axını (Bölmə 9.4) ilə **eyni backend və qaydalar**: qiymət o kioskun cari profilinə görə, ödəniş balansdan, kioskda şəxsi QR ilə götürmə.
+- **Bildirişlər:** çap hazırdır, planlanmış çap vaxtı, refund — Telegram kanalı mobil push-un yanında əlavə kanal kimi.
+- **Eyni bot incident Telegram bildirişləri üçün də** istifadə oluna bilər (ayrı admin qrupu), ona görə onunla birlikdə planlanır.
+- **Məxfilik / hüquqi:** fayllar Telegram serverlərindən keçir (üçüncü tərəf, E2E deyil); istifadəçi razılığı və hüquqi sənədlər yenilənməlidir. Həssas sənəd (vəsiqə) Telegram-dan qəbul edilməsin və ya xəbərdarlıqla məhdudlaşsın — qərar Faza 2-də.
+- **Asılılıqlar:** Telegram bot token-i, bot adı, webhook ünvanı (domen, TLS).
 
 ### FAZA 3 — Biznes genişlənmələri (MVP və Faza 2-dən sonra)
 

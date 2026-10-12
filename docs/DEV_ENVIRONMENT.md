@@ -1366,10 +1366,49 @@ və qaytarılmır. `docker start neoprint-kshot` → kiosk `Online`, incident "K
 `AppCrash` (Critical); konteynerdə təhlükəsiz rejimdən çıxmaq üçün:
 `docker exec neoprint-kshot sh -c 'rm -f /var/lib/neoprint/state/runs.json'` və `docker restart neoprint-kshot`.
 
-**Email / Telegram:** lokal mühitdə SMTP host-u yoxdursa məktub göndərilmir (loqda xəbərdarlıq); Telegram
-bot token-i (`NEOPRINT_TELEGRAM_BOT_TOKEN`, OpenBao `neoprint/backend/providers`) yoxdursa kanal söndürülmüşdür.
-Yalnız `Critical` və `High` incident-lər göndərilir, `incidents.view` icazəsi olan və həmin kioskun
-əhatəsindəki hesablara; Telegram üçün hesabda chat ID olmalıdır.
+**Incident emaili (Mailpit).** Incident `incidents.view` icazəsi olan və həmin kioskun əhatəsindəki hesablara
+email ilə gedir; lokalda məktublar **Mailpit**-ə düşür (http://localhost:8025, mövzu "NeoPrint — Critical
+incident: KSK-9002"). Hədd tənzimləmədir — `Notification.MinSeverity` (default `High`: `Critical` və `High`
+gedir, `Medium` yalnız paneldə qalır):
+
+```bash
+node tools/dev-kiosk/setting.mjs                                    # default-dan fərqli tənzimləmələr
+node tools/dev-kiosk/setting.mjs Notification.MinSeverity           # bir tənzimləmə, izahı ilə
+node tools/dev-kiosk/setting.mjs Notification.MinSeverity Critical  # saxla; yanlış dəyər 400 ilə rədd olunur
+node tools/dev-kiosk/setting.mjs Notification.MinSeverity High      # geri qaytar
+```
+
+Yoxlamaq üçün: `docker stop neoprint-kshot` → ~60 saniyəyə `ConnectionLost` (Critical) → Mailpit-də hər
+hesaba bir məktub; `docker kill -s KILL neoprint-kshot && docker start neoprint-kshot` → `AppCrash` (High) —
+hədd `Critical` olanda bu incident üçün məktub gəlmir.
+
+**Telegram** kanalı Faza 2-dədir və söndürülüdür: `Notification.TelegramEnabled` = `false`. Açıq olsa belə bot
+token-i (`NEOPRINT_TELEGRAM_BOT_TOKEN`, OpenBao `neoprint/backend/providers`) olmadan heç nə göndərilmir.
+
+**Avtomatik çap cəhdləri.** `PrintJob.MaxAutoRetries` (default 3, 1–10) — printerin dayandırdığı sifariş cəmi
+neçə dəfə çapa göndərilir. `1` edib "Ssenari A, çap ortasında xəta"nı təkrarlasanız sifariş `Interrupted`
+qalır və `High` incident açılır ("… 1 dəfə yarımçıq qaldı və bir daha avtomatik çapa göndərilmədi"); sonra
+dəyəri `3`-ə qaytarın.
+
+### Admin panel: canlı yenilənmə (T-248, T-245)
+
+Panelin açıq səhifələri yenilənmədən ("F5"-siz) kioskun statusunu izləməlidir. İki skript bunu real stack-də
+brauzerlə (Chrome / Edge, `playwright-core`) yoxlayır — `admin/` qovluğundan:
+
+```bash
+node e2e/live.mjs                    # KSK-9002 konteyneri dayandırılır / işə salınır; siyahı və dashboard izləməlidir
+node e2e/live.mjs --connection       # panelin öz canlı bağlantısı kəsilir: 30 saniyəlik sorğu ilə izləməlidir
+node e2e/scope.mjs                   # əhatəsi məhdud hesab: yalnız öz kioskunu görür və eşidir; əhatə dəyişəndə bağlantı yenilənir
+node e2e/live.mjs KSK-9002 neoprint-kshot ../docs/screenshots/step-7/live   # ekran görüntüləri ilə
+```
+
+Hər skript zaman cədvəli (API-nin dediyi / siyahının göstərdiyi / dashboard), tab-ların aldığı hub
+hadisələrini yazır və son sətirdə nəticəni deyir (çıxış kodu 0 — izlədi). `scope.mjs` hər qaçışda
+`scope-check-<vaxt>@neoprint.local` adlı hesab və rol yaradır (təsadüfi şifrə ilə) və sonda hesabı söndürür;
+`dev-superadmin` hesabı ilə işləyir.
+
+**API-yə giriş limiti:** bir ünvandan dəqiqədə 10 giriş. `tools/dev-kiosk/*.mjs` skriptləri hər çağırışda
+yenidən daxil olur — onları dövrədə (hər 3 saniyədən bir) çağırsanız `429` alacaqsınız; bir dəqiqə gözləyin.
 
 ---
 
@@ -1407,6 +1446,9 @@ node tools/license-check --strict
 
 # Lisenziya yoxlayıcısının öz testləri
 cd tools/license-check && npm test
+
+# Admin testləri tək-tək (bu maşında bütöv dəst işə düşmür - T-171; runner başlamasa təkrar edin)
+cd admin && npx ng test --watch=false --include=src/app/core/realtime/live-refresh.spec.ts
 
 # Dizayn qaydaları: hardcoded rəng / şrift ölçüsü / boşluq (admin, mobil, kiosk)
 node tools/design-lint --list

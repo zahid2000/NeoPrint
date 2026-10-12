@@ -82,12 +82,23 @@ məzmununun şifrəsiz nüsxəsi yaranmır; keş icazə yoxlamasından sonra oxu
   `404` qaytarır (var-yox olduğu bilinmir); `Printing` və `Suspected` ləğv olunmur.
 - **Kiosk əhatəsi:** əhatəsi məhdud hesab başqa kioskun incident-ini nə siyahıda, nə detalda, nə də canlı
   bildirişdə (`/hubs/admin`) görür, onu təsdiqləyə və bağlaya bilmir (`404`).
+- **Canlı bağlantı və dəyişən əhatə (T-249):** `/hubs/admin` bağlantısının qrupları qoşulma anında hesablanır.
+  Hesabın əhatəsi / rolları dəyişəndə, hesab söndürüləndə və şifrəsi sıfırlananda server həmin hesabın açıq
+  bağlantılarını kəsir; bağlantı həm də açıldığı token-in müddəti bitəndə bağlanır. Söndürülmüş hesab yenidən
+  qoşula bilmir (`401` / `403`). **Qalıq risk:** bir neçə API instansı olanda başqa instansın saxladığı
+  bağlantı dərhal yox, ən gec token bitəndə (15 dəqiqə) bağlanır — əməkdaşlıq etməyən klient bu müddətdə
+  əhatədən çıxarılmış kioskun hadisələrini (ID, status, telemetriya) ala bilər; REST-də belə pəncərə yoxdur.
+  Test: `AdminLiveEventsTests` (əhatə dəyişir → bağlantı bağlanır → yeni bağlantı yalnız yeni kioskun
+  hadisələrini alır; söndürülmüş hesab qoşula bilmir).
+- **Canlı hadisənin gövdəsi (T-248):** `KioskStatusChanged` yalnız kioskun ID-sini və statusunu daşıyır;
+  panel qalan məlumatı REST ilə oxuyur, yəni icazə və əhatə yoxlaması hər dəfə serverdə aparılır.
 - **Email:** incident mətnində kioskun bildirdiyi printer adı ola bilər — məktuba yalnız HTML-kodlanmış
   düşür (`<b>` → `&lt;b&gt;`).
 - **Telegram:** bot token-i sorğunun ünvanındadır, ona görə ünvan heç vaxt loqa düşməməlidir. Klientin HTTP
   loqları söndürülüb (`RemoveAllLoggers`), xəta yalnız status kodu ilə bildirilir; test token-in heç bir loq
   sətrində və xəta mətnində olmadığını yoxlayır. Token OpenBao-dadır (`NEOPRINT_TELEGRAM_BOT_TOKEN`),
-  yoxdursa kanal söndürülmüşdür.
+  yoxdursa kanal söndürülmüşdür. Kanal Faza 2-dədir: token olsa belə `Notification.TelegramEnabled`
+  (default `false`) açılana qədər heç nə göndərilmir (T-241).
 - **Kimə göndərildiyi** yalnız hesabın `id`-si ilə qeyd olunur (`incident_notifications`) — ünvan və chat ID
   nə bu qeyddə, nə loqda var.
 
