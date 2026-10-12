@@ -21,6 +21,11 @@ public sealed class KioskAdminPauseTests
         {
             Code = "KSK-0001",
             SelectedPrinter = printer ? new SelectedPrinter { Name = "HP LaserJet" } : null,
+
+            // Stated, not left to its default - which is the real clock, and
+            // the test's "now" is a fixed day: left alone, "changed after it
+            // was configured" stopped holding the moment that day passed (T-240).
+            ConfigurationChangedAt = Now.AddDays(-1),
         };
 
         kiosk.BindDevice(Guid.NewGuid(), KioskPlatform.Linux, "0.7.0", Admin, Now);
