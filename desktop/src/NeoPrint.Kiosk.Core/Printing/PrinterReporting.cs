@@ -63,6 +63,84 @@ public interface ITestPageSource
 /// <param name="Lines">What the page says, already in the kiosk's language: title first.</param>
 public sealed record TestPageInfo(IReadOnlyList<string> Lines);
 
+/// <summary>A restart or a reboot this kiosk has acknowledged and is about to carry out.</summary>
+/// <param name="NotedAt">This machine's clock when the note was written.</param>
+/// <param name="UptimeSeconds">How long the machine had been up then.</param>
+public sealed record PendingCommand(Guid CommandId, string Type, DateTime NotedAt, long UptimeSeconds);
+
+/// <summary>
+/// The one command the kiosk is in the middle of when it goes down on purpose
+/// (plan section 7.8), kept on disk so the application that comes back knows
+/// it has carried it out - whatever its clock says, and whether or not it can
+/// reach the backend yet.
+/// </summary>
+/// <remarks>
+/// Not a secret and not about a customer: a command id, a time and an uptime.
+/// A file that cannot be read is no note; the backend's own mark
+/// (<c>Acknowledged</c>) still keeps the command from being carried out twice.
+/// </remarks>
+public sealed class PendingCommandStore
+{
+    private readonly string? _file;
+    private PendingCommand? _held;
+
+    /// <param name="stateDirectory">Where the note is kept; null keeps it in memory only (tests, a kiosk without a state folder).</param>
+    public PendingCommandStore(string? stateDirectory)
+        => _file = stateDirectory is null ? null : Path.Combine(stateDirectory, "pending-command.json");
+
+    public void Note(PendingCommand command)
+    {
+        _held = command;
+
+        if (_file is null)
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(_file)!);
+
+        // Written beside and moved into place: a power cut leaves the old note or the new one, not half of one.
+        var draft = _file + ".tmp";
+        File.WriteAllText(draft, System.Text.Json.JsonSerializer.Serialize(command));
+        File.Move(draft, _file, overwrite: true);
+    }
+
+    /// <summary>The note for this command, if there is one.</summary>
+    public PendingCommand? Find(Guid commandId)
+    {
+        var noted = _held ?? Read();
+
+        return noted?.CommandId == commandId ? noted : null;
+    }
+
+    public void Clear()
+    {
+        _held = null;
+
+        if (_file is not null && File.Exists(_file))
+        {
+            File.Delete(_file);
+        }
+    }
+
+    private PendingCommand? Read()
+    {
+        if (_file is null || !File.Exists(_file))
+        {
+            return null;
+        }
+
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<PendingCommand>(File.ReadAllText(_file));
+        }
+        catch (Exception exception) when (exception is System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+}
+
 /// <summary>
 /// Carries out the commands the panel sends (plan section 7.8): the printer
 /// ones in step 3.
@@ -90,6 +168,7 @@ public sealed class CommandProcessor
     private readonly IClock _clock;
     private readonly DateTime _startedAt;
     private readonly Func<bool> _safeMode;
+    private readonly PendingCommandStore _pending;
     private readonly HashSet<Guid> _done = [];
 
     /// <summary>How long a reboot may take to take the application down before it is called a failure.</summary>
@@ -114,8 +193,10 @@ public sealed class CommandProcessor
         Action? leavingOnPurpose = null,
         Func<CancellationToken, Task<long?>>? uptimeSeconds = null,
         IClock? clock = null,
-        Func<bool>? safeMode = null)
+        Func<bool>? safeMode = null,
+        PendingCommandStore? pending = null)
     {
+        _pending = pending ?? new PendingCommandStore(null);
         _safeMode = safeMode ?? (() => false);
         _reloadConfiguration = reloadConfiguration ?? (_ => Task.CompletedTask);
         _system = system ?? new FakeSystemControl();
@@ -139,7 +220,13 @@ public sealed class CommandProcessor
     {
         foreach (var command in await _api.GetOpenCommandsAsync(cancellationToken).ConfigureAwait(false))
         {
-            await HandleAsync(command.Id, command.Type, cancellationToken, command.CreatedAt).ConfigureAwait(false);
+            await HandleAsync(
+                    command.Id,
+                    command.Type,
+                    cancellationToken,
+                    command.CreatedAt,
+                    acknowledged: string.Equals(command.Status, "Acknowledged", StringComparison.Ordinal))
+                .ConfigureAwait(false);
         }
     }
 
@@ -148,7 +235,12 @@ public sealed class CommandProcessor
     /// command that arrives live over the hub has none: it is newer than this
     /// process by definition.
     /// </param>
-    public async Task HandleAsync(Guid commandId, string type, CancellationToken cancellationToken, DateTime? sentAt = null)
+    /// <param name="acknowledged">
+    /// The backend already has this kiosk's "I will do it" for the command: it
+    /// was marked before it was carried out, and is only answered now.
+    /// </param>
+    public async Task HandleAsync(
+        Guid commandId, string type, CancellationToken cancellationToken, DateTime? sentAt = null, bool acknowledged = false)
     {
         // In safe mode the kiosk prints nothing (plan section 7.12), so a
         // printer command waits - it is still open when safe mode is cleared.
@@ -176,8 +268,8 @@ public sealed class CommandProcessor
                 "TestPrint" => await TestPrintAsync(cancellationToken).ConfigureAwait(false),
                 "Pause" => await ReloadAsync("kioskCommands.paused", cancellationToken).ConfigureAwait(false),
                 "Resume" => await ReloadAsync("kioskCommands.resumed", cancellationToken).ConfigureAwait(false),
-                "RestartApp" => await RestartAsync(commandId, sentAt, cancellationToken).ConfigureAwait(false),
-                "Reboot" => await RebootAsync(commandId, sentAt, cancellationToken).ConfigureAwait(false),
+                "RestartApp" => await RestartAsync(commandId, sentAt, acknowledged, cancellationToken).ConfigureAwait(false),
+                "Reboot" => await RebootAsync(commandId, sentAt, acknowledged, cancellationToken).ConfigureAwait(false),
                 _ => (false, "kioskCommands.unsupported", 0),
             };
 
@@ -222,18 +314,35 @@ public sealed class CommandProcessor
 
     /// <summary>
     /// Restarts the application once the printer is free (plan section 7.8).
-    /// A command sent before this process started has been carried out by the
-    /// start itself - that is how the restarted application answers it, and
-    /// why a kiosk that was off when it was sent does not restart once more.
     /// </summary>
-    private async Task<(bool, string, int)?> RestartAsync(Guid commandId, DateTime? sentAt, CancellationToken cancellationToken)
+    /// <remarks>
+    /// The command is marked before it is carried out - acknowledged on the
+    /// backend, noted on disk - and a command that carries either mark is
+    /// never carried out again, only answered. That is what keeps a restart
+    /// from repeating itself: the application that comes back finds the same
+    /// command still open, and without the mark it would have nothing but two
+    /// clocks, its own and the server's, to tell whether it had done it.
+    /// </remarks>
+    private async Task<(bool, string, int)?> RestartAsync(
+        Guid commandId, DateTime? sentAt, bool acknowledged, CancellationToken cancellationToken)
     {
+        // Marked: this is the application that came back.
+        if (acknowledged || _pending.Find(commandId) is not null)
+        {
+            _pending.Clear();
+            return (true, "kioskCommands.restarted", 0);
+        }
+
+        // Sent while the kiosk was switched off: starting was the restart.
         if (sentAt is { } sent && sent < _startedAt)
         {
             return (true, "kioskCommands.restarted", 0);
         }
 
+        // Not acknowledged means not done: if this fails, nothing restarts
+        // and the command is taken again later.
         await _api.AcknowledgeCommandAsync(commandId, cancellationToken).ConfigureAwait(false);
+        await NoteAsync(commandId, "RestartApp", cancellationToken).ConfigureAwait(false);
 
         await _worker.WithPrinterAsync(
                 async () =>
@@ -253,29 +362,48 @@ public sealed class CommandProcessor
     }
 
     /// <summary>
-    /// Restarts the machine once the printer is free. Answered after the
-    /// reboot, by the machine's own uptime: shorter than the command is old
-    /// means it did restart.
+    /// Restarts the machine once the printer is free. Marked before it is
+    /// carried out, like <see cref="RestartAsync"/> - a machine that rebooted
+    /// for a command must never reboot for it again - and answered afterwards
+    /// by the machine's own uptime.
     /// </summary>
-    private async Task<(bool, string, int)?> RebootAsync(Guid commandId, DateTime? sentAt, CancellationToken cancellationToken)
+    private async Task<(bool, string, int)?> RebootAsync(
+        Guid commandId, DateTime? sentAt, bool acknowledged, CancellationToken cancellationToken)
     {
         var now = _clock.UtcNow;
+        var uptime = await _uptimeSeconds(cancellationToken).ConfigureAwait(false);
 
-        if (sentAt is { } sent)
+        if (_pending.Find(commandId) is { } noted)
         {
-            if (await _uptimeSeconds(cancellationToken).ConfigureAwait(false) is { } uptime && sent < now.AddSeconds(-uptime))
-            {
-                return (true, "kioskCommands.rebooted", 0);
-            }
+            _pending.Clear();
 
-            if (sent < _startedAt)
-            {
-                // The application came back and the machine never went down.
-                return (false, "kioskCommands.rebootNotDone", 0);
-            }
+            // The uptime counter started again, or the machine has been up
+            // for less time than has passed since the note was written: both
+            // are read off this machine alone, no server clock involved.
+            return uptime is not { } seconds
+                ? (true, "kioskCommands.restarted", 0)
+                : seconds < noted.UptimeSeconds || seconds < (now - noted.NotedAt).TotalSeconds
+                    ? (true, "kioskCommands.rebooted", 0)
+                    : (false, "kioskCommands.rebootNotDone", 0);
+        }
+
+        var bootedSinceItWasSent = sentAt is { } sent && uptime is { } up && sent < now.AddSeconds(-up);
+
+        if (acknowledged)
+        {
+            // Acknowledged, and the note is gone: answered as well as the
+            // clocks allow, and in no case carried out a second time.
+            return bootedSinceItWasSent ? (true, "kioskCommands.rebooted", 0) : (false, "kioskCommands.rebootNotDone", 0);
+        }
+
+        // Sent while the machine was off: booting was the reboot.
+        if (bootedSinceItWasSent)
+        {
+            return (true, "kioskCommands.rebooted", 0);
         }
 
         await _api.AcknowledgeCommandAsync(commandId, cancellationToken).ConfigureAwait(false);
+        await NoteAsync(commandId, "Reboot", cancellationToken).ConfigureAwait(false);
 
         return await _worker.WithPrinterAsync<(bool, string, int)?>(
                 async () =>
@@ -289,6 +417,7 @@ public sealed class CommandProcessor
                     catch (Exception exception) when (exception is not OperationCanceledException)
                     {
                         _logger.LogError(exception, "Command {CommandId}: the machine could not be restarted.", commandId);
+                        _pending.Clear();
                         return (false, "kioskCommands.rebootRefused", 0);
                     }
 
@@ -297,11 +426,19 @@ public sealed class CommandProcessor
                     await Task.Delay(RebootGrace, cancellationToken).ConfigureAwait(false);
 
                     _logger.LogError("Command {CommandId}: the machine did not restart.", commandId);
+                    _pending.Clear();
                     return (false, "kioskCommands.rebootRefused", 0);
                 },
                 cancellationToken)
             .ConfigureAwait(false);
     }
+
+    private async Task NoteAsync(Guid commandId, string type, CancellationToken cancellationToken)
+        => _pending.Note(new PendingCommand(
+            commandId,
+            type,
+            _clock.UtcNow,
+            await _uptimeSeconds(cancellationToken).ConfigureAwait(false) ?? 0));
 
     /// <summary>
     /// Waits for the job at the printer, then prints the test page before the

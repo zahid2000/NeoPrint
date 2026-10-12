@@ -349,7 +349,8 @@ internal static class Program
             uptimeSeconds: async cancellationToken =>
                 (await provider.GetRequiredService<ISystemMetrics>().ReadAsync(cancellationToken).ConfigureAwait(false)).UptimeSeconds,
             clock: provider.GetRequiredService<IClock>(),
-            safeMode: () => provider.GetRequiredService<KioskRuntime>().SafeMode));
+            safeMode: () => provider.GetRequiredService<KioskRuntime>().SafeMode,
+            pending: new PendingCommandStore(provider.GetRequiredService<IAppPaths>().StateDirectory)));
         services.AddSingleton<KioskHubClient>();
         services.AddSingleton<ProvisioningHubClient>();
         services.AddSingleton(provider =>

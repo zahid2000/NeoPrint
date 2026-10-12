@@ -2,6 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
 using MongoDB.Driver;
@@ -175,6 +178,119 @@ public sealed class KioskRemoteCommandTests
         using var other = await TestKiosks.ActivatedAsync(_fixture, $"other-{Guid.NewGuid():N}"[..22]);
         var theirs = (await SendAsync(admin, kiosk.KioskId, "reboot")).GetProperty("id").GetGuid();
         (await other.Client.PostAsync($"/api/kiosks/me/commands/{theirs}/ack", null)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    /// <summary>Gives every request of a test host the same remote address: the test server has none.</summary>
+    private sealed class FromAddress(string address) : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, following) =>
+            {
+                context.Connection.RemoteIpAddress = IPAddress.Parse(address);
+                return following(context);
+            });
+
+            next(app);
+        };
+    }
+
+    [DockerFact]
+    public async Task Every_remote_command_is_in_the_audit_log_who_which_kiosk_what_from_where_and_what_came_of_it()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await TestKiosks.ActivatedAsync(_fixture, $"audit-{Guid.NewGuid():N}"[..22]);
+
+        await using var host = _fixture.WithHttpOnlyHost(builder => builder.ConfigureTestServices(services =>
+            services.AddTransient<IStartupFilter>(_ => new FromAddress("203.0.113.7"))));
+
+        using var panel = host.CreateClient();
+        panel.DefaultRequestHeaders.Authorization = admin.DefaultRequestHeaders.Authorization;
+        using var device = host.CreateClient();
+        device.DefaultRequestHeaders.Authorization = kiosk.Client.DefaultRequestHeaders.Authorization;
+
+        var me = (await panel.GetFromJsonAsync<JsonElement>("/api/admin/me")).GetProperty("id").GetGuid();
+
+        // Sent, pressed again, acknowledged by the kiosk, answered by the kiosk.
+        var reboot = (await SendAsync(panel, kiosk.KioskId, "reboot")).GetProperty("id").GetGuid();
+        await SendAsync(panel, kiosk.KioskId, "reboot");
+        (await device.PostAsync($"/api/kiosks/me/commands/{reboot}/ack", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await device.PostAsJsonAsync(
+            $"/api/kiosks/me/commands/{reboot}/result", new { succeeded = false, messageKey = "kioskCommands.rebootRefused", sheetsUsed = 0 }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var pause = (await SendAsync(panel, kiosk.KioskId, "pause")).GetProperty("id").GetGuid();
+        (await device.PostAsJsonAsync(
+            $"/api/kiosks/me/commands/{pause}/result", new { succeeded = true, messageKey = "kioskCommands.paused", sheetsUsed = 0 }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = _fixture.Services.CreateScope();
+        var rows = await scope.ServiceProvider.GetRequiredService<MongoContext>().AuditLogs
+            .Find(row => row.EntityId == kiosk.KioskId.ToString() && row.Action.StartsWith("kiosks.command."))
+            .SortBy(row => row.CreatedAt)
+            .ToListAsync();
+
+        rows.Select(row => row.Action).Should().Equal(
+            "kiosks.command.Reboot",
+            "kiosks.command.Reboot",
+            "kiosks.command.Reboot.Acknowledged",
+            "kiosks.command.Reboot.Failed",
+            "kiosks.command.Pause",
+            "kiosks.command.Pause.Succeeded");
+
+        // Who, which kiosk, from where - on every row.
+        rows.Should().AllSatisfy(row =>
+        {
+            row.AdminUserId.Should().Be(me, "the administrator who sent the command, also on the kiosk's answers");
+            row.EntityType.Should().Be("Kiosk");
+            row.Ip.Should().Be("203.0.113.7");
+        });
+
+        // The request and what came of it name the same command.
+        rows[0].After.Should().Be(reboot.ToString());
+        rows[0].ActorType.Should().Be(NeoPrint.Domain.Common.ActorType.Admin);
+
+        // Pressed twice: asked for, and nothing new sent.
+        rows[1].After.Should().Be(reboot.ToString());
+        rows[1].Reason.Should().Be("kioskCommands.reason.alreadyOpen");
+
+        rows[2].Before.Should().Be(reboot.ToString());
+        rows[2].ActorType.Should().Be(NeoPrint.Domain.Common.ActorType.Kiosk);
+
+        // The result, by its key: the log is read in any language.
+        rows[3].Before.Should().Be(reboot.ToString());
+        rows[3].After.Should().Be("kioskCommands.rebootRefused");
+        rows[5].After.Should().Be("kioskCommands.paused");
+    }
+
+    [DockerFact]
+    public async Task A_command_nobody_answered_is_written_down_as_expired()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await TestKiosks.ActivatedAsync(_fixture, $"auditexp-{Guid.NewGuid():N}"[..22]);
+
+        var id = (await SendAsync(admin, kiosk.KioskId, "restart-app")).GetProperty("id").GetGuid();
+
+        using var scope = _fixture.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+
+        await context.KioskCommands.UpdateOneAsync(
+            Builders<KioskCommand>.Filter.Eq(command => command.Id, id),
+            Builders<KioskCommand>.Update.Set(command => command.CreatedAt, DateTime.UtcNow.AddHours(-25)));
+
+        // The kiosk comes back a day later: the command is not handed to it.
+        (await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/commands")).GetArrayLength().Should().Be(0);
+
+        var expired = await context.AuditLogs
+            .Find(row => row.EntityId == kiosk.KioskId.ToString() && row.Action == "kiosks.command.RestartApp.Expired")
+            .ToListAsync();
+
+        expired.Should().ContainSingle().Which.Before.Should().Be(id.ToString());
+        expired[0].ActorType.Should().Be(NeoPrint.Domain.Common.ActorType.System);
     }
 
     [DockerFact]

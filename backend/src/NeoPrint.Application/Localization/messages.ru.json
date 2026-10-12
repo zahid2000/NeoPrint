@@ -155,6 +155,7 @@
   "kioskCommands.done": "Команда выполнена.",
   "kioskCommands.noDevice": "К киоску не привязано устройство; команду отправить нельзя.",
   "kioskCommands.printersReported": "Список принтеров обновлён.",
+  "kioskCommands.reason.alreadyOpen": "Такая команда ещё выполняется; новая не отправлена",
   "kioskCommands.reason.expired": "Киоск не ответил в течение 24 часов",
   "kioskCommands.testPagePrinted": "Тестовая страница напечатана.",
   "kioskCommands.unsupported": "Эта версия киоска не знает такой команды. Обновите приложение киоска.",

@@ -49,6 +49,9 @@ public sealed class CommandProcessorTests : IDisposable
     {
         public List<string> Acknowledged { get; } = [];
 
+        /// <summary>The backend is not taking acknowledgements: the kiosk cannot mark a command.</summary>
+        public bool RefuseAcknowledgements { get; set; }
+
         public List<(string Id, bool Succeeded, string? MessageKey)> Answers { get; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -69,6 +72,11 @@ public sealed class CommandProcessorTests : IDisposable
 
             if (path.EndsWith("/ack", StringComparison.Ordinal))
             {
+                if (RefuseAcknowledgements)
+                {
+                    return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+                }
+
                 Acknowledged.Add(parts[^2]);
                 return Json(new { });
             }
@@ -110,6 +118,28 @@ public sealed class CommandProcessorTests : IDisposable
         public Task OpenMaintenanceAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
+    /// <summary>A machine that goes down: the call never comes back, as when the process dies with it.</summary>
+    private sealed class GoingDown : ISystemControl
+    {
+        public int Reboots { get; private set; }
+
+        public int ApplicationRestarts { get; private set; }
+
+        public Task RestartApplicationAsync(CancellationToken cancellationToken = default)
+        {
+            ApplicationRestarts++;
+            return Task.Delay(Timeout.Infinite, cancellationToken);
+        }
+
+        public Task RebootAsync(CancellationToken cancellationToken = default)
+        {
+            Reboots++;
+            return Task.Delay(Timeout.Infinite, cancellationToken);
+        }
+
+        public Task OpenMaintenanceAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
     private async Task<CommandProcessor> ProcessorAsync(long? uptimeSeconds = null, ISystemControl? system = null)
     {
         var http = new HttpClient(_backend) { BaseAddress = new Uri("http://backend.test/") };
@@ -144,7 +174,8 @@ public sealed class CommandProcessorTests : IDisposable
             leavingOnPurpose: () => _leftOnPurpose++,
             uptimeSeconds: _ => Task.FromResult(uptimeSeconds),
             clock: _clock,
-            safeMode: () => _safeMode)
+            safeMode: () => _safeMode,
+            pending: new PendingCommandStore(_paths.StateDirectory))
         {
             RebootGrace = TimeSpan.FromMilliseconds(40),
         };
@@ -247,14 +278,157 @@ public sealed class CommandProcessorTests : IDisposable
     [Fact]
     public async Task An_application_that_came_back_on_a_machine_that_never_went_down_says_so()
     {
-        // Sent five minutes ago; the machine has been up for an hour.
+        // Acknowledged five minutes ago; the machine has been up for an hour
+        // and the note on disk is gone.
         var processor = await ProcessorAsync(uptimeSeconds: 3600);
         var id = Guid.NewGuid();
 
-        await processor.HandleAsync(id, "Reboot", CancellationToken.None, Start.AddMinutes(-5));
+        await processor.HandleAsync(id, "Reboot", CancellationToken.None, Start.AddMinutes(-5), acknowledged: true);
 
         _backend.Answers.Should().Equal((id.ToString(), false, "kioskCommands.rebootNotDone"));
         _system.Reboots.Should().Be(0, "not tried a second time by itself: somebody has to look");
+    }
+
+    // -----------------------------------------------------------------------
+    // Marked before it is carried out: no restart and no reboot ever repeats
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task A_reboot_is_marked_before_the_machine_goes_down_and_is_not_carried_out_again_by_what_comes_back()
+    {
+        // First boot: the command arrives, the machine goes down.
+        var machine = new GoingDown();
+        using var goingDown = new CancellationTokenSource();
+        var first = await ProcessorAsync(uptimeSeconds: 7200, system: machine);
+        var id = Guid.NewGuid();
+
+        var neverReturns = first.HandleAsync(id, "Reboot", goingDown.Token);
+
+        for (var i = 0; i < 200 && machine.Reboots == 0; i++)
+        {
+            await Task.Delay(10);
+        }
+
+        machine.Reboots.Should().Be(1);
+        _backend.Acknowledged.Should().Equal([id.ToString()], "marked on the backend before the machine was asked to restart");
+        new PendingCommandStore(_paths.StateDirectory).Find(id).Should().NotBeNull("and noted on disk");
+        _backend.Answers.Should().BeEmpty();
+
+        // Second boot. Its clock is an hour behind the server's - to this
+        // kiosk the command looks as if it were sent in the future, so
+        // neither "older than the process" nor "older than the boot" holds.
+        // What it has is the mark.
+        _clock.UtcNow = Start.AddHours(-1);
+        var afterReboot = await ProcessorAsync(uptimeSeconds: 40);
+
+        await afterReboot.HandleAsync(id, "Reboot", CancellationToken.None, sentAt: Start, acknowledged: true);
+
+        _system.Reboots.Should().Be(0, "the machine must not restart for the same command twice");
+        _backend.Answers.Should().Equal((id.ToString(), true, "kioskCommands.rebooted"));
+        new PendingCommandStore(_paths.StateDirectory).Find(id).Should().BeNull("answered: the note is done with");
+
+        // A third start that still finds the command open - the answer was
+        // lost on its way - answers again and still does not restart anything.
+        var third = await ProcessorAsync(uptimeSeconds: 400);
+        await third.HandleAsync(id, "Reboot", CancellationToken.None, sentAt: Start, acknowledged: true);
+
+        _system.Reboots.Should().Be(0);
+        machine.Reboots.Should().Be(1, "one command, one reboot");
+
+        await goingDown.CancelAsync();
+        await ((Func<Task>)(() => neverReturns)).Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
+    public async Task The_note_on_disk_alone_is_enough_when_the_backend_cannot_be_asked()
+    {
+        // Noted, the machine went down; what comes back reads the command as
+        // merely "sent" - say the acknowledgement's answer never arrived.
+        var machine = new GoingDown();
+        using var goingDown = new CancellationTokenSource();
+        var first = await ProcessorAsync(uptimeSeconds: 7200, system: machine);
+        var id = Guid.NewGuid();
+        _ = first.HandleAsync(id, "Reboot", goingDown.Token);
+
+        for (var i = 0; i < 200 && machine.Reboots == 0; i++)
+        {
+            await Task.Delay(10);
+        }
+
+        _clock.UtcNow = Start.AddHours(-1);
+        var afterReboot = await ProcessorAsync(uptimeSeconds: 40);
+        await afterReboot.HandleAsync(id, "Reboot", CancellationToken.None, sentAt: Start, acknowledged: false);
+
+        _system.Reboots.Should().Be(0);
+        _backend.Answers.Should().Equal((id.ToString(), true, "kioskCommands.rebooted"));
+
+        await goingDown.CancelAsync();
+    }
+
+    [Fact]
+    public async Task A_restart_is_marked_the_same_way_and_does_not_repeat_on_a_kiosk_whose_clock_is_wrong()
+    {
+        var machine = new GoingDown();
+        using var goingDown = new CancellationTokenSource();
+        var first = await ProcessorAsync(system: machine);
+        var id = Guid.NewGuid();
+        _ = first.HandleAsync(id, "RestartApp", goingDown.Token);
+
+        for (var i = 0; i < 200 && machine.ApplicationRestarts == 0; i++)
+        {
+            await Task.Delay(10);
+        }
+
+        _backend.Acknowledged.Should().Equal(id.ToString());
+
+        // The application that came back, with a clock an hour behind.
+        _clock.UtcNow = Start.AddHours(-1);
+        var cameBack = await ProcessorAsync();
+        await cameBack.HandleAsync(id, "RestartApp", CancellationToken.None, sentAt: Start, acknowledged: true);
+
+        _system.ApplicationRestarts.Should().Be(0);
+        _backend.Answers.Should().Equal((id.ToString(), true, "kioskCommands.restarted"));
+
+        await goingDown.CancelAsync();
+    }
+
+    [Fact]
+    public async Task A_command_that_could_not_be_marked_is_not_carried_out()
+    {
+        var processor = await ProcessorAsync(uptimeSeconds: 7200);
+        var id = Guid.NewGuid();
+        _backend.RefuseAcknowledgements = true;
+
+        await processor.HandleAsync(id, "Reboot", CancellationToken.None);
+        await processor.HandleAsync(Guid.NewGuid(), "RestartApp", CancellationToken.None);
+
+        _system.Reboots.Should().Be(0, "an unmarked reboot could repeat itself");
+        _system.ApplicationRestarts.Should().Be(0);
+        new PendingCommandStore(_paths.StateDirectory).Find(id).Should().BeNull();
+        _backend.Answers.Should().BeEmpty("it is still open and is taken again later");
+
+        // The backend is back: the same command is taken and carried out.
+        _backend.RefuseAcknowledgements = false;
+        await processor.HandleAsync(id, "Reboot", CancellationToken.None, sentAt: Start.AddSeconds(1));
+
+        _system.Reboots.Should().Be(1);
+    }
+
+    [Fact]
+    public void The_note_survives_the_process_and_a_damaged_one_is_no_note()
+    {
+        var id = Guid.NewGuid();
+        new PendingCommandStore(_paths.StateDirectory).Note(new PendingCommand(id, "Reboot", Start, 7200));
+
+        var read = new PendingCommandStore(_paths.StateDirectory);
+        read.Find(id).Should().Be(new PendingCommand(id, "Reboot", Start, 7200));
+        read.Find(Guid.NewGuid()).Should().BeNull("a note about another command says nothing about this one");
+
+        read.Clear();
+        new PendingCommandStore(_paths.StateDirectory).Find(id).Should().BeNull();
+
+        File.WriteAllText(Path.Combine(_paths.StateDirectory, "pending-command.json"), "{ not json");
+        new PendingCommandStore(_paths.StateDirectory).Find(id).Should().BeNull();
     }
 
     [Fact]

@@ -1466,6 +1466,18 @@ Dörd əmrin hamısı `200` + əmrin özünü qaytarır (`{ id, kioskId, type, s
 audit log-a `kiosks.command.<Növ>` yazılır. **Təkrar göndərmə təkrar əmr yaratmır:** eyni növdən hələ açıq
 (`Sent` / `Acknowledged`) əmr varsa o qaytarılır. Kioska cihaz bağlı deyilsə `409 kioskCommands.noDevice`.
 `status`: `Sent`, `Acknowledged`, `Succeeded`, `Failed`, `Expired`.
+
+**Audit (`audit_logs`, T-233).** Hər uzaqdan əmr — `RefreshPrinters` və `TestPrint` də — iki cür sətir yazır;
+hamısında `EntityType = Kiosk`, `EntityId` = kiosk, `AdminUserId` = əmri göndərən administrator:
+
+| `Action` | Kim yazır (`ActorType`) | `Ip` | `Before` / `After` |
+|---|---|---|---|
+| `kiosks.command.<Növ>` | `Admin` — hər göndərişdə, təkrar göndərişdə də (`Reason = kioskCommands.reason.alreadyOpen`) | Administratorun ünvanı | `After` = əmrin `id`-si |
+| `kiosks.command.<Növ>.Acknowledged` | `Kiosk` | Kioskun ünvanı | `Before` = əmrin `id`-si |
+| `kiosks.command.<Növ>.Succeeded` / `.Failed` | `Kiosk` | Kioskun ünvanı | `Before` = əmrin `id`-si, `After` = nəticənin mesaj açarı (məs. `kioskCommands.rebooted`) |
+| `kiosks.command.<Növ>.Expired` | `System` | — | `Before` = əmrin `id`-si |
+
+Nəticə açarla yazılır, mətnlə yox — jurnal hər dildə oxunur.
 | `GET /api/admin/kiosks/{id}/supplies?limit=50` | `supplies.view` | "Sərf" tabı: `paper` (ölçü üzrə `capacity`, `current`, `lastRefillAt`) + `events[]` (`resource` `PaperA4`/`PaperA3`, `type` `JobPrinted`/`TestPrint`/`Refill`/`Recount`, `delta`, `before`, `after`, `jobId`, `by`, `at`), ən yenilər əvvəl |
 | `POST /api/admin/kiosks/{id}/paper/refill` | `paper.refill` | `Idempotency-Key`. `{ "paper": "A4", "mode": "Add" \| "Full" \| "Exact", "sheets": 200 }` — əlavə edilən vərəq / tutuma qədər (sheets nəzərə alınmır) / sayılmış dəqiq say. Tutumdan çox → `409 kiosks.paperRefillInvalid`; lotok tutumu 0 → `409 kiosks.paperNoTray`. `supply_events` + audit (`paper.refill`); kioska `KioskConfigChanged`. Cavab: "Sərf" tabının özü |
 

@@ -47,7 +47,8 @@ public sealed record GetOpenKioskCommandsQuery(Guid DeviceId) : IRequest<IReadOn
 /// <param name="MessageKey">What happened, as a message key: <c>printer.outOfPaper</c>.</param>
 /// <param name="SheetsUsed">Paper a test page took; it comes off the counter (plan section 2.15).</param>
 public sealed record CompleteKioskCommandCommand(
-    Guid DeviceId, Guid CommandId, bool Succeeded, string? MessageKey, int SheetsUsed) : IRequest<KioskCommandView>, Behaviors.ITransactionalRequest;
+    Guid DeviceId, Guid CommandId, bool Succeeded, string? MessageKey, int SheetsUsed, string? Ip = null)
+    : IRequest<KioskCommandView>, Behaviors.ITransactionalRequest;
 
 /// <summary>The printers tab of the kiosk detail (plan section 8A.3).</summary>
 public sealed record GetKioskPrintersQuery(Guid AdminUserId, Guid KioskId) : IRequest<KioskPrintersView>;
@@ -63,14 +64,15 @@ public sealed record SetCapabilityOverridesCommand(Guid AdminUserId, Guid KioskI
     : IRequest<KioskPrintersView>;
 
 /// <summary>Sends a printer command: refresh the list, or print the test page.</summary>
-public sealed record SendKioskCommandCommand(Guid AdminUserId, Guid KioskId, KioskCommandType Type)
+/// <param name="Ip">Where the administrator's request came from, for the audit log.</param>
+public sealed record SendKioskCommandCommand(Guid AdminUserId, Guid KioskId, KioskCommandType Type, string? Ip = null)
     : IRequest<KioskCommandView>, Behaviors.ITransactionalRequest;
 
 /// <summary>
 /// The kiosk has a command and will carry it out; the result follows later -
 /// for a restart, from the application that comes up afterwards (plan section 7.8).
 /// </summary>
-public sealed record AcknowledgeKioskCommandCommand(Guid DeviceId, Guid CommandId)
+public sealed record AcknowledgeKioskCommandCommand(Guid DeviceId, Guid CommandId, string? Ip = null)
     : IRequest<KioskCommandView>, Behaviors.ITransactionalRequest;
 
 /// <summary>The kiosk's recent commands, for the panel.</summary>
@@ -212,6 +214,7 @@ public sealed class KioskPrinterHandlers :
                 // is not what anybody asked for (plan section 7.8).
                 command.Expire(now);
                 await _commands.UpdateAsync(command, cancellationToken).ConfigureAwait(false);
+                await AuditOutcomeAsync(command, kiosk.Id, ActorType.System, ip: null, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
@@ -248,6 +251,7 @@ public sealed class KioskPrinterHandlers :
 
         command.Complete(request.Succeeded, result, actor, now);
         await _commands.UpdateAsync(command, cancellationToken).ConfigureAwait(false);
+        await AuditOutcomeAsync(command, kiosk.Id, ActorType.Kiosk, request.Ip, cancellationToken).ConfigureAwait(false);
 
         if (command.Type == KioskCommandType.TestPrint)
         {
@@ -280,6 +284,7 @@ public sealed class KioskPrinterHandlers :
 
         command.Acknowledge(ActorContext.Kiosk(request.DeviceId, correlationId: _correlation.CorrelationId), _clock.UtcNow);
         await _commands.UpdateAsync(command, cancellationToken).ConfigureAwait(false);
+        await AuditOutcomeAsync(command, kiosk.Id, ActorType.Kiosk, request.Ip, cancellationToken).ConfigureAwait(false);
 
         await _admins.CommandResultAsync(kiosk.Id, View(command), cancellationToken).ConfigureAwait(false);
 
@@ -434,6 +439,20 @@ public sealed class KioskPrinterHandlers :
 
         if (open.LastOrDefault(existing => existing.Type == request.Type && !existing.IsOverdue(now)) is { } pending)
         {
+            // Nothing new is sent, but somebody asked: that is in the audit log too.
+            await _audit.WriteAsync(
+                    new AuditEntry(
+                        request.AdminUserId,
+                        $"kiosks.command.{request.Type}",
+                        nameof(Kiosk),
+                        kiosk.Id.ToString(),
+                        null,
+                        pending.Id.ToString(),
+                        request.Ip,
+                        "kioskCommands.reason.alreadyOpen"),
+                    cancellationToken)
+                .ConfigureAwait(false);
+
             return View(pending);
         }
 
@@ -449,7 +468,7 @@ public sealed class KioskPrinterHandlers :
         await _commands.AddAsync(command, cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(
-                new AuditEntry(request.AdminUserId, $"kiosks.command.{request.Type}", nameof(Kiosk), kiosk.Id.ToString(), null, command.Id.ToString(), null, null),
+                new AuditEntry(request.AdminUserId, $"kiosks.command.{request.Type}", nameof(Kiosk), kiosk.Id.ToString(), null, command.Id.ToString(), request.Ip, null),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -540,6 +559,26 @@ public sealed class KioskPrinterHandlers :
             new CapabilityOverridesDto(kiosk.CapabilityOverrides.Color, kiosk.CapabilityOverrides.Duplex, kiosk.CapabilityOverrides.A3),
             new PrinterCapabilitiesDto(effective.Color, effective.Duplex, effective.A3));
     }
+
+    /// <summary>
+    /// What became of a command, in the audit log beside the row that says
+    /// who sent it (plan section 7.8): acknowledged, succeeded, failed or
+    /// expired, with the kiosk's own words for it and the address it answered
+    /// from. <c>Before</c> is the command, so the two rows find each other.
+    /// </summary>
+    private Task AuditOutcomeAsync(KioskCommand command, Guid kioskId, ActorType by, string? ip, CancellationToken cancellationToken)
+        => _audit.WriteAsync(
+            new AuditEntry(
+                command.CreatedBy,
+                $"kiosks.command.{command.Type}.{command.Status}",
+                nameof(Kiosk),
+                kioskId.ToString(),
+                command.Id.ToString(),
+                command.Result is { } result ? UserMessage.Decode(result).Key : null,
+                ip,
+                null,
+                by),
+            cancellationToken);
 
     private static KioskCommandView View(KioskCommand command) => new(
         command.Id,

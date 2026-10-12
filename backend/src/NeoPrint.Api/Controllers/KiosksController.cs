@@ -153,7 +153,7 @@ public sealed class KiosksController : ControllerBase
     [Authorize(Policy = AuthorizationPolicies.Kiosk)]
     public async Task<ActionResult<KioskCommandView>> CommandAcknowledged(Guid id, CancellationToken cancellationToken)
         => _currentUser.DeviceId is { } deviceId
-            ? Ok(await _sender.Send(new AcknowledgeKioskCommandCommand(deviceId, id), cancellationToken))
+            ? Ok(await _sender.Send(new AcknowledgeKioskCommandCommand(deviceId, id, _currentUser.Ip), cancellationToken))
             : Forbid();
 
     /// <summary>The kiosk's answer to a command; repeating it changes nothing.</summary>
@@ -170,7 +170,7 @@ public sealed class KiosksController : ControllerBase
         }
 
         return Ok(await _sender.Send(
-            new CompleteKioskCommandCommand(deviceId, id, request.Succeeded, request.MessageKey, request.SheetsUsed),
+            new CompleteKioskCommandCommand(deviceId, id, request.Succeeded, request.MessageKey, request.SheetsUsed, _currentUser.Ip),
             cancellationToken));
     }
 

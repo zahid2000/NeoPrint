@@ -53,6 +53,21 @@ başlatmır və açılmış faylı spool-a yazmır. Çəkilmiş səhifə şəkil
 API-nin yaddaşında keşlənir (64 MB, 10 dəqiqə) — Redis-də və diskdə fayl
 məzmununun şifrəsiz nüsxəsi yaranmır; keş icazə yoxlamasından sonra oxunur.
 
+### Uzaqdan əmrlər (plan 7.8; T-208, T-233)
+
+- **Kim göndərə bilər:** yalnız icazəsi olan panel istifadəçisi — fasilə, tətbiqin restart-ı və reboot üç ayrı
+  icazədir (`kiosks.commands.pause / restart / reboot`). Hər göndəriş, təsdiq və nəticə `audit_logs`-dadır:
+  kim, hansı kiosk, hansı ünvandan, nə oldu.
+- **Kiosk nə edə bilər:** əmr kioska yalnız növünü deyir (`Reboot`), parametr və ya icra olunacaq sətir
+  daşımır — ələ keçirilmiş panel hesabı kioskda ixtiyari əmr işlədə bilmir. Kiosk tətbiqi əməliyyat
+  sistemindən yalnız yenidən yükləməni istəyə bilər: Linux-da `sudoers` yalnız `systemctl reboot`-a icazə
+  verir, kod Windows-da yalnız `shutdown /r` çağırır (`PowerPermissionTests`). Windows-da hüququn özü
+  söndürməni də əhatə edir — bu, reboot Agent-ə köçənə qədər (7B) qəbul olunmuş qalıq riskdir.
+- **Reboot dövrəsi:** əmr icradan **əvvəl** işarələnir — serverdə `Acknowledged`, kioskda diskdə qeyd. İşarəsi
+  olan əmr bir daha icra olunmur, yalnız cavablanır; işarələmək alınmırsa (server cavab vermir) əmr icra
+  olunmur. Beləliklə yenidən qalxan kiosk saatı səhv olsa da eyni əmrə görə ikinci dəfə yüklənmir. 24 saatdan
+  köhnə əmr ümumiyyətlə icra olunmur.
+
 ### Stolen kiosk credentials
 
 Controls: - device keypair - private key never leaves device - revoke

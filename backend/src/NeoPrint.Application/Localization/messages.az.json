@@ -155,6 +155,7 @@
   "kioskCommands.done": "Əmr yerinə yetirildi.",
   "kioskCommands.noDevice": "Kioska cihaz bağlı deyil; əmr göndərmək olmaz.",
   "kioskCommands.printersReported": "Printer siyahısı yeniləndi.",
+  "kioskCommands.reason.alreadyOpen": "Eyni əmr hələ icra olunur; yenisi göndərilmədi",
   "kioskCommands.reason.expired": "Kiosk 24 saat ərzində cavab vermədi",
   "kioskCommands.testPagePrinted": "Test səhifəsi çap olundu.",
   "kioskCommands.unsupported": "Kioskun bu versiyası bu əmri tanımır. Kiosk tətbiqini yeniləyin.",

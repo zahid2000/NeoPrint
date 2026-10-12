@@ -155,6 +155,7 @@
   "kioskCommands.done": "The command was carried out.",
   "kioskCommands.noDevice": "No device is bound to the kiosk, so no command can be sent.",
   "kioskCommands.printersReported": "The printer list was refreshed.",
+  "kioskCommands.reason.alreadyOpen": "The same command is still open; no new one was sent",
   "kioskCommands.reason.expired": "The kiosk did not answer within 24 hours",
   "kioskCommands.testPagePrinted": "The test page was printed.",
   "kioskCommands.unsupported": "This version of the kiosk does not know this command. Update the kiosk application.",

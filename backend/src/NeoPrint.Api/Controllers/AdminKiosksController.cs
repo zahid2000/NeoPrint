@@ -155,13 +155,13 @@ public sealed class AdminKiosksController : ControllerBase
     [HttpPost("{id:guid}/printers/refresh")]
     [HasPermission(Permissions.PrintersRefresh)]
     public async Task<ActionResult<KioskCommandView>> RefreshPrinters(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RefreshPrinters), cancellationToken));
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RefreshPrinters, _currentUser.Ip), cancellationToken));
 
     /// <summary>Prints the kiosk's test page; the result comes back as CommandResult.</summary>
     [HttpPost("{id:guid}/test-print")]
     [HasPermission(Permissions.PrintersTestPrint)]
     public async Task<ActionResult<KioskCommandView>> TestPrint(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.TestPrint), cancellationToken));
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.TestPrint, _currentUser.Ip), cancellationToken));
 
     /// <summary>The supplies tab: paper counters and their latest movements (plan section 2.15).</summary>
     [HttpGet("{id:guid}/supplies")]
@@ -236,25 +236,25 @@ public sealed class AdminKiosksController : ControllerBase
     [HttpPost("{id:guid}/pause")]
     [HasPermission(Permissions.KioskCommandsPause)]
     public async Task<ActionResult<KioskCommandView>> Pause(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Pause), cancellationToken));
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Pause, _currentUser.Ip), cancellationToken));
 
     /// <summary>"Resume": the kiosk takes orders again.</summary>
     [HttpPost("{id:guid}/resume")]
     [HasPermission(Permissions.KioskCommandsPause)]
     public async Task<ActionResult<KioskCommandView>> Resume(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Resume), cancellationToken));
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Resume, _currentUser.Ip), cancellationToken));
 
     /// <summary>Restarts the kiosk application once the job at the printer is done.</summary>
     [HttpPost("{id:guid}/restart-app")]
     [HasPermission(Permissions.KioskCommandsRestart)]
     public async Task<ActionResult<KioskCommandView>> RestartApp(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RestartApp), cancellationToken));
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RestartApp, _currentUser.Ip), cancellationToken));
 
     /// <summary>Restarts the kiosk machine once the job at the printer is done.</summary>
     [HttpPost("{id:guid}/reboot")]
     [HasPermission(Permissions.KioskCommandsReboot)]
     public async Task<ActionResult<KioskCommandView>> Reboot(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Reboot), cancellationToken));
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Reboot, _currentUser.Ip), cancellationToken));
 
     [HttpGet("{id:guid}/commands")]
     [HasPermission(Permissions.KiosksView)]
