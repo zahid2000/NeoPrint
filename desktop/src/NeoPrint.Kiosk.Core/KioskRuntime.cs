@@ -134,6 +134,14 @@ public sealed class KioskRuntime
     /// </summary>
     public bool SafeMode { get; set; }
 
+    /// <summary>
+    /// The kiosk's status as the backend has it, from the last heartbeat that
+    /// got through; null before the first. The configuration carries a status
+    /// too, but only as fresh as the configuration - and a status changes
+    /// without it: the printer stops or returns, safe mode ends (T-237).
+    /// </summary>
+    public string? ServerStatus { get; private set; }
+
     /// <param name="printerProblem">
     /// What is wrong when the printer is not ready, as a message key
     /// (<c>printer.outOfPaper</c>): the backend pauses the kiosk and opens the
@@ -157,6 +165,7 @@ public sealed class KioskRuntime
 
             IsBackendReachable = true;
             LastBackendLatencyMs = (int)Math.Min(int.MaxValue, timer.ElapsedMilliseconds);
+            ServerStatus = response.Status;
 
             if (_configurationChangedAt is null)
             {

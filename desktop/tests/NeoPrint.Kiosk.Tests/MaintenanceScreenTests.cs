@@ -74,6 +74,31 @@ public sealed class MaintenanceScreenTests
     }
 
     [Fact]
+    public void While_the_printer_is_down_the_notice_says_so_and_not_that_the_queue_is_printing()
+    {
+        // T-237, seen on the real stack: a kiosk in maintenance whose printer
+        // ran out of paper said "the orders in the queue are being printed".
+        var shell = Shell();
+
+        shell.SetMaintenance(true);
+        shell.SetPrinterProblem("printer.outOfPaper");
+
+        shell.OutOfServiceTitle.Should().Be(Strings.Get("az", "outOfService.title"));
+        shell.OutOfServiceBody.Should().Contain(Strings.Get("az", "printer.outOfPaper"))
+            .And.NotContain("çap olunur", "nothing is printing");
+
+        var changed = new List<string?>();
+        shell.PropertyChanged += (_, args) => changed.Add(args.PropertyName);
+
+        // The paper is back: the pause's own words again, and the screen is told to redraw both lines.
+        shell.SetPrinterProblem(null);
+
+        shell.OutOfServiceTitle.Should().Be(Strings.Get("az", "maintenance.title"));
+        shell.OutOfServiceBody.Should().Be(Strings.Get("az", "maintenance.body"));
+        changed.Should().Contain(nameof(MainWindowViewModel.OutOfServiceTitle)).And.Contain(nameof(MainWindowViewModel.OutOfServiceBody));
+    }
+
+    [Fact]
     public void Safe_mode_keeps_its_own_screen()
     {
         var shell = Shell();

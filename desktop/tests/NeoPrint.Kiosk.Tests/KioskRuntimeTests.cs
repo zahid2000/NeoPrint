@@ -195,6 +195,42 @@ public sealed class KioskRuntimeTests
     }
 
     [Fact]
+    public async Task The_kiosk_knows_its_status_from_every_heartbeat_not_only_from_its_configuration()
+    {
+        // T-237: a status changes without the configuration changing - the
+        // printer stops, safe mode ends - and the screen followed the
+        // configuration's copy, which was as old as the last fetch.
+        var (runtime, handler, _) = await CreateAsync();
+        handler.OnConfig(_ => ScriptedHandler.Json(Configuration()));
+        await runtime.LoadConfigurationAsync();
+
+        runtime.ServerStatus.Should().BeNull("nothing heard yet");
+
+        var unchanged = new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Utc);
+
+        foreach (var status in new[] { "Maintenance", "Paused", "Online" })
+        {
+            handler.OnHeartbeat(_ => ScriptedHandler.Json(new
+            {
+                status,
+                nextInSeconds = 15,
+                configurationChangedAt = unchanged,
+                serverTime = DateTime.UtcNow,
+            }));
+
+            (await runtime.BeatAsync(printerOnline: true)).Should().BeTrue();
+            runtime.ServerStatus.Should().Be(status);
+        }
+
+        handler.ConfigCalls.Should().Be(1, "the configuration did not change, so it was not fetched again");
+
+        // A heartbeat that does not get through leaves the last known word.
+        handler.OnHeartbeat(_ => ScriptedHandler.Unreachable());
+        await runtime.BeatAsync(printerOnline: true);
+        runtime.ServerStatus.Should().Be("Online");
+    }
+
+    [Fact]
     public async Task A_failed_heartbeat_is_reported_rather_than_thrown()
     {
         var (runtime, handler, _) = await CreateAsync();

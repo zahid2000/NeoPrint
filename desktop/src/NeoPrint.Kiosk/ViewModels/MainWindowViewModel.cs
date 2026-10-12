@@ -239,11 +239,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public KioskScreen RestingScreen => TakesOrders ? KioskScreen.Home : KioskScreen.OutOfService;
 
-    public string OutOfServiceTitle => IsMaintenance ? T("maintenance.title") : T("outOfService.title");
+    /// <summary>
+    /// What the notice says. A printer problem is said first, whatever else
+    /// holds the kiosk: "the queue is being printed" - what a pause says - is
+    /// not true while the printer cannot print (T-237).
+    /// </summary>
+    public string OutOfServiceTitle => PrinterProblem is null && IsMaintenance ? T("maintenance.title") : T("outOfService.title");
 
-    public string OutOfServiceBody => IsMaintenance
-        ? T("maintenance.body")
-        : PrinterProblem is null ? string.Empty : T("outOfService.body", T(PrinterProblem));
+    public string OutOfServiceBody => PrinterProblem is not null
+        ? T("outOfService.body", T(PrinterProblem))
+        : IsMaintenance ? T("maintenance.body") : string.Empty;
 
     /// <summary>
     /// Puts the "maintenance" screen up or takes it away. Somebody in the
@@ -370,6 +375,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public void SetPrinterProblem(string? problemKey)
     {
         PrinterProblem = problemKey;
+        OnPropertyChanged(nameof(OutOfServiceTitle));
         OnPropertyChanged(nameof(OutOfServiceBody));
 
         if (IsSafeMode || Screen == KioskScreen.Admin)

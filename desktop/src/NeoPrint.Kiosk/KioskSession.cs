@@ -545,6 +545,13 @@ public sealed class KioskSession
                         _model.SetPrinterProblem(healthy ? null : PrinterErrors.For(state));
                     }
 
+                    // The backend's word as of this heartbeat, not as of the last
+                    // time the configuration was fetched (T-237).
+                    if (runtime.ServerStatus is { } status)
+                    {
+                        _model.SetMaintenance(string.Equals(status, "Maintenance", StringComparison.Ordinal));
+                    }
+
                     ResetIfIdle(runtime);
                 })
                 .ConfigureAwait(false);
