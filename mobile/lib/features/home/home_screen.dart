@@ -86,27 +86,22 @@ class HomeScreen extends ConsumerWidget {
                 label: Text(l10n.homeOpenFiles),
               ),
 
-            // Printing with the personal QR (plan section 9.4).
+            // Printing with the personal QR (plan section 9.4). One under the
+            // other, like the buttons above: side by side, half a narrow
+            // phone's width broke "Hazırladıqlarım" in the middle of the word
+            // (T-239), and the Russian label is longer still.
             if (personalQr) ...[
               const SizedBox(height: Spacing.x2),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.push(Routes.myQr),
-                      icon: const Icon(Icons.qr_code_2),
-                      label: Text(l10n.myQrTitle),
-                    ),
-                  ),
-                  const SizedBox(width: Spacing.x2),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.push(Routes.prepared),
-                      icon: const Icon(Icons.inventory_2_outlined),
-                      label: Text(l10n.preparedTitle),
-                    ),
-                  ),
-                ],
+              OutlinedButton.icon(
+                onPressed: () => context.push(Routes.myQr),
+                icon: const Icon(Icons.qr_code_2),
+                label: Text(l10n.myQrTitle),
+              ),
+              const SizedBox(height: Spacing.x2),
+              OutlinedButton.icon(
+                onPressed: () => context.push(Routes.prepared),
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: Text(l10n.preparedTitle),
               ),
             ],
 

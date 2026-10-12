@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -158,6 +159,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Mənim QR kodum'), findsOneWidget);
     expect(find.text('Hazırladıqlarım'), findsOneWidget);
+
+    // T-239: on a 360 dp phone each label is one line - side by side, half
+    // the width broke "Hazırladıqlarım" in the middle of the word.
+    for (final label in ['Mənim QR kodum', 'Hazırladıqlarım']) {
+      final text = tester.renderObject<RenderParagraph>(find.text(label));
+      expect(
+        text.size.height,
+        text.getMaxIntrinsicHeight(double.infinity),
+        reason: '"$label" wraps',
+      );
+    }
   });
 
   testWidgets('"Məlumatlarımı yüklə" is not offered while it is off', (
