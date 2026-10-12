@@ -14,6 +14,8 @@ bitəndə, limit dolanda və ya iş dayananda heç nə itməsin.
   `Təxirə salındı`) olanda bağlanır. Addım hesabatı plan DoD-undan əlavə həmin
   addım zamanı verilən bütün tapşırıqları ayrıca yoxlayır.
 - Tapşırıq heç vaxt silinmir; lazım olmayanlar `Ləğv edildi` (səbəb ilə) olur.
+- Hər sətir altı sütundur. Xananın içində şaquli xətt yazılmır (lazımdırsa `|`); status
+  aşağıdakı beş sözdən biri ilə başlayır. Bunu `node tools/tasks-lint` yoxlayır — CI-da da (T-247).
 
 Statuslar: `Açıq`, `İcrada`, `Tamamlandı`, `Ləğv edildi (səbəb)`, `Təxirə salındı (Addım N)`.
 

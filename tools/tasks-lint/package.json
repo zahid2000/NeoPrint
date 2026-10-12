@@ -1,0 +1,16 @@
+{
+  "name": "neoprint-tasks-lint",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Every row of docs/TASKS.md has its six cells, a known status and its own id. No runtime dependencies by design (plan section 2.0).",
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "check": "node index.js",
+    "test": "node --test"
+  },
+  "license": "UNLICENSED"
+}

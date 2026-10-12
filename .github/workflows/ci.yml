@@ -323,6 +323,15 @@ jobs:
       - name: Check the UIs
         run: node tools/design-lint
 
+      # The task registry is a hand-edited table: one stray pipe moves a
+      # task's status into its evidence (T-208, T-247).
+      - name: Test the registry checker
+        run: npm test
+        working-directory: tools/tasks-lint
+
+      - name: Check the task registry
+        run: node tools/tasks-lint
+
   # --------------------------------------------------------------------
   # Licence policy
   # --------------------------------------------------------------------

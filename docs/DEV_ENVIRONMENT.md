@@ -1411,6 +1411,11 @@ cd tools/license-check && npm test
 # Dizayn qaydaları: hardcoded rəng / şrift ölçüsü / boşluq (admin, mobil, kiosk)
 node tools/design-lint --list
 cd tools/design-lint && npm test
+
+# Tapşırıq reyestri: docs/TASKS.md-nin hər sətri altı sütundur, statusu tanınır, ID təkrarlanmır
+# (xana içində "|" yalnız "|" kimi yazılır). CI-da "design rules" işində də işləyir.
+node tools/tasks-lint
+cd tools/tasks-lint && npm test
 ```
 
 ### İnteqrasiya testi yalnız tam dəstdə düşəndə

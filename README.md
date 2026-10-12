@@ -82,6 +82,9 @@ node tools/license-check
 
 # Dizayn qaydaları: hardcoded rəng / şrift ölçüsü / boşluq yoxdur (admin, mobil, kiosk)
 node tools/design-lint
+
+# Tapşırıq reyestrinin (docs/TASKS.md) sətir formatı
+node tools/tasks-lint
 ```
 
 Kiosku lokal stack-ə qarşı işə salmaq (Windows, administrator PowerShell):
