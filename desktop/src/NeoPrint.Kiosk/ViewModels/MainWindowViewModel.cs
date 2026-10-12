@@ -315,6 +315,25 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(RefundNoticeBody));
     }
 
+    /// <summary>
+    /// The backend refunded an order the printer stopped, or one that was
+    /// waiting when it stopped (plan sections 2.5, 9.6). The customer still
+    /// on that order's receipt screen reads it there (T-133) - and it is kept
+    /// for the screen that follows. Somebody waiting for their pages does not
+    /// touch the screen, the receipt closes by itself after a while, and the
+    /// notice went with it: the money came back and nothing on the kiosk said
+    /// so (T-238). A new customer starting an order clears it, as before.
+    /// </summary>
+    public void ShowRefundFor(Guid jobId, decimal amount, string destination, string statusUrl)
+    {
+        if (Screen == KioskScreen.Flow)
+        {
+            Flow?.ShowPrinterRefund(jobId, amount, destination, statusUrl);
+        }
+
+        ShowRefund(amount, destination, statusUrl);
+    }
+
     [RelayCommand]
     private void DismissRefund()
     {

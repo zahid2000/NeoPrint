@@ -286,6 +286,46 @@ public sealed class PaymentFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task A_refund_notice_outlives_the_receipt_screen_that_closes_by_itself()
+    {
+        // T-238, seen on the real stack: the guest's waiting order was refunded
+        // when the printer stopped, the notice was on the receipt screen - and
+        // that screen closed after 90 untouched seconds, taking the notice
+        // with it. Somebody waiting for their pages does not touch the screen.
+        var (flow, kit) = await PlacedAsync();
+        await flow.PayWithBankCommand.ExecuteAsync(null);
+        var payment = kit.Backend.Payments.Values.Single();
+        kit.Backend.Payments[payment.Id] = payment with { Status = "Succeeded" };
+        await flow.RefreshPaymentAsync();
+
+        var shell = new MainWindowViewModel { Language = "az", SelectedPrinterName = "HP LaserJet", Screen = KioskScreen.Flow, Flow = flow };
+        shell.SetPrinterProblem("printer.paperJam");
+
+        shell.ShowRefundFor(payment.JobId, 0.30m, "OriginalMethod", "https://neoprint.test/refund/1");
+
+        flow.PrinterStopped.Should().BeTrue("the customer on the receipt screen reads it there");
+        flow.RefundText.Should().Be(T("refund.cardBody", Formats.Money(0.30m, "az")));
+
+        // Nobody touches the screen: the receipt closes by itself.
+        shell.ResetIfIdle(TimeSpan.FromSeconds(91), TimeSpan.FromSeconds(90), "az").Should().BeTrue();
+
+        shell.Screen.Should().Be(KioskScreen.OutOfService, "the printer is still down");
+        shell.HasRefundNotice.Should().BeTrue("the money came back, and the kiosk still says so");
+        shell.RefundNoticeBody.Should().Be(T("refund.cardBody", Formats.Money(0.30m, "az")));
+        shell.RefundNoticeQr.Should().Be("https://neoprint.test/refund/1");
+
+        // Long after everybody has gone it is taken down...
+        shell.ResetIfIdle(MainWindowViewModel.RefundNoticeFor + TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(90), "az");
+        shell.HasRefundNotice.Should().BeFalse();
+
+        // ...and a new customer never inherits the last one's notice.
+        shell.ShowRefundFor(payment.JobId, 0.30m, "OriginalMethod", "https://neoprint.test/refund/1");
+        shell.Screen = KioskScreen.Home;
+        shell.Screen = KioskScreen.Flow;
+        shell.HasRefundNotice.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task A_typing_sheet_never_stays_open_over_another_screen()
     {
         var (flow, _) = await PlacedAsync();

@@ -288,6 +288,14 @@ public sealed partial class ScreenRenderTests : IDisposable
         {
             screens.Add(($"13-refund-{destination}", Shell(language, KioskScreen.Home, shell =>
                 shell.ShowRefund(12.40m, destination, "https://neoprint.az/r/7KQ2MX9T"))));
+
+            // The same notice under "the kiosk has stopped" (plan section 9.6): a narrower column,
+            // where the card's text ran past its edge on the real kiosk (T-238).
+            screens.Add(($"13-refund-stopped-{destination}", Shell(language, KioskScreen.Home, shell =>
+            {
+                shell.SetPrinterProblem("printer.paperJam");
+                shell.ShowRefund(12.40m, destination, "https://neoprint.az/r/7KQ2MX9T");
+            })));
         }
 
         // The order, walked as a customer walks it.

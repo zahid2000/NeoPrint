@@ -13,23 +13,25 @@
         <!-- RefundInfo (plan sections 2.5, 7.3): the printer stopped a paid order and
              the backend is giving the money back - what, where, and how to follow it. -->
         <Border Classes="card" IsVisible="{Binding HasRefundNotice}">
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
-                <Border Classes="qr">
+            <!-- The text takes what the QR leaves and wraps there: it must not run past the card (T-238). -->
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space6}">
+                <Border Grid.Column="0" Classes="qr" VerticalAlignment="Center">
                     <Image Source="{Binding RefundNoticeQr, Converter={x:Static vm:ScreenConverters.QrImage}}"
                            Width="{DynamicResource ReceiptQrSize}" Height="{DynamicResource ReceiptQrSize}" />
                 </Border>
-                <StackPanel Spacing="{DynamicResource Space4}" VerticalAlignment="Center" MaxWidth="520">
-                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                        <PathIcon Data="{StaticResource IconInfo}" Width="32" Height="32" Foreground="{DynamicResource Info500}" />
-                        <TextBlock Text="{Binding RefundNoticeTitle}" Classes="h2" TextWrapping="Wrap" />
-                    </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="{DynamicResource Space4}" VerticalAlignment="Center">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
+                        <PathIcon Grid.Column="0" Data="{StaticResource IconInfo}" Width="32" Height="32"
+                                  VerticalAlignment="Top" Foreground="{DynamicResource Info500}" />
+                        <TextBlock Grid.Column="1" Text="{Binding RefundNoticeTitle}" Classes="h2" TextWrapping="Wrap" />
+                    </Grid>
                     <TextBlock Text="{Binding RefundNoticeBody}" TextWrapping="Wrap" />
                     <TextBlock Text="{Binding RefundNoticeScan}" Classes="muted" TextWrapping="Wrap" />
                     <Button Classes="secondary" Command="{Binding DismissRefundCommand}" HorizontalAlignment="Left">
                         <TextBlock Text="{Binding RefundNoticeDone}" />
                     </Button>
                 </StackPanel>
-            </StackPanel>
+            </Grid>
         </Border>
 
         <TextBlock Text="{Binding HomeTitle}" Classes="h1" />
