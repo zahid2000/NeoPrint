@@ -14,6 +14,8 @@ import 'package:neoprint/features/files/files_repository.dart';
 import 'package:neoprint/features/files/files_screen.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
 
+import 'flutter_test_config.dart';
+
 /// A repository with a fixed list, for rendering the screen.
 class ListRepository implements FilesRepository {
   ListRepository(this.files);
@@ -95,7 +97,8 @@ UserFile file({
   'sizeBytes': 1536,
   'pageCount': status == 'Ready' ? 3 : 0,
   'isSensitive': sensitive,
-  'createdAt': DateTime.now().toUtc().toIso8601String(),
+  // Made "now" as the suite's clock has it, so the row reads "Bu gün".
+  'createdAt': testNow.toUtc().toIso8601String(),
   'autoDelete': autoDelete,
 });
 

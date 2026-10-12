@@ -5,6 +5,8 @@
 /// a decimal comma in az and ru and a decimal point in en.
 library;
 
+import '../time/app_clock.dart';
+
 /// Decimal and thousands separators for a language code.
 ({String decimal, String group}) _separators(String language) =>
     language == 'en'
@@ -28,7 +30,8 @@ String _two(int value) => value.toString().padLeft(2, '0');
 
 /// `27.09.2026 14:20`; today and yesterday as words ("Bu gün 14:20").
 ///
-/// [today] and [yesterday] are the translated words; [now] is for tests.
+/// [today] and [yesterday] are the translated words; [now] is the moment to
+/// read the day against - the app's clock unless a caller knows better.
 String formatDateTime(
   DateTime value, {
   required String today,
@@ -36,7 +39,7 @@ String formatDateTime(
   DateTime? now,
 }) {
   final local = value.toLocal();
-  final current = (now ?? DateTime.now()).toLocal();
+  final current = (now ?? appNow()).toLocal();
   final time = '${_two(local.hour)}:${_two(local.minute)}';
 
   final day = DateTime(local.year, local.month, local.day);

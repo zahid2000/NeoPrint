@@ -92,7 +92,8 @@ ScheduledPrint schedule(
   kioskCode: 'KSK-9002',
   kioskName: 'Elmlər',
   amount: 0.30,
-  // Far from any day the suite runs on: today and yesterday read as words.
+  // Not the suite's day (flutter_test_config.dart) nor the one before it:
+  // those two read as words.
   scheduledAt: DateTime(2030, 3, 14, 9),
   status: status,
   jobStatus: jobStatus,

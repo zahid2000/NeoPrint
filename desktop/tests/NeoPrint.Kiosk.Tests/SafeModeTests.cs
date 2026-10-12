@@ -250,7 +250,8 @@ public sealed class SafeModeTests : IDisposable
                 _ when path.EndsWith("/register", StringComparison.Ordinal) =>
                     $$"""{"deviceId":"{{Guid.NewGuid()}}","activated":true,"kioskId":"{{Guid.NewGuid()}}","kioskCode":"KSK-0001"}""",
                 _ when path.EndsWith("/challenge", StringComparison.Ordinal) || path.EndsWith("/token", StringComparison.Ordinal) =>
-                    """{"accessToken":"kiosk-token","expiresAt":"2099-01-01T00:00:00Z","tokenType":"kiosk","nonce":"nonce"}""",
+                    // Good for an hour from whenever the test runs - not until a date written here.
+                    $$"""{"accessToken":"kiosk-token","expiresAt":"{{DateTime.UtcNow.AddHours(1):O}}","tokenType":"kiosk","nonce":"nonce"}""",
                 _ when path.EndsWith("/heartbeat", StringComparison.Ordinal) =>
                     """{"status":"Maintenance","nextInSeconds":15,"configurationChangedAt":"2026-09-28T00:00:00Z","serverTime":"2026-09-28T00:00:00Z"}""",
                 _ => "{}",

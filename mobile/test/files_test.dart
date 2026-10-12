@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:neoprint/core/format/formats.dart';
 import 'package:neoprint/core/network/api_client.dart';
 import 'package:neoprint/core/storage/secure_storage.dart';
+import 'package:neoprint/core/time/app_clock.dart';
 import 'package:neoprint/features/files/file_models.dart';
 import 'package:neoprint/features/files/files_controller.dart';
 import 'package:neoprint/features/files/files_repository.dart';
@@ -139,6 +140,23 @@ void main() {
       expect(format(DateTime(2026, 9, 27, 9, 5)), 'Bu gün 09:05');
       expect(format(DateTime(2026, 9, 26, 23, 59)), 'Dünən 23:59');
       expect(format(DateTime(2026, 9, 7, 14, 20)), '07.09.2026 14:20');
+    });
+
+    test('read the day against the clock of the app when given no moment', () {
+      String format(DateTime value) =>
+          formatDateTime(value, today: 'Bu gün', yesterday: 'Dünən');
+
+      // The suite's own day (flutter_test_config.dart), not the real one.
+      expect(format(DateTime(2026, 11, 15, 8, 30)), 'Bu gün 08:30');
+      expect(format(DateTime(2026, 11, 14, 8, 30)), 'Dünən 08:30');
+
+      // Another day: the same dates are just dates. A test that showed a
+      // date written into it against the real clock failed on that date.
+      setAppClock(() => DateTime(2030, 3, 14, 12));
+
+      expect(format(DateTime(2026, 11, 15, 8, 30)), '15.11.2026 08:30');
+      expect(format(DateTime(2030, 3, 14, 9)), 'Bu gün 09:00');
+      expect(format(DateTime(2030, 3, 13, 9)), 'Dünən 09:00');
     });
 
     test('write sizes with a decimal comma', () {
