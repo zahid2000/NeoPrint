@@ -54,7 +54,7 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Notification.MinSeverity':
       'Incident bu səviyyədən başlayaraq kioska baxan hesablara email ilə bildirilir: Critical, High və ya Medium. Aşağı səviyyəlilər yalnız paneldə görünür.',
     'settings.description.Notification.TelegramEnabled':
-      'Incident bildirişlərinin Telegram kanalı. Söndürülüdür: kanal pilotdan sonra açılacaq, bunun üçün bot token-i də lazımdır.',
+      'Incident bildirişlərinin Telegram kanalı. Söndürülüdür: kanal pilotdan sonra açılacaq, bunun üçün botun açarı da lazımdır.',
     'settings.description.Kiosk.TelemetryRetentionDays':
       'Kiosk vəziyyət tarixçəsi bu qədər gün saxlanılır.',
     'settings.description.Kiosk.PrinterEventRetentionDays':

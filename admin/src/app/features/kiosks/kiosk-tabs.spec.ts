@@ -17,6 +17,11 @@ import { KioskSuppliesComponent } from './kiosk-supplies.component';
 class FakeHub {
   readonly handlers = new Map<string, (payload: unknown) => void>();
 
+  // The page also asks about the connection itself (liveRefresh): up, and staying up.
+  connectionState = (): 'connected' => 'connected';
+  onState = (): (() => void) => () => undefined;
+  onReconnect = (): (() => void) => () => undefined;
+
   on<T>(event: string, handler: (payload: T) => void): () => void {
     this.handlers.set(event, handler as (payload: unknown) => void);
     return () => this.handlers.delete(event);

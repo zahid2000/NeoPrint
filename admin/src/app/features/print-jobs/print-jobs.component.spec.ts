@@ -16,7 +16,13 @@ import { PrintJobsComponent } from './print-jobs.component';
 
 const kioskId = '11111111-1111-1111-1111-111111111111';
 
-const hub = { on: () => () => undefined };
+// The pages listen for events and ask about the connection itself (liveRefresh): up, and staying up.
+const hub = {
+  on: () => () => undefined,
+  connectionState: () => 'connected',
+  onState: () => () => undefined,
+  onReconnect: () => () => undefined,
+};
 
 function setUp(permissions: string[], dialog?: unknown): HttpTestingController {
   TestBed.configureTestingModule({
