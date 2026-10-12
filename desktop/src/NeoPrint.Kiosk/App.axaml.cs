@@ -28,6 +28,9 @@ public sealed partial class App : Application
     private IServiceProvider? _services;
     private MainWindowViewModel? _model;
     private CancellationTokenSource? _stopping;
+
+    /// <summary>Kept for as long as the application runs: disposing it stops listening.</summary>
+    private IDisposable? _terminationRequested;
     private KioskSession? _session;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
@@ -48,6 +51,7 @@ public sealed partial class App : Application
         }
 
         _stopping = new CancellationTokenSource();
+        _terminationRequested?.Dispose();
         _model = new MainWindowViewModel();
         _session = new KioskSession(Services, _model);
 
@@ -88,6 +92,13 @@ public sealed partial class App : Application
 
         // Closing on purpose is not a crash.
         desktop.Exit += (_, _) => crashes.Stop();
+
+        // Neither is being told to stop: systemd restarting the service, the
+        // Agent, a shutdown. Without this every such restart was counted as a
+        // crash - three of them in ten minutes put a healthy kiosk in safe
+        // mode, and each raised an incident (T-236). A kill, a power cut and
+        // an unhandled exception send no SIGTERM and still count.
+        _terminationRequested = TerminationSignal.OnRequested(crashes.Stop);
 
         // Enrollment runs in the background so the window paints immediately;
         // a kiosk that shows nothing for several seconds looks broken.

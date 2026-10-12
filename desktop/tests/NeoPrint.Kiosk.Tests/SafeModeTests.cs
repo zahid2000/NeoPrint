@@ -73,6 +73,47 @@ public sealed class SafeModeTests : IDisposable
     }
 
     [Fact]
+    public void A_kiosk_that_was_told_to_stop_three_times_is_not_in_a_crash_loop()
+    {
+        // T-236: systemd, the Agent or an operator restarting the service
+        // sends SIGTERM; what the kiosk does then is this note.
+        var guard = Guard();
+        guard.Start();
+
+        for (var restart = 0; restart < 3; restart++)
+        {
+            TerminationSignal.Note(guard.Stop);
+
+            var next = Guard();
+            _clock.UtcNow += TimeSpan.FromSeconds(5);
+            next.Start().Should().BeFalse("restarted on request, not crashed");
+            next.CrashedLastRun.Should().BeFalse();
+            guard = next;
+        }
+
+        guard.LastCrashAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void A_note_that_cannot_be_written_does_not_keep_the_kiosk_from_stopping()
+    {
+        var note = () => TerminationSignal.Note(() => throw new IOException("the disk is gone"));
+
+        note.Should().NotThrow();
+    }
+
+    [Fact]
+    public void The_kiosk_listens_for_the_request_to_stop()
+    {
+        var noted = 0;
+
+        using var registration = TerminationSignal.OnRequested(() => noted++);
+
+        registration.Should().NotBeNull();
+        noted.Should().Be(0, "nothing is noted until the system asks");
+    }
+
+    [Fact]
     public void Clean_exits_and_crashes_spread_over_hours_are_not_a_loop()
     {
         var guard = Guard();
