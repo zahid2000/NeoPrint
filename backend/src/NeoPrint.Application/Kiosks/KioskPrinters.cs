@@ -6,9 +6,12 @@ using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Admin;
 using NeoPrint.Application.Common;
 using NeoPrint.Application.Devices;
+using NeoPrint.Application.Incidents;
 using NeoPrint.Application.Localization;
 using NeoPrint.Application.PrintJobs;
+using NeoPrint.Application.Refunds;
 using NeoPrint.Domain.Common;
+using NeoPrint.Domain.Incidents;
 using NeoPrint.Domain.Kiosks;
 
 namespace NeoPrint.Application.Kiosks;
@@ -118,6 +121,8 @@ public sealed class KioskPrinterHandlers :
     private readonly IKioskNotifier _kiosk;
     private readonly IAdminNotifier _admins;
     private readonly IAuditWriter _audit;
+    private readonly IncidentReporter _incidents;
+    private readonly ISender _sender;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly ILogger<KioskPrinterHandlers> _logger;
@@ -131,10 +136,14 @@ public sealed class KioskPrinterHandlers :
         IKioskNotifier kiosk,
         IAdminNotifier admins,
         IAuditWriter audit,
+        IncidentReporter incidents,
+        ISender sender,
         ICorrelationContext correlation,
         IClock clock,
         ILogger<KioskPrinterHandlers> logger)
     {
+        _incidents = incidents;
+        _sender = sender;
         _devices = devices;
         _kiosks = kiosks;
         _commands = commands;
@@ -174,12 +183,7 @@ public sealed class KioskPrinterHandlers :
         var changed = !Same(kiosk.AvailablePrinters, reported);
         kiosk.AvailablePrinters = reported;
 
-        if (kiosk.SelectedPrinter is { } selected && reported.All(printer => printer.Name != selected.Name))
-        {
-            // Plan section 7.7: an incident and a paused kiosk, with the
-            // incident module in step 7. The panel sees it now.
-            _logger.LogWarning("Kiosk {KioskId}: the selected printer {Printer} is not in the list any more.", kiosk.Id, selected.Name);
-        }
+        var selectedGone = kiosk.SelectedPrinter is { } selected && reported.All(printer => printer.Name != selected.Name);
 
         if (changed)
         {
@@ -192,6 +196,39 @@ public sealed class KioskPrinterHandlers :
         if (changed)
         {
             await _admins.KioskPrintersUpdatedAsync(kiosk.Id, cancellationToken).ConfigureAwait(false);
+        }
+
+        // Plan section 7.7, the two rows about a kiosk left without its printer.
+        if (reported.Count == 0)
+        {
+            await _incidents
+                .RaiseAsync(
+                    IncidentType.NoPrinterDetected,
+                    IncidentSeverity.High,
+                    UserMessage.Of("incidents.kiosk.noPrinter", ("kiosk", kiosk.Code)),
+                    PrinterFaults.NoPrinterKey(kiosk.Id),
+                    cancellationToken,
+                    kiosk.Id,
+                    nameof(Kiosk),
+                    kiosk.Id)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            await _incidents
+                .ResolveAsync(
+                    PrinterFaults.NoPrinterKey(kiosk.Id), new UserMessage("incidents.resolution.printerDetected"), cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (selectedGone)
+        {
+            // Critical, the kiosk Paused, and section 9.6 from there. It ends
+            // like any other fault: with a heartbeat that says the printer is ready.
+            _logger.LogWarning("Kiosk {KioskId}: the selected printer is not in the list any more.", kiosk.Id);
+            await _sender
+                .Send(new DeclareKioskFaultCommand(kiosk.Id, PrinterFaults.NotFound, request.DeviceId), cancellationToken)
+                .ConfigureAwait(false);
         }
 
         return Unit.Value;

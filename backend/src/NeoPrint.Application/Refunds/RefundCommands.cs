@@ -29,6 +29,15 @@ public sealed record RecordProviderRefundCommand(Guid RefundId, string State, st
 /// </summary>
 public sealed record HandleInterruptedJobCommand(Guid JobId) : IRequest<Unit>, ITransactionalRequest;
 
+/// <summary>
+/// Scenario A for the orders that had not started (plan section 9.6, A.4): a
+/// kiosk's printer stopped, so the guests' bank-paid orders still waiting in
+/// its queue are cancelled and paid back. A registered user's order waits -
+/// they are offered the choice instead.
+/// </summary>
+/// <returns>How many orders were cancelled for a refund.</returns>
+public sealed record HandleStoppedKioskCommand(Guid KioskId) : IRequest<int>, ITransactionalRequest;
+
 /// <summary>A job was cancelled: its open intents close, what was paid goes back.</summary>
 public sealed record HandleCancelledJobCommand(PrintJobCancelled Cancelled) : IRequest<Unit>, ITransactionalRequest;
 

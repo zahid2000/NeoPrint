@@ -85,7 +85,8 @@ public sealed record KioskHeartbeatCommand(
     string? AgentVersion,
     bool PrinterOnline,
     string? Ip,
-    bool SafeMode = false) : IRequest<KioskHeartbeatResult>;
+    bool SafeMode = false,
+    string? PrinterProblem = null) : IRequest<KioskHeartbeatResult>;
 
 /// <param name="NextInSeconds">
 /// When to send the next one, so the interval can be changed from the panel

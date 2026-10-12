@@ -79,8 +79,18 @@ public interface IIncidentRepository
 
     Task UpdateAsync(Incident incident, CancellationToken cancellationToken = default);
 
+    /// <param name="kioskIds">
+    /// Null for every incident. Otherwise only the incidents of these kiosks:
+    /// an account with a kiosk scope sees what happened at its own kiosks and
+    /// nothing else (plan section 8A.2).
+    /// </param>
     Task<(IReadOnlyList<Incident> Items, long Total)> ListAsync(
-        IReadOnlyCollection<IncidentStatus>? statuses, IReadOnlyCollection<IncidentType>? types, int skip, int take, CancellationToken cancellationToken = default);
+        IReadOnlyCollection<IncidentStatus>? statuses,
+        IReadOnlyCollection<IncidentType>? types,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default,
+        IReadOnlyCollection<Guid>? kioskIds = null);
 
     Task<long> CountOpenAsync(IncidentType type, CancellationToken cancellationToken = default);
 
@@ -89,6 +99,20 @@ public interface IIncidentRepository
 
     Task<Incident?> FindOpenByDedupKeyAsync(string dedupKey, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Writes down that the incident was sent to a recipient - in a row of its
+    /// own, so nothing written to the incident in the same moment (it is being
+    /// acknowledged, or closing by itself) is in its way.
+    /// </summary>
+    /// <returns>False when the mark was there already.</returns>
+    Task<bool> NoteNotifiedAsync(IncidentNotification mark, CancellationToken cancellationToken = default);
+
+    /// <summary>The ids (<see cref="IncidentNotification.IdOf"/>) of everybody the incident was sent to.</summary>
+    Task<IReadOnlySet<string>> ListNotifiedAsync(Guid incidentId, CancellationToken cancellationToken = default);
+
+    /// <summary>A kiosk's incidents that are not resolved yet.</summary>
+    Task<IReadOnlyList<Incident>> ListOpenForKioskAsync(Guid kioskId, CancellationToken cancellationToken = default);
+
     /// <summary>A kiosk's incidents raised between the two times, newest first: what else happened there.</summary>
     Task<IReadOnlyList<Incident>> ListForKioskAsync(Guid kioskId, DateTime from, DateTime to, int take, CancellationToken cancellationToken = default);
 }
@@ -96,7 +120,13 @@ public interface IIncidentRepository
 /// <summary>Real-time money events for the admin panel (plan section 6, <c>/hubs/admin</c>).</summary>
 public interface IPaymentsAdminNotifier
 {
-    Task IncidentRaisedAsync(Guid incidentId, string type, string severity, CancellationToken cancellationToken = default);
+    /// <param name="kioskId">The kiosk it is about: only the accounts that may see that kiosk are told.</param>
+    Task IncidentRaisedAsync(
+        Guid incidentId, string type, string severity, CancellationToken cancellationToken = default, Guid? kioskId = null);
+
+    /// <summary>An incident was acknowledged or resolved: open lists and counters refresh.</summary>
+    Task IncidentResolvedAsync(
+        Guid incidentId, string type, string status, CancellationToken cancellationToken = default, Guid? kioskId = null);
 
     Task RefundStatusChangedAsync(Guid refundId, Guid paymentId, string status, CancellationToken cancellationToken = default);
 
@@ -107,24 +137,37 @@ public interface IPaymentsAdminNotifier
 
 /// <summary>
 /// Opens an incident once per cause and tells the panel (plan section 8A.1:
-/// "incident gələndə səsli siqnal + toast").
+/// "incident gələndə səsli siqnal + toast") and, through
+/// <see cref="NeoPrint.Contracts.IncidentRaised"/>, the people who are not
+/// looking at it (e-mail, Telegram). Closes it when the cause goes away.
 /// </summary>
 public sealed class IncidentReporter
 {
     private readonly IIncidentRepository _incidents;
     private readonly IPaymentsAdminNotifier _notifier;
+    private readonly IEventPublisher _events;
+    private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly ILogger<IncidentReporter> _logger;
 
-    public IncidentReporter(IIncidentRepository incidents, IPaymentsAdminNotifier notifier, IClock clock, ILogger<IncidentReporter> logger)
+    public IncidentReporter(
+        IIncidentRepository incidents,
+        IPaymentsAdminNotifier notifier,
+        IEventPublisher events,
+        ICorrelationContext correlation,
+        IClock clock,
+        ILogger<IncidentReporter> logger)
     {
         _incidents = incidents;
         _notifier = notifier;
+        _events = events;
+        _correlation = correlation;
         _clock = clock;
         _logger = logger;
     }
 
-    public async Task RaiseAsync(
+    /// <returns>The incident opened now; null when one with this key is open already.</returns>
+    public async Task<Incident?> RaiseAsync(
         IncidentType type,
         IncidentSeverity severity,
         UserMessage details,
@@ -138,10 +181,58 @@ public sealed class IncidentReporter
 
         if (!await _incidents.TryAddAsync(incident, cancellationToken).ConfigureAwait(false))
         {
-            return;
+            return null;
         }
 
         _logger.LogWarning("Incident {Type} ({Severity}) raised: {DedupKey}.", type, severity, dedupKey);
-        await _notifier.IncidentRaisedAsync(incident.Id, type.ToString(), severity.ToString(), cancellationToken).ConfigureAwait(false);
+        await _events
+            .PublishAsync(
+                new NeoPrint.Contracts.IncidentRaised(incident.Id, type.ToString(), severity.ToString(), kioskId, _correlation.CorrelationId),
+                cancellationToken)
+            .ConfigureAwait(false);
+        await _notifier
+            .IncidentRaisedAsync(incident.Id, type.ToString(), severity.ToString(), cancellationToken, kioskId)
+            .ConfigureAwait(false);
+
+        return incident;
+    }
+
+    /// <summary>The cause went away: the open incident with this key is closed by the system.</summary>
+    /// <returns>False when none was open.</returns>
+    public async Task<bool> ResolveAsync(string dedupKey, UserMessage resolution, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(resolution);
+
+        Incident? open;
+
+        for (var attempt = 1; ; attempt++)
+        {
+            open = await _incidents.FindOpenByDedupKeyAsync(dedupKey, cancellationToken).ConfigureAwait(false);
+
+            if (open is null)
+            {
+                return false;
+            }
+
+            open.Resolve(null, resolution.Encode(), _clock.UtcNow);
+
+            try
+            {
+                await _incidents.UpdateAsync(open, cancellationToken).ConfigureAwait(false);
+                break;
+            }
+            catch (ConcurrencyException) when (attempt < 5)
+            {
+                // Being acknowledged, or noted as sent to somebody, in the
+                // same moment: read it again and close that.
+            }
+        }
+
+        _logger.LogInformation("Incident {Type} closed by the system: {DedupKey}.", open.Type, dedupKey);
+        await _notifier
+            .IncidentResolvedAsync(open.Id, open.Type.ToString(), open.Status.ToString(), cancellationToken, open.KioskId)
+            .ConfigureAwait(false);
+
+        return true;
     }
 }

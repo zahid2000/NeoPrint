@@ -120,6 +120,13 @@ public sealed class PrintJobRepository : IPrintJobRepository
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<PrintJob>> ListInterruptedAsync(Guid kioskId, CancellationToken cancellationToken = default)
+        => await _context.PrintJobs
+            .Find(job => job.KioskId == kioskId && job.Status == PrintJobStatus.Interrupted)
+            .SortBy(job => job.QueuedAt)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<IReadOnlyList<Guid>> ListKiosksWithQueueAsync(CancellationToken cancellationToken = default)
     {
         var ids = await _context.PrintJobs

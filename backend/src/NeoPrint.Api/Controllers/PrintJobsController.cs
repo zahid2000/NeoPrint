@@ -213,6 +213,20 @@ public sealed class MyPrintJobsController : ControllerBase
     [HttpGet("my")]
     public async Task<ActionResult<IReadOnlyList<MyPrintJobView>>> Mine(CancellationToken cancellationToken)
         => Ok(await _sender.Send(new ListMyPrintJobsQuery(_currentUser.UserId ?? throw new UnauthorizedAccessException()), cancellationToken));
+
+    /// <summary>
+    /// The owner cancels an order that is waiting - in the queue, or stopped
+    /// at the printer (plan section 9.6, A.5). What was paid goes back by the
+    /// rules of plan section 2.5. Repeating it changes nothing.
+    /// </summary>
+    [HttpPost("my/{id:guid}/cancel")]
+    public async Task<IActionResult> CancelMine(Guid id, CancellationToken cancellationToken)
+    {
+        await _sender.Send(
+            new CancelMyPrintJobCommand(_currentUser.UserId ?? throw new UnauthorizedAccessException(), id), cancellationToken);
+
+        return NoContent();
+    }
 }
 
 /// <summary>

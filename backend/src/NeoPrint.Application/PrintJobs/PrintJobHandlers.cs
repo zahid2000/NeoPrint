@@ -377,14 +377,17 @@ public sealed class KioskPrintJobHandlers :
 
     /// <summary>
     /// The sheets the job used come off the kiosk's counter (plan section
-    /// 2.15), in the same transaction as the job's final status - which the
-    /// state machine allows once, so a report sent twice cannot count twice.
+    /// 2.15), in the same transaction as the status that ended this run of it
+    /// - which the state machine allows once per run, so a report sent twice
+    /// cannot count twice. A job that stopped and printed again after the
+    /// printer returned used paper both times, and both count.
     /// </summary>
     private async Task UsePaperAsync(PrintJob job, DateTime now, CancellationToken cancellationToken)
     {
         var kiosk = await _kiosks.FindByIdAsync(job.KioskId, cancellationToken).ConfigureAwait(false);
 
-        if (kiosk?.UsePaper(job.Options.Paper, job.PrintedSheets, SupplyEventType.JobPrinted, now, jobId: job.Id) is not { } movement)
+        if (kiosk?.UsePaper(job.Options.Paper, job.PrintedSheets, SupplyEventType.JobPrinted, now, jobId: job.Id, run: Math.Max(1, job.Runs))
+            is not { } movement)
         {
             return;
         }

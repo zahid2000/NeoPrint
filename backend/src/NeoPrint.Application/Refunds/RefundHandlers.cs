@@ -41,6 +41,7 @@ public sealed class RefundHandlers :
     IRequestHandler<StartRefundCommand, RefundStep>,
     IRequestHandler<RecordProviderRefundCommand, string>,
     IRequestHandler<HandleInterruptedJobCommand, Unit>,
+    IRequestHandler<HandleStoppedKioskCommand, int>,
     IRequestHandler<HandleCancelledJobCommand, Unit>
 {
     /// <summary>The reason a cancellation carries when the refund was decided with it: the cancel consumer leaves it alone.</summary>
@@ -60,6 +61,7 @@ public sealed class RefundHandlers :
     private readonly IPaymentsAdminNotifier _panel;
     private readonly PrintQueueService _queue;
     private readonly IKioskNotifier _kiosks;
+    private readonly IKioskRepository _kioskRecords;
     private readonly ISettingsReader _settings;
     private readonly IEventPublisher _events;
     private readonly ICorrelationContext _correlation;
@@ -81,6 +83,7 @@ public sealed class RefundHandlers :
         IPaymentsAdminNotifier panel,
         PrintQueueService queue,
         IKioskNotifier kiosks,
+        IKioskRepository kioskRecords,
         ISettingsReader settings,
         IEventPublisher events,
         ICorrelationContext correlation,
@@ -101,6 +104,7 @@ public sealed class RefundHandlers :
         _panel = panel;
         _queue = queue;
         _kiosks = kiosks;
+        _kioskRecords = kioskRecords;
         _settings = settings;
         _events = events;
         _correlation = correlation;
@@ -412,6 +416,68 @@ public sealed class RefundHandlers :
         }
 
         return Unit.Value;
+    }
+
+    /// <inheritdoc cref="HandleStoppedKioskCommand" />
+    public async Task<int> Handle(HandleStoppedKioskCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var kiosk = await _kioskRecords.FindByIdAsync(request.KioskId, cancellationToken).ConfigureAwait(false);
+
+        // The printer came back before this ran: nothing is waiting on a
+        // stopped printer any more, and the queue simply prints.
+        if (kiosk?.FaultSince is null)
+        {
+            return 0;
+        }
+
+        var now = _clock.UtcNow;
+        var actor = ActorContext.System(CancelledForRefund, _correlation.CorrelationId);
+        var refunded = 0;
+
+        foreach (var job in await _jobs.ListQueueAsync(kiosk.Id, cancellationToken).ConfigureAwait(false))
+        {
+            // A job at the printer is the kiosk's to report: Completed, or
+            // Interrupted - which is refunded by its own event.
+            if (job is not { Status: PrintJobStatus.Queued, UserId: null, PaymentId: { } paymentId })
+            {
+                continue;
+            }
+
+            var payment = await _payments.FindByIdAsync(paymentId, cancellationToken).ConfigureAwait(false);
+
+            if (payment is not { WasPaid: true, UserId: null, Method: PaymentMethod.BankQr } || !payment.Refundable.IsPositive)
+            {
+                continue;
+            }
+
+            await PrintJobCancellation
+                .CancelAsync(job, new UserMessage(CancelledForRefund), actor, now, _jobs, _queue, _kiosks, _events, _correlation, cancellationToken)
+                .ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "Job {JobId} was waiting at kiosk {KioskId} when its printer stopped ({Code}); {Amount} goes back to the card.",
+                job.Id,
+                kiosk.Id,
+                kiosk.FaultCode,
+                payment.Refundable.Amount);
+
+            await _events.PublishAsync(
+                    new RefundRequested(
+                        payment.Id,
+                        job.Id,
+                        RefundReason.SystemError.ToString(),
+                        payment.Refundable.Amount,
+                        $"auto:{job.Id}",
+                        _correlation.CorrelationId),
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            refunded++;
+        }
+
+        return refunded;
     }
 
     /// <inheritdoc cref="HandleCancelledJobCommand" />

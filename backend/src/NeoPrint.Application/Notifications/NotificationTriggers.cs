@@ -43,12 +43,29 @@ public sealed record NotifyJobCompletedCommand(Guid JobId) : IRequest;
 public sealed record NotifyRefundCompletedCommand(Guid RefundId) : IRequest;
 
 /// <summary>
+/// A registered user's order stopped at the printer (plan section 9.6, A.5;
+/// 8.4 <c>JobInterruptedRefundOffer</c>): wait, or cancel it and take the
+/// money back.
+/// </summary>
+public sealed record NotifyJobInterruptedCommand(Guid JobId) : IRequest;
+
+/// <summary>
+/// A kiosk's printer stopped (plan section 8.4, <c>KioskOutOfServiceRefundOffer</c>):
+/// every registered user with an order waiting there is told and offered the
+/// same choice.
+/// </summary>
+/// <returns>How many owners were told.</returns>
+public sealed record NotifyAffectedUsersCommand(Guid KioskId) : IRequest<int>;
+
+/// <summary>
 /// What each event tells the user. Each sends one <see cref="NotifyUserCommand"/>
 /// with a key that makes a repeat of the event a no-op.
 /// </summary>
 public sealed class NotificationTriggers :
     IRequestHandler<NotifyJobCompletedCommand>,
-    IRequestHandler<NotifyRefundCompletedCommand>
+    IRequestHandler<NotifyRefundCompletedCommand>,
+    IRequestHandler<NotifyJobInterruptedCommand>,
+    IRequestHandler<NotifyAffectedUsersCommand, int>
 {
     private readonly IPrintJobRepository _jobs;
     private readonly IKioskRepository _kiosks;
@@ -122,6 +139,77 @@ public sealed class NotificationTriggers :
                 cancellationToken)
             .ConfigureAwait(false);
     }
+
+    public async Task Handle(NotifyJobInterruptedCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var job = await _jobs.FindByIdAsync(request.JobId, cancellationToken).ConfigureAwait(false);
+
+        if (job is not { UserId: not null, Status: PrintJobStatus.Interrupted })
+        {
+            return;
+        }
+
+        var kiosk = await _kiosks.FindByIdAsync(job.KioskId, cancellationToken).ConfigureAwait(false);
+
+        await OfferRefundAsync(
+                job,
+                NotificationType.JobInterruptedRefundOffer,
+                UserMessage.Of("notifications.jobInterrupted.title"),
+                UserMessage.Of("notifications.jobInterrupted.body", ("code", job.JobCode), ("kiosk", kiosk?.Code ?? string.Empty)),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<int> Handle(NotifyAffectedUsersCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var kiosk = await _kiosks.FindByIdAsync(request.KioskId, cancellationToken).ConfigureAwait(false);
+
+        // Back already: the orders print, and nobody needs to decide anything.
+        if (kiosk?.FaultSince is null)
+        {
+            return 0;
+        }
+
+        var waiting = (await _jobs.ListQueueAsync(kiosk.Id, cancellationToken).ConfigureAwait(false))
+            .Where(job => job.Status == PrintJobStatus.Queued)
+            .Concat(await _jobs.ListInterruptedAsync(kiosk.Id, cancellationToken).ConfigureAwait(false))
+            .Where(job => job.UserId is not null)
+            .ToList();
+
+        foreach (var job in waiting)
+        {
+            await OfferRefundAsync(
+                    job,
+                    NotificationType.KioskOutOfServiceRefundOffer,
+                    UserMessage.Of("notifications.kioskStopped.title"),
+                    UserMessage.Of("notifications.kioskStopped.body", ("code", job.JobCode), ("kiosk", kiosk.Code)),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return waiting.Count;
+    }
+
+    /// <summary>
+    /// One offer per time the order waits: the key carries when it last joined
+    /// the queue, so the order's own interruption and the kiosk's outage are
+    /// one notification, and an order that stops again later is told again.
+    /// </summary>
+    private Task OfferRefundAsync(
+        PrintJob job, NotificationType type, UserMessage title, UserMessage body, CancellationToken cancellationToken)
+        => _sender.Send(
+            new NotifyUserCommand(
+                job.UserId!.Value,
+                type,
+                title,
+                body,
+                NotificationLinks.Job(job.Id),
+                $"RefundOffer:{job.Id}:{(job.QueuedAt ?? job.CreatedAt).Ticks}"),
+            cancellationToken);
 
     public async Task Handle(NotifyRefundCompletedCommand request, CancellationToken cancellationToken)
     {

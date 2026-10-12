@@ -75,6 +75,13 @@ public static class SettingKeys
     public const string KioskHeartbeatSeconds = "Kiosk.HeartbeatSeconds";
     public const string KioskOfflineAfterSeconds = "Kiosk.OfflineAfterSeconds";
     public const string KioskTelemetrySeconds = "Kiosk.TelemetrySeconds";
+
+    /// <summary>
+    /// How long a kiosk's heartbeats have to say "the printer is not ready"
+    /// before the kiosk is paused and its waiting orders are refunded (plan
+    /// section 9.6): one bad reading is not an outage.
+    /// </summary>
+    public const string KioskPrinterFaultAfterSeconds = "Kiosk.PrinterFaultAfterSeconds";
     public const string KioskTelemetryRetentionDays = "Kiosk.TelemetryRetentionDays";
     public const string KioskPrinterEventRetentionDays = "Kiosk.PrinterEventRetentionDays";
 
@@ -171,6 +178,7 @@ public static class SettingKeys
         new(KioskHeartbeatSeconds, "15", SettingValueType.Integer, "Kiosk heartbeat intervalı"),
         new(KioskOfflineAfterSeconds, "60", SettingValueType.Integer, "Heartbeat gəlməzsə offline sayılır"),
         new(KioskTelemetrySeconds, "30", SettingValueType.Integer, "Telemetriya göndərmə intervalı"),
+        new(KioskPrinterFaultAfterSeconds, "30", SettingValueType.Integer, "Printer bu qədər saniyə hazır olmazsa kiosk dayandırılır və gözləyən sifarişlər qaytarılır"),
         new(KioskTelemetryRetentionDays, "30", SettingValueType.Integer, "Telemetriya tarixçəsinin saxlanma müddəti"),
         new(KioskPrinterEventRetentionDays, "365", SettingValueType.Integer, "Printer hadisələrinin saxlanma müddəti"),
         new(KioskConfigCacheTtlHours, "24", SettingValueType.Integer,

@@ -473,6 +473,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         jobs => jobs.CatchUpAsync(CancellationToken.None),
         "*/5 * * * *");
 
+    // Kiosks whose heartbeat stopped: Offline, with a Critical incident (plan section 9.6, scenario B).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Kiosks.KioskHeartbeatMonitor>(
+        NeoPrint.Infrastructure.Kiosks.KioskHeartbeatMonitor.JobId,
+        job => job.RunAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Kiosks.KioskHeartbeatMonitor.Every15Seconds);
+
     // Jobs whose kiosk went quiet: Suspected, never refunded automatically (plan section 2.5, scenario B).
     recurring.AddOrUpdate<StuckJobWatchdogJob>(
         StuckJobWatchdogJob.JobId,

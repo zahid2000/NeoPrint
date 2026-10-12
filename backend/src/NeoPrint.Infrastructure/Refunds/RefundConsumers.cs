@@ -59,10 +59,12 @@ public sealed class RefundRequestedConsumer : IConsumer<RefundRequested>
 
 /// <summary>
 /// <c>AutoRefundOnKioskErrorConsumer</c> (plan section 6): scenario A only -
-/// the kiosk reported the interruption, so it is known. A job whose kiosk went
-/// quiet is Suspected and never comes here.
+/// the kiosk reported the interruption, or that its printer stopped, so it is
+/// known. A job whose kiosk went quiet is Suspected and never comes here.
 /// </summary>
-public sealed class AutoRefundOnKioskErrorConsumer : IConsumer<PrintJobInterrupted>
+public sealed class AutoRefundOnKioskErrorConsumer :
+    IConsumer<PrintJobInterrupted>,
+    IConsumer<KioskIncidentRaised>
 {
     private readonly ISender _sender;
 
@@ -73,6 +75,14 @@ public sealed class AutoRefundOnKioskErrorConsumer : IConsumer<PrintJobInterrupt
         ArgumentNullException.ThrowIfNull(context);
 
         return _sender.Send(new HandleInterruptedJobCommand(context.Message.JobId), context.CancellationToken);
+    }
+
+    /// <summary>The guests' paid orders that had not started when the printer stopped (plan section 9.6, A.4).</summary>
+    public Task Consume(ConsumeContext<KioskIncidentRaised> context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        return _sender.Send(new HandleStoppedKioskCommand(context.Message.KioskId), context.CancellationToken);
     }
 }
 

@@ -128,6 +128,10 @@ public sealed class MongoContext
     public MongoSet<Domain.Refunds.Refund> Refunds => Set<Domain.Refunds.Refund>("refunds");
     public MongoSet<Domain.Refunds.RefundVoucher> RefundVouchers => Set<Domain.Refunds.RefundVoucher>("refund_vouchers");
     public MongoSet<Domain.Incidents.Incident> Incidents => Set<Domain.Incidents.Incident>("incidents");
+
+    /// <summary>Whom an incident was sent to by e-mail or Telegram: one row per person and channel.</summary>
+    public MongoSet<Domain.Incidents.IncidentNotification> IncidentNotifications
+        => Set<Domain.Incidents.IncidentNotification>("incident_notifications");
     public MongoSet<Domain.Support.SupportClaim> SupportClaims => Set<Domain.Support.SupportClaim>("support_claims");
     public MongoSet<Domain.PrintJobs.PreparedPrint> PreparedPrints => Set<Domain.PrintJobs.PreparedPrint>("prepared_prints");
 
@@ -443,6 +447,13 @@ public sealed class MongoContext
             // What else happened at a kiosk around a suspected job.
             (Builders<Domain.Incidents.Incident>.IndexKeys.Ascending(i => i.KioskId).Descending(i => i.CreatedAt),
                 Named("ix_incidents_kiosk_created")));
+
+        await CreateAsync(IncidentNotifications,
+            (Builders<Domain.Incidents.IncidentNotification>.IndexKeys.Ascending(n => n.IncidentId), Named("ix_incident_notifications_incident")),
+            // They matter while an event may still be delivered again - days, not
+            // months; afterwards the incident itself says what happened.
+            (Builders<Domain.Incidents.IncidentNotification>.IndexKeys.Ascending(n => n.SentAt),
+                Expiring("ttl_incident_notifications_sent", TimeSpan.FromDays(30))));
 
         await CreateAsync(FiscalReceipts,
             // One receipt per sale, refund or top-up: a redelivered event or a

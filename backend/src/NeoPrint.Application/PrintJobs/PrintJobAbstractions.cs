@@ -31,6 +31,9 @@ public interface IPrintJobRepository
     /// <summary>A kiosk's queue from the source of truth: queued and printing jobs, oldest first.</summary>
     Task<IReadOnlyList<PrintJob>> ListQueueAsync(Guid kioskId, CancellationToken cancellationToken = default);
 
+    /// <summary>A kiosk's orders that stopped at the printer and were neither cancelled nor put back, oldest first.</summary>
+    Task<IReadOnlyList<PrintJob>> ListInterruptedAsync(Guid kioskId, CancellationToken cancellationToken = default);
+
     /// <summary>Every kiosk that has something in its queue, for rebuilding the Redis copy.</summary>
     Task<IReadOnlyList<Guid>> ListKiosksWithQueueAsync(CancellationToken cancellationToken = default);
 

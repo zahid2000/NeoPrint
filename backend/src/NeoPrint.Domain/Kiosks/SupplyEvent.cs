@@ -70,7 +70,7 @@ public sealed class SupplyEvent
 
     public DateTime At { get; set; }
 
-    /// <summary>What makes the movement one of a kind: <c>job:{id}</c>, <c>command:{id}</c>, or the row itself.</summary>
+    /// <summary>What makes the movement one of a kind: <c>job:{id}</c> (<c>job:{id}:{run}</c> from its second run on), <c>command:{id}</c>, or the row itself.</summary>
     public string DedupKey { get; set; } = string.Empty;
 
     /// <summary>The paper size's resource name.</summary>

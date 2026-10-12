@@ -2,8 +2,11 @@ using MediatR;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Features;
+using NeoPrint.Application.Incidents;
+using NeoPrint.Application.Refunds;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Features;
+using NeoPrint.Domain.Incidents;
 using NeoPrint.Domain.Kiosks;
 using NeoPrint.Domain.Settings;
 
@@ -151,6 +154,9 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
     private readonly IKioskDeviceRepository _devices;
     private readonly IKioskRepository _kiosks;
     private readonly ISettingsReader _settings;
+    private readonly IncidentReporter _incidents;
+    private readonly IAdminNotifier _admins;
+    private readonly ISender _sender;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
 
@@ -158,14 +164,28 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
         IKioskDeviceRepository devices,
         IKioskRepository kiosks,
         ISettingsReader settings,
+        IncidentReporter incidents,
+        IAdminNotifier admins,
+        ISender sender,
         ICorrelationContext correlation,
         IClock clock)
     {
         _devices = devices;
         _kiosks = kiosks;
         _settings = settings;
+        _incidents = incidents;
+        _admins = admins;
+        _sender = sender;
         _correlation = correlation;
         _clock = clock;
+    }
+
+    /// <summary>What the heartbeat's "printer ready / not ready" means for the kiosk's fault.</summary>
+    private enum PrinterStep
+    {
+        None,
+        Declare,
+        Clear,
     }
 
     public async Task<KioskHeartbeatResult> Handle(
@@ -203,6 +223,10 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
             .ConfigureAwait(false)
             ?? throw new NotFoundException("kiosk");
 
+        var before = kiosk.Status;
+        var silentFor = kiosk.LastHeartbeatAt is { } last ? now - last : TimeSpan.Zero;
+        var wasInSafeMode = kiosk.SafeModeSince is not null;
+
         kiosk.LastHeartbeatAt = now;
         kiosk.AppVersion = device.AppVersion;
 
@@ -212,7 +236,8 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
         // does not undo them.
         if (kiosk.Status == KioskStatus.Offline)
         {
-            // Back, but an administrator's pause is still theirs to lift.
+            // Back, but an administrator's pause is still theirs to lift, and
+            // a printer that was down may be down still.
             var recovered = kiosk.SelectedPrinter is null && kiosk.PausedByAdminSince is null
                 ? KioskStatus.NotConfigured
                 : kiosk.WorkingStatus;
@@ -236,10 +261,63 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
             kiosk.LeaveSafeMode(actor, now);
         }
 
+        var step = await PrinterStepAsync(kiosk, request, now, cancellationToken).ConfigureAwait(false);
+
         await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
 
+        // It called: whatever was opened for its silence is over. Asked only
+        // after a real gap - not a query on every heartbeat.
+        if (before == KioskStatus.Offline || silentFor > await SilentAfterAsync(cancellationToken).ConfigureAwait(false))
+        {
+            await _incidents
+                .ResolveAsync(
+                    PrinterFaults.OfflineKey(kiosk.Id), new UserMessage("incidents.resolution.heartbeatReturned"), cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        // A crash loop (plan section 7.12): Critical while it lasts.
+        if (request.SafeMode && !wasInSafeMode)
+        {
+            await _incidents
+                .RaiseAsync(
+                    IncidentType.AppCrash,
+                    IncidentSeverity.Critical,
+                    UserMessage.Of("incidents.kiosk.safeMode", ("kiosk", kiosk.Code)),
+                    PrinterFaults.SafeModeKey(kiosk.Id),
+                    cancellationToken,
+                    kiosk.Id,
+                    nameof(Kiosk),
+                    kiosk.Id)
+                .ConfigureAwait(false);
+        }
+        else if (!request.SafeMode && wasInSafeMode)
+        {
+            await _incidents
+                .ResolveAsync(
+                    PrinterFaults.SafeModeKey(kiosk.Id), new UserMessage("incidents.resolution.safeModeCleared"), cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        // The fault itself is its own transaction: the kiosk, its incident and
+        // the event for the waiting orders are written together or not at all.
+        var status = step switch
+        {
+            PrinterStep.Declare => await _sender
+                .Send(new DeclareKioskFaultCommand(kiosk.Id, PrinterFaults.Normalize(request.PrinterProblem), device.Id), cancellationToken)
+                .ConfigureAwait(false),
+            PrinterStep.Clear => await _sender
+                .Send(new ClearKioskFaultCommand(kiosk.Id, device.Id), cancellationToken)
+                .ConfigureAwait(false),
+            _ => kiosk.Status,
+        };
+
+        if (step == PrinterStep.None && status != before)
+        {
+            await _admins.KioskStatusChangedAsync(kiosk.Id, status.ToString(), cancellationToken).ConfigureAwait(false);
+        }
+
         return new KioskHeartbeatResult(
-            kiosk.Status,
+            status,
             await _settings
                 .GetIntAsync(SettingKeys.KioskHeartbeatSeconds, 15, cancellationToken)
                 .ConfigureAwait(false),
@@ -248,4 +326,52 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
             kiosk.ConfigurationChangedAt,
             now);
     }
+
+    /// <summary>
+    /// Plan section 9.6, scenario A, from the heartbeat's side. The printer is
+    /// "down" for the backend once the kiosk has said so for
+    /// <c>Kiosk.PrinterFaultAfterSeconds</c> - one bad reading must not
+    /// refund the queue - and "back" on the first heartbeat that says so.
+    /// </summary>
+    private async Task<PrinterStep> PrinterStepAsync(
+        Kiosk kiosk, KioskHeartbeatCommand request, DateTime now, CancellationToken cancellationToken)
+    {
+        // No printer chosen, or a kiosk that is not in service: nothing of
+        // its printer's is tracked, and what was is let go.
+        var tracked = kiosk.SelectedPrinter is not null
+                      && kiosk.Status is KioskStatus.Online or KioskStatus.Paused or KioskStatus.Maintenance;
+
+        if (!tracked || request.PrinterOnline)
+        {
+            if (kiosk.FaultSince is not null)
+            {
+                return PrinterStep.Clear;
+            }
+
+            kiosk.NotePrinterUp();
+            return PrinterStep.None;
+        }
+
+        var downSince = kiosk.NotePrinterDown(now);
+
+        if (kiosk.FaultSince is not null)
+        {
+            // Down already; a different problem now (offline, then a jam) is
+            // worth its own incident.
+            return PrinterFaults.Normalize(request.PrinterProblem) is var code
+                   && request.PrinterProblem is not null
+                   && code != kiosk.FaultCode
+                ? PrinterStep.Declare
+                : PrinterStep.None;
+        }
+
+        var wait = TimeSpan.FromSeconds(Math.Max(
+            0, await _settings.GetIntAsync(SettingKeys.KioskPrinterFaultAfterSeconds, 30, cancellationToken).ConfigureAwait(false)));
+
+        return now - downSince >= wait ? PrinterStep.Declare : PrinterStep.None;
+    }
+
+    private async Task<TimeSpan> SilentAfterAsync(CancellationToken cancellationToken)
+        => TimeSpan.FromSeconds(Math.Max(
+            1, await _settings.GetIntAsync(SettingKeys.KioskOfflineAfterSeconds, 60, cancellationToken).ConfigureAwait(false)));
 }

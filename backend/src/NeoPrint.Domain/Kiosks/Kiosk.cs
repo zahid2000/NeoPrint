@@ -180,11 +180,32 @@ public sealed class Kiosk : Entity
     public DateTime? PausedByAdminSince { get; private set; }
 
     /// <summary>
-    /// The status of a kiosk that works and is reachable: Online, unless an
-    /// administrator has it paused. What a kiosk goes back to when its
-    /// heartbeat returns or its test page prints.
+    /// Since when the kiosk's printer cannot print (plan section 9.6,
+    /// scenario A); null when it can. While it is set the kiosk is Paused -
+    /// the backend takes no new orders for it - unless something stronger
+    /// holds it: an administrator's pause, a lost connection. Set by
+    /// <see cref="DeclareFault"/>, lifted by <see cref="ClearFault"/>.
     /// </summary>
-    public KioskStatus WorkingStatus => PausedByAdminSince is null ? KioskStatus.Online : KioskStatus.Maintenance;
+    public DateTime? FaultSince { get; private set; }
+
+    /// <summary>What is wrong with the printer, as a message key: <c>printer.outOfPaper</c>.</summary>
+    public string? FaultCode { get; private set; }
+
+    /// <summary>
+    /// Since when the kiosk's heartbeats have been saying its printer is not
+    /// ready, before that counts as a fault: one bad reading is not an outage.
+    /// </summary>
+    public DateTime? PrinterDownSince { get; private set; }
+
+    /// <summary>
+    /// The status of a kiosk that is reachable: Online, unless an
+    /// administrator has it paused or its printer cannot print. What a kiosk
+    /// goes back to when its heartbeat returns or its test page prints.
+    /// </summary>
+    public KioskStatus WorkingStatus
+        => PausedByAdminSince is not null ? KioskStatus.Maintenance
+            : FaultSince is not null ? KioskStatus.Paused
+            : KioskStatus.Online;
 
     /// <summary>
     /// When the kiosk's configuration last changed.
@@ -232,7 +253,13 @@ public sealed class Kiosk : Entity
     public static readonly StateMachine<KioskStatus> Transitions =
         new StateMachine<KioskStatus>(nameof(Kiosk))
             .Allow(KioskStatus.NotActivated, KioskStatus.NotConfigured, KioskStatus.Online)
-            .Allow(KioskStatus.NotConfigured, KioskStatus.Online, KioskStatus.NotActivated, KioskStatus.Offline, KioskStatus.Maintenance)
+            .Allow(
+                KioskStatus.NotConfigured,
+                KioskStatus.Online,
+                KioskStatus.NotActivated,
+                KioskStatus.Offline,
+                KioskStatus.Maintenance,
+                KioskStatus.Paused)
             .Allow(
                 KioskStatus.Online,
                 KioskStatus.Paused,
@@ -242,7 +269,7 @@ public sealed class Kiosk : Entity
                 KioskStatus.NotActivated)
             .Allow(KioskStatus.Paused, KioskStatus.Online, KioskStatus.Offline, KioskStatus.NotActivated, KioskStatus.Maintenance)
             .Allow(KioskStatus.Offline, KioskStatus.Online, KioskStatus.Paused, KioskStatus.NotActivated, KioskStatus.Maintenance)
-            .Allow(KioskStatus.Maintenance, KioskStatus.Online, KioskStatus.NotActivated, KioskStatus.NotConfigured)
+            .Allow(KioskStatus.Maintenance, KioskStatus.Online, KioskStatus.NotActivated, KioskStatus.NotConfigured, KioskStatus.Paused)
             .Allow(KioskStatus.Disabled, KioskStatus.NotActivated)
             .AllowFromAny(KioskStatus.Disabled);
 
@@ -299,7 +326,12 @@ public sealed class Kiosk : Entity
     /// than the tray holds is corrected by a recount, not by a negative number.
     /// </summary>
     /// <returns>The movement to record, or null when this paper size has no counter or nothing was used.</returns>
-    public SupplyEvent? UsePaper(string paper, int sheets, SupplyEventType type, DateTime utcNow, Guid? jobId = null, Guid? commandId = null)
+    /// <param name="run">
+    /// Which run of the job this is (<c>PrintJob.Runs</c>): a job that stopped
+    /// at the printer and printed again used paper twice, and both count.
+    /// </param>
+    public SupplyEvent? UsePaper(
+        string paper, int sheets, SupplyEventType type, DateTime utcNow, Guid? jobId = null, Guid? commandId = null, int run = 1)
     {
         if (sheets <= 0 || !PaperStock.TryGetValue(paper, out var stock))
         {
@@ -321,7 +353,9 @@ public sealed class Kiosk : Entity
             JobId = jobId,
             CommandId = commandId,
             At = utcNow,
-            DedupKey = jobId is { } job ? $"job:{job:N}" : commandId is { } command ? $"command:{command:N}" : Guid.NewGuid().ToString("N"),
+            DedupKey = jobId is { } job ? (run > 1 ? $"job:{job:N}:{run}" : $"job:{job:N}")
+                : commandId is { } command ? $"command:{command:N}"
+                : Guid.NewGuid().ToString("N"),
         };
     }
 
@@ -416,8 +450,73 @@ public sealed class Kiosk : Entity
 
         if (ownMaintenance)
         {
-            MoveTo(KioskStatus.Online, actor.Because("kiosks.safeModeCleared"), utcNow);
+            // Back to work - or to Paused, when the printer is still down.
+            MoveTo(WorkingStatus, actor.Because("kiosks.safeModeCleared"), utcNow);
         }
+    }
+
+    /// <summary>A heartbeat said the printer is not ready.</summary>
+    /// <returns>Since when the heartbeats have been saying so.</returns>
+    public DateTime NotePrinterDown(DateTime utcNow) => PrinterDownSince ??= utcNow;
+
+    /// <summary>A heartbeat said the printer is ready, with no fault declared: the bad readings were a blip.</summary>
+    public void NotePrinterUp() => PrinterDownSince = null;
+
+    /// <summary>
+    /// The printer cannot print (plan section 9.6, scenario A): an Online
+    /// kiosk becomes Paused. A kiosk an administrator has paused, or one that
+    /// is offline, keeps its status and remembers the fault - it is Paused
+    /// when that ends and the printer is still down.
+    /// </summary>
+    /// <param name="code">What is wrong, as a message key.</param>
+    /// <returns>True when the fault begins now; false when one was declared already (its code is brought up to date).</returns>
+    public bool DeclareFault(string code, ActorContext actor, DateTime utcNow)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        ArgumentNullException.ThrowIfNull(actor);
+
+        FaultCode = code;
+        PrinterDownSince ??= utcNow;
+
+        if (FaultSince is not null)
+        {
+            return false;
+        }
+
+        FaultSince = utcNow;
+
+        if (Status == KioskStatus.Online)
+        {
+            MoveTo(KioskStatus.Paused, actor.Because(code), utcNow);
+        }
+
+        return true;
+    }
+
+    /// <summary>The printer prints again: a kiosk the fault had Paused is Online.</summary>
+    /// <returns>False when no fault was declared.</returns>
+    public bool ClearFault(ActorContext actor, DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(actor);
+
+        PrinterDownSince = null;
+
+        if (FaultSince is null)
+        {
+            return false;
+        }
+
+        FaultSince = null;
+        FaultCode = null;
+
+        // Paused is the fault's own status: an administrator's pause is
+        // Maintenance, and a lost connection is Offline until a heartbeat.
+        if (Status == KioskStatus.Paused)
+        {
+            MoveTo(KioskStatus.Online, actor.Because("kiosks.reason.printerRecovered"), utcNow);
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -479,8 +578,9 @@ public sealed class Kiosk : Entity
             return true;
         }
 
+        // WorkingStatus: Online, or Paused when the printer went down meanwhile.
         MoveTo(
-            SelectedPrinter is null ? KioskStatus.NotConfigured : KioskStatus.Online,
+            SelectedPrinter is null ? KioskStatus.NotConfigured : WorkingStatus,
             actor.Because("kiosks.reason.resumedByAdmin"),
             utcNow);
 

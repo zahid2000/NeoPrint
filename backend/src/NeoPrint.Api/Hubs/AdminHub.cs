@@ -76,6 +76,10 @@ public sealed class SignalRAdminNotifier : IAdminNotifier
 
     public SignalRAdminNotifier(IHubContext<AdminHub> hub) => _hub = hub;
 
+    public Task KioskStatusChangedAsync(Guid kioskId, string status, CancellationToken cancellationToken = default)
+        => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(kioskId)])
+            .SendAsync("KioskStatusChanged", new { kioskId, status }, cancellationToken);
+
     public Task KioskPrintersUpdatedAsync(Guid kioskId, CancellationToken cancellationToken = default)
         => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(kioskId)])
             .SendAsync("KioskPrintersUpdated", new { kioskId }, cancellationToken);
@@ -146,8 +150,22 @@ public sealed class SignalRPaymentsAdminNotifier : NeoPrint.Application.Refunds.
 
     public SignalRPaymentsAdminNotifier(IHubContext<AdminHub> hub) => _hub = hub;
 
-    public Task IncidentRaisedAsync(Guid incidentId, string type, string severity, CancellationToken cancellationToken = default)
-        => _hub.Clients.Group(AdminHub.AllAdminsGroup).SendAsync("IncidentRaised", new { incidentId, type, severity }, cancellationToken);
+    public Task IncidentRaisedAsync(
+        Guid incidentId, string type, string severity, CancellationToken cancellationToken = default, Guid? kioskId = null)
+        => About(kioskId).SendAsync("IncidentRaised", new { incidentId, type, severity, kioskId }, cancellationToken);
+
+    public Task IncidentResolvedAsync(
+        Guid incidentId, string type, string status, CancellationToken cancellationToken = default, Guid? kioskId = null)
+        => About(kioskId).SendAsync("IncidentResolved", new { incidentId, type, status, kioskId }, cancellationToken);
+
+    /// <summary>
+    /// A kiosk's incident goes to the accounts that may see that kiosk; one
+    /// that is about no kiosk (a refund, a fiscal receipt) to every panel.
+    /// </summary>
+    private IClientProxy About(Guid? kioskId)
+        => kioskId is { } kiosk
+            ? _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(kiosk)])
+            : _hub.Clients.Group(AdminHub.AllAdminsGroup);
 
     public Task RefundStatusChangedAsync(Guid refundId, Guid paymentId, string status, CancellationToken cancellationToken = default)
         => _hub.Clients.Group(AdminHub.AllAdminsGroup).SendAsync("RefundStatusChanged", new { refundId, paymentId, status }, cancellationToken);

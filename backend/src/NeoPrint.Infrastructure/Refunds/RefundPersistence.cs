@@ -169,10 +169,20 @@ public sealed class IncidentRepository : IIncidentRepository
         => AggregateWriter.ReplaceAsync(_context, _context.Incidents, incident, cancellationToken);
 
     public async Task<(IReadOnlyList<Incident> Items, long Total)> ListAsync(
-        IReadOnlyCollection<IncidentStatus>? statuses, IReadOnlyCollection<IncidentType>? types, int skip, int take, CancellationToken cancellationToken = default)
+        IReadOnlyCollection<IncidentStatus>? statuses,
+        IReadOnlyCollection<IncidentType>? types,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default,
+        IReadOnlyCollection<Guid>? kioskIds = null)
     {
         var builder = Builders<Incident>.Filter;
         var query = builder.Empty;
+
+        if (kioskIds is not null)
+        {
+            query &= builder.In(i => i.KioskId, kioskIds.Select(id => (Guid?)id));
+        }
 
         if (statuses is { Count: > 0 })
         {
@@ -199,6 +209,33 @@ public sealed class IncidentRepository : IIncidentRepository
 
     public Task<Incident?> FindOpenByDedupKeyAsync(string dedupKey, CancellationToken cancellationToken = default)
         => _context.Incidents.Find(i => i.DedupKey == dedupKey && i.Open).FirstOrDefaultAsync(cancellationToken)!;
+
+    public async Task<bool> NoteNotifiedAsync(IncidentNotification mark, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(mark);
+
+        try
+        {
+            await _context.IncidentNotifications.InsertOneAsync(mark, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            // Written by the delivery this one repeats.
+            return false;
+        }
+    }
+
+    public async Task<IReadOnlySet<string>> ListNotifiedAsync(Guid incidentId, CancellationToken cancellationToken = default)
+        => (await _context.IncidentNotifications
+                .Find(mark => mark.IncidentId == incidentId)
+                .Project(mark => mark.Id)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false))
+            .ToHashSet(StringComparer.Ordinal);
+
+    public async Task<IReadOnlyList<Incident>> ListOpenForKioskAsync(Guid kioskId, CancellationToken cancellationToken = default)
+        => await _context.Incidents.Find(i => i.KioskId == kioskId && i.Open).ToListAsync(cancellationToken).ConfigureAwait(false);
 
     public async Task<IReadOnlyList<Incident>> ListForKioskAsync(Guid kioskId, DateTime from, DateTime to, int take, CancellationToken cancellationToken = default)
         => await _context.Incidents

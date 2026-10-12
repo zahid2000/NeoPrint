@@ -193,6 +193,14 @@ public static class DependencyInjection
         services.AddScoped<Application.Support.ISupportClaimRepository, Support.SupportClaimRepository>();
         services.AddScoped<StuckJobWatchdogJob>();
 
+        // Incidents and a stopped kiosk (plan section 9.6): the monitor, and
+        // Telegram - off until a bot token is in OpenBao. Its client has no
+        // HTTP loggers: the token is in the address they would log.
+        services.AddScoped<Kiosks.KioskHeartbeatMonitor>();
+        services.AddHttpClient(Kiosks.TelegramSender.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10))
+            .RemoveAllLoggers();
+        services.AddSingleton<Application.Incidents.ITelegramSender, Kiosks.TelegramSender>();
+
         // Administration and RBAC (plan section 8A.2)
         services.AddSingleton<IPasswordHasher<AdminUser>, PasswordHasher<AdminUser>>();
         services.AddScoped<IAdminUserRepository, AdminUserRepository>();
@@ -371,6 +379,9 @@ public static class DependencyInjection
             bus.AddConsumer<StorageMirrorConsumer>();
             bus.AddConsumer<Refunds.RefundRequestedConsumer>();
             bus.AddConsumer<Refunds.AutoRefundOnKioskErrorConsumer>();
+            bus.AddConsumer<Kiosks.KioskFaultOnInterruptedJobConsumer>();
+            bus.AddConsumer<Kiosks.AffectedUsersNotificationConsumer>();
+            bus.AddConsumer<Kiosks.IncidentNotificationConsumer>();
             bus.AddConsumer<Refunds.PrintJobCancelledConsumer>();
             bus.AddConsumer<Fiscal.PaymentFiscalizationConsumer>();
             bus.AddConsumer<Fiscal.RefundFiscalizationConsumer>();

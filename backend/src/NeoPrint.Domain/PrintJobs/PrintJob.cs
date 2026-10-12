@@ -176,6 +176,13 @@ public sealed class PrintJob : Entity
 
     public DateTime? QueuedAt { get; private set; }
 
+    /// <summary>
+    /// How many times the job has joined the queue: once, and once more each
+    /// time it is put back after stopping at the printer (plan section 7.4).
+    /// What each run used of the kiosk's paper is counted by itself.
+    /// </summary>
+    public int Runs { get; private set; }
+
     public DateTime? StartedAt { get; private set; }
 
     public DateTime? FinishedAt { get; private set; }
@@ -330,6 +337,9 @@ public sealed class PrintJob : Entity
 
         if (before != PrintJobStatus.Queued)
         {
+            // A document from before runs were counted has been in the queue
+            // once if it has a time there.
+            Runs = Math.Max(Runs, QueuedAt is null ? 0 : 1) + 1;
             QueuedAt = now;
             ErrorReason = null;
         }

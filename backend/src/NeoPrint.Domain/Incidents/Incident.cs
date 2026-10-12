@@ -94,6 +94,7 @@ public sealed class Incident : Entity
 
     public string? Resolution { get; private set; }
 
+
     public static Incident Raise(
         IncidentType type,
         IncidentSeverity severity,
@@ -149,4 +150,29 @@ public sealed class Incident : Entity
         ResolvedAt = now;
         Resolution = resolution;
     }
+}
+
+/// <summary>
+/// That an incident was sent to one person over one channel
+/// (<c>incident_notifications</c>): an event delivered twice tells nobody
+/// twice. Who, by account id - no address and no chat id is kept.
+/// </summary>
+/// <remarks>
+/// A row of its own rather than a list on the incident: the system writes
+/// these while the incident is being acknowledged, or is closing by itself,
+/// and those must not wait for - or lose to - a note about an e-mail.
+/// </remarks>
+public sealed class IncidentNotification
+{
+    /// <summary><see cref="IdOf"/>: unique, so the same mark cannot be written twice.</summary>
+    public string Id { get; set; } = string.Empty;
+
+    public Guid IncidentId { get; set; }
+
+    public DateTime SentAt { get; set; }
+
+    public static string IdOf(Guid incidentId, string channel, Guid adminId) => $"{incidentId:N}:{channel}:{adminId:N}";
+
+    public static IncidentNotification Of(Guid incidentId, string channel, Guid adminId, DateTime sentAt)
+        => new() { Id = IdOf(incidentId, channel, adminId), IncidentId = incidentId, SentAt = sentAt };
 }

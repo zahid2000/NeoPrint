@@ -67,6 +67,12 @@ public interface IAdminNotifier
     /// <summary>A migration or a mirror finished its copy: the wizard's last step.</summary>
     Task StorageSyncCompletedAsync(Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// A kiosk's status changed by itself - its printer stopped or returned,
+    /// its heartbeat was lost (plan section 9.6): the status cards refresh.
+    /// </summary>
+    Task KioskStatusChangedAsync(Guid kioskId, string status, CancellationToken cancellationToken = default);
+
     /// <summary>A kiosk reported a different list of printers (plan section 7.7).</summary>
     Task KioskPrintersUpdatedAsync(Guid kioskId, CancellationToken cancellationToken = default);
 

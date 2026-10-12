@@ -213,13 +213,15 @@ public sealed class KiosksController : ControllerBase
                 request.AgentVersion,
                 request.PrinterOnline,
                 _currentUser.Ip,
-                request.SafeMode),
+                request.SafeMode,
+                request.PrinterProblem),
             cancellationToken));
     }
 
     /// <param name="SafeMode">The kiosk UI started in safe mode after a crash loop (plan section 7.12).</param>
+    /// <param name="PrinterProblem">What is wrong when the printer is not ready, as a message key (<c>printer.outOfPaper</c>).</param>
     public sealed record HeartbeatRequest(
-        string? AppVersion, string? AgentVersion, bool PrinterOnline, bool SafeMode = false);
+        string? AppVersion, string? AgentVersion, bool PrinterOnline, bool SafeMode = false, string? PrinterProblem = null);
 }
 
 public sealed record KioskPrinterTelemetryRequest(IReadOnlyList<PrinterTelemetryReport>? Printers);
