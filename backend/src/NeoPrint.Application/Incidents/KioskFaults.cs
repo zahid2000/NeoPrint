@@ -121,8 +121,9 @@ public sealed class KioskFaultHandlers :
     IRequestHandler<MarkKioskOfflineCommand, bool>
 {
     /// <summary>
-    /// How often an order is sent to the printer by itself. One that stopped
-    /// this many times is not put back in the queue when the printer returns:
+    /// How often an order is sent to the printer in all, unless the setting
+    /// <c>PrintJob.MaxAutoRetries</c> says otherwise. One that stopped this
+    /// many times is not put back in the queue when the printer returns:
     /// somebody has to look at it.
     /// </summary>
     public const int MaxAutomaticAttempts = 3;
@@ -317,6 +318,11 @@ public sealed class KioskFaultHandlers :
     private async Task<int> ResumeInterruptedAsync(Kiosk kiosk, ActorContext actor, DateTime now, CancellationToken cancellationToken)
     {
         var resumed = 0;
+        var limit = Math.Max(
+            1,
+            await _settings
+                .GetIntAsync(SettingKeys.PrintJobMaxAutoRetries, MaxAutomaticAttempts, cancellationToken)
+                .ConfigureAwait(false));
 
         foreach (var job in await _jobs.ListInterruptedAsync(kiosk.Id, cancellationToken).ConfigureAwait(false))
         {
@@ -327,9 +333,9 @@ public sealed class KioskFaultHandlers :
 
             var attempts = await _attempts.ListForJobAsync(job.Id, cancellationToken).ConfigureAwait(false);
 
-            if (attempts.Count >= MaxAutomaticAttempts)
+            if (attempts.Count >= limit)
             {
-                // Not a fourth time by itself: the order stays stopped, its
+                // Not once more by itself: the order stays stopped, its
                 // owner can still cancel it, and somebody is asked to look.
                 await _reporter
                     .RaiseAsync(

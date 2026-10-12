@@ -94,6 +94,26 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
                 default:
                     break;
             }
+
+            // The two settings whose value is more than "a number" or "a word".
+            if (key == SettingKeys.PrintJobMaxAutoRetries
+                && int.TryParse(value, out var attempts)
+                && attempts is < MinPrintAttempts or > MaxPrintAttempts)
+            {
+                yield return new ValidationError(key, "settings.valueRange", ("min", MinPrintAttempts), ("max", MaxPrintAttempts));
+            }
+
+            if (key == SettingKeys.NotificationMinSeverity && !Severities.Contains(value, StringComparer.Ordinal))
+            {
+                yield return new ValidationError(key, "settings.valueSeverity");
+            }
         }
     }
+
+    /// <summary>At least the first print; a printer that failed ten times will fail the eleventh.</summary>
+    public const int MinPrintAttempts = 1;
+
+    public const int MaxPrintAttempts = 10;
+
+    private static readonly string[] Severities = Enum.GetNames<NeoPrint.Domain.Incidents.IncidentSeverity>();
 }

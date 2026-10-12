@@ -82,6 +82,28 @@ public static class SettingKeys
     /// section 9.6): one bad reading is not an outage.
     /// </summary>
     public const string KioskPrinterFaultAfterSeconds = "Kiosk.PrinterFaultAfterSeconds";
+    /// <summary>
+    /// How many times an order the printer stopped is sent to the printer in
+    /// all before it is left for somebody to look at (plan section 9.6): the
+    /// first print and the ones the system starts by itself when the printer
+    /// is back. One to ten.
+    /// </summary>
+    public const string PrintJobMaxAutoRetries = "PrintJob.MaxAutoRetries";
+
+    /// <summary>
+    /// The least severe incident the people who look after a kiosk are told
+    /// about outside the panel - by e-mail, and by Telegram where that is on
+    /// (plan section 2.1): <c>Critical</c>, <c>High</c> or <c>Medium</c>.
+    /// </summary>
+    public const string NotificationMinSeverity = "Notification.MinSeverity";
+
+    /// <summary>
+    /// Whether incidents also go to Telegram. Off: the channel is phase 2
+    /// (bot token, group), the code is there and waits for both this and the
+    /// token (<c>docs/DECISIONS.md</c>, 2026-10-12).
+    /// </summary>
+    public const string NotificationTelegramEnabled = "Notification.TelegramEnabled";
+
     public const string KioskTelemetryRetentionDays = "Kiosk.TelemetryRetentionDays";
     public const string KioskPrinterEventRetentionDays = "Kiosk.PrinterEventRetentionDays";
 
@@ -179,6 +201,9 @@ public static class SettingKeys
         new(KioskOfflineAfterSeconds, "60", SettingValueType.Integer, "Heartbeat gəlməzsə offline sayılır"),
         new(KioskTelemetrySeconds, "30", SettingValueType.Integer, "Telemetriya göndərmə intervalı"),
         new(KioskPrinterFaultAfterSeconds, "30", SettingValueType.Integer, "Printer bu qədər saniyə hazır olmazsa kiosk dayandırılır və gözləyən sifarişlər qaytarılır"),
+        new(PrintJobMaxAutoRetries, "3", SettingValueType.Integer, "Printerin dayandırdığı sifariş cəmi neçə dəfə çapa göndərilir (1–10); bundan sonra avtomatik davam etmir və incident açılır"),
+        new(NotificationMinSeverity, "High", SettingValueType.String, "Incident bu səviyyədən başlayaraq email ilə bildirilir: Critical, High və ya Medium"),
+        new(NotificationTelegramEnabled, "false", SettingValueType.Boolean, "Incident bildirişlərinin Telegram kanalı (Faza 2; bot token-i də lazımdır)"),
         new(KioskTelemetryRetentionDays, "30", SettingValueType.Integer, "Telemetriya tarixçəsinin saxlanma müddəti"),
         new(KioskPrinterEventRetentionDays, "365", SettingValueType.Integer, "Printer hadisələrinin saxlanma müddəti"),
         new(KioskConfigCacheTtlHours, "24", SettingValueType.Integer,

@@ -522,6 +522,8 @@
   "settings.valueDecimal": "Dəyər onluq ədəd olmalıdır.",
   "settings.valueEmpty": "Dəyər boş ola bilməz.",
   "settings.valueInteger": "Dəyər tam ədəd olmalıdır.",
+  "settings.valueRange": "Dəyər {min} ilə {max} arasında olmalıdır.",
+  "settings.valueSeverity": "Dəyər Critical, High və ya Medium olmalıdır.",
   "storage.accessKeyRequired": "Giriş açarı (access key) tələb olunur.",
   "storage.actionNotNow": "Bu əməliyyat {status} vəziyyətindəki iş üçün mümkün deyil.",
   "storage.actionUnknown": "Naməlum əməliyyat: pause, resume, cancel və ya retry-failed.",

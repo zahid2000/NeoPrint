@@ -522,6 +522,8 @@
   "settings.valueDecimal": "The value must be a number.",
   "settings.valueEmpty": "The value cannot be empty.",
   "settings.valueInteger": "The value must be a whole number.",
+  "settings.valueRange": "The value must be between {min} and {max}.",
+  "settings.valueSeverity": "The value must be Critical, High or Medium.",
   "storage.accessKeyRequired": "The access key is required.",
   "storage.actionNotNow": "This action is not possible for a job that is {status}.",
   "storage.actionUnknown": "Unknown action: pause, resume, cancel or retry-failed.",

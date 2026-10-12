@@ -248,6 +248,38 @@ public sealed class KioskOutageTests
     }
 
     [DockerFact]
+    public async Task How_many_times_an_order_is_printed_by_itself_is_a_setting()
+    {
+        if (Skip) { return; }
+
+        using var kiosk = await ReadyKioskAsync(_fixture, "outage-once");
+        using var owner = await TestUsers.ConfirmedAsync(_fixture);
+        var (jobId, _) = await RegisteredJobAsync(kiosk, owner);
+
+        await SetAsync("PrintJob.MaxAutoRetries", "1");
+
+        try
+        {
+            await ReportAsync(kiosk.Client, jobId, "Printing", attempt: Attempt(1));
+            await ReportAsync(kiosk.Client, jobId, "Interrupted", errorCode: "printer.paperJam", attempt: Attempt(1));
+            await EventuallyAsync(() => KioskAsync(kiosk.KioskId), k => k.Status == KioskStatus.Paused, "the kiosk being paused");
+
+            await BeatAsync(kiosk, printerOnline: true);
+
+            // One attempt allowed and one made: it is not sent again.
+            (await JobAsync(jobId)).Status.Should().Be(PrintJobStatus.Interrupted);
+
+            var asked = (await IncidentsAsync(kiosk.KioskId)).Where(incident => incident.Open).Should().ContainSingle().Subject;
+            asked.Type.Should().Be(IncidentType.Other);
+            asked.EntityId.Should().Be(jobId);
+        }
+        finally
+        {
+            await SetAsync("PrintJob.MaxAutoRetries", "3");
+        }
+    }
+
+    [DockerFact]
     public async Task A_file_that_could_not_be_prepared_stops_one_order_not_the_kiosk()
     {
         if (Skip) { return; }
@@ -674,6 +706,20 @@ public sealed class KioskOutageTests
             return await scope.ServiceProvider.GetRequiredService<ISender>().Send(new NotifyIncidentCommand(id));
         }
 
+        // The Telegram channel is off until somebody switches it on (phase 2).
+        await SetAsync("Notification.TelegramEnabled", "true");
+
+        try
+        {
+            await TellAsync();
+        }
+        finally
+        {
+            await SetAsync("Notification.TelegramEnabled", "false");
+        }
+
+        async Task TellAsync()
+        {
         // Telegram down: the e-mails go, the event is asked for again.
         telegram.Fail = true;
         await ((Func<Task>)(() => NotifyAsync(incident.Id))).Should().ThrowAsync<InvalidOperationException>();
@@ -718,6 +764,79 @@ public sealed class KioskOutageTests
         // Medium stays in the panel.
         (await NotifyAsync(quiet.Id)).Should().Be(0);
         emails.Sent.Should().HaveCount(sentSoFar);
+        }
+    }
+
+    [DockerFact]
+    public async Task Who_is_told_about_an_incident_follows_the_settings_and_telegram_is_off_until_switched_on()
+    {
+        if (Skip) { return; }
+
+        using var kiosk = await ReadyKioskAsync(_fixture, "outage-notify-settings");
+        var keeper = await AdminAccountAsync(KioskScope.Only(kiosk.KioskId), "555666777", Permissions.IncidentsView);
+
+        Incident Of(IncidentSeverity severity) => Incident.Raise(
+            IncidentType.Other,
+            severity,
+            UserMessage.Of("incidents.kiosk.appCrash", ("kiosk", kiosk.KioskCode)),
+            $"test-settings:{Guid.NewGuid():N}",
+            DateTime.UtcNow,
+            kiosk.KioskId);
+
+        var high = Of(IncidentSeverity.High);
+        var highLater = Of(IncidentSeverity.High);
+        var critical = Of(IncidentSeverity.Critical);
+        var medium = Of(IncidentSeverity.Medium);
+
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<MongoContext>().Incidents.InsertManyAsync([high, highLater, critical, medium]);
+        }
+
+        // A bot that has its token: only the setting keeps it quiet.
+        var telegram = new CapturedTelegram();
+        await using var host = _fixture.WithHttpOnlyHost(builder => builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<ITelegramSender>();
+            services.AddSingleton<ITelegramSender>(telegram);
+        }));
+        var emails = host.Services.GetRequiredService<CapturedEmails>();
+
+        async Task<int> NotifyAsync(Guid id)
+        {
+            using var scope = host.Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<ISender>().Send(new NotifyIncidentCommand(id));
+        }
+
+        int MailsTo(string email) => emails.Sent.Count(mail => mail.To == email);
+
+        // As installed: High and up by e-mail, nothing by Telegram.
+        (await NotifyAsync(high.Id)).Should().BeGreaterThan(0);
+        MailsTo(keeper.Email).Should().Be(1);
+        (await NotifyAsync(medium.Id)).Should().Be(0);
+        telegram.Sent.Should().BeEmpty("the channel is off by default");
+
+        try
+        {
+            // Only the worst.
+            await SetAsync("Notification.MinSeverity", "Critical");
+
+            (await NotifyAsync(highLater.Id)).Should().Be(0, "High is below the threshold now");
+            (await NotifyAsync(critical.Id)).Should().BeGreaterThan(0);
+            MailsTo(keeper.Email).Should().Be(2);
+
+            // Everything.
+            await SetAsync("Notification.MinSeverity", "Medium");
+
+            (await NotifyAsync(medium.Id)).Should().BeGreaterThan(0);
+            (await NotifyAsync(highLater.Id)).Should().BeGreaterThan(0);
+            MailsTo(keeper.Email).Should().Be(4);
+            telegram.Sent.Should().BeEmpty();
+        }
+        finally
+        {
+            await SetAsync("Notification.MinSeverity", "High");
+        }
     }
 
     private sealed class CapturedLog : ILoggerProvider
@@ -823,6 +942,17 @@ public sealed class KioskOutageTests
         }
 
         await BeatAsync(kiosk, printerOnline: false, problem: problem);
+    }
+
+    /// <summary>Saves one setting as the SuperAdmin; a test that changes one puts it back.</summary>
+    private async Task SetAsync(string key, string value)
+    {
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+
+        var saved = await admin.PutAsJsonAsync(
+            "/api/admin/settings", new { values = new Dictionary<string, string> { [key] = value } });
+
+        saved.StatusCode.Should().Be(HttpStatusCode.OK, await saved.Content.ReadAsStringAsync());
     }
 
     private async Task LastHeardAsync(Guid kioskId, DateTime at)

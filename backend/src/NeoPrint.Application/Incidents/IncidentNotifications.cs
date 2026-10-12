@@ -11,6 +11,7 @@ using NeoPrint.Application.Refunds;
 using NeoPrint.Domain.Admin;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Incidents;
+using NeoPrint.Domain.Settings;
 
 namespace NeoPrint.Application.Incidents;
 
@@ -33,9 +34,12 @@ public interface ITelegramSender
 /// after the kiosk are told by e-mail and Telegram - the panel already knows.
 /// </summary>
 /// <remarks>
-/// Urgent incidents only: Critical and High. Medium (a disk filling up, a
-/// slow backend) stays in the panel - an inbox that rings for everything is
-/// one nobody reads (<c>docs/DECISIONS.md</c>).
+/// Urgent incidents only: from <c>Notification.MinSeverity</c> up - High
+/// unless an administrator says otherwise, so Medium (a disk filling up, a
+/// slow backend) stays in the panel: an inbox that rings for everything is
+/// one nobody reads. E-mail is the channel; Telegram is phase 2 and goes only
+/// when <c>Notification.TelegramEnabled</c> is on and the bot has its token
+/// (<c>docs/DECISIONS.md</c>).
 /// </remarks>
 /// <returns>How many messages went out now.</returns>
 public sealed record NotifyIncidentCommand(Guid IncidentId) : IRequest<int>;
@@ -52,6 +56,7 @@ public sealed class IncidentNotificationHandler : IRequestHandler<NotifyIncident
     private readonly IPermissionResolver _permissions;
     private readonly IEmailSender _email;
     private readonly ITelegramSender _telegram;
+    private readonly ISettingsReader _settings;
     private readonly IClock _clock;
     private readonly ILogger<IncidentNotificationHandler> _logger;
 
@@ -65,10 +70,12 @@ public sealed class IncidentNotificationHandler : IRequestHandler<NotifyIncident
         IPermissionResolver permissions,
         IEmailSender email,
         ITelegramSender telegram,
+        ISettingsReader settings,
         IClock clock,
         ILogger<IncidentNotificationHandler> logger)
     {
         _clock = clock;
+        _settings = settings;
         _incidents = incidents;
         _kiosks = kiosks;
         _admins = admins;
@@ -85,10 +92,21 @@ public sealed class IncidentNotificationHandler : IRequestHandler<NotifyIncident
         var incident = await _incidents.FindByIdAsync(request.IncidentId, cancellationToken).ConfigureAwait(false);
 
         // Over before anybody could be told (a printer that blinked): no mail about nothing.
-        if (incident is null || !incident.Open || incident.Severity == IncidentSeverity.Medium)
+        if (incident is null || !incident.Open)
         {
             return 0;
         }
+
+        // The more severe, the smaller the number: Critical is 0.
+        if (incident.Severity > await LeastSeverityAsync(cancellationToken).ConfigureAwait(false))
+        {
+            return 0;
+        }
+
+        var telegram = _telegram.Enabled
+                       && await _settings
+                           .GetBoolAsync(SettingKeys.NotificationTelegramEnabled, false, cancellationToken)
+                           .ConfigureAwait(false);
 
         var kiosk = incident.KioskId is { } kioskId
             ? await _kiosks.FindByIdAsync(kioskId, cancellationToken).ConfigureAwait(false)
@@ -130,7 +148,7 @@ public sealed class IncidentNotificationHandler : IRequestHandler<NotifyIncident
                 }
             }
 
-            if (_telegram.Enabled
+            if (telegram
                 && !string.IsNullOrWhiteSpace(admin.TelegramChatId)
                 && !told.Contains(IncidentNotification.IdOf(incident.Id, TelegramChannel, admin.Id)))
             {
@@ -162,6 +180,19 @@ public sealed class IncidentNotificationHandler : IRequestHandler<NotifyIncident
         }
 
         return sent;
+    }
+
+    /// <summary>
+    /// <c>Notification.MinSeverity</c>; a value nobody could have saved
+    /// (the validator refuses it) is read as the default, High.
+    /// </summary>
+    private async Task<IncidentSeverity> LeastSeverityAsync(CancellationToken cancellationToken)
+    {
+        var value = await _settings.GetAsync(SettingKeys.NotificationMinSeverity, cancellationToken).ConfigureAwait(false);
+
+        return Enum.TryParse<IncidentSeverity>(value, ignoreCase: false, out var least) && Enum.IsDefined(least)
+            ? least
+            : IncidentSeverity.High;
     }
 
     /// <summary>

@@ -429,6 +429,40 @@ public sealed class AdminConfigTests
     }
 
     [DockerFact]
+    public async Task The_incident_and_retry_settings_are_installed_with_their_defaults_and_refuse_what_they_cannot_mean()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SuperAdminAsync();
+
+        var settings = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/settings")).EnumerateArray().ToList();
+
+        string? Default(string key) => settings
+            .Single(setting => setting.GetProperty("key").GetString() == key).GetProperty("defaultValue").GetString();
+
+        Default("PrintJob.MaxAutoRetries").Should().Be("3");
+        Default("Notification.MinSeverity").Should().Be("High");
+        Default("Notification.TelegramEnabled").Should().Be("false", "the Telegram channel is phase 2");
+
+        async Task<HttpStatusCode> SaveAsync(string key, string value)
+            => (await admin.PutAsJsonAsync("/api/admin/settings", new { values = new Dictionary<string, string> { [key] = value } })).StatusCode;
+
+        (await SaveAsync("Notification.MinSeverity", "Urgent")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Notification.MinSeverity", "high")).Should().Be(HttpStatusCode.BadRequest, "the name is written as the panel offers it");
+        (await SaveAsync("PrintJob.MaxAutoRetries", "0")).Should().Be(HttpStatusCode.BadRequest, "the first print is an attempt");
+        (await SaveAsync("PrintJob.MaxAutoRetries", "11")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Notification.TelegramEnabled", "yes")).Should().Be(HttpStatusCode.BadRequest);
+
+        // Nothing of that was written.
+        using var scope = _fixture.Services.CreateScope();
+        var reader = scope.ServiceProvider.GetRequiredService<ISettingsReader>();
+
+        (await reader.GetAsync(SettingKeys.NotificationMinSeverity)).Should().Be("High");
+        (await reader.GetIntAsync(SettingKeys.PrintJobMaxAutoRetries, 0)).Should().Be(3);
+        (await reader.GetBoolAsync(SettingKeys.NotificationTelegramEnabled, true)).Should().BeFalse();
+    }
+
+    [DockerFact]
     public async Task An_unknown_setting_is_refused_before_anything_is_written()
     {
         if (Skip) { return; }
