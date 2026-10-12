@@ -112,6 +112,21 @@ public sealed class KioskSession
                 worker.Wake();
                 return Task.CompletedTask;
             };
+            Func<Guid, Task> jobCancelled = jobId =>
+            {
+                worker.Wake();
+
+                // Scenario A for an order that had not started (plan section 9.6,
+                // A.4): with the printer down the backend cancels a guest's paid
+                // order and sends the money back - the screen says so, as it does
+                // for an order the printer stopped half-way.
+                if (_model.PrinterProblem is not null)
+                {
+                    _ = RunGuardedAsync("refund notice", () => ShowRefundNoticeAsync(orders, jobId, token, guestOnly: true), token);
+                }
+
+                return Task.CompletedTask;
+            };
             Func<Task> configChanged = () => RefreshConfigurationAsync(runtime, token);
             // In safe mode too: the processor itself leaves the printer commands for later.
             Func<Guid, string, Task> commandReceived = (id, type) => commands.HandleAsync(id, type, token);
@@ -163,7 +178,7 @@ public sealed class KioskSession
 
             hub.QueueUpdated += queueUpdated;
             hub.JobAdded += jobChanged;
-            hub.JobCancelled += jobChanged;
+            hub.JobCancelled += jobCancelled;
             hub.PrinterConfigChanged += configChanged;
             hub.KioskConfigChanged += configChanged;
             hub.CommandReceived += commandReceived;
@@ -178,7 +193,7 @@ public sealed class KioskSession
             {
                 hub.QueueUpdated -= queueUpdated;
                 hub.JobAdded -= jobChanged;
-                hub.JobCancelled -= jobChanged;
+                hub.JobCancelled -= jobCancelled;
                 hub.PrinterConfigChanged -= configChanged;
                 hub.KioskConfigChanged -= configChanged;
                 hub.CommandReceived -= commandReceived;
@@ -194,6 +209,14 @@ public sealed class KioskSession
 
             await TryAsync("printer report", () => reporter.ReportAsync(force: true, token)).ConfigureAwait(false);
             await CatchUpAsync(runtime, commands, api, token).ConfigureAwait(false);
+
+            if (_services.GetRequiredService<CrashLoopGuard>().CrashedLastRun)
+            {
+                // Plan section 7.1: "log + incident + restart". The restart has
+                // happened; this is the incident. A crash loop is reported by
+                // the heartbeat's safe-mode flag, as a worse one.
+                await TryAsync("crash report", () => api.ReportIncidentAsync("AppCrash", token)).ConfigureAwait(false);
+            }
 
             if (!safeMode)
             {
@@ -386,7 +409,13 @@ public sealed class KioskSession
     /// After the printer stopped an order: once the backend has made the refund
     /// (scenario A), the screen shows what goes back and the QR to follow it.
     /// </summary>
-    private async Task ShowRefundNoticeAsync(KioskOrderService orders, Guid jobId, CancellationToken cancellationToken)
+    /// <param name="guestOnly">
+    /// Only money going back where it came from - a card, a bank account, a
+    /// voucher. A registered user's refund to their own wallet is theirs to
+    /// read in the app, not on a screen in a shop.
+    /// </param>
+    private async Task ShowRefundNoticeAsync(
+        KioskOrderService orders, Guid jobId, CancellationToken cancellationToken, bool guestOnly = false)
     {
         for (var attempt = 0; attempt < 20 && !cancellationToken.IsCancellationRequested; attempt++)
         {
@@ -397,6 +426,11 @@ public sealed class KioskSession
             try
             {
                 refunds = await orders.GetRefundsAsync(jobId, cancellationToken).ConfigureAwait(false);
+
+                if (guestOnly)
+                {
+                    refunds = [.. refunds.Where(refund => refund.Destination is not ("Wallet" or "Bonus"))];
+                }
             }
             catch (Exception exception) when (exception is HttpRequestException or KioskApiException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
             {
@@ -497,7 +531,10 @@ public sealed class KioskSession
 
             var healthy = state is PrinterState.Online or PrinterState.TonerLow;
 
-            await runtime.BeatAsync(healthy, cancellationToken).ConfigureAwait(false);
+            // No printer chosen is not a fault of one: the kiosk is waiting to be configured.
+            await runtime
+                .BeatAsync(healthy, cancellationToken, healthy || selected is null ? null : PrinterErrors.For(state))
+                .ConfigureAwait(false);
 
             await OnUiAsync(() =>
                 {

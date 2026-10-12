@@ -55,6 +55,9 @@ public sealed class CrashLoopGuard
     /// <summary>The last time a run ended without closing cleanly, within <see cref="Window"/>; telemetry reports it.</summary>
     public DateTime? LastCrashAt => Read().Crashes is { Count: > 0 } crashes ? crashes.Max() : null;
 
+    /// <summary>Whether the run before this one ended without closing cleanly; known after <see cref="Start"/>.</summary>
+    public bool CrashedLastRun { get; private set; }
+
     /// <summary>
     /// Called once at start: counts the last run if it did not end cleanly,
     /// and says whether this run is in safe mode.
@@ -70,6 +73,7 @@ public sealed class CrashLoopGuard
         {
             // Noticed now, a restart delay after it happened.
             crashes.Add(now);
+            CrashedLastRun = true;
         }
 
         var safeModeSince = record.SafeModeSince ?? (crashes.Count >= _threshold ? now : null);

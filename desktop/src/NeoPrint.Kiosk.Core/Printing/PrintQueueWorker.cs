@@ -414,6 +414,30 @@ public sealed class PrintQueueWorker
                 }
             }
 
+            // Stopped at the printer, reported, and now in the queue again: the
+            // backend put it back when the printer returned (plan section 7.4).
+            // Its file is still here - only a printed job's file is removed.
+            foreach (var item in queue.Where(item => item.Status == "Queued"))
+            {
+                if (_journal.Find(item.JobId) is { State: JournalState.Interrupted, StatusReported: true } stopped
+                    && _spool.Exists(stopped.SpoolName))
+                {
+                    _logger.LogInformation("Job {JobCode} is in the queue again after stopping; it prints once more.", stopped.JobCode);
+                    _journal.Save(stopped with
+                    {
+                        State = JournalState.Queued,
+                        ErrorCode = null,
+                        StatusReported = false,
+                        PrintedSheets = 0,
+                        SpoolerJobId = null,
+                        CounterBefore = null,
+                        CounterAfter = null,
+                        Recovered = false,
+                        UpdatedAt = DateTime.UtcNow,
+                    });
+                }
+            }
+
             // Never paid: the intent ran out long ago and the order with it.
             foreach (var abandoned in _journal.All()
                          .Where(entry => entry.State == JournalState.AwaitingPayment

@@ -178,6 +178,22 @@ public sealed partial class KioskApiClient
         await SendAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Tells the backend something it cannot see for itself (plan section 6,
+    /// <c>POST incidents</c>): a type, and nothing else. Telling it twice opens
+    /// nothing twice.
+    /// </summary>
+    /// <param name="type"><c>AppCrash</c>, or a printer fault: <c>PrinterOffline</c>, <c>PaperOut</c>, <c>PaperJam</c>, <c>SelectedPrinterMissing</c>.</param>
+    public async Task ReportIncidentAsync(string type, CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, "api/incidents", cancellationToken)
+            .ConfigureAwait(false);
+
+        request.Content = JsonContent.Create(new { type }, options: JsonOptions);
+
+        await SendAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
     /// <summary>Answers a command; answering twice is harmless.</summary>
     public async Task CompleteCommandAsync(
         Guid commandId, bool succeeded, string? messageKey, int sheetsUsed, CancellationToken cancellationToken = default)

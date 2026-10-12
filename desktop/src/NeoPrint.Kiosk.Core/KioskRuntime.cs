@@ -134,7 +134,12 @@ public sealed class KioskRuntime
     /// </summary>
     public bool SafeMode { get; set; }
 
-    public async Task<bool> BeatAsync(bool printerOnline, CancellationToken cancellationToken = default)
+    /// <param name="printerProblem">
+    /// What is wrong when the printer is not ready, as a message key
+    /// (<c>printer.outOfPaper</c>): the backend pauses the kiosk and opens the
+    /// incident under that name (plan section 9.6).
+    /// </param>
+    public async Task<bool> BeatAsync(bool printerOnline, CancellationToken cancellationToken = default, string? printerProblem = null)
     {
         try
         {
@@ -146,7 +151,8 @@ public sealed class KioskRuntime
                     _configuration is null ? null : ThisAppVersion,
                     printerOnline,
                     cancellationToken,
-                    SafeMode)
+                    SafeMode,
+                    printerOnline ? null : printerProblem)
                 .ConfigureAwait(false);
 
             IsBackendReachable = true;

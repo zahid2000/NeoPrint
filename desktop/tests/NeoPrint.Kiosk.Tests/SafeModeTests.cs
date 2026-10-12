@@ -51,6 +51,28 @@ public sealed class SafeModeTests : IDisposable
     }
 
     [Fact]
+    public void A_run_that_follows_a_crash_knows_it_and_one_that_follows_a_clean_exit_does_not()
+    {
+        var guard = Guard();
+
+        guard.Start();
+        guard.CrashedLastRun.Should().BeFalse("the first start follows nothing");
+
+        // What the kiosk reports to the backend as an incident (plan section 7.1).
+        var afterCrash = Guard();
+        _clock.UtcNow += TimeSpan.FromSeconds(5);
+        afterCrash.Start();
+        afterCrash.CrashedLastRun.Should().BeTrue();
+
+        afterCrash.Stop();
+
+        var afterCleanExit = Guard();
+        _clock.UtcNow += TimeSpan.FromSeconds(5);
+        afterCleanExit.Start();
+        afterCleanExit.CrashedLastRun.Should().BeFalse("closing on purpose is not a crash");
+    }
+
+    [Fact]
     public void Clean_exits_and_crashes_spread_over_hours_are_not_a_loop()
     {
         var guard = Guard();

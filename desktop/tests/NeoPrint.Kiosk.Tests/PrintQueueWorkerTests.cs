@@ -273,6 +273,56 @@ public sealed class PrintQueueWorkerTests : IDisposable
     }
 
     [Fact]
+    public async Task An_order_the_backend_put_back_in_the_queue_after_it_stopped_prints_again()
+    {
+        // Plan section 7.4: when the printer returns, a registered user's
+        // interrupted order is Queued again on the backend. The kiosk still
+        // has its file - only a printed job's file is removed.
+        _backend.PutsStoppedOrdersBack = true;
+        var worker = Worker();
+        var id = await PlaceAsync(worker, "111111");
+        var failNext = Path.Combine(_paths.SpoolDirectory, "printed", "printer-fail-next.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(failNext)!);
+        await File.WriteAllTextAsync(failNext, "PaperJam");
+
+        await worker.StepAsync(CancellationToken.None);
+
+        _backend.Reports[^1].Should().Be((id, "Interrupted", 0, 0, "printer.paperJam"));
+        _printer.Printed.Should().BeEmpty();
+
+        // Still "Queued" in what the backend answers: it was put back.
+        await worker.StepAsync(CancellationToken.None);
+
+        _printer.Printed.Select(print => print.JobName).Should().Equal("NeoPrint-111111");
+        _backend.Reports.Select(report => report.Status).Should().Equal("Printing", "Interrupted", "Printing", "Completed");
+        _backend.Attempts[^1]!.Number.Should().Be(2, "a second attempt, with its own evidence");
+        _journal.Find(id).Should().BeNull("printed and heard: nothing left to remember");
+    }
+
+    [Fact]
+    public async Task An_order_that_stopped_is_not_printed_again_until_the_backend_has_heard_and_put_it_back()
+    {
+        var worker = Worker();
+        var id = await PlaceAsync(worker, "111111");
+        var failNext = Path.Combine(_paths.SpoolDirectory, "printed", "printer-fail-next.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(failNext)!);
+        await File.WriteAllTextAsync(failNext, "PaperJam");
+
+        await worker.StepAsync(CancellationToken.None);
+
+        _backend.Reports[^1].Should().Be((id, "Interrupted", 0, 0, "printer.paperJam"));
+
+        // The backend has heard and has not put it back: the order is in no
+        // queue, and however often the kiosk looks, it prints nothing.
+        await worker.StepAsync(CancellationToken.None);
+        await worker.StepAsync(CancellationToken.None);
+
+        _printer.Printed.Should().BeEmpty("only the backend puts a stopped order back");
+        _journal.Find(id)!.State.Should().Be(JournalState.Interrupted);
+        _backend.Reports.Count(report => report.Status == "Interrupted").Should().Be(1, "told once");
+    }
+
+    [Fact]
     public async Task A_job_waiting_for_the_printer_waits_for_the_tick_and_does_not_flood_the_backend()
     {
         // T-121: a jammed printer made the worker go round at once, asking for the
@@ -484,6 +534,13 @@ public sealed class PrintQueueWorkerTests : IDisposable
 
         public bool Down { get; set; }
 
+        /// <summary>
+        /// The printer is back by the time an interruption is heard: the order
+        /// is Queued again on the backend (plan section 7.4) rather than gone
+        /// from its queue.
+        /// </summary>
+        public bool PutsStoppedOrdersBack { get; set; }
+
         public int QueueReads { get; private set; }
 
         public Task<IReadOnlyList<QueueItem>> GetQueueAsync(CancellationToken cancellationToken)
@@ -502,6 +559,14 @@ public sealed class PrintQueueWorkerTests : IDisposable
 
             Reports.Add((jobId, status, printedSides, printedSheets, errorCode));
             Attempts.Add(attempt);
+
+            // As on the backend: a job that has ended is in no queue. Only
+            // Queued and Printing jobs are, and "Interrupted" is neither.
+            if (status == "Completed" || (status == "Interrupted" && !PutsStoppedOrdersBack))
+            {
+                Queue.RemoveAll(item => item.JobId == jobId);
+            }
+
             return Task.CompletedTask;
         }
     }

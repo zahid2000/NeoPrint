@@ -469,13 +469,14 @@ public sealed partial class KioskApiClient
         string? agentVersion,
         bool printerOnline,
         CancellationToken cancellationToken = default,
-        bool safeMode = false)
+        bool safeMode = false,
+        string? printerProblem = null)
     {
         using var request = await CreateAuthenticatedRequestAsync(
             HttpMethod.Post, "api/kiosks/heartbeat", cancellationToken).ConfigureAwait(false);
 
         request.Content = JsonContent.Create(
-            new { appVersion, agentVersion, printerOnline, safeMode }, options: JsonOptions);
+            new { appVersion, agentVersion, printerOnline, safeMode, printerProblem }, options: JsonOptions);
 
         using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
 
