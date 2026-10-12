@@ -30,6 +30,20 @@ Printer/kiosk problemi — **nəticə məlumdur** (kiosk serverlə əlaqədədir
 `Interrupted → Queued` (təhlükəsiz olduqda təkrar növbəyə)
 `Interrupted → Cancelled`
 
+**`Interrupted → Queued` nə vaxt baş verir (plan 7.4, 9.6; T-209).** Kioskun printeri yenidən hazır olanda
+(`ClearKioskFaultCommand`) həmin kioskda `Interrupted` qalan və **sahibi olan** sifarişlər növbəyə qayıdır
+(`PrintJob.Enqueue`, səbəb `printJobs.reason.printerRecovered`). Qonağın bank ödənişi A ssenarisi ilə artıq
+qaytarılıb və sifarişi `Cancelled`-dir — o qayıtmır. Sifariş avtomatik olaraq ən çox
+`KioskFaultHandlers.MaxAutomaticAttempts` (3) dəfə çapa gedir: üçüncü dayanmadan sonra `Interrupted` qalır,
+incident (High) açılır — sahibi ləğv edə bilər, qərar adamındır.
+
+`PrintJob.Runs` — sifarişin neçənci dəfə növbəyə düşdüyü. Hər çap cəhdinin sərf etdiyi kağız ayrıca
+sayılır (`supply_events.DedupKey`: `job:{id}`, ikinci dəfədən `job:{id}:{run}`).
+
+**Sahibinin ləğvi (plan 6 `POST print-jobs/{id}/cancel`; 9.6 A.5).** İstifadəçi öz sifarişini yalnız gözləyəndə
+ləğv edir: `Queued → Cancelled`, `Interrupted → Cancelled`. `Printing` (kağız artıq gedir) və `Suspected`
+(nəticə naməlumdur — qərar administratorundur, plan 2.5 B) ləğv olunmur.
+
 Kiosk ilə əlaqə itib — **nəticə naməlumdur** (Plan Bölmə 2.5, ssenari B):
 
 `Queued → Suspected`
@@ -107,6 +121,33 @@ Refund nəticəsi:
 `NotActivated → NotConfigured → Online`
 
 `Online ↔ Paused`, `Online ↔ Offline`, `Online → Maintenance`, `* → Disabled`
+
+`Maintenance → Paused`, `Offline → Paused`, `NotConfigured → Paused` — yalnız printerin nasazlığı hələ
+davam edəndə (aşağıda).
+
+**Printerin nasazlığı (plan 9.6, ssenari A; T-209).** `Kiosk.DeclareFault(code)` nasazlığı yadda saxlayır
+(`FaultSince`, `FaultCode` — mesaj açarı, məs. `printer.outOfPaper`) və `Online → Paused` edir;
+`Kiosk.ClearFault` onu götürür və `Paused → Online`. `Paused` nasazlığın **öz** statusudur: administratorun
+fasiləsi `Maintenance`-dir, itmiş əlaqə `Offline`.
+
+- Nasazlıq üç yolla elan olunur: (1) heartbeat `printerOnline: false` deyir və bu
+  `Kiosk.PrinterFaultAfterSeconds` (30) davam edir — bir pis oxunuş nasazlıq deyil (`PrinterDownSince`
+  ilk pis oxunuşu saxlayır, yaxşı oxunuş onu sıfırlayır); (2) sifariş printerin öz xətası ilə
+  (`printer.offline / outOfPaper / paperJam / notFound / error`) `Interrupted` olur — dərhal, gözləmədən;
+  (3) kiosk `POST incidents` ilə özü deyir, və ya seçilmiş printer onun siyahısından itir.
+- Nasazlıq `printerOnline: true` deyən ilk heartbeat-də bitir.
+- Daha güclü vəziyyət nasazlıqdan üstündür, amma onu unutdurmur: `Maintenance` və ya `Offline` kiosk
+  statusunu saxlayır, nasazlıq isə yadda qalır — fasilə qalxanda (`ResumeByAdmin`), kiosk təhlükəsiz rejimdən
+  çıxanda və ya heartbeat qayıdanda printer hələ işləmirsə kiosk `Online` yox, `Paused` olur
+  (`Maintenance → Paused`, `Offline → Paused`, `NotConfigured → Paused`).
+- `Kiosk.WorkingStatus`: administrator fasiləsi varsa `Maintenance`, yoxdursa nasazlıq varsa `Paused`,
+  yoxdursa `Online`.
+
+**Əlaqənin itməsi (plan 9.6, ssenari B; T-209).** `KioskHeartbeatMonitor` (15 saniyədə bir)
+`Kiosk.OfflineAfterSeconds` (60) susmuş kiosku `Online | Paused | NotConfigured → Offline` edir və incident
+(Critical) açır. `Maintenance` kimsə qərarıdır — status qalır, incident yenə açılır. Heç nə ləğv olunmur,
+heç nə qaytarılmır (sifarişlərin taleyi `StuckJobWatchdogJob`-undur). Növbəti heartbeat kiosku qaytarır və
+incident-i bağlayır.
 
 **Administratorun fasiləsi (plan 7.8, `Pause` / `Resume`; T-208).** `Kiosk.PauseByAdmin` bayraq qoyur
 (`PausedByAdminSince`) və kioskun statusunu `Maintenance` edir: `Online | Paused | Offline → Maintenance`.

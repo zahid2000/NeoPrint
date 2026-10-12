@@ -101,6 +101,14 @@ toner dəyişdi, kağız dolduruldu, sıxılma başladı / bitdi, vəziyyət də
 sətir) və sərf proqnozu, servis tapşırıqları üçün bir il qalır. İstifadəçi və ya fayl haqqında heç
 nə yoxdur.
 
+## Incident bildirişlərinin qeydi
+
+`incident_notifications` — incident-in kimə və hansı kanalla (`email` / `telegram`) göndərildiyi: sətirdə
+yalnız incident-in `id`-si, kanal və admin hesabının `id`-si var — **ünvan və chat ID yoxdur**. Məqsədi
+təkrar çatdırılan hadisənin eyni adama iki dəfə məktub yazmamasıdır, ona görə TTL indeksi ilə 30 gündən
+sonra silinir (hadisənin təkrar çatdırılması günlərlə ölçülür, aylarla yox). Incident-in özü `incidents`-də
+qalır.
+
 ## Səhifə şəkillərinin keşi
 
 Önizləmə üçün çəkilmiş səhifə şəkli istifadəçi faylının məzmunudur. O, yalnız API prosesinin

@@ -540,8 +540,19 @@ Kiosk token, `Idempotency-Key` — **paketin** açarı (itən cavabdan sonra eyn
 
 ### `POST /api/kiosks/heartbeat`
 
-`{ "appVersion", "agentVersion", "printerOnline", "safeMode" }` →
+`{ "appVersion", "agentVersion", "printerOnline", "safeMode", "printerProblem" }` →
 `{ "status", "nextInSeconds", "configurationChangedAt", "serverTime" }`
+
+**Printerin vəziyyəti (plan 9.6, ssenari A; T-209).** `printerOnline: false` — seçilmiş printer çap edə
+bilmir; `printerProblem` nə olduğunu mesaj açarı ilə deyir (`printer.offline`, `printer.outOfPaper`,
+`printer.paperJam`, `printer.notFound`; tanınmayan dəyər `printer.error` kimi oxunur — kioskun
+uydurduğu açar saxlanılmır). Bu, `Kiosk.PrinterFaultAfterSeconds` (30) davam edəndə kiosk `Paused` olur,
+incident (Critical) açılır, qonaqların gözləyən bank ödənişləri qaytarılır, qeydiyyatlı sahiblərə seçim
+təklif olunur. Bir pis oxunuş heç nə etmir. `printerOnline: true` deyən ilk heartbeat kiosku `Online`-a
+qaytarır, incident-ləri bağlayır və dayanmış sifarişləri yenidən növbəyə qoyur
+(`docs/STATE_MACHINES.md`). Printer seçilməyən kioskda bu sahələr nəzərə alınmır.
+
+`safeMode: true` həm də incident açır (`AppCrash`, Critical); `false` onu bağlayır.
 
 `safeMode: true` — kiosk tətbiqi 10 dəqiqədə `Kiosk.CrashLoopThreshold` dəfə
 çökdüyü üçün təhlükəsiz rejimdə açılıb ("Texniki xidmət", sifariş yoxdur;
@@ -953,7 +964,7 @@ yoxlamalar use-case-dədir ki, kiosk override (pilot) tətbiq olunsun.
 | Hub | Kim | Nə üçün |
 |---|---|---|
 | `/hubs/provisioning` | Provisioning token | Aktivləşdirmə anında cihaza xəbər verilir — cihaz kod ekranından özü keçir |
-| `/hubs/admin` | Admin token | `PermissionsChanged`, `DeviceRevoked`, `QueueUpdated` (yalnız hesabın əhatəsindəki kiosklar üçün) |
+| `/hubs/admin` | Admin token | `PermissionsChanged`, `DeviceRevoked`, `QueueUpdated` (yalnız hesabın əhatəsindəki kiosklar üçün); `KioskStatusChanged` (`{kioskId, status}` — printer dayandı / qayıtdı, heartbeat itdi; T-209), `IncidentRaised` (`{incidentId, type, severity, kioskId}`) və `IncidentResolved` (`{incidentId, type, status, kioskId}` — təsdiqləndi və ya bağlandı): kioska aid incident yalnız həmin kioskun əhatəsindəki hesablara, kioska aid olmayan hamıya gedir |
 | `/hubs/kiosk` | Kiosk token | Qrup `kiosk:{kioskId}` (token-dəki kiosk). `QueueUpdated` (`{kioskId, queue[]}`), `JobAdded`, `JobCancelled` (`{kioskId, jobId}`), `PrinterConfigChanged`, `KioskConfigChanged`, `KioskCommand`, `PaymentConfirmed` (`{kioskId, paymentId, jobId}`), `SessionOpened` (`{kioskId, sessionId, expiresAt}` — telefon qoşuldu; kim olduğu yoxdur, ekran ictimaidir), `SessionClosed` (`{kioskId, sessionId, reason}`: `Closed` / `Expired` / `Replaced`) |
 | `/hubs/user` | User token | Qrup `user:{userId}` (token-dəki istifadəçi; başqasının hadisəsi heç vaxt gəlmir). `JobStatusChanged` (`{jobId, jobCode, status}` — `Suspected` daxil), `PaymentStatusChanged` (`{paymentId, jobId, status}`), `RefundStatusChanged` (`{refundId, paymentId, jobId, status, amount, destination}`), `SessionClosed` (`{sessionId, kioskId, reason}`). Mesaj yalnız xəbərdir: cari statusu daşıyır, təfərrüat API-dən oxunur; itən və ya təkrar gələn mesaj heç nəyi pozmur |
 
@@ -1416,6 +1427,30 @@ Tətbiqdə "Sifarişlərim": hesabın son 100 sifarişi, ən yenisi əvvəl —
 `[{ id, jobCode, status, kioskId, kioskCode, kioskName, fileName, pages, copies, color, paper, amount, currency, printedSides, reason, paymentId, createdAt, finishedAt }]`.
 Tətbiqlə ödənilən kiosk sifarişi ödəniş anında hesaba bağlanır və burada görünür; bank QR ilə ödənilən anonim sifariş görünmür. `amount` — kioskda göstərilən qiymət (promokod daxil); faktiki tutulan məbləğ qəbzdədir. `reason` — dayanma və ya ləğv səbəbi oxuyanın dilində.
 
+Hər sətirdə həm də: `canCancel` — sahibi indi ləğv edə bilər (`Queued` və ya `Interrupted`);
+`kioskStopped` — sifarişin kioskunda printer hazırda işləmir (plan 9.6): tətbiq "gözlə və ya ləğv et"
+seçimini göstərir.
+
+### `POST /api/print-jobs/my/{id}/cancel` (User token)
+
+Sahibi öz sifarişini ləğv edir (plan 6; 9.6 A.5) → `204`. Yalnız gözləyən sifariş: `Queued` və ya
+`Interrupted`. Ödənilən məbləğ plan 2.5 qaydası ilə qayıdır (`PrintJobCancelled` → refund modulu; tətbiqlə
+ödənilən — balansa). Təkrar çağırış heç nə dəyişmir (`204`). `Printing` → `409 printJobs.cancelWhilePrinting`;
+bitmiş və ya `Suspected` → `409 printJobs.cancelNotWaiting`; başqasının sifarişi → `404`.
+
+### `POST /api/incidents` (Kiosk token)
+
+Kiosk backend-in özü görə bilmədiyini bildirir (plan 6, "Incidents"): `{ "type" }` → `204`.
+
+| `type` | Nə olur |
+|---|---|
+| `PrinterOffline`, `PaperOut`, `PaperJam`, `SelectedPrinterMissing` | Printer nasazlığı **dərhal** elan olunur (heartbeat-in gözləməsi olmadan): kiosk `Paused`, incident (Critical), plan 9.6 A |
+| `AppCrash` | Tətbiq çökdü və yenidən qalxdı: incident (High). Kiosk işləyir |
+
+Başqa hər növ (`RefundFailed`, `DiskLow`, `Other`, …) → `400 incidents.typeNotReportable`: onlar
+backend-in öz nəticələridir. Kiosk etibarsız cihazdır — yalnız növ göndərir, mətni saxlanılmır; kiosk və növ
+üzrə eyni anda bir açıq incident ola bilər, ona görə nə qədər çağırsa da siyahını doldura bilmir.
+
 ### `GET /api/print-jobs/{id}/file` (Kiosk token)
 
 Tətbiqdən verilmiş sifarişin (`MobileSession`) çap PDF-i, deşifrə olunmuş (plan 7.4): kiosk onu şifrəli
@@ -1625,6 +1660,10 @@ Kiosk qəbz ekranı və tətbiq üçün: `{ receiptId, status (Pending/Issued/Fa
 | `GET /api/admin/fiscal-receipts/{id}` | `fiscal.view` | Detal |
 | `POST /api/admin/fiscal-receipts/{id}/retry` (`Idempotency-Key`) | `fiscal.manage` | `Failed` və ya gözləyən çek dərhal, yeni cəhd sayı ilə; verilmiş çek `409 fiscal.alreadyIssued`; audit `fiscal.receipts.retry` |
 | `GET` · `PUT /api/admin/fiscal/settings` | `fiscal.manage` | Yalnız `Fiscal.*` tənzimləmələri (`{ values: { "Fiscal.OnlineTerminalId": "..." } }`); başqa açar `400 fiscal.settingNotFiscal`; tip yoxlaması və audit ümumi tənzimləmələrdəki kimi |
+| `GET /api/admin/incidents/{id}` | `incidents.view` | Detal (plan 9.6 A.6): `{ incident, affected[] }`. `affected` — incident-in toxunduğu sifarişlər: `{ jobId, jobCode, status, registered, reason, paymentId, paid, currency, paymentStatus, refunds: [{ id, status, amount, destination, reason, createdAt }] }`. Kiosk incident-i üçün: hazırda `Interrupted` / `Suspected` olanlar, incident açıq ikən növbədə gözləyənlər və incident müddətində ləğv olunmuş ödənişli sifarişlər; bir sifarişə aid incident üçün — həmin sifariş. Əhatədən kənar kioskun incident-i → `404` |
+| `POST /api/admin/incidents/{id}/acknowledge` | `incidents.acknowledge` | "Gördüm, məşğulam": `Open → Acknowledged`. Təkrar basılsa heç nə dəyişmir. Audit `incidents.acknowledge` (IP ilə) |
+| `POST /api/admin/incidents/{id}/resolve` | `incidents.resolve` | `{ "note" }` — **məcburi** (plan 8A.1; boş → `400 incidents.noteRequired`, 500 simvoldan uzun → `400 incidents.noteTooLong`). `→ Resolved`; audit `incidents.resolve`, `Reason` = qeyd. Printer nasazlığının incident-ini əl ilə bağlamaq kiosku işə salmır — o, printerin hazır olduğunu deyən heartbeat-i gözləyir |
+| `GET /api/admin/incidents?status=&type=&kioskId=&page=&pageSize=` | `incidents.view` | **Kiosk əhatəsi (T-209):** əhatəsi məhdud hesab yalnız öz kiosklarının incident-lərini görür — heç bir kioska aid olmayan (refund, fiskal çek) incident ona göstərilmir; `kioskId` bir kioskun incident-ləri üçün. Sətirdə həm də `kioskCode`, `acknowledgedAt`, `acknowledgedBy`, `resolvedBy`. |
 | `GET /api/admin/incidents?status=&type=&page=&pageSize=` | `incidents.view` | Incident siyahısı (T-129): kritik əvvəl, sonra ən yeni. `status` = `Open`/`Acknowledged`/`Resolved`, `type` = `FiscalFailed`, `RefundFailed`, `JobSuspected`, … (səhv dəyər `400 incidents.filterInvalid`). Sətir: `id, type, severity, status, details` (oxuyanın dilində), `entityType` + `entityId` (məs. `FiscalReceipt` + çekin id-si), `kioskId, createdAt, resolvedAt, resolution`. "Fiskal çeklər" səhifəsi açıq fiskal incident-ləri buradan götürür. Acknowledge / resolve və ayrıca "Incident-lər" səhifəsi Addım 7-dədir |
 
 ### Development

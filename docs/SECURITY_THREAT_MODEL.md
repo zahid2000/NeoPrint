@@ -68,6 +68,29 @@ məzmununun şifrəsiz nüsxəsi yaranmır; keş icazə yoxlamasından sonra oxu
   olunmur. Beləliklə yenidən qalxan kiosk saatı səhv olsa da eyni əmrə görə ikinci dəfə yüklənmir. 24 saatdan
   köhnə əmr ümumiyyətlə icra olunmur.
 
+### Incident-lər və kioskun nasazlıq bildirişi (plan 9.6; T-209)
+
+- **Kiosk nə deyə bilər:** `POST incidents` yalnız növ qəbul edir (`AppCrash` və dörd printer nasazlığı);
+  heartbeat-dəki `printerProblem` yalnız tanınan beş açardan biri ola bilər, qalanı `printer.error` kimi
+  oxunur. Kioskun öz mətni heç yerdə saxlanılmır və göstərilmir. Kiosk və növ üzrə eyni anda bir açıq
+  incident olur — ələ keçirilmiş kiosk siyahını doldura bilmir.
+- **Ələ keçirilmiş kiosk nə edə bilər:** "printerim işləmir" deməklə **öz** növbəsindəki qonaqların bank
+  ödənişlərini qaytartdıra bilər (pul ödəyənə qayıdır, kioska yox) və özünü `Paused` edə bilər. Başqa kioska
+  toxuna bilmir; qeydiyyatlı istifadəçinin sifarişini ləğv edə bilmir — o, yalnız sahibinin qərarı ilə ləğv
+  olunur. Bir pis oxunuş heç nə etmir (`Kiosk.PrinterFaultAfterSeconds`).
+- **İstifadəçi yalnız öz sifarişini ləğv edir:** `POST print-jobs/my/{id}/cancel` başqasının sifarişi üçün
+  `404` qaytarır (var-yox olduğu bilinmir); `Printing` və `Suspected` ləğv olunmur.
+- **Kiosk əhatəsi:** əhatəsi məhdud hesab başqa kioskun incident-ini nə siyahıda, nə detalda, nə də canlı
+  bildirişdə (`/hubs/admin`) görür, onu təsdiqləyə və bağlaya bilmir (`404`).
+- **Email:** incident mətnində kioskun bildirdiyi printer adı ola bilər — məktuba yalnız HTML-kodlanmış
+  düşür (`<b>` → `&lt;b&gt;`).
+- **Telegram:** bot token-i sorğunun ünvanındadır, ona görə ünvan heç vaxt loqa düşməməlidir. Klientin HTTP
+  loqları söndürülüb (`RemoveAllLoggers`), xəta yalnız status kodu ilə bildirilir; test token-in heç bir loq
+  sətrində və xəta mətnində olmadığını yoxlayır. Token OpenBao-dadır (`NEOPRINT_TELEGRAM_BOT_TOKEN`),
+  yoxdursa kanal söndürülmüşdür.
+- **Kimə göndərildiyi** yalnız hesabın `id`-si ilə qeyd olunur (`incident_notifications`) — ünvan və chat ID
+  nə bu qeyddə, nə loqda var.
+
 ### Stolen kiosk credentials
 
 Controls: - device keypair - private key never leaves device - revoke

@@ -47,6 +47,8 @@ export const settingsTranslations: PageTranslations = {
       'Bu müddət ərzində siqnal gəlməsə kiosk əlaqəsiz sayılır.',
     'settings.description.Kiosk.TelemetrySeconds':
       'Kiosk vəziyyət məlumatlarını bu intervalla göndərir.',
+    'settings.description.Kiosk.PrinterFaultAfterSeconds':
+      'Printer bu qədər saniyə hazır olmasa kiosk dayandırılır: yeni sifariş almır, qonaqların gözləyən ödənişləri qaytarılır.',
     'settings.description.Kiosk.TelemetryRetentionDays':
       'Kiosk vəziyyət tarixçəsi bu qədər gün saxlanılır.',
     'settings.description.Kiosk.PrinterEventRetentionDays':
@@ -147,6 +149,8 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Kiosk.OfflineAfterSeconds':
       'A kiosk silent for this long counts as offline.',
     'settings.description.Kiosk.TelemetrySeconds': 'How often the kiosk sends its status readings.',
+    'settings.description.Kiosk.PrinterFaultAfterSeconds':
+      "A printer not ready for this many seconds pauses the kiosk: no new orders, and guests' waiting payments are refunded.",
     'settings.description.Kiosk.TelemetryRetentionDays':
       'How many days of kiosk status history are kept.',
     'settings.description.Kiosk.PrinterEventRetentionDays':
@@ -244,6 +248,8 @@ export const settingsTranslations: PageTranslations = {
       'Киоск без связи дольше этого времени считается недоступным.',
     'settings.description.Kiosk.TelemetrySeconds':
       'Как часто киоск отправляет данные о своём состоянии.',
+    'settings.description.Kiosk.PrinterFaultAfterSeconds':
+      'Если принтер не готов столько секунд, киоск останавливается: новые заказы не принимаются, ожидающие платежи гостей возвращаются.',
     'settings.description.Kiosk.TelemetryRetentionDays':
       'Сколько дней хранится история состояния киосков.',
     'settings.description.Kiosk.PrinterEventRetentionDays':

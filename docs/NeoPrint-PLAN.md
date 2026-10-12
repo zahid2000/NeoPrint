@@ -273,6 +273,7 @@ price      = max(MinOrder, base * (1 - tier.DiscountPercent/100))
 | `Kiosk.HeartbeatSeconds` | 15 | Kiosk heartbeat intervalı |
 | `Kiosk.OfflineAfterSeconds` | 60 | Heartbeat gəlməzsə offline sayılır |
 | `Kiosk.TelemetrySeconds` | 30 | Kiosk telemetriya göndərmə intervalı |
+| `Kiosk.PrinterFaultAfterSeconds` | 30 | Heartbeat bu qədər saniyə "printer hazır deyil" deyərsə kiosk `Paused` olur və Bölmə 9.6 A axını başlayır; bir pis oxunuş nasazlıq sayılmır. Çap zamanı printer xətası ilə kəsilən job üçün gözləmə yoxdur |
 | `Kiosk.TelemetryRetentionDays` | 30 | Telemetriya tarixçəsinin saxlanma müddəti |
 | `Kiosk.PrinterEventRetentionDays` | 365 | Printer hadisələrinin (toner dəyişdi, kağız dolduruldu, sıxılma və s.) saxlanma müddəti |
 | `Files.DefaultMaxSizeMb` | 50 | Default maksimum fayl ölçüsü (kiosk override edə bilər) |
@@ -808,6 +809,7 @@ Backend secret-ləri OpenBao-dan; `api` konteyneri yalnız `BAO_ADDR`, role_id v
 | MassTransit outbox / inbox | MassTransit.MongoDb tərəfindən idarə olunan kolleksiyalar |
 | `audit_logs` | `AdminUserId`, `Action`, `EntityType`, `EntityId`, `Before`, `After`, `Ip`, `CreatedAt` |
 | `notifications` | `UserId`, `Type`, `Title`, `Body`, `Data`, `Read`, `CreatedAt` |
+| `incident_notifications` | `Id` (incident + kanal + admin hesabı), `IncidentId`, `SentAt` — incident-in kimə email / Telegram ilə göndərildiyi (ünvan saxlanılmır); TTL 30 gün |
 | `data_exports` | `UserId`, `Status`, `StorageKey`, `ExpiresAt` |
 
 ### PrintJob status maşını
@@ -849,7 +851,7 @@ Tam state maşınları (PrintJob, Payment, Refund, Device, Kiosk, Update, Schedu
 | Scan / Layout | `POST files/scan` (səhifə şəkilləri + preset/ölçü + həssaslıq + yerləşdirmə → backend PDF yaradır; saxlanılmış skan redaktə olunmur), `POST files/layout` (`LayoutProjectJson` → backend PDF yaradır), `PUT files/{id}/layout` |
 | Shares | `POST shares` (fileId, toPublicId), `GET shares/sent`, `GET shares/received`, `POST shares/{id}/save` |
 | Pricing | `POST pricing/quote` (kioskId, pageCount, options, promoCode?, useBonus?) |
-| PrintJobs | `POST print-jobs` (kiosk və ya mobil; limit, format, kağız yoxlaması), `GET print-jobs/my`, `GET print-jobs/{id}`, `POST print-jobs/{id}/cancel`, `POST print-jobs/{id}/status` (Kiosk rolu; `PrintedSides`, `PrintedSheets`, xəta), `GET print-jobs/pending-for-user` (Kiosk rolu, user QR ilə), `POST print-jobs/{id}/flash-upload` (mobil ödənişdən sonra) |
+| PrintJobs | `POST print-jobs` (kiosk və ya mobil; limit, format, kağız yoxlaması), `GET print-jobs/my`, `GET print-jobs/{id}`, `POST print-jobs/{id}/cancel` (Kiosk rolu), `POST print-jobs/my/{id}/cancel` (istifadəçi öz gözləyən sifarişini ləğv edir), `POST print-jobs/{id}/status` (Kiosk rolu; `PrintedSides`, `PrintedSheets`, xəta), `GET print-jobs/pending-for-user` (Kiosk rolu, user QR ilə), `POST print-jobs/{id}/flash-upload` (mobil ödənişdən sonra) |
 | Payments | `POST payments/intents` (jobId, method), `GET payments/{id}`, `POST payments/{id}/pay-with-app` (Wallet/Card/Bonus), `POST payments/callback/{provider}`, `GET refunds/{id}/public` (anonim refund statusu) |
 | Receipts | `GET receipts`, `GET receipts/{id}/pdf`, `POST receipts/{id}/email` |
 | Schedules | `POST schedules`, `GET schedules`, `PUT schedules/{id}/time`, `POST schedules/{id}/print-now`, `DELETE schedules/{id}` |
@@ -870,7 +872,7 @@ Tam state maşınları (PrintJob, Payment, Refund, Device, Kiosk, Update, Schedu
 | Admin Users | `GET admin/users`, `GET admin/users/{id}` (fayl metadata-sı, job-lar, wallet, referral — fayl məzmunu yox), `POST admin/users/{id}/block`, `POST admin/users/{id}/unblock`, `POST admin/wallets/{userId}/adjust` |
 | Admin Config | `GET/PUT admin/settings`, `CRUD admin/pricing-profiles`, `POST admin/pricing-profiles/{id}/assign` (kioskIds), `CRUD admin/promos`, `GET admin/referrals`, `GET/PUT admin/files/formats`, `CRUD admin/feature-flags`, `CRUD admin/legal-documents` (yeni versiya dərc et) |
 | Admin Analytics | `GET admin/analytics/pilot-report?from=&to=&kioskId=`, `GET admin/analytics/funnel`, `GET admin/analytics/export.csv` |
-| Admin Incidents | `GET admin/incidents`, `POST admin/incidents/{id}/acknowledge`, `POST admin/incidents/{id}/resolve` |
+| Admin Incidents | `GET admin/incidents`, `GET admin/incidents/{id}` (təsirlənən sifarişlər, ödənişlər və refund-lar), `POST admin/incidents/{id}/acknowledge`, `POST admin/incidents/{id}/resolve` |
 | Admin System | `CRUD admin/admin-users`, `GET admin/permissions`, `CRUD admin/roles`, `POST admin/roles/{id}/clone`, `GET admin/audit-logs` |
 | Admin Storage | `GET/POST/PUT/DELETE admin/storage/providers`, `POST admin/storage/providers/{id}/test`, `POST admin/storage/providers/{id}/set-primary`, `POST admin/storage/providers/{id}/set-secondary`, `POST admin/storage/sync-jobs`, `GET admin/storage/sync-jobs`, `GET admin/storage/sync-jobs/{id}`, `POST admin/storage/sync-jobs/{id}/pause\|resume\|cancel\|retry-failed`, `GET admin/storage/sync-jobs/{id}/failures`, `POST admin/storage/sync-jobs/{id}/purge-source` |
 | Dev (yalnız Development) | `POST dev/payments/{id}/simulate-success`, `POST dev/payments/{id}/simulate-fail`, `POST dev/refunds/{id}/simulate-fail`, `POST dev/fiscal/{id}/simulate-fail` |
@@ -892,7 +894,7 @@ Tam state maşınları (PrintJob, Payment, Refund, Device, Kiosk, Update, Schedu
 | `/hubs/admin` | `admins`, `admin-kiosk:{kioskId}`, `operator:{adminUserId}` | `KioskStatusChanged`, `KioskPrintersUpdated`, `KioskTelemetryUpdated`, `PrinterTelemetryUpdated`, `SupplyAlertRaised`, `SupplyAlertCleared`, `ServiceTaskAssigned`, `ServiceTaskUpdated`, `IncidentRaised`, `IncidentResolved`, `QueueUpdated`, `PaymentSucceeded`, `RefundStatusChanged`, `FiscalStatusChanged`, `CommandResult`, `StorageSyncProgress`, `StorageSyncCompleted`, `StorageHealthChanged`, `PermissionsChanged`, `DeviceRegistered`, `DeviceActivated`, `DeviceRevoked` |
 
 ### Event-lər (MassTransit + RabbitMQ, transactional outbox)
-`PaymentSucceeded`, `PaymentExpired`, `PrintJobQueued`, `PrintJobStatusChanged`, `PrintJobCompleted`, `PrintJobInterrupted`, `KioskIncidentRaised`, `KioskWentOffline`, `RefundRequested`, `RefundCompleted`, `RefundFailed`, `FiscalizationRequested`, `FiscalReceiptIssued`, `ScheduledPrintDue`, `ReceiptRequested`, `ReferralQualified`, `FileShared`, `FileUploaded`, `FileConversionRequested`, `FileConverted`, `FileDeleted`, `ObjectStored`, `ObjectDeleted`, `StorageConfigChanged`, `StorageSyncProgressed`, `KioskPrintersReported`, `KioskPrinterChanged`, `KioskCommandIssued`, `KioskConfigChanged`, `SupplyLevelChanged`, `SupplyAlertRaised`, `ServiceTaskCreated`, `AccountDeletionRequested`, `AdminActionPerformed`, `AdminPermissionsChanged`, `FeatureFlagsChanged`, `DeviceRegistered`, `DeviceActivated`, `DeviceRevoked`.
+`PaymentSucceeded`, `PaymentExpired`, `PrintJobQueued`, `PrintJobStatusChanged`, `PrintJobCompleted`, `PrintJobInterrupted`, `IncidentRaised`, `KioskIncidentRaised`, `KioskWentOffline`, `RefundRequested`, `RefundCompleted`, `RefundFailed`, `FiscalizationRequested`, `FiscalReceiptIssued`, `ScheduledPrintDue`, `ReceiptRequested`, `ReferralQualified`, `FileShared`, `FileUploaded`, `FileConversionRequested`, `FileConverted`, `FileDeleted`, `ObjectStored`, `ObjectDeleted`, `StorageConfigChanged`, `StorageSyncProgressed`, `KioskPrintersReported`, `KioskPrinterChanged`, `KioskCommandIssued`, `KioskConfigChanged`, `SupplyLevelChanged`, `SupplyAlertRaised`, `ServiceTaskCreated`, `AccountDeletionRequested`, `AdminActionPerformed`, `AdminPermissionsChanged`, `FeatureFlagsChanged`, `DeviceRegistered`, `DeviceActivated`, `DeviceRevoked`.
 
 - Consumer-lər idempotentdir (MassTransit inbox), uğursuz mesajlar retry → `_error` queue (dead-letter); sayı admin dashboard-da.
 
