@@ -248,6 +248,20 @@
   "jobStatusCancelled": "Cancelled",
   "jobStatusExpired": "Expired",
   "jobSuspectedNote": "We are checking how your print turned out. Your money is safe — we will let you know as soon as we know.",
+  "jobInterruptedNote": "Printing stopped part-way. You can wait — it continues when the printer is back — or cancel the order and take your money back.",
+  "jobKioskStoppedNote": "The printer at the kiosk is not working. You can wait — your order prints when the printer is back — or cancel the order and take your money back.",
+  "jobCancelRefund": "Cancel and refund",
+  "jobCancel": "Cancel the order",
+  "jobCancelTitle": "Cancel this order?",
+  "jobCancelBody": "{amount} goes back to your NeoPrint balance. A cancelled order will not be printed.",
+  "@jobCancelBody": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "jobCancelConfirm": "Yes, cancel",
+  "jobCancelKeep": "No, I will wait",
+  "jobCancelDone": "The order was cancelled. The amount is on its way to your balance.",
   "jobReport": "Report a problem",
   "reportHint": "Tell us what happened: how many pages came out, what the printer showed.",
   "reportField": "Your message",

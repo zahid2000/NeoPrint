@@ -71,13 +71,59 @@ import 'jobs_repository.dart';
 };
 
 /// One of the user's jobs on the home tab.
-class JobCard extends StatelessWidget {
+class JobCard extends ConsumerWidget {
   const JobCard({super.key, required this.job});
 
   final MyJob job;
 
+  /// "Ləğv et və məbləği qaytar": asked once more, then done.
+  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final language = Localizations.localeOf(context).languageCode;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.jobCancelTitle),
+        content: Text(
+          l10n.jobCancelBody(formatMoney(job.amount, language: language)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.jobCancelKeep),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: tokens.danger,
+              foregroundColor: tokens.neutral0,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.jobCancelConfirm),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    final problem = await ref.read(myJobsProvider.notifier).cancel(job.id);
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          problem == null ? l10n.jobCancelDone : apiErrorText(l10n, problem),
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final tokens = context.tokens;
@@ -180,6 +226,34 @@ class JobCard extends StatelessWidget {
             ] else if (job.reason?.isNotEmpty ?? false) ...[
               const SizedBox(height: Spacing.x2),
               Text(job.reason!, style: theme.textTheme.bodySmall),
+            ],
+            if (job.offersRefund) ...[
+              // Plan section 9.6: wait, or cancel and take the money back.
+              const SizedBox(height: Spacing.x3),
+              NeoBanner(
+                message: job.status == 'Interrupted'
+                    ? l10n.jobInterruptedNote
+                    : l10n.jobKioskStoppedNote,
+                tone: StatusTone.warning,
+              ),
+              const SizedBox(height: Spacing.x2),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => _cancel(context, ref),
+                  child: Text(l10n.jobCancelRefund),
+                ),
+              ),
+            ] else if (job.canCancel) ...[
+              const SizedBox(height: Spacing.x2),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: () => _cancel(context, ref),
+                  icon: const Icon(Icons.close),
+                  label: Text(l10n.jobCancel),
+                ),
+              ),
             ],
             if (job.canReport) ...[
               const SizedBox(height: Spacing.x2),

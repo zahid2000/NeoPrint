@@ -27,6 +27,9 @@ class MyJobsController extends AsyncNotifier<List<MyJob>> {
     'JobStatusChanged',
     'PaymentStatusChanged',
     'RefundStatusChanged',
+    // "The kiosk stopped": the order's status has not changed, what it
+    // offers has.
+    'Notification',
   };
 
   @override
@@ -55,6 +58,18 @@ class MyJobsController extends AsyncNotifier<List<MyJob>> {
       if (!state.hasValue) {
         state = AsyncError(error, stack);
       }
+    }
+  }
+
+  /// Cancels a waiting order and reads the list again. Returns why it was
+  /// refused, or null.
+  Future<ApiException?> cancel(String jobId) async {
+    try {
+      await ref.read(jobsRepositoryProvider).cancel(jobId);
+      await refresh();
+      return null;
+    } on ApiException catch (error) {
+      return error;
     }
   }
 

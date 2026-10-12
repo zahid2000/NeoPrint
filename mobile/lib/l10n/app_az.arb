@@ -369,6 +369,20 @@
   "jobStatusCancelled": "Ləğv edildi",
   "jobStatusExpired": "Vaxtı bitdi",
   "jobSuspectedNote": "Çapınızın nəticəsi dəqiqləşdirilir. Pulunuz itməyib — nəticə bilinən kimi sizə bildiriləcək.",
+  "jobInterruptedNote": "Çap yarımçıq qaldı. Gözləyə bilərsiniz — printer işə düşəndə çap davam edəcək — və ya sifarişi ləğv edib məbləği geri ala bilərsiniz.",
+  "jobKioskStoppedNote": "Kioskda printer işləmir. Gözləyə bilərsiniz — printer işə düşəndə sifarişiniz çap olunacaq — və ya sifarişi ləğv edib məbləği geri ala bilərsiniz.",
+  "jobCancelRefund": "Ləğv et və məbləği qaytar",
+  "jobCancel": "Sifarişi ləğv et",
+  "jobCancelTitle": "Sifariş ləğv edilsin?",
+  "jobCancelBody": "{amount} NeoPrint balansınıza qaytarılacaq. Ləğv edilən sifariş çap olunmayacaq.",
+  "@jobCancelBody": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "jobCancelConfirm": "Bəli, ləğv et",
+  "jobCancelKeep": "Xeyr, gözləyirəm",
+  "jobCancelDone": "Sifariş ləğv edildi. Məbləğ balansınıza qaytarılır.",
   "jobReport": "Problem barədə bildir",
   "reportHint": "Nə baş verdiyini yazın: neçə səhifə çıxdı, printer nə göstərdi.",
   "reportField": "Mesajınız",

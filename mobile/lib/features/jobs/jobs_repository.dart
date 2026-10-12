@@ -19,6 +19,8 @@ final class MyJob {
     required this.createdAt,
     this.finishedAt,
     this.scheduledAt,
+    this.canCancel = false,
+    this.kioskStopped = false,
   });
 
   factory MyJob.fromJson(Map<String, dynamic> json) => MyJob(
@@ -41,6 +43,8 @@ final class MyJob {
     scheduledAt: json['scheduledAt'] == null
         ? null
         : DateTime.parse(json['scheduledAt'] as String),
+    canCancel: json['canCancel'] as bool? ?? false,
+    kioskStopped: json['kioskStopped'] as bool? ?? false,
   );
 
   final String id;
@@ -65,12 +69,27 @@ final class MyJob {
   /// A scheduled print still waiting for its time (T-158): when it is due.
   final DateTime? scheduledAt;
 
+  /// The owner may cancel it now and take the money back: it waits in the
+  /// queue, or stopped at the printer (plan section 9.6).
+  final bool canCancel;
+
+  /// Its kiosk cannot print at the moment: waiting may take a while.
+  final bool kioskStopped;
+
+  /// Stopped at the printer, or waiting at a kiosk that cannot print: the
+  /// owner is offered the choice - wait, or cancel and take the money back.
+  bool get offersRefund =>
+      canCancel && (status == 'Interrupted' || kioskStopped);
+
   /// Still on its way: shown above the history (docs/DESIGN_SYSTEM.md 5.2).
+  /// A stopped order is too - it prints when the printer is back, unless
+  /// its owner cancels it.
   bool get isActive => const {
     'PendingPayment',
     'Paid',
     'Queued',
     'Printing',
+    'Interrupted',
     'Suspected',
   }.contains(status);
 
@@ -134,6 +153,14 @@ class JobsRepository {
     parse: (json) => (json as List<dynamic>)
         .map((item) => MyClaim.fromJson(item as Map<String, dynamic>))
         .toList(),
+  );
+
+  /// Cancels a waiting order of the user's own; what was paid goes back.
+  /// Cancelling twice is harmless.
+  Future<void> cancel(String jobId) => _api.send(
+    method: 'POST',
+    path: 'api/print-jobs/my/$jobId/cancel',
+    parse: (_) {},
   );
 
   Future<void> report(
