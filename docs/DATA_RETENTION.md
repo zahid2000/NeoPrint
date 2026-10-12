@@ -109,6 +109,15 @@ təkrar çatdırılan hadisənin eyni adama iki dəfə məktub yazmamasıdır, o
 sonra silinir (hadisənin təkrar çatdırılması günlərlə ölçülür, aylarla yox). Incident-in özü `incidents`-də
 qalır.
 
+## Sərf, servis tapşırıqları və anbar (plan 2.15)
+
+`supply_alert_rules`, `supply_alerts`, `supply_events`, `service_tasks`, `inventory_items`, `inventory_movements` —
+əməliyyat tarixçəsidir: hansı kioskda nə azaldı, kim doldurdu, anbardan nə çıxdı. **İstifadəçi və fayl haqqında heç nə
+yoxdur**; şəxsə aid yeganə məlumat admin / operator hesabının `id`-sidir (`AssignedTo`, `By`, `CreatedBy`) və servis
+tapşırığına yazılan qeyddir (ən çox 500 simvol — qeydə müştəri məlumatı yazılmır). TTL yoxdur: sərf hesabatı, proqnoz
+və anbarın uçotu bu sətirlərə söykənir. Bağlanmış alert-lər və bitmiş tapşırıqlar silinmir (`Active = false`); pilotdan
+sonra həcmə görə arxivləşdirmə qərarı verilə bilər.
+
 ## Səhifə şəkillərinin keşi
 
 Önizləmə üçün çəkilmiş səhifə şəkli istifadəçi faylının məzmunudur. O, yalnız API prosesinin

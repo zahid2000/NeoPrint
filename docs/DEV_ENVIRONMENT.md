@@ -1412,6 +1412,67 @@ yenidən daxil olur — onları dövrədə (hər 3 saniyədən bir) çağırsan�
 
 ---
 
+## 7n. Addım 7A — sərf, servis tapşırıqları və anbar (plan 2.15, 9.9; T-210)
+
+Admin və operator panelinin bu səhifələri M7–M9-dadır; backend hazırdır və bütün axın `tools/dev-kiosk/supplies.mjs`
+ilə əllə keçilir (qayda və anbar işləri `dev-superadmin`, operatorun addımları `dev-operator` hesabı ilə gedir):
+
+```bash
+node tools/dev-kiosk/supplies.mjs                 # KSK-9002: lotoklar, toner səviyyələri, proqnoz, alert-lər, tapşırıqlar
+node tools/dev-kiosk/supplies.mjs rules           # xəbərdarlıq qaydaları (seed: Kağız A4 < 200 / < 50 vərəq, Toner < 15 / < 3 %)
+node tools/dev-kiosk/supplies.mjs inventory       # anbar
+```
+
+**Plan 9.9-u başdan-sona keçmək** (Linux konteyner kiosku, fake printer):
+
+```bash
+# anbar: bir material və 10 bağlama
+node tools/dev-kiosk/supplies.mjs item PAPER-A4-500 "A4 kağız, 500 vərəq" PaperA4Ream 3
+node tools/dev-kiosk/supplies.mjs inventory                       # son sütun — materialın id-si
+node tools/dev-kiosk/supplies.mjs move <itemId> Purchase 10
+
+# 1–2: lotokda 200 vərəq, bir sifariş → 199 → Warning alert + operatora tapşırıq + email (Mailpit)
+node tools/dev-kiosk/supplies.mjs set 200
+node tools/dev-kiosk/app-order.mjs
+node tools/dev-kiosk/supplies.mjs                 # Alerts: Warning PaperA4 199 … ; Service tasks: Assigned High RefillPaper … Test Operator
+
+# 3: 50-dən aşağı → eyni alert Critical, tapşırıq Critical
+node tools/dev-kiosk/supplies.mjs set 50
+node tools/dev-kiosk/app-order.mjs
+
+# 4–5: operator başlayır və tamamlayır ("Tam doldur" + anbardan 1 bağlama)
+node tools/dev-kiosk/supplies.mjs tasks
+node tools/dev-kiosk/supplies.mjs start <taskId>
+node tools/dev-kiosk/supplies.mjs complete <taskId> <itemId> 1
+node tools/dev-kiosk/supplies.mjs                 # A4: 500 / 500, Alerts: none, tapşırıq Done
+node tools/dev-kiosk/supplies.mjs inventory       # 9 bağlama
+```
+
+Nə vaxt nə baş verir:
+
+- **Qiymətləndirmə** kağız sayğacı hər dəyişəndə (çap, test çap, doldurma, sayma, tamamlanan tapşırıq) bir-iki
+  saniyəyə, əlavə olaraq hər 5 dəqiqədən bir bütün kiosklar üçün işləyir (toner telemetriyası və dəyişən qaydalar).
+  Qayda yaradılanda / dəyişəndə dərhal.
+- **Toner** seçilmiş printerin telemetriyasından oxunur; fake printer toner bildirmir, ona görə konteyner kioskunda
+  `levels` boşdur (real printerdə MT-02).
+- **Proqnoz** saatda bir (hər saatın 7-ci dəqiqəsi): bitməyə `Service.ForecastLeadHours` (24) qalanda tapşırıq açır.
+  `supplies.mjs`-in "Forecast" sətirləri hər çağırışda yenidən hesablanır.
+- **Eskalasiya** 5 dəqiqədən bir: `Critical` tapşırıq `Service.TaskOverdueEscalationMinutes` (60) ərzində başlanmasa
+  `High` incident (email Mailpit-də). Tez yoxlamaq üçün: `node tools/dev-kiosk/setting.mjs Service.TaskOverdueEscalationMinutes 1`.
+- **Anbar minimumu**: hərəkətdən dərhal sonra və saatda bir. `move <itemId> WriteOff 8` → "NeoPrint — High incident: Sistem".
+
+Arxa plan işlərinin qeydiyyatını və son icrasını Hangfire-ın saxladığı yerdən görmək (şifrə konteynerin içində qalır):
+
+```bash
+docker exec neoprint-mongo sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" \
+  --authenticationDatabase admin neoprint --eval "db.getCollection(\"hangfire.jobGraph\").find({ Key: /recurring-job:(supply|service-task|inventory)/ }).forEach(r => print(r.Key, r.Fields.Cron, r.Fields.LastExecution || \"-\"))"'
+```
+
+**Yeni aktivləşdirilən kioskun sayğacı 0-dır**: ilk qiymətləndirmədə "Kağız A4" üçün `Critical` alert və tapşırıq açılacaq —
+lotoku doldurub sayğacı yazın ("Kağız doldur" və ya `supplies.mjs set <say> <kiosk kodu>`).
+
+---
+
 ## 8. Build, test, lint
 
 ```bash

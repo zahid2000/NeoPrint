@@ -42,6 +42,13 @@ Məsələn:
 
 unique olmalıdır.
 
+Sərf modulu (plan 2.15, M6): `SupplyEvaluator` istənilən qədər təkrar işlədilə bilər — bir kiosk və material üçün
+aktiv alert **bir dənədir** (`supply_alerts`-də `Key` + `Active` üzrə qismən unikal indeks), avtomatik servis tapşırığı da
+(`service_tasks`, eyni üsul). Tapşırığın tamamlanması `Idempotency-Key` ilə qorunur və yalnız `InProgress`-dən mümkündür:
+ikinci cəhd `409` alır, lotok ikinci dəfə doldurulmur, anbardan ikinci dəfə çıxılmır. Toner dəyişdirilməsi
+`supply_events`-ə `task:{id}` açarı ilə bir dəfə yazılır. Anbar hərəkəti (`POST inventory/movements`) `Idempotency-Key`
+tələb edir; qalıq yalnız hərəkətlə dəyişir və sıfırdan aşağı düşmür.
+
 ## Consumer
 
 RabbitMQ message duplicate delivery edə bilər.

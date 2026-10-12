@@ -174,6 +174,29 @@ Təkrar təsdiq və təkrar cavab heç nə dəyişmir.
 
 Cihaz ayrıldıqda: `* → NotActivated`.
 
+## Servis tapşırığı (`ServiceTask`, plan 2.15)
+
+`Open → Assigned → InProgress → Done`
+
+`Open → InProgress` (hovuzdan götürən operator onu dərhal başlayır — tapşırıq onun olur)
+
+`Assigned → Open` (administrator hovuza qaytarır); `Assigned → Assigned` başqa operatora verilməsi keçid deyil — yalnız
+`AssignedTo` dəyişir
+
+`Open | Assigned | InProgress → Cancelled` (səbəb məcburidir); `Done`-dan çıxış yoxdur.
+
+- `InProgress` tapşırıq yalnız onu başlayan operator tərəfindən tamamlanır və başqasına verilmir.
+- `Done` və `Cancelled` son vəziyyətlərdir (`Active = false`); avtomatik açılan tapşırığın açarı (`Key`) yalnız
+  aktiv tapşırıqlar arasında unikaldır — bitəndən sonra eyni material üçün yenisi açıla bilər.
+- Prioritet yalnız sistemlə **qalxır** (alert `Critical` olanda); administrator istədiyi kimi dəyişə bilər.
+- Keçidlər `state_transitions`-a yazılır (aktor: operator / administrator / `System`).
+
+## Sərf alert-i (`SupplyAlert`, plan 2.15)
+
+Status sahəsi yoxdur: `Active = true` (səviyyə `Warning` və ya `Critical`) → `Active = false` (`ClearedAt`). Səviyyə
+`Warning ↔ Critical` arasında hər iki istiqamətdə dəyişə bilər; hər dəyişiklik bir bildirişdir, eyni səviyyədə qalan
+alert təkrar bildirilmir. Bağlanmış alert yenidən açılmır — növbəti düşüş yeni alert-dir.
+
 ## Fayl (`StoredFile`)
 
 `Pending → Converting → Ready`
