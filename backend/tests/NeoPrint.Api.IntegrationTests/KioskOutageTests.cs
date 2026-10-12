@@ -406,6 +406,31 @@ public sealed class KioskOutageTests
     }
 
     [DockerFact]
+    public async Task The_monitors_sweep_takes_every_silent_kiosk_offline_and_leaves_the_ones_that_call_in()
+    {
+        if (Skip) { return; }
+
+        using var silent = await ReadyKioskAsync(_fixture, "outage-sweep-silent");
+        using var alive = await ReadyKioskAsync(_fixture, "outage-sweep-alive");
+        await BeatAsync(silent, printerOnline: true);
+        await BeatAsync(alive, printerOnline: true);
+
+        await LastHeardAsync(silent.KioskId, DateTime.UtcNow.AddMinutes(-5));
+
+        // What KioskHeartbeatMonitor runs every fifteen seconds (the test host does not run it by itself).
+        (await SendAsync(new MarkSilentKiosksOfflineCommand())).Should().BeGreaterThanOrEqualTo(1);
+
+        (await KioskAsync(silent.KioskId)).Status.Should().Be(KioskStatus.Offline);
+        (await KioskAsync(alive.KioskId)).Status.Should().Be(KioskStatus.Online);
+        (await IncidentsAsync(silent.KioskId)).Should().ContainSingle().Which.Type.Should().Be(IncidentType.ConnectionLost);
+        (await IncidentsAsync(alive.KioskId)).Should().BeEmpty();
+
+        // The next sweep finds it dealt with: no second incident.
+        await SendAsync(new MarkSilentKiosksOfflineCommand());
+        (await IncidentsAsync(silent.KioskId)).Should().ContainSingle();
+    }
+
+    [DockerFact]
     public async Task A_paused_kiosk_that_goes_quiet_keeps_its_pause_and_still_gets_the_incident()
     {
         if (Skip) { return; }

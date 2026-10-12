@@ -105,6 +105,14 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         // Force the host to build, so startup (indexes and seeding) has run
         // before the first test touches an endpoint.
         _ = Server;
+
+        // The kiosk heartbeat monitor runs every fifteen seconds, and a test
+        // that moves a kiosk's last heartbeat back by hand has not finished
+        // in fifteen: now and then the monitor took such a kiosk Offline
+        // before the test placed its next order there (T-251). Here the tests
+        // run the monitor's command themselves, when they mean to.
+        Services.GetRequiredService<Hangfire.IRecurringJobManager>()
+            .RemoveIfExists(NeoPrint.Infrastructure.Kiosks.KioskHeartbeatMonitor.JobId);
     }
 
     public new async Task DisposeAsync()
