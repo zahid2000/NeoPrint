@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -15,13 +17,25 @@ namespace NeoPrint.Api.Hubs;
 /// Everyone joins the <c>admins</c> group and a personal group. Kiosk-scoped
 /// groups are joined only for the kiosks the account may see, so an operator
 /// never receives events about a kiosk outside their scope.
+/// <para>
+/// The groups are worked out when the connection opens, so a connection has to
+/// end when what it was worked out from changes: the account's scope or roles
+/// (<see cref="AdminConnections"/> closes it at once) and the token it was
+/// opened with (the endpoint closes it when the token runs out). The panel
+/// connects again by itself, with a token that is good now (T-249).
+/// </para>
 /// </remarks>
 [Authorize(Policy = AuthorizationPolicies.Admin)]
 public sealed class AdminHub : Hub
 {
     private readonly IPermissionResolver _permissions;
+    private readonly AdminConnections _connections;
 
-    public AdminHub(IPermissionResolver permissions) => _permissions = permissions;
+    public AdminHub(IPermissionResolver permissions, AdminConnections connections)
+    {
+        _permissions = permissions;
+        _connections = connections;
+    }
 
     public const string AllAdminsGroup = "admins";
 
@@ -63,7 +77,58 @@ public sealed class AdminHub : Hub
             }
         }
 
+        _connections.Opened(adminId.Value, Context);
+
         await base.OnConnectedAsync();
+    }
+
+    public override Task OnDisconnectedAsync(Exception? exception)
+    {
+        _connections.Closed(Context.ConnectionId);
+
+        return base.OnDisconnectedAsync(exception);
+    }
+}
+
+/// <summary>
+/// The panel connections this instance holds, by account, so that an account
+/// whose scope changed can be cut off without waiting for its token to run out.
+/// </summary>
+/// <remarks>
+/// Of this instance only. With several instances a panel connected to another
+/// one hears <c>AccountChanged</c> and reconnects by itself; one that chose
+/// not to would keep its groups until its token runs out, which is when the
+/// endpoint closes the connection - fifteen minutes at most
+/// (<c>docs/SECURITY_THREAT_MODEL.md</c>).
+/// </remarks>
+public sealed class AdminConnections
+{
+    private readonly ConcurrentDictionary<string, (Guid AdminId, HubCallerContext Context)> _open = new();
+
+    public void Opened(Guid adminId, HubCallerContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        _open[context.ConnectionId] = (adminId, context);
+    }
+
+    public void Closed(string connectionId) => _open.TryRemove(connectionId, out _);
+
+    /// <summary>Ends every connection of the account; how many there were.</summary>
+    public int Close(Guid adminId)
+    {
+        var closed = 0;
+
+        foreach (var (connectionId, open) in _open)
+        {
+            if (open.AdminId == adminId && _open.TryRemove(connectionId, out _))
+            {
+                open.Context.Abort();
+                closed++;
+            }
+        }
+
+        return closed;
     }
 }
 
@@ -73,8 +138,23 @@ public sealed class AdminHub : Hub
 public sealed class SignalRAdminNotifier : IAdminNotifier
 {
     private readonly IHubContext<AdminHub> _hub;
+    private readonly AdminConnections _connections;
 
-    public SignalRAdminNotifier(IHubContext<AdminHub> hub) => _hub = hub;
+    public SignalRAdminNotifier(IHubContext<AdminHub> hub, AdminConnections connections)
+    {
+        _hub = hub;
+        _connections = connections;
+    }
+
+    public async Task AccountChangedAsync(Guid adminUserId, CancellationToken cancellationToken = default)
+    {
+        // Said first, for a panel that another instance holds; then cut here.
+        await _hub.Clients.Group(AdminHub.OperatorGroup(adminUserId))
+            .SendAsync("AccountChanged", cancellationToken)
+            .ConfigureAwait(false);
+
+        _connections.Close(adminUserId);
+    }
 
     public Task KioskStatusChangedAsync(Guid kioskId, string status, CancellationToken cancellationToken = default)
         => _hub.Clients.Groups([AdminHub.AllKiosksGroup, AdminHub.KioskGroup(kioskId)])

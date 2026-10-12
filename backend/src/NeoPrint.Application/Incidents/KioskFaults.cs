@@ -147,7 +147,6 @@ public sealed class KioskFaultHandlers :
     private readonly PrintQueueService _queue;
     private readonly IncidentReporter _reporter;
     private readonly IEventPublisher _events;
-    private readonly IAdminNotifier _admins;
     private readonly ISettingsReader _settings;
     private readonly ISender _sender;
     private readonly ICorrelationContext _correlation;
@@ -162,7 +161,6 @@ public sealed class KioskFaultHandlers :
         PrintQueueService queue,
         IncidentReporter reporter,
         IEventPublisher events,
-        IAdminNotifier admins,
         ISettingsReader settings,
         ISender sender,
         ICorrelationContext correlation,
@@ -176,7 +174,6 @@ public sealed class KioskFaultHandlers :
         _queue = queue;
         _reporter = reporter;
         _events = events;
-        _admins = admins;
         _settings = settings;
         _sender = sender;
         _correlation = correlation;
@@ -200,7 +197,6 @@ public sealed class KioskFaultHandlers :
         }
 
         var code = PrinterFaults.Normalize(request.Code);
-        var before = kiosk.Status;
         var began = kiosk.DeclareFault(code, Actor(request.DeviceId), _clock.UtcNow);
 
         await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
@@ -235,11 +231,6 @@ public sealed class KioskFaultHandlers :
                 .ConfigureAwait(false);
         }
 
-        if (kiosk.Status != before)
-        {
-            await _admins.KioskStatusChangedAsync(kiosk.Id, kiosk.Status.ToString(), cancellationToken).ConfigureAwait(false);
-        }
-
         return kiosk.Status;
     }
 
@@ -272,7 +263,6 @@ public sealed class KioskFaultHandlers :
 
         var now = _clock.UtcNow;
         var actor = Actor(request.DeviceId);
-        var before = kiosk.Status;
 
         if (!kiosk.ClearFault(actor, now))
         {
@@ -300,11 +290,6 @@ public sealed class KioskFaultHandlers :
         if (resumed > 0)
         {
             await _queue.AnnounceAsync(kiosk.Id, cancellationToken).ConfigureAwait(false);
-        }
-
-        if (kiosk.Status != before)
-        {
-            await _admins.KioskStatusChangedAsync(kiosk.Id, kiosk.Status.ToString(), cancellationToken).ConfigureAwait(false);
         }
 
         return kiosk.Status;
@@ -503,11 +488,6 @@ public sealed class KioskFaultHandlers :
         await _events
             .PublishAsync(new KioskWentOffline(kiosk.Id, kiosk.LastHeartbeatAt, _correlation.CorrelationId), cancellationToken)
             .ConfigureAwait(false);
-
-        if (kiosk.Status != before)
-        {
-            await _admins.KioskStatusChangedAsync(kiosk.Id, kiosk.Status.ToString(), cancellationToken).ConfigureAwait(false);
-        }
 
         return true;
     }

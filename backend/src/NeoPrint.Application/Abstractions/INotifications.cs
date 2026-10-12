@@ -68,8 +68,10 @@ public interface IAdminNotifier
     Task StorageSyncCompletedAsync(Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// A kiosk's status changed by itself - its printer stopped or returned,
-    /// its heartbeat was lost (plan section 9.6): the status cards refresh.
+    /// A kiosk's status changed - its printer stopped or returned, its
+    /// heartbeat was lost or came back, an administrator paused it, a device
+    /// was bound to it (plan section 9.6): the lists and status cards follow.
+    /// Sent by the kiosk repository as the change is saved, not by handlers.
     /// </summary>
     Task KioskStatusChangedAsync(Guid kioskId, string status, CancellationToken cancellationToken = default);
 
@@ -82,6 +84,13 @@ public interface IAdminNotifier
     /// <summary>A kiosk sent new readings of its printers (plan section 7.10): the printer detail updates live.</summary>
     Task PrinterTelemetryUpdatedAsync(
         Guid kioskId, IReadOnlyList<Kiosks.PrinterTelemetryView> printers, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// An account's kiosk scope or roles changed, or it was switched off or
+    /// given a new password: its open panels are cut off and connect again,
+    /// which is when the kiosks they may hear about are worked out (T-249).
+    /// </summary>
+    Task AccountChangedAsync(Guid adminUserId, CancellationToken cancellationToken = default);
 
     /// <summary>A kiosk answered a command (plan section 7.8).</summary>
     Task CommandResultAsync(Guid kioskId, Kiosks.KioskCommandView command, CancellationToken cancellationToken = default);

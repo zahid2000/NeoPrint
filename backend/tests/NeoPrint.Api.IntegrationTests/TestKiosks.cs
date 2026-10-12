@@ -201,6 +201,72 @@ internal sealed class RawHubConnection : IAsyncDisposable
         throw new TimeoutException($"No {target} within {timeout}.");
     }
 
+    /// <summary>
+    /// Every invocation that arrives, in order, up to and including the first
+    /// one <paramref name="last"/> accepts - what a panel heard, not only
+    /// what a test was waiting for.
+    /// </summary>
+    public async Task<List<(string Target, JsonElement Argument)>> ReadUntilAsync(
+        Func<string, JsonElement, bool> last, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        var heard = new List<(string Target, JsonElement Argument)>();
+
+        while (DateTime.UtcNow < deadline)
+        {
+            var message = await NextAsync(deadline - DateTime.UtcNow);
+            using var document = JsonDocument.Parse(message);
+
+            if (!document.RootElement.TryGetProperty("target", out var name) || name.GetString() is not { } target)
+            {
+                continue;
+            }
+
+            var arguments = document.RootElement.GetProperty("arguments");
+            var argument = arguments.GetArrayLength() > 0 ? arguments[0].Clone() : default;
+
+            heard.Add((target, argument));
+
+            if (last(target, argument))
+            {
+                return heard;
+            }
+        }
+
+        throw new TimeoutException($"The awaited message did not come within {timeout}; heard: {string.Join(", ", heard.Select(item => item.Target))}.");
+    }
+
+    /// <summary>
+    /// Whether the server ended the connection within <paramref name="timeout"/>:
+    /// a close frame, or the socket gone.
+    /// </summary>
+    public async Task<bool> ClosedByServerAsync(TimeSpan timeout)
+    {
+        var buffer = new byte[64 * 1024];
+        using var cancel = new CancellationTokenSource(timeout);
+
+        try
+        {
+            while (true)
+            {
+                var received = await _socket.ReceiveAsync(buffer, cancel.Token);
+
+                if (received.MessageType == WebSocketMessageType.Close)
+                {
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch (Exception exception) when (exception is WebSocketException or IOException or ObjectDisposedException)
+        {
+            return true;
+        }
+    }
+
     private async Task<string> NextAsync(TimeSpan timeout)
     {
         var buffer = new byte[64 * 1024];

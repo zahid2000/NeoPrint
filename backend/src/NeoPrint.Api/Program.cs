@@ -225,6 +225,7 @@ if (!string.IsNullOrWhiteSpace(redisConnection))
 }
 
 builder.Services.AddScoped<IDeviceNotifier, SignalRDeviceNotifier>();
+builder.Services.AddSingleton<AdminConnections>();
 builder.Services.AddScoped<IAdminNotifier, SignalRAdminNotifier>();
 builder.Services.AddScoped<IKioskNotifier, SignalRKioskNotifier>();
 builder.Services.AddScoped<NeoPrint.Application.Payments.IPaymentNotifier, SignalRKioskNotifier>();
@@ -561,7 +562,10 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapHub<ProvisioningHub>("/hubs/provisioning");
-app.MapHub<AdminHub>("/hubs/admin");
+// A panel's connection ends with the token it was opened with: the kiosks it
+// hears about are decided when it connects, and the panel connects again by
+// itself with a token that is good now (T-249).
+app.MapHub<AdminHub>("/hubs/admin", options => options.CloseOnAuthenticationExpiration = true);
 app.MapHub<KioskHub>("/hubs/kiosk");
 app.MapHub<UserHub>("/hubs/user");
 

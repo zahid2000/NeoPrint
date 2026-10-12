@@ -147,6 +147,7 @@ public sealed class UpdateAdminUserHandler : IRequestHandler<UpdateAdminUserComm
     private readonly IAdminUserRepository _admins;
     private readonly IAdminRoleRepository _roles;
     private readonly IPermissionResolver _permissions;
+    private readonly IAdminNotifier _live;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
 
@@ -154,12 +155,14 @@ public sealed class UpdateAdminUserHandler : IRequestHandler<UpdateAdminUserComm
         IAdminUserRepository admins,
         IAdminRoleRepository roles,
         IPermissionResolver permissions,
+        IAdminNotifier live,
         IAuditWriter audit,
         IClock clock)
     {
         _admins = admins;
         _roles = roles;
         _permissions = permissions;
+        _live = live;
         _audit = audit;
         _clock = clock;
     }
@@ -202,6 +205,10 @@ public sealed class UpdateAdminUserHandler : IRequestHandler<UpdateAdminUserComm
         // is wrong until it is cleared (plan section 8A.2).
         await _permissions.InvalidateAsync(admin.Id, cancellationToken).ConfigureAwait(false);
 
+        // And an open panel of theirs is still listening to the kiosks it was
+        // allowed when it connected.
+        await _live.AccountChangedAsync(admin.Id, cancellationToken).ConfigureAwait(false);
+
         await AdminUserMapping
             .AuditAsync(
                 _audit, "admins.update", admin, before, request.UpdatedBy, request.Ip,
@@ -219,6 +226,7 @@ public sealed class SetAdminUserActiveHandler : IRequestHandler<SetAdminUserActi
     private readonly IAdminRoleRepository _roles;
     private readonly IRefreshTokenRepository _tokens;
     private readonly IPermissionResolver _permissions;
+    private readonly IAdminNotifier _live;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
 
@@ -227,6 +235,7 @@ public sealed class SetAdminUserActiveHandler : IRequestHandler<SetAdminUserActi
         IAdminRoleRepository roles,
         IRefreshTokenRepository tokens,
         IPermissionResolver permissions,
+        IAdminNotifier live,
         IAuditWriter audit,
         IClock clock)
     {
@@ -234,6 +243,7 @@ public sealed class SetAdminUserActiveHandler : IRequestHandler<SetAdminUserActi
         _roles = roles;
         _tokens = tokens;
         _permissions = permissions;
+        _live = live;
         _audit = audit;
         _clock = clock;
     }
@@ -282,6 +292,9 @@ public sealed class SetAdminUserActiveHandler : IRequestHandler<SetAdminUserActi
 
         await _permissions.InvalidateAsync(admin.Id, cancellationToken).ConfigureAwait(false);
 
+        // A panel left open would go on hearing its kiosks' events.
+        await _live.AccountChangedAsync(admin.Id, cancellationToken).ConfigureAwait(false);
+
         await AdminUserMapping
             .AuditAsync(
                 _audit,
@@ -304,6 +317,7 @@ public sealed class ResetAdminPasswordHandler : IRequestHandler<ResetAdminPasswo
     private readonly IAdminUserRepository _admins;
     private readonly IRefreshTokenRepository _tokens;
     private readonly IPasswordHasher<AdminUser> _passwordHasher;
+    private readonly IAdminNotifier _live;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
 
@@ -311,12 +325,14 @@ public sealed class ResetAdminPasswordHandler : IRequestHandler<ResetAdminPasswo
         IAdminUserRepository admins,
         IRefreshTokenRepository tokens,
         IPasswordHasher<AdminUser> passwordHasher,
+        IAdminNotifier live,
         IAuditWriter audit,
         IClock clock)
     {
         _admins = admins;
         _tokens = tokens;
         _passwordHasher = passwordHasher;
+        _live = live;
         _audit = audit;
         _clock = clock;
     }
@@ -348,6 +364,9 @@ public sealed class ResetAdminPasswordHandler : IRequestHandler<ResetAdminPasswo
         await _tokens
             .RevokeAllForUserAsync(admin.Id, _clock.UtcNow, cancellationToken)
             .ConfigureAwait(false);
+
+        // Its live connection too.
+        await _live.AccountChangedAsync(admin.Id, cancellationToken).ConfigureAwait(false);
 
         await AdminUserMapping
             .AuditAsync(

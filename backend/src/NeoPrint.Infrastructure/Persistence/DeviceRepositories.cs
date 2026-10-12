@@ -88,11 +88,27 @@ public sealed class EnrollmentTokenRepository : IEnrollmentTokenRepository
 }
 
 /// <inheritdoc cref="IKioskRepository" />
+/// <remarks>
+/// A change of status is announced to the open panels as it is saved
+/// (<c>KioskStatusChanged</c> on <c>/hubs/admin</c>), the same way its
+/// transition is written: here, so that no handler can forget it. A panel left
+/// open showed a kiosk as Online for as long as nobody reloaded the page
+/// whenever the change came from a handler that did not say so itself - an
+/// administrator's pause, a test page that took the kiosk into service, a
+/// device bound or released (T-248).
+/// </remarks>
 public sealed class KioskRepository : IKioskRepository
 {
     private readonly MongoContext _context;
+    private readonly IAdminNotifier? _admins;
 
-    public KioskRepository(MongoContext context) => _context = context;
+    /// <param name="context">The database.</param>
+    /// <param name="admins">The panels; absent in a host that serves none.</param>
+    public KioskRepository(MongoContext context, IAdminNotifier? admins = null)
+    {
+        _context = context;
+        _admins = admins;
+    }
 
     public Task<Kiosk?> FindByIdAsync(Guid id, CancellationToken cancellationToken = default)
         => _context.Kiosks.Find(kiosk => kiosk.Id == id).FirstOrDefaultAsync(cancellationToken)!;
@@ -138,8 +154,20 @@ public sealed class KioskRepository : IKioskRepository
     public Task AddAsync(Kiosk kiosk, CancellationToken cancellationToken = default)
         => AggregateWriter.InsertAsync(_context, _context.Kiosks, kiosk, cancellationToken);
 
-    public Task UpdateAsync(Kiosk kiosk, CancellationToken cancellationToken = default)
-        => AggregateWriter.ReplaceAsync(_context, _context.Kiosks, kiosk, cancellationToken);
+    public async Task UpdateAsync(Kiosk kiosk, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(kiosk);
+
+        // Asked before the save: saving drains the transitions.
+        var statusChanged = kiosk.PendingTransitions.Count > 0;
+
+        await AggregateWriter.ReplaceAsync(_context, _context.Kiosks, kiosk, cancellationToken).ConfigureAwait(false);
+
+        if (statusChanged && _admins is not null)
+        {
+            await _admins.KioskStatusChangedAsync(kiosk.Id, kiosk.Status.ToString(), cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         => _context.Kiosks.DeleteOneAsync(kiosk => kiosk.Id == id, cancellationToken);

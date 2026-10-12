@@ -155,7 +155,6 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
     private readonly IKioskRepository _kiosks;
     private readonly ISettingsReader _settings;
     private readonly IncidentReporter _incidents;
-    private readonly IAdminNotifier _admins;
     private readonly ISender _sender;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
@@ -165,7 +164,6 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
         IKioskRepository kiosks,
         ISettingsReader settings,
         IncidentReporter incidents,
-        IAdminNotifier admins,
         ISender sender,
         ICorrelationContext correlation,
         IClock clock)
@@ -174,7 +172,6 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
         _kiosks = kiosks;
         _settings = settings;
         _incidents = incidents;
-        _admins = admins;
         _sender = sender;
         _correlation = correlation;
         _clock = clock;
@@ -310,11 +307,6 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
                 .ConfigureAwait(false),
             _ => kiosk.Status,
         };
-
-        if (step == PrinterStep.None && status != before)
-        {
-            await _admins.KioskStatusChangedAsync(kiosk.Id, status.ToString(), cancellationToken).ConfigureAwait(false);
-        }
 
         return new KioskHeartbeatResult(
             status,
