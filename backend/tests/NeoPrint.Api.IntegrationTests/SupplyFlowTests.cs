@@ -102,7 +102,9 @@ public sealed class SupplyFlowTests
         var critical = await EventuallyAsync(
             () => ActiveAlertsAsync(kiosk.KioskId), alerts => alerts.Count == 1 && alerts[0].Level == SupplyAlertLevel.Critical, "the alert becoming Critical");
         critical[0].Id.Should().Be(warning[0].Id, "the same alert, another level");
-        (await TaskAsync(task.Id)).Priority.Should().Be(TaskPriority.Critical);
+        var urgent = await TaskAsync(task.Id);
+        urgent.Priority.Should().Be(TaskPriority.Critical);
+        NeoPrint.Application.Localization.Messages.WriteStored(urgent.Notes, "az").Should().Contain("45", "the note follows the level");
 
         // Step 4: the operator, from their phone.
         var mine = await operatorClient.GetFromJsonAsync<JsonElement>("/api/admin/service-tasks?mine=true&status=Assigned");

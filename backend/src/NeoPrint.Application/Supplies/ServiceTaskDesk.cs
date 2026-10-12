@@ -60,6 +60,8 @@ public sealed class ServiceTaskDesk
         {
             if (existing.RaisePriority(wanted.Priority, now))
             {
+                // More urgent because the level fell further: the note says the level it is at now.
+                existing.Notes = wanted.Notes ?? existing.Notes;
                 await _tasks.UpdateAsync(existing, cancellationToken).ConfigureAwait(false);
                 await AnnounceAsync(existing, kiosk, assigned: false, cancellationToken).ConfigureAwait(false);
             }
