@@ -1546,6 +1546,7 @@ menyudan "Operator paneli" ilə açır). Brauzerdə telefon enində baxmaq üç�
 cd admin
 node e2e/pwa.mjs                                  # telefon enində bütün səhifələr, service worker, serverin əlçatmaz olması (22 yoxlama)
 node e2e/pwa.mjs ../docs/screenshots/step-7/m7    # ekran görüntüləri ilə
+node e2e/activate.mjs                             # "Kiosk aktivləşdir": cihaz qeydiyyatdan keçir, operator kodu yazır, öz kioskuna bağlayır; sonda cihaz ayrılır (öz "E2E aktivləşdirmə" kioskunu işlədir, iz qoymur)
 node e2e/operator.mjs                             # operatorun əsas işləri interfeysin özündən: doldurma (anbardan 1 bağlama), "Toner dəyişdirildi", tapşırıq (Başla → Tamamla), "Özümə götürürəm". Dev məlumatını dəyişir: anbardakı A4 bağlamasından 2 ədəd çıxır (ən azı 2 olmalıdır)
 node scripts/pwa-icons.mjs                        # ana ekran ikonlarını (public/icons) yenidən çəkir — yalnız şəkil dəyişəndə
 ```

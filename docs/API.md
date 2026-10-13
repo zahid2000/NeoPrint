@@ -846,11 +846,11 @@ etibarlı olub-olmadığını göstərir, kodu isə operator kiosk ekranından o
 "fingerprint" {...}, "printers": [...], "lastIp", "registeredAt",
 "lastSeenAt", "kioskId", "kioskCode" }`
 
-Tapılmasa `404` — **axtarılan kod cavabda qaytarılmır**.
+Tapılmasa `404` — **axtarılan kod cavabda qaytarılmır**. QR məzmununda `code` varsa, o, həmin cihazın kodu ilə tutuşdurulur: cihazın id-si düz, kodu səhv olan QR da `404` alır (T-265).
 
 ### `POST /api/admin/devices/{id}/activate`
 
-`kiosks.activate`. `Idempotency-Key` qəbul edir.
+`kiosks.activate`. `Idempotency-Key` qəbul edir. `newKiosk` göndərilibsə əlavə olaraq `kiosks.create` tələb olunur — onsuz `403` (T-265: Operator rolu cihazı mövcud kioska bağlayır, kiosk yaratmır). `kioskId` çağıranın kiosk əhatəsindən kənardadırsa `403`. Operator panelinin "Kiosk aktivləşdir" ekranı (`/operator/activate`) bu iki sorğudan başqa heç nə işlətmir.
 
 ```json
 {
