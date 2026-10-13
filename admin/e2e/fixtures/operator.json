@@ -5,7 +5,8 @@
     "operator/kiosks/11111111-1111-4111-8111-111111111111",
     "operator/tasks",
     "operator/incidents",
-    "operator/inventory"
+    "operator/inventory",
+    "operator/activate"
   ],
   "api": {
     "GET /api/admin/operator/kiosks": [

@@ -45,6 +45,12 @@ export const routes: Routes = [
           import('./features/operator/operator-kiosk.component').then((m) => m.OperatorKioskComponent),
       },
       {
+        path: 'activate',
+        canActivate: [permissionGuard(Permissions.kiosksActivate)],
+        loadComponent: () =>
+          import('./features/operator/operator-activate.component').then((m) => m.OperatorActivateComponent),
+      },
+      {
         path: 'tasks',
         canActivate: [permissionGuard(Permissions.serviceTasksView)],
         loadComponent: () =>

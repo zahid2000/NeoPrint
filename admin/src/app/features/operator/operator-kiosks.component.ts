@@ -37,7 +37,17 @@ import { operatorScreen } from './operator-screen';
   ],
   template: `
     <div class="op-page">
-      <h1 class="op-title">{{ 'operator.kiosks.title' | translate }}</h1>
+      <div class="op-heading">
+        <h1 class="op-title">{{ 'operator.kiosks.title' | translate }}</h1>
+
+        <!-- An installation: the machine on site is bound to its kiosk (plan section 8B). -->
+        @if (canActivate()) {
+          <a mat-stroked-button routerLink="/operator/activate" data-action="activate">
+            <mat-icon>devices</mat-icon>
+            {{ 'operator.kiosks.activate' | translate }}
+          </a>
+        }
+      </div>
 
       @if (screen.problem(); as problem) {
         <app-error-banner [problem]="problem" effect="operator.loadFailedEffect" (retry)="screen.reload()" />
@@ -86,6 +96,7 @@ export class OperatorKiosksComponent {
   private readonly statuses = inject(KioskLiveStore);
 
   readonly canRefill = computed(() => this.auth.can(Permissions.paperRefill));
+  readonly canActivate = computed(() => this.auth.can(Permissions.kiosksActivate));
 
   readonly screen = operatorScreen<OperatorKioskCard[]>({
     key: () => 'kiosks',

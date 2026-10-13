@@ -462,6 +462,11 @@ a {
   align-items: center;
   color: var(--danger-500);
   font-size: var(--font-size-body-small);
+
+  // A sentence of several lines does not squeeze its icon.
+  mat-icon {
+    flex-shrink: 0;
+  }
 }
 
 /*
