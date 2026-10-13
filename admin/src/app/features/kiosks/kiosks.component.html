@@ -89,7 +89,8 @@
         <ng-container matColumnDef="code">
           <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.code' | translate }}</th>
           <td mat-cell *matCellDef="let kiosk">
-            <strong>{{ kiosk.code }}</strong>
+            <!-- A code is one word: it is not broken at its hyphen. -->
+            <strong class="neo-nowrap">{{ kiosk.code }}</strong>
           </td>
         </ng-container>
         <ng-container matColumnDef="name">

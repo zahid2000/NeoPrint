@@ -1429,6 +1429,17 @@ hadisələrini yazır və son sətirdə nəticəni deyir (çıxış kodu 0 — i
 `scope-check-<vaxt>@neoprint.local` adlı hesab və rol yaradır (təsadüfi şifrə ilə) və sonda hesabı söndürür;
 `dev-superadmin` hesabı ilə işləyir.
 
+`walk.mjs` panelin bütün səhifələrini və kiosk detalının tab-larını real stack-də gəzir və hər birində nəyin səhv olduğunu
+yazır: console xətası, rədd olunmuş sorğu, xam tərcümə açarı, skeleton-da qalmış səhifə, xəta banneri, boş səhifə, üfüqi
+sürüşmə. `--scoped` — bir kioska baxan, az icazəli hesabla (hər qaçışda `walk-check-<vaxt>@neoprint.local` yaradılır və
+sonda söndürülür); `--lang=ru`; `--shots=<qovluq>`. Səhifələr ünvanla açılır (tam yenilənmə), ona görə skript hər səhifəyə
+ən azı 5 saniyə ayırır — dalbadal açsa API-nin dəqiqədə 120 sorğu limitinə dəyir və panel giriş səhifəsinə atılır.
+
+```bash
+node e2e/walk.mjs                    # SuperAdmin, az: 34 səhifə və tab
+node e2e/walk.mjs --scoped           # əhatəsi məhdud hesab: icazəsi olmayan səhifə onu idarə panelinə qaytarmalıdır
+```
+
 `token.mjs` heç nəyi qısaltmır: access token-in ömrü (15 dəqiqə) backend-də sabitdir, tənzimləmə deyil — skript
 panel açıq halda real 15 dəqiqəni gözləyir, serverin bağlantını nə vaxt bağladığını, panelin neçə saniyəyə
 yenidən qoşulduğunu yazır, sonra kioska API ilə fasilə / davam verib sətrin hələ də izlədiyini yoxlayır.
@@ -1508,6 +1519,18 @@ docker exec neoprint-mongo sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAM
 **Yeni aktivləşdirilən kioskun sayğacı "təyin edilməyib" vəziyyətindədir** (T-258): alert və tapşırıq açılmır, panel
 (dashboard, kioskun "Sərf" tabı) "Sayğac təyin edin" göstərir, sifariş isə "kağız çatmır" deyə rədd olunur. Lotoku doldurub
 sayğacı yazın ("Kağız doldur" və ya `supplies.mjs set <say> <kiosk kodu>`) — ilk qeyddən sonra qaydalar adi qaydada işləyir.
+
+**Aparatsız "təzə quraşdırılmış kiosk"** — pilot quraşdırmasının paneldə necə göründüyünə baxmaq üçün:
+
+```bash
+node tools/dev-kiosk/new-kiosk.mjs                         # saxta cihaz qeydiyyatdan keçir, yeni kiosk kimi aktivləşdirilir; id-ni yazır
+node tools/dev-kiosk/new-kiosk.mjs show <kioskId>          # sayğac, proqnoz, alert, tapşırıq
+node tools/dev-kiosk/new-kiosk.mjs refill <kioskId> 30     # ilk doldurma: bundan sonra qaydalar işləyir (30 < 50 → Critical)
+node tools/dev-kiosk/new-kiosk.mjs retire <kioskId>        # cihazı ayırır; kiosk "Aktivləşdirilməyib" qalır
+```
+
+Cihazı olmuş kiosk silinmir (tarixçəsi saxlanılır — `kiosks.deleteHasHistory`), ona görə `retire`-dən sonra siyahıda
+"Aktivləşdirilməyib" kimi qalır; alert-i və tapşırığı qiymətləndirmənin növbəti süpürgəsində (5 dəqiqə) bağlanır.
 
 **Kioskun operatoru yoxdursa** (tapşırığı icra edə bilən, paylaya bilməyən hesab onun əhatəsində deyil) avtomatik tapşırıq
 hovuzda qalır və `service.tasks.manage` icazəli hesablara Mailpit-də "NeoPrint — tapşırıq təyin edilməyib: …" gəlir (T-260).
