@@ -167,11 +167,13 @@ yeni hesab yaradılmır.
 
 ### `POST /api/auth/refresh`
 
-`{ "refreshToken" }` → yeni sessiya. **Token rotasiya olunur.**
+`{ "refreshToken" }` → yeni sessiya. **Token rotasiya olunur.** Rədd cavabı (`400`) sessiyanın bitdiyini bildirir; `429` və `5xx` token haqqında heç nə demir — klient token-i saxlayır və sonra yenidən cəhd edir (T-269).
 
 ### `POST /api/auth/logout`
 
-`{ "refreshToken" }` → `204`.
+`{ "refreshToken", "fcmToken"? }` → `204`. Access token tələb etmir (o, çıxış anında bitmiş ola bilər).
+`fcmToken` verilibsə və həmin refresh token-in hesabındadırsa, cihaz hesabın push siyahısından çıxarılır (T-268);
+naməlum refresh token və ya başqa hesabın cihazı heç nəyi dəyişmir. Həmişə `204`.
 
 ---
 
@@ -1969,7 +1971,7 @@ oxuyanın dilində yazılır: siyahı `Accept-Language` ilə, push cihazın qeyd
 - `POST /api/users/me/fcm-token` `{ token, language, platform }` → `204`. `language` az/en/ru (başqası → az), `platform` android/ios/web
   (başqası → `unknown`). Eyni token başqa hesabdadırsa oradan silinir (telefonda başqası daxil oldu). Hesabda ən çox 10 cihaz, ən köhnəsi düşür.
   Boş və ya boşluqlu token → `400 notifications.tokenInvalid`.
-- `DELETE /api/users/me/fcm-token` `{ token }` → `204` (çıxış). Yalnız öz hesabındakı token silinir.
+- `DELETE /api/users/me/fcm-token` `{ token }` → `204`. Yalnız öz hesabındakı token silinir. Mobil tətbiq çıxışda bunu yox, `POST auth/logout`-un `fcmToken` sahəsini işlədir (T-268).
 - `/hubs/user` → `Notification` `{ notificationId, type }`: yeni bildiriş saxlandı (siyahı və banner üçün).
 - Push (FCM HTTP v1, `notification` + `data`): `data` = `{ notificationId, type, link? }`. FCM açarı OpenBao-da yoxdursa
   `LoggingPushSender` yalnız loqa yazır. FCM tokeni tanımırsa (`UNREGISTERED` və s.) token hesabdan silinir; müvəqqəti xətada
