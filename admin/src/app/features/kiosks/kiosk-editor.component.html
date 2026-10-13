@@ -51,7 +51,8 @@
         </mat-form-field>
 
         @if (isNew()) {
-          <mat-form-field>
+          <!-- The hint is two lines at this width: the field makes room for it instead of letting the next one cover it. -->
+          <mat-form-field subscriptSizing="dynamic">
             <mat-label>{{ 'kiosks.code' | translate }}</mat-label>
             <input
               matInput
@@ -139,7 +140,7 @@
         </mat-form-field>
       </div>
 
-      @for (key of generalProblems(); track key) {
+      @for (key of shownProblems(); track key) {
         <p class="neo-field-error" role="alert">
           <mat-icon aria-hidden="true">error</mat-icon>
           {{ key | translate }}

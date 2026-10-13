@@ -53,6 +53,14 @@ describe('KioskEditorComponent (new kiosk)', () => {
       'kiosks.invalid.location',
     ]);
     expect(component.canCreate()).toBe(false);
+
+    // ... and none of it is said on a form nobody has typed into yet: the
+    // button waits, the required fields are marked, and that is all.
+    expect(component.shownProblems()).toEqual([]);
+
+    // From the first thing entered, what is still missing is listed.
+    component.name.set('Nizami küçəsi');
+    expect(component.shownProblems()).toEqual(['kiosks.invalid.address', 'kiosks.invalid.location']);
   });
 
   it('checks the PIN the way the server does', () => {

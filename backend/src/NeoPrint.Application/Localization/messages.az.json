@@ -181,7 +181,7 @@
   "incidents.jobSuspected": "{kioskCode} kioskundan {minutes} dəqiqədir xəbər yoxdur; {jobCode} sifarişinin nəticəsi naməlumdur. Avtomatik qaytarma edilmədi — \"Baxış gözləyən sifarişlər\" səhifəsində qərar verin.",
   "incidents.jobSuspectedLateReport": "Kiosk {jobCode} sifarişi üçün admin qərarından sonra \"{reported}\" bildirdi (indiki status: {status}). Heç nə dəyişdirilmədi; kioskun sübutunu yoxlayın və lazım olsa müştəri ilə əlaqə saxlayın.",
   "incidents.jobSuspectedReminder": "{jobCode} sifarişi {hours} saatdır qərar gözləyir. Avtomatik heç nə edilmir — \"Baxış gözləyən sifarişlər\" səhifəsində qərar verin.",
-  "incidents.refundFailed": "{amount} ₼ qaytarma {attempts} cəhddən sonra alınmadı. Refund-lar səhifəsində təkrarlayın və ya istiqaməti dəyişin (balans / voucher).",
+  "incidents.refundFailed": "{amount} ₼ qaytarma {attempts} cəhddən sonra alınmadı. \"Qaytarmalar\" səhifəsində təkrarlayın və ya istiqaməti dəyişin (balans / voucher).",
   "incidents.resolution.fiscalIssued": "Fiskal çek verildi: {number}.",
   "incidents.resolution.inventoryRestocked": "Anbar qalığı minimumdan yuxarıdır; incident avtomatik bağlandı.",
   "incidents.resolution.kioskReported": "Kiosk qayıtdı və nəticəni bildirdi: {status}.",

@@ -194,6 +194,25 @@ export class KioskEditorComponent implements OnInit {
     return found;
   });
 
+  /**
+   * What is said under the general form. A new kiosk's form that nobody has
+   * typed into yet says nothing: three red lines on a form just opened read as
+   * errors the reader has not made. The required fields are marked, and the
+   * "create" button waits; from the first thing entered, what is still missing
+   * is listed.
+   */
+  readonly shownProblems = computed(() => {
+    const untouched =
+      this.isNew() &&
+      !this.name().trim() &&
+      !this.code().trim() &&
+      !this.address().trim() &&
+      this.lat() === null &&
+      this.lng() === null;
+
+    return untouched ? [] : this.generalProblems();
+  });
+
   readonly limitsValid = computed(() => {
     const size = this.maxSizeMb();
     const pages = this.maxPages();
