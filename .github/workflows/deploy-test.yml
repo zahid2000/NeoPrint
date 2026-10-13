@@ -1,0 +1,392 @@
+# NeoPrint — the test server (docs/TEST_SERVER.md).
+#
+# Started by hand: Actions → "Deploy (test server)" → Run workflow. It builds
+# the API and the panel images, puts them on the server, and builds an Android
+# APK that talks to that server.
+#
+# What it reads (Settings → Secrets and variables → Actions):
+#
+#   Variables                                Secrets
+#   TEST_SERVER_HOST         the server's IP    TEST_SERVER_SSH_KEY       private key of the deploy user
+#   TEST_SERVER_USER         ssh user           TEST_ANDROID_KEYSTORE_B64 optional: one signing key for
+#   TEST_SERVER_KNOWN_HOSTS  ssh-keyscan output                           every APK build
+#   TEST_SERVER_PORT         optional, 22
+#   TEST_SERVER_DIR          optional, /opt/neoprint
+#   TEST_DOMAIN              optional; <ip>.sslip.io without it
+#   TEST_ACME_EMAIL          optional; contact for the certificates
+#   TEST_MAP_TILE_URL        optional; map tiles for the APK
+#
+# No application secret passes through here: the server generates its own
+# (deploy/test-server/deploy.sh) and they never leave it.
+#
+# As in ci.yml, no third-party action is used: Docker, ssh and the Flutter SDK
+# are driven directly.
+name: Deploy (test server)
+
+on:
+  workflow_dispatch:
+    inputs:
+      server:
+        description: Build the images and deploy them to the test server
+        type: boolean
+        default: true
+      apk:
+        description: Build the Android APK that talks to the test server
+        type: boolean
+        default: true
+
+# Two deployments at once would fight over the same containers. The second
+# waits for the first rather than cancelling it half way.
+concurrency:
+  group: deploy-test
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------
+  # Settings
+  # --------------------------------------------------------------------
+  #
+  # Checked once, before anything is built: a missing value fails here with
+  # its name, not twenty minutes later as a failed ssh.
+  settings:
+    name: settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    outputs:
+      host: ${{ steps.resolve.outputs.host }}
+      api_image: ${{ steps.resolve.outputs.api_image }}
+      admin_image: ${{ steps.resolve.outputs.admin_image }}
+
+    steps:
+      - name: Check and resolve
+        id: resolve
+        env:
+          SERVER_HOST: ${{ vars.TEST_SERVER_HOST }}
+          SERVER_USER: ${{ vars.TEST_SERVER_USER }}
+          SERVER_PORT: ${{ vars.TEST_SERVER_PORT }}
+          SERVER_DIR: ${{ vars.TEST_SERVER_DIR }}
+          KNOWN_HOSTS: ${{ vars.TEST_SERVER_KNOWN_HOSTS }}
+          DOMAIN: ${{ vars.TEST_DOMAIN }}
+          ACME_EMAIL: ${{ vars.TEST_ACME_EMAIL }}
+          HAS_SSH_KEY: ${{ secrets.TEST_SERVER_SSH_KEY != '' }}
+        run: |
+          missing=()
+          [ -n "$SERVER_HOST" ] || missing+=("variable TEST_SERVER_HOST")
+          [ -n "$SERVER_USER" ] || missing+=("variable TEST_SERVER_USER")
+          [ -n "$KNOWN_HOSTS" ] || missing+=("variable TEST_SERVER_KNOWN_HOSTS")
+          [ "$HAS_SSH_KEY" = "true" ] || missing+=("secret TEST_SERVER_SSH_KEY")
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            for item in "${missing[@]}"; do
+              echo "::error::Not set: $item (Settings → Secrets and variables → Actions; docs/TEST_SERVER.md, step 3)"
+            done
+            exit 1
+          fi
+
+          # These are written into ssh command lines further down.
+          [[ "$SERVER_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "::error::TEST_SERVER_HOST is not an address"; exit 1; }
+          [[ "$SERVER_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || { echo "::error::TEST_SERVER_USER is not a user name"; exit 1; }
+          [[ "${SERVER_PORT:-22}" =~ ^[0-9]+$ ]] || { echo "::error::TEST_SERVER_PORT is not a number"; exit 1; }
+          [[ "${SERVER_DIR:-/opt/neoprint}" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "::error::TEST_SERVER_DIR is not an absolute path"; exit 1; }
+          [[ -z "$DOMAIN" || "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "::error::TEST_DOMAIN is not a host name"; exit 1; }
+          [[ -z "$ACME_EMAIL" || "$ACME_EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+$ ]] || { echo "::error::TEST_ACME_EMAIL is not an email address"; exit 1; }
+
+          # A certificate needs a name. With no domain yet, sslip.io gives the
+          # address one: 203-0-113-7.sslip.io resolves to 203.0.113.7.
+          if [ -n "$DOMAIN" ]; then
+            host="$DOMAIN"
+          elif [[ "$SERVER_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            host="${SERVER_HOST//./-}.sslip.io"
+          else
+            host="$SERVER_HOST"
+          fi
+
+          # Image names are lower case whatever the account is called.
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+
+          {
+            echo "host=$host"
+            echo "api_image=ghcr.io/$owner/neoprint-api"
+            echo "admin_image=ghcr.io/$owner/neoprint-admin"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Test server: https://$host/" >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------------------------
+  # Images
+  # --------------------------------------------------------------------
+  images:
+    name: image (${{ matrix.name }})
+    if: inputs.server
+    needs: settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # The repository root: the build needs global.json and the central
+          # MSBuild property files as well as backend/ (backend/Dockerfile).
+          - name: api
+            context: .
+            dockerfile: backend/Dockerfile
+            image: ${{ needs.settings.outputs.api_image }}
+          - name: admin
+            context: admin
+            dockerfile: admin/Dockerfile
+            image: ${{ needs.settings.outputs.admin_image }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sign in to the registry
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      # The default builder cannot keep its cache in a registry. The API image
+      # compiles GhostPDL from source; without the cache every deployment
+      # would wait for that again.
+      - name: Create the builder
+        run: docker buildx create --name neoprint --driver docker-container --use
+
+      - name: Build and push
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: >-
+          docker buildx build
+          --file "${{ matrix.dockerfile }}"
+          --tag "$IMAGE:$GITHUB_SHA"
+          --tag "$IMAGE:test"
+          --cache-from "type=registry,ref=$IMAGE:buildcache"
+          --cache-to "type=registry,ref=$IMAGE:buildcache,mode=max"
+          --provenance=false
+          --push
+          "${{ matrix.context }}"
+
+  # --------------------------------------------------------------------
+  # Server
+  # --------------------------------------------------------------------
+  server:
+    name: deploy
+    if: inputs.server
+    needs: [settings, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      # The server pulls with this job's token, which stops working when the
+      # job ends.
+      packages: read
+
+    env:
+      SERVER_HOST: ${{ vars.TEST_SERVER_HOST }}
+      SERVER_USER: ${{ vars.TEST_SERVER_USER }}
+      SERVER_PORT: ${{ vars.TEST_SERVER_PORT || '22' }}
+      SERVER_DIR: ${{ vars.TEST_SERVER_DIR || '/opt/neoprint' }}
+      HOST: ${{ needs.settings.outputs.host }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The host key comes from the settings, not from the first connection:
+      # a deployment must not hand a registry token to whoever answers.
+      - name: Set up ssh
+        env:
+          SSH_KEY: ${{ secrets.TEST_SERVER_SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.TEST_SERVER_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/neoprint-deploy
+          chmod 600 ~/.ssh/neoprint-deploy
+          printf '%s\n' "$KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host neoprint-test
+            HostName $SERVER_HOST
+            User $SERVER_USER
+            Port $SERVER_PORT
+            IdentityFile ~/.ssh/neoprint-deploy
+            IdentitiesOnly yes
+            BatchMode yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+          EOF
+          chmod 600 ~/.ssh/config
+
+      # Only what the server needs to run the stack: the compose files, the
+      # init scripts they mount, and the seed example the init is checked
+      # against. No source code and nothing secret.
+      - name: Upload the stack definition
+        run: |
+          tar -czf - \
+            docker-compose.yml \
+            .env.openbao-seed.example \
+            openbao \
+            docker \
+            deploy/test-server \
+            | ssh neoprint-test "mkdir -p '$SERVER_DIR' && tar -xzf - -C '$SERVER_DIR'"
+
+      - name: Deploy
+        env:
+          API_IMAGE: ${{ needs.settings.outputs.api_image }}:${{ github.sha }}
+          ADMIN_IMAGE: ${{ needs.settings.outputs.admin_image }}:${{ github.sha }}
+          ACME_EMAIL: ${{ vars.TEST_ACME_EMAIL || '-' }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s\n' "$REGISTRY_TOKEN" | ssh neoprint-test \
+            "NEOPRINT_HOST='$HOST' \
+             NEOPRINT_API_IMAGE='$API_IMAGE' \
+             NEOPRINT_ADMIN_IMAGE='$ADMIN_IMAGE' \
+             NEOPRINT_ACME_EMAIL='$ACME_EMAIL' \
+             REGISTRY_USER='${{ github.actor }}' \
+             bash '$SERVER_DIR/deploy/test-server/deploy.sh'"
+
+      # From outside, the way a phone reaches it: the certificate, Caddy, the
+      # panel's nginx and the API behind it. The first certificate can take a
+      # minute to arrive.
+      - name: Check from outside
+        run: |
+          curl --fail --silent --show-error --retry 18 --retry-delay 10 --retry-all-errors \
+            --output /dev/null "https://$HOST/healthz"
+          curl --fail --silent --show-error --retry 6 --retry-delay 10 --retry-all-errors \
+            --output /dev/null "https://$HOST/api/features"
+
+          {
+            echo "### Deployed"
+            echo "- Panel: https://$HOST/"
+            echo "- Operator panel: https://$HOST/operator"
+            echo "- Mail (test codes): https://mail.$HOST/"
+            echo "- Build: \`$GITHUB_SHA\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/neoprint-deploy
+
+  # --------------------------------------------------------------------
+  # Android APK
+  # --------------------------------------------------------------------
+  #
+  # A release build: a debug build would look for the API on the emulator's
+  # host (mobile/lib/core/network/api_base_url.dart). The address is the only
+  # thing that differs from any other build, and it is given at build time.
+  apk:
+    name: apk
+    if: inputs.apk
+    needs: settings
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      HOST: ${{ needs.settings.outputs.host }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # As in ci.yml: from the official repository, no third-party action.
+      - name: Install the Flutter SDK
+        run: |
+          git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$RUNNER_TOOL_CACHE/flutter"
+          echo "$RUNNER_TOOL_CACHE/flutter/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TOOL_CACHE/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+      - name: Record the SDK version
+        run: flutter --version
+
+      - name: Cache the pub cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('mobile/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Resolve packages
+        run: flutter pub get
+        working-directory: mobile
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # The release build is signed with the debug key (android/app/build.gradle.kts),
+      # and a runner makes itself a new one every time: Android then refuses
+      # to install a build over the previous one. With the key kept as a
+      # secret every build is signed alike and installs as an update.
+      - name: Use the kept signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.TEST_ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::warning::TEST_ANDROID_KEYSTORE_B64 is not set: this APK is signed with a one-off key. Uninstall the previous build before installing it (docs/TEST_SERVER.md, step 3)."
+            exit 0
+          fi
+
+          install -m 700 -d ~/.android
+          printf '%s' "$KEYSTORE_B64" | tr -d '\r\n ' | base64 --decode > ~/.android/debug.keystore
+          chmod 600 ~/.android/debug.keystore
+
+      # The run number as the build number, so each build is newer than the
+      # last to Android.
+      - name: Build
+        env:
+          MAP_TILE_URL: ${{ vars.TEST_MAP_TILE_URL }}
+        run: |
+          args=(--release "--build-number=$GITHUB_RUN_NUMBER" "--dart-define=NEOPRINT_API_URL=https://$HOST")
+          if [ -n "$MAP_TILE_URL" ]; then
+            args+=("--dart-define=NEOPRINT_MAP_TILE_URL=$MAP_TILE_URL")
+          fi
+
+          flutter build apk "${args[@]}"
+          cp build/app/outputs/flutter-apk/app-release.apk "$RUNNER_TEMP/neoprint-test.apk"
+        working-directory: mobile
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: neoprint-test-apk
+          path: ${{ runner.temp }}/neoprint-test.apk
+          if-no-files-found: error
+
+      # Also onto the server, so a phone can take it straight from a link.
+      - name: Put the APK on the server
+        env:
+          SSH_KEY: ${{ secrets.TEST_SERVER_SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.TEST_SERVER_KNOWN_HOSTS }}
+          SERVER_HOST: ${{ vars.TEST_SERVER_HOST }}
+          SERVER_USER: ${{ vars.TEST_SERVER_USER }}
+          SERVER_PORT: ${{ vars.TEST_SERVER_PORT || '22' }}
+          SERVER_DIR: ${{ vars.TEST_SERVER_DIR || '/opt/neoprint' }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/neoprint-deploy
+          chmod 600 ~/.ssh/neoprint-deploy
+          printf '%s\n' "$KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+
+          ssh_options=(-i ~/.ssh/neoprint-deploy -p "$SERVER_PORT" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes)
+
+          # Written under another name and renamed, so nobody downloads half
+          # a file.
+          ssh "${ssh_options[@]}" "$SERVER_USER@$SERVER_HOST" \
+            "mkdir -p '$SERVER_DIR/downloads' && cat > '$SERVER_DIR/downloads/.neoprint-test.apk.part' && chmod 644 '$SERVER_DIR/downloads/.neoprint-test.apk.part' && mv -f '$SERVER_DIR/downloads/.neoprint-test.apk.part' '$SERVER_DIR/downloads/neoprint-test.apk'" \
+            < "$RUNNER_TEMP/neoprint-test.apk"
+
+          rm -f ~/.ssh/neoprint-deploy
+
+          {
+            echo "### APK"
+            echo "- On the phone: https://$HOST/download/neoprint-test.apk"
+            echo "- Or the \`neoprint-test-apk\` artifact of this run"
+            echo "- It talks to https://$HOST/"
+          } >> "$GITHUB_STEP_SUMMARY"

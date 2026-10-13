@@ -10,6 +10,10 @@ yarandıqca bu fayl yenilənir.
 > dəyərləri heç vaxt bu fayla yazılmır — onlar OpenBao-ya `bao kv put` ilə
 > yazılır (`docs/OPENBAO.md`).
 
+> **Test serveri ayrıca sənəddədir:** internetdən əlçatan mühit, GitHub Actions ilə
+> deploy və ona yönəlmiş APK — [`TEST_SERVER.md`](TEST_SERVER.md). Onun parolları
+> serverdə yaradılır və buradakılarla eyni deyil.
+
 > **Layihədə PostgreSQL yoxdur.** Source of truth MongoDB-dir, Redis keş/queue/lock,
 > RabbitMQ mesaj brokeri, RustFS obyekt saxlamasıdır (plan Bölmə 4).
 

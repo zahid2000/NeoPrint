@@ -1,0 +1,55 @@
+# The test server's public door (docs/TEST_SERVER.md).
+#
+# Caddy obtains and renews the certificates itself. NEOPRINT_HOST is the
+# server's name: a real domain, or <ip-with-dashes>.sslip.io while there is
+# none. Everything under /etc/caddy/state is written on the server by
+# deploy.sh and is not in the repository.
+
+{
+	# "email <address>" when an ACME contact was configured, otherwise empty.
+	import /etc/caddy/state/acme.caddy
+}
+
+# One user and one password for the tools a tester needs and a stranger must
+# not have: the mail catcher and the Development-only endpoints.
+(test_tools_auth) {
+	import /etc/caddy/state/tools-auth.caddy
+}
+
+{$NEOPRINT_HOST} {
+	# The mock bank's simulator and its relatives answer anyone
+	# (AllowAnonymous, Development only). On a server the internet can reach,
+	# that is asked for a password first.
+	@dev path /api/dev/*
+	handle @dev {
+		import test_tools_auth
+		reverse_proxy admin:80
+	}
+
+	# The refund status page a customer opens from the kiosk's QR. It is
+	# served by the API outside /api, so the panel's nginx does not know it.
+	handle /refund/* {
+		reverse_proxy api:8080
+	}
+
+	# The test APK: https://<host>/download/neoprint-test.apk
+	handle_path /download/* {
+		root * /srv/downloads
+		@apk path *.apk
+		header @apk Content-Type application/vnd.android.package-archive
+		header Cache-Control "no-store"
+		file_server
+	}
+
+	# The panel, and /api and /hubs through its nginx: one origin, as in
+	# development (plan section 8A.1).
+	handle {
+		reverse_proxy admin:80
+	}
+}
+
+# Mailpit: the registration and password-reset codes of the test accounts.
+mail.{$NEOPRINT_HOST} {
+	import test_tools_auth
+	reverse_proxy mailpit:8025
+}

@@ -116,6 +116,7 @@ CI (`.github/workflows/ci.yml`) eyni addımları `windows-latest` və `ubuntu-la
 |---|---|
 | [`docs/NeoPrint-PLAN.md`](docs/NeoPrint-PLAN.md) | Tam spesifikasiya (yeganə mənbə) |
 | [`docs/DEV_ENVIRONMENT.md`](docs/DEV_ENVIRONMENT.md) | Lokal mühit: bütün əmrlər, ünvanlar, bağlantı sətirləri, test hesabları |
+| [`docs/TEST_SERVER.md`](docs/TEST_SERVER.md) | Test serveri: deploy (GitHub Actions), ünvanlar, parolların yeri, test APK-sı |
 | [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md) | Vizual və UX qaydaları (admin, mobil, kiosk üçün məcburi) |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Planda olmayan detallar üzrə qərarlar |
 | [`docs/THIRD_PARTY.md`](docs/THIRD_PARTY.md) | Bütün üçüncü tərəf asılılıqlar və lisenziyaları |

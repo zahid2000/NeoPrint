@@ -163,6 +163,8 @@ Bölmə 2.0 qaydası 1-ə görə aşağıdakılar üçün paket **əlavə edilmi
 | PDFium native kitabxanası (`bblanchon/pdfium-binaries`, `chromium/8066`; backend Dockerfile-da, CI-də və kiosk build-ində (`NeoPrint.Kiosk.csproj`) pinlənib, hər yükləmə SHA-256 ilə yoxlanılır — T-100) | BSD-3 / Apache-2.0 (Google PDFium) | Səhifə sayı və səhifə şəkilləri. Yalnız hazır binary götürülür; wrapper öz kodumuzdur (`NeoPrint.Pdfium`) |
 | CUPS | Apache-2.0 | Linux çap |
 | Mailpit | MIT | Development-də email |
+| Caddy (`caddy:2.11.7-alpine`, digest ilə pinlənib) | Apache-2.0 | **Yalnız test serverində:** TLS (sertifikatı özü alır və yeniləyir) və yeganə açıq qapı — `deploy/test-server/`, `docs/TEST_SERVER.md`. Layihə sahibi 2026-10-14-də təsdiqləyib (T-272). Lokal mühitdə və koda qoşulmuş halda istifadə olunmur |
+| sslip.io (xarici DNS xidməti, proqram deyil) | — | Test serverinin domeni olmayana qədər IP-dən ad düzəldir (`203-0-113-7.sslip.io`); `TEST_DOMAIN` yazılanda istifadə olunmur |
 
 ---
 

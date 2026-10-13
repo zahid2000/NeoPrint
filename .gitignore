@@ -5,6 +5,8 @@
 .env.*
 !.env.*.example
 .openbao/
+# Written on the test server by deploy/test-server/deploy.sh.
+.test-server/
 *.pem
 *.pfx
 *.p12

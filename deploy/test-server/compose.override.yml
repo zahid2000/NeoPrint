@@ -1,0 +1,107 @@
+# ---------------------------------------------------------------------------
+# NeoPrint — the test server (docs/TEST_SERVER.md).
+#
+# Laid over the development stack rather than written out again, so the two
+# cannot drift apart:
+#
+#   docker compose -f docker-compose.yml -f deploy/test-server/compose.override.yml up -d
+#
+# What changes:
+#   - nothing is built on the server: the API and the panel are the images
+#     the deploy workflow pushed (.github/workflows/deploy-test.yml);
+#   - no service publishes a port. The only way in is Caddy, on 80 and 443,
+#     which terminates TLS and passes everything to the panel's nginx - the
+#     same single origin as in development (plan section 8A.1);
+#   - the credentials in .env.openbao-seed are generated on the server
+#     (deploy.sh); the development ones in the example file are never used.
+#
+# The API still runs in Development here (docs/DECISIONS.md, 2026-10-14):
+# until a real bank adapter exists, the mock bank's simulator - which is
+# Development only - is the one way to finish a payment.
+#
+# !reset needs Docker Compose 2.24.4 or later; deploy.sh checks.
+# Relative paths are resolved against the directory of docker-compose.yml.
+# ---------------------------------------------------------------------------
+
+services:
+
+  openbao:
+    ports: !reset []
+
+  mongo:
+    ports: !reset []
+
+  redis:
+    ports: !reset []
+
+  rabbitmq:
+    ports: !reset []
+
+  rustfs:
+    ports: !reset []
+
+  rustfs-secondary:
+    ports: !reset []
+
+  # Reached through Caddy, behind a password (Caddyfile): this is where the
+  # registration and password-reset codes of the test accounts arrive.
+  mailpit:
+    ports: !reset []
+
+  api:
+    build: !reset null
+    image: ${NEOPRINT_API_IMAGE:?set by deploy.sh}
+    ports: !reset []
+
+  # The same image as the API, as in development.
+  converter:
+    build: !reset null
+    image: ${NEOPRINT_API_IMAGE:?set by deploy.sh}
+
+  admin:
+    build: !reset null
+    image: ${NEOPRINT_ADMIN_IMAGE:?set by deploy.sh}
+    ports: !reset []
+
+  # TLS and the one public door. Pinned by digest as well as by tag, like
+  # RustFS (docs/THIRD_PARTY.md).
+  caddy:
+    image: caddy:2.11.7-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f
+    container_name: neoprint-caddy
+    depends_on:
+      admin:
+        condition: service_healthy
+    # The configuration is read from a mounted directory, not a mounted file:
+    # a deployment replaces the file, and a single-file mount would go on
+    # showing the container the one it was started with.
+    command: ["caddy", "run", "--config", "/etc/caddy/site/Caddyfile", "--adapter", "caddyfile"]
+    environment:
+      NEOPRINT_HOST: ${NEOPRINT_HOST:?set by deploy.sh}
+    ports:
+      - "80:80"
+      - "443:443"
+      # HTTP/3.
+      - "443:443/udp"
+    volumes:
+      - ./deploy/test-server:/etc/caddy/site:ro
+      # Written by deploy.sh: the password hash of the test tools and the
+      # optional ACME contact. Neither is in the repository.
+      - ./.test-server/caddy:/etc/caddy/state:ro
+      # The test APK the workflow uploads.
+      - ./downloads:/srv/downloads:ro
+      # Certificates and the ACME account: losing these means asking for new
+      # certificates, and the issuers limit how often that is allowed.
+      - caddy-data:/data
+      - caddy-config:/config
+    healthcheck:
+      # The admin endpoint, on loopback inside the container only.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:
