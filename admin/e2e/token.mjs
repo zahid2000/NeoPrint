@@ -14,6 +14,15 @@
 // the next one opened, and then pauses and resumes the kiosk through the API
 // to see that the row still follows.
 //
+// "It connected again" is not the test. The first run of this script found
+// the panel connecting once a second for half a minute after the token ran out
+// (T-262): the server still answered requests with the old token, the panel
+// took that for a good token, and every connection opened with it was closed
+// at once. So after the server ends the connection the script watches for
+// forty-five seconds - longer than the server's tolerance for an old token -
+// and wants exactly one new connection, still open, a token exchange before
+// it, and no request refused for coming too often.
+//
 // The lifetime is a constant of the backend, not a setting, so the wait is the
 // real fifteen minutes; the whole run takes about seventeen.
 //
@@ -42,7 +51,12 @@ const log = (line) => console.log(`${at()} ${line}`);
 
 const sockets = [];
 const consoleErrors = [];
-let refreshes = 0;
+const refreshes = [];
+const tooMany = [];
+
+// How long the panel is watched after the server ended its connection: longer than the
+// thirty seconds for which the API still answers with a token that has run out.
+const settleSeconds = 45;
 
 const browser = await launchBrowser();
 const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'az' });
@@ -75,8 +89,15 @@ page.on('websocket', (socket) => {
 
 page.on('request', (request) => {
   if (request.url().includes('/api/auth/admin/refresh')) {
-    refreshes++;
+    refreshes.push(seconds());
     log('the panel exchanges its token (POST /api/auth/admin/refresh)');
+  }
+});
+
+page.on('response', (response) => {
+  if (response.status() === 429) {
+    tooMany.push(seconds());
+    log(`429 ${response.request().method()} ${new URL(response.url()).pathname}`);
   }
 });
 
@@ -134,7 +155,7 @@ log(`row: ${before}; indicator: ${await indicator()}`);
 const deadline = Date.now() + waitMinutes * 60_000;
 let lastNote = 0;
 
-while (Date.now() < deadline && !(sockets.length >= 2 && sockets[0].closedAt !== null)) {
+while (Date.now() < deadline && !(sockets.length >= 1 && sockets[0].closedAt !== null)) {
   await page.waitForTimeout(5000);
 
   if (seconds() - lastNote >= 120) {
@@ -144,12 +165,20 @@ while (Date.now() < deadline && !(sockets.length >= 2 && sockets[0].closedAt !==
 }
 
 const first = sockets[0];
-const second = sockets[1];
 const closedAfter = first?.closedAt === null || !first ? null : first.closedAt - signedInAt;
-const reopened = second ? second.openedAt - first.closedAt : null;
 
-await page.waitForTimeout(3000);
-log(`after the token ran out - row: ${await rowShows()}; indicator: ${await indicator()}`);
+// What the panel does next, for longer than an old token is still answered.
+if (closedAfter !== null) {
+  log(`the server ended the connection; watching for ${settleSeconds}s`);
+  await page.waitForTimeout(settleSeconds * 1000);
+}
+
+const second = sockets[1];
+const reopened = second && first.closedAt !== null ? second.openedAt - first.closedAt : null;
+const exchanged = first?.closedAt === null || !first ? [] : refreshes.filter((at) => at >= first.closedAt - 2);
+const steady = sockets.length === 2 && second.closedAt === null;
+
+log(`${settleSeconds}s after the token ran out - ${sockets.length - 1} new connection(s); row: ${await rowShows()}; indicator: ${await indicator()}`);
 
 // --- still live? -------------------------------------------------------------
 // A new sign-in for the script itself: its own token would have run out as well.
@@ -193,13 +222,23 @@ await browser.close();
 
 console.log('\n--- result ---');
 console.log(`connection closed by the server ${closedAfter ?? '?'}s after sign-in (the token lives 900s)`);
-console.log(`next connection opened ${reopened ?? '?'}s later; token exchanges seen: ${refreshes}`);
+console.log(`next connection opened ${reopened ?? '?'}s later; connections opened after that: ${Math.max(0, sockets.length - 2)} (0 is right)`);
+console.log(`token exchanged before reconnecting: ${exchanged.length > 0} (${exchanged.length} exchange(s)); requests refused with 429: ${tooMany.length}`);
 console.log(`row followed a pause after that: ${followedPause}; and the resume: ${followedResume}`);
 console.log(`console errors: ${consoleErrors.length}`);
 consoleErrors.forEach((line) => console.log(`  ${line}`));
 
 const ok =
-  closedAfter !== null && closedAfter >= 840 && closedAfter <= 960 && reopened !== null && reopened <= 15 && followedPause && followedResume;
+  closedAfter !== null &&
+  closedAfter >= 840 &&
+  closedAfter <= 960 &&
+  reopened !== null &&
+  reopened <= 15 &&
+  steady &&
+  exchanged.length > 0 &&
+  tooMany.length === 0 &&
+  followedPause &&
+  followedResume;
 
 console.log(ok ? 'OK: the panel stayed live across the token running out.' : 'FAILED: see above.');
 process.exit(ok ? 0 : 1);

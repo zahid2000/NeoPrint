@@ -1,7 +1,7 @@
 import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { Observable, catchError, shareReplay, switchMap, throwError } from 'rxjs';
+import { Observable, catchError, switchMap, throwError } from 'rxjs';
 
 import { defaultLanguage } from '../i18n/languages';
 import { AuthService } from './auth.service';
@@ -12,15 +12,6 @@ const anonymousPaths = [
   '/api/auth/admin/refresh',
   '/api/auth/admin/logout',
 ];
-
-/**
- * A single refresh shared by every request that hits a 401 at once.
- *
- * The refresh token rotates on use (plan section 2.8), so five parallel
- * refreshes would have four rejected as replays - and a replay makes the
- * server revoke the whole chain, signing the administrator out.
- */
-let refreshInFlight: Observable<unknown> | null = null;
 
 /**
  * Attaches the access token and recovers from an expired one
@@ -55,16 +46,10 @@ export function authInterceptor(
         return throwError(() => error);
       }
 
-      // shareReplay, because the refresh observable is cold: subscribing to it
-      // twice would send two requests and defeat the whole point of sharing.
-      refreshInFlight ??= auth.refresh().pipe(shareReplay({ bufferSize: 1, refCount: false }));
-
-      const shared = refreshInFlight;
-
-      return shared.pipe(
+      // One exchange for every request answered 401 at once - and for a live
+      // connection that is being opened at the same moment (AuthService).
+      return auth.sharedRefresh().pipe(
         switchMap(() => {
-          release(shared);
-
           return next(
             request.clone({
               setHeaders: { Authorization: `Bearer ${auth.token}` },
@@ -73,8 +58,6 @@ export function authInterceptor(
           );
         }),
         catchError((refreshError: unknown) => {
-          release(shared);
-
           // The refresh cookie is gone or refused; nothing left to recover
           // from, so the panel returns to the sign-in screen.
           auth.onSessionExpired();
@@ -84,16 +67,4 @@ export function authInterceptor(
       );
     }),
   );
-}
-
-/**
- * Clears the shared refresh, but only if it is still the current one.
- *
- * A later 401 may already have started a new refresh; clearing that one would
- * let the next request start a second, which rotation would reject.
- */
-function release(shared: Observable<unknown>): void {
-  if (refreshInFlight === shared) {
-    refreshInFlight = null;
-  }
 }

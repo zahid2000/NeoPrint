@@ -27,6 +27,9 @@ export const HUB_CONNECTION_BUILDER = new InjectionToken<() => HubConnectionBuil
 /** What the panel shows about its own link to the server. */
 export type ConnectionState = 'connected' | 'reconnecting' | 'disconnected';
 
+/** A connection that stayed up this long was a good one. */
+export const stableConnectionMs = 10_000;
+
 /**
  * Reconnects for as long as the panel is open.
  *
@@ -34,12 +37,38 @@ export type ConnectionState = 'connected' | 'reconnecting' | 'disconnected';
  * wrong behaviour for a screen somebody leaves open all day: the API being
  * restarted or a laptop waking from sleep would leave the panel silently
  * stale. The delay climbs to half a minute and stays there.
+ *
+ * A connection that opens counts as success for SignalR, and the next loss is
+ * retried at once - so a server that accepts a connection and closes it
+ * straight away is asked again without a pause, for ever. That happened: for
+ * half a minute after its token ran out the panel connected once a second
+ * (T-262). The cause is fixed where it was; this is so that no other cause can
+ * do the same: a connection that did not last is not a success, and each one in
+ * a row makes the next attempt wait longer.
  */
 export class ForeverRetryPolicy implements IRetryPolicy {
-  nextRetryDelayInMilliseconds(context: RetryContext): number {
-    const steps = [0, 2_000, 5_000, 10_000, 30_000];
+  private static readonly steps = [0, 2_000, 5_000, 10_000, 30_000];
 
-    return steps[Math.min(context.previousRetryCount, steps.length - 1)];
+  private openedAt: number | null = null;
+  private shortLived = 0;
+
+  /** The service says when a connection opened. */
+  opened(now = Date.now()): void {
+    this.openedAt = now;
+  }
+
+  nextRetryDelayInMilliseconds(context: RetryContext): number {
+    // The first try after a loss: was what was lost a connection that lasted?
+    if (context.previousRetryCount === 0) {
+      const lived = this.openedAt === null ? Number.POSITIVE_INFINITY : Date.now() - this.openedAt;
+
+      this.shortLived = lived < stableConnectionMs ? this.shortLived + 1 : 0;
+      this.openedAt = null;
+    }
+
+    const steps = ForeverRetryPolicy.steps;
+
+    return steps[Math.min(context.previousRetryCount + this.shortLived, steps.length - 1)];
   }
 }
 
@@ -66,6 +95,7 @@ export class AdminHubService {
   private readonly createBuilder = inject(HUB_CONNECTION_BUILDER);
 
   private connection: HubConnection | null = null;
+  private retries = new ForeverRetryPolicy();
 
   /** Handlers by event name, so several features can watch the same event. */
   private readonly handlers = new Map<string, Set<(payload: unknown) => void>>();
@@ -108,7 +138,7 @@ export class AdminHubService {
         // exchanged before it is handed over.
         accessTokenFactory: () => this.auth.freshToken(),
       })
-      .withAutomaticReconnect(new ForeverRetryPolicy())
+      .withAutomaticReconnect((this.retries = new ForeverRetryPolicy()))
       .configureLogging(LogLevel.Warning)
       .build();
 
@@ -125,6 +155,7 @@ export class AdminHubService {
 
     try {
       await connection.start();
+      this.retries.opened();
       this.setState('connected');
     } catch {
       // A failed first connect is not an error worth showing: the panel works
@@ -232,6 +263,7 @@ export class AdminHubService {
   }
 
   private connectedAgain(): void {
+    this.retries.opened();
     this.setState('connected');
     this.announceReconnect();
   }

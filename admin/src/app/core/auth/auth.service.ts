@@ -1,13 +1,20 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, firstValueFrom } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { finalize, shareReplay, tap } from 'rxjs/operators';
 
 import { AdminLoginResponse, AdminSummary } from './auth.models';
 
-/** A token with less than this left is exchanged before it is used for a new connection. */
-const tokenMarginMs = 30_000;
+/**
+ * A token with less than this left is exchanged before it is used for a new
+ * connection. Not less than the server's tolerance for clocks that differ
+ * (thirty seconds, `ClockSkew`): for that long after a token has run out the
+ * API still answers requests that carry it, while the live connection is
+ * closed the moment it runs out - so "ask the API and see" does not tell
+ * whether a token will hold a connection (T-262).
+ */
+export const tokenMarginMs = 30_000;
 
 /**
  * Sign-in state for the admin panel (plan sections 2.8, 8A.1).
@@ -28,6 +35,9 @@ export class AuthService {
   private accessTokenExpiresAt = 0;
   private readonly currentAdmin = signal<AdminSummary | null>(null);
   private readonly restoring = signal(true);
+
+  /** The exchange that is on its way, for everybody who needs one at the same moment. */
+  private refreshing: Observable<AdminLoginResponse> | null = null;
 
   /** The signed-in administrator, or null. */
   readonly admin = this.currentAdmin.asReadonly();
@@ -91,6 +101,33 @@ export class AuthService {
     return this.http
       .post<AdminLoginResponse>('/api/auth/admin/refresh', {})
       .pipe(tap((response) => this.apply(response)));
+  }
+
+  /**
+   * One exchange shared by everything that needs one at once: the requests
+   * that were answered 401 together, and a live connection about to open.
+   *
+   * The refresh token rotates on use (plan section 2.8), so two exchanges side
+   * by side would have one rejected as a replay - and a replay makes the
+   * server revoke the whole chain, signing the administrator out.
+   */
+  sharedRefresh(): Observable<AdminLoginResponse> {
+    if (!this.refreshing) {
+      const shared: Observable<AdminLoginResponse> = this.refresh().pipe(
+        // Let go when it is over, unless a later one has already taken its place.
+        finalize(() => {
+          if (this.refreshing === shared) {
+            this.refreshing = null;
+          }
+        }),
+        // The exchange is cold: without this every subscriber would send its own.
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+
+      this.refreshing = shared;
+    }
+
+    return this.refreshing;
   }
 
   /** Restores a session at startup. Silent: no session is the normal state. */
@@ -172,10 +209,25 @@ export class AuthService {
    * server closed it with the token - nothing else may have asked the API
    * for anything in the meantime. Handing over the old token would be
    * refused, again and again, for as long as the panel sat idle (T-248).
+   *
+   * The token is exchanged here, not left to a request that might be answered
+   * 401: the server closes a live connection the moment its token runs out,
+   * and for half a minute after that still answers requests carrying the same
+   * token. A connection opened with it was closed at once, and opened again,
+   * once a second until the half minute was over (T-262).
    */
   async freshToken(): Promise<string> {
     if (this.accessToken() && this.accessTokenExpiresAt - Date.now() < tokenMarginMs) {
-      await this.reloadProfile();
+      try {
+        await firstValueFrom(this.sharedRefresh());
+      } catch (error) {
+        // Refused: the session is over, and the panel says so. Anything else -
+        // no network, too many requests - leaves the token as it is: the
+        // attempt to connect fails and is made again later.
+        if (error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403)) {
+          this.onSessionExpired();
+        }
+      }
     }
 
     return this.accessToken() ?? '';

@@ -287,26 +287,91 @@ describe('AuthService', () => {
     http.expectNone('/api/admin/me');
   });
 
-  it('asks the server first when the token has run out, so that it is exchanged on the way', async () => {
-    signInFor(-60);
+  /** The server's answer to an exchange: another token, good for a quarter of an hour. */
+  const exchanged = (): AdminLoginResponse => ({
+    ...loginResponse(admin({ kioskIds: ['k-1'], allKiosks: false })),
+    accessToken: 'second.token.value',
+    accessTokenExpiresAt: new Date(Date.now() + 900_000).toISOString(),
+  });
+
+  // T-262: the first version asked for the profile and counted on a 401. For
+  // half a minute after a token runs out the API still answers with it - and
+  // the live connection, closed the moment it ran out, was opened with the
+  // same token again, once a second.
+  it('exchanges a token that has run out before it is handed to the live connection', async () => {
+    signInFor(-10);
 
     const token = service.freshToken();
 
-    // An ordinary request: with an expired token the interceptor exchanges it,
-    // and the interceptor is what keeps the exchange to one at a time.
-    http.expectOne('/api/admin/me').flush(admin({ kioskIds: ['k-1'], allKiosks: false }));
+    http.expectOne('/api/auth/admin/refresh').flush(exchanged());
 
-    expect(await token).toBe('header.payload.signature');
+    expect(await token, 'the new token, not the one that ran out').toBe('second.token.value');
     expect(service.admin()?.kioskIds).toEqual(['k-1']);
+
+    // Not "ask the API and see": the API would still have said yes.
+    http.expectNone('/api/admin/me');
   });
 
   it('does the same for a token that is about to run out', async () => {
     signInFor(10);
 
     const token = service.freshToken();
-    http.expectOne('/api/admin/me').flush(admin());
+    http.expectOne('/api/auth/admin/refresh').flush(exchanged());
 
-    await token;
+    expect(await token).toBe('second.token.value');
+  });
+
+  it('hands the next connection the exchanged token without asking again', async () => {
+    signInFor(-10);
+
+    const first = service.freshToken();
+    http.expectOne('/api/auth/admin/refresh').flush(exchanged());
+    await first;
+
+    expect(await service.freshToken()).toBe('second.token.value');
+    http.expectNone('/api/auth/admin/refresh');
+  });
+
+  it('makes one exchange for everything that asks at the same moment', async () => {
+    signInFor(-10);
+
+    const first = service.freshToken();
+    const second = service.freshToken();
+
+    // The refresh token rotates on use: a second exchange beside the first
+    // would be a replay, and a replay signs the administrator out.
+    const requests = http.match('/api/auth/admin/refresh');
+    expect(requests).toHaveLength(1);
+    requests[0].flush(exchanged());
+
+    expect(await first).toBe('second.token.value');
+    expect(await second).toBe('second.token.value');
+  });
+
+  it('ends the session when the exchange is refused', async () => {
+    signInFor(-10);
+
+    const token = service.freshToken();
+    http.expectOne('/api/auth/admin/refresh').flush('', { status: 401, statusText: 'Unauthorized' });
+
+    expect(await token).toBe('');
+    expect(service.isSignedIn()).toBe(false);
+  });
+
+  it('keeps the session when the exchange fails for another reason, so that it is tried again', async () => {
+    signInFor(-10);
+
+    const token = service.freshToken();
+    http.expectOne('/api/auth/admin/refresh').flush('', { status: 429, statusText: 'Too Many Requests' });
+
+    expect(await token, 'the attempt to connect fails and is made again later').toBe('header.payload.signature');
+    expect(service.isSignedIn()).toBe(true);
+
+    // The next attempt asks again rather than remembering the failure.
+    const again = service.freshToken();
+    http.expectOne('/api/auth/admin/refresh').flush(exchanged());
+
+    expect(await again).toBe('second.token.value');
   });
 
   it('gives the connection no token when nobody is signed in', async () => {

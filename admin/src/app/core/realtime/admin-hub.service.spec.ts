@@ -6,7 +6,12 @@ import { RetryContext } from '@microsoft/signalr';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthService } from '../auth/auth.service';
-import { AdminHubService, ForeverRetryPolicy, HUB_CONNECTION_BUILDER } from './admin-hub.service';
+import {
+  AdminHubService,
+  ForeverRetryPolicy,
+  HUB_CONNECTION_BUILDER,
+  stableConnectionMs,
+} from './admin-hub.service';
 
 /**
  * A stand-in for a SignalR connection.
@@ -310,7 +315,9 @@ describe('AdminHubService', () => {
 });
 
 describe('ForeverRetryPolicy', () => {
-  const policy = new ForeverRetryPolicy();
+  let policy: ForeverRetryPolicy;
+
+  beforeEach(() => (policy = new ForeverRetryPolicy()));
 
   const delayAfter = (attempts: number) =>
     policy.nextRetryDelayInMilliseconds({
@@ -318,6 +325,47 @@ describe('ForeverRetryPolicy', () => {
       elapsedMilliseconds: 0,
       retryReason: new Error('dropped'),
     } as RetryContext);
+
+  // T-262: a connection that opens is a success for SignalR, so the loss that
+  // follows is retried at once - and a server that closes every connection it
+  // accepts is asked again without a pause, for ever.
+  it('makes the next attempt wait when the connection that was lost had only just opened', () => {
+    policy.opened();
+    expect(delayAfter(0), 'not at once').toBe(2_000);
+
+    policy.opened();
+    expect(delayAfter(0), 'longer the second time in a row').toBe(5_000);
+
+    policy.opened();
+    expect(delayAfter(0)).toBe(10_000);
+
+    policy.opened();
+    expect(delayAfter(0)).toBe(30_000);
+
+    policy.opened();
+    expect(delayAfter(0), 'and never faster than twice a minute after that').toBe(30_000);
+  });
+
+  it('starts again at once after a connection that lasted', () => {
+    policy.opened();
+    delayAfter(0);
+    policy.opened();
+    delayAfter(0);
+
+    // This one stayed up: what was lost was a good connection.
+    policy.opened(Date.now() - stableConnectionMs - 1);
+
+    expect(delayAfter(0)).toBe(0);
+    expect(delayAfter(1)).toBe(2_000);
+  });
+
+  it('counts the tries that fail on top of the connections that did not last', () => {
+    policy.opened();
+
+    expect(delayAfter(0)).toBe(2_000);
+    expect(delayAfter(1)).toBe(5_000);
+    expect(delayAfter(2)).toBe(10_000);
+  });
 
   it('retries immediately the first time', () => {
     expect(delayAfter(0)).toBe(0);
