@@ -46,6 +46,22 @@ describe('attentionFor', () => {
     expect(attentionFor(kiosk({ paperA4Current: 0, paperA4Capacity: 0 }))).toBeNull();
   });
 
+  // T-258: a new kiosk's nought is a count nobody made, not an empty tray.
+  it('asks for the counter to be set on a kiosk nobody has counted, rather than calling it out of paper', () => {
+    const unset = attentionFor(kiosk({ paperA4Current: 0, paperA4Counted: false }));
+
+    expect(unset?.reason).toBe('paperUnset');
+    expect(unset?.tone).toBe('warning');
+
+    expect(attentionFor(kiosk({ paperA4Current: 0, paperA4Counted: true }))?.reason).toBe('noPaper');
+    expect(attentionFor(kiosk({ paperA4Current: 0 }))?.reason, 'an answer without the field').toBe('noPaper');
+    expect(
+      attentionFor(kiosk({ status: 'Offline', paperA4Current: 0, paperA4Counted: false }))?.reason,
+      'being out of touch comes first',
+    ).toBe('offline');
+    expect(attentionFor(kiosk({ paperA4Capacity: 0, paperA4Current: 0, paperA4Counted: false }))).toBeNull();
+  });
+
   it('counts a kiosk whose heartbeat stopped as out of touch, whatever its stored status says', () => {
     const now = Date.parse('2026-09-29T12:00:00Z');
     const at = (ms: number) => new Date(now - ms).toISOString();

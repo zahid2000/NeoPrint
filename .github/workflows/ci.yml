@@ -271,6 +271,14 @@ jobs:
         run: node scripts/i18n-check.mjs
         working-directory: admin
 
+      # An event the backend sends over /hubs/admin and no page listens to
+      # fails nothing else: the page just shows what it loaded when it was
+      # opened (T-248). Every event the backend sends must be in the panel's
+      # one list of them and have a listener - or a written reason why not.
+      - name: Hub events
+        run: node scripts/hub-check.mjs
+        working-directory: admin
+
       # The tests run in jsdom, so no browser is needed on the runner.
       - name: Test
         run: npx ng test --watch=false

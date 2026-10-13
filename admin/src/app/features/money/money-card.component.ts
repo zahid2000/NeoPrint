@@ -6,6 +6,8 @@ import { firstValueFrom } from 'rxjs';
 
 import { MoneyApiService } from '../../core/api/money-api.service';
 import { PaymentsDashboard } from '../../core/api/step4.models';
+import { HubEvents } from '../../core/realtime/hub-events';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { MoneyPipe } from '../../shared/format.pipes';
 import { RevenueChartComponent, RevenueChartDay } from '../../shared/revenue-chart.component';
 import { StatusChipComponent } from '../../shared/status-chip.component';
@@ -119,9 +121,34 @@ export class MoneyCardComponent implements OnInit {
     }),
   );
 
+  constructor() {
+    // Today's takings and the problems waiting for somebody move by
+    // themselves: a payment, a refund, a receipt, an incident (T-253).
+    liveRefresh({
+      events: [
+        HubEvents.paymentSucceeded,
+        HubEvents.refundStatusChanged,
+        HubEvents.fiscalStatusChanged,
+        HubEvents.incidentRaised,
+        HubEvents.incidentResolved,
+      ],
+      reload: () => this.load(),
+    });
+  }
+
   ngOnInit(): void {
-    firstValueFrom(this.api.paymentsDashboard())
-      .then((d) => this.data.set(d))
-      .catch(() => this.failed.set(true));
+    void this.load();
+  }
+
+  /** What is on screen stays when a later fetch fails; only a first one that fails says so. */
+  private async load(): Promise<void> {
+    try {
+      this.data.set(await firstValueFrom(this.api.paymentsDashboard()));
+      this.failed.set(false);
+    } catch {
+      if (!this.data()) {
+        this.failed.set(true);
+      }
+    }
   }
 }

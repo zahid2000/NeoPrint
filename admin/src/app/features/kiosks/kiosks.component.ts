@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -9,20 +9,17 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { firstValueFrom } from 'rxjs';
 
-import { AdminApiService, KioskListItem, KioskStatus } from '../../core/api/admin-api.service';
+import { KioskStatus } from '../../core/api/admin-api.service';
 import { Permissions } from '../../core/auth/auth.models';
 import { HasPermissionDirective } from '../../core/auth/has-permission.directive';
-import { AdminHubService } from '../../core/realtime/admin-hub.service';
-import { liveRefresh } from '../../core/realtime/live-refresh';
+import { KioskLiveStore } from '../../core/realtime/kiosk-live.store';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { KioskMapComponent, MapMarker } from '../../shared/kiosk-map.component';
 import { PageHeaderComponent } from '../../shared/page-header.component';
-import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
 
 export const kioskStatuses: readonly KioskStatus[] = [
@@ -49,6 +46,10 @@ export const kioskTone: Record<KioskStatus, StatusTone> = {
 /**
  * The "Kiosklar" page (plan section 8A.3): the list, or the same kiosks on a
  * map, filtered by status and a search. A row or a marker opens the kiosk.
+ *
+ * The kiosks and their statuses are the store's (T-254): this page keeps no
+ * copy, so a kiosk that went offline shows here at the moment it shows on the
+ * dashboard, and neither needs a reload (T-248).
  */
 @Component({
   selector: 'app-kiosks',
@@ -75,8 +76,7 @@ export const kioskTone: Record<KioskStatus, StatusTone> = {
   styleUrl: './kiosks.component.scss',
 })
 export class KiosksComponent {
-  private readonly api = inject(AdminApiService);
-  private readonly hub = inject(AdminHubService);
+  private readonly store = inject(KioskLiveStore);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
 
@@ -84,9 +84,9 @@ export class KiosksComponent {
   readonly statuses = kioskStatuses;
   readonly tone = kioskTone;
 
-  readonly kiosks = signal<KioskListItem[]>([]);
-  readonly loading = signal(true);
-  readonly problem = signal<Problem | null>(null);
+  readonly kiosks = computed(() => this.store.kiosks() ?? []);
+  readonly loading = this.store.loading;
+  readonly problem = this.store.problem;
 
   readonly search = signal('');
   readonly status = signal<KioskStatus | 'all'>('all');
@@ -132,46 +132,12 @@ export class KiosksComponent {
   readonly unplaced = computed(() => this.filtered().length - this.markers().length);
 
   constructor() {
-    void this.load();
-
-    // A kiosk went offline, came back, was paused: the row says so at once,
-    // from what the event carries (T-248) ...
-    inject(DestroyRef).onDestroy(
-      this.hub.on<{ kioskId: string; status: KioskStatus }>('KioskStatusChanged', (event) =>
-        this.kiosks.update((list) =>
-          list.map((kiosk) => (kiosk.id === event.kioskId ? { ...kiosk, status: event.status } : kiosk)),
-        ),
-      ),
-    );
-
-    // ... and the rest of the row - the device, the last heartbeat - follows.
-    liveRefresh({
-      events: ['KioskStatusChanged', 'DeviceActivated', 'DeviceRevoked'],
-      reload: () => this.load(true),
-    });
+    this.store.watch();
   }
 
-  /**
-   * Fetches the list. A quiet fetch is one nobody asked for - an event, the
-   * connection coming back: the table stays as it is until the answer comes,
-   * and an answer that does not come changes nothing.
-   */
-  async load(quiet = false): Promise<void> {
-    if (!quiet) {
-      this.loading.set(true);
-      this.problem.set(null);
-    }
-
-    try {
-      this.kiosks.set(await firstValueFrom(this.api.listKiosks()));
-      this.problem.set(null);
-    } catch (error) {
-      if (!quiet) {
-        this.problem.set(toProblem(error));
-      }
-    } finally {
-      this.loading.set(false);
-    }
+  /** "Yenidən cəhd et" on the error banner. */
+  load(): void {
+    void this.store.load();
   }
 
   open(id: string): void {

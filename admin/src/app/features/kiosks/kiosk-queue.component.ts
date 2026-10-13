@@ -13,6 +13,7 @@ import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
+import { HubEvents } from '../../core/realtime/hub-events';
 
 /**
  * Kiosk detail → Queue (plan section 8A.3): the queue the kiosk's own screen
@@ -86,7 +87,7 @@ export class KioskQueueComponent implements OnInit {
   readonly problem = signal<Problem | null>(null);
 
   constructor() {
-    const off = this.hub.on<{ kioskId: string; queue: QueueEntry[] }>('QueueUpdated', (event) => {
+    const off = this.hub.on<{ kioskId: string; queue: QueueEntry[] }>(HubEvents.queueUpdated, (event) => {
       if (event.kioskId === this.kioskId()) {
         this.queue.set(event.queue);
       }

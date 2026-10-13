@@ -6,7 +6,8 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KioskListItem } from '../../core/api/admin-api.service';
-import { AdminHubService, ConnectionState } from '../../core/realtime/admin-hub.service';
+import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { FakeHub } from '../../core/realtime/fake-hub.testing';
 import { liveDebounceMs, livePollMs } from '../../core/realtime/live-refresh';
 import { KiosksComponent } from './kiosks.component';
 
@@ -19,53 +20,6 @@ function kiosk(overrides: Partial<KioskListItem> = {}): KioskListItem {
     status: 'Online',
     ...overrides,
   } as KioskListItem;
-}
-
-/** The hub as the page sees it. */
-class FakeHub {
-  private readonly handlers = new Map<string, Set<(payload: unknown) => void>>();
-  private readonly stateListeners = new Set<(state: ConnectionState) => void>();
-  private readonly reconnectListeners = new Set<() => void>();
-
-  private current: ConnectionState = 'connected';
-
-  connectionState = (): ConnectionState => this.current;
-  lastEventAt = (): Date | null => null;
-
-  on<T>(event: string, handler: (payload: T) => void): () => void {
-    const handlers = this.handlers.get(event) ?? new Set();
-    this.handlers.set(event, handlers);
-    handlers.add(handler as (payload: unknown) => void);
-
-    return () => handlers.delete(handler as (payload: unknown) => void);
-  }
-
-  onState(listener: (state: ConnectionState) => void): () => void {
-    this.stateListeners.add(listener);
-
-    return () => this.stateListeners.delete(listener);
-  }
-
-  onReconnect(listener: () => void): () => void {
-    this.reconnectListeners.add(listener);
-
-    return () => this.reconnectListeners.delete(listener);
-  }
-
-  emit(event: string, payload: unknown): void {
-    this.handlers.get(event)?.forEach((handler) => handler(payload));
-  }
-
-  drop(): void {
-    this.current = 'reconnecting';
-    this.stateListeners.forEach((listener) => listener(this.current));
-  }
-
-  comeBack(): void {
-    this.current = 'connected';
-    this.stateListeners.forEach((listener) => listener(this.current));
-    this.reconnectListeners.forEach((listener) => listener());
-  }
 }
 
 /**
@@ -88,6 +42,16 @@ describe('KiosksComponent', () => {
 
   const statusOf = (id: string): string | undefined =>
     component.kiosks().find((item) => item.id === id)?.status;
+
+  /** The status chip as it is on screen, in the row of the kiosk with this code. */
+  function shownStatus(code: string): string | undefined {
+    fixture.detectChanges();
+
+    const rows = [...(fixture.nativeElement as HTMLElement).querySelectorAll('tr[mat-row]')];
+    const row = rows.find((candidate) => candidate.textContent?.includes(code));
+
+    return row?.querySelector('app-status-chip')?.textContent?.replace(/\s+/g, ' ').trim();
+  }
 
   beforeEach(async () => {
     vi.useFakeTimers();
@@ -173,6 +137,33 @@ describe('KiosksComponent', () => {
 
     expect(component.kiosks()).toHaveLength(2);
     expect(component.problem(), 'the indicator in the header already says the panel is cut off').toBeNull();
+  });
+
+  // What the reader sees, not only what the component holds (T-255): the first
+  // fix for T-248 was checked on the signal alone.
+  it('changes the status chip in the row when the kiosk goes offline and comes back', () => {
+    expect(shownStatus('KSK-0001')).toContain('kiosks.status.Online');
+
+    hub.emit('KioskStatusChanged', { kioskId: 'k-1', status: 'Offline' });
+
+    expect(shownStatus('KSK-0001')).toContain('kiosks.status.Offline');
+    expect(shownStatus('KSK-0001')).not.toContain('kiosks.status.Online');
+    expect(shownStatus('KSK-0002'), 'the other row is untouched').toContain('kiosks.status.Online');
+
+    hub.emit('KioskStatusChanged', { kioskId: 'k-1', status: 'Online' });
+
+    expect(shownStatus('KSK-0001')).toContain('kiosks.status.Online');
+
+    vi.advanceTimersByTime(liveDebounceMs);
+    backend.expectOne('/api/admin/kiosks').flush([kiosk(), kiosk({ id: 'k-2', code: 'KSK-0002' })]);
+  });
+
+  it('shows on screen what a poll found while the connection was down', async () => {
+    hub.drop();
+    vi.advanceTimersByTime(livePollMs);
+    await answer([kiosk({ status: 'Paused' }), kiosk({ id: 'k-2', code: 'KSK-0002' })]);
+
+    expect(shownStatus('KSK-0001')).toContain('kiosks.status.Paused');
   });
 
   it('fetches again when a device is activated or revoked', () => {

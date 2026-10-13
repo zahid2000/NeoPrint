@@ -14,6 +14,16 @@
     <mat-progress-bar mode="indeterminate" />
   }
 
+  @if (changedElsewhere()) {
+    <div class="neo-notice" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>{{ 'features.changedElsewhere' | translate }}</span>
+      <button mat-stroked-button type="button" (click)="takeChanges()">
+        {{ 'common.refresh' | translate }}
+      </button>
+    </div>
+  }
+
   @if (errorMessage()) {
     <div class="flags__error" role="alert">
       <mat-icon>error_outline</mat-icon>

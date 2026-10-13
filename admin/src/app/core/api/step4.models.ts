@@ -218,6 +218,8 @@ export interface IncidentRow {
   readonly entityType?: string;
   readonly entityId?: string;
   readonly kioskId?: string;
+  /** The kiosk's code, when the incident is about one. */
+  readonly kioskCode?: string;
   readonly createdAt: string;
   readonly resolvedAt?: string;
   readonly resolution?: string;

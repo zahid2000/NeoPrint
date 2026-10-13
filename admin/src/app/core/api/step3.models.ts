@@ -176,6 +176,8 @@ export interface PaperStock {
   readonly capacity: number;
   readonly current: number;
   readonly lastRefillAt: string | null;
+  /** False until the first refill is recorded: the count is then unknown, not nought (T-258). */
+  readonly counted?: boolean;
 }
 
 export interface SupplyEvent {

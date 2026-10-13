@@ -61,6 +61,58 @@
     </mat-card>
   }
 
+  <!-- What somebody still has to deal with: the count, and the most severe first. -->
+  @if (canIncidents()) {
+    <mat-card class="dashboard__tile dashboard__tile--wide" data-tile="incidents">
+      <mat-card-content>
+        <div class="dashboard__tile-head">
+          <mat-icon>report</mat-icon>
+          <span>{{ 'dashboard.incidentsTitle' | translate }}</span>
+        </div>
+
+        @if (incidentsFailed()) {
+          <p class="neo-field-error" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            {{ 'dashboard.incidentsFailed' | translate }}
+          </p>
+        } @else if (openIncidents() === 0) {
+          <app-status-chip status="Completed" [text]="'dashboard.incidentsNone' | translate" />
+        } @else if (openIncidents(); as count) {
+          <div class="dashboard__metric" data-metric="open-incidents">{{ count | count }}</div>
+
+          <ul class="dashboard__list">
+            @for (incident of incidents(); track incident.id) {
+              <li class="dashboard__incident">
+                <app-status-chip
+                  [status]="incident.severity"
+                  [text]="'money.incidentSeverity.' + incident.severity | translate"
+                />
+                <span class="dashboard__incident-text">
+                  @if (incident.kioskCode; as code) {
+                    @if (canKiosks()) {
+                      <a [routerLink]="['/kiosks', incident.kioskId]">{{ code }}</a>
+                    } @else {
+                      {{ code }}
+                    }
+                    ·
+                  }
+                  {{ incident.details }}
+                </span>
+                <span class="neo-caption">{{ incident.createdAt | dateTime }}</span>
+              </li>
+            }
+          </ul>
+
+          @if (moreIncidents() > 0) {
+            <p class="dashboard__detail">
+              {{ 'dashboard.incidentsMore' | translate: { count: moreIncidents() } }}
+            </p>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+
   <!-- Money right after the kiosks: failed refunds and fiscal receipts are critical (plan section 8A.3). -->
   @if (canMoney()) {
     <app-money-card class="dashboard__tile dashboard__tile--wide" />

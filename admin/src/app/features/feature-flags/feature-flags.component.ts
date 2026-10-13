@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -21,6 +21,8 @@ import {
   KioskListItem,
 } from '../../core/api/admin-api.service';
 import { defaultLanguage, translations } from '../../core/i18n/translations';
+import { HubEvents } from '../../core/realtime/hub-events';
+import { liveDebounceMs, liveRefresh } from '../../core/realtime/live-refresh';
 import { describeError } from '../login/login.component';
 
 /** One flag's unsaved state while the operator is changing it. */
@@ -30,12 +32,32 @@ interface FlagDraft {
   kioskOverrides: Record<string, boolean>;
 }
 
+/** What a flag is on the server, in a form two answers can be compared by. */
+function serverState(flags: readonly FeatureFlagDetails[]): string {
+  return JSON.stringify(
+    [...flags]
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map((flag) => [
+        flag.key,
+        flag.defaultEnabled,
+        flag.rolloutPercent,
+        Object.entries(flag.kioskOverrides).sort(([a], [b]) => a.localeCompare(b)),
+        [...flag.userAllowlist].sort(),
+      ]),
+  );
+}
+
 /**
  * Feature flags (plan section 2.16).
  *
  * A flag has a default, a percentage rollout and per-kiosk overrides. An
  * override always wins over the rollout, which is what makes it safe to try a
  * feature on one kiosk before opening it to a share of the traffic.
+ *
+ * The page may hold changes that are not saved yet, so it never refreshes by
+ * itself. When somebody else saves a flag (`FeatureFlagsChanged`) it says so
+ * and offers "Yenilə" - which takes the server's values and keeps what was
+ * being changed here (T-253).
  */
 @Component({
   selector: 'app-feature-flags',
@@ -76,8 +98,96 @@ export class FeatureFlagsComponent {
   readonly savingKey = signal<string | null>(null);
   readonly errorMessage = signal<string | null>(null);
 
+  /** The server holds something other than what this page last took in. */
+  readonly changedElsewhere = signal(false);
+
+  /** What the server answered when the difference was noticed. */
+  private fresh: FeatureFlagDetails[] | null = null;
+  private recheck: ReturnType<typeof setTimeout> | undefined;
+
   constructor() {
     void this.reload();
+
+    liveRefresh({
+      events: [HubEvents.featureFlagsChanged],
+      reload: () => this.lookForChanges(),
+    });
+
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.recheck));
+  }
+
+  /**
+   * Asks what the server holds now and compares - nothing on the page moves.
+   * The event also follows this page's own save, and may come before the
+   * save's answer: while a save is on its way the question waits.
+   */
+  private async lookForChanges(): Promise<void> {
+    clearTimeout(this.recheck);
+
+    if (this.loading()) {
+      return;
+    }
+
+    if (this.savingKey()) {
+      this.recheck = setTimeout(() => void this.lookForChanges(), liveDebounceMs);
+
+      return;
+    }
+
+    try {
+      const fresh = await firstValueFrom(this.api.listFeatureFlags());
+
+      if (this.savingKey() || this.loading()) {
+        this.recheck = setTimeout(() => void this.lookForChanges(), liveDebounceMs);
+
+        return;
+      }
+
+      const changed = serverState(fresh) !== serverState(this.flags());
+
+      this.fresh = changed ? fresh : null;
+      this.changedElsewhere.set(changed);
+    } catch {
+      // Nothing to say: the header's indicator shows the panel is cut off.
+    }
+  }
+
+  /**
+   * "Yenilə" on the notice: the server's values, except in the flags that
+   * were being changed here - those keep what was entered, now set against
+   * the new server values.
+   */
+  takeChanges(): void {
+    const fresh = this.fresh;
+
+    if (!fresh) {
+      this.changedElsewhere.set(false);
+
+      return;
+    }
+
+    const edited = new Map(
+      this.flags()
+        .filter((flag) => this.isDirty(flag))
+        .map((flag) => [flag.key, this.draft(flag.key)]),
+    );
+
+    this.flags.set(fresh);
+    this.drafts.set(
+      Object.fromEntries(
+        fresh.map((flag) => [
+          flag.key,
+          edited.get(flag.key) ?? {
+            defaultEnabled: flag.defaultEnabled,
+            rolloutPercent: flag.rolloutPercent,
+            kioskOverrides: { ...flag.kioskOverrides },
+          },
+        ]),
+      ),
+    );
+
+    this.fresh = null;
+    this.changedElsewhere.set(false);
   }
 
   async reload(): Promise<void> {
@@ -87,6 +197,8 @@ export class FeatureFlagsComponent {
     try {
       const flags = await firstValueFrom(this.api.listFeatureFlags());
       this.flags.set(flags);
+      this.fresh = null;
+      this.changedElsewhere.set(false);
 
       this.drafts.set(
         Object.fromEntries(

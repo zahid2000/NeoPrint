@@ -97,6 +97,8 @@ export interface KioskListItem {
   readonly safeModeSince?: string | null;
   readonly paperA4Current?: number | null;
   readonly paperA4Capacity?: number | null;
+  /** False while nobody has recorded what is in the A4 tray (T-258). */
+  readonly paperA4Counted?: boolean | null;
 }
 
 /** An administrator account as the panel lists it (plan section 8A.3). */

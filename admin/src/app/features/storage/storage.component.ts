@@ -35,6 +35,7 @@ import {
 } from './storage-provider.dialog';
 import { StorageSyncDialogComponent, StorageSyncDialogData } from './storage-sync.dialog';
 import { SyncProgressComponent } from './sync-progress.component';
+import { HubEvents } from '../../core/realtime/hub-events';
 
 /** One progress reading, for working out a speed. */
 interface Sample {
@@ -122,11 +123,11 @@ export class StorageComponent {
 
   constructor() {
     const off = [
-      this.hub.on<StorageSyncProgress>('StorageSyncProgress', (progress) =>
+      this.hub.on<StorageSyncProgress>(HubEvents.storageSyncProgress, (progress) =>
         this.onProgress(progress),
       ),
-      this.hub.on<StorageSyncProgress>('StorageSyncCompleted', () => void this.load()),
-      this.hub.on<StorageHealthChange>('StorageHealthChanged', (change) => this.onHealth(change)),
+      this.hub.on<StorageSyncProgress>(HubEvents.storageSyncCompleted, () => void this.load()),
+      this.hub.on<StorageHealthChange>(HubEvents.storageHealthChanged, (change) => this.onHealth(change)),
     ];
 
     inject(DestroyRef).onDestroy(() => off.forEach((unsubscribe) => unsubscribe()));

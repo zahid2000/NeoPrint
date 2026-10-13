@@ -3,10 +3,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
-import { describe, beforeEach, afterEach, expect, it } from 'vitest';
+import { describe, beforeEach, afterEach, expect, it, vi } from 'vitest';
 
 import { FeatureFlagDetails, KioskListItem } from '../../core/api/admin-api.service';
 import { supportedLanguages, translations } from '../../core/i18n/translations';
+import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { FakeHub } from '../../core/realtime/fake-hub.testing';
+import { liveDebounceMs } from '../../core/realtime/live-refresh';
 import { FeatureFlagsComponent } from './feature-flags.component';
 
 const kioskA = '11111111-1111-1111-1111-111111111111';
@@ -197,6 +200,139 @@ describe('FeatureFlagsComponent', () => {
   it('falls back to the technical key for a flag this build has no name for', () => {
     expect(component.hasText(flags[0])).toBe(false);
     expect(component.hasText({ ...flags[0], key: 'referral' })).toBe(true);
+  });
+});
+
+/**
+ * Somebody else saved a flag while this page was open (T-253). The page may
+ * hold changes that are not saved, so it does not refresh by itself: it says
+ * so, and "Yenilə" takes the new values without losing what was being changed.
+ */
+describe('FeatureFlagsComponent, a flag changed elsewhere', () => {
+  let fixture: ComponentFixture<FeatureFlagsComponent>;
+  let component: FeatureFlagsComponent;
+  let backend: HttpTestingController;
+  let hub: FakeHub;
+
+  const notice = (): HTMLElement | null => {
+    fixture.detectChanges();
+
+    return (fixture.nativeElement as HTMLElement).querySelector('.neo-notice');
+  };
+
+  async function settle(): Promise<void> {
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+  }
+
+  /** The server announces a change; the page asks what the flags are now. */
+  async function announce(now: FeatureFlagDetails[]): Promise<void> {
+    hub.emit('FeatureFlagsChanged');
+    vi.advanceTimersByTime(liveDebounceMs);
+    backend.expectOne('/api/admin/features').flush(now);
+    await settle();
+  }
+
+  beforeEach(async () => {
+    vi.useFakeTimers();
+    hub = new FakeHub();
+
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([{ path: 'login', children: [] }]),
+        provideTranslateService({ fallbackLang: 'az', lang: 'az' }),
+        { provide: AdminHubService, useValue: hub },
+      ],
+    });
+
+    backend = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(FeatureFlagsComponent);
+    component = fixture.componentInstance;
+
+    backend.expectOne('/api/admin/features').flush(flags);
+    await settle();
+    backend.expectOne('/api/admin/kiosks').flush(kiosks);
+    await settle();
+  });
+
+  afterEach(() => {
+    fixture.destroy();
+    backend.verify();
+    vi.useRealTimers();
+  });
+
+  it('says so, and changes nothing on the page', async () => {
+    component.setRollout('scan.enabled', 40);
+    expect(notice()).toBeNull();
+
+    await announce([flags[0], { ...flags[1], defaultEnabled: false }]);
+
+    expect(notice(), 'the notice is on screen').not.toBeNull();
+    expect(component.flags()[1].defaultEnabled, 'the page still shows what it had').toBe(true);
+    expect(component.draft('scan.enabled').rolloutPercent, 'the unsaved change is still there').toBe(40);
+  });
+
+  it('takes the new values on "Yenilə" and keeps what was being changed here', async () => {
+    component.setRollout('scan.enabled', 40);
+
+    await announce([
+      { ...flags[0], defaultEnabled: true },
+      { ...flags[1], defaultEnabled: false, rolloutPercent: 10 },
+    ]);
+
+    notice()!.querySelector('button')!.click();
+    fixture.detectChanges();
+
+    expect(notice()).toBeNull();
+
+    // The flag nobody touched here follows the server ...
+    expect(component.flags()[1].defaultEnabled).toBe(false);
+    expect(component.draft('wallet.enabled').rolloutPercent).toBe(10);
+    expect(component.isDirty(component.flags()[1])).toBe(false);
+
+    // ... and the one being changed keeps what was entered, now against the new server value.
+    expect(component.draft('scan.enabled').rolloutPercent).toBe(40);
+    expect(component.flags()[0].defaultEnabled).toBe(true);
+    expect(component.isDirty(component.flags()[0])).toBe(true);
+  });
+
+  it('says nothing about its own save', async () => {
+    component.setDefault('scan.enabled', true);
+
+    const saving = component.save(flags[0]);
+    const request = backend.expectOne('/api/admin/features/scan.enabled');
+
+    // The announcement of this very save arrives before its answer.
+    hub.emit('FeatureFlagsChanged');
+    vi.advanceTimersByTime(liveDebounceMs);
+    backend.expectNone('/api/admin/features');
+
+    request.flush({ ...flags[0], defaultEnabled: true });
+    await saving;
+    await settle();
+
+    // Asked once the save is through: the server holds what the page holds.
+    vi.advanceTimersByTime(liveDebounceMs);
+    backend.expectOne('/api/admin/features').flush([{ ...flags[0], defaultEnabled: true }, flags[1]]);
+    await settle();
+
+    expect(notice()).toBeNull();
+  });
+
+  it('takes the notice away when the page is reloaded by hand', async () => {
+    await announce([flags[0], { ...flags[1], rolloutPercent: 5 }]);
+    expect(notice()).not.toBeNull();
+
+    const reloading = component.reload();
+    backend.expectOne('/api/admin/features').flush([flags[0], { ...flags[1], rolloutPercent: 5 }]);
+    await settle();
+    backend.expectOne('/api/admin/kiosks').flush(kiosks);
+    await reloading;
+
+    expect(notice()).toBeNull();
+    expect(component.draft('wallet.enabled').rolloutPercent).toBe(5);
   });
 });
 

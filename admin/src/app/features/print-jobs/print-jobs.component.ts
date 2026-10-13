@@ -25,6 +25,7 @@ import { DateTimePipe, MoneyPipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
+import { HubEvents } from '../../core/realtime/hub-events';
 
 const pageSize = 20;
 
@@ -334,7 +335,7 @@ export class PrintJobsComponent implements OnInit {
 
   constructor() {
     // A queue change means a job moved: the list follows without a reload button.
-    const off = this.hub.on<{ kioskId: string }>('QueueUpdated', (event) => {
+    const off = this.hub.on<{ kioskId: string }>(HubEvents.queueUpdated, (event) => {
       const kiosk = this.kioskId() ?? this.kiosk();
 
       if (kiosk && kiosk !== event.kioskId) {

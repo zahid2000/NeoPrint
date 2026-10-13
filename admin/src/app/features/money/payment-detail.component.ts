@@ -11,6 +11,8 @@ import { MoneyApiService } from '../../core/api/money-api.service';
 import { PaymentDetail, PaymentRefund } from '../../core/api/step4.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
+import { HubEvents } from '../../core/realtime/hub-events';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { confirmAction } from '../../shared/confirm.dialog';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { DateTimePipe, MoneyPipe } from '../../shared/format.pipes';
@@ -294,17 +296,35 @@ export class PaymentDetailComponent implements OnInit {
     this.detail()?.user ? ['OriginalMethod', 'Wallet'] : ['OriginalMethod', 'Voucher'],
   );
 
+  constructor() {
+    // A refund of this payment moves by itself - sent, confirmed, failed - and
+    // so does its fiscal receipt (T-253). The receipt's event names no
+    // payment, so any of them asks again.
+    liveRefresh({
+      events: [HubEvents.refundStatusChanged, HubEvents.fiscalStatusChanged],
+      accepts: (event, payload) =>
+        event !== HubEvents.refundStatusChanged ||
+        (payload as { paymentId?: string } | null)?.paymentId === this.id(),
+      reload: () => this.load(true),
+    });
+  }
+
   ngOnInit(): void {
     void this.load();
   }
 
-  async load(): Promise<void> {
-    this.problem.set(null);
+  /** A quiet fetch is one nobody asked for: one that fails leaves the page as it is. */
+  async load(quiet = false): Promise<void> {
+    if (!quiet) {
+      this.problem.set(null);
+    }
 
     try {
       this.detail.set(await firstValueFrom(this.api.getPayment(this.id())));
     } catch (error) {
-      this.problem.set(toProblem(error));
+      if (!quiet) {
+        this.problem.set(toProblem(error));
+      }
     }
   }
 

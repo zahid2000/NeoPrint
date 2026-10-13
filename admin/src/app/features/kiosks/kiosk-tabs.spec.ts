@@ -222,6 +222,49 @@ describe('KioskSuppliesComponent', () => {
     expect(component.variantOf('Toner:Black Cartridge')).toBe(' (Black Cartridge)');
   });
 
+  // T-258: a newly installed kiosk's nought is a count nobody made.
+  it('asks for the counter to be set instead of calling an uncounted tray empty', async () => {
+    const fixture = TestBed.createComponent(KioskSuppliesComponent);
+    fixture.componentRef.setInput('kioskId', kioskId);
+    fixture.detectChanges();
+
+    backend.expectOne(`/api/admin/kiosks/${kioskId}/supplies`).flush({
+      ...supplies,
+      paper: { ...supplies.paper, A4: { capacity: 500, current: 0, lastRefillAt: null, counted: false } },
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const tray = (): string =>
+      (fixture.nativeElement as HTMLElement).querySelector('.supplies__tray')?.textContent ?? '';
+
+    expect(tray()).toContain('supplies.counterUnset');
+    expect(tray()).toContain('supplies.counterUnsetHint');
+    expect(tray(), 'not "out of paper"').not.toContain('supplies.empty');
+    expect(tray(), 'no 0 / 500').not.toContain('supplies.level');
+
+    // The first refill is recorded: from then on it is a count like any other.
+    const component = fixture.componentInstance;
+    component.mode.set('Exact');
+    component.sheets.set(0);
+
+    const refilling = component.refill();
+    backend
+      .expectOne(`/api/admin/kiosks/${kioskId}/paper/refill`)
+      .flush({
+        ...supplies,
+        paper: {
+          ...supplies.paper,
+          A4: { capacity: 500, current: 0, lastRefillAt: '2026-10-13T09:00:00Z', counted: true },
+        },
+      });
+    await refilling;
+    fixture.detectChanges();
+
+    expect(tray()).not.toContain('supplies.counterUnset');
+    expect(tray()).toContain('supplies.empty');
+  });
+
   it('checks the count the way the server does', async () => {
     const component = await load();
 

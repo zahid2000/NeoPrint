@@ -11,6 +11,8 @@ import { firstValueFrom } from 'rxjs';
 
 import { MoneyApiService } from '../../core/api/money-api.service';
 import { ReceiptRow } from '../../core/api/step4.models';
+import { HubEvents } from '../../core/realtime/hub-events';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
@@ -170,6 +172,11 @@ export class ReceiptsComponent implements OnInit {
 
   private lastQuery = '';
 
+  constructor() {
+    // A receipt's fiscal status moves by itself: pending, issued, failed (T-253).
+    liveRefresh({ events: [HubEvents.fiscalStatusChanged], reload: () => this.load(true) });
+  }
+
   ngOnInit(): void {
     void this.load();
   }
@@ -188,10 +195,14 @@ export class ReceiptsComponent implements OnInit {
     void this.load();
   }
 
-  async load(): Promise<void> {
+  /** A quiet fetch is one nobody asked for: the table stays, and one that fails says nothing. */
+  async load(quiet = false): Promise<void> {
     this.lastQuery = this.number().trim();
-    this.loading.set(true);
-    this.problem.set(null);
+
+    if (!quiet) {
+      this.loading.set(true);
+      this.problem.set(null);
+    }
 
     try {
       const result = await firstValueFrom(
@@ -200,7 +211,9 @@ export class ReceiptsComponent implements OnInit {
       this.rows.set(result.items);
       this.total.set(result.total);
     } catch (error) {
-      this.problem.set(toProblem(error));
+      if (!quiet) {
+        this.problem.set(toProblem(error));
+      }
     } finally {
       this.loading.set(false);
     }

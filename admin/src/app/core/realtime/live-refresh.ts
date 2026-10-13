@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { DestroyRef, inject } from '@angular/core';
 
 import { AdminHubService, ConnectionState } from './admin-hub.service';
+import { HubEvent } from './hub-events';
 
 /** Events that arrive in a burst - a status, then its incident - cost one fetch. */
 export const liveDebounceMs = 800;
@@ -11,7 +12,7 @@ export const livePollMs = 30_000;
 
 export interface LiveRefreshOptions {
   /** Hub events after which the data on the page is out of date. */
-  readonly events: readonly string[];
+  readonly events: readonly HubEvent[];
 
   /**
    * Fetches the data again, quietly: what is on screen stays until the answer
@@ -21,7 +22,7 @@ export interface LiveRefreshOptions {
   readonly reload: () => unknown;
 
   /** Whether an event concerns this page; without it every listed event does. */
-  readonly accepts?: (event: string, payload: unknown) => boolean;
+  readonly accepts?: (event: HubEvent, payload: unknown) => boolean;
 }
 
 /**

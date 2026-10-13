@@ -78,4 +78,16 @@
   &__list-name {
     font-size: var(--font-size-body-small);
   }
+
+  // An incident: how severe, what happened (as many lines as it takes), when.
+  &__incident {
+    align-items: flex-start;
+  }
+
+  &__incident-text {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--font-size-body-small);
+    overflow-wrap: anywhere;
+  }
 }

@@ -464,6 +464,31 @@ a {
   font-size: var(--font-size-body-small);
 }
 
+/*
+ * Something the reader should know and may act on, that is not an error: icon,
+ * words, at most one button (docs/DESIGN_SYSTEM.md, "canlı səhifədə
+ * saxlanmamış dəyişiklik").
+ */
+.neo-notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--info-bg);
+  font-size: var(--font-size-body-small);
+
+  > mat-icon {
+    color: var(--info-500);
+  }
+
+  > span {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 /* The spinner a busy button shows beside its unchanged label. */
 .neo-button-spinner {
   display: inline-block;

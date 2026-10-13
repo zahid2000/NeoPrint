@@ -20,6 +20,7 @@ import { DateTimePipe } from '../../shared/format.pipes';
 import { NotifyService } from '../../shared/notify.service';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
+import { HubEvents } from '../../core/realtime/hub-events';
 
 type Capability = keyof PrinterCapabilities;
 
@@ -286,12 +287,12 @@ export class KioskPrintersComponent implements OnInit {
   constructor() {
     // The kiosk's answers: a new printer list, a command's result.
     const off = [
-      this.hub.on<{ kioskId: string }>('KioskPrintersUpdated', (event) => {
+      this.hub.on<{ kioskId: string }>(HubEvents.kioskPrintersUpdated, (event) => {
         if (event.kioskId === this.kioskId()) {
           void this.load();
         }
       }),
-      this.hub.on<KioskCommand>('CommandResult', (command) => {
+      this.hub.on<KioskCommand>(HubEvents.commandResult, (command) => {
         if (command.kioskId === this.kioskId()) {
           this.commands.update((list) => [command, ...list.filter((item) => item.id !== command.id)]);
 

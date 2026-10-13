@@ -1,5 +1,5 @@
 import { MoneyCardComponent } from '../money/money-card.component';
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,7 +14,9 @@ import { lowPaperShare } from '../../core/api/step3.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { HasPermissionDirective } from '../../core/auth/has-permission.directive';
-import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { HubEvents } from '../../core/realtime/hub-events';
+import { IncidentLiveStore } from '../../core/realtime/incident-live.store';
+import { KioskLiveStore } from '../../core/realtime/kiosk-live.store';
 import { liveRefresh } from '../../core/realtime/live-refresh';
 import { BytesPipe, CountPipe, DateTimePipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
@@ -26,6 +28,7 @@ export type AttentionReason =
   | 'offline'
   | 'notConfigured'
   | 'noPaper'
+  | 'paperUnset'
   | 'maintenance'
   | 'paused'
   | 'lowPaper';
@@ -99,6 +102,12 @@ export function attentionFor(kiosk: KioskListItem, now = Date.now()): KioskAtten
   const capacity = kiosk.paperA4Capacity ?? 0;
   const current = kiosk.paperA4Current ?? 0;
 
+  // Nobody has recorded what is in the tray: not "out of paper", but somebody
+  // has to set the counter before the kiosk takes orders (T-258).
+  if (capacity > 0 && kiosk.paperA4Counted === false) {
+    return make('paperUnset', 'warning');
+  }
+
   if (capacity > 0 && current === 0) {
     return make('noPaper', 'danger');
   }
@@ -136,6 +145,7 @@ const attentionOrder: readonly AttentionReason[] = [
   'offline',
   'notConfigured',
   'noPaper',
+  'paperUnset',
   'maintenance',
   'paused',
   'lowPaper',
@@ -147,8 +157,11 @@ const attentionOrder: readonly AttentionReason[] = [
  * It fills up step by step as the features it reports on arrive: step 1 the
  * devices waiting for activation and the kiosk scope, step 2 files,
  * conversion failures, storage health and sync, step 3 the kiosk statuses and
- * the kiosks that need looking at. What an account may do is its roles' business
- * and is shown on the admin users page, not here.
+ * the kiosks that need looking at, step 7 the open incidents. What an account
+ * may do is its roles' business and is shown on the admin users page, not here.
+ *
+ * The kiosks and the incidents are read from their stores (T-254), which
+ * follow the hub; the other tiles are fetched again when their events come.
  */
 @Component({
   selector: 'app-dashboard',
@@ -173,7 +186,8 @@ const attentionOrder: readonly AttentionReason[] = [
 export class DashboardComponent {
   private readonly auth = inject(AuthService);
   private readonly api = inject(AdminApiService);
-  private readonly hub = inject(AdminHubService);
+  private readonly kioskStore = inject(KioskLiveStore);
+  private readonly incidentStore = inject(IncidentLiveStore);
 
   readonly permissions = Permissions;
   readonly admin = this.auth.admin;
@@ -184,8 +198,19 @@ export class DashboardComponent {
 
   readonly canKiosks = computed(() => this.auth.can(Permissions.kiosksView));
   readonly canMoney = computed(() => this.auth.can(Permissions.paymentsView));
-  readonly kiosks = signal<KioskListItem[] | null>(null);
-  readonly kiosksFailed = signal(false);
+  readonly canIncidents = computed(() => this.auth.can(Permissions.incidentsView));
+  readonly kiosks = this.kioskStore.kiosks;
+  readonly kiosksFailed = computed(() => this.kioskStore.problem() !== null);
+
+  /** How many incidents are open, and the first few; null until the first answer. */
+  readonly openIncidents = this.incidentStore.open;
+  readonly incidents = this.incidentStore.recent;
+  readonly incidentsFailed = this.incidentStore.failed;
+
+  /** The open incidents the tile does not list. */
+  readonly moreIncidents = computed(() =>
+    Math.max(0, (this.openIncidents() ?? 0) - this.incidents().length),
+  );
 
   /** How many kiosks are in each status, in the order the kiosk list uses; empty statuses left out. */
   readonly kioskCounts = computed(() => {
@@ -233,46 +258,34 @@ export class DashboardComponent {
       void this.loadPendingDevices();
     }
 
+    // The counts and the "needs attention" list follow a kiosk at once: the
+    // store applies the event (T-248, T-254).
     if (this.canKiosks()) {
-      void this.loadKiosks();
+      this.kioskStore.watch();
+    }
 
-      // The counts and the "needs attention" list follow a kiosk at once,
-      // from what the event carries (T-248); the fetch below brings the rest.
-      inject(DestroyRef).onDestroy(
-        this.hub.on<{ kioskId: string; status: KioskStatus }>('KioskStatusChanged', (event) =>
-          this.kiosks.update(
-            (list) =>
-              list?.map((kiosk) =>
-                kiosk.id === event.kioskId ? { ...kiosk, status: event.status } : kiosk,
-              ) ?? null,
-          ),
-        ),
-      );
+    if (this.canIncidents()) {
+      this.incidentStore.watch();
     }
 
     if (figures) {
       void this.load();
     }
 
-    // Everything on this page changes by itself: a kiosk's status, a device
-    // waiting to be activated, a sync's progress, a provider's health. The
-    // figures are fetched again when they change rather than recomputed here.
+    // The other tiles change by themselves too: a device waiting to be
+    // activated, a sync's progress, a provider's health. The figures are
+    // fetched again when they change rather than recomputed here.
     liveRefresh({
       events: [
-        'KioskStatusChanged',
-        'DeviceRegistered',
-        'DeviceActivated',
-        'DeviceRevoked',
-        'StorageSyncProgress',
-        'StorageSyncCompleted',
-        'StorageHealthChanged',
+        HubEvents.deviceRegistered,
+        HubEvents.deviceActivated,
+        HubEvents.deviceRevoked,
+        HubEvents.storageSyncProgress,
+        HubEvents.storageSyncCompleted,
+        HubEvents.storageHealthChanged,
       ],
       reload: () =>
-        Promise.all([
-          this.canKiosks() ? this.loadKiosks() : null,
-          devices ? this.loadPendingDevices() : null,
-          figures ? this.load() : null,
-        ]),
+        Promise.all([devices ? this.loadPendingDevices() : null, figures ? this.load() : null]),
     });
   }
 
@@ -287,15 +300,6 @@ export class DashboardComponent {
     } catch {
       // The tiles say they could not load rather than showing stale zeros.
       this.failed.set(true);
-    }
-  }
-
-  private async loadKiosks(): Promise<void> {
-    try {
-      this.kiosks.set(await firstValueFrom(this.api.listKiosks()));
-      this.kiosksFailed.set(false);
-    } catch {
-      this.kiosksFailed.set(true);
     }
   }
 

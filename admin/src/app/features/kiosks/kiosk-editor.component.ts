@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,11 +16,12 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
-import { AdminApiService } from '../../core/api/admin-api.service';
+import { AdminApiService, KioskStatus } from '../../core/api/admin-api.service';
 import { KioskDetail, KioskDeviceHistoryItem, PricingProfile } from '../../core/api/step2.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
-import { AdminHubService } from '../../core/realtime/admin-hub.service';
+import { HubEvents } from '../../core/realtime/hub-events';
+import { KioskLiveStore } from '../../core/realtime/kiosk-live.store';
 import { liveRefresh } from '../../core/realtime/live-refresh';
 import { supportedLanguages } from '../../core/i18n/translations';
 import { confirmAction } from '../../shared/confirm.dialog';
@@ -83,7 +84,7 @@ const pinPattern = /^[0-9]{4,12}$/;
 export class KioskEditorComponent implements OnInit {
   private readonly api = inject(AdminApiService);
   private readonly auth = inject(AuthService);
-  private readonly hub = inject(AdminHubService);
+  private readonly store = inject(KioskLiveStore);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotifyService);
@@ -94,7 +95,20 @@ export class KioskEditorComponent implements OnInit {
 
   readonly languages = supportedLanguages;
 
-  readonly kiosk = signal<KioskDetail | null>(null);
+  /** The kiosk as this page fetched it. */
+  private readonly loaded = signal<KioskDetail | null>(null);
+
+  /**
+   * The kiosk as it is shown: what was fetched, in the status the store knows
+   * it to be in now. The status is not this page's to keep (T-254) - the
+   * list, the dashboard and this header say the same at the same moment.
+   */
+  readonly kiosk = computed(() => {
+    const kiosk = this.loaded();
+    const status = this.store.statusOf(kiosk?.id);
+
+    return kiosk && status && status !== kiosk.status ? { ...kiosk, status } : kiosk;
+  });
   readonly devices = signal<KioskDeviceHistoryItem[]>([]);
   readonly profiles = signal<PricingProfile[]>([]);
   readonly loading = signal(true);
@@ -222,17 +236,11 @@ export class KioskEditorComponent implements OnInit {
     const mine = (payload: unknown): boolean =>
       (payload as { kioskId?: string } | null)?.kioskId === this.id();
 
-    // The status in the header follows the kiosk: offline, back, paused (T-248).
-    inject(DestroyRef).onDestroy(
-      this.hub.on<{ kioskId: string; status: string }>('KioskStatusChanged', (event) => {
-        if (mine(event)) {
-          this.onStatus(event.status);
-        }
-      }),
-    );
-
+    // The status in the header follows the kiosk - offline, back, paused: it
+    // is the store's (T-248, T-254). What else the kiosk changes by itself is
+    // fetched when its status moves.
     liveRefresh({
-      events: ['KioskStatusChanged'],
+      events: [HubEvents.kioskStatusChanged],
       accepts: (_event, payload) => mine(payload),
       reload: () => this.refreshState(),
     });
@@ -258,7 +266,8 @@ export class KioskEditorComponent implements OnInit {
     try {
       const fresh = await firstValueFrom(this.api.getKiosk(id));
 
-      this.kiosk.update(
+      this.store.learn(fresh.id, fresh.status as KioskStatus);
+      this.loaded.update(
         (kiosk) =>
           kiosk && {
             ...kiosk,
@@ -275,7 +284,11 @@ export class KioskEditorComponent implements OnInit {
 
   /** A tab learned that the kiosk's status changed (a printer was chosen, a test print passed). */
   onStatus(status: string): void {
-    this.kiosk.update((kiosk) => (kiosk && kiosk.status !== status ? { ...kiosk, status } : kiosk));
+    const id = this.id();
+
+    if (id) {
+      this.store.learn(id, status as KioskStatus);
+    }
   }
 
   async load(): Promise<void> {
@@ -463,7 +476,8 @@ export class KioskEditorComponent implements OnInit {
   }
 
   private apply(kiosk: KioskDetail): void {
-    this.kiosk.set(kiosk);
+    this.loaded.set(kiosk);
+    this.store.learn(kiosk.id, kiosk.status as KioskStatus);
     this.name.set(kiosk.name);
     this.lat.set(kiosk.lat);
     this.lng.set(kiosk.lng);

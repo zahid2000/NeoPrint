@@ -79,6 +79,10 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'dashboard.noSync': 'Sinxronizasiya işi olmayıb.',
     'dashboard.allKiosks': 'Bütün kiosklar',
     'dashboard.scopedKiosks': '{{count}} kiosk',
+    'dashboard.incidentsTitle': 'Açıq incident-lər',
+    'dashboard.incidentsNone': 'Açıq incident yoxdur.',
+    'dashboard.incidentsFailed': 'Incident-lər göstərilə bilmir. Kioskların işinə təsir etmir.',
+    'dashboard.incidentsMore': 'Daha {{count}} açıq incident var.',
 
     'devices.title': 'Cihazlar',
     'devices.pending': 'Aktivləşdirmə gözləyənlər',
@@ -221,6 +225,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'features.noKiosks': 'Kiosk siyahısı əlçatan deyil.',
     'features.allowlist': 'Seçilmiş istifadəçilər: {{count}}',
     'features.saved': 'Funksiya açarı yadda saxlanıldı.',
+    'features.changedElsewhere':
+      'Funksiya açarları başqa yerdə dəyişdirilib. "Yenilə" yeni dəyərləri gətirir; burada saxlamadığınız dəyişikliklər qalır.',
 
     'admins.new': 'Yeni hesab',
     'admins.edit': 'Redaktə et',
@@ -401,6 +407,10 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'dashboard.noSync': 'There has been no synchronisation.',
     'dashboard.allKiosks': 'All kiosks',
     'dashboard.scopedKiosks': '{{count}} kiosks',
+    'dashboard.incidentsTitle': 'Open incidents',
+    'dashboard.incidentsNone': 'No open incidents.',
+    'dashboard.incidentsFailed': 'Incidents cannot be shown. The kiosks keep working.',
+    'dashboard.incidentsMore': '{{count}} more open incidents.',
 
     'devices.title': 'Devices',
     'devices.pending': 'Waiting for activation',
@@ -542,6 +552,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'features.noKiosks': 'The kiosk list is not available.',
     'features.allowlist': 'Selected users: {{count}}',
     'features.saved': 'Flag saved.',
+    'features.changedElsewhere':
+      'The feature flags were changed somewhere else. "Refresh" brings the new values; what you have not saved here stays.',
 
     'admins.new': 'New account',
     'admins.edit': 'Edit',
@@ -723,6 +735,10 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'dashboard.noSync': 'Синхронизаций не было.',
     'dashboard.allKiosks': 'Все киоски',
     'dashboard.scopedKiosks': '{{count}} киосков',
+    'dashboard.incidentsTitle': 'Открытые инциденты',
+    'dashboard.incidentsNone': 'Открытых инцидентов нет.',
+    'dashboard.incidentsFailed': 'Инциденты не удаётся показать. На работу киосков это не влияет.',
+    'dashboard.incidentsMore': 'Ещё открытых инцидентов: {{count}}.',
 
     'devices.title': 'Устройства',
     'devices.pending': 'Ожидают активации',
@@ -865,6 +881,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'features.noKiosks': 'Список киосков недоступен.',
     'features.allowlist': 'Выбранные пользователи: {{count}}',
     'features.saved': 'Флаг сохранён.',
+    'features.changedElsewhere':
+      'Флаги функций изменены в другом месте. «Обновить» загрузит новые значения; несохранённые здесь изменения останутся.',
 
     'admins.new': 'Новая учётная запись',
     'admins.edit': 'Изменить',

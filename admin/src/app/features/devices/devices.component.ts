@@ -29,6 +29,7 @@ import { describeError } from '../login/login.component';
 import { ActivateDeviceDialogComponent } from './activate-device.dialog';
 import { EnrollmentTokenDialogComponent } from './enrollment-token.dialog';
 import { DateTimePipe } from '../../shared/format.pipes';
+import { HubEvents } from '../../core/realtime/hub-events';
 
 /**
  * The Devices page (plan sections 7.11, 8A.3).
@@ -110,7 +111,7 @@ export class DevicesComponent {
     // A kiosk that has just been switched on for the first time appears in
     // "waiting" by itself; one activated or revoked elsewhere moves (T-248).
     liveRefresh({
-      events: ['DeviceRegistered', 'DeviceActivated', 'DeviceRevoked'],
+      events: [HubEvents.deviceRegistered, HubEvents.deviceActivated, HubEvents.deviceRevoked],
       reload: () => this.reload(true),
     });
   }

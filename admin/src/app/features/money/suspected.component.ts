@@ -16,6 +16,8 @@ import { MoneyApiService } from '../../core/api/money-api.service';
 import { Claim, SuspectedInvestigation, SuspectedJob } from '../../core/api/step4.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
+import { HubEvents } from '../../core/realtime/hub-events';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { confirmAction } from '../../shared/confirm.dialog';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
@@ -335,6 +337,15 @@ export class SuspectedComponent implements OnInit {
 
   readonly canDecide = computed(() => this.auth.can(Permissions.paymentsRefund));
 
+  constructor() {
+    // An order whose result is unclear opens an incident, and a decision
+    // closes it: the list follows (T-253).
+    liveRefresh({
+      events: [HubEvents.incidentRaised, HubEvents.incidentResolved],
+      reload: () => this.loadJobs(true),
+    });
+  }
+
   ngOnInit(): void {
     void this.reload();
   }
@@ -350,14 +361,19 @@ export class SuspectedComponent implements OnInit {
     await Promise.all([this.loadJobs(), this.loadClaims()]);
   }
 
-  async loadJobs(): Promise<void> {
-    this.loading.set(true);
-    this.problem.set(null);
+  /** A quiet fetch is one nobody asked for: the list stays, and one that fails says nothing. */
+  async loadJobs(quiet = false): Promise<void> {
+    if (!quiet) {
+      this.loading.set(true);
+      this.problem.set(null);
+    }
 
     try {
       this.jobs.set(await firstValueFrom(this.api.listSuspected()));
     } catch (error) {
-      this.problem.set(toProblem(error));
+      if (!quiet) {
+        this.problem.set(toProblem(error));
+      }
     } finally {
       this.loading.set(false);
     }

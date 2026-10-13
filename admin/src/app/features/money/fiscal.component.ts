@@ -24,6 +24,7 @@ import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { PagerComponent } from './money-shared';
+import { HubEvents } from '../../core/realtime/hub-events';
 
 const pageSize = 20;
 
@@ -300,7 +301,7 @@ export class FiscalComponent implements OnInit {
     // and its incident opens and closes with it (T-248). The settings form is
     // left alone: it may hold values that are not saved yet.
     liveRefresh({
-      events: ['FiscalStatusChanged', 'IncidentRaised', 'IncidentResolved'],
+      events: [HubEvents.fiscalStatusChanged, HubEvents.incidentRaised, HubEvents.incidentResolved],
       reload: () => Promise.all([this.load(true), this.loadIncidents()]),
     });
   }

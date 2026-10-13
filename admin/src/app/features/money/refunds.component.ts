@@ -21,6 +21,7 @@ import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { PagerComponent } from './money-shared';
+import { HubEvents } from '../../core/realtime/hub-events';
 
 const pageSize = 20;
 
@@ -189,7 +190,7 @@ export class RefundsComponent implements OnInit {
 
   constructor() {
     // A refund moves by itself: sent, confirmed by the bank, failed (T-248).
-    liveRefresh({ events: ['RefundStatusChanged'], reload: () => this.load(true) });
+    liveRefresh({ events: [HubEvents.refundStatusChanged], reload: () => this.load(true) });
   }
 
   ngOnInit(): void {

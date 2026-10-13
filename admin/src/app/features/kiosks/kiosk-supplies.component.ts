@@ -15,6 +15,8 @@ import { AdminApiService } from '../../core/api/admin-api.service';
 import { KioskSupplies, PaperRefillMode, PaperStock, lowPaperShare } from '../../core/api/step3.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
+import { AboutKiosk, HubEvents } from '../../core/realtime/hub-events';
+import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { DateTimePipe } from '../../shared/format.pipes';
@@ -62,6 +64,13 @@ const papers = ['A4', 'A3'] as const;
             <strong>{{ 'supplies.paper' + tray.paper | translate }}</strong>
             @if (tray.stock.capacity === 0) {
               <p class="neo-muted neo-body-small">{{ 'supplies.noTray' | translate }}</p>
+            } @else if (tray.unset) {
+              <!-- Not an empty tray: nobody has said what is in it yet (T-258). -->
+              <p class="supplies__level">{{ 'supplies.counterUnset' | translate }}</p>
+              <div class="neo-notice" role="status">
+                <mat-icon aria-hidden="true">info</mat-icon>
+                <span>{{ 'supplies.counterUnsetHint' | translate }}</span>
+              </div>
             } @else {
               <p class="supplies__level">
                 {{ 'supplies.level' | translate: { current: tray.stock.current, capacity: tray.stock.capacity } }}
@@ -302,6 +311,7 @@ export class KioskSuppliesComponent implements OnInit {
         return {
           paper: name,
           stock,
+          unset: stock.capacity > 0 && stock.counted === false,
           low: stock.capacity > 0 && stock.current < stock.capacity * lowPaperShare,
         };
       });
@@ -350,17 +360,38 @@ export class KioskSuppliesComponent implements OnInit {
     return colon < 0 ? '' : ` (${resource.slice(colon + 1)})`;
   }
 
+  constructor() {
+    // The counter moves by itself: an order printed, a level crossed its
+    // rule, an operator finished a refill task (T-253). What is being typed
+    // into the refill form stays - only the figures are fetched again.
+    liveRefresh({
+      events: [
+        HubEvents.queueUpdated,
+        HubEvents.supplyAlertRaised,
+        HubEvents.supplyAlertCleared,
+        HubEvents.serviceTaskUpdated,
+      ],
+      accepts: (_event, payload) => (payload as AboutKiosk | null)?.kioskId === this.kioskId(),
+      reload: () => (this.saving() ? null : this.load(true)),
+    });
+  }
+
   ngOnInit(): void {
     void this.load();
   }
 
-  async load(): Promise<void> {
-    this.problem.set(null);
+  /** A quiet fetch is one nobody asked for: one that fails leaves the tab as it is. */
+  async load(quiet = false): Promise<void> {
+    if (!quiet) {
+      this.problem.set(null);
+    }
 
     try {
       this.apply(await firstValueFrom(this.api.kioskSupplies(this.kioskId())));
     } catch (error) {
-      this.problem.set(toProblem(error));
+      if (!quiet) {
+        this.problem.set(toProblem(error));
+      }
     } finally {
       this.loading.set(false);
     }

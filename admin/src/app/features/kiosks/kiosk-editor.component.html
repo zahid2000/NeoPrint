@@ -230,7 +230,11 @@
           />
           <span matTextSuffix>{{ 'kiosks.sheets' | translate }}</span>
           @if (kiosk()?.paper?.['A4']; as stock) {
-            <mat-hint>{{ 'kiosks.loaded' | translate: { current: stock.current } }}</mat-hint>
+            <mat-hint>{{
+              stock.counted === false
+                ? ('kiosks.counterUnset' | translate)
+                : ('kiosks.loaded' | translate: { current: stock.current })
+            }}</mat-hint>
           }
         </mat-form-field>
         <mat-form-field>
@@ -246,7 +250,11 @@
           />
           <span matTextSuffix>{{ 'kiosks.sheets' | translate }}</span>
           @if (kiosk()?.paper?.['A3']; as stock) {
-            <mat-hint>{{ 'kiosks.loaded' | translate: { current: stock.current } }}</mat-hint>
+            <mat-hint>{{
+              stock.counted === false && stock.capacity > 0
+                ? ('kiosks.counterUnset' | translate)
+                : ('kiosks.loaded' | translate: { current: stock.current })
+            }}</mat-hint>
           }
         </mat-form-field>
       </div>

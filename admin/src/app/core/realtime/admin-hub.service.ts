@@ -9,6 +9,7 @@ import {
 } from '@microsoft/signalr';
 
 import { AuthService } from '../auth/auth.service';
+import { HubEvent } from './hub-events';
 
 /**
  * Makes the SignalR connection builder.
@@ -182,10 +183,10 @@ export class AdminHubService {
   /**
    * Subscribes to an event and returns the unsubscribe function.
    *
-   * The payload is typed by the caller, which knows the event's shape; the
-   * service deliberately does not carry a union of every event in the system.
+   * The event is one of `HubEvents` - the one list of what the server sends
+   * (T-252). The payload is typed by the caller, which knows its shape.
    */
-  on<T>(event: string, handler: (payload: T) => void): () => void {
+  on<T>(event: HubEvent, handler: (payload: T) => void): () => void {
     const wrapped = (payload: unknown) => {
       this.lastEvent.set(new Date());
       handler(payload as T);

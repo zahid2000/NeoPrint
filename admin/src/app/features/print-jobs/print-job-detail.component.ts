@@ -22,6 +22,7 @@ import { NotifyService } from '../../shared/notify.service';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
+import { HubEvents } from '../../core/realtime/hub-events';
 
 /**
  * One order (plan section 8A.3): what was asked for, what it cost at the
@@ -344,7 +345,7 @@ export class PrintJobDetailComponent {
     });
 
     // The job moves while it is watched: the kiosk's queue event says so.
-    const off = this.hub.on<{ kioskId: string }>('QueueUpdated', (event) => {
+    const off = this.hub.on<{ kioskId: string }>(HubEvents.queueUpdated, (event) => {
       if (event.kioskId === this.detail()?.job.kioskId) {
         void this.load(false);
       }

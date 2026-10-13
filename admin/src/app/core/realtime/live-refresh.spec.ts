@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AdminHubService, ConnectionState } from './admin-hub.service';
+import { HubEvent } from './hub-events';
 import { liveDebounceMs, livePollMs, liveRefresh } from './live-refresh';
 
 /** The hub as a page sees it: events, the connection's state, its coming back. */
@@ -71,7 +72,7 @@ describe('liveRefresh', () => {
   }
 
   /** Makes a "page" that keeps itself current, the way a component's constructor does. */
-  function open(options: { events: string[]; accepts?: (event: string, payload: unknown) => boolean }): void {
+  function open(options: { events: HubEvent[]; accepts?: (event: HubEvent, payload: unknown) => boolean }): void {
     const injector = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
     page = injector;
     runInInjectionContext(injector, () => liveRefresh({ ...options, reload }));

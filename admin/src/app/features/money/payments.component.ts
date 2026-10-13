@@ -27,6 +27,7 @@ import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { PagerComponent, endOfDay, startOfDay } from './money-shared';
+import { HubEvents } from '../../core/realtime/hub-events';
 
 const pageSize = 20;
 
@@ -302,7 +303,7 @@ export class PaymentsComponent implements OnInit {
   constructor() {
     // A payment arrives and a refund moves while the list is open (T-248).
     liveRefresh({
-      events: ['PaymentSucceeded', 'RefundStatusChanged'],
+      events: [HubEvents.paymentSucceeded, HubEvents.refundStatusChanged],
       reload: () => this.load(true),
     });
   }

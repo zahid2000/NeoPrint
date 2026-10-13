@@ -79,7 +79,7 @@ const SERVER_VALUES = {
   'formats.group.': { values: ['Pdf', 'TextDocument', 'Spreadsheet', 'Presentation', 'Image', 'PageDescription'] },
   'formats.route.': { values: ['Pdf', 'TextDocument', 'Spreadsheet', 'Presentation', 'Image', 'PageDescription'] },
   'fiscal.setting.': { values: ['Fiscal.Enabled', 'Fiscal.MaxPendingMinutes', 'Fiscal.OnlineTerminalId', 'Fiscal.TopUpReceiptMode'] },
-  'dashboard.attention.': { values: ['offline', 'safeMode', 'maintenance', 'paused', 'notConfigured', 'noPaper', 'lowPaper'] },
+  'dashboard.attention.': { values: ['offline', 'safeMode', 'maintenance', 'paused', 'notConfigured', 'noPaper', 'paperUnset', 'lowPaper'] },
   'promos.state.': { values: ['Active', 'Scheduled', 'Expired', 'Exhausted', 'Inactive'] },
   'money.voucherStatus.': { values: ['Active', 'Redeemed', 'Expired'] },
   'permissionGroup.': { values: ['dashboard', 'kiosks', 'printers', 'supplies', 'jobs', 'payments', 'incidents', 'users', 'config', 'system', 'operator'] },

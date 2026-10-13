@@ -16,6 +16,7 @@ import { AdminHubService } from '../realtime/admin-hub.service';
 import { ThemeService } from '../theme/theme.service';
 import { LiveIndicatorComponent } from '../../shared/live-indicator.component';
 import { SupportedLanguage, languageNames, supportedLanguages } from '../i18n/languages';
+import { HubEvents } from '../realtime/hub-events';
 
 /** One entry in the sidebar. */
 interface NavItem {
@@ -256,13 +257,13 @@ export class ShellComponent implements OnInit, OnDestroy {
     // one granted was not (docs/DECISIONS.md). The server announces it, so
     // the menu now follows within a second.
     this.subscriptions.push(
-      this.hub.on('PermissionsChanged', () => void this.auth.reloadPermissions()),
+      this.hub.on(HubEvents.permissionsChanged, () => void this.auth.reloadPermissions()),
 
       // This account itself was changed - its kiosks, its roles. The server
       // closes the connection; a panel on another instance of the API hears
       // this instead and opens a new one, which is when its kiosks are
       // decided again (T-249).
-      this.hub.on('AccountChanged', () => {
+      this.hub.on(HubEvents.accountChanged, () => {
         void this.auth.reloadPermissions().then(() => this.hub.restart());
       }),
 
