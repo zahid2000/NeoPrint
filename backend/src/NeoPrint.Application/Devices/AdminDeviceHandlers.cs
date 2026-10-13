@@ -115,6 +115,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
     private readonly ISecretHasher _secrets;
     private readonly IAuditWriter _audit;
     private readonly IDeviceNotifier _notifier;
+    private readonly IAdminNotifier _panels;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly ILogger<ActivateDeviceHandler> _logger;
@@ -125,10 +126,12 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
         ISecretHasher secrets,
         IAuditWriter audit,
         IDeviceNotifier notifier,
+        IAdminNotifier panels,
         ICorrelationContext correlation,
         IClock clock,
         ILogger<ActivateDeviceHandler> logger)
     {
+        _panels = panels;
         _devices = devices;
         _kiosks = kiosks;
         _secrets = secrets;
@@ -163,6 +166,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
                 previous.Revoke(actor.Because("devices.reason.replaced"), now);
                 await _devices.UpdateAsync(previous, cancellationToken).ConfigureAwait(false);
                 await _notifier.DeviceRevokedAsync(previous.Id, cancellationToken).ConfigureAwait(false);
+                await _panels.DeviceRevokedAsync(previous.Id, cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation(
                     "Device {PreviousDeviceId} was revoked because {DeviceId} took over kiosk {KioskCode}.",
@@ -226,6 +230,11 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
         // for a kiosk token (plan section 7.11).
         await _notifier.DeviceActivatedAsync(device.Id, kiosk.Id, cancellationToken).ConfigureAwait(false);
 
+        // And the other open panels: the devices page, the dashboard's count of
+        // devices waiting. Only the device was told until T-261 - the panel's
+        // event of the same name had no caller.
+        await _panels.DeviceActivatedAsync(device.Id, kiosk.Id, cancellationToken).ConfigureAwait(false);
+
         return new ActivateDeviceResult(device.Id, kiosk.Id, kiosk.Code, kiosk.Status);
     }
 
@@ -287,6 +296,7 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
     private readonly IKioskRepository _kiosks;
     private readonly IAuditWriter _audit;
     private readonly IDeviceNotifier _notifier;
+    private readonly IAdminNotifier _panels;
     private readonly IKioskTokenBlocklist _blocklist;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
@@ -296,10 +306,12 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
         IKioskRepository kiosks,
         IAuditWriter audit,
         IDeviceNotifier notifier,
+        IAdminNotifier panels,
         IKioskTokenBlocklist blocklist,
         ICorrelationContext correlation,
         IClock clock)
     {
+        _panels = panels;
         _devices = devices;
         _kiosks = kiosks;
         _audit = audit;
@@ -353,6 +365,7 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
             .ConfigureAwait(false);
 
         await _notifier.DeviceRevokedAsync(device.Id, cancellationToken).ConfigureAwait(false);
+        await _panels.DeviceRevokedAsync(device.Id, cancellationToken).ConfigureAwait(false);
 
         return Unit.Value;
     }

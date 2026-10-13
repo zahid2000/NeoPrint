@@ -302,7 +302,7 @@ public sealed class RefundHandlers :
                     refund.Id, refund.PaymentId, refund.JobId, refund.UserId, refund.Amount.Amount, refund.BonusPages, refund.Destination.ToString(), _correlation.CorrelationId),
                 cancellationToken)
             .ConfigureAwait(false);
-        await _panel.RefundStatusChangedAsync(refund.Id, refund.PaymentId, refund.Status.ToString(), cancellationToken).ConfigureAwait(false);
+        await _panel.RefundStatusChangedAsync(refund.Id, refund.PaymentId, refund.Status.ToString(), cancellationToken, payment.KioskId).ConfigureAwait(false);
 
         _logger.LogInformation(
             "Refund {RefundId} of {Amount} {Currency} to {Destination} completed.",
@@ -347,7 +347,7 @@ public sealed class RefundHandlers :
         await _events.PublishAsync(
                 new RefundFailed(refund.Id, refund.PaymentId, refund.JobId, refund.Destination.ToString(), _correlation.CorrelationId), cancellationToken)
             .ConfigureAwait(false);
-        await _panel.RefundStatusChangedAsync(refund.Id, refund.PaymentId, refund.Status.ToString(), cancellationToken).ConfigureAwait(false);
+        await _panel.RefundStatusChangedAsync(refund.Id, refund.PaymentId, refund.Status.ToString(), cancellationToken, payment.KioskId).ConfigureAwait(false);
 
         _logger.LogError("Refund {RefundId} failed after {Attempts} tries ({Error}); an admin decides.", refund.Id, refund.Attempts, errorKey);
     }

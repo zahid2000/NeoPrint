@@ -25,7 +25,8 @@ namespace NeoPrint.Api.IntegrationTests;
 /// A panel left open kept showing a kiosk as it was when the page loaded
 /// (T-248). Part of that was the panel; the other part is here: every way a
 /// kiosk changes status has to be announced, and an account that looks after
-/// some kiosks must hear about those and no others (T-245).
+/// some kiosks must hear about those and no others (T-245) - and only what
+/// its permissions let it read over HTTP (T-261).
 /// </remarks>
 [Collection(ApiCollection.Name)]
 public sealed class AdminLiveEventsTests
@@ -196,8 +197,140 @@ public sealed class AdminLiveEventsTests
     }
 
     // -----------------------------------------------------------------------
+    // Who hears what (T-261)
+    // -----------------------------------------------------------------------
+
+    // Before T-261 a payment was not announced at all - the method was there and
+    // nothing called it - and the money events that were went to every signed-in
+    // panel: an operator of one kiosk heard what the payments page would refuse.
+    [DockerFact]
+    public async Task A_payment_is_announced_to_those_who_may_read_it_and_to_nobody_else()
+    {
+        if (Skip) { return; }
+
+        using var mine = await ReadyKioskAsync(_fixture, "live-pay-mine");
+        using var theirs = await ReadyKioskAsync(_fixture, "live-pay-theirs");
+        await BeatAsync(mine);
+        await BeatAsync(theirs);
+
+        var (financeToken, _) = await ScopedAdminAsync(KioskScope.Only(mine.KioskId), Permissions.PaymentsView);
+        var (operatorToken, _) = await ScopedAdminAsync(KioskScope.Only(mine.KioskId), Permissions.KiosksView);
+
+        await using var everything = await RawHubConnection.ConnectAsync(_fixture, "admin", await SuperAdminTokenAsync());
+        await using var finance = await RawHubConnection.ConnectAsync(_fixture, "admin", financeToken);
+        await using var kioskOperator = await RawHubConnection.ConnectAsync(_fixture, "admin", operatorToken);
+
+        // A payment at the other kiosk: the account that sees everything hears it, amount and all.
+        var other = await PaidBankJobAsync(_fixture, theirs);
+        var all = await everything.ReadUntilAsync((target, argument) => target == "PaymentSucceeded" && PaymentOf(argument) == other.PaymentId, Wait);
+        all[^1].Argument.GetProperty("amount").GetDecimal().Should().Be(other.Price);
+        KioskOf(all[^1].Argument).Should().Be(theirs.KioskId);
+
+        // Then one at this kiosk.
+        var own = await PaidBankJobAsync(_fixture, mine);
+
+        var heard = await finance.ReadUntilAsync((target, argument) => target == "PaymentSucceeded" && PaymentOf(argument) == own.PaymentId, Wait);
+
+        heard.Should().NotContain(item => PaymentOf(item.Argument) == other.PaymentId, "the other kiosk's payment is not this account's to read");
+        heard.Where(item => KioskOf(item.Argument) is not null).Should().OnlyContain(item => KioskOf(item.Argument) == mine.KioskId);
+        heard.Select(item => item.Target).Should().NotContain(
+            ["KioskStatusChanged", "QueueUpdated", "IncidentRaised"], "it may read payments and nothing else");
+
+        // The operator of the same kiosk may look at the kiosk, not at its money or its orders.
+        // Everything they were sent, up to the kiosk's next status:
+        await GoSilentAsync(mine);
+
+        var seen = await kioskOperator.ReadUntilAsync((target, argument) => target == "KioskStatusChanged" && KioskOf(argument) == mine.KioskId, Wait);
+
+        seen.Select(item => item.Target).Should().OnlyContain(target => target == "KioskStatusChanged", "the status of its own kiosk and nothing more");
+        seen.Should().OnlyContain(item => KioskOf(item.Argument) == mine.KioskId);
+    }
+
+    [DockerFact]
+    public async Task A_panel_reconnects_when_its_role_permits_something_else_and_then_hears_only_that()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await ReadyKioskAsync(_fixture, "live-role");
+        await BeatAsync(kiosk);
+
+        var (token, account) = await ScopedAdminAsync(KioskScope.Only(kiosk.KioskId), Permissions.KiosksView, Permissions.PaymentsView);
+
+        await using var open = await RawHubConnection.ConnectAsync(_fixture, "admin", token);
+
+        // While the role permits it, a payment is heard.
+        var first = await PaidBankJobAsync(_fixture, kiosk);
+        await open.ReadUntilAsync((target, argument) => target == "PaymentSucceeded" && PaymentOf(argument) == first.PaymentId, Wait);
+
+        // The role loses the payments.
+        var roleId = account.RoleIds[0];
+        var role = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/roles/{roleId}");
+        var update = await admin.PutAsJsonAsync($"/api/admin/roles/{roleId}", new
+        {
+            name = role.GetProperty("name").GetString(),
+            description = "Payments taken away.",
+            permissions = new[] { Permissions.KiosksView },
+        });
+        update.StatusCode.Should().Be(HttpStatusCode.OK, await update.Content.ReadAsStringAsync());
+
+        (await open.ClosedByServerAsync(Wait)).Should().BeTrue(
+            "what the connection hears was decided from the role's permissions when it opened");
+
+        // The panel connects again by itself, and is in the payments' audience no more.
+        await using var again = await RawHubConnection.ConnectAsync(_fixture, "admin", token);
+
+        await PaidBankJobAsync(_fixture, kiosk);
+        await GoSilentAsync(kiosk);
+
+        var heard = await again.ReadUntilAsync((target, argument) => target == "KioskStatusChanged" && KioskOf(argument) == kiosk.KioskId, Wait);
+
+        heard.Select(item => item.Target).Should().NotContain("PaymentSucceeded");
+    }
+
+    // A device that registers was never announced either: the devices page and the
+    // dashboard's "waiting to be activated" count stood still until a reload.
+    [DockerFact]
+    public async Task A_device_that_registers_and_is_activated_is_announced_to_those_who_may_see_devices()
+    {
+        if (Skip) { return; }
+
+        var (kiosksOnlyToken, _) = await ScopedAdminAsync(KioskScope.Everything(), Permissions.KiosksView);
+
+        await using var everything = await RawHubConnection.ConnectAsync(_fixture, "admin", await SuperAdminTokenAsync());
+        await using var kiosksOnly = await RawHubConnection.ConnectAsync(_fixture, "admin", kiosksOnlyToken);
+
+        using var kiosk = await TestKiosks.ActivatedAsync(_fixture, $"live-device-{Guid.NewGuid():N}"[..22]);
+
+        var heard = await everything.ReadUntilAsync(
+            (target, argument) => target == "DeviceActivated" && KioskOf(argument) == kiosk.KioskId, Wait);
+
+        heard.Should().Contain(
+            item => item.Target == "DeviceRegistered" && item.Argument.GetProperty("deviceId").GetGuid() == kiosk.DeviceId,
+            "a device waiting for its code is announced");
+
+        // The account without devices.view hears none of the device events. A kiosk that is created
+        // with its device announces no status of its own, so a pause marks the end of what it was sent.
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        (await admin.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/pause", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var seen = await kiosksOnly.ReadUntilAsync(
+            (target, argument) => target == "KioskStatusChanged" && KioskOf(argument) == kiosk.KioskId, Wait);
+
+        seen.Select(item => item.Target).Should().NotContain(["DeviceRegistered", "DeviceActivated"]);
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
+
+    /// <summary>The payment a message is about, when it is about one.</summary>
+    private static Guid? PaymentOf(JsonElement argument)
+        => argument.ValueKind == JsonValueKind.Object
+           && argument.TryGetProperty("paymentId", out var payment)
+           && payment.ValueKind == JsonValueKind.String
+            ? payment.GetGuid()
+            : null;
 
     /// <summary>The kiosk a message is about, when it is about one.</summary>
     private static Guid? KioskOf(JsonElement argument)

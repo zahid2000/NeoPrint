@@ -118,6 +118,11 @@ public interface IIncidentRepository
 }
 
 /// <summary>Real-time money events for the admin panel (plan section 6, <c>/hubs/admin</c>).</summary>
+/// <remarks>
+/// Each goes to the accounts that could read the same thing over HTTP: they
+/// hold the permission of the list, and the kiosk is in their scope. What is
+/// about no kiosk - a wallet top-up - is for those who see every kiosk (T-261).
+/// </remarks>
 public interface IPaymentsAdminNotifier
 {
     /// <param name="kioskId">The kiosk it is about: only the accounts that may see that kiosk are told.</param>
@@ -128,11 +133,14 @@ public interface IPaymentsAdminNotifier
     Task IncidentResolvedAsync(
         Guid incidentId, string type, string status, CancellationToken cancellationToken = default, Guid? kioskId = null);
 
-    Task RefundStatusChangedAsync(Guid refundId, Guid paymentId, string status, CancellationToken cancellationToken = default);
+    /// <param name="kioskId">The kiosk of the payment the refund belongs to.</param>
+    Task RefundStatusChangedAsync(
+        Guid refundId, Guid paymentId, string status, CancellationToken cancellationToken = default, Guid? kioskId = null);
 
     Task PaymentSucceededAsync(Guid paymentId, Guid? kioskId, decimal amount, CancellationToken cancellationToken = default);
 
-    Task FiscalStatusChangedAsync(Guid receiptId, string status, CancellationToken cancellationToken = default);
+    /// <param name="kioskId">The kiosk the receipt was issued for.</param>
+    Task FiscalStatusChangedAsync(Guid receiptId, string status, CancellationToken cancellationToken = default, Guid? kioskId = null);
 }
 
 /// <summary>

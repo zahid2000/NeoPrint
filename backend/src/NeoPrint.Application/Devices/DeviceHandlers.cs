@@ -31,6 +31,7 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
     private readonly ISecretHasher _secrets;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
+    private readonly IAdminNotifier _panels;
     private readonly ILogger<RegisterDeviceHandler> _logger;
 
     public RegisterDeviceHandler(
@@ -40,8 +41,10 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
         ISecretHasher secrets,
         ICorrelationContext correlation,
         IClock clock,
+        IAdminNotifier panels,
         ILogger<RegisterDeviceHandler> logger)
     {
+        _panels = panels;
         _devices = devices;
         _enrollmentTokens = enrollmentTokens;
         _kiosks = kiosks;
@@ -113,6 +116,9 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
             {
                 await SaveAsync(device, cancellationToken).ConfigureAwait(false);
 
+                // Nobody pressed "activate" in a panel, so the panels are told here.
+                await _panels.DeviceActivatedAsync(device.Id, activated.Id, cancellationToken).ConfigureAwait(false);
+
                 return new RegisterDeviceResult(
                     device.Id, Activated: true, PairingCode: null, PairingCodeExpiresAt: null,
                     activated.Id, activated.Code);
@@ -143,6 +149,10 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
             now);
 
         await SaveAsync(device, cancellationToken).ConfigureAwait(false);
+
+        // A device is waiting for its code to be typed in: the devices page and the
+        // dashboard's count follow. The method was there and nothing called it (T-261).
+        await _panels.DeviceRegisteredAsync(device.Id, cancellationToken).ConfigureAwait(false);
 
         return new RegisterDeviceResult(
             device.Id, Activated: false, pairingCode, device.PairingCodeExpiresAt, null, null);

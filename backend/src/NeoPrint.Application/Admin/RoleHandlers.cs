@@ -169,6 +169,14 @@ public sealed class UpdateRoleHandler : IRequestHandler<UpdateRoleCommand, RoleR
         await _permissions.InvalidateRoleAsync(role.Id, cancellationToken).ConfigureAwait(false);
         await _notifier.PermissionsChangedAsync(role.Id, cancellationToken).ConfigureAwait(false);
 
+        // Which events a panel hears was decided from its permissions when it
+        // connected (T-261): the holders' open connections are ended, and each
+        // panel connects again with what the role permits now.
+        foreach (var holder in (await _admins.ListAsync(cancellationToken).ConfigureAwait(false)).Where(admin => admin.RoleIds.Contains(role.Id)))
+        {
+            await _notifier.AccountChangedAsync(holder.Id, cancellationToken).ConfigureAwait(false);
+        }
+
         await RoleMapping
             .AuditAsync(_audit, "roles.update", role, before, request.UpdatedBy, request.Ip, cancellationToken)
             .ConfigureAwait(false);

@@ -461,7 +461,7 @@ public sealed class FiscalizationHandlers :
                 break;
         }
 
-        await _notifier.FiscalStatusChangedAsync(receipt.Id, receipt.Status.ToString(), cancellationToken).ConfigureAwait(false);
+        await _notifier.FiscalStatusChangedAsync(receipt.Id, receipt.Status.ToString(), cancellationToken, receipt.KioskId).ConfigureAwait(false);
 
         return receipt.Status.ToString();
     }

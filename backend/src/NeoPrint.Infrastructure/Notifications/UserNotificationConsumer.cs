@@ -3,6 +3,7 @@ using MassTransit;
 using MediatR;
 
 using NeoPrint.Application.Notifications;
+using NeoPrint.Application.Refunds;
 using NeoPrint.Contracts;
 
 namespace NeoPrint.Infrastructure.Notifications;
@@ -27,8 +28,13 @@ public sealed class UserNotificationConsumer :
     IConsumer<RefundFailed>
 {
     private readonly ISender _sender;
+    private readonly IPaymentsAdminNotifier _panels;
 
-    public UserNotificationConsumer(ISender sender) => _sender = sender;
+    public UserNotificationConsumer(ISender sender, IPaymentsAdminNotifier panels)
+    {
+        _sender = sender;
+        _panels = panels;
+    }
 
     // A paid job joins the queue with this event alone, not with a status change.
     public Task Consume(ConsumeContext<PrintJobQueued> context)
@@ -40,8 +46,17 @@ public sealed class UserNotificationConsumer :
     public Task Consume(ConsumeContext<PrintJobCancelled> context)
         => _sender.Send(new NotifyJobOwnerCommand(Message(context).JobId), context.CancellationToken);
 
-    public Task Consume(ConsumeContext<PaymentSucceeded> context)
-        => _sender.Send(new NotifyPayerCommand(Message(context).PaymentId), context.CancellationToken);
+    // The payer's app, and the panels: the payments list and the dashboard's
+    // money card follow a payment without a reload. The notifier method was
+    // there from step 4 and nothing called it (T-261) - from here it is sent
+    // after the payment is committed, to those who may see it.
+    public async Task Consume(ConsumeContext<PaymentSucceeded> context)
+    {
+        var payment = Message(context);
+
+        await _sender.Send(new NotifyPayerCommand(payment.PaymentId), context.CancellationToken).ConfigureAwait(false);
+        await _panels.PaymentSucceededAsync(payment.PaymentId, payment.KioskId, payment.Amount, context.CancellationToken).ConfigureAwait(false);
+    }
 
     public Task Consume(ConsumeContext<PaymentExpired> context)
         => _sender.Send(new NotifyPayerCommand(Message(context).PaymentId), context.CancellationToken);
