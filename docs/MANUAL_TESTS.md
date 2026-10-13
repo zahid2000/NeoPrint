@@ -360,7 +360,26 @@ backend skan API-si, real ölçü, mobil ekranların widget testləri (`test/doc
 Avtomatik yoxlanan: `admin/e2e/pwa.mjs` (brauzerdə telefon enində, 22 yoxlama), render testi (390 px, az / en / ru), unit
 testlər. Aşağıdakılar yalnız real telefonda görünür.
 
-Hazırlıq: `docker compose up -d`, telefon USB ilə, `adb reverse tcp:8080 tcp:8080` (`DEV_ENVIRONMENT.md` 7o).
+### Hazırlıq — telefonu `adb reverse` ilə qoşmaq (Samsung S24, T-267)
+
+Service worker və kamera yalnız "təhlükəsiz" ünvanda işləyir: HTTPS və ya `localhost`. Kompüterin LAN IP-si
+(`http://192.168.x.x:8080`) ilə panel açılır, amma quraşdırma, şəbəkəsiz açılış və QR oxuma işləmir. `adb reverse`
+telefonun öz `localhost:8080`-ini USB üzərindən kompüterin 8080 portuna bağlayır — sertifikat lazım olmur.
+
+| № | Addım | Gözlənilən |
+|---|---|---|
+| a | Kompüterdə: `docker compose up -d`, sonra `docker compose ps admin api` | İkisi də `healthy` |
+| b | Telefonda: Ayarlar → Telefon haqqında → Proqram təminatı məlumatı → "Yığma nömrəsi"nə 7 dəfə toxunun; sonra Ayarlar → Tərtibatçı seçimləri → "USB sazlama" açın | "Tərtibatçı rejimi aktivdir" |
+| c | Telefonu USB ilə qoşun, ekranda "USB sazlamaya icazə verilsin?" → "İcazə ver" | — |
+| d | Kompüterdə: `adb devices` | Siyahıda cihaz `device` vəziyyətindədir (`unauthorized` deyil; elədirsə (c) addımını təkrarlayın) |
+| e | Kompüterdə: `adb reverse tcp:8080 tcp:8080` | Cavab: `8080`. Yoxlama: `adb reverse --list` |
+| f | Telefonda Chrome: `http://localhost:8080` | Giriş səhifəsi açılır. `/api` və `/hubs` də eyni portdan keçir — 5080-i yönləndirməyə ehtiyac yoxdur |
+
+Kabel çıxarılanda və ya `adb` yenidən başlayanda yönləndirmə itir — (e) addımını təkrarlayın. Bir neçə cihaz qoşuludursa:
+`adb -s <seriya> reverse tcp:8080 tcp:8080`. Bitirəndə: `adb reverse --remove-all`. Panelin yeni build-indən sonra
+(`docker compose up -d --build admin`) quraşdırılmış tətbiqi bir dəfə bağlayıb açın — açılışda yeni build özü götürülür.
+
+### Yoxlamalar
 
 | № | Addım | Gözlənilən | Harada |
 |---|---|---|---|
@@ -373,3 +392,7 @@ Hazırlıq: `docker compose up -d`, telefon USB ilə, `adb reverse tcp:8080 tcp:
 | 7 | Təyyarə rejimini söndürün | Bildiriş özü itir, məlumat yenilənir, düymələr aktivləşir | **Yalnız real telefonda** |
 | 8 | Dili ru / en edin (hesab menyusu) | Bütün səhifələrdə mətn sığır, kəsilmir; alt naviqasiyanın dörd etiketi bir sətirdədir | Emulyatorda da yoxlanıla bilər |
 | 9 | iOS Safari: №1–3, №6–7 | "Ana ekrana əlavə et" Paylaş menyusundadır; qalanı eyni | **Yalnız real telefonda** (iOS) |
+| 10 | **Kiosk aktivləşdir, QR ilə (T-265).** Kompüterdə aktivləşdirilməmiş kiosku açın (`tools\dev-kiosk\reset-kiosk.ps1`, sonra `start-kiosk.ps1` — ekranda kod və QR görünür). Telefonda: "Mənim kiosklarım" → "Kiosk aktivləşdir" → "QR-ı kamera ilə oxut" → kameraya icazə verin → kameranı QR-a tutun | Kamera görüntüsü kvadrat pəncərədə açılır; QR oxunan kimi cihazın kartı görünür (ad, platforma, printer sayı). Kiosku seçin → "Aktivləşdir" → kioskun səhifəsi açılır, kiosk ekranı aktivləşmə ekranından çıxır | **Yalnız real telefonda** — masaüstü brauzer QR oxuya bilmir, avtomatik yoxlama yalnız kodla edilib (`admin/e2e/activate.mjs`) |
+| 11 | №10-da kameraya icazə verməyin ("Bloklayın") | "Kamera açılmadı…" yazılır və kod sahəsi qalır; kodu əl ilə yazıb davam etmək olur | **Yalnız real telefonda** |
+| 12 | №10-da "Hansı kiosk" siyahısı | Yalnız hesabın əhatəsindəki kiosklar; cihaz gözləyənlər əvvəl; cihazı olan kiosk seçiləndə "köhnə cihaz ayrılacaq" xəbərdarlığı | Emulyatorda da yoxlanıla bilər |
+| 13 | **Sayğacı təyin edilməmiş kiosk (T-264).** №10-da aktivləşdirilən yeni kioskun kartı | "A4: sayğac təyin edilməyib" xəbərdarlığı; kiosk sifariş qəbul edir. "Kağız doldur" → "Dəqiq say" ilə vərəq sayı yazılandan sonra xəbərdarlıq itir | Emulyatorda da yoxlanıla bilər |
