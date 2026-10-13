@@ -1418,7 +1418,9 @@ brauzerlə (Chrome / Edge, `playwright-core`) yoxlayır — `admin/` qovluğunda
 ```bash
 node e2e/live.mjs                    # KSK-9002 konteyneri dayandırılır / işə salınır; siyahı və dashboard izləməlidir
 node e2e/live.mjs --connection       # panelin öz canlı bağlantısı kəsilir: 30 saniyəlik sorğu ilə izləməlidir
-node e2e/scope.mjs                   # əhatəsi məhdud hesab: yalnız öz kioskunu görür və eşidir; əhatə dəyişəndə bağlantı yenilənir
+node e2e/scope.mjs                   # əhatəsi məhdud hesab: yalnız öz kioskunu görür və eşidir; əhatə dəyişəndə bağlantı yenilənir;
+                                     # öz kioskundakı ödənişi və növbəni eşitmir — icazəsi yoxdur (T-261)
+node e2e/token.mjs                   # panel 15 dəqiqəlik access token-in bitməsindən sonra da canlı qalır (≈17 dəqiqə çəkir; T-256)
 node e2e/live.mjs KSK-9002 neoprint-kshot ../docs/screenshots/step-7/live   # ekran görüntüləri ilə
 ```
 
@@ -1426,6 +1428,21 @@ Hər skript zaman cədvəli (API-nin dediyi / siyahının göstərdiyi / dashboa
 hadisələrini yazır və son sətirdə nəticəni deyir (çıxış kodu 0 — izlədi). `scope.mjs` hər qaçışda
 `scope-check-<vaxt>@neoprint.local` adlı hesab və rol yaradır (təsadüfi şifrə ilə) və sonda hesabı söndürür;
 `dev-superadmin` hesabı ilə işləyir.
+
+`token.mjs` heç nəyi qısaltmır: access token-in ömrü (15 dəqiqə) backend-də sabitdir, tənzimləmə deyil — skript
+panel açıq halda real 15 dəqiqəni gözləyir, serverin bağlantını nə vaxt bağladığını, panelin neçə saniyəyə
+yenidən qoşulduğunu yazır, sonra kioska API ilə fasilə / davam verib sətrin hələ də izlədiyini yoxlayır.
+
+**Kim nəyi eşidir.** `/hubs/admin` hadisəsi yalnız eyni məlumatı REST ilə oxuya bilən hesaba gedir (icazə + kiosk
+əhatəsi; cədvəl `docs/API.md`-də). Rolun icazələrini dəyişəndə həmin rolu daşıyan hesabların açıq panelləri
+bir-iki saniyəyə özü yenidən qoşulur — başlıqdakı göstərici qısa müddətə "Yenidən qoşulur" olur.
+
+**Hub hadisələrinin müqaviləsi** iki tərəfdən yoxlanılır (CI-da da):
+
+```bash
+cd admin && node scripts/hub-check.mjs          # backend-in göndərə bildiyi hər hadisə panelin siyahısındadır və dinləyəni var
+dotnet test backend/tests/NeoPrint.Api.IntegrationTests --filter "FullyQualifiedName~HubContractTests"   # hər bildirişin çağıranı var (Docker lazım deyil)
+```
 
 **API-yə giriş limiti:** bir ünvandan dəqiqədə 10 giriş. `tools/dev-kiosk/*.mjs` skriptləri hər çağırışda
 yenidən daxil olur — onları dövrədə (hər 3 saniyədən bir) çağırsanız `429` alacaqsınız; bir dəqiqə gözləyin.
@@ -1636,6 +1653,9 @@ Hər üç tətbiqdə avtomatikdir və CI-da işləyir; lokalda:
 ```bash
 # Admin — statik: hər açar lüğətdə, serverin hər dəyərinin (enum, ayar, funksiya açarı) tərcüməsi var
 cd admin && node scripts/i18n-check.mjs
+
+# Admin — statik: hub hadisələri (panelin siyahısı backend-lə tutuşdurulur; dinləyəni olmayan hadisə düşürür)
+cd admin && node scripts/hub-check.mjs
 
 # Admin — render: yığılmış panel real brauzerdə, az / en / ru; şəkillər admin/e2e/screenshots-da
 cd admin && npx ng build --configuration production && npm run e2e

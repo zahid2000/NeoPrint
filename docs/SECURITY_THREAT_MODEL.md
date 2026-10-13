@@ -82,6 +82,7 @@ məzmununun şifrəsiz nüsxəsi yaranmır; keş icazə yoxlamasından sonra oxu
   `404` qaytarır (var-yox olduğu bilinmir); `Printing` və `Suspected` ləğv olunmur.
 - **Kiosk əhatəsi:** əhatəsi məhdud hesab başqa kioskun incident-ini nə siyahıda, nə detalda, nə də canlı
   bildirişdə (`/hubs/admin`) görür, onu təsdiqləyə və bağlaya bilmir (`404`).
+- **Canlı hadisələrin auditoriyası (T-261):** `/hubs/admin` hadisəsi REST-in vermədiyini verməməlidir. Əvvəl pul hadisələri (`RefundStatusChanged`, `FiscalStatusChanged`; `PaymentSucceeded` — məbləğlə), cihaz və saxlama hadisələri panelə qoşulmuş **hər** hesaba gedirdi, kiosk hadisələri isə əhatəyə görə süzülür, icazəyə görə yox: yalnız bir kioska baxan, `payments.view` icazəsi olmayan operator başqa kioskların pul hadisələrini eşidə bilirdi. İndi hər hadisə icazə + əhatə qrupuna gedir (`AdminAudience`; `docs/API.md` cədvəli), `admins` qrupuna yalnız gövdəsiz "icazələriniz dəyişmiş ola bilər" siqnalı. Test: `AdminLiveEventsTests` (ödənişi yalnız icazəsi və əhatəsi olan eşidir; rolun icazəsi alınanda bağlantı bağlanır və hadisə daha gəlmir).
 - **Canlı bağlantı və dəyişən əhatə (T-249):** `/hubs/admin` bağlantısının qrupları qoşulma anında hesablanır.
   Hesabın əhatəsi / rolları dəyişəndə, hesab söndürüləndə və şifrəsi sıfırlananda server həmin hesabın açıq
   bağlantılarını kəsir; bağlantı həm də açıldığı token-in müddəti bitəndə bağlanır. Söndürülmüş hesab yenidən

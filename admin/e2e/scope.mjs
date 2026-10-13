@@ -16,7 +16,9 @@
 //   2. the account's scope is changed to the watched kiosk: the server ends
 //      its live connection, the panel connects again by itself, and the kiosk
 //      appears in its list;
-//   3. the kiosk is paused and resumed: now the scoped account hears it;
+//   3. the kiosk is paused and resumed: now the scoped account hears it -
+//      and an order paid at that kiosk it does not: the payment and the queue
+//      are for accounts that may read payments and orders (T-261);
 //   4. the account is switched off: its connection is ended once more.
 //
 // Needs Chrome or Edge on the machine (playwright-core brings no browser).
@@ -249,6 +251,33 @@ try {
   const statuses = scoped.about(watched.id, from).filter((event) => event.target === 'KioskStatusChanged').map((event) => event.status);
   check(statuses.includes('Maintenance') && statuses.includes('Online'), `the scoped account heard its kiosk: KioskStatusChanged ${statuses.join(', ')}`);
   check(sawPause && sawResume, `and its list followed without a reload (Servisdə, then Onlayn)`);
+
+  // --- 3b. its own kiosk's money is still not its to hear (T-261) -------------
+  // The account may see kiosks and incidents - not payments, not orders. An
+  // order is placed and paid at its kiosk: the administrator hears the payment
+  // and the queue, the scoped account neither.
+  const adminFrom = everything.heard.length;
+  const scopedFrom = scoped.heard.length;
+  say(`an order is placed and paid at ${code} (tools/dev-kiosk/app-order.mjs)`);
+
+  try {
+    execFileSync('node', [join(import.meta.dirname, '..', '..', 'tools', 'dev-kiosk', 'app-order.mjs'), 'order', code], { stdio: 'pipe', timeout: 120_000 });
+  } catch (error) {
+    say(`the order tool said: ${String(error.stdout ?? error.message).trim().split('\n').at(-1)}`);
+  }
+
+  const paid = await waitFor('the payment in the administrator panel', 30, () =>
+    everything.heard.slice(adminFrom).some((event) => event.target === 'PaymentSucceeded'),
+  );
+  const adminHeard = [...new Set(everything.heard.slice(adminFrom).map((event) => event.target))];
+  check(paid, `the administrator heard the payment: ${adminHeard.join(', ') || '(nothing)'}`);
+
+  const money = ['PaymentSucceeded', 'RefundStatusChanged', 'FiscalStatusChanged', 'QueueUpdated', 'DeviceRegistered', 'StorageHealthChanged'];
+  const scopedHeard = [...new Set(scoped.heard.slice(scopedFrom).map((event) => event.target))];
+  check(
+    scopedHeard.every((target) => !money.includes(target)),
+    `the scoped account, without payments.view and jobs.view, heard none of it: ${scopedHeard.join(', ') || '(nothing)'}`,
+  );
 
   // --- 4. the account is switched off ----------------------------------------
   const socketsNow = { ...scoped.sockets };
