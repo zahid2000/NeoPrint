@@ -50,6 +50,19 @@ public sealed class PaperStock
     public DateTime? LastRefillAt { get; set; }
 
     public Guid? LastRefillBy { get; set; }
+
+    /// <summary>
+    /// Whether anybody has said how much paper is in the tray. A kiosk is
+    /// created with a capacity and a count of nought that nobody counted: until
+    /// the first refill is recorded the count is not "empty", it is unknown -
+    /// nothing is alerted about it and no task is opened (T-258). Once set it
+    /// stays set: a tray that was filled and printed down to nought is empty.
+    /// </summary>
+    /// <remarks>
+    /// Worked out from what is stored, so kiosks from before this rule need no
+    /// migration: a recorded refill, or a count somebody seeded.
+    /// </remarks>
+    public bool IsCounted => LastRefillAt is not null || Current > 0;
 }
 
 /// <summary>What a printer can do, as detected or as overridden by an admin.</summary>

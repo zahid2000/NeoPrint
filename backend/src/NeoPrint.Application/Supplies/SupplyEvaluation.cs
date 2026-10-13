@@ -235,7 +235,9 @@ public sealed class SupplyEvaluationHandlers :
     {
         var readings = new List<SupplyReading>();
 
-        foreach (var (paper, stock) in kiosk.PaperStock.Where(tray => tray.Value.Capacity > 0))
+        // A tray nobody has counted yet has no level to judge (T-258): a newly
+        // installed kiosk would otherwise open a Critical alert and a task at once.
+        foreach (var (paper, stock) in kiosk.PaperStock.Where(tray => tray.Value.Capacity > 0 && tray.Value.IsCounted))
         {
             if (Enum.TryParse<SupplyResource>(SupplyEvent.PaperResource(paper), out var resource))
             {

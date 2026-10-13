@@ -167,6 +167,8 @@
   "email.incident.system": "System",
   "email.serviceTask.body": "<p><b>{what:serviceTasks.type}</b> — {kiosk}</p><p>Priority: {priority:serviceTasks.priority}</p><p>{notes}</p><p>See \"My tasks\" in the operator panel.</p>",
   "email.serviceTask.subject": "NeoPrint — new task: {what:serviceTasks.type} ({kiosk})",
+  "email.serviceTaskUnassigned.body": "<p><b>{what:serviceTasks.type}</b> — {kiosk}</p><p>Priority: {priority:serviceTasks.priority}</p><p>{notes}</p><p>No operator looks after this kiosk, so the task was given to nobody. Assign it to an operator, or add an operator to the kiosk's scope.</p>",
+  "email.serviceTaskUnassigned.subject": "NeoPrint — task not assigned: {what:serviceTasks.type} ({kiosk})",
   "email.supplyAlert.body": "<p><b>{kiosk}</b> — {level:supplies.level}</p><p>{supply:supplies.resource}{variant}: {value} {unit:supplies.unit} left.</p><p>See the kiosk's \"Supplies\" tab in the admin panel.</p>",
   "email.supplyAlert.subject": "NeoPrint — {level:supplies.level}: kiosk {kiosk}, {supply:supplies.resource}{variant}",
   "telegram.incident": "NeoPrint · {severity} incident · {where}\n{details}",

@@ -66,7 +66,8 @@ public sealed record KioskListItem(
     Guid? PricingProfileId,
     DateTime? SafeModeSince = null,
     int? PaperA4Current = null,
-    int? PaperA4Capacity = null);
+    int? PaperA4Capacity = null,
+    bool? PaperA4Counted = null);
 
 /// <summary>
 /// The kiosks an administrator's scope covers (plan section 8A.2).

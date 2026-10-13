@@ -22,7 +22,16 @@ namespace NeoPrint.Application.Kiosks;
 // ---------------------------------------------------------------------------
 
 /// <summary>A paper counter, as the kiosk form edits it.</summary>
-public sealed record PaperStockDto(int Capacity, int Current, DateTime? LastRefillAt);
+/// <param name="Counted">False until the first refill is recorded: the count is then unknown, not nought (T-258).</param>
+public sealed record PaperStockDto(int Capacity, int Current, DateTime? LastRefillAt, bool Counted = true)
+{
+    public static PaperStockDto Of(PaperStock stock)
+    {
+        ArgumentNullException.ThrowIfNull(stock);
+
+        return new PaperStockDto(stock.Capacity, stock.Current, stock.LastRefillAt, stock.IsCounted);
+    }
+}
 
 /// <summary>
 /// A limit with the value that actually applies (plan section 2.2).
@@ -639,7 +648,7 @@ public sealed class KioskAdminHandlers :
             kiosk.FiscalTerminalId,
             kiosk.PaperStock.ToDictionary(
                 pair => pair.Key,
-                pair => new PaperStockDto(pair.Value.Capacity, pair.Value.Current, pair.Value.LastRefillAt),
+                pair => PaperStockDto.Of(pair.Value),
                 StringComparer.Ordinal),
             !string.IsNullOrEmpty(kiosk.AdminPinHash),
             kiosk.ActiveDeviceId,

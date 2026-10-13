@@ -167,6 +167,8 @@
   "email.incident.system": "Sistem",
   "email.serviceTask.body": "<p><b>{what:serviceTasks.type}</b> — {kiosk}</p><p>Prioritet: {priority:serviceTasks.priority}</p><p>{notes}</p><p>Operator panelində \"Tapşırıqlarım\" səhifəsinə baxın.</p>",
   "email.serviceTask.subject": "NeoPrint — yeni tapşırıq: {what:serviceTasks.type} ({kiosk})",
+  "email.serviceTaskUnassigned.body": "<p><b>{what:serviceTasks.type}</b> — {kiosk}</p><p>Prioritet: {priority:serviceTasks.priority}</p><p>{notes}</p><p>Bu kioska baxan operator tapılmadı, ona görə tapşırıq heç kimə təyin edilməyib. Tapşırığı operatora təyin edin və ya kioskun əhatəsinə operator əlavə edin.</p>",
+  "email.serviceTaskUnassigned.subject": "NeoPrint — tapşırıq təyin edilməyib: {what:serviceTasks.type} ({kiosk})",
   "email.supplyAlert.body": "<p><b>{kiosk}</b> — {level:supplies.level}</p><p>{supply:supplies.resource}{variant}: {value} {unit:supplies.unit} qalıb.</p><p>Admin panelində kioskun \"Sərf\" bölməsinə baxın.</p>",
   "email.supplyAlert.subject": "NeoPrint — {level:supplies.level}: {kiosk} kioskunda {supply:supplies.resource}{variant}",
   "telegram.incident": "NeoPrint · {severity} incident · {where}\n{details}",

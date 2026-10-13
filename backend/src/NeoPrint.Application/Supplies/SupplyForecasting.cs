@@ -76,7 +76,10 @@ public sealed class SupplyOutlook
 
         var forecasts = new List<SupplyForecastView>();
 
-        foreach (var (paper, stock) in kiosk.PaperStock.Where(tray => tray.Value.Capacity > 0).OrderBy(tray => tray.Key, StringComparer.Ordinal))
+        // Nothing is forecast for a tray nobody has counted yet (T-258).
+        foreach (var (paper, stock) in kiosk.PaperStock
+                     .Where(tray => tray.Value.Capacity > 0 && tray.Value.IsCounted)
+                     .OrderBy(tray => tray.Key, StringComparer.Ordinal))
         {
             var resource = SupplyEvent.PaperResource(paper);
             var daily = await _usage.DailySheetsAsync(kiosk.Id, resource, now, SupplyForecaster.Days, cancellationToken).ConfigureAwait(false);

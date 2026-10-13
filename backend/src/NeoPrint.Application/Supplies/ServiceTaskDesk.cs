@@ -88,7 +88,65 @@ public sealed class ServiceTaskDesk
 
         await AnnounceAsync(wanted, kiosk, assigned: wanted.AssignedTo is not null, cancellationToken).ConfigureAwait(false);
 
+        if (wanted.AssignedTo is null)
+        {
+            await TellManagersAsync(wanted, kiosk, cancellationToken).ConfigureAwait(false);
+        }
+
         return (wanted, true);
+    }
+
+    /// <summary>
+    /// A task the system opened and could give to nobody - the kiosk has no
+    /// operator - waits in the pool, and those who hand tasks out are told by
+    /// e-mail: without that it would wait until somebody happened to look
+    /// (<c>docs/DECISIONS.md</c>, T-260).
+    /// </summary>
+    /// <remarks>
+    /// "Those who hand tasks out" are the active accounts with
+    /// <c>service.tasks.manage</c> that see the kiosk - the SuperAdmin always
+    /// among them. A task an administrator opens by hand is not announced
+    /// this way: they are looking at it.
+    /// </remarks>
+    private async Task TellManagersAsync(ServiceTask task, Kiosk kiosk, CancellationToken cancellationToken)
+    {
+        var place = kiosk.Code + " — " + kiosk.Name;
+
+        foreach (var admin in (await _admins.ListAsync(cancellationToken).ConfigureAwait(false))
+                     .Where(admin => admin.IsActive && !string.IsNullOrWhiteSpace(admin.Email)))
+        {
+            var effective = await _permissions.ResolveAsync(admin.Id, cancellationToken).ConfigureAwait(false);
+
+            if (!effective.IsActive || !effective.Has(Permissions.ServiceTasksManage) || !effective.CanSee(kiosk.Id))
+            {
+                continue;
+            }
+
+            try
+            {
+                await _email
+                    .SendAsync(
+                        admin.Email,
+                        Messages.Write(UserMessage.Of("email.serviceTaskUnassigned.subject", ("what", task.Type.ToString()), ("kiosk", kiosk.Code))),
+                        Messages.Write(UserMessage.Of(
+                            "email.serviceTaskUnassigned.body",
+                            ("what", task.Type.ToString()),
+                            ("kiosk", System.Net.WebUtility.HtmlEncode(place)),
+                            ("priority", task.Priority.ToString()),
+                            ("notes", System.Net.WebUtility.HtmlEncode(Messages.WriteStored(task.Notes) ?? string.Empty)))),
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                // The task is in the pool either way; a mail server that is down does not undo it.
+                _logger.LogWarning(exception, "Service task {TaskId}: the notice that nobody could be given it was not sent.", task.Id);
+            }
+        }
+
+        _logger.LogWarning(
+            "Service task {TaskId} ({Type}) for kiosk {KioskId} could be given to nobody: the kiosk has no operator.",
+            task.Id, task.Type, kiosk.Id);
     }
 
     /// <summary>

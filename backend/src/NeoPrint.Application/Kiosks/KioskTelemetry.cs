@@ -468,7 +468,7 @@ public sealed class KioskTelemetryHandlers :
                 open,
                 kiosk.PaperStock.ToDictionary(
                     pair => pair.Key,
-                    pair => new PaperStockDto(pair.Value.Capacity, pair.Value.Current, pair.Value.LastRefillAt),
+                    pair => PaperStockDto.Of(pair.Value),
                     StringComparer.Ordinal)));
     }
 

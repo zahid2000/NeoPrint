@@ -20,6 +20,38 @@ public sealed class KioskPaperTests
         return kiosk;
     }
 
+    // T-258: a tray nobody has counted is not an empty tray.
+    [Fact]
+    public void A_tray_nobody_has_counted_is_unknown_until_the_first_refill_and_known_ever_after()
+    {
+        var kiosk = KioskWith(500, 0);
+        var tray = kiosk.PaperStock["A4"];
+
+        tray.IsCounted.Should().BeFalse("a new kiosk: a capacity, and a nought nobody counted");
+
+        // A test print on the way into service takes nothing off a count that is not there.
+        kiosk.UsePaper("A4", 1, SupplyEventType.TestPrint, Now, commandId: Guid.NewGuid());
+        tray.IsCounted.Should().BeFalse();
+
+        kiosk.RefillPaper("A4", PaperRefillMode.Exact, 3, Operator, Now);
+        tray.IsCounted.Should().BeTrue();
+
+        // Printed down to nought, it is empty - not unknown again.
+        kiosk.UsePaper("A4", 3, SupplyEventType.JobPrinted, Now, jobId: Guid.NewGuid());
+        tray.Current.Should().Be(0);
+        tray.IsCounted.Should().BeTrue();
+    }
+
+    [Fact]
+    public void A_tray_recounted_as_empty_is_counted_and_one_that_came_with_sheets_always_was()
+    {
+        var recounted = KioskWith(500, 0);
+        recounted.RefillPaper("A4", PaperRefillMode.Exact, 0, Operator, Now);
+        recounted.PaperStock["A4"].IsCounted.Should().BeTrue("somebody looked and said: none");
+
+        KioskWith(500, 120).PaperStock["A4"].IsCounted.Should().BeTrue("a count from before the rule");
+    }
+
     [Fact]
     public void A_printed_job_takes_its_sheets_off_and_says_so()
     {

@@ -143,6 +143,100 @@ public sealed class SupplyFlowTests
         (await CompleteAsync(operatorClient, task.Id, new { refillMode = "Full" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
+    // T-258: a kiosk that has just been installed has a counter nobody set. It is
+    // not an empty tray: no alert, no task - until the first refill is recorded.
+    [DockerFact]
+    public async Task A_new_kiosks_counter_nobody_set_raises_nothing_until_the_first_refill_is_recorded()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        // Activated and nothing more: the tray has its capacity, and nobody has recorded a refill.
+        using var kiosk = await TestKiosks.ActivatedAsync(_fixture, $"supply-unset-{Guid.NewGuid():N}"[..22]);
+        var (operatorAccount, operatorClient) = await OperatorAsync(KioskScope.Only(kiosk.KioskId));
+        using var _client = operatorClient;
+        await using var _others = await OnlyTheseOperatorsAsync(operatorAccount.Id);
+
+        // A capacity, and a nought nobody counted.
+        var tray = (await KioskAsync(kiosk.KioskId)).PaperStock["A4"];
+        tray.Capacity.Should().BeGreaterThan(0);
+        tray.Current.Should().Be(0);
+        tray.IsCounted.Should().BeFalse();
+
+        (await EvaluateAsync(kiosk.KioskId)).Should().Be(SupplyEvaluationResult.Nothing, "nought sheets is below every rule, and still nothing is said");
+        (await ActiveAlertsAsync(kiosk.KioskId)).Should().BeEmpty();
+        (await TasksOfAsync(kiosk.KioskId)).Should().BeEmpty("no task for a tray nobody has counted");
+
+        // The forecast has nothing to say about it either, and opens no task.
+        await SendAsync(new RunSupplyForecastCommand());
+        (await TasksOfAsync(kiosk.KioskId)).Should().BeEmpty();
+
+        // The panel is told the counter is not set - "Sayğac təyin edin" - in the tab and in the list.
+        var supplies = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kiosk.KioskId}/supplies");
+        supplies.GetProperty("paper").GetProperty("A4").GetProperty("counted").GetBoolean().Should().BeFalse();
+        supplies.GetProperty("forecasts").EnumerateArray().Should().BeEmpty();
+
+        var listed = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/kiosks")).EnumerateArray()
+            .Single(row => row.GetProperty("id").GetGuid() == kiosk.KioskId);
+        listed.GetProperty("paperA4Counted").GetBoolean().Should().BeFalse();
+
+        // The operator records what they put in: 30 sheets is below the Critical threshold, and now it counts.
+        (await RefillAsync(operatorClient, kiosk.KioskId, "Exact", 30)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var alerts = await EventuallyAsync(
+            () => ActiveAlertsAsync(kiosk.KioskId), found => found.Count == 1, "the alert once the counter is set");
+        alerts[0].Level.Should().Be(SupplyAlertLevel.Critical);
+        alerts[0].Value.Should().Be(30);
+        (await TaskAsync(alerts[0].ServiceTaskId!.Value)).AssignedTo.Should().Be(operatorAccount.Id);
+
+        var after = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kiosk.KioskId}/supplies");
+        after.GetProperty("paper").GetProperty("A4").GetProperty("counted").GetBoolean().Should().BeTrue();
+    }
+
+    // T-260: the kiosk has no operator. The task waits in the pool, and those who hand tasks out are told.
+    [DockerFact]
+    public async Task A_task_the_system_can_give_to_nobody_waits_in_the_pool_and_those_who_hand_tasks_out_are_told()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await ReadyKioskAsync(_fixture, "supply-nobody");
+        var (elsewhere, elsewhereClient) = await OperatorAsync(KioskScope.Only(Guid.NewGuid()));
+        using var _client = elsewhereClient;
+        await using var _others = await OnlyTheseOperatorsAsync(elsewhere.Id);
+        var emails = _fixture.Services.GetRequiredService<CapturedEmails>();
+        var superAdmin = NeoPrintApiFixture.SeedAdminEmail;
+
+        (await RefillAsync(admin, kiosk.KioskId, "Exact", 40)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var alerts = await EventuallyAsync(
+            () => ActiveAlertsAsync(kiosk.KioskId), found => found.Count == 1, "the Critical alert");
+        var task = await TaskAsync(alerts[0].ServiceTaskId!.Value);
+
+        task.Status.Should().Be(ServiceTaskStatus.Open, "the pool: nobody looks after this kiosk");
+        task.AssignedTo.Should().BeNull("it is not given to the SuperAdmin, who is not an operator");
+
+        var told = emails.Sent.Where(mail => mail.Subject.Contains(kiosk.KioskCode, StringComparison.Ordinal)
+                                             && mail.Subject.Contains("təyin edilməyib", StringComparison.Ordinal)).ToList();
+        told.Should().Contain(mail => string.Equals(mail.To, superAdmin, StringComparison.OrdinalIgnoreCase), "the SuperAdmin hands tasks out and sees every kiosk");
+        told.Should().NotContain(mail => string.Equals(mail.To, elsewhere.Email, StringComparison.OrdinalIgnoreCase), "an operator of another kiosk is not asked");
+        told.First().HtmlBody.Should().Contain("operator tapılmadı");
+
+        // Said once: looking again, and the level falling further, send no second notice.
+        (await EvaluateAsync(kiosk.KioskId)).Should().Be(SupplyEvaluationResult.Nothing);
+        emails.Sent.Count(mail => mail.Subject.Contains(kiosk.KioskCode, StringComparison.Ordinal)
+                                  && mail.Subject.Contains("təyin edilməyib", StringComparison.Ordinal)
+                                  && string.Equals(mail.To, superAdmin, StringComparison.OrdinalIgnoreCase))
+            .Should().Be(1);
+
+        // The administrator gives it to an operator they have put on the kiosk: the operator is told as usual.
+        var (operatorAccount, operatorClient) = await OperatorAsync(KioskScope.Only(kiosk.KioskId));
+        using var _operatorClient = operatorClient;
+        var assigned = await SendAsync(admin, HttpMethod.Post, $"/api/admin/service-tasks/{task.Id}/assign", new { assignTo = operatorAccount.Id });
+        assigned.StatusCode.Should().Be(HttpStatusCode.OK, await assigned.Content.ReadAsStringAsync());
+        emails.Latest(operatorAccount.Email)!.Subject.Should().Contain("yeni tapşırıq");
+    }
+
     [DockerFact]
     public async Task A_level_that_recovers_without_the_task_clears_the_alert_and_the_task_nobody_started()
     {
@@ -676,6 +770,13 @@ public sealed class SupplyFlowTests
         using var scope = _fixture.Services.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<MongoContext>().SupplyAlerts
             .Find(alert => alert.KioskId == kioskId && alert.Active).ToListAsync();
+    }
+
+    private async Task<List<ServiceTask>> TasksOfAsync(Guid kioskId)
+    {
+        using var scope = _fixture.Services.CreateScope();
+
+        return await scope.ServiceProvider.GetRequiredService<MongoContext>().ServiceTasks.Find(task => task.KioskId == kioskId).ToListAsync();
     }
 
     private async Task<ServiceTask> TaskAsync(Guid id)

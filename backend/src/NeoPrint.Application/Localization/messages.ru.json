@@ -167,6 +167,8 @@
   "email.incident.system": "Система",
   "email.serviceTask.body": "<p><b>{what:serviceTasks.type}</b> — {kiosk}</p><p>Приоритет: {priority:serviceTasks.priority}</p><p>{notes}</p><p>Откройте «Мои задачи» в панели оператора.</p>",
   "email.serviceTask.subject": "NeoPrint — новая задача: {what:serviceTasks.type} ({kiosk})",
+  "email.serviceTaskUnassigned.body": "<p><b>{what:serviceTasks.type}</b> — {kiosk}</p><p>Приоритет: {priority:serviceTasks.priority}</p><p>{notes}</p><p>У этого киоска нет оператора, поэтому задача никому не назначена. Назначьте её оператору или добавьте оператора в область киоска.</p>",
+  "email.serviceTaskUnassigned.subject": "NeoPrint — задача не назначена: {what:serviceTasks.type} (киоск {kiosk})",
   "email.supplyAlert.body": "<p><b>{kiosk}</b> — {level:supplies.level}</p><p>{supply:supplies.resource}{variant}: осталось {value} {unit:supplies.unit}.</p><p>Откройте раздел «Расходные материалы» киоска в панели администратора.</p>",
   "email.supplyAlert.subject": "NeoPrint — {level:supplies.level}: киоск {kiosk}, {supply:supplies.resource}{variant}",
   "telegram.incident": "NeoPrint · инцидент {severity} · {where}\n{details}",
