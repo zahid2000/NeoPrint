@@ -471,12 +471,14 @@ public sealed class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, A
 public sealed class LogoutHandler : IRequestHandler<LogoutCommand, Unit>
 {
     private readonly IRefreshTokenRepository _tokens;
+    private readonly IUserRepository _users;
     private readonly ISecretHasher _secrets;
     private readonly IClock _clock;
 
-    public LogoutHandler(IRefreshTokenRepository tokens, ISecretHasher secrets, IClock clock)
+    public LogoutHandler(IRefreshTokenRepository tokens, IUserRepository users, ISecretHasher secrets, IClock clock)
     {
         _tokens = tokens;
+        _users = users;
         _secrets = secrets;
         _clock = clock;
     }
@@ -498,6 +500,18 @@ public sealed class LogoutHandler : IRequestHandler<LogoutCommand, Unit>
         {
             stored.RevokedAt = _clock.UtcNow;
             await _tokens.UpdateAsync(stored, cancellationToken).ConfigureAwait(false);
+        }
+
+        // The device that signed out gets no more of the account's push. Only
+        // from the account the refresh token is of - whoever sends a token
+        // that is nobody's, or somebody else's device, changes nothing.
+        var push = request.FcmToken?.Trim();
+
+        if (stored is not null && !string.IsNullOrEmpty(push)
+            && await _users.FindByIdAsync(stored.UserId, cancellationToken).ConfigureAwait(false) is { } user
+            && user.FcmTokens.Any(device => device.Token == push))
+        {
+            await _users.RemovePushDeviceAsync(push, cancellationToken).ConfigureAwait(false);
         }
 
         return Unit.Value;

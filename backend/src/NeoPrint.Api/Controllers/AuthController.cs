@@ -94,13 +94,16 @@ public sealed class AuthController : ControllerBase
         => Ok(await _sender.Send(
             new RefreshTokenCommand(request.RefreshToken, request.DeviceId), cancellationToken));
 
-    /// <summary>Revokes a refresh token.</summary>
+    /// <summary>
+    /// Revokes a refresh token, and takes the device's push token off the
+    /// account when it is sent along.
+    /// </summary>
     [HttpPost("logout")]
     [AllowAnonymous]
     public async Task<IActionResult> Logout(
-        [FromBody] RefreshRequest request, CancellationToken cancellationToken)
+        [FromBody] LogoutRequest request, CancellationToken cancellationToken)
     {
-        await _sender.Send(new LogoutCommand(request.RefreshToken), cancellationToken);
+        await _sender.Send(new LogoutCommand(request.RefreshToken, request.FcmToken), cancellationToken);
         return NoContent();
     }
 
@@ -120,6 +123,8 @@ public sealed class AuthController : ControllerBase
     public sealed record LoginRequest(string Email, string Password, string? DeviceId);
 
     public sealed record RefreshRequest(string RefreshToken, string? DeviceId);
+
+    public sealed record LogoutRequest(string RefreshToken, string? FcmToken);
 }
 
 /// <summary>

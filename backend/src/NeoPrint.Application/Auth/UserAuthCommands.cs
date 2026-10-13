@@ -73,7 +73,12 @@ public sealed record LoginUserCommand(string Email, string Password, string? Dev
 public sealed record RefreshTokenCommand(string RefreshToken, string? DeviceId) : IRequest<AuthResult>;
 
 /// <summary>Revokes a refresh token.</summary>
-public sealed record LogoutCommand(string RefreshToken) : IRequest<Unit>;
+/// <param name="FcmToken">
+/// The push token of the device that is signing out: taken off the account in
+/// the same request, so it needs no access token - which may have run out by
+/// the time the user signs out (T-268).
+/// </param>
+public sealed record LogoutCommand(string RefreshToken, string? FcmToken = null) : IRequest<Unit>;
 
 /// <summary>Records the user's acceptance of the current document versions.</summary>
 public sealed record AcceptConsentsCommand(

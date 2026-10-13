@@ -53,6 +53,54 @@ public sealed class AccountLanguageTests
         (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("user").GetProperty("language").GetString().Should().Be("en");
     }
 
+    // T-268 (the owner, 2026-10-14): "I sign out and the push still comes".
+    [DockerFact]
+    public async Task Signing_out_takes_the_device_off_the_account_s_push_and_no_other_device()
+    {
+        if (Skip)
+        {
+            return;
+        }
+
+        using var user = await TestUsers.ConfirmedAsync(_fixture);
+        using var stranger = await TestUsers.ConfirmedAsync(_fixture);
+        var phone = $"phone-{Guid.NewGuid():N}";
+        var tablet = $"tablet-{Guid.NewGuid():N}";
+        var theirs = $"theirs-{Guid.NewGuid():N}";
+
+        foreach (var token in new[] { phone, tablet })
+        {
+            (await user.Client.PostAsJsonAsync("/api/users/me/fcm-token", new { token, language = "az", platform = "android" }))
+                .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        }
+
+        (await stranger.Client.PostAsJsonAsync("/api/users/me/fcm-token", new { token = theirs, language = "az", platform = "android" }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // The sign-out carries no access token: it may have run out long before.
+        using var anonymous = _fixture.CreateApiClient();
+
+        // Somebody else's device is not theirs to take off.
+        (await anonymous.PostAsJsonAsync("/api/auth/logout", new { refreshToken = "not-a-token", fcmToken = phone }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await FindAsync(user.Id)).FcmTokens.Should().HaveCount(2, "a refresh token that is nobody's signs nobody out");
+
+        (await anonymous.PostAsJsonAsync("/api/auth/logout", new { refreshToken = user.RefreshToken, fcmToken = phone }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        (await FindAsync(user.Id)).FcmTokens.Select(device => device.Token).Should().Equal([tablet], "the phone signed out; the tablet did not");
+
+        // The same sign-out again, and one that names another account's device: nothing more happens.
+        (await anonymous.PostAsJsonAsync("/api/auth/logout", new { refreshToken = user.RefreshToken, fcmToken = theirs }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await FindAsync(stranger.Id)).FcmTokens.Should().ContainSingle();
+        (await FindAsync(user.Id)).FcmTokens.Should().ContainSingle();
+
+        // The session is over.
+        (await anonymous.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = user.RefreshToken }))
+            .IsSuccessStatusCode.Should().BeFalse();
+    }
+
     [DockerFact]
     public async Task Only_a_language_the_app_is_written_in_is_taken()
     {
