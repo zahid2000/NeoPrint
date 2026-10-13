@@ -8,21 +8,21 @@
 //   node e2e/activate.mjs                                  # from admin/
 //   node e2e/activate.mjs ../docs/screenshots/step-7/t265  # and keep the pictures
 //
-// It brings its own data and takes it back: the kiosk it binds to is its own
-// ("E2E aktivləşdirmə", made on the first run and used again on the next ones -
-// a kiosk that has had a device cannot be deleted), and the device is revoked
-// at the end, so the kiosk waits for a machine again. The machine's private key
-// is thrown away: it is nobody's.
+// It brings its own data and takes it away (T-266): the kiosk it binds to is
+// its own ("E2E aktivləşdirmə"), made at the start and removed at the end with
+// both machines and everything written about them (e2e/dev-data.mjs). The
+// machines' private keys are thrown away: they are nobody's.
 //
 // Reading the QR with the camera is not covered: no desktop browser on Windows
 // can read codes, so the panel offers no camera here (docs/MANUAL_TESTS.md MT-09).
 //
 // Needs Chrome or Edge on the machine (playwright-core brings no browser).
 // ---------------------------------------------------------------------------
-import { generateKeyPairSync, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { makeKiosk, purgeKiosk, registerMachine } from './dev-data.mjs';
 import { launchBrowser } from './pages.mjs';
 
 const base = process.env.ADMIN_URL ?? 'http://localhost:8080';
@@ -30,7 +30,6 @@ const api = process.env.NEOPRINT_API ?? 'http://localhost:5080';
 // The development seed's password (docs/DEV_ENVIRONMENT.md section 4); never a real one.
 const password = process.env.NEOPRINT_DEV_PASSWORD ?? 'DevTest!2026';
 const shots = process.argv[2] ? resolve(process.argv[2]) : null;
-const kioskName = 'E2E aktivləşdirmə';
 const failures = [];
 const check = (ok, text) => {
   console.log(`${ok ? 'ok    ' : 'WRONG '} ${text}`);
@@ -63,70 +62,21 @@ async function call(method, path, body, anonymous = false) {
   return response.status === 204 ? null : response.json().catch(() => null);
 }
 
-/** A machine that has just been switched on: it registers and is given the code its screen shows. */
-async function register(hostname) {
-  const { publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+// A kiosk of the check's own that has lost its machine, and a new machine showing its code.
+const kiosk = await makeKiosk(call, 'E2E aktivləşdirmə');
+let machine = null;
 
-  return call(
-    'POST',
-    '/api/devices/register',
-    {
-      publicKey: publicKey.export({ type: 'spki', format: 'der' }).toString('base64'),
-      fingerprint: {
-        hostname,
-        os: 'Linux',
-        osVersion: '6.1',
-        machineId: randomUUID().replaceAll('-', ''),
-        macAddresses: ['02:00:00:00:00:02'],
-        cpu: 'Development',
-        ramGb: 8,
-        screenResolution: '1920x1080',
-      },
-      platform: 'Linux',
-      appVersion: '0.7.0',
-      agentVersion: '0.7.0',
-      printers: [{ name: 'Test printer', driverName: 'Test driver', isOnline: true, color: true, duplex: true, a3: false }],
-    },
-    true,
-  );
+/** Takes away everything the check made, whatever happened in between. */
+const takeAway = () => purgeKiosk(api, kiosk.id, [kiosk.deviceId, ...(machine ? [machine.deviceId] : [])]);
+
+try {
+  await call('POST', `/api/admin/devices/${kiosk.deviceId}/revoke`, { reason: 'E2E: the kiosk waits for a machine' });
+  machine = await registerMachine(call, `e2e-activate-${Date.now() % 100000}`);
+} catch (error) {
+  takeAway();
+  throw error;
 }
 
-/** The kiosk this check binds to: its own, waiting for a machine. */
-async function ownKiosk() {
-  const existing = (await call('GET', '/api/admin/kiosks')).find((kiosk) => kiosk.name === kioskName);
-
-  if (existing) {
-    if (existing.status !== 'NotActivated') {
-      // A run that was cut short left its device on: it is taken off first.
-      const device = (await call('GET', '/api/admin/devices?status=Active')).find((item) => item.kioskId === existing.id);
-      if (device) await call('POST', `/api/admin/devices/${device.deviceId ?? device.id}/revoke`, { reason: 'E2E: leftover' });
-    }
-
-    return existing;
-  }
-
-  const first = await register('e2e-activate-first');
-  const made = await call('POST', `/api/admin/devices/${first.deviceId}/activate`, {
-    newKiosk: {
-      name: kioskName,
-      lat: 40.3793,
-      lng: 49.8486,
-      address: 'Bakı (dev)',
-      defaultLanguage: 'az',
-      paperCapacityA4: 500,
-      paperCapacityA3: 0,
-      adminPin: String(100000 + Math.floor(Math.random() * 899999)),
-    },
-    selectedPrinterName: 'Test printer',
-  });
-
-  await call('POST', `/api/admin/devices/${first.deviceId}/revoke`, { reason: 'E2E: the kiosk waits for a machine' });
-
-  return { id: made.kioskId, code: made.kioskCode };
-}
-
-const kiosk = await ownKiosk();
-const machine = await register(`e2e-activate-${Date.now() % 100000}`);
 console.log(`kiosk ${kiosk.code} waits for a machine; the new machine shows a code`);
 
 const browser = await launchBrowser();
@@ -213,12 +163,11 @@ try {
   check(errors.length === 0, `no console errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
 } finally {
   await browser.close();
-  // Back to how it was: the kiosk waits for a machine again.
-  await call('POST', `/api/admin/devices/${machine.deviceId}/revoke`, { reason: 'E2E: done' }).catch(() => undefined);
+  takeAway();
 }
 
-const left = await call('GET', `/api/admin/kiosks/${kiosk.id}`);
-check(left.status === 'NotActivated', `left as it was found: ${kiosk.code} is ${left.status}`);
+const left = (await call('GET', '/api/admin/kiosks')).some((entry) => entry.id === kiosk.id);
+check(!left, 'nothing of the check is left: its kiosk and both machines are gone');
 
 console.log(failures.length === 0 ? '\nAn operator activated a kiosk from the code on its screen.' : `\n${failures.length} thing(s) wrong.`);
 process.exit(failures.length === 0 ? 0 : 1);

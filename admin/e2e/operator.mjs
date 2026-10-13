@@ -1,17 +1,18 @@
 // ---------------------------------------------------------------------------
 // What an operator does most, done through the panel itself on the development
 // stack, at a phone's width (T-211): a refill with a ream from the warehouse,
-// a task started and finished, and stock taken from the shelf - each checked
-// against what the server holds afterwards.
+// a toner change, a task started and finished, and stock taken from the shelf -
+// each checked against what the server holds afterwards.
 //
-//   docker compose up -d                       # the stack and a running kiosk
-//   node e2e/operator.mjs                      # from admin/; KSK-9002
+//   docker compose up -d
+//   node e2e/operator.mjs                      # from admin/
 //   node e2e/operator.mjs ../docs/screenshots/step-7/m7
 //
-// It changes the development data: KSK-9002's A4 tray is filled, one "Cleaning"
-// task is opened and finished, a toner change is written down, and two units leave the first A4 ream item of
-// the warehouse (one used at the kiosk, one taken by the operator). It needs
-// such an item with at least two in stock (docs/DEV_ENVIRONMENT.md 7n).
+// It can be run any number of times and leaves the development data as it
+// found it (T-266): the kiosk and the warehouse item it works on are its own,
+// made at the start ("E2E operator", "E2E A4 kağız"), and removed at the end
+// with everything written about them (e2e/dev-data.mjs). Nobody else's kiosk
+// or stock is touched. The audit log keeps what was done, as it always does.
 //
 // Needs Chrome or Edge on the machine (playwright-core brings no browser).
 // ---------------------------------------------------------------------------
@@ -19,6 +20,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
+import { makeKiosk, purgeItem, purgeKiosk } from './dev-data.mjs';
 import { launchBrowser } from './pages.mjs';
 
 const base = process.env.ADMIN_URL ?? 'http://localhost:8080';
@@ -36,20 +38,57 @@ async function signIn(email) {
 }
 
 const root = await signIn('dev-superadmin@neoprint.local');
-const call = async (method, path, body) => {
-  const response = await fetch(`${api}${path}`, { method, headers: { Authorization: `Bearer ${root}`, 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() }, body: body === undefined ? undefined : JSON.stringify(body) });
+const call = async (method, path, body, anonymous = false) => {
+  const response = await fetch(`${api}${path}`, {
+    method,
+    headers: {
+      ...(anonymous ? {} : { Authorization: `Bearer ${root}` }),
+      'Content-Type': 'application/json',
+      'Idempotency-Key': randomUUID(),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
   if (!response.ok) throw new Error(`${method} ${path}: ${response.status} ${(await response.text()).slice(0, 200)}`);
   return response.status === 204 ? null : response.json();
 };
 
-const kiosk = (await call('GET', '/api/admin/kiosks')).find((item) => item.code === 'KSK-9002');
-const before = await call('GET', `/api/admin/kiosks/${kiosk.id}/supplies`);
-const item = (await call('GET', '/api/admin/inventory/items')).find((entry) => entry.type === 'PaperA4Ream' && entry.isActive);
-console.log(`before: A4 ${before.paper.A4.current}/${before.paper.A4.capacity}; warehouse ${item ? `${item.sku} ${item.stock}` : '(no A4 ream)'}`);
+// --- What the check brings with it ------------------------------------------------------------
+// A kiosk of its own, its tray counted (480 of 500) so that there is something to fill.
+const kiosk = await makeKiosk(call, 'E2E operator');
+let item = null;
+let task = null;
 
-// A task for the operator to start and finish.
-const task = await call('POST', '/api/admin/service-tasks', { kioskId: kiosk.id, type: 'Cleaning', priority: 'Normal', notes: 'M7 yoxlaması: ekranı silin.' });
-console.log(`task ${task.id.slice(0, 8)} ${task.status} → ${task.assignedToName ?? 'nobody'}`);
+/** Takes away everything the check made, whatever happened in between. */
+function takeAway() {
+  if (item) purgeItem(api, item.id);
+  purgeKiosk(api, kiosk.id, [kiosk.deviceId]);
+}
+
+try {
+  await call('POST', `/api/admin/kiosks/${kiosk.id}/paper/refill`, { paper: 'A4', mode: 'Exact', sheets: 480 });
+
+  // A shelf of its own: two reams, one for the refill and one to take.
+  item = await call('POST', '/api/admin/inventory/items', {
+    sku: `E2E-A4-${Date.now() % 1_000_000}`,
+    name: 'E2E A4 kağız',
+    type: 'PaperA4Ream',
+    compatiblePrinterModels: [],
+    unit: 'bağlama',
+    sheetsPerUnit: 500,
+    minStock: 0,
+    location: 'E2E',
+    isActive: true,
+  });
+  item = await call('POST', '/api/admin/inventory/movements', { itemId: item.id, type: 'Purchase', quantity: 2 });
+
+  // A task for the operator to start and finish.
+  task = await call('POST', '/api/admin/service-tasks', { kioskId: kiosk.id, type: 'Cleaning', priority: 'Normal', notes: 'E2E: ekranı silin.' });
+} catch (error) {
+  takeAway();
+  throw error;
+}
+
+console.log(`${kiosk.code}: A4 480/500; shelf ${item.sku} ${item.stock}; task ${task.id.slice(0, 8)} ${task.status} → ${task.assignedToName ?? 'nobody'}`);
 
 const browser = await launchBrowser();
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'az', isMobile: true, hasTouch: true, serviceWorkers: 'block' });
@@ -72,10 +111,12 @@ try {
   await page.waitForURL(/\/operator$/, { timeout: 20_000 });
 
   // --- Kağız doldur: "Tam doldur" with one ream from the warehouse -----------------------
-  const card = page.locator('article[data-kiosk="KSK-9002"]');
+  const card = page.locator(`article[data-kiosk="${kiosk.code}"]`);
   await card.waitFor({ timeout: 20_000 });
   await card.locator('button.op-primary').click();
   await page.locator('mat-dialog-container').waitFor();
+  await page.locator('mat-dialog-container mat-select').click();
+  await page.locator('mat-option', { hasText: item.name }).click();
   await shot('09-refill-filled-in');
   await page.locator('mat-dialog-actions button').last().click();
   check((await snack()).includes('Qeyd olundu'), 'refill: the panel says "Qeyd olundu"');
@@ -86,10 +127,8 @@ try {
   const latest = afterRefill.events[0];
   check(latest.type === 'Refill' && latest.resource === 'PaperA4' && latest.after === afterRefill.paper.A4.capacity, `refill: written among the kiosk's movements (${latest.type} ${latest.resource} ${latest.before} -> ${latest.after})`);
 
-  if (item) {
-    const stock = (await call('GET', '/api/admin/inventory/items')).find((entry) => entry.id === item.id).stock;
-    check(stock === item.stock - 1, `refill: one ream left the warehouse (${item.stock} → ${stock})`);
-  }
+  const stock = (await call('GET', '/api/admin/inventory/items')).find((entry) => entry.id === item.id).stock;
+  check(stock === item.stock - 1, `refill: one ream left the warehouse (${item.stock} → ${stock})`);
 
   await page.waitForTimeout(1200);
   const shown = await card.innerText();
@@ -101,7 +140,7 @@ try {
   await page.locator('mat-dialog-container').waitFor();
   // The development printer reports no cartridges, so which one is typed in.
   await page.locator('mat-dialog-container input[maxlength="100"]').fill('Black');
-  await page.locator('mat-dialog-container textarea').fill('M7 yoxlaması.');
+  await page.locator('mat-dialog-container textarea').fill('E2E yoxlaması.');
   await shot('12-replaced-dialog');
   await page.locator('mat-dialog-actions button').last().click();
   check((await snack()).includes('Qeyd olundu'), 'replaced: the panel says "Qeyd olundu"');
@@ -132,27 +171,30 @@ try {
   check(done.status === 'Done' && done.completion?.note === 'Silindi.', `task: Done on the server with its note (${done.status}, "${done.completion?.note}")`);
 
   // --- Anbar: Özümə götürürəm ----------------------------------------------------------------
-  if (item) {
-    const stockBefore = (await call('GET', '/api/admin/inventory/items')).find((entry) => entry.id === item.id).stock;
+  const stockBefore = (await call('GET', '/api/admin/inventory/items')).find((entry) => entry.id === item.id).stock;
 
-    await page.locator('nav a[href="/operator/inventory"]').click();
-    const shelf = page.locator(`article[data-item="${item.sku}"]`);
-    await shelf.waitFor({ timeout: 20_000 });
-    await shelf.locator('button.op-primary').click();
-    await page.locator('mat-dialog-container').waitFor();
-    await shot('11-take-dialog');
-    await page.locator('mat-dialog-actions button').last().click();
-    await page.locator('mat-dialog-container').waitFor({ state: 'detached' });
-    await page.waitForTimeout(1200);
+  await page.locator('nav a[href="/operator/inventory"]').click();
+  const shelf = page.locator(`article[data-item="${item.sku}"]`);
+  await shelf.waitFor({ timeout: 20_000 });
+  await shelf.locator('button.op-primary').click();
+  await page.locator('mat-dialog-container').waitFor();
+  await shot('11-take-dialog');
+  await page.locator('mat-dialog-actions button').last().click();
+  await page.locator('mat-dialog-container').waitFor({ state: 'detached' });
+  await page.waitForTimeout(1200);
 
-    const movements = await call('GET', `/api/admin/inventory/movements?itemId=${item.id}&pageSize=1`);
-    const stockAfter = (await call('GET', '/api/admin/inventory/items')).find((entry) => entry.id === item.id).stock;
-    check(stockAfter === stockBefore - 1 && movements.items[0].type === 'IssueToOperator', `take: one unit in the operator's name (${stockBefore} → ${stockAfter}, ${movements.items[0].type})`);
-    check((await shelf.innerText()).includes(String(stockAfter)), 'take: the page shows the new stock');
-  }
+  const movements = await call('GET', `/api/admin/inventory/movements?itemId=${item.id}&pageSize=1`);
+  const stockAfter = (await call('GET', '/api/admin/inventory/items')).find((entry) => entry.id === item.id).stock;
+  check(stockAfter === stockBefore - 1 && movements.items[0].type === 'IssueToOperator', `take: one unit in the operator's name (${stockBefore} → ${stockAfter}, ${movements.items[0].type})`);
+  check((await shelf.innerText()).includes(String(stockAfter)), 'take: the page shows the new stock');
 } finally {
   await browser.close();
+  takeAway();
 }
+
+const left = (await call('GET', '/api/admin/kiosks')).some((entry) => entry.id === kiosk.id)
+  || (await call('GET', '/api/admin/inventory/items?includeInactive=true')).some((entry) => entry.id === item.id);
+check(!left, 'nothing of the check is left: its kiosk and its shelf are gone');
 
 console.log(failures.length === 0 ? '\nThe operator did a refill, a task and a take through the panel.' : `\n${failures.length} thing(s) wrong.`);
 process.exit(failures.length === 0 ? 0 : 1);
