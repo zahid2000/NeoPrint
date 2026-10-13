@@ -16,6 +16,7 @@ import { settingsTranslations } from './settings.i18n';
 import { moneyTranslations } from './money.i18n';
 import { storageTranslations } from './storage.i18n';
 import { referralsTranslations } from './referrals.i18n';
+import { operatorTranslations } from './operator.i18n';
 import type { PageTranslations } from './page-translations';
 
 import { SupportedLanguage, supportedLanguages } from './languages';
@@ -1026,6 +1027,7 @@ const pages: readonly PageTranslations[] = [
   featuresTranslations,
   settingsTranslations,
   moneyTranslations,
+  operatorTranslations,
 ];
 
 for (const language of supportedLanguages) {

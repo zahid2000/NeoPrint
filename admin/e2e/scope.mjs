@@ -123,7 +123,7 @@ say(`account ${email}: sees kiosks and incidents, scoped to ${elsewhere.code} (n
 const browser = await launchBrowser();
 
 async function panel(name, who, secret) {
-  const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'az' });
+  const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'az', serviceWorkers: 'block' });
   const page = await context.newPage();
   const heard = [];
   const sockets = { opened: 0, closed: 0 };

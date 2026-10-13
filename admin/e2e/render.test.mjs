@@ -28,6 +28,16 @@ const dist = join(here, '..', 'dist', 'admin', 'browser');
 const shots = join(here, 'screenshots');
 const recorded = JSON.parse(readFileSync(join(here, 'fixtures', 'api.json'), 'utf8'));
 
+// The operator panel's answers are written by hand (fixtures/operator.json): they
+// are not part of what record.mjs takes from a stack, and recording again leaves
+// them alone.
+const operator = JSON.parse(readFileSync(join(here, 'fixtures', 'operator.json'), 'utf8'));
+const api = { ...recorded.api, ...operator.api };
+const routes = [...recorded.routes, ...operator.routes];
+
+/** The operator panel is made for a phone (plan section 8B): it is also looked at as one. */
+const phone = { width: 390, height: 844 };
+
 const types = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.txt': 'text/plain',
@@ -62,9 +72,14 @@ after(async () => {
   await new Promise((resolve) => server?.close(resolve));
 });
 
-for (const language of languages) {
-  test(`every page shows words, not keys (${language})`, { timeout: 300_000 }, async () => {
-    const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: language });
+const passes = [
+  { name: 'every page', viewport: { width: 1366, height: 900 }, routes, suffix: '' },
+  { name: 'the operator panel on a phone', viewport: phone, routes: operator.routes, suffix: '-phone' },
+];
+
+for (const pass of passes) for (const language of languages) {
+  test(`${pass.name} shows words, not keys (${language})`, { timeout: 300_000 }, async () => {
+    const context = await browser.newContext({ viewport: pass.viewport, locale: language, serviceWorkers: 'block' });
     await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [languageKey, language]);
 
     const unanswered = new Set();
@@ -73,7 +88,7 @@ for (const language of languages) {
     await context.route('**/api/**', (route) => {
       const request = route.request();
       const url = new URL(request.url());
-      const body = recorded.api[`${request.method()} ${url.pathname}${url.search}`] ?? recorded.api[`${request.method()} ${url.pathname}`];
+      const body = api[`${request.method()} ${url.pathname}${url.search}`] ?? api[`${request.method()} ${url.pathname}`];
 
       if (body === undefined) {
         if (request.method() === 'GET') unanswered.add(`GET ${url.pathname}`);
@@ -86,7 +101,7 @@ for (const language of languages) {
     const page = await context.newPage();
     const problems = [];
 
-    for (const route of recorded.routes) {
+    for (const route of pass.routes) {
       const name = route === '' ? 'dashboard' : route.replace(/[0-9a-f]{8}-[0-9a-f-]{27}/g, 'id').replace(/\//g, '_');
 
       await page.goto(`${origin}/${route}`, { waitUntil: 'networkidle' });
@@ -108,16 +123,16 @@ for (const language of languages) {
       }
 
       const sideways = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-      if (sideways > 1) problems.push(`/${route}: scrolls sideways by ${sideways} px at 1366 px`);
+      if (sideways > 1) problems.push(`/${route}: scrolls sideways by ${sideways} px at ${pass.viewport.width} px`);
 
-      await page.screenshot({ path: join(shots, `${language}-${name}.png`) });
+      await page.screenshot({ path: join(shots, `${language}-${name}${pass.suffix}.png`) });
     }
 
     await context.close();
 
     assert.deepEqual(
       [...unanswered], [],
-      'Pages asked the API for something that is not in fixtures/api.json - record again: node e2e/record.mjs');
+      'Pages asked the API for something that is in neither fixtures/api.json (record again: node e2e/record.mjs) nor fixtures/operator.json (written by hand)');
     assert.deepEqual(problems, []);
   });
 }

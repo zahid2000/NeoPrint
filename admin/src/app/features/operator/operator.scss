@@ -1,0 +1,165 @@
+// The operator panel's pages (docs/DESIGN_SYSTEM.md section 5.4): one column
+// for one hand. Every value is a token; nothing here names a colour or a size.
+
+:host {
+  display: block;
+}
+
+.op-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.op-title {
+  margin: 0;
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-semibold);
+}
+
+.op-section {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+// A card: one kiosk, one task, one incident, one item.
+.op-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.op-card--link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.op-card__head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.op-card__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.op-card__sub {
+  color: var(--neutral-600);
+  font-size: var(--font-size-body-small);
+  font-weight: var(--font-weight-regular);
+}
+
+// A line of a card: an icon and what it says.
+.op-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  font-size: var(--font-size-body-small);
+  overflow-wrap: anywhere;
+
+  mat-icon {
+    flex: none;
+    width: var(--space-4);
+    height: var(--space-4);
+    font-size: var(--space-4);
+    color: var(--neutral-600);
+  }
+}
+
+// Colour is never the only sign: each of these rows has its own icon and words.
+.op-row--danger,
+.op-row--danger mat-icon {
+  color: var(--danger-500);
+}
+
+.op-row--warning,
+.op-row--warning mat-icon {
+  color: var(--warning-500);
+}
+
+.op-row--muted {
+  color: var(--neutral-600);
+}
+
+// A tray's level under its row.
+.op-bar {
+  height: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--neutral-100);
+  overflow: hidden;
+}
+
+.op-bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--success-500);
+}
+
+.op-bar__fill--low {
+  background: var(--warning-500);
+}
+
+// The page's main button is as wide as the page; the rest sit under it in two columns.
+.op-primary {
+  width: 100%;
+  min-height: var(--touch-target);
+}
+
+.op-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+
+  button {
+    min-height: var(--touch-target);
+  }
+}
+
+.op-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+
+  button {
+    min-height: var(--touch-target);
+  }
+}
+
+.op-updated {
+  margin: 0;
+  color: var(--neutral-600);
+  font-size: var(--font-size-caption);
+  text-align: center;
+}
+
+// A dialog on a phone: one column of fields.
+.op-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+
+  mat-form-field,
+  mat-button-toggle-group {
+    width: 100%;
+  }
+}

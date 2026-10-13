@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,11 +12,10 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { Permissions } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
-import { AdminHubService } from '../realtime/admin-hub.service';
 import { ThemeService } from '../theme/theme.service';
 import { LiveIndicatorComponent } from '../../shared/live-indicator.component';
 import { SupportedLanguage, languageNames, supportedLanguages } from '../i18n/languages';
-import { HubEvents } from '../realtime/hub-events';
+import { panelConnection } from '../realtime/panel-connection';
 
 /** One entry in the sidebar. */
 interface NavItem {
@@ -57,13 +56,9 @@ interface NavItem {
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
 })
-export class ShellComponent implements OnInit, OnDestroy {
+export class ShellComponent {
   private readonly auth = inject(AuthService);
   private readonly theme_ = inject(ThemeService);
-  private readonly hub = inject(AdminHubService);
-
-  /** Removes the SignalR handlers when the shell goes away. */
-  private readonly subscriptions: (() => void)[] = [];
   private readonly translate = inject(TranslateService);
 
   readonly admin = this.auth.admin;
@@ -91,6 +86,13 @@ export class ShellComponent implements OnInit, OnDestroy {
       labelKey: 'nav.dashboard',
       icon: 'dashboard',
       permissions: [],
+    },
+    {
+      // The same account's phone-sized panel (plan section 8B).
+      path: '/operator',
+      labelKey: 'nav.operator',
+      icon: 'engineering',
+      permissions: [Permissions.operatorPanel],
     },
     {
       path: '/kiosks',
@@ -245,39 +247,9 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.theme_.toggle();
   }
 
-  /**
-   * Opens the real-time connection once the panel is inside the shell, which
-   * is the first point at which there is a session for the hub to authorise.
-   */
-  ngOnInit(): void {
-    void this.hub.start();
-
-    // A role change used to reach the panel only on the next token exchange,
-    // up to fifteen minutes later; a permission taken away was immediate but
-    // one granted was not (docs/DECISIONS.md). The server announces it, so
-    // the menu now follows within a second.
-    this.subscriptions.push(
-      this.hub.on(HubEvents.permissionsChanged, () => void this.auth.reloadPermissions()),
-
-      // This account itself was changed - its kiosks, its roles. The server
-      // closes the connection; a panel on another instance of the API hears
-      // this instead and opens a new one, which is when its kiosks are
-      // decided again (T-249).
-      this.hub.on(HubEvents.accountChanged, () => {
-        void this.auth.reloadPermissions().then(() => this.hub.restart());
-      }),
-
-      // Whatever ended the connection may have been about this account.
-      this.hub.onReconnect(() => void this.auth.reloadProfile()),
-    );
-  }
-
-  ngOnDestroy(): void {
-    for (const unsubscribe of this.subscriptions) {
-      unsubscribe();
-    }
-
-    void this.hub.stop();
+  constructor() {
+    // The live connection, for as long as the shell is on screen.
+    panelConnection();
   }
 
   selectLanguage(language: SupportedLanguage): void {

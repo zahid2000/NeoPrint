@@ -59,7 +59,7 @@ const tooMany = [];
 const settleSeconds = 45;
 
 const browser = await launchBrowser();
-const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'az' });
+const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'az', serviceWorkers: 'block' });
 const page = await context.newPage();
 
 page.on('websocket', (socket) => {

@@ -29,6 +29,14 @@ export async function launchBrowser() {
   throw new Error(`No Chrome or Edge could be started (set E2E_CHROME to an executable). ${last?.message?.split('\n')[0] ?? ''}`);
 }
 
+/*
+ * Every script opens its browser context with serviceWorkers: 'block'. The built panel
+ * registers a service worker (the operator panel is an installable app), and a
+ * request the worker makes is not seen by the page - not by page.route, which
+ * plays the recorded API back, and not by page.on('response'). The scripts
+ * check the panel, not the worker; the worker is looked at by itself (e2e/pwa.mjs).
+ */
+
 /** The panel's languages and where the choice is kept. */
 export const languages = ['az', 'en', 'ru'];
 export const languageKey = 'neoprint.language';

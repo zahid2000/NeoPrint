@@ -3,12 +3,14 @@ import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import {
   ApplicationConfig,
   inject,
+  isDevMode,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
   provideZonelessChangeDetection,
 } from '@angular/core';
 import { MAT_ICON_DEFAULT_OPTIONS } from '@angular/material/icon';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { SwUpdate, provideServiceWorker } from '@angular/service-worker';
 import { TranslateService, provideTranslateService } from '@ngx-translate/core';
 
 import { routes } from './app.routes';
@@ -30,6 +32,17 @@ export async function initialiseApp(): Promise<void> {
   const translate = inject(TranslateService);
   const theme = inject(ThemeService);
   const auth = inject(AuthService);
+  const updates = inject(SwUpdate);
+
+  // The panel is kept on the device by a service worker (plan section 8B), so
+  // what opens first is the copy from the last visit. A newer build is asked
+  // for before anything is drawn, and taken at once - otherwise the first
+  // visit after a release would still run the old panel against the new API.
+  if (await newerBuild(updates)) {
+    location.reload();
+
+    return;
+  }
 
   // Before the first render, or the panel would flash light and then switch
   // to the theme the person chose.
@@ -50,6 +63,39 @@ export async function initialiseApp(): Promise<void> {
   translate.use(language);
 
   await auth.restore();
+}
+
+/** How long the start-up waits to hear whether there is a newer build; offline, it does not wait at all. */
+const updateCheckMs = 3000;
+
+/** Remembers that this tab has just reloaded for a build, so a check that keeps saying "newer" cannot loop. */
+const reloadedKey = 'neoprint.reloadedForBuild';
+
+/** Whether a newer build was found and made the active one. Never throws: without it the panel opens as it is. */
+async function newerBuild(updates: SwUpdate): Promise<boolean> {
+  if (!updates.isEnabled || !navigator.onLine || sessionStorage.getItem(reloadedKey)) {
+    sessionStorage.removeItem(reloadedKey);
+
+    return false;
+  }
+
+  try {
+    const found = await Promise.race([
+      updates.checkForUpdate(),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), updateCheckMs)),
+    ]);
+
+    if (!found) {
+      return false;
+    }
+
+    await updates.activateUpdate();
+    sessionStorage.setItem(reloadedKey, '1');
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export const appConfig: ApplicationConfig = {
@@ -79,6 +125,12 @@ export const appConfig: ApplicationConfig = {
       provide: MAT_ICON_DEFAULT_OPTIONS,
       useValue: { fontSet: 'material-symbols-rounded' },
     },
+
+    // Off while developing: a cached build would hide every change.
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
 
     provideAppInitializer(initialiseApp),
   ],

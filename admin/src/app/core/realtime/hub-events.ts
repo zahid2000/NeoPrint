@@ -60,14 +60,7 @@ export type HubEvent = (typeof HubEvents)[keyof typeof HubEvents];
  * goes when the page that shows the data arrives - the check then insists on
  * a listener.
  */
-export const unheardHubEvents: Partial<Record<HubEvent, string>> = {
-  [HubEvents.serviceTaskAssigned]:
-    'No page lists service tasks yet: "Tapşırıqlarım" of the operator panel is M7 (T-211), the admin list M9 (T-213).',
-  [HubEvents.kioskTelemetryUpdated]:
-    'No page shows a kiosk\'s processor, memory, disk or temperature yet: the "Cari vəziyyət" tab of the kiosk detail is M8 (T-212).',
-  [HubEvents.printerTelemetryUpdated]:
-    'No page shows a printer\'s toner levels, counters or state reasons yet: the printer detail and the "Sərf" forecast are M8 (T-212).',
-};
+export const unheardHubEvents: Partial<Record<HubEvent, string>> = {};
 
 /** What each event carries, for the ones a page reads rather than only reacts to. */
 export interface KioskStatusChangedEvent {

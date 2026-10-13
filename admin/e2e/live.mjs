@@ -44,7 +44,7 @@ const events = [];
 const consoleErrors = [];
 
 const browser = await launchBrowser();
-const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'az' });
+const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'az', serviceWorkers: 'block' });
 
 /** A tab that records its hub frames and its console errors. */
 async function tab(name) {

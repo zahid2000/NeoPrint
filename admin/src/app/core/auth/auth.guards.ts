@@ -53,5 +53,5 @@ export const anonymousGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  return auth.isSignedIn() ? router.createUrlTree(['/']) : true;
+  return auth.isSignedIn() ? router.createUrlTree([auth.homePath()]) : true;
 };

@@ -1,0 +1,315 @@
+{
+  "note": "Written by hand, not recorded: the operator panel's answers for the render test (T-211). Every name, code and id here is made up. The account id is the one of fixtures/api.json, so that 'my tasks' has something in it.",
+  "routes": [
+    "operator",
+    "operator/kiosks/11111111-1111-4111-8111-111111111111",
+    "operator/tasks",
+    "operator/incidents",
+    "operator/inventory"
+  ],
+  "api": {
+    "GET /api/admin/operator/kiosks": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "code": "KSK-0101",
+        "name": "Mərkəzi kitabxana, birinci mərtəbə girişi",
+        "address": "Bakı, Nümunə küçəsi 1",
+        "status": "Online",
+        "lastHeartbeatAt": "2026-10-13T08:00:00Z",
+        "printer": {
+          "name": "Office LaserJet",
+          "online": true,
+          "state": "idle",
+          "reasons": ["toner-low"],
+          "readAt": "2026-10-13T07:59:00Z",
+          "stale": false
+        },
+        "paper": {
+          "A4": { "capacity": 500, "current": 20, "lastRefillAt": "2026-10-10T09:00:00Z", "counted": true },
+          "A3": { "capacity": 250, "current": 0, "counted": false }
+        },
+        "levels": [
+          { "resource": "Toner", "variant": "Black Cartridge", "name": "Black Cartridge", "percent": 12, "readAt": "2026-10-13T07:59:00Z" },
+          { "resource": "Drum", "variant": null, "name": "Imaging Drum", "percent": 64, "readAt": "2026-10-13T07:59:00Z" }
+        ],
+        "forecasts": [
+          { "resource": "PaperA4", "unit": "Sheets", "current": 20, "perDay": 35.5, "runsOutAt": "2026-10-13T21:30:00Z" }
+        ],
+        "alerts": [
+          {
+            "id": "a1111111-1111-4111-8111-111111111111",
+            "kioskId": "11111111-1111-4111-8111-111111111111",
+            "kioskCode": "KSK-0101",
+            "resource": "PaperA4",
+            "unit": "Sheets",
+            "level": "Critical",
+            "value": 20,
+            "active": true,
+            "raisedAt": "2026-10-13T07:30:00Z"
+          },
+          {
+            "id": "a2222222-2222-4222-8222-222222222222",
+            "kioskId": "11111111-1111-4111-8111-111111111111",
+            "kioskCode": "KSK-0101",
+            "resource": "Toner",
+            "variant": "Black Cartridge",
+            "unit": "Percent",
+            "level": "Warning",
+            "value": 12,
+            "active": true,
+            "raisedAt": "2026-10-13T07:40:00Z"
+          }
+        ],
+        "queueLength": 3,
+        "openIncidents": 1,
+        "worstIncident": "High",
+        "openTasks": 2,
+        "attention": 80
+      },
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "code": "KSK-0102",
+        "name": "Yeni quraşdırılmış",
+        "address": "Bakı, Nümunə prospekti 25",
+        "status": "Offline",
+        "lastHeartbeatAt": "2026-10-13T06:10:00Z",
+        "printer": null,
+        "paper": { "A4": { "capacity": 500, "current": 0, "counted": false } },
+        "levels": [],
+        "forecasts": [],
+        "alerts": [],
+        "queueLength": 0,
+        "openIncidents": 0,
+        "openTasks": 0,
+        "attention": 100
+      },
+      {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "code": "KSK-0103",
+        "name": "Universitet",
+        "address": "Bakı, Nümunə meydanı 3",
+        "status": "Online",
+        "lastHeartbeatAt": "2026-10-13T08:00:30Z",
+        "printer": {
+          "name": "Office LaserJet",
+          "online": true,
+          "state": "idle",
+          "reasons": [],
+          "readAt": "2026-10-13T08:00:00Z",
+          "stale": false
+        },
+        "paper": { "A4": { "capacity": 500, "current": 430, "lastRefillAt": "2026-10-12T09:00:00Z", "counted": true } },
+        "levels": [
+          { "resource": "Toner", "variant": "Black Cartridge", "name": "Black Cartridge", "percent": 81, "readAt": "2026-10-13T08:00:00Z" }
+        ],
+        "forecasts": [
+          { "resource": "PaperA4", "unit": "Sheets", "current": 430, "perDay": 22, "runsOutAt": "2026-11-01T12:00:00Z" }
+        ],
+        "alerts": [],
+        "queueLength": 0,
+        "openIncidents": 0,
+        "openTasks": 0,
+        "attention": 0
+      }
+    ],
+    "GET /api/admin/operator/kiosks/11111111-1111-4111-8111-111111111111": {
+      "kiosk": {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "code": "KSK-0101",
+        "name": "Mərkəzi kitabxana, birinci mərtəbə girişi",
+        "address": "Bakı, Nümunə küçəsi 1",
+        "status": "Online",
+        "lastHeartbeatAt": "2026-10-13T08:00:00Z",
+        "printer": {
+          "name": "Office LaserJet",
+          "online": true,
+          "state": "idle",
+          "reasons": ["toner-low"],
+          "readAt": "2026-10-13T07:59:00Z",
+          "stale": false
+        },
+        "paper": {
+          "A4": { "capacity": 500, "current": 20, "lastRefillAt": "2026-10-10T09:00:00Z", "counted": true },
+          "A3": { "capacity": 250, "current": 0, "counted": false }
+        },
+        "levels": [
+          { "resource": "Toner", "variant": "Black Cartridge", "name": "Black Cartridge", "percent": 12, "readAt": "2026-10-13T07:59:00Z" }
+        ],
+        "forecasts": [
+          { "resource": "PaperA4", "unit": "Sheets", "current": 20, "perDay": 35.5, "runsOutAt": "2026-10-13T21:30:00Z" }
+        ],
+        "alerts": [
+          {
+            "id": "a1111111-1111-4111-8111-111111111111",
+            "kioskId": "11111111-1111-4111-8111-111111111111",
+            "kioskCode": "KSK-0101",
+            "resource": "PaperA4",
+            "unit": "Sheets",
+            "level": "Critical",
+            "value": 20,
+            "active": true,
+            "raisedAt": "2026-10-13T07:30:00Z"
+          }
+        ],
+        "queueLength": 3,
+        "openIncidents": 1,
+        "worstIncident": "High",
+        "openTasks": 2,
+        "attention": 80
+      },
+      "telemetry": {
+        "kioskId": "11111111-1111-4111-8111-111111111111",
+        "sample": {
+          "timestamp": "2026-10-13T08:00:00Z",
+          "app": { "version": "0.7.0" },
+          "system": {
+            "cpuPercent": 17.4,
+            "memoryUsedBytes": 5368709120,
+            "memoryTotalBytes": 8589934592,
+            "systemDiskFreeBytes": 53687091200
+          },
+          "network": { "connectionType": "Ethernet", "backendLatencyMs": 42 }
+        },
+        "stale": false,
+        "intervalSeconds": 30
+      },
+      "incidents": [
+        {
+          "id": "b1111111-1111-4111-8111-111111111111",
+          "type": "PrinterFault",
+          "severity": "High",
+          "status": "Open",
+          "details": "Printer 6 dəqiqədir cavab vermir. Kabelə və printerin ekranına baxın; düzələndə incident özü bağlanacaq.",
+          "kioskId": "11111111-1111-4111-8111-111111111111",
+          "kioskCode": "KSK-0101",
+          "createdAt": "2026-10-13T07:45:00Z"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "c1111111-1111-4111-8111-111111111111",
+          "kioskId": "11111111-1111-4111-8111-111111111111",
+          "kioskCode": "KSK-0101",
+          "kioskName": "Mərkəzi kitabxana, birinci mərtəbə girişi",
+          "type": "RefillPaper",
+          "priority": "Critical",
+          "status": "Assigned",
+          "source": "AlertRule",
+          "resource": "PaperA4",
+          "assignedTo": "2bb2fb17-5791-435f-845f-9e4f0c237d6e",
+          "assignedToName": "Nümunə Operator",
+          "notes": "A4 kağız azalıb: 20 vərəq qalıb.",
+          "createdAt": "2026-10-13T07:30:00Z"
+        }
+      ]
+    },
+    "GET /api/admin/service-tasks": {
+      "items": [
+        {
+          "id": "c1111111-1111-4111-8111-111111111111",
+          "kioskId": "11111111-1111-4111-8111-111111111111",
+          "kioskCode": "KSK-0101",
+          "kioskName": "Mərkəzi kitabxana, birinci mərtəbə girişi",
+          "type": "RefillPaper",
+          "priority": "Critical",
+          "status": "Assigned",
+          "source": "AlertRule",
+          "resource": "PaperA4",
+          "assignedTo": "2bb2fb17-5791-435f-845f-9e4f0c237d6e",
+          "assignedToName": "Nümunə Operator",
+          "notes": "A4 kağız azalıb: 20 vərəq qalıb.",
+          "createdAt": "2026-10-13T07:30:00Z"
+        },
+        {
+          "id": "c2222222-2222-4222-8222-222222222222",
+          "kioskId": "11111111-1111-4111-8111-111111111111",
+          "kioskCode": "KSK-0101",
+          "kioskName": "Mərkəzi kitabxana, birinci mərtəbə girişi",
+          "type": "ReplaceToner",
+          "priority": "High",
+          "status": "InProgress",
+          "source": "AlertRule",
+          "resource": "Toner",
+          "variant": "Black Cartridge",
+          "assignedTo": "2bb2fb17-5791-435f-845f-9e4f0c237d6e",
+          "assignedToName": "Nümunə Operator",
+          "notes": "Toner (Black Cartridge) azalıb: 12 faiz qalıb.",
+          "createdAt": "2026-10-13T07:40:00Z",
+          "startedAt": "2026-10-13T07:55:00Z"
+        },
+        {
+          "id": "c3333333-3333-4333-8333-333333333333",
+          "kioskId": "33333333-3333-4333-8333-333333333333",
+          "kioskCode": "KSK-0103",
+          "kioskName": "Universitet",
+          "type": "Cleaning",
+          "priority": "Normal",
+          "status": "Open",
+          "source": "Manual",
+          "notes": "Ekranı və kağız çıxışını silin.",
+          "dueAt": "2026-10-15T12:00:00Z",
+          "createdAt": "2026-10-12T10:00:00Z"
+        }
+      ],
+      "total": 3,
+      "page": 1,
+      "pageSize": 100
+    },
+    "GET /api/admin/incidents?page=1&pageSize=50&status=Open&status=Acknowledged": {
+      "items": [
+        {
+          "id": "b2222222-2222-4222-8222-222222222222",
+          "type": "ConnectionLost",
+          "severity": "Critical",
+          "status": "Open",
+          "details": "KSK-0102 kioskundan 110 dəqiqədir xəbər yoxdur. Səbəb elektrik, şəbəkə və ya kompüter ola bilər — yerində yoxlayın.",
+          "kioskId": "22222222-2222-4222-8222-222222222222",
+          "kioskCode": "KSK-0102",
+          "createdAt": "2026-10-13T06:15:00Z"
+        },
+        {
+          "id": "b1111111-1111-4111-8111-111111111111",
+          "type": "PrinterFault",
+          "severity": "High",
+          "status": "Acknowledged",
+          "details": "Printer 6 dəqiqədir cavab vermir. Kabelə və printerin ekranına baxın; düzələndə incident özü bağlanacaq.",
+          "kioskId": "11111111-1111-4111-8111-111111111111",
+          "kioskCode": "KSK-0101",
+          "createdAt": "2026-10-13T07:45:00Z"
+        }
+      ],
+      "total": 2,
+      "page": 1,
+      "pageSize": 50
+    },
+    "GET /api/admin/inventory/items": [
+      {
+        "id": "d1111111-1111-4111-8111-111111111111",
+        "sku": "PAPER-A4-500",
+        "name": "A4 kağız, 500 vərəq",
+        "type": "PaperA4Ream",
+        "compatiblePrinterModels": [],
+        "unit": "bağlama",
+        "sheetsPerUnit": 500,
+        "minStock": 3,
+        "stock": 2,
+        "location": "Anbar, rəf 1",
+        "isActive": true,
+        "isLow": true
+      },
+      {
+        "id": "d2222222-2222-4222-8222-222222222222",
+        "sku": "TONER-BK-01",
+        "name": "Qara toner kartrici",
+        "type": "Toner",
+        "compatiblePrinterModels": ["Office LaserJet"],
+        "unit": "ədəd",
+        "minStock": 1,
+        "stock": 4,
+        "location": "Anbar, rəf 2",
+        "isActive": true,
+        "isLow": false
+      }
+    ]
+  }
+}

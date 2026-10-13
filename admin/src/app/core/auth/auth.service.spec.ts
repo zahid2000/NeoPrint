@@ -113,6 +113,22 @@ describe('AuthService', () => {
     expect(service.canSeeKiosk('22222222-2222-2222-2222-222222222222')).toBe(false);
   });
 
+  // Plan section 8B: an operator lands in the operator panel after signing in.
+  it('sends an operator to the operator panel and everybody else to the dashboard', () => {
+    const landsAt = (permissions: string[]): string => {
+      service.signIn('admin@neoprint.test', 'pw').subscribe();
+      http.expectOne('/api/auth/admin/login').flush(loginResponse(admin({ permissions })));
+
+      return service.homePath();
+    };
+
+    expect(landsAt(['operator.panel', 'service.tasks.complete', 'kiosks.view'])).toBe('/operator');
+
+    // A SuperAdmin holds the operator panel's permission like every other, and is not an operator.
+    expect(landsAt(['operator.panel', 'service.tasks.complete', 'service.tasks.manage'])).toBe('/');
+    expect(landsAt(['kiosks.view', 'payments.view'])).toBe('/');
+  });
+
   it('lets an unscoped account see every kiosk', async () => {
     const signedIn = service.signIn('admin@neoprint.test', 'password').toPromise();
     http.expectOne('/api/auth/admin/login').flush(loginResponse());

@@ -20,6 +20,7 @@ devices
 download
 edit
 edit_note
+engineering
 error
 error_outline
 forward_to_inbox
@@ -28,6 +29,7 @@ history
 inbox
 info
 inventory_2
+invert_colors
 key
 language
 light_mode

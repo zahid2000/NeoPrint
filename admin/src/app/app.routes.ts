@@ -26,6 +26,45 @@ export const routes: Routes = [
       import('./features/login/change-password.component').then((m) => m.ChangePasswordComponent),
   },
   {
+    // The operator panel (plan section 8B): its own frame, made for a phone.
+    // Each page carries the permission its own request needs, like the rest.
+    path: 'operator',
+    canActivate: [authGuard, permissionGuard(Permissions.operatorPanel)],
+    loadComponent: () =>
+      import('./features/operator/operator-shell.component').then((m) => m.OperatorShellComponent),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () =>
+          import('./features/operator/operator-kiosks.component').then((m) => m.OperatorKiosksComponent),
+      },
+      {
+        path: 'kiosks/:id',
+        loadComponent: () =>
+          import('./features/operator/operator-kiosk.component').then((m) => m.OperatorKioskComponent),
+      },
+      {
+        path: 'tasks',
+        canActivate: [permissionGuard(Permissions.serviceTasksView)],
+        loadComponent: () =>
+          import('./features/operator/operator-tasks.component').then((m) => m.OperatorTasksComponent),
+      },
+      {
+        path: 'incidents',
+        canActivate: [permissionGuard(Permissions.incidentsView)],
+        loadComponent: () =>
+          import('./features/operator/operator-incidents.component').then((m) => m.OperatorIncidentsComponent),
+      },
+      {
+        path: 'inventory',
+        canActivate: [permissionGuard(Permissions.inventoryView)],
+        loadComponent: () =>
+          import('./features/operator/operator-inventory.component').then((m) => m.OperatorInventoryComponent),
+      },
+    ],
+  },
+  {
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./core/layout/shell.component').then((m) => m.ShellComponent),

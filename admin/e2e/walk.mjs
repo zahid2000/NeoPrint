@@ -97,7 +97,7 @@ if (scoped) {
 }
 
 const browser = await launchBrowser();
-const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: language });
+const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: language, serviceWorkers: 'block' });
 await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [languageKey, language]);
 const page = await context.newPage();
 

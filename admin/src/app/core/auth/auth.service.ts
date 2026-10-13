@@ -53,6 +53,19 @@ export class AuthService {
    */
   readonly mustChangePassword = computed(() => this.currentAdmin()?.mustChangePassword ?? false);
 
+  /**
+   * Where the account goes after signing in (plan section 8B: "operator.panel
+   * icazəsi olan istifadəçi girişdən sonra birbaşa buraya yönləndirilir").
+   *
+   * An operator - somebody who does service tasks and does not hand them out,
+   * the same definition the automatic assignment uses - lands in the operator
+   * panel. A SuperAdmin holds that permission too, like every other, and still
+   * lands on the dashboard: they open the operator panel from the menu.
+   */
+  readonly homePath = computed(() =>
+    this.can('operator.panel') && !this.can('service.tasks.manage') ? '/operator' : '/',
+  );
+
   /** The current access token, for the interceptor. */
   get token(): string | null {
     return this.accessToken();

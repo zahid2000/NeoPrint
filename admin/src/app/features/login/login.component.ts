@@ -67,7 +67,7 @@ export class LoginComponent {
 
       // Plan section 2.8: the seeded password came from a configuration value,
       // so it has to be replaced before anything else is reachable.
-      await this.router.navigate([response.admin.mustChangePassword ? '/change-password' : '/']);
+      await this.router.navigate([response.admin.mustChangePassword ? '/change-password' : this.auth.homePath()]);
     } catch (error) {
       this.errorMessage.set(describeError(error));
     } finally {

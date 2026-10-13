@@ -82,6 +82,17 @@ export const Permissions = {
   suppliesView: 'supplies.view',
   paperRefill: 'paper.refill',
 
+  // Step 7: service, warehouse, incidents and remote commands (plan sections 2.15, 7.8, 8B).
+  serviceTasksView: 'service.tasks.view',
+  serviceTasksManage: 'service.tasks.manage',
+  serviceTasksComplete: 'service.tasks.complete',
+  inventoryView: 'inventory.view',
+  inventoryManage: 'inventory.manage',
+  incidentsAcknowledge: 'incidents.acknowledge',
+  incidentsResolve: 'incidents.resolve',
+  kioskCommandsPause: 'kiosks.commands.pause',
+  kioskCommandsRestart: 'kiosks.commands.restart',
+
   // Step 4: money and customers (plan section 8A.2).
   reportsView: 'reports.view',
   paymentsView: 'payments.view',

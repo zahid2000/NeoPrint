@@ -55,7 +55,7 @@ function clean(value, key = '') {
 }
 
 const browser = await launchBrowser();
-const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'az' });
+const context = await browser.newContext({ viewport: { width: 1366, height: 900 }, locale: 'az', serviceWorkers: 'block' });
 const page = await context.newPage();
 const api = {};
 const limited = new Set();
