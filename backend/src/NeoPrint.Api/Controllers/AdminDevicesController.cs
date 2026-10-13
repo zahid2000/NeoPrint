@@ -73,6 +73,13 @@ public sealed class AdminDevicesController : ControllerBase
             return Forbid();
         }
 
+        // A kiosk that does not exist yet is made, not only activated.
+        if (request.NewKiosk is not null &&
+            !await _sender.Send(new CanCreateKioskQuery(adminId.Value), cancellationToken))
+        {
+            return Forbid();
+        }
+
         var result = await _sender.Send(
             new ActivateDeviceCommand(
                 id,

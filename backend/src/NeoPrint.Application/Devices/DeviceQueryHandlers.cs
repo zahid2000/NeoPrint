@@ -159,6 +159,23 @@ public sealed class IsKioskInScopeHandler : IRequestHandler<IsKioskInScopeQuery,
     }
 }
 
+/// <inheritdoc cref="CanCreateKioskQuery" />
+public sealed class CanCreateKioskHandler : IRequestHandler<CanCreateKioskQuery, bool>
+{
+    private readonly IPermissionResolver _permissions;
+
+    public CanCreateKioskHandler(IPermissionResolver permissions) => _permissions = permissions;
+
+    public async Task<bool> Handle(CanCreateKioskQuery request, CancellationToken cancellationToken)
+    {
+        var effective = await _permissions
+            .ResolveAsync(request.AdminUserId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return effective.Has(NeoPrint.Domain.Admin.Permissions.KiosksCreate);
+    }
+}
+
 /// <inheritdoc cref="FindDeviceQuery" />
 public sealed class FindDeviceHandler : IRequestHandler<FindDeviceQuery, DeviceSummary?>
 {

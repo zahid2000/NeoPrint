@@ -49,6 +49,14 @@ public sealed class LookupDeviceHandler : IRequestHandler<LookupDeviceCommand, D
         if (deviceId is not null)
         {
             device = await _devices.FindByIdAsync(deviceId.Value, cancellationToken).ConfigureAwait(false);
+
+            // The QR carries the code the screen shows: one that names a device
+            // and a code that is not that device's is not what a kiosk showed.
+            if (device?.PairingCodeHash is { } hash && code is not null
+                && !_secrets.VerifySecret(KioskDevice.NormalizePairingCode(code), hash))
+            {
+                device = null;
+            }
         }
         else
         {
@@ -100,7 +108,16 @@ public sealed class LookupDeviceHandler : IRequestHandler<LookupDeviceCommand, D
         var separator = rest.IndexOf('?', StringComparison.Ordinal);
         var idPart = separator < 0 ? rest : rest[..separator];
 
-        return Guid.TryParse(idPart, out var parsed) ? (parsed, null) : (null, input);
+        if (!Guid.TryParse(idPart, out var parsed))
+        {
+            return (null, input);
+        }
+
+        const string CodeParameter = "code=";
+        var query = separator < 0 ? string.Empty : rest[(separator + 1)..];
+        var written = query.Split('&').FirstOrDefault(part => part.StartsWith(CodeParameter, StringComparison.OrdinalIgnoreCase));
+
+        return (parsed, written is null ? null : Uri.UnescapeDataString(written[CodeParameter.Length..]));
     }
 }
 

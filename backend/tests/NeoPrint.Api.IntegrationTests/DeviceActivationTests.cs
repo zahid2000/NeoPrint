@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using MongoDB.Driver;
 
+using NeoPrint.Domain.Admin;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Devices;
 using NeoPrint.Domain.Kiosks;
@@ -837,6 +838,131 @@ public sealed class DeviceActivationTests
 
         body.Should().NotContain(guessed);
         body.Should().NotContain("ZZZZ");
+    }
+
+    // -----------------------------------------------------------------------
+    // The operator's "Kiosk aktivləşdir" (plan section 8B, T-265)
+    // -----------------------------------------------------------------------
+
+    [DockerFact]
+    public async Task A_scanned_qr_finds_its_device_only_with_the_code_the_screen_showed()
+    {
+        if (Skip) { return; }
+
+        using var client = _fixture.CreateApiClient();
+        using var device = new FakeKioskDevice();
+        var (deviceId, pairingCode, _) = await RegisterAsync(client, device, "kiosk-qr");
+
+        using var admin = await SignedInSuperAdminAsync();
+
+        var scanned = await admin.PostAsJsonAsync(
+            "/api/admin/devices/lookup", new { codeOrQr = $"neoprint://activate/{deviceId}?code={Uri.EscapeDataString(pairingCode!)}" });
+        scanned.StatusCode.Should().Be(HttpStatusCode.OK, await scanned.Content.ReadAsStringAsync());
+        (await scanned.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("deviceId").GetGuid().Should().Be(deviceId);
+
+        var forged = await admin.PostAsJsonAsync(
+            "/api/admin/devices/lookup", new { codeOrQr = $"neoprint://activate/{deviceId}?code=ZZZZ-9999" });
+        forged.StatusCode.Should().Be(HttpStatusCode.NotFound, "the id of a device and a code that is not its own");
+    }
+
+    [DockerFact]
+    public async Task An_operator_activates_a_device_onto_a_kiosk_of_their_own_and_onto_no_other()
+    {
+        if (Skip) { return; }
+
+        using var client = _fixture.CreateApiClient();
+        using var admin = await SignedInSuperAdminAsync();
+
+        // Two kiosks that have lost their devices: one the operator serves, one they do not.
+        async Task<Guid> EmptyKioskAsync(string name)
+        {
+            using var first = new FakeKioskDevice();
+            var (firstId, _, _) = await RegisterAsync(client, first, name);
+            var made = await admin.PostAsJsonAsync($"/api/admin/devices/{firstId}/activate", new
+            {
+                newKiosk = NewKiosk($"Operator {name}", "Bakı, operator testi"),
+                selectedPrinterName = "HP LaserJet",
+            });
+            made.StatusCode.Should().Be(HttpStatusCode.OK, await made.Content.ReadAsStringAsync());
+            (await admin.PostAsJsonAsync($"/api/admin/devices/{firstId}/revoke", new { reason = "Test" })).IsSuccessStatusCode.Should().BeTrue();
+
+            return (await made.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("kioskId").GetGuid();
+        }
+
+        var own = await EmptyKioskAsync("kiosk-op-own");
+        var foreign = await EmptyKioskAsync("kiosk-op-foreign");
+
+        using var operatorClient = await SignedInOperatorAsync(KioskScope.Only(own));
+        using var device = new FakeKioskDevice();
+        var (deviceId, pairingCode, _) = await RegisterAsync(client, device, "kiosk-op-new");
+
+        // The code off the screen.
+        var lookup = await operatorClient.PostAsJsonAsync("/api/admin/devices/lookup", new { codeOrQr = pairingCode });
+        lookup.StatusCode.Should().Be(HttpStatusCode.OK, await lookup.Content.ReadAsStringAsync());
+
+        // Not onto a kiosk that is not theirs.
+        (await ActivateAsync(operatorClient, deviceId, new { kioskId = foreign }))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // Nor as a new kiosk: activating is not creating.
+        (await ActivateAsync(operatorClient, deviceId, new { newKiosk = NewKiosk("Operator's own", "Bakı"), selectedPrinterName = "HP LaserJet" }))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            var untouched = await scope.ServiceProvider.GetRequiredService<MongoContext>().KioskDevices
+                .Find(candidate => candidate.Id == deviceId).SingleAsync();
+            untouched.Status.Should().Be(DeviceStatus.Pending, "neither refusal did anything to the device");
+        }
+
+        // Onto their own.
+        var activated = await ActivateAsync(operatorClient, deviceId, new { kioskId = own, selectedPrinterName = "HP LaserJet" });
+        activated.StatusCode.Should().Be(HttpStatusCode.OK, await activated.Content.ReadAsStringAsync());
+        (await activated.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("kioskId").GetGuid().Should().Be(own);
+    }
+
+    private static async Task<HttpResponseMessage> ActivateAsync(HttpClient client, Guid deviceId, object body)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/devices/{deviceId}/activate") { Content = JsonContent.Create(body) };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+
+        return await client.SendAsync(request);
+    }
+
+    /// <summary>An account with the seeded Operator role's activation permissions and this kiosk scope, signed in.</summary>
+    private async Task<HttpClient> SignedInOperatorAsync(KioskScope kioskScope)
+    {
+        const string password = "ActivationOperator!2026";
+
+        using var superAdmin = await SignedInSuperAdminAsync();
+        var role = await superAdmin.PostAsJsonAsync("/api/admin/roles", new
+        {
+            name = $"Activation operator {Guid.NewGuid():N}",
+            description = "Created by the integration tests.",
+            permissions = new[] { Permissions.OperatorPanel, Permissions.KiosksView, Permissions.KiosksActivate, Permissions.DevicesView },
+        });
+        role.StatusCode.Should().Be(HttpStatusCode.OK, await role.Content.ReadAsStringAsync());
+
+        using var scope = _fixture.Services.CreateScope();
+        var hasher = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.IPasswordHasher<AdminUser>>();
+        var account = new AdminUser
+        {
+            Email = $"activation.{Guid.NewGuid():N}@neoprint.test",
+            FullName = "Activation operator",
+            RoleIds = [(await role.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid()],
+            KioskScope = kioskScope,
+            IsActive = true,
+        };
+        account.PasswordHash = hasher.HashPassword(account, password);
+        await scope.ServiceProvider.GetRequiredService<MongoContext>().AdminUsers.InsertOneAsync(account);
+
+        var client = _fixture.CreateApiClient();
+        var login = await client.PostAsJsonAsync("/api/auth/admin/login", new { email = account.Email, password });
+        login.StatusCode.Should().Be(HttpStatusCode.OK, await login.Content.ReadAsStringAsync());
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accessToken").GetString());
+
+        return client;
     }
 
     // -----------------------------------------------------------------------

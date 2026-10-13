@@ -92,6 +92,18 @@ public sealed record ListKiosksQuery(Guid AdminUserId) : IRequest<IReadOnlyList<
 public sealed record IsKioskInScopeQuery(Guid AdminUserId, Guid KioskId) : IRequest<bool>;
 
 /// <summary>
+/// Whether an account may make a new kiosk while activating a device.
+/// </summary>
+/// <remarks>
+/// <c>kiosks.activate</c> binds a device to a kiosk that exists; a kiosk that
+/// does not exist yet takes <c>kiosks.create</c> as well (plan section 8B,
+/// "Kiosk aktivləşdir": "(icazə varsa) Yeni kiosk"). Without this an operator,
+/// who has the first and not the second, could create kiosks through the
+/// activation endpoint (T-265).
+/// </remarks>
+public sealed record CanCreateKioskQuery(Guid AdminUserId) : IRequest<bool>;
+
+/// <summary>
 /// One device, or <c>null</c> when there is no such device.
 /// </summary>
 /// <remarks>
