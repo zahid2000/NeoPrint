@@ -11,9 +11,12 @@ import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { AboutKiosk, HubEvents } from '../../core/realtime/hub-events';
 import { KioskLiveStore } from '../../core/realtime/kiosk-live.store';
+import { commandResults } from '../../core/realtime/command-results';
 import { confirmAction } from '../../shared/confirm.dialog';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { BytesPipe, DateTimePipe } from '../../shared/format.pipes';
+import { NotifyService } from '../../shared/notify.service';
+import { toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { OperatorActionsService } from './operator-actions.service';
 import { OperatorApiService } from './operator-api.service';
@@ -193,6 +196,8 @@ export class OperatorKioskComponent {
   private readonly api = inject(OperatorApiService);
   private readonly auth = inject(AuthService);
   private readonly actions = inject(OperatorActionsService);
+  private readonly notify = inject(NotifyService);
+  private readonly results = commandResults();
   private readonly dialog = inject(MatDialog);
   private readonly translate = inject(TranslateService);
   private readonly statuses = inject(KioskLiveStore);
@@ -266,8 +271,22 @@ export class OperatorKioskComponent {
   }
 
   /** `test-print`, `resume`, `printers/refresh`: sent as they are. The result comes back as an event. */
+  /** Sends a command, says it went, and later says how it ended (T-271). */
   async command(command: string): Promise<void> {
-    await this.run(() => this.actions.send(() => firstValueFrom(this.api.command(this.id(), command))));
+    await this.run(async () => {
+      try {
+        const sent = await firstValueFrom(this.api.command(this.id(), command));
+
+        this.notify.success('operator.kiosk.commandSent');
+        this.results.sent(sent);
+
+        return true;
+      } catch (error) {
+        this.notify.error(toProblem(error).message);
+
+        return false;
+      }
+    });
   }
 
   /** Stops new orders: asked about first. */

@@ -17,6 +17,7 @@ import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { DateTimePipe } from '../../shared/format.pipes';
+import { commandResults } from '../../core/realtime/command-results';
 import { NotifyService } from '../../shared/notify.service';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
@@ -246,6 +247,9 @@ export class KioskPrintersComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly hub = inject(AdminHubService);
   private readonly notify = inject(NotifyService);
+
+  /** How each command sent from this tab ended, said aloud (T-271). */
+  private readonly results = commandResults();
   private readonly translate = inject(TranslateService);
 
   readonly kioskId = input.required<string>();
@@ -371,8 +375,10 @@ export class KioskPrintersComponent implements OnInit {
           ? await firstValueFrom(this.api.testPrint(this.kioskId()))
           : await firstValueFrom(this.api.refreshKioskPrinters(this.kioskId()));
 
-      this.commands.update((list) => [command, ...list]);
+      // The kiosk may have answered already: its row is not put back to "sent".
+      this.commands.update((list) => (list.some((item) => item.id === command.id) ? list : [command, ...list]));
       this.notify.success('printers.sent');
+      this.results.sent(command);
     });
   }
 
