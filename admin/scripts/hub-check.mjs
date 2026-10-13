@@ -21,7 +21,7 @@
 // name the way the server does. No dependencies, like scripts/i18n-check.mjs.
 //
 // What this cannot see is whether the backend ever calls the method that
-// sends an event - five of them had no caller until T-261. That half is the
+// sends an event - four of them had no caller until T-261. That half is the
 // backend's: HubContractTests reads the compiled code for a call to every
 // method of the panel notifiers.
 // ---------------------------------------------------------------------------

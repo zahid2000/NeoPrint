@@ -12,7 +12,7 @@ namespace NeoPrint.Api.IntegrationTests;
 /// <para>
 /// A notifier method nobody calls fails nothing: it compiles, the hub is ready
 /// to deliver it, the panel subscribes to it - and the page never follows.
-/// Five of them were like that until T-261: a payment, and a device being
+/// Four of them were like that until T-261: a payment, and a device being
 /// registered, activated and revoked had a method each and no caller. The
 /// device handlers did call <c>DeviceActivatedAsync</c> - of
 /// <see cref="IDeviceNotifier"/>, which tells the device, not the panels; the
