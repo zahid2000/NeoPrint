@@ -104,6 +104,13 @@
               [status]="kiosk.status"
               [text]="'kiosks.status.' + kiosk.status | translate"
             />
+            <!-- The kiosk serves, and nobody will be warned that its paper is running low (T-264). -->
+            @if (counterUnset(kiosk)) {
+              <p class="neo-row-note neo-row-note--warning" data-note="counter-unset">
+                <mat-icon aria-hidden="true">warning</mat-icon>
+                {{ 'kiosks.counterUnsetRow' | translate }}
+              </p>
+            }
           </td>
         </ng-container>
         <ng-container matColumnDef="address">

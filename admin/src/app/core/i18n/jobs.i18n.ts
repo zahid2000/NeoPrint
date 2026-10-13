@@ -194,7 +194,7 @@ export const jobsTranslations: PageTranslations = {
     'supplies.neverRefilled': 'Hələ doldurulmayıb',
     'supplies.counterUnset': 'Sayğac təyin edilməyib',
     'supplies.counterUnsetHint':
-      'Lotokda neçə vərəq olduğu hələ yazılmayıb. Kağız qoyun və aşağıda sayını qeyd edin: o vaxta qədər xəbərdarlıq və tapşırıq açılmır, bu ölçüdə sifariş isə qəbul olunmur.',
+      'Lotokda neçə vərəq olduğu hələ yazılmayıb. Kağız qoyun və aşağıda sayını qeyd edin: o vaxta qədər kiosk sifarişləri qəbul edir, amma kağızın azaldığı barədə xəbərdarlıq və tapşırıq açılmır.',
     'supplies.refillTitle': 'Kağız doldur',
     'supplies.refillPaper': 'Kağız',
     'supplies.refillMode': 'Necə',
@@ -430,7 +430,7 @@ export const jobsTranslations: PageTranslations = {
     'supplies.neverRefilled': 'Not refilled yet',
     'supplies.counterUnset': 'Counter not set',
     'supplies.counterUnsetHint':
-      'Nobody has recorded how many sheets are in the tray. Load paper and enter the count below: until then no alert or task is opened, and no order in this size is taken.',
+      'Nobody has recorded how many sheets are in the tray. Load paper and enter the count below: until then the kiosk takes orders, but no alert or task is opened when its paper runs low.',
     'supplies.refillTitle': 'Refill paper',
     'supplies.refillPaper': 'Paper',
     'supplies.refillMode': 'How',
@@ -667,7 +667,7 @@ export const jobsTranslations: PageTranslations = {
     'supplies.neverRefilled': 'Ещё не пополнялся',
     'supplies.counterUnset': 'Счётчик не задан',
     'supplies.counterUnsetHint':
-      'Количество листов в лотке ещё не указано. Загрузите бумагу и введите количество ниже: до этого предупреждения и задачи не создаются, а заказы этого формата не принимаются.',
+      'Количество листов в лотке ещё не указано. Загрузите бумагу и введите количество ниже: до этого киоск принимает заказы, но предупреждения и задачи о нехватке бумаги не создаются.',
     'supplies.refillTitle': 'Пополнить бумагу',
     'supplies.refillPaper': 'Бумага',
     'supplies.refillMode': 'Как',

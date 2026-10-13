@@ -7,8 +7,10 @@ using NeoPrint.Application.Admin;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Application.Kiosks;
 using NeoPrint.Application.Localization;
+using NeoPrint.Application.Refunds;
 using NeoPrint.Domain.Admin;
 using NeoPrint.Domain.Common;
+using NeoPrint.Domain.Incidents;
 using NeoPrint.Domain.Kiosks;
 using NeoPrint.Domain.Supplies;
 
@@ -66,6 +68,9 @@ public sealed class SupplyEvaluationHandlers :
     private readonly IPermissionResolver _permissions;
     private readonly IEmailSender _email;
     private readonly ISender _sender;
+    private readonly IKioskDeviceRepository _devices;
+    private readonly IIncidentRepository _incidentLog;
+    private readonly IncidentReporter _incidents;
     private readonly IClock _clock;
     private readonly ILogger<SupplyEvaluationHandlers> _logger;
 
@@ -81,6 +86,9 @@ public sealed class SupplyEvaluationHandlers :
         IPermissionResolver permissions,
         IEmailSender email,
         ISender sender,
+        IKioskDeviceRepository devices,
+        IIncidentRepository incidentLog,
+        IncidentReporter incidents,
         IClock clock,
         ILogger<SupplyEvaluationHandlers> logger)
     {
@@ -95,6 +103,9 @@ public sealed class SupplyEvaluationHandlers :
         _permissions = permissions;
         _email = email;
         _sender = sender;
+        _devices = devices;
+        _incidentLog = incidentLog;
+        _incidents = incidents;
         _clock = clock;
         _logger = logger;
     }
@@ -171,8 +182,14 @@ public sealed class SupplyEvaluationHandlers :
                 await CancelAsync(kiosk, task, OutOfService, now, cancellationToken).ConfigureAwait(false);
             }
 
+            await _incidents
+                .ResolveAsync(UncountedKey(kiosk.Id), new UserMessage("incidents.resolution.kioskOutOfService"), cancellationToken)
+                .ConfigureAwait(false);
+
             return new SupplyEvaluationResult(0, 0, over);
         }
+
+        await RemindOfUncountedTraysAsync(kiosk, now, cancellationToken).ConfigureAwait(false);
 
         var rules = (await _rules.ListAsync(cancellationToken).ConfigureAwait(false)).Where(rule => rule.IsActive).ToList();
         var (readings, printerKnown) = await ReadAsync(kiosk, now, cancellationToken).ConfigureAwait(false);
@@ -242,6 +259,67 @@ public sealed class SupplyEvaluationHandlers :
         }
 
         return new SupplyEvaluationResult(raised, changed, cleared);
+    }
+
+    /// <summary>How long a new kiosk may serve with a counter nobody has set before the panel is reminded.</summary>
+    public static readonly TimeSpan UncountedFor = TimeSpan.FromHours(24);
+
+    public static string UncountedKey(Guid kioskId) => $"paper-uncounted:{kioskId}";
+
+    /// <summary>
+    /// A kiosk serves with a tray nobody has counted (T-264): its orders are
+    /// taken, and nobody will know beforehand that its paper is running out.
+    /// A day after its device was activated that is put before the panel - an
+    /// incident of the least severity, so by default nobody is e-mailed - once
+    /// for each activation; it closes when the last such tray is counted.
+    /// </summary>
+    private async Task RemindOfUncountedTraysAsync(Kiosk kiosk, DateTime now, CancellationToken cancellationToken)
+    {
+        var uncounted = kiosk.PaperStock
+            .Where(tray => tray.Value.Capacity > 0 && !tray.Value.IsCounted)
+            .Select(tray => tray.Key)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        var key = UncountedKey(kiosk.Id);
+
+        if (uncounted.Count == 0)
+        {
+            await _incidents
+                .ResolveAsync(key, new UserMessage("incidents.resolution.paperCounted"), cancellationToken)
+                .ConfigureAwait(false);
+
+            return;
+        }
+
+        var device = kiosk.ActiveDeviceId is { } deviceId
+            ? await _devices.FindByIdAsync(deviceId, cancellationToken).ConfigureAwait(false)
+            : null;
+
+        if (device?.ActivatedAt is not { } activatedAt || now - activatedAt < UncountedFor)
+        {
+            return;
+        }
+
+        // Said once for an activation: somebody who closed it without counting
+        // the tray is not told again every five minutes.
+        var said = await _incidentLog.ListForKioskAsync(kiosk.Id, activatedAt, now, 200, cancellationToken).ConfigureAwait(false);
+
+        if (said.Any(incident => string.Equals(incident.DedupKey, key, StringComparison.Ordinal)))
+        {
+            return;
+        }
+
+        await _incidents
+            .RaiseAsync(
+                IncidentType.Other,
+                IncidentSeverity.Medium,
+                UserMessage.Of("incidents.paper.uncounted", ("kiosk", kiosk.Code), ("trays", string.Join(", ", uncounted))),
+                key,
+                cancellationToken,
+                kiosk.Id,
+                nameof(Kiosk),
+                kiosk.Id)
+            .ConfigureAwait(false);
     }
 
     private static bool HasSupplies(Kiosk kiosk)

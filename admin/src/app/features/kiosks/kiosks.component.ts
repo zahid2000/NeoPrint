@@ -10,7 +10,7 @@ import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
-import { KioskStatus } from '../../core/api/admin-api.service';
+import { KioskListItem, KioskStatus } from '../../core/api/admin-api.service';
 import { Permissions } from '../../core/auth/auth.models';
 import { HasPermissionDirective } from '../../core/auth/has-permission.directive';
 import { KioskLiveStore } from '../../core/realtime/kiosk-live.store';
@@ -93,6 +93,16 @@ export class KiosksComponent {
   readonly view = signal<'list' | 'map'>('list');
 
   readonly columns = ['code', 'name', 'status', 'address', 'version', 'heartbeat'];
+
+  /** A kiosk that serves with an A4 tray nobody has counted (T-264). One with no device serves nobody. */
+  counterUnset(kiosk: KioskListItem): boolean {
+    return (
+      (kiosk.paperA4Capacity ?? 0) > 0 &&
+      kiosk.paperA4Counted === false &&
+      kiosk.status !== 'NotActivated' &&
+      kiosk.status !== 'Disabled'
+    );
+  }
 
   readonly filtered = computed(() => {
     const term = this.search().trim().toLocaleLowerCase();

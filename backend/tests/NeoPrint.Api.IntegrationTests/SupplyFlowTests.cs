@@ -194,6 +194,88 @@ public sealed class SupplyFlowTests
         after.GetProperty("paper").GetProperty("A4").GetProperty("counted").GetBoolean().Should().BeTrue();
     }
 
+    // T-264 (the owner, 2026-10-14): a counter nobody has set refuses no order. A day after the
+    // kiosk was activated the panel is reminded - an incident of the least severity, once - and
+    // it closes when the counter is set.
+    [DockerFact]
+    public async Task A_kiosk_with_a_counter_nobody_set_takes_orders_and_a_day_later_the_panel_is_reminded_once()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await TestKiosks.ActivatedAsync(_fixture, $"supply-open-{Guid.NewGuid():N}"[..22]);
+
+        (await KioskAsync(kiosk.KioskId)).PaperStock["A4"].IsCounted.Should().BeFalse();
+
+        // An order is taken, paid and printed: nought sheets is "unknown", not "empty".
+        await PrintAsync(kiosk, 3);
+
+        var tray = (await KioskAsync(kiosk.KioskId)).PaperStock["A4"];
+        tray.Current.Should().Be(0, "there is nothing to count down from");
+        tray.IsCounted.Should().BeFalse("printing is not counting");
+
+        // Activated a moment ago: nobody is reminded yet.
+        await EvaluateAsync(kiosk.KioskId);
+        (await UncountedAsync(kiosk.KioskId)).Should().BeEmpty();
+
+        // A day and an hour later.
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<MongoContext>().KioskDevices.UpdateOneAsync(
+                Builders<NeoPrint.Domain.Devices.KioskDevice>.Filter.Eq(device => device.Id, kiosk.DeviceId),
+                Builders<NeoPrint.Domain.Devices.KioskDevice>.Update.Set(device => device.ActivatedAt, DateTime.UtcNow.AddHours(-25)));
+        }
+
+        await EvaluateAsync(kiosk.KioskId);
+
+        var reminder = (await UncountedAsync(kiosk.KioskId)).Should().ContainSingle().Subject;
+        reminder.Status.Should().Be(IncidentStatus.Open);
+        reminder.Severity.Should().Be(IncidentSeverity.Medium, "the least there is: below what is e-mailed by default");
+        reminder.KioskId.Should().Be(kiosk.KioskId);
+        NeoPrint.Application.Localization.Messages.WriteStored(reminder.Details, "az").Should().Contain(kiosk.KioskCode).And.Contain("A4");
+
+        // The sweep looks again and says nothing new.
+        await SendAsync(new EvaluateAllSuppliesCommand());
+        (await UncountedAsync(kiosk.KioskId)).Should().ContainSingle();
+
+        // Somebody closes it without counting the tray: they are not told again every five minutes.
+        (await SendAsync(admin, HttpMethod.Post, $"/api/admin/incidents/{reminder.Id}/resolve", new { note = "Sabah sayılacaq" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        await EvaluateAsync(kiosk.KioskId);
+        (await UncountedAsync(kiosk.KioskId)).Should().ContainSingle().Which.Status.Should().Be(IncidentStatus.Resolved);
+    }
+
+    [DockerFact]
+    public async Task The_reminder_about_an_unset_counter_closes_when_the_counter_is_set()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await TestKiosks.ActivatedAsync(_fixture, $"supply-count-{Guid.NewGuid():N}"[..22]);
+
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<MongoContext>().KioskDevices.UpdateOneAsync(
+                Builders<NeoPrint.Domain.Devices.KioskDevice>.Filter.Eq(device => device.Id, kiosk.DeviceId),
+                Builders<NeoPrint.Domain.Devices.KioskDevice>.Update.Set(device => device.ActivatedAt, DateTime.UtcNow.AddHours(-25)));
+        }
+
+        await EvaluateAsync(kiosk.KioskId);
+        (await UncountedAsync(kiosk.KioskId)).Should().ContainSingle().Which.Status.Should().Be(IncidentStatus.Open);
+
+        // Every tray the kiosk has is counted - full, so no alert comes of it.
+        foreach (var (paper, stock) in (await KioskAsync(kiosk.KioskId)).PaperStock.Where(tray => tray.Value.Capacity > 0))
+        {
+            (await SendAsync(admin, HttpMethod.Post, $"/api/admin/kiosks/{kiosk.KioskId}/paper/refill", new { paper, mode = "Full", sheets = 0 }))
+                .StatusCode.Should().Be(HttpStatusCode.OK, $"{paper} holds {stock.Capacity}");
+        }
+
+        var closed = await EventuallyAsync(
+            () => UncountedAsync(kiosk.KioskId), found => found.All(incident => incident.Status == IncidentStatus.Resolved), "the reminder closing by itself");
+        closed.Should().ContainSingle();
+        NeoPrint.Application.Localization.Messages.WriteStored(closed[0].Resolution, "az").Should().Contain("təyin edildi");
+    }
+
     // T-263: found on the development stack - the task of a kiosk whose device had been taken
     // away ten hours before was still waiting for its operator. The five-minute sweep only
     // visited kiosks that are served, and the branch that ends a kiosk's alerts is for the
@@ -1029,6 +1111,13 @@ public sealed class SupplyFlowTests
     {
         using var scope = _fixture.Services.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<MongoContext>().Kiosks.Find(kiosk => kiosk.Id == id).SingleAsync();
+    }
+
+    private async Task<List<Incident>> UncountedAsync(Guid kioskId)
+    {
+        using var scope = _fixture.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<MongoContext>().Incidents
+            .Find(incident => incident.DedupKey == SupplyEvaluationHandlers.UncountedKey(kioskId)).ToListAsync();
     }
 
     private async Task<List<Incident>> OverdueAsync(Guid taskId)

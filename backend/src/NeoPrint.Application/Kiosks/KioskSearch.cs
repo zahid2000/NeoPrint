@@ -280,7 +280,8 @@ public sealed class KioskSearchHandlers :
     {
         // A tray with no capacity set has no counter to trust yet - the same
         // rule the order check follows (PrintJobHandlers.EnsurePaperAsync).
-        if (!kiosk.PaperStock.TryGetValue(size, out var stock) || stock.Capacity <= 0)
+        // Nor has a tray nobody has counted (T-264): "Unknown", not "Out".
+        if (!kiosk.PaperStock.TryGetValue(size, out var stock) || stock.Capacity <= 0 || !stock.IsCounted)
         {
             return new PublicPaperView(size, null, "Unknown");
         }

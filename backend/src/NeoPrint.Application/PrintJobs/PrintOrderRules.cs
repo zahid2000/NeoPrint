@@ -188,8 +188,10 @@ public sealed class PrintOrderRules
             .ConfigureAwait(false);
 
         // A tray with no capacity set has no counter to trust yet: nothing to
-        // compare with, so nothing is refused on its account.
-        if (!block || !kiosk.PaperStock.TryGetValue(paper, out var stock) || stock.Capacity <= 0)
+        // compare with, so nothing is refused on its account. The same goes for
+        // a tray nobody has counted (T-264): its nought is "unknown", not
+        // "empty", and a kiosk that was just installed with paper in it serves.
+        if (!block || !kiosk.PaperStock.TryGetValue(paper, out var stock) || stock.Capacity <= 0 || !stock.IsCounted)
         {
             return;
         }

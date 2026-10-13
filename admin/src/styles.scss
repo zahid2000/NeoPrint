@@ -465,6 +465,31 @@ a {
 }
 
 /*
+ * A second line in a table cell, under what the cell says: something about the
+ * row that is not its status (docs/DESIGN_SYSTEM.md, "cədvəl sətrində qeyd").
+ */
+.neo-row-note {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+  margin: var(--space-1) 0 0;
+  color: var(--neutral-600);
+  font-size: var(--font-size-caption);
+  white-space: nowrap;
+
+  mat-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    font-size: var(--icon-size);
+  }
+}
+
+.neo-row-note--warning,
+.neo-row-note--warning mat-icon {
+  color: var(--warning-500);
+}
+
+/*
  * Something the reader should know and may act on, that is not an error: icon,
  * words, at most one button (docs/DESIGN_SYSTEM.md, "canlı səhifədə
  * saxlanmamış dəyişiklik").

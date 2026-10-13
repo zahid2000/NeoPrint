@@ -172,4 +172,35 @@ describe('KiosksComponent', () => {
 
     backend.expectOne('/api/admin/kiosks').flush([kiosk({ status: 'NotActivated' }), kiosk({ id: 'k-2' })]);
   });
+  // T-264: the kiosk serves with a counter nobody has set, and the list says so.
+  it('says in the row that the paper counter is not set, until it is', async () => {
+    const note = (code: string): Element | null => {
+      fixture.detectChanges();
+
+      return (
+        [...(fixture.nativeElement as HTMLElement).querySelectorAll('tr[mat-row]')]
+          .find((row) => row.textContent?.includes(code))
+          ?.querySelector('[data-note="counter-unset"]') ?? null
+      );
+    };
+
+    expect(note('KSK-0001'), 'nothing is said about a tray the list knows nothing of').toBeNull();
+
+    hub.emit('DeviceActivated', { deviceId: 'd-1' });
+    vi.advanceTimersByTime(liveDebounceMs);
+    await answer([
+      kiosk({ paperA4Capacity: 500, paperA4Current: 0, paperA4Counted: false }),
+      kiosk({ id: 'k-2', code: 'KSK-0002', paperA4Capacity: 500, paperA4Current: 0, paperA4Counted: true }),
+    ]);
+
+    expect(note('KSK-0001')?.textContent).toContain('kiosks.counterUnsetRow');
+    expect(shownStatus('KSK-0001'), 'its status is still its own').toContain('kiosks.status.Online');
+    expect(note('KSK-0002'), 'a tray counted and found empty is not an unset counter').toBeNull();
+
+    hub.emit('DeviceRevoked', { deviceId: 'd-1' });
+    vi.advanceTimersByTime(liveDebounceMs);
+    await answer([kiosk({ status: 'NotActivated', paperA4Capacity: 500, paperA4Current: 0, paperA4Counted: false })]);
+
+    expect(note('KSK-0001'), 'a kiosk without a device serves nobody').toBeNull();
+  });
 });
