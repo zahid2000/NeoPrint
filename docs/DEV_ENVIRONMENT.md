@@ -1546,10 +1546,12 @@ menyudan "Operator paneli" ilə açır). Brauzerdə telefon enində baxmaq üç�
 cd admin
 node e2e/pwa.mjs                                  # telefon enində bütün səhifələr, service worker, serverin əlçatmaz olması (22 yoxlama)
 node e2e/pwa.mjs ../docs/screenshots/step-7/m7    # ekran görüntüləri ilə
-node e2e/activate.mjs                             # "Kiosk aktivləşdir": cihaz qeydiyyatdan keçir, operator kodu yazır, öz kioskuna bağlayır; sonda cihaz ayrılır (öz "E2E aktivləşdirmə" kioskunu işlədir, iz qoymur)
-node e2e/operator.mjs                             # operatorun əsas işləri interfeysin özündən: doldurma (anbardan 1 bağlama), "Toner dəyişdirildi", tapşırıq (Başla → Tamamla), "Özümə götürürəm". Dev məlumatını dəyişir: anbardakı A4 bağlamasından 2 ədəd çıxır (ən azı 2 olmalıdır)
+node e2e/activate.mjs                             # "Kiosk aktivləşdir": cihaz qeydiyyatdan keçir, operator kodu yazır, kioska bağlayır
+node e2e/operator.mjs                             # operatorun əsas işləri interfeysin özündən: doldurma (anbardan 1 bağlama), "Toner dəyişdirildi", tapşırıq (Başla → Tamamla), "Özümə götürürəm"
 node scripts/pwa-icons.mjs                        # ana ekran ikonlarını (public/icons) yenidən çəkir — yalnız şəkil dəyişəndə
 ```
+
+`activate.mjs` və `operator.mjs` istənilən qədər təkrar işlədilə bilər və dev məlumatında iz qoymur (T-266): hər biri başlayanda öz kioskunu ("E2E aktivləşdirmə", "E2E operator"), `operator.mjs` həm də öz anbar məhsulunu ("E2E A4 kağız", 2 bağlama) yaradır, sonda isə onları və haqlarında yazılan hər şeyi (tapşırıq, sərf hərəkəti, anbar hərəkəti, cihaz, status keçidləri) silir. Başqa kiosklara və anbar qalığına toxunmur. API bunların heç birini silmir, ona görə silmə `admin/e2e/dev-data.mjs` vasitəsilə birbaşa dev bazasında (`docker exec neoprint-mongo mongosh …`) gedir — yalnız skriptin özünün bir az əvvəl yaratdığı id-lər üzrə və yalnız `localhost` API-si üçün. Audit loqu silinmir.
 
 **Təyin edilməmiş sayğacın 24 saatlıq xatırlatması (T-264).** Yeni kiosk yaradın, cihazının aktivləşmə vaxtını geri çəkin və 5 dəqiqəlik süpürgəni gözləyin — idarə panelində və operator panelində `Orta` incident görünür; ilk doldurma onu bağlayır:
 
