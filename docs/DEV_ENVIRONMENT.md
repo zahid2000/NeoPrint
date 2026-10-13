@@ -1550,6 +1550,16 @@ node e2e/operator.mjs                             # operatorun əsas işləri in
 node scripts/pwa-icons.mjs                        # ana ekran ikonlarını (public/icons) yenidən çəkir — yalnız şəkil dəyişəndə
 ```
 
+**Təyin edilməmiş sayğacın 24 saatlıq xatırlatması (T-264).** Yeni kiosk yaradın, cihazının aktivləşmə vaxtını geri çəkin və 5 dəqiqəlik süpürgəni gözləyin — idarə panelində və operator panelində `Orta` incident görünür; ilk doldurma onu bağlayır:
+
+```bash
+node tools/dev-kiosk/new-kiosk.mjs                       # KSK-xxxx və id-si
+docker exec neoprint-mongo mongosh -u neoprint -p devMongoPassword --authenticationDatabase admin neoprint --quiet --eval \
+  'const k=db.kiosks.findOne({Code:"KSK-xxxx"}); db.kiosk_devices.updateOne({_id:k.ActiveDeviceId},{$set:{ActivatedAt:new Date(Date.now()-25*3600*1000)}})'
+node tools/dev-kiosk/new-kiosk.mjs refill <kioskId> 400  # sayğac yazılır → incident bağlanır
+node tools/dev-kiosk/new-kiosk.mjs retire <kioskId>      # sonda cihazı ayırın
+```
+
 `pwa.mjs` server əlçatmazlığını `docker stop neoprint-admin` ilə yaradır və sonda konteyneri yenidən başladır (skript yarıda
 kəsilsə: `docker start neoprint-admin`). Brauzerin "Offline" keçidi service worker-in sorğularına təsir etmir.
 
