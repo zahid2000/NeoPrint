@@ -671,6 +671,26 @@ qoşulacaq. Açılmırsa problem şəbəkə/firewall-dadır, tətbiqdə yox.
 Real telefonda `localhost` telefonun özüdür, ona görə `NEOPRINT_API_URL=http://localhost:5080/`
 işləmir — kompüterin IP-si yazılır.
 
+**Kompüterin IP-si sabit deyil.** Başqa Wi-Fi-a qoşulanda (və ya router yeni ünvan verəndə) dünən
+işləyən əmr `connectionTimeout` verir, çünki köhnə ünvanda artıq heç kim yoxdur. Əvvəlcə cari ünvana
+baxın:
+
+```powershell
+Get-NetIPAddress -AddressFamily IPv4 -PrefixOrigin Dhcp | Select-Object IPAddress, InterfaceAlias
+```
+
+**IP-dən asılı olmayan yol (USB):** portu telefona yönləndirin və ünvan kimi `127.0.0.1` verin —
+Wi-Fi və firewall heç bir rol oynamır:
+
+```powershell
+adb -s <telefon_id> reverse tcp:5080 tcp:5080
+adb -s <telefon_id> reverse --list          # "tcp:5080 tcp:5080" görünməlidir
+flutter run -d <telefon_id> --dart-define=NEOPRINT_API_URL=http://127.0.0.1:5080
+```
+
+`adb reverse` yalnız `127.0.0.1` ünvanına təsir edir: `--dart-define`-də LAN IP-si qalırsa, yönləndirmə
+istifadə olunmur. Kabel çıxarılanda və ya `adb` yenidən başlayanda yönləndirmə silinir — əmri təkrar edin.
+
 **"Android sdkmanager did not install NDK 28.2.13676358"** ilə build dayanırsa:
 cmdline-tools 23-ün köhnəlmiş `sdkmanager`-i paket adını (`ndk;…`) `;`-də bölür və
 tapmır. NDK-nı yeni `android` CLI ilə bir dəfə quraşdırın (~2 GB):
