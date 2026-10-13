@@ -1,4 +1,5 @@
-import { Signal, computed, effect, inject, signal, untracked } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { DestroyRef, Signal, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Observable, firstValueFrom } from 'rxjs';
 
 import { AuthService } from '../../core/auth/auth.service';
@@ -161,6 +162,25 @@ export function operatorScreen<T>(options: OperatorScreenOptions<T>): OperatorSc
   }
 
   liveRefresh({ events: options.events, accepts: options.accepts, reload });
+
+  // The device itself says when it has no network at all: that is heard at
+  // once, without waiting for a request to fail. Having one again is only a
+  // reason to ask - whether the server answers is still to be seen.
+  const view = inject(DOCUMENT).defaultView;
+  const wentOffline = (): void => {
+    if (data() !== null) {
+      offline.set(true);
+    }
+  };
+  const cameBack = (): void => void reload();
+
+  view?.addEventListener('offline', wentOffline);
+  view?.addEventListener('online', cameBack);
+
+  inject(DestroyRef).onDestroy(() => {
+    view?.removeEventListener('offline', wentOffline);
+    view?.removeEventListener('online', cameBack);
+  });
 
   return {
     data: data.asReadonly(),

@@ -733,6 +733,7 @@
   "serviceTasks.priorityUnknown": "Такого приоритета нет.",
   "serviceTasks.quantityWithoutItem": "Если указано количество, нужно выбрать и материал со склада.",
   "serviceTasks.reason.autoAssigned": "Система назначила задачу оператору киоска.",
+  "serviceTasks.reason.kioskOutOfService": "У киоска больше нет устройства, или он отключён; задача больше не нужна.",
   "serviceTasks.reason.levelRecovered": "Уровень снова выше порога; задача больше не нужна.",
   "serviceTasks.reasonRequired": "Нужно указать причину отмены.",
   "serviceTasks.statusUnknown": "Такого статуса задачи нет.",

@@ -14,17 +14,22 @@
 //   2. that an operator who signs in lands in the operator panel, and that
 //      each of its pages opens at a phone's width without scrolling sideways,
 //      without a raw key and without an error;
-//   3. that the service worker takes the page over, and that with the network
-//      gone the open panel keeps showing what it last loaded, says how old it
-//      is and switches its buttons off - and comes back by itself;
-//   4. that a reload without a network still opens the panel's shell from the
-//      device. The session itself cannot be restored without the server - the
-//      access token lives in memory only - so what opens then is the sign-in
-//      page, not a browser error.
+//   3. that the service worker takes the page over, and that with the server
+//      out of reach the open panel keeps showing what it last loaded, says how
+//      old it is and switches its buttons off - and comes back by itself;
+//   4. that a reload with the server out of reach still opens the panel's
+//      shell from the device. The session itself cannot be restored without
+//      the server - the access token lives in memory only - so what opens
+//      then is the sign-in page, not a browser error.
+//
+// "Out of reach" is the proxy's container stopped (docker stop neoprint-admin):
+// a browser's own "offline" switch does not reach the requests a service
+// worker makes, so with the worker in charge it cuts nothing.
 //
 // This is the one script that lets the service worker run; the others block
 // it (see pages.mjs). Needs Chrome or Edge on the machine.
 // ---------------------------------------------------------------------------
+import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -35,6 +40,8 @@ const email = process.env.NEOPRINT_DEV_OPERATOR_EMAIL ?? 'dev-operator@neoprint.
 // The development seed's password (docs/DEV_ENVIRONMENT.md section 4); never a real one.
 const password = process.env.NEOPRINT_DEV_PASSWORD ?? 'DevTest!2026';
 const shots = process.argv[2] ? resolve(process.argv[2]) : null;
+// The container whose nginx stands between the panel and the API.
+const proxy = process.env.ADMIN_CONTAINER ?? 'neoprint-admin';
 
 const failures = [];
 const check = (ok, text) => {
@@ -74,10 +81,25 @@ const browser = await launchBrowser();
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'az', isMobile: true, hasTouch: true });
 const page = await context.newPage();
 const consoleErrors = [];
+// Errors are counted while the server is there; with it gone the browser has every reason to complain.
+let serverThere = true;
 
 page.on('console', (message) => {
-  if (message.type() === 'error' && !/Failed to load resource|net::ERR_/.test(message.text())) consoleErrors.push(message.text().slice(0, 160));
+  if (serverThere && message.type() === 'error' && !/Failed to load resource|net::ERR_/.test(message.text())) {
+    consoleErrors.push(message.text().slice(0, 160));
+  }
 });
+
+async function until(done, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    if (await done()) return true;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+
+  return false;
+}
 
 async function shot(name) {
   if (!shots) return;
@@ -109,7 +131,7 @@ try {
   await page.waitForLoadState('networkidle');
 
   check(new URL(page.url()).pathname === '/operator', `an operator lands in the operator panel after signing in: ${new URL(page.url()).pathname}`);
-  await page.waitForTimeout(800);
+  await page.locator('article[data-kiosk]').first().waitFor({ timeout: 20_000 });
   await looksRight('Mənim kiosklarım');
   await shot('01-kiosks');
 
@@ -167,7 +189,8 @@ try {
   await page.waitForURL(/\/operator$/);
   await page.waitForLoadState('networkidle');
 
-  await context.setOffline(true);
+  serverThere = false;
+  execFileSync('docker', ['stop', proxy], { stdio: 'ignore' });
 
   // The panel notices by asking: at the latest with the thirty-second poll of a lost connection.
   const noticed = await page
@@ -177,27 +200,34 @@ try {
   const stillThere = await page.locator('article[data-kiosk]').count();
   const disabled = await page.locator('article[data-kiosk] button.op-primary').evaluateAll((buttons) => buttons.every((button) => button.disabled));
 
-  check(noticed, 'without a network the page says the data is old');
+  check(noticed, 'with the server out of reach the page says the data is old');
   check(stillThere === cards, `the ${stillThere} card(s) are still there to read`);
   check(disabled, 'and its buttons are switched off');
   await shot('07-offline');
 
-  await context.setOffline(false);
-  const back = await page
-    .locator('app-operator-freshness .neo-notice')
-    .waitFor({ state: 'detached', timeout: 75_000 })
-    .then(() => true, () => false);
-  check(back, 'with the network back the notice goes by itself');
-
-  // --- 4. a reload without a network -------------------------------------------------
-  await context.setOffline(true);
+  // --- 4. a reload with the server out of reach -------------------------------------
   const reloaded = await page.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 }).then(() => true, () => false);
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(4000);
   const shell = await page.evaluate(() => !!document.querySelector('app-root') && document.body.innerText.trim().length > 0).catch(() => false);
-  check(reloaded && shell, `a reload without a network opens the panel from the device (${new URL(page.url()).pathname})`);
-  await shot('08-reload-offline');
-  await context.setOffline(false);
+  check(reloaded && shell, `a reload with the server out of reach opens the panel from the device (${new URL(page.url()).pathname})`);
+  await shot('08-reload-server-out-of-reach');
+
+  // --- and back -------------------------------------------------------------------------
+  execFileSync('docker', ['start', proxy], { stdio: 'ignore' });
+  await until(async () => (await fetch(`${base}/healthz`).then((response) => response.ok, () => false)), 60_000);
+
+  await page.goto(`${base}/operator`, { waitUntil: 'networkidle', timeout: 60_000 }).catch(() => undefined);
+  const restored = await page.locator('article[data-kiosk]').first().waitFor({ timeout: 30_000 }).then(() => true, () => false);
+  const stale = await page.locator('app-operator-freshness .neo-notice').count();
+  check(restored && stale === 0, 'with the server back the session is restored from its cookie and the cards are current');
 } finally {
+  // Whatever happened, the proxy is not left stopped.
+  try {
+    execFileSync('docker', ['start', proxy], { stdio: 'ignore' });
+  } catch {
+    console.error(`Could not start ${proxy} again - start it by hand: docker start ${proxy}`);
+  }
+
   await browser.close();
 }
 

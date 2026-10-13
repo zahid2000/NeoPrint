@@ -126,8 +126,16 @@ public sealed class OperatorPanelHandlers :
             cards.Add(await CardAsync(request.AdminUserId, effective, kiosk, active, cancellationToken).ConfigureAwait(false));
         }
 
-        // The ones that need somebody first; between equals, by code, so the list does not jump about.
-        return [.. cards.OrderByDescending(card => card.Attention).ThenBy(card => card.Code, StringComparer.Ordinal)];
+        // The ones that need somebody first; then the ones in service before the ones that
+        // are not (a kiosk without a device has nothing to look at); between equals, by code,
+        // so the list does not jump about.
+        return
+        [
+            .. cards
+                .OrderByDescending(card => card.Attention)
+                .ThenBy(card => card.Status is nameof(KioskStatus.NotActivated) or nameof(KioskStatus.Disabled))
+                .ThenBy(card => card.Code, StringComparer.Ordinal),
+        ];
     }
 
     /// <inheritdoc cref="GetOperatorKioskQuery" />

@@ -106,7 +106,19 @@ public sealed class SupplyEvaluationHandlers :
 
         var looked = 0;
 
-        foreach (var kiosk in (await _kiosks.ListAsync(cancellationToken).ConfigureAwait(false)).Where(HasSupplies))
+        // A kiosk that has stopped being served - its device was taken away, it
+        // was switched off - sends no supply movement any more, so nothing but
+        // this sweep will ever look at it again: the alert and the task opened
+        // while it was served would stay open for good, and an operator would be
+        // sent to refill a kiosk that has no device (T-263). So the sweep also
+        // visits every kiosk something is still open for.
+        var (open, _) = await _alerts.ListAsync(active: true, kioskId: null, scope: null, skip: 0, take: MaxLeftovers, cancellationToken).ConfigureAwait(false);
+        var leftovers = open.Select(alert => alert.KioskId)
+            .Concat((await _tasks.ListActiveAsync(cancellationToken).ConfigureAwait(false)).Where(IsUnstartedSystemTask).Select(task => task.KioskId))
+            .ToHashSet();
+
+        foreach (var kiosk in (await _kiosks.ListAsync(cancellationToken).ConfigureAwait(false))
+                     .Where(kiosk => HasSupplies(kiosk) || leftovers.Contains(kiosk.Id)))
         {
             try
             {
@@ -139,15 +151,24 @@ public sealed class SupplyEvaluationHandlers :
         var active = (await _alerts.ListActiveForKioskAsync(kiosk.Id, cancellationToken).ConfigureAwait(false))
             .ToDictionary(alert => alert.Key, StringComparer.Ordinal);
 
-        // A kiosk nobody serves at - never activated, or switched off - has nothing to refill.
+        // A kiosk nobody serves at - never activated, its device taken away, or
+        // switched off - has nothing to refill: its alerts are over, and so is
+        // every task the system opened for it that nobody has started.
         if (!HasSupplies(kiosk))
         {
             var over = 0;
 
             foreach (var alert in active.Values)
             {
-                await ClearAsync(kiosk, alert, alert.Value, now, cancellationToken).ConfigureAwait(false);
+                await ClearAsync(kiosk, alert, alert.Value, now, cancellationToken, OutOfService).ConfigureAwait(false);
                 over++;
+            }
+
+            // What the forecast opened has no alert to end it with.
+            foreach (var task in (await _tasks.ListActiveAsync(cancellationToken).ConfigureAwait(false))
+                         .Where(task => task.KioskId == kiosk.Id && IsUnstartedSystemTask(task)))
+            {
+                await CancelAsync(kiosk, task, OutOfService, now, cancellationToken).ConfigureAwait(false);
             }
 
             return new SupplyEvaluationResult(0, 0, over);
@@ -225,6 +246,27 @@ public sealed class SupplyEvaluationHandlers :
 
     private static bool HasSupplies(Kiosk kiosk)
         => kiosk.ActiveDeviceId is not null && kiosk.Status is not (KioskStatus.NotActivated or KioskStatus.Disabled);
+
+    /// <summary>The reason on a task that ends because its level is back above the rule.</summary>
+    private const string LevelRecovered = "serviceTasks.reason.levelRecovered";
+
+    /// <summary>The reason on a task that ends because its kiosk is no longer served.</summary>
+    private const string OutOfService = "serviceTasks.reason.kioskOutOfService";
+
+    /// <summary>More open alerts than this in the whole fleet would be a fault of its own.</summary>
+    private const int MaxLeftovers = 5000;
+
+    /// <summary>A task a rule or the forecast opened, that nobody is doing yet: the system may take it back.</summary>
+    private static bool IsUnstartedSystemTask(ServiceTask task)
+        => task.Source is ServiceTaskSource.AlertRule or ServiceTaskSource.Forecast
+           && task.Status is ServiceTaskStatus.Open or ServiceTaskStatus.Assigned;
+
+    private async Task CancelAsync(Kiosk kiosk, ServiceTask task, string reason, DateTime now, CancellationToken cancellationToken)
+    {
+        task.Cancel(new UserMessage(reason).Encode(), ActorContext.System(reason), now);
+        await _tasks.UpdateAsync(task, cancellationToken).ConfigureAwait(false);
+        await _desk.AnnounceAsync(task, kiosk, assigned: false, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>
     /// The trays the kiosk has, and what its selected printer last said about
@@ -343,12 +385,15 @@ public sealed class SupplyEvaluationHandlers :
         alert.ServiceTaskId = task.Id;
     }
 
-    private async Task ClearAsync(Kiosk kiosk, SupplyAlert alert, decimal value, DateTime now, CancellationToken cancellationToken)
+    /// <param name="reason">Why it is over: the level recovered, or the kiosk is no longer served.</param>
+    private async Task ClearAsync(
+        Kiosk kiosk, SupplyAlert alert, decimal value, DateTime now, CancellationToken cancellationToken, string reason = LevelRecovered)
     {
         alert.Clear(value, now);
         await _alerts.UpdateAsync(alert, cancellationToken).ConfigureAwait(false);
 
-        _logger.LogInformation("Kiosk {KioskId}: {Resource} {Variant} is back above its rule.", kiosk.Id, alert.Resource, alert.Variant);
+        _logger.LogInformation(
+            "Kiosk {KioskId}: the alert about {Resource} {Variant} is over ({Reason}).", kiosk.Id, alert.Resource, alert.Variant, reason);
 
         await _panels.SupplyAlertClearedAsync(SupplyAlertView.Of(alert, kiosk.Code), cancellationToken).ConfigureAwait(false);
 
@@ -359,9 +404,7 @@ public sealed class SupplyEvaluationHandlers :
             && task.Status is ServiceTaskStatus.Open or ServiceTaskStatus.Assigned
             && task.Source == ServiceTaskSource.AlertRule)
         {
-            task.Cancel(new UserMessage("serviceTasks.reason.levelRecovered").Encode(), ActorContext.System("serviceTasks.reason.levelRecovered"), now);
-            await _tasks.UpdateAsync(task, cancellationToken).ConfigureAwait(false);
-            await _desk.AnnounceAsync(task, kiosk, assigned: false, cancellationToken).ConfigureAwait(false);
+            await CancelAsync(kiosk, task, reason, now, cancellationToken).ConfigureAwait(false);
         }
     }
 

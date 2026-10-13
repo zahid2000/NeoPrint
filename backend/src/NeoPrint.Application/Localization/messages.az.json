@@ -733,6 +733,7 @@
   "serviceTasks.priorityUnknown": "Belə prioritet yoxdur.",
   "serviceTasks.quantityWithoutItem": "Miqdar yazılıbsa, anbardan götürülən material da seçilməlidir.",
   "serviceTasks.reason.autoAssigned": "Sistem tapşırığı kioskun operatoruna təyin etdi.",
+  "serviceTasks.reason.kioskOutOfService": "Kioskun cihazı ayrılıb və ya kiosk söndürülüb; tapşırığa ehtiyac qalmadı.",
   "serviceTasks.reason.levelRecovered": "Səviyyə həddən yuxarı qalxdı; tapşırığa ehtiyac qalmadı.",
   "serviceTasks.reasonRequired": "Ləğv səbəbi yazılmalıdır.",
   "serviceTasks.statusUnknown": "Belə tapşırıq statusu yoxdur.",

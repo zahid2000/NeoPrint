@@ -194,6 +194,56 @@ public sealed class SupplyFlowTests
         after.GetProperty("paper").GetProperty("A4").GetProperty("counted").GetBoolean().Should().BeTrue();
     }
 
+    // T-263: found on the development stack - the task of a kiosk whose device had been taken
+    // away ten hours before was still waiting for its operator. The five-minute sweep only
+    // visited kiosks that are served, and the branch that ends a kiosk's alerts is for the
+    // ones that are not.
+    [DockerFact]
+    public async Task A_kiosk_that_loses_its_device_has_its_alert_and_its_unstarted_task_ended_by_the_sweep()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var gone = await ReadyKioskAsync(_fixture, "supply-gone");
+        using var started = await ReadyKioskAsync(_fixture, "supply-gone-started");
+        var (operatorAccount, operatorClient) = await OperatorAsync(KioskScope.Only(gone.KioskId, started.KioskId));
+        using var _client = operatorClient;
+        await using var _others = await OnlyTheseOperatorsAsync(operatorAccount.Id);
+
+        foreach (var kiosk in new[] { gone, started })
+        {
+            (await RefillAsync(admin, kiosk.KioskId, "Exact", 20)).StatusCode.Should().Be(HttpStatusCode.OK);
+            await EventuallyAsync(() => ActiveAlertsAsync(kiosk.KioskId), alerts => alerts.Count == 1, "the Critical alert");
+        }
+
+        var waiting = (await ActiveAlertsAsync(gone.KioskId))[0].ServiceTaskId!.Value;
+        var underWay = (await ActiveAlertsAsync(started.KioskId))[0].ServiceTaskId!.Value;
+        (await operatorClient.PostAsync($"/api/admin/service-tasks/{underWay}/start", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Both kiosks lose their devices: no supply movement will ever come from them again.
+        foreach (var kiosk in new[] { gone, started })
+        {
+            var revoke = await admin.PostAsJsonAsync($"/api/admin/devices/{kiosk.DeviceId}/revoke", new { reason = "Taken away" });
+            revoke.IsSuccessStatusCode.Should().BeTrue(await revoke.Content.ReadAsStringAsync());
+        }
+
+        // The five-minute sweep.
+        await SendAsync(new EvaluateAllSuppliesCommand());
+
+        (await ActiveAlertsAsync(gone.KioskId)).Should().BeEmpty("a kiosk without a device has nothing to refill");
+        (await ActiveAlertsAsync(started.KioskId)).Should().BeEmpty();
+
+        var ended = await TaskAsync(waiting);
+        ended.Status.Should().Be(ServiceTaskStatus.Cancelled, "nobody had started it, and there is nothing left to do");
+        NeoPrint.Application.Localization.Messages.WriteStored(ended.CancelReason, "az").Should().Contain("cihaz", "it says why - and not that the level recovered");
+
+        (await TaskAsync(underWay)).Status.Should().Be(ServiceTaskStatus.InProgress, "one an operator is at stays theirs to finish");
+
+        // Looking again changes nothing.
+        await SendAsync(new EvaluateAllSuppliesCommand());
+        (await TaskAsync(waiting)).Status.Should().Be(ServiceTaskStatus.Cancelled);
+    }
+
     // T-260: the kiosk has no operator. The task waits in the pool, and those who hand tasks out are told.
     [DockerFact]
     public async Task A_task_the_system_can_give_to_nobody_waits_in_the_pool_and_those_who_hand_tasks_out_are_told()

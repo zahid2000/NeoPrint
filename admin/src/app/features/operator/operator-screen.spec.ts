@@ -178,6 +178,26 @@ describe('operatorScreen', () => {
     expect(screen.offline(), 'back to the present').toBe(false);
   });
 
+  it('hears the device say it has no network at once, and asks again when it has one', async () => {
+    const screen = open();
+    void screen.reload();
+    backend.expectOne('/api/things').flush(['one']);
+    await settle();
+
+    window.dispatchEvent(new Event('offline'));
+
+    expect(screen.offline(), 'without waiting for a request to fail').toBe(true);
+    expect(screen.canAct()).toBe(false);
+    expect(screen.data()).toEqual(['one']);
+
+    window.dispatchEvent(new Event('online'));
+    backend.expectOne('/api/things').flush(['two']);
+    await settle();
+
+    expect(screen.offline()).toBe(false);
+    expect(screen.data()).toEqual(['two']);
+  });
+
   it('never shows one account what was kept for another', async () => {
     const first = open();
     void first.reload();

@@ -733,6 +733,7 @@
   "serviceTasks.priorityUnknown": "There is no such priority.",
   "serviceTasks.quantityWithoutItem": "A quantity needs the warehouse item it is a quantity of.",
   "serviceTasks.reason.autoAssigned": "The system gave the task to the kiosk's operator.",
+  "serviceTasks.reason.kioskOutOfService": "The kiosk has no device any more, or was switched off; the task is no longer needed.",
   "serviceTasks.reason.levelRecovered": "The level is back above its threshold; the task is no longer needed.",
   "serviceTasks.reasonRequired": "A reason for cancelling is required.",
   "serviceTasks.statusUnknown": "There is no such task status.",
