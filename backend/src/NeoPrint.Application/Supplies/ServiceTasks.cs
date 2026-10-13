@@ -48,6 +48,13 @@ public sealed record AssignServiceTaskCommand(Guid AdminUserId, Guid TaskId, Gui
 public sealed record StartServiceTaskCommand(Guid AdminUserId, Guid TaskId) : IRequest<ServiceTaskView>, ITransactionalRequest;
 
 /// <summary>
+/// "Qəbul et" (plan section 8B, "Tapşırıqlarım"): an operator takes a task out
+/// of the pool for themselves, without starting it yet. Taking one's own task
+/// again changes nothing; one that is somebody else's is refused.
+/// </summary>
+public sealed record AcceptServiceTaskCommand(Guid AdminUserId, Guid TaskId, string? Ip) : IRequest<ServiceTaskView>, ITransactionalRequest;
+
+/// <summary>
 /// "Tamamla": what was done. A paper refill moves the kiosk's counter; what
 /// was taken from the warehouse leaves its count (plan section 9.9, step 5).
 /// </summary>
@@ -79,6 +86,7 @@ public sealed record CancelServiceTaskCommand(Guid AdminUserId, Guid TaskId, str
 public sealed record EscalateOverdueServiceTasksCommand : IRequest<int>;
 
 public sealed class ServiceTaskHandlers :
+    IRequestHandler<AcceptServiceTaskCommand, ServiceTaskView>,
     IRequestHandler<ListServiceTasksQuery, ServiceTaskPage>,
     IRequestHandler<GetServiceTaskQuery, ServiceTaskView>,
     IRequestHandler<CreateServiceTaskCommand, ServiceTaskView>,
@@ -313,6 +321,34 @@ public sealed class ServiceTaskHandlers :
         await _tasks.UpdateAsync(task, cancellationToken).ConfigureAwait(false);
         await AuditAsync(request.AdminUserId, "serviceTasks.assign", task, before?.ToString(), request.Ip, cancellationToken).ConfigureAwait(false);
         await _desk.AnnounceAsync(task, kiosk, assigned: task.AssignedTo is not null, cancellationToken).ConfigureAwait(false);
+
+        return await ViewAsync(task, kiosk, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc cref="AcceptServiceTaskCommand" />
+    public async Task<ServiceTaskView> Handle(AcceptServiceTaskCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var (task, kiosk) = await VisibleAsync(request.AdminUserId, request.TaskId, cancellationToken).ConfigureAwait(false);
+
+        if (task.AssignedTo == request.AdminUserId)
+        {
+            return await ViewAsync(task, kiosk, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (task.AssignedTo is not null)
+        {
+            throw new DomainException("serviceTasks.notYours");
+        }
+
+        task.Assign(request.AdminUserId, Admin(request.AdminUserId), _clock.UtcNow);
+
+        await _tasks.UpdateAsync(task, cancellationToken).ConfigureAwait(false);
+        await AuditAsync(request.AdminUserId, "serviceTasks.accept", task, before: null, request.Ip, cancellationToken).ConfigureAwait(false);
+
+        // To the panels only: nobody needs an e-mail about what they have just done themselves.
+        await _desk.AnnounceAsync(task, kiosk, assigned: false, cancellationToken).ConfigureAwait(false);
 
         return await ViewAsync(task, kiosk, cancellationToken).ConfigureAwait(false);
     }

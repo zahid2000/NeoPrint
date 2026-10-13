@@ -134,6 +134,12 @@ public sealed class AdminServiceTasksController : ControllerBase
     public async Task<ActionResult<ServiceTaskView>> Assign(Guid id, [FromBody] AssignServiceTaskRequest? request, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new AssignServiceTaskCommand(AdminId, id, request?.AssignTo, _currentUser.Ip), cancellationToken));
 
+    /// <summary>"Qəbul et": a task in the pool becomes the caller's, not started yet.</summary>
+    [HttpPost("{id:guid}/accept")]
+    [HasPermission(Permissions.ServiceTasksComplete)]
+    public async Task<ActionResult<ServiceTaskView>> Accept(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new AcceptServiceTaskCommand(AdminId, id, _currentUser.Ip), cancellationToken));
+
     /// <summary>"Başla". A task in the pool becomes the caller's.</summary>
     [HttpPost("{id:guid}/start")]
     [HasPermission(Permissions.ServiceTasksComplete)]
@@ -223,6 +229,25 @@ public sealed class AdminInventoryController : ControllerBase
         CancellationToken cancellationToken = default)
         => Ok(await _sender.Send(new ListInventoryMovementsQuery(itemId, kioskId, page, pageSize), cancellationToken));
 
+    /// <summary>
+    /// "Özümə götürürəm" (plan section 8B, "Anbar"): an operator writes down
+    /// what they took from the shelf. Always in the caller's own name, and
+    /// never more than the shelf holds - which is why it takes the operator
+    /// panel's permission and not the warehouse keeper's.
+    /// </summary>
+    [HttpPost("items/{id:guid}/take")]
+    [HasPermission(Permissions.OperatorPanel)]
+    [Idempotent]
+    public async Task<ActionResult<InventoryItemView>> Take(Guid id, [FromBody] TakeInventoryRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return Ok(await _sender.Send(
+            new RecordInventoryMovementCommand(
+                AdminId, id, nameof(Domain.Supplies.InventoryMovementType.IssueToOperator), request.Quantity, null, request.Note, _currentUser.Ip),
+            cancellationToken));
+    }
+
     /// <summary>A purchase, a hand-out, a write-off or a recount. Never below zero.</summary>
     [HttpPost("movements")]
     [HasPermission(Permissions.InventoryManage)]
@@ -238,3 +263,5 @@ public sealed class AdminInventoryController : ControllerBase
 }
 
 public sealed record InventoryMovementRequest(Guid ItemId, string Type, decimal Quantity, Guid? KioskId, string? Note);
+
+public sealed record TakeInventoryRequest(decimal Quantity, string? Note);

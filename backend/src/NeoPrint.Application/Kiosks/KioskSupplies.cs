@@ -25,7 +25,22 @@ public interface ISupplyEventRepository
 /// capacity, or the tray counted. The operator panel's own screen is plan
 /// step 7; this is the admin panel's.
 /// </summary>
-public sealed record RefillKioskPaperCommand(Guid AdminUserId, Guid KioskId, string Paper, PaperRefillMode Mode, int Sheets)
+/// <param name="InventoryItemId">The warehouse item the paper came from - a ream, usually; its count goes down with the refill.</param>
+/// <param name="Quantity">How many units of it; one when left out.</param>
+public sealed record RefillKioskPaperCommand(
+    Guid AdminUserId, Guid KioskId, string Paper, PaperRefillMode Mode, int Sheets, Guid? InventoryItemId = null, decimal? Quantity = null)
+    : IRequest<KioskSuppliesView>, ITransactionalRequest;
+
+/// <summary>
+/// "Toner dəyişdirildi" (plan section 8B): a cartridge, a drum or a waste
+/// container was changed at the kiosk, outside any task. Written next to the
+/// paper movements; the level itself is the printer's to report, and the alert
+/// clears when it does.
+/// </summary>
+/// <param name="Resource"><c>Toner</c>, <c>Drum</c>, <c>WasteToner</c> or <c>Other</c>.</param>
+/// <param name="Variant">Which one, as the printer names it ("Black Cartridge"); null when there is only one.</param>
+public sealed record RecordSupplyReplacedCommand(
+    Guid AdminUserId, Guid KioskId, string Resource, string? Variant, Guid? InventoryItemId, decimal? Quantity, string? Note, string? Ip)
     : IRequest<KioskSuppliesView>, ITransactionalRequest;
 
 /// <summary>The supplies tab of the kiosk detail (plan section 8A.3, "Sərf").</summary>
@@ -66,12 +81,54 @@ public sealed class RefillKioskPaperValidator : IValidator<RefillKioskPaperComma
         {
             yield return new ValidationError("sheets", "kiosks.paperSheetsInvalid");
         }
+
+        if (request.Quantity is <= 0 || (request.Quantity is not null && request.InventoryItemId is null))
+        {
+            yield return new ValidationError("quantity", "inventory.quantityInvalid");
+        }
+    }
+}
+
+/// <inheritdoc cref="RecordSupplyReplacedCommand" />
+public sealed class RecordSupplyReplacedValidator : IValidator<RecordSupplyReplacedCommand>
+{
+    public const int MaxVariantLength = 100;
+
+    public const int MaxNoteLength = 500;
+
+    public IEnumerable<ValidationError> Validate(RecordSupplyReplacedCommand request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        // Paper is filled, not replaced: it has its own command and its own counter.
+        if (!Enum.TryParse<Domain.Supplies.SupplyResource>(request.Resource, ignoreCase: false, out var resource)
+            || !Enum.IsDefined(resource)
+            || resource is Domain.Supplies.SupplyResource.PaperA4 or Domain.Supplies.SupplyResource.PaperA3)
+        {
+            yield return new ValidationError("resource", "kiosks.supplyNotReplaceable");
+        }
+
+        if (request.Variant is { Length: > MaxVariantLength })
+        {
+            yield return new ValidationError("variant", "kiosks.supplyNotReplaceable");
+        }
+
+        if (request.Quantity is <= 0 || (request.Quantity is not null && request.InventoryItemId is null))
+        {
+            yield return new ValidationError("quantity", "inventory.quantityInvalid");
+        }
+
+        if (request.Note is { Length: > MaxNoteLength })
+        {
+            yield return new ValidationError("note", UserMessage.Of("serviceTasks.noteTooLong", ("max", MaxNoteLength)));
+        }
     }
 }
 
 /// <summary>Paper refills and the supplies tab.</summary>
 public sealed class KioskSupplyHandlers :
     IRequestHandler<RefillKioskPaperCommand, KioskSuppliesView>,
+    IRequestHandler<RecordSupplyReplacedCommand, KioskSuppliesView>,
     IRequestHandler<GetKioskSuppliesQuery, KioskSuppliesView>
 {
     private readonly IPermissionResolver _permissions;
@@ -80,6 +137,7 @@ public sealed class KioskSupplyHandlers :
     private readonly IKioskNotifier _kiosk;
     private readonly Supplies.SupplyOutlook _outlook;
     private readonly Supplies.ISupplyAlertRepository _alerts;
+    private readonly Supplies.IInventoryRepository _inventory;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
 
@@ -90,9 +148,11 @@ public sealed class KioskSupplyHandlers :
         IKioskNotifier kiosk,
         Supplies.SupplyOutlook outlook,
         Supplies.ISupplyAlertRepository alerts,
+        Supplies.IInventoryRepository inventory,
         IAuditWriter audit,
         IClock clock)
     {
+        _inventory = inventory;
         _permissions = permissions;
         _kiosks = kiosks;
         _supplies = supplies;
@@ -113,6 +173,7 @@ public sealed class KioskSupplyHandlers :
 
         await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
         await _supplies.AddAsync(movement, cancellationToken).ConfigureAwait(false);
+        await UseFromWarehouseAsync(request.InventoryItemId, request.Quantity, request.AdminUserId, kiosk.Id, note: null, cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(
                 new AuditEntry(
@@ -131,6 +192,61 @@ public sealed class KioskSupplyHandlers :
         await _kiosk.KioskConfigChangedAsync(kiosk.Id, cancellationToken).ConfigureAwait(false);
 
         return await ViewAsync(kiosk, 50, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc cref="RecordSupplyReplacedCommand" />
+    public async Task<KioskSuppliesView> Handle(RecordSupplyReplacedCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var kiosk = await VisibleKioskAsync(request.AdminUserId, request.KioskId, cancellationToken).ConfigureAwait(false);
+        var variant = string.IsNullOrWhiteSpace(request.Variant) ? null : request.Variant.Trim();
+        var resource = variant is null ? request.Resource : $"{request.Resource}:{variant}";
+        var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+
+        await _supplies
+            .AddAsync(
+                new SupplyEvent
+                {
+                    KioskId = kiosk.Id,
+                    Resource = resource,
+                    Type = SupplyEventType.Replaced,
+                    By = request.AdminUserId,
+                    At = _clock.UtcNow,
+                    DedupKey = $"replaced:{Guid.NewGuid():N}",
+                },
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        await UseFromWarehouseAsync(request.InventoryItemId, request.Quantity, request.AdminUserId, kiosk.Id, note, cancellationToken).ConfigureAwait(false);
+
+        await _audit
+            .WriteAsync(
+                new AuditEntry(request.AdminUserId, "supplies.replaced", nameof(Kiosk), kiosk.Id.ToString(), null, resource, request.Ip, note),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return await ViewAsync(kiosk, 50, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// What was put into the kiosk leaves the warehouse's count in the same
+    /// transaction (plan section 8B, "anbardan çıxılacaq məhsul"): never below
+    /// nought, and written down with the kiosk it went to.
+    /// </summary>
+    private async Task UseFromWarehouseAsync(
+        Guid? itemId, decimal? quantity, Guid adminUserId, Guid kioskId, string? note, CancellationToken cancellationToken)
+    {
+        if (itemId is not { } id)
+        {
+            return;
+        }
+
+        var item = await _inventory.FindByIdAsync(id, cancellationToken).ConfigureAwait(false) ?? throw new NotFoundException("inventoryItem");
+        var used = item.Move(Domain.Supplies.InventoryMovementType.UsedAtKiosk, quantity ?? 1, adminUserId, _clock.UtcNow, kioskId, taskId: null, note);
+
+        await _inventory.UpdateAsync(item, cancellationToken).ConfigureAwait(false);
+        await _inventory.AddMovementAsync(used, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc cref="GetKioskSuppliesQuery" />

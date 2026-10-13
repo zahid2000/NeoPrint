@@ -179,7 +179,27 @@ public sealed class AdminKiosksController : ControllerBase
         ArgumentNullException.ThrowIfNull(request);
 
         return Ok(await _sender.Send(
-            new RefillKioskPaperCommand(AdminId, id, request.Paper ?? string.Empty, request.Mode, request.Sheets), cancellationToken));
+            new RefillKioskPaperCommand(
+                AdminId, id, request.Paper ?? string.Empty, request.Mode, request.Sheets, request.InventoryItemId, request.Quantity),
+            cancellationToken));
+    }
+
+    /// <summary>
+    /// "Toner dəyişdirildi": a cartridge, a drum or a waste container was changed, outside any task.
+    /// What came from the warehouse leaves its count.
+    /// </summary>
+    [HttpPost("{id:guid}/supplies/replaced")]
+    [HasPermission(Permissions.PaperRefill)]
+    [Idempotent]
+    public async Task<ActionResult<KioskSuppliesView>> SupplyReplaced(
+        Guid id, [FromBody] SupplyReplacedRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return Ok(await _sender.Send(
+            new RecordSupplyReplacedCommand(
+                AdminId, id, request.Resource ?? string.Empty, request.Variant, request.InventoryItemId, request.Quantity, request.Note, _currentUser.Ip),
+            cancellationToken));
     }
 
     /// <summary>The kiosk's current state as it last reported it (plan section 7.9).</summary>
@@ -276,4 +296,8 @@ public sealed record KioskPaperCapacityRequest(int A4, int A3);
 public sealed record KioskAdminPinRequest(string? Pin);
 
 /// <param name="Mode">Add (sheets put in), Full (to capacity) or Exact (counted).</param>
-public sealed record PaperRefillRequest(string? Paper, Domain.Kiosks.PaperRefillMode Mode, int Sheets);
+/// <param name="InventoryItemId">The warehouse item the paper came from; its count goes down by <paramref name="Quantity"/> (one when left out).</param>
+public sealed record PaperRefillRequest(
+    string? Paper, Domain.Kiosks.PaperRefillMode Mode, int Sheets, Guid? InventoryItemId = null, decimal? Quantity = null);
+
+public sealed record SupplyReplacedRequest(string? Resource, string? Variant, Guid? InventoryItemId, decimal? Quantity, string? Note);

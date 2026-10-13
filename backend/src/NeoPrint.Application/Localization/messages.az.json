@@ -240,6 +240,7 @@
   "kiosks.status.offline": "kiosk ilə əlaqə yoxdur",
   "kiosks.status.online": "kiosk işləyir",
   "kiosks.status.paused": "kiosk müvəqqəti dayandırılıb",
+  "kiosks.supplyNotReplaceable": "Bu sərf materialı \"dəyişdirildi\" kimi qeyd oluna bilməz. Toner, baraban, tullantı toner qabı və ya başqa material seçin; kağız üçün \"Kağız doldur\" işlədin.",
   "legal.contentRequired": "Sənədin məzmunu tələb olunur.",
   "legal.versionPublished": "Bu sənədin '{version}' versiyası bu dildə artıq dərc olunub. Yeni versiya nömrəsi verin.",
   "legal.versionRequired": "Versiya tələb olunur.",

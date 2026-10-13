@@ -240,6 +240,7 @@
   "kiosks.status.offline": "the kiosk cannot be reached",
   "kiosks.status.online": "the kiosk is working",
   "kiosks.status.paused": "the kiosk is paused for now",
+  "kiosks.supplyNotReplaceable": "This supply cannot be recorded as replaced. Choose toner, a drum, a waste toner container or another supply; for paper use \"Refill paper\".",
   "legal.contentRequired": "The document text is required.",
   "legal.versionPublished": "Version '{version}' of this document is already published in this language. Give a new version number.",
   "legal.versionRequired": "The version is required.",

@@ -39,6 +39,7 @@ public sealed class SupplyFlowTests
     [
         Permissions.KiosksView, Permissions.SuppliesView, Permissions.PaperRefill,
         Permissions.ServiceTasksView, Permissions.ServiceTasksComplete, Permissions.InventoryView,
+        Permissions.OperatorPanel, Permissions.PrintersView, Permissions.JobsView, Permissions.IncidentsView,
     ];
 
     private readonly NeoPrintApiFixture _fixture;
@@ -590,6 +591,190 @@ public sealed class SupplyFlowTests
     // The warehouse
     // -----------------------------------------------------------------------
 
+    // -----------------------------------------------------------------------
+    // The operator panel (plan section 8B, T-211)
+    // -----------------------------------------------------------------------
+
+    [DockerFact]
+    public async Task An_operator_sees_a_card_for_each_of_their_kiosks_the_ones_that_need_somebody_first()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var fine = await ReadyKioskAsync(_fixture, "operator-fine");
+        using var low = await ReadyKioskAsync(_fixture, "operator-low");
+        using var fresh = await TestKiosks.ActivatedAsync(_fixture, $"operator-new-{Guid.NewGuid():N}"[..22]);
+        using var theirs = await ReadyKioskAsync(_fixture, "operator-theirs");
+        var (operatorAccount, operatorClient) = await OperatorAsync(KioskScope.Only(fine.KioskId, low.KioskId, fresh.KioskId));
+        using var _client = operatorClient;
+        await using var _others = await OnlyTheseOperatorsAsync(operatorAccount.Id);
+
+        // The kiosk that needs nothing has both its trays counted: an A3 tray nobody has counted asks for its counter too.
+        (await SendAsync(admin, HttpMethod.Post, $"/api/admin/kiosks/{fine.KioskId}/paper/refill", new { paper = "A3", mode = "Full", sheets = 0 }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // One kiosk is nearly out of paper: a Critical alert and a task for its operator.
+        (await RefillAsync(admin, low.KioskId, "Exact", 20)).StatusCode.Should().Be(HttpStatusCode.OK);
+        await EventuallyAsync(() => ActiveAlertsAsync(low.KioskId), alerts => alerts.Count == 1, "the alert of the kiosk that is low");
+
+        var cards = (await operatorClient.GetFromJsonAsync<JsonElement>("/api/admin/operator/kiosks")).EnumerateArray().ToList();
+
+        cards.Select(card => card.GetProperty("id").GetGuid())
+            .Should().BeEquivalentTo([fine.KioskId, low.KioskId, fresh.KioskId], "the kiosks in the account's scope and no other");
+        var order = string.Join(", ", cards.Select(card => $"{card.GetProperty("status").GetString()}:{card.GetProperty("attention").GetInt32()}:{card.GetProperty("openIncidents").GetInt32()}:{card.GetProperty("openTasks").GetInt32()}"));
+        cards[0].GetProperty("id").GetGuid().Should().Be(low.KioskId, "the one with a Critical alert is first ({0})", order);
+        cards[^1].GetProperty("id").GetGuid().Should().Be(fine.KioskId, "the one that needs nothing is last ({0}; fine={1})", order, fine.KioskCode + "/" + string.Join(",", cards.Select(card => card.GetProperty("code").GetString())));
+
+        var lowCard = cards[0];
+        lowCard.GetProperty("alerts").EnumerateArray().Should().ContainSingle()
+            .Which.GetProperty("level").GetString().Should().Be("Critical");
+        lowCard.GetProperty("openTasks").GetInt32().Should().Be(1);
+        lowCard.GetProperty("paper").GetProperty("A4").GetProperty("current").GetInt32().Should().Be(20);
+        lowCard.GetProperty("attention").GetInt32().Should().BeGreaterThan(cards[1].GetProperty("attention").GetInt32());
+
+        // The newly installed one asks for its counter, without an alert (T-258).
+        var freshCard = cards.Single(card => card.GetProperty("id").GetGuid() == fresh.KioskId);
+        freshCard.GetProperty("paper").GetProperty("A4").GetProperty("counted").GetBoolean().Should().BeFalse();
+        freshCard.GetProperty("alerts").EnumerateArray().Should().BeEmpty();
+        freshCard.GetProperty("attention").GetInt32().Should().BeGreaterThan(0);
+
+        cards[^1].GetProperty("attention").GetInt32().Should().Be(0);
+
+        // The short detail: the card, and what is open for the kiosk.
+        var detail = await operatorClient.GetFromJsonAsync<JsonElement>($"/api/admin/operator/kiosks/{low.KioskId}");
+        detail.GetProperty("kiosk").GetProperty("code").GetString().Should().Be(low.KioskCode);
+        detail.GetProperty("tasks").EnumerateArray().Should().ContainSingle()
+            .Which.GetProperty("assignedTo").GetGuid().Should().Be(operatorAccount.Id);
+
+        // Another kiosk is not theirs to look at, and the panel is not for an account without its permission.
+        (await operatorClient.GetAsync($"/api/admin/operator/kiosks/{theirs.KioskId}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var (_, plainClient) = await AccountAsync(KioskScope.Everything(), Permissions.KiosksView, Permissions.SuppliesView);
+        using var _plain = plainClient;
+        (await plainClient.GetAsync("/api/admin/operator/kiosks")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [DockerFact]
+    public async Task A_card_leaves_out_what_the_account_may_not_read()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await ReadyKioskAsync(_fixture, "operator-partial");
+        (await RefillAsync(admin, kiosk.KioskId, "Exact", 20)).StatusCode.Should().Be(HttpStatusCode.OK);
+        await EventuallyAsync(() => ActiveAlertsAsync(kiosk.KioskId), alerts => alerts.Count == 1, "the alert");
+
+        // The panel and the kiosks, and nothing else: no supplies, no tasks, no incidents, no orders.
+        var (_, client) = await AccountAsync(KioskScope.Only(kiosk.KioskId), Permissions.OperatorPanel, Permissions.KiosksView);
+        using var _client = client;
+
+        var card = (await client.GetFromJsonAsync<JsonElement>("/api/admin/operator/kiosks")).EnumerateArray().Single();
+
+        card.GetProperty("status").GetString().Should().NotBeNullOrEmpty("the kiosk itself is theirs to see");
+        card.GetProperty("alerts").EnumerateArray().Should().BeEmpty("supplies.view is not theirs");
+        card.GetProperty("paper").EnumerateObject().Should().BeEmpty();
+        card.GetProperty("openTasks").GetInt32().Should().Be(0, "service.tasks.view is not theirs");
+        card.GetProperty("openIncidents").GetInt32().Should().Be(0);
+        card.GetProperty("queueLength").GetInt32().Should().Be(0);
+    }
+
+    [DockerFact]
+    public async Task A_refill_and_a_changed_cartridge_take_what_they_used_from_the_warehouse()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await ReadyKioskAsync(_fixture, "operator-refill");
+        var (operatorAccount, operatorClient) = await OperatorAsync(KioskScope.Only(kiosk.KioskId));
+        using var _client = operatorClient;
+        var reams = await ItemAsync(admin, InventoryItemType.PaperA4Ream, stock: 4, minStock: 0, sheetsPerUnit: 500);
+        var toner = await ItemAsync(admin, InventoryItemType.Toner, stock: 2, minStock: 0);
+
+        (await RefillAsync(admin, kiosk.KioskId, "Exact", 100)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // "Kağız doldur": two reams, both written off the warehouse in the same step.
+        var refill = await SendAsync(operatorClient, HttpMethod.Post, $"/api/admin/kiosks/{kiosk.KioskId}/paper/refill",
+            new { paper = "A4", mode = "Full", sheets = 0, inventoryItemId = reams, quantity = 2 });
+        refill.StatusCode.Should().Be(HttpStatusCode.OK, await refill.Content.ReadAsStringAsync());
+        (await StockAsync(admin, reams)).Should().Be(2);
+
+        // More than the shelf holds: neither the tray nor the shelf moves.
+        (await RefillAsync(admin, kiosk.KioskId, "Exact", 100)).StatusCode.Should().Be(HttpStatusCode.OK);
+        var tooMany = await SendAsync(operatorClient, HttpMethod.Post, $"/api/admin/kiosks/{kiosk.KioskId}/paper/refill",
+            new { paper = "A4", mode = "Full", sheets = 0, inventoryItemId = reams, quantity = 5 });
+        tooMany.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await StockAsync(admin, reams)).Should().Be(2);
+        (await KioskAsync(kiosk.KioskId)).PaperStock["A4"].Current.Should().Be(100, "the refill was one transaction with the warehouse");
+
+        // "Toner dəyişdirildi": written among the kiosk's movements, one cartridge off the shelf.
+        var replaced = await SendAsync(operatorClient, HttpMethod.Post, $"/api/admin/kiosks/{kiosk.KioskId}/supplies/replaced",
+            new { resource = "Toner", variant = "Black Cartridge", inventoryItemId = toner, quantity = 1, note = "Köhnəsi bitmişdi" });
+        replaced.StatusCode.Should().Be(HttpStatusCode.OK, await replaced.Content.ReadAsStringAsync());
+
+        var events = (await replaced.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("events").EnumerateArray().ToList();
+        events[0].GetProperty("type").GetString().Should().Be("Replaced");
+        events[0].GetProperty("resource").GetString().Should().Be("Toner:Black Cartridge");
+        events[0].GetProperty("by").GetGuid().Should().Be(operatorAccount.Id);
+        (await StockAsync(admin, toner)).Should().Be(1);
+        (await AuditActionsAsync(kiosk.KioskId)).Should().Contain("supplies.replaced");
+
+        // Paper is filled, not replaced.
+        (await SendAsync(operatorClient, HttpMethod.Post, $"/api/admin/kiosks/{kiosk.KioskId}/supplies/replaced", new { resource = "PaperA4" }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [DockerFact]
+    public async Task An_operator_takes_a_task_from_the_pool_and_stock_from_the_shelf_in_their_own_name()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await ReadyKioskAsync(_fixture, "operator-accept");
+        var (first, firstClient) = await OperatorAsync(KioskScope.Only(kiosk.KioskId));
+        var (_, secondClient) = await OperatorAsync(KioskScope.Only(kiosk.KioskId));
+        using var _first = firstClient;
+        using var _second = secondClient;
+        await using var _others = await OnlyTheseOperatorsAsync(first.Id);
+
+        // A task put back into the pool by the administrator.
+        var created = await CreateTaskAsync(admin, kiosk.KioskId, "Cleaning");
+        var taskId = created.GetProperty("id").GetGuid();
+        (await SendAsync(admin, HttpMethod.Post, $"/api/admin/service-tasks/{taskId}/assign", new { assignTo = (Guid?)null }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // "Qəbul et": theirs now, and not started yet.
+        var accepted = await firstClient.PostAsync($"/api/admin/service-tasks/{taskId}/accept", null);
+        accepted.StatusCode.Should().Be(HttpStatusCode.OK, await accepted.Content.ReadAsStringAsync());
+        var mine = await accepted.Content.ReadFromJsonAsync<JsonElement>();
+        mine.GetProperty("status").GetString().Should().Be("Assigned");
+        mine.GetProperty("assignedTo").GetGuid().Should().Be(first.Id);
+
+        // Again changes nothing; somebody else's is refused.
+        (await firstClient.PostAsync($"/api/admin/service-tasks/{taskId}/accept", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await secondClient.PostAsync($"/api/admin/service-tasks/{taskId}/accept", null)).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await AuditActionsAsync(taskId)).Should().Contain("serviceTasks.accept");
+
+        // "Özümə götürürəm": three reams off the shelf, in the operator's name.
+        var reams = await ItemAsync(admin, InventoryItemType.PaperA4Ream, stock: 5, minStock: 0, sheetsPerUnit: 500);
+        var taken = await SendAsync(firstClient, HttpMethod.Post, $"/api/admin/inventory/items/{reams}/take", new { quantity = 3, note = "Maşına" });
+        taken.StatusCode.Should().Be(HttpStatusCode.OK, await taken.Content.ReadAsStringAsync());
+        (await StockAsync(admin, reams)).Should().Be(2);
+
+        var movement = (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/inventory/movements?itemId={reams}"))
+            .GetProperty("items").EnumerateArray().First();
+        movement.GetProperty("type").GetString().Should().Be("IssueToOperator");
+        movement.GetProperty("by").GetGuid().Should().Be(first.Id);
+
+        // Not more than there is, and not by an account without the operator panel.
+        (await SendAsync(firstClient, HttpMethod.Post, $"/api/admin/inventory/items/{reams}/take", new { quantity = 3 }))
+            .StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        var (_, plainClient) = await AccountAsync(KioskScope.Everything(), Permissions.InventoryView);
+        using var _plain = plainClient;
+        (await SendAsync(plainClient, HttpMethod.Post, $"/api/admin/inventory/items/{reams}/take", new { quantity = 1 }))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     [DockerFact]
     public async Task The_warehouse_counts_by_movements_refuses_what_it_does_not_have_and_says_when_it_runs_low()
     {
@@ -772,6 +957,11 @@ public sealed class SupplyFlowTests
             .Find(alert => alert.KioskId == kioskId && alert.Active).ToListAsync();
     }
 
+    private static async Task<decimal> StockAsync(HttpClient admin, Guid itemId)
+        => (await admin.GetFromJsonAsync<JsonElement>("/api/admin/inventory/items?includeInactive=true")).EnumerateArray()
+            .Single(row => row.GetProperty("id").GetGuid() == itemId)
+            .GetProperty("stock").GetDecimal();
+
     private async Task<List<ServiceTask>> TasksOfAsync(Guid kioskId)
     {
         using var scope = _fixture.Services.CreateScope();
@@ -817,14 +1007,18 @@ public sealed class SupplyFlowTests
     private static string Token(HttpClient client) => client.DefaultRequestHeaders.Authorization!.Parameter!;
 
     /// <summary>An operator: an account that sees these kiosks, finishes tasks and does not hand them out - signed in.</summary>
-    private async Task<(AdminUser Account, HttpClient Client)> OperatorAsync(KioskScope kioskScope)
+    private Task<(AdminUser Account, HttpClient Client)> OperatorAsync(KioskScope kioskScope)
+        => AccountAsync(kioskScope, OperatorPermissions);
+
+    /// <summary>An account with one new role of exactly these permissions and this kiosk scope, signed in.</summary>
+    private async Task<(AdminUser Account, HttpClient Client)> AccountAsync(KioskScope kioskScope, params string[] permissions)
     {
         using var superAdmin = await TestKiosks.SuperAdminAsync(_fixture);
         var role = await superAdmin.PostAsJsonAsync("/api/admin/roles", new
         {
             name = $"Supply operator {Guid.NewGuid():N}",
             description = "Created by the integration tests.",
-            permissions = OperatorPermissions,
+            permissions,
         });
         role.StatusCode.Should().Be(HttpStatusCode.OK, await role.Content.ReadAsStringAsync());
 
