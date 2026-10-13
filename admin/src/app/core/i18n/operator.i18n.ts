@@ -90,7 +90,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.refill.item': 'Anbardan çıxılacaq məhsul',
     'operator.refill.itemNone': 'Anbardan çıxma',
     'operator.refill.quantity': 'Neçə {{unit}}',
-    'operator.refill.itemStock': '{{name}} — anbarda {{stock}} {{unit}}',
+    'operator.refill.itemStock': 'Anbarda: {{stock}} {{unit}}',
     'operator.refill.save': 'Qeyd et',
     'operator.refill.invalid': 'Bu say lotoka sığmır: tutum {{capacity}}, hazırda {{current}} vərəq.',
 
@@ -258,7 +258,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.refill.item': 'Taken from the warehouse',
     'operator.refill.itemNone': 'Nothing from the warehouse',
     'operator.refill.quantity': 'How many ({{unit}})',
-    'operator.refill.itemStock': '{{name}} — {{stock}} {{unit}} in the warehouse',
+    'operator.refill.itemStock': 'In the warehouse: {{stock}} {{unit}}',
     'operator.refill.save': 'Record',
     'operator.refill.invalid': 'This count does not fit the tray: capacity {{capacity}}, now {{current}} sheets.',
 
@@ -426,7 +426,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.refill.item': 'Списать со склада',
     'operator.refill.itemNone': 'Со склада не списывать',
     'operator.refill.quantity': 'Сколько ({{unit}})',
-    'operator.refill.itemStock': '{{name}} — на складе {{stock}} {{unit}}',
+    'operator.refill.itemStock': 'На складе: {{stock}} {{unit}}',
     'operator.refill.save': 'Записать',
     'operator.refill.invalid': 'Столько не поместится в лоток: ёмкость {{capacity}}, сейчас {{current}} листов.',
 

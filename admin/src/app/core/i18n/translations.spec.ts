@@ -55,6 +55,7 @@ describe('translations', () => {
   const sameInEveryLanguage = new Set([
     'NeoPrint',
     'NeoPrint admin',
+    'NeoPrint operator',
     'Email',
     'PDF',
     'QR',
@@ -68,6 +69,7 @@ describe('translations', () => {
     'English',
     'Kiosk',
     'Printer',
+    'Printer:',
     'Toner',
     'Status',
     'Region',

@@ -50,9 +50,38 @@ describe('RefillDialogComponent', () => {
   it('offers only trays that have a capacity, and a ream of the size by default', () => {
     const { dialog } = open({ code: 'KSK-0001', paper: trays, items: [item(), item({ id: 'i-a3', type: 'PaperA3Ream' })] });
 
-    expect(dialog.sizes).toEqual(['A3', 'A4']);
-    expect(dialog.paper()).toBe('A3');
+    expect(dialog.sizes, 'A4 first').toEqual(['A4', 'A3']);
+    expect(dialog.paper(), 'the tray nobody has counted needs it most').toBe('A3');
     expect(dialog.itemId(), 'the ream of that size').toBe('i-a3');
+  });
+
+  // Found on the development stack: the dialog opened on A3 because "A3" sorts
+  // before "A4", and "Tam doldur" filled a tray that was already full.
+  it('opens on the tray that needs paper most, and on A4 when both are the same', () => {
+    const fuller = open({
+      code: 'KSK-0001',
+      paper: { A4: { capacity: 500, current: 499, counted: true }, A3: { capacity: 250, current: 250, counted: true } },
+      items: [item()],
+    });
+
+    expect(fuller.dialog.paper()).toBe('A4');
+    expect(fuller.dialog.itemId(), 'and takes an A4 ream for it').toBe('i-a4');
+
+    const emptier = open({
+      code: 'KSK-0001',
+      paper: { A4: { capacity: 500, current: 400, counted: true }, A3: { capacity: 250, current: 10, counted: true } },
+      items: [],
+    });
+
+    expect(emptier.dialog.paper()).toBe('A3');
+
+    const same = open({
+      code: 'KSK-0001',
+      paper: { A4: { capacity: 500, current: 500, counted: true }, A3: { capacity: 250, current: 250, counted: true } },
+      items: [],
+    });
+
+    expect(same.dialog.paper()).toBe('A4');
   });
 
   it('opens on the tray the task or the alert is about', () => {

@@ -106,11 +106,15 @@ export interface ReplacedDialogResult {
           <mat-select [ngModel]="itemId()" (ngModelChange)="itemId.set($event)">
             <mat-option [value]="null">{{ 'operator.refill.itemNone' | translate }}</mat-option>
             @for (item of choices(); track item.id) {
-              <mat-option [value]="item.id">
-                {{ 'operator.refill.itemStock' | translate: { name: item.name, stock: item.stock, unit: item.unit } }}
-              </mat-option>
+              <mat-option [value]="item.id">{{ item.name }}</mat-option>
             }
           </mat-select>
+          <!-- Under the field, where a long name cannot cut it off: how many the shelf holds. -->
+          @if (item(); as chosen) {
+            <mat-hint>
+              {{ 'operator.refill.itemStock' | translate: { stock: chosen.stock, unit: chosen.unit } }}
+            </mat-hint>
+          }
         </mat-form-field>
 
         @if (item(); as chosen) {

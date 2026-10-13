@@ -102,11 +102,15 @@ export interface RefillDialogData {
           <mat-select [ngModel]="itemId()" (ngModelChange)="itemId.set($event)">
             <mat-option [value]="null">{{ 'operator.refill.itemNone' | translate }}</mat-option>
             @for (item of choices(); track item.id) {
-              <mat-option [value]="item.id">
-                {{ 'operator.refill.itemStock' | translate: { name: item.name, stock: item.stock, unit: item.unit } }}
-              </mat-option>
+              <mat-option [value]="item.id">{{ item.name }}</mat-option>
             }
           </mat-select>
+          <!-- Under the field, where a long name cannot cut it off: how many the shelf holds. -->
+          @if (item(); as chosen) {
+            <mat-hint>
+              {{ 'operator.refill.itemStock' | translate: { stock: chosen.stock, unit: chosen.unit } }}
+            </mat-hint>
+          }
         </mat-form-field>
 
         @if (item(); as chosen) {
@@ -148,13 +152,20 @@ export class RefillDialogComponent {
 
   readonly modes: readonly PaperRefillMode[] = ['Add', 'Full', 'Exact'];
 
-  /** Only a tray with a capacity can be filled. */
+  /** Only a tray with a capacity can be filled. A4 first: it is the one nearly every order uses. */
   readonly sizes = Object.keys(this.data.paper)
     .filter((size) => this.data.paper[size].capacity > 0)
-    .sort();
+    .sort((a, b) => b.localeCompare(a));
 
+  /**
+   * The tray the dialog opens on: the one the task or the alert is about -
+   * otherwise the one that needs paper most. A tray nobody has counted comes
+   * before any level; between two equally full ones, A4. (The first version
+   * opened on whichever name sorted first, and a "Tam doldur" pressed without
+   * looking filled a full A3 tray and left the A4 one as it was.)
+   */
   readonly paper = signal(
-    this.data.preferred && this.sizes.includes(this.data.preferred) ? this.data.preferred : (this.sizes[0] ?? 'A4'),
+    this.data.preferred && this.sizes.includes(this.data.preferred) ? this.data.preferred : this.neediest(),
   );
 
   /** A tray nobody has counted is counted first: "what is in it now" (T-258). */
@@ -218,6 +229,17 @@ export class RefillDialogComponent {
       sheets: this.mode() === 'Full' ? 0 : (this.sheets() ?? 0),
       ...(item ? { inventoryItemId: item.id, quantity: this.quantity() ?? 1 } : {}),
     });
+  }
+
+  private neediest(): string {
+    const need = (size: string): number => {
+      const tray = this.data.paper[size];
+
+      return tray.counted === false ? -1 : tray.current / tray.capacity;
+    };
+
+    // The order of `sizes` breaks a tie: sort is stable.
+    return [...this.sizes].sort((a, b) => need(a) - need(b))[0] ?? 'A4';
   }
 
   private defaultItem(): string | null {
