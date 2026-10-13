@@ -1488,8 +1488,12 @@ docker exec neoprint-mongo sh -c 'mongosh --quiet -u "$MONGO_INITDB_ROOT_USERNAM
   --authenticationDatabase admin neoprint --eval "db.getCollection(\"hangfire.jobGraph\").find({ Key: /recurring-job:(supply|service-task|inventory)/ }).forEach(r => print(r.Key, r.Fields.Cron, r.Fields.LastExecution || \"-\"))"'
 ```
 
-**Yeni aktivləşdirilən kioskun sayğacı 0-dır**: ilk qiymətləndirmədə "Kağız A4" üçün `Critical` alert və tapşırıq açılacaq —
-lotoku doldurub sayğacı yazın ("Kağız doldur" və ya `supplies.mjs set <say> <kiosk kodu>`).
+**Yeni aktivləşdirilən kioskun sayğacı "təyin edilməyib" vəziyyətindədir** (T-258): alert və tapşırıq açılmır, panel
+(dashboard, kioskun "Sərf" tabı) "Sayğac təyin edin" göstərir, sifariş isə "kağız çatmır" deyə rədd olunur. Lotoku doldurub
+sayğacı yazın ("Kağız doldur" və ya `supplies.mjs set <say> <kiosk kodu>`) — ilk qeyddən sonra qaydalar adi qaydada işləyir.
+
+**Kioskun operatoru yoxdursa** (tapşırığı icra edə bilən, paylaya bilməyən hesab onun əhatəsində deyil) avtomatik tapşırıq
+hovuzda qalır və `service.tasks.manage` icazəli hesablara Mailpit-də "NeoPrint — tapşırıq təyin edilməyib: …" gəlir (T-260).
 
 ---
 

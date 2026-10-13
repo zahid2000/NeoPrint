@@ -814,7 +814,7 @@ az / en / ru; limitlər 1–2048 MB və 1–10000 səhifə; kod `KSK-0000` forma
 **Detal cavabı:** `id, code, name, status, lat, lng, address, defaultLanguage,
 queueDisplayLimit, maxFileSizeMb { override, default, effective }, maxPages { … },
 pricingProfileId, pricingProfileName` (bağlı və ya default profil)`, fiscalTerminalId,
-paper { A4: { capacity, current, lastRefillAt }, A3: { … } }, hasAdminPin,
+paper { A4: { capacity, current, lastRefillAt, counted }, A3: { … } }, hasAdminPin,
 activeDeviceId, platform, appVersion, selectedPrinter, lastHeartbeatAt,
 configurationChangedAt, createdAt, revision`. **PIN heç vaxt qaytarılmır.**
 
@@ -1515,7 +1515,7 @@ hamısında `EntityType = Kiosk`, `EntityId` = kiosk, `AdminUserId` = əmri gön
 | `kiosks.command.<Növ>.Expired` | `System` | — | `Before` = əmrin `id`-si |
 
 Nəticə açarla yazılır, mətnlə yox — jurnal hər dildə oxunur.
-| `GET /api/admin/kiosks/{id}/supplies?limit=50` | `supplies.view` | "Sərf" tabı: `paper` (ölçü üzrə `capacity`, `current`, `lastRefillAt`) + `events[]` (`resource` `PaperA4`/`PaperA3`, `type` `JobPrinted`/`TestPrint`/`Refill`/`Recount`, `delta`, `before`, `after`, `jobId`, `by`, `at`), ən yenilər əvvəl |
+| `GET /api/admin/kiosks/{id}/supplies?limit=50` | `supplies.view` | "Sərf" tabı: `paper` (ölçü üzrə `capacity`, `current`, `lastRefillAt`, `counted` — `false`: sayğac hələ təyin edilməyib, T-258) + `events[]` (`resource` `PaperA4`/`PaperA3`, `type` `JobPrinted`/`TestPrint`/`Refill`/`Recount`, `delta`, `before`, `after`, `jobId`, `by`, `at`), ən yenilər əvvəl |
 | `POST /api/admin/kiosks/{id}/paper/refill` | `paper.refill` | `Idempotency-Key`. `{ "paper": "A4", "mode": "Add" \| "Full" \| "Exact", "sheets": 200 }` — əlavə edilən vərəq / tutuma qədər (sheets nəzərə alınmır) / sayılmış dəqiq say. Tutumdan çox → `409 kiosks.paperRefillInvalid`; lotok tutumu 0 → `409 kiosks.paperNoTray`. `supply_events` + audit (`paper.refill`); kioska `KioskConfigChanged`. Cavab: "Sərf" tabının özü |
 
 Kağız sayğacı (plan 2.15): job `Completed` və ya `Interrupted` olanda onun `printedSheets`-i (sifarişin `requiredSheets`-i ilə məhdud) kioskun həmin kağız ölçüsü sayğacından çıxılır — status hesabatı ilə **eyni tranzaksiyada**, bir dəfə (təkrar hesabat heç nə dəyişmir). Test səhifəsi də A4-dən çıxılır (`TestPrint`). Sayğac 0-dan aşağı düşmür.
@@ -2017,6 +2017,12 @@ seçilmiş printerin son telemetriyası (24 saatdan köhnə oxunuş nəzərə al
 `forecasts[]` (`{ resource, variant, unit, current, perDay, runsOutAt }` — son 14 günün çəkili ortası; `runsOutAt` sərf yoxdursa
 və ya bir ildən uzaqdırsa `null`), `alerts[]` (aktiv alert-lər). `events[]`-də yeni növ: `Replaced` (`resource` = `Toner:<ad>`).
 
+**Təyin edilməmiş sayğac (T-258).** Kiosk tutumla və 0 sayla yaranır; bu 0-ı heç kim saymayıb. İlk doldurma / sayma qeyd
+olunana qədər `paper.{ölçü}.counted = false` (kiosk siyahısında `paperA4Counted = false`): belə lotok üçün alert və tapşırıq
+açılmır, proqnoz verilmir, panel "Sayğac təyin edin" göstərir. İstənilən rejimdə (`Add` / `Full` / `Exact`, `Exact 0` daxil) bir
+doldurma sayğacı həmişəlik təyin edir. Sifariş qaydası dəyişməyib: `Paper.BlockWhenInsufficient` açıqdırsa 0 vərəqli lotok
+üçün sifariş `409 printJobs.notEnoughPaper` alır.
+
 ### Servis tapşırıqları
 
 | Endpoint | İcazə | Qeyd |
@@ -2034,7 +2040,8 @@ və ya bir ildən uzaqdırsa `null`), `alerts[]` (aktiv alert-lər). `events[]`-
 olanda prioritet `Critical`-a qalxır; proqnoz `Service.ForecastLeadHours` (24) içində bitmə göstərirsə hədd keçilməsə də
 açılır (`source = Forecast`). Kiosk və material üzrə bitməmiş avtomatik tapşırıq **bir dənədir**. **Təyinat:** kioskun
 əhatəsindəki, `service.tasks.complete` icazəsi olan və `service.tasks.manage` icazəsi **olmayan** aktiv hesablardan ən az
-aktiv tapşırığı olan; yoxdursa hovuz. **Eskalasiya:** `Critical` tapşırıq `Service.TaskOverdueEscalationMinutes` (60) ərzində
+aktiv tapşırığı olan; yoxdursa hovuz — və sistemin açdığı belə tapşırıq üçün `service.tasks.manage` icazəsi olan, kioskun
+əhatəsindəki hesablara (SuperAdmin daxil) bir dəfə "tapşırıq təyin edilməyib" emaili gedir (T-260). **Eskalasiya:** `Critical` tapşırıq `Service.TaskOverdueEscalationMinutes` (60) ərzində
 başlanmasa `High` incident (`service-task-overdue:{id}`), başlananda / bitəndə / ləğv olunanda özü bağlanır. Səviyyə
 tapşırıqsız bərpa olunsa (məs. admin paneldən doldurma) başlanmamış avtomatik tapşırıq ləğv olunur.
 
