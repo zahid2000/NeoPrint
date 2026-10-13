@@ -1537,6 +1537,43 @@ hovuzda qalır və `service.tasks.manage` icazəli hesablara Mailpit-də "NeoPri
 
 ---
 
+## 7o. Addım 7A — operator paneli (plan 8B; T-211)
+
+`http://localhost:8080/operator` — `dev-operator@neoprint.local` ilə daxil olun (girişdən sonra birbaşa ora düşür; SuperAdmin
+menyudan "Operator paneli" ilə açır). Brauzerdə telefon enində baxmaq üçün DevTools → "Toggle device toolbar".
+
+```bash
+cd admin
+node e2e/pwa.mjs                                  # telefon enində bütün səhifələr, service worker, serverin əlçatmaz olması (22 yoxlama)
+node e2e/pwa.mjs ../docs/screenshots/step-7/m7    # ekran görüntüləri ilə
+node e2e/operator.mjs                             # operatorun əsas işləri interfeysin özündən: doldurma (anbardan 1 bağlama), tapşırıq (Başla → Tamamla), "Özümə götürürəm"
+node scripts/pwa-icons.mjs                        # ana ekran ikonlarını (public/icons) yenidən çəkir — yalnız şəkil dəyişəndə
+```
+
+`pwa.mjs` server əlçatmazlığını `docker stop neoprint-admin` ilə yaradır və sonda konteyneri yenidən başladır (skript yarıda
+kəsilsə: `docker start neoprint-admin`). Brauzerin "Offline" keçidi service worker-in sorğularına təsir etmir.
+
+**Real telefonda quraşdırmaq.** Brauzer service worker-i və "Ana ekrana əlavə et"-i yalnız HTTPS-də və ya `localhost`-da
+işlədir. Dev-də ən sadə yol USB + port yönləndirməsidir — telefonda ünvan `localhost` olur:
+
+```powershell
+adb -s <telefon_id> reverse tcp:8080 tcp:8080
+# telefonda Chrome: http://localhost:8080/operator → menyu → "Ana ekrana əlavə et" / "Tətbiqi quraşdır"
+```
+
+LAN IP-si ilə (`http://192.168.x.x:8080`) panel açılır və işləyir, amma quraşdırıla bilmir və oflayn açılmır — production-da
+bunu domenin HTTPS-i həll edir (`docs/PILOT.md`).
+
+**Service worker və yeni build.** `docker compose up -d --build admin`-dən sonra açıq tab köhnə kodla qalır; yenidən açılan
+panel əvvəlcə yeni build-i yoxlayır və bir dəfə özü yenilənir. İnkişaf rejimində (`ng serve`) service worker söndürülüdür.
+İlişib qalsa: DevTools → Application → Service workers → "Unregister", sonra səhifəni yeniləyin.
+
+**Oflayn davranış.** Açıq panel son yüklənmiş vəziyyəti göstərir, "Əlaqə yoxdur. Göstərilən məlumat HH:mm-dəkidir…" yazır və
+əməliyyat düymələrini söndürür; əlaqə qayıdanda özü yenilənir. Server əlçatmaz ikən tətbiq bağlanıb yenidən açılsa giriş
+səhifəsi görünür (sessiya server olmadan bərpa olunmur — `DECISIONS.md`, 2026-10-13).
+
+---
+
 ## 8. Build, test, lint
 
 ```bash

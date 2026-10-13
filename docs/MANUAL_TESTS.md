@@ -352,3 +352,24 @@ backend skan API-si, real ölçü, mobil ekranların widget testləri (`test/doc
 | 26 | **Referral — "eyni cihaz" (T-195, T-202; plan 2.6).** Şərt: `referral` flag-i açıq. S24-də A hesabı ilə daxil olun, Profil → **Dostunu dəvət et**-dən kodu götürün, **Çıxış** edin. **Eyni telefonda** həmin kodla yeni B hesabı açın (email kodu Mailpit-dən), B ilə pulla ödənilən bir çap edin (kart və ya balans; yalnız bonusla ödənilən sayılmır) | A-ya bonus **yazılmır**, B-yə də yazılmır; Admin → Referral → "Bonus yazılmayıb" tabında sətir, səbəb **"Eyni cihaz"**. A-nın "Dostunu dəvət et" ekranında dəvət sayılır, qazanılan bonus artmır. (Cihaz ID-si çıxışdan sonra da eynidir; tətbiqi silib yenidən quraşdırmaq və ya "Məlumatları sil" yeni ID yaradır — bu, bilinən həddir) | Emulyatorda yoxlanıla bilər — hələ yoxlanmayıb (emulyator bir cihazdır) |
 | 27 | **Əks yoxlama:** A-nın kodu ilə **başqa cihazda** (ikinci telefon, emulyator və ya Chrome) yeni C hesabı açın, pulla ödənilən bir çap edin | A-ya `Referral.InviterBonusPages` qədər bonus yazılır, push / bildiriş "Dəvət bonusu qazandınız", Admin → Referral-da "Mükafatlandırılıb". Yəni №26-dakı imtina cihaza görədir, hesaba görə yox | Emulyatorda yoxlanıla bilər — hələ yoxlanmayıb |
 | 28 | **Hər mobil buraxılışdan əvvəl — skanerin "silinmə qovluğu" (T-196, T-202).** Debug build-də bir səhifə skan edib **Yadda saxla**, sonra daha bir skan açıb skaneri saxlamadan bağlayın; hər birindən sonra `bash tools/dev-mobile/emu.sh cache` | Hər iki halda `cache/` altında şəkil yoxdur: `scan-*.jpg` yoxdur, `mlkit_docscan_ui_client/` boşdur. **Diqqət:** `cache/` altında içində `.jpg` olan **başqa adlı** qovluq görünürsə, Google Play xidmətləri qovluğun adını dəyişib və silmə səssiz boş keçir — buraxılış dayandırılır, `DocumentScanner.kt`-dəki `SCANNER_CACHE` yenilənir (T-196, `DECISIONS.md` 2026-10-11) | **Emulyatorda yoxlandı** (2026-10-11) — T-196; hər mobil buraxılışdan əvvəl təkrarlanır |
+
+---
+
+## MT-09. Addım 7A — operator paneli real telefonda (T-211)
+
+Avtomatik yoxlanan: `admin/e2e/pwa.mjs` (brauzerdə telefon enində, 22 yoxlama), render testi (390 px, az / en / ru), unit
+testlər. Aşağıdakılar yalnız real telefonda görünür.
+
+Hazırlıq: `docker compose up -d`, telefon USB ilə, `adb reverse tcp:8080 tcp:8080` (`DEV_ENVIRONMENT.md` 7o).
+
+| № | Addım | Gözlənilən | Harada |
+|---|---|---|---|
+| 1 | Telefonda Chrome: `http://localhost:8080` → `dev-operator@neoprint.local` ilə giriş | Birbaşa "Mənim kiosklarım" açılır; kartlar bir sütundadır, yana sürüşmə yoxdur | **Yalnız real telefonda** |
+| 2 | Chrome menyusu → "Tətbiqi quraşdır" / "Ana ekrana əlavə et" | Ana ekranda "NeoPrint" ikonu (göy fonda ağ printer); toxunanda brauzer çərçivəsi olmadan `/operator` açılır | **Yalnız real telefonda** |
+| 3 | Bir əllə: kart → "Kağız doldur" → "Tam doldur" → "Qeyd et" | Düymələr baş barmaqla rahat basılır (≥ 48 px); dialoq ekrana sığır, klaviatura açılanda "Qeyd et" görünür qalır | **Yalnız real telefonda** |
+| 4 | "Tapşırıqlar" → "Bildirişləri aç" → icazə ver; kompüterdən `node tools/dev-kiosk/supplies.mjs set 40` + `app-order.mjs` | Telefon iki qısa səs verir və "Yeni tapşırıq: Kağız doldurmaq" bildirişi görünür; alt naviqasiyada say artır | **Yalnız real telefonda** (Android Chrome bildirişi service worker tələb edə bilər — görünməsə qeyd edin) |
+| 5 | Tapşırıq: "Başla" → "Tamamla" → anbardan 1 bağlama → "Qeyd et" | Tapşırıq siyahıdan çıxır; "Anbar"da qalıq 1 azalır; kioskun kartında kağız dolur | Emulyatorda da yoxlanıla bilər |
+| 6 | Telefonu təyyarə rejiminə keçirin (tətbiq açıq) | ≤ 1 dəqiqəyə "Əlaqə yoxdur. Göstərilən məlumat HH:mm-dəkidir…" görünür, düymələr sönür; kartlar oxunur | **Yalnız real telefonda** |
+| 7 | Təyyarə rejimini söndürün | Bildiriş özü itir, məlumat yenilənir, düymələr aktivləşir | **Yalnız real telefonda** |
+| 8 | Dili ru / en edin (hesab menyusu) | Bütün səhifələrdə mətn sığır, kəsilmir; alt naviqasiyanın dörd etiketi bir sətirdədir | Emulyatorda da yoxlanıla bilər |
+| 9 | iOS Safari: №1–3, №6–7 | "Ana ekrana əlavə et" Paylaş menyusundadır; qalanı eyni | **Yalnız real telefonda** (iOS) |

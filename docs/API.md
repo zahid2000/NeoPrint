@@ -2036,6 +2036,10 @@ seçilmiş printerin son telemetriyası (24 saatdan köhnə oxunuş nəzərə al
 `forecasts[]` (`{ resource, variant, unit, current, perDay, runsOutAt }` — son 14 günün çəkili ortası; `runsOutAt` sərf yoxdursa
 və ya bir ildən uzaqdırsa `null`), `alerts[]` (aktiv alert-lər). `events[]`-də yeni növ: `Replaced` (`resource` = `Toner:<ad>`).
 
+**İstismardan çıxan kiosk (T-263).** Cihazı ayrılan və ya söndürülən kioskun aktiv alert-ləri növbəti süpürgədə (5 dəqiqə)
+bağlanır, qaydanın və ya proqnozun açdığı, hələ başlanmamış tapşırıqları `serviceTasks.reason.kioskOutOfService` səbəbi ilə
+ləğv olunur; operatorun başladığı tapşırıq onun özünə qalır.
+
 **Təyin edilməmiş sayğac (T-258).** Kiosk tutumla və 0 sayla yaranır; bu 0-ı heç kim saymayıb. İlk doldurma / sayma qeyd
 olunana qədər `paper.{ölçü}.counted = false` (kiosk siyahısında `paperA4Counted = false`): belə lotok üçün alert və tapşırıq
 açılmır, proqnoz verilmir, panel "Sayğac təyin edin" göstərir. İstənilən rejimdə (`Add` / `Full` / `Exact`, `Exact 0` daxil) bir
@@ -2051,6 +2055,7 @@ doldurma sayğacı həmişəlik təyin edir. Sifariş qaydası dəyişməyib: `P
 | `POST /api/admin/service-tasks` | `service.tasks.manage` | `Idempotency-Key`. `{ kioskId, type, priority?, notes?, dueAt?, assignTo? }` — `assignTo` verilməsə sistem operator seçir |
 | `PUT /api/admin/service-tasks/{id}` | `service.tasks.manage` | `{ priority, notes?, dueAt? }` — yalnız bitməmiş tapşırıq (`409 serviceTasks.notEditable`) |
 | `POST /api/admin/service-tasks/{id}/assign` | `service.tasks.manage` | `{ assignTo }`; `null` — hovuza qaytarır. Hesab kioskun əhatəsində olmalı və `service.tasks.complete` icazəsi olmalıdır (`409 serviceTasks.assigneeCannot`); başlanmış tapşırıq üçün `409 serviceTasks.notAssignable` |
+| `POST /api/admin/service-tasks/{id}/accept` | `service.tasks.complete` | "Qəbul et" (operator paneli): hovuzdakı tapşırıq çağıranın olur, hələ başlanmır (`Open → Assigned`). Öz tapşırığı üçün təkrar çağırış heç nə dəyişmir; başqasınınkı üçün `409 serviceTasks.notYours`; audit `serviceTasks.accept` |
 | `POST /api/admin/service-tasks/{id}/start` | `service.tasks.complete` | "Başla". Hovuzdakı tapşırıq çağıranın olur; başqasının tapşırığı üçün `409 serviceTasks.notYours` |
 | `POST /api/admin/service-tasks/{id}/complete` | `service.tasks.complete` | `Idempotency-Key`. `{ paper?, refillMode?: Add \| Full \| Exact, sheets?, inventoryItemId?, quantity?, note? }`. `RefillPaper` — kioskun sayğacı doldurulur (default `Full`, kağız ölçüsü tapşırıqdan); `ReplaceToner` / `ReplaceDrum` — `supply_events`-ə `Replaced` yazılır; `inventoryItemId` verilibsə anbardan `UsedAtKiosk` hərəkəti ilə çıxılır (çatmırsa `409 inventory.notEnough` və heç nə dəyişmir). Yalnız başlayan operator tamamlayır |
 | `POST /api/admin/service-tasks/{id}/cancel` | `service.tasks.manage` | `{ reason }` — məcburi (`400`); tamamlanmış tapşırıq üçün `409`. Tapşırıq silinmir |
@@ -2073,8 +2078,31 @@ tapşırıqsız bərpa olunsa (məs. admin paneldən doldurma) başlanmamış av
 | `GET /api/admin/inventory/movements?itemId=&kioskId=&page=&pageSize=` | `inventory.view` | Yenilər yuxarıda: `{ id, itemId, itemName, type, quantity (işarəli), stockAfter, kioskId, taskId, by, at, note }` |
 | `POST /api/admin/inventory/movements` | `inventory.manage` | `Idempotency-Key`. `{ itemId, type: Purchase \| IssueToOperator \| UsedAtKiosk \| Adjustment \| WriteOff, quantity, kioskId?, note? }`. `quantity` müsbətdir, yalnız `Adjustment`-də işarəlidir. Qalıq sıfırdan aşağı düşmür (`409 inventory.notEnough`) |
 
+| `POST /api/admin/inventory/items/{id}/take` | `operator.panel` | `Idempotency-Key`. `{ quantity, note? }` — "Özümə götürürəm": `IssueToOperator` hərəkəti **çağıranın öz adına** yazılır, qalıqdan çox götürmək olmur (`409 inventory.notEnough`). Anbardarın icazəsini (`inventory.manage`) tələb etmir, çünki yalnız çağıranın öz götürdüyünü qeyd edir |
+
 `stock < minStock` olanda `High` incident açılır (`inventory-low:{id}`, kioska aid deyil — panel + email), qalıq qayıdanda özü
 bağlanır; hərəkətdən dərhal sonra və saatda bir yoxlanılır.
+
+### Operator paneli (Addım 7A, M7 — plan 8B)
+
+Panelin öz iki sorğusu var — hər biri bütöv ekran üçün bir cavabdır (operator kioskun yanında, telefonla, zəif şəbəkədə
+dayanır); qalan hər şey admin panelin endpoint-ləridir, eyni icazələrlə.
+
+| Endpoint | İcazə | Qeyd |
+|---|---|---|
+| `GET /api/admin/operator/kiosks` | `operator.panel` | Hesabın əhatəsindəki hər kiosk üçün sağlamlıq kartı, diqqət tələb edənlər yuxarıda (`attention` azalan sıra ilə; sonra istismarda olanlar, sonra kod). `{ id, code, name, address, status, safeModeSince, lastHeartbeatAt, printer: { name, online, state, reasons[], lastError, readAt, stale }, paper: { A4: { capacity, current, lastRefillAt, counted } }, levels[], forecasts[], alerts[], queueLength, openIncidents, worstIncident, openTasks, attention }` |
+| `GET /api/admin/operator/kiosks/{id}` | `operator.panel` | `{ kiosk: <kart>, telemetry: <GET …/telemetry cavabı>, incidents[] (açıq), tasks[] (bitməmiş) }`; əhatədən kənar kiosk üçün `404` |
+| `POST /api/admin/kiosks/{id}/paper/refill` | `paper.refill` | Əvvəlki gövdəyə əlavə: `inventoryItemId?`, `quantity?` (default 1) — anbardan çıxılan məhsul; doldurma ilə **eyni tranzaksiyada** `UsedAtKiosk` hərəkəti yazılır, qalıq çatmırsa heç biri baş vermir (`409`) |
+| `POST /api/admin/kiosks/{id}/supplies/replaced` | `paper.refill` | `Idempotency-Key`. "Toner dəyişdirildi" (tapşırıqsız): `{ resource: Toner \| Drum \| WasteToner \| Other, variant?, inventoryItemId?, quantity?, note? }` — `supply_events`-ə `Replaced` (`Toner:<ad>`), anbardan `UsedAtKiosk`; kağız üçün `400 kiosks.supplyNotReplaceable`; audit `supplies.replaced`. Səviyyəni printer özü bildirir — alert o zaman bağlanır |
+
+**Kartın hissələri icazəyə görədir:** hesabın oxuya bilmədiyi hissə rədd olunmur, boş gəlir — `supplies.view` yoxdursa
+`paper`, `levels`, `forecasts`, `alerts` boşdur; `incidents.view` yoxdursa `openIncidents = 0`; `jobs.view` — `queueLength = 0`;
+`service.tasks.view` — `openTasks = 0`; `printers.view` — `printer = null`.
+
+**`attention`** (yalnız sıralama üçün): 100 — oflayn və ya təhlükəsiz rejim; 90 — `Critical` incident; 80 — `Critical`
+alert; 70 — printer cavab vermir / səbəb bildirir; 60 — printer seçilməyib; 50 — `High` incident və ya `Warning` alert;
+40 — sayğac təyin edilməyib; 30 — servisdə / dayandırılıb; 20 — `Medium` incident; 10 — açıq tapşırıq; 0 — heç nə.
+İstismarda olmayan (`NotActivated`, `Disabled`) kiosk həmişə 0-dır.
 
 ### `/hubs/admin` hadisələri
 
