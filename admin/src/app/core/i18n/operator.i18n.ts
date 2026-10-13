@@ -83,7 +83,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.kiosk.pauseExplanation':
       'Kiosk yeni sifariş qəbul etməyəcək və xəritədə "Servisdə" görünəcək. Növbədəki sifarişlər çap olunur.',
 
-    'operator.refill.title': 'Kağız doldur — {{code}}',
+    'operator.refill.title': 'Kağız doldur',
     'operator.refill.paper': 'Kağız ölçüsü',
     'operator.refill.mode': 'Necə qeyd olunsun',
     'operator.refill.sheets': 'Vərəq',
@@ -94,7 +94,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.refill.save': 'Qeyd et',
     'operator.refill.invalid': 'Bu say lotoka sığmır: tutum {{capacity}}, hazırda {{current}} vərəq.',
 
-    'operator.replaced.title': 'Toner dəyişdirildi — {{code}}',
+    'operator.replaced.title': 'Toner dəyişdirildi',
     'operator.replaced.what': 'Nə dəyişdirildi',
     'operator.replaced.which': 'Hansı (printerin yazdığı ad)',
     'operator.replaced.whichHint': 'Məsələn: Black Cartridge. Bir dənədirsə boş saxlayın.',
@@ -113,7 +113,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.tasks.complete': 'Tamamla',
     'operator.tasks.due': 'Son vaxt: {{time}}',
     'operator.tasks.opened': 'Açılıb: {{time}}',
-    'operator.tasks.completeTitle': 'Tapşırığı tamamla — {{code}}',
+    'operator.tasks.completeTitle': 'Tapşırığı tamamla',
     'operator.tasks.note': 'Qeyd',
     'operator.tasks.notifyHint':
       'Yeni tapşırıq, kritik xəbərdarlıq və incident üçün səsli bildiriş almaq istəyirsiniz?',
@@ -251,7 +251,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.kiosk.pauseExplanation':
       'The kiosk will take no new orders and will show as "In service" on the map. Orders already in the queue are printed.',
 
-    'operator.refill.title': 'Refill paper — {{code}}',
+    'operator.refill.title': 'Refill paper',
     'operator.refill.paper': 'Paper size',
     'operator.refill.mode': 'How to record it',
     'operator.refill.sheets': 'Sheets',
@@ -262,7 +262,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.refill.save': 'Record',
     'operator.refill.invalid': 'This count does not fit the tray: capacity {{capacity}}, now {{current}} sheets.',
 
-    'operator.replaced.title': 'Toner replaced — {{code}}',
+    'operator.replaced.title': 'Toner replaced',
     'operator.replaced.what': 'What was replaced',
     'operator.replaced.which': 'Which one (as the printer names it)',
     'operator.replaced.whichHint': 'For example: Black Cartridge. Leave empty when there is only one.',
@@ -281,7 +281,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.tasks.complete': 'Complete',
     'operator.tasks.due': 'Due: {{time}}',
     'operator.tasks.opened': 'Opened: {{time}}',
-    'operator.tasks.completeTitle': 'Complete the task — {{code}}',
+    'operator.tasks.completeTitle': 'Complete the task',
     'operator.tasks.note': 'Note',
     'operator.tasks.notifyHint':
       'Would you like a sound and a notification for a new task, a critical alert and an incident?',
@@ -419,7 +419,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.kiosk.pauseExplanation':
       'Киоск перестанет принимать новые заказы и будет показан на карте как «На обслуживании». Заказы из очереди будут напечатаны.',
 
-    'operator.refill.title': 'Пополнить бумагу — {{code}}',
+    'operator.refill.title': 'Пополнить бумагу',
     'operator.refill.paper': 'Формат бумаги',
     'operator.refill.mode': 'Как записать',
     'operator.refill.sheets': 'Листов',
@@ -430,7 +430,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.refill.save': 'Записать',
     'operator.refill.invalid': 'Столько не поместится в лоток: ёмкость {{capacity}}, сейчас {{current}} листов.',
 
-    'operator.replaced.title': 'Тонер заменён — {{code}}',
+    'operator.replaced.title': 'Тонер заменён',
     'operator.replaced.what': 'Что заменено',
     'operator.replaced.which': 'Какой именно (как называет принтер)',
     'operator.replaced.whichHint': 'Например: Black Cartridge. Если он один, оставьте пустым.',
@@ -449,7 +449,7 @@ export const operatorTranslations: PageTranslations = {
     'operator.tasks.complete': 'Завершить',
     'operator.tasks.due': 'Срок: {{time}}',
     'operator.tasks.opened': 'Открыта: {{time}}',
-    'operator.tasks.completeTitle': 'Завершить задачу — {{code}}',
+    'operator.tasks.completeTitle': 'Завершить задачу',
     'operator.tasks.note': 'Примечание',
     'operator.tasks.notifyHint':
       'Включить звук и уведомление о новой задаче, критическом предупреждении и инциденте?',

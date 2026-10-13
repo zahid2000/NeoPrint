@@ -25,6 +25,9 @@ export interface ReplacedDialogData {
   /** Already in the reader's language. */
   readonly title: string;
 
+  /** The kiosk's code, shown after the title. */
+  readonly code?: string;
+
   /**
    * Whether to ask what was replaced. A task already says it ("Toner
    * dəyişmək"): then only the warehouse item and the note are asked for.
@@ -67,7 +70,8 @@ export interface ReplacedDialogResult {
     TranslatePipe,
   ],
   template: `
-    <h2 mat-dialog-title>{{ data.title }}</h2>
+    <!-- The code is one word: a title that wraps does not break it at its hyphen. On one line, or the title starts with a space. -->
+    <h2 mat-dialog-title>{{ data.title }}{{ data.code ? ' — ' : '' }}<span class="neo-nowrap">{{ data.code }}</span></h2>
 
     <mat-dialog-content class="op-form">
       @if (data.askWhat) {
@@ -92,7 +96,7 @@ export interface ReplacedDialogResult {
             </mat-select>
           </mat-form-field>
         } @else {
-          <mat-form-field>
+          <mat-form-field subscriptSizing="dynamic">
             <mat-label>{{ 'operator.replaced.which' | translate }}</mat-label>
             <input matInput maxlength="100" [ngModel]="variant()" (ngModelChange)="variant.set($event)" />
             <mat-hint>{{ 'operator.replaced.whichHint' | translate }}</mat-hint>
@@ -101,7 +105,7 @@ export interface ReplacedDialogResult {
       }
 
       @if (choices().length > 0) {
-        <mat-form-field>
+        <mat-form-field subscriptSizing="dynamic">
           <mat-label>{{ 'operator.refill.item' | translate }}</mat-label>
           <mat-select [ngModel]="itemId()" (ngModelChange)="itemId.set($event)">
             <mat-option [value]="null">{{ 'operator.refill.itemNone' | translate }}</mat-option>

@@ -48,7 +48,8 @@ export interface RefillDialogData {
     TranslatePipe,
   ],
   template: `
-    <h2 mat-dialog-title>{{ 'operator.refill.title' | translate: { code: data.code } }}</h2>
+    <!-- The code is one word: a title that wraps does not break it at its hyphen. On one line, or the title starts with a space. -->
+    <h2 mat-dialog-title>{{ 'operator.refill.title' | translate }} — <span class="neo-nowrap">{{ data.code }}</span></h2>
 
     <mat-dialog-content class="op-form">
       @if (sizes.length > 1) {
@@ -97,7 +98,7 @@ export interface RefillDialogData {
       }
 
       @if (choices().length > 0) {
-        <mat-form-field>
+        <mat-form-field subscriptSizing="dynamic">
           <mat-label>{{ 'operator.refill.item' | translate }}</mat-label>
           <mat-select [ngModel]="itemId()" (ngModelChange)="itemId.set($event)">
             <mat-option [value]="null">{{ 'operator.refill.itemNone' | translate }}</mat-option>

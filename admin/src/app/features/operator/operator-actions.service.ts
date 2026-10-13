@@ -41,7 +41,8 @@ export class OperatorActionsService {
   /** "Toner dəyişdirildi", outside any task. */
   async replaced(kiosk: OperatorKioskCard): Promise<boolean> {
     const answer = await this.askReplaced({
-      title: this.text('operator.replaced.title', { code: kiosk.code }),
+      title: this.text('operator.replaced.title'),
+      code: kiosk.code,
       askWhat: true,
       levels: kiosk.levels,
       items: await this.items(),
@@ -89,7 +90,8 @@ export class OperatorActionsService {
     }
 
     const answer = await this.askReplaced({
-      title: this.text('operator.tasks.completeTitle', { code: task.kioskCode ?? '' }),
+      title: this.text('operator.tasks.completeTitle'),
+      code: task.kioskCode ?? undefined,
       askWhat: false,
       resource: task.resource ?? (task.type === 'ReplaceDrum' ? 'Drum' : task.type === 'ReplaceToner' ? 'Toner' : 'Other'),
       levels: [],

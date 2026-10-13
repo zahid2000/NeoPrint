@@ -9,7 +9,7 @@
 //   node e2e/operator.mjs ../docs/screenshots/step-7/m7
 //
 // It changes the development data: KSK-9002's A4 tray is filled, one "Cleaning"
-// task is opened and finished, and two units leave the first A4 ream item of
+// task is opened and finished, a toner change is written down, and two units leave the first A4 ream item of
 // the warehouse (one used at the kiosk, one taken by the operator). It needs
 // such an item with at least two in stock (docs/DEV_ENVIRONMENT.md 7n).
 //
@@ -94,6 +94,24 @@ try {
   await page.waitForTimeout(1200);
   const shown = await card.innerText();
   check(shown.includes(`${afterRefill.paper.A4.capacity} / ${afterRefill.paper.A4.capacity}`), 'refill: the card shows the full tray without a reload');
+
+  // --- Toner dəyişdirildi: from the kiosk's own page ----------------------------------------
+  await page.goto(`${base}/operator/kiosks/${kiosk.id}`, { waitUntil: 'networkidle' });
+  await page.locator('.op-actions button', { hasText: 'Toner dəyişdirildi' }).click();
+  await page.locator('mat-dialog-container').waitFor();
+  // The development printer reports no cartridges, so which one is typed in.
+  await page.locator('mat-dialog-container input[maxlength="100"]').fill('Black');
+  await page.locator('mat-dialog-container textarea').fill('M7 yoxlaması.');
+  await shot('12-replaced-dialog');
+  await page.locator('mat-dialog-actions button').last().click();
+  check((await snack()).includes('Qeyd olundu'), 'replaced: the panel says "Qeyd olundu"');
+  await page.locator('mat-dialog-container').waitFor({ state: 'detached' });
+
+  const replaced = (await call('GET', `/api/admin/kiosks/${kiosk.id}/supplies`)).events[0];
+  // The cartridge goes with the resource: "Toner:Black".
+  check(replaced.type === 'Replaced' && replaced.resource === 'Toner:Black', `replaced: written among the kiosk's movements (${replaced.type} ${replaced.resource})`);
+
+  await page.goto(`${base}/operator`, { waitUntil: 'networkidle' });
 
   // --- Tapşırıqlar: Başla → Tamamla ---------------------------------------------------------
   await page.locator('nav a[href="/operator/tasks"]').click();
