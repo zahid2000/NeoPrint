@@ -45,6 +45,14 @@ abstract interface class PushPlatform {
   /// The push that started the app, if one did.
   Future<PushEvent?> launchedBy();
 
+  /// The token this device has now, without asking the user for anything;
+  /// null when it has none or push is not available here.
+  Future<String?> current();
+
+  /// Gives the device's token up: nothing sent to it arrives any more, and
+  /// the next [token] is a new one (T-268).
+  Future<void> forget();
+
   /// `android`, `ios` or `web`.
   String get platform;
 }
@@ -67,6 +75,12 @@ class NoPushPlatform implements PushPlatform {
 
   @override
   Future<PushEvent?> launchedBy() async => null;
+
+  @override
+  Future<String?> current() async => null;
+
+  @override
+  Future<void> forget() async {}
 
   @override
   String get platform => 'none';
@@ -152,6 +166,45 @@ class FirebasePushPlatform implements PushPlatform {
   }
 
   @override
+  Future<String?> current() async {
+    if (!await _start() || (kIsWeb && _vapidKey.isEmpty)) {
+      return null;
+    }
+
+    try {
+      // Not asked for here: a browser that was never allowed to notify has
+      // no token, and signing out is no moment to ask.
+      final settings = await FirebaseMessaging.instance
+          .getNotificationSettings();
+      if (kIsWeb &&
+          settings.authorizationStatus != AuthorizationStatus.authorized) {
+        return null;
+      }
+
+      return await FirebaseMessaging.instance.getToken(
+        vapidKey: kIsWeb ? _vapidKey : null,
+      );
+    } on Object catch (error) {
+      debugPrint('Push token unavailable: $error');
+      return null;
+    }
+  }
+
+  @override
+  Future<void> forget() async {
+    if (!await _start()) {
+      return;
+    }
+
+    try {
+      await FirebaseMessaging.instance.deleteToken();
+    } on Object catch (error) {
+      // Offline, most likely: the server-side removal is the other half.
+      debugPrint('Push token not given up: $error');
+    }
+  }
+
+  @override
   String get platform => kIsWeb
       ? 'web'
       : defaultTargetPlatform == TargetPlatform.iOS
@@ -171,7 +224,8 @@ final pushPlatformProvider = Provider<PushPlatform>(
       : const NoPushPlatform(),
 );
 
-/// `POST` / `DELETE api/users/me/fcm-token` (docs/API.md "Bildirişlər").
+/// `POST api/users/me/fcm-token` (docs/API.md "Bildirişlər"). The token is
+/// taken off the account by the sign-out itself (`POST auth/logout`, T-268).
 class PushDeviceApi {
   PushDeviceApi(this._api);
 
@@ -185,13 +239,6 @@ class PushDeviceApi {
     method: 'POST',
     path: 'api/users/me/fcm-token',
     body: {'token': token, 'language': language, 'platform': platform},
-    parse: (_) {},
-  );
-
-  Future<void> remove(String token) => _api.send<void>(
-    method: 'DELETE',
-    path: 'api/users/me/fcm-token',
-    body: {'token': token},
     parse: (_) {},
   );
 }
@@ -234,16 +281,32 @@ class PushRegistration {
     );
   }
 
-  /// Signing out: this device stops getting the user's push. Best effort -
-  /// signing out never waits on it for long.
-  Future<void> unregister() async {
+  /// How long signing out waits for the phone's push service.
+  static const releaseWithin = Duration(seconds: 3);
+
+  /// Signing out: this device stops getting the user's push (T-268).
+  ///
+  /// The token is asked of the phone, not remembered from this run: one
+  /// registered on an earlier start is still on the account even when this
+  /// run never got as far as registering - which is how a signed-out phone
+  /// kept getting push. The phone then gives the token up.
+  ///
+  /// Returns the token, for the sign-out request to take off the account.
+  /// Best effort: signing out never waits on it for long.
+  Future<String?> release() async {
     await _refresh?.cancel();
     _refresh = null;
-    final token = _token;
+
+    final token =
+        _token ??
+        await _platform.current().timeout(releaseWithin, onTimeout: () => null);
     _token = null;
-    if (token != null) {
-      await _api.remove(token).timeout(const Duration(seconds: 3));
-    }
+    // The next account registers in its own language.
+    language = null;
+
+    await _platform.forget().timeout(releaseWithin, onTimeout: () {});
+
+    return token;
   }
 
   Future<void> _send(String token, String language) async {
@@ -256,11 +319,15 @@ class PushRegistration {
   }
 }
 
-/// One per sign-in: a different account starts without the last one's token.
-final pushRegistrationProvider = Provider<PushRegistration>((ref) {
-  ref.watch(currentUserProvider.select((user) => user?.id));
-  return PushRegistration(
+/// One for the app. It does not follow who is signed in: the auth controller
+/// reads it when signing out, and a provider that watched the signed-in user
+/// would depend on the very controller that reads it - which Riverpod refuses
+/// with a circular dependency error. That error was swallowed by the sign-out's
+/// "best effort" catch, so signing out never took the device off the account
+/// (T-268). [PushRegistration.release] leaves it clean for the next account.
+final pushRegistrationProvider = Provider<PushRegistration>(
+  (ref) => PushRegistration(
     ref.watch(pushDeviceApiProvider),
     ref.watch(pushPlatformProvider),
-  );
-});
+  ),
+);

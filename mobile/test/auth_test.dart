@@ -347,9 +347,32 @@ void main() {
         tokens: tokens,
       );
 
-      expect(await offline.restore(), isNull);
+      // Not "nobody is signed in" either: the caller is told the server
+      // gave no answer, and tries again (T-269).
+      await expectLater(
+        offline.restore(),
+        throwsA(
+          isA<ApiException>().having((e) => e.isNetworkError, 'network', true),
+        ),
+      );
 
       // A flight-mode start is not a sign-out.
+      expect(storage.values[SecureStorageKeys.refreshToken], 'good-token');
+    });
+
+    test('keeps the token when the server is too busy to say', () async {
+      await storage.write(SecureStorageKeys.refreshToken, 'good-token');
+
+      // The sign-in limit, or a server that is starting up: no verdict on
+      // the token. It used to be thrown away here.
+      adapter.respond('/api/auth/refresh', 429);
+
+      await expectLater(
+        repository.restore(),
+        throwsA(
+          isA<ApiException>().having((e) => e.isNetworkError, 'network', true),
+        ),
+      );
       expect(storage.values[SecureStorageKeys.refreshToken], 'good-token');
     });
   });

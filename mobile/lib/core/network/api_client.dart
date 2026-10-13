@@ -83,6 +83,34 @@ final class ApiException implements Exception {
   String toString() => 'ApiException($statusCode): $message';
 }
 
+/// How an attempt to renew the session ended (T-269).
+enum SessionRenewal {
+  /// A new access token, and the refresh token that replaces the one sent.
+  renewed,
+
+  /// There is no stored refresh token: nobody was signed in on this device.
+  none,
+
+  /// The server refused the refresh token: it is spent, revoked or expired.
+  /// The session is over and the user signs in again.
+  ended,
+
+  /// No verdict on the token: the server could not be reached, was too busy
+  /// or failed. The session is still the user's - the stored token is kept
+  /// and the renewal is tried again later.
+  unavailable,
+}
+
+/// What a renewal gave back: the session as the server sent it, when it did.
+final class RenewedSession {
+  const RenewedSession(this.outcome, [this.json]);
+
+  final SessionRenewal outcome;
+
+  /// The body of `POST auth/refresh` when [outcome] is [SessionRenewal.renewed].
+  final Map<String, dynamic>? json;
+}
+
 /// Holds the access token for the life of the process.
 ///
 /// Deliberately in memory: the access token lasts fifteen minutes, and putting
@@ -160,7 +188,7 @@ final class ApiClient {
   final String Function()? _language;
 
   /// The refresh in flight, so concurrent callers await the same one.
-  Future<bool>? _refreshing;
+  Future<RenewedSession>? _refreshing;
 
   /// Called when the session cannot be recovered and the user must sign in.
   void Function()? onSessionExpired;
@@ -245,18 +273,26 @@ final class ApiClient {
     }
 
     if (reply.statusCode == 401 && authenticated) {
-      if (await _refreshOnce()) {
-        try {
-          reply = await attempt();
-        } on DioException catch (error) {
-          throw _toApiException(error);
-        }
-      } else {
-        _tokens.clear();
-        await _storage.delete(SecureStorageKeys.refreshToken);
-        onSessionExpired?.call();
+      switch ((await renewSession()).outcome) {
+        case SessionRenewal.renewed:
+          try {
+            reply = await attempt();
+          } on DioException catch (error) {
+            throw _toApiException(error);
+          }
 
-        throw const ApiException.sessionExpired();
+        case SessionRenewal.unavailable:
+          // Nothing was said about the session: it is kept, and this request
+          // failed the way any request fails when the server is out of reach.
+          throw const ApiException.unreachable();
+
+        case SessionRenewal.none:
+        case SessionRenewal.ended:
+          _tokens.clear();
+          await _storage.delete(SecureStorageKeys.refreshToken);
+          onSessionExpired?.call();
+
+          throw const ApiException.sessionExpired();
       }
     }
 
@@ -287,7 +323,7 @@ final class ApiClient {
   /// it is about to run out; null when there is no session.
   Future<String?> freshAccessToken() async {
     if (!_tokens.hasToken || _tokens.isNearExpiry) {
-      if (!await _refreshOnce()) {
+      if ((await renewSession()).outcome != SessionRenewal.renewed) {
         return null;
       }
     }
@@ -295,29 +331,43 @@ final class ApiClient {
     return _tokens.token;
   }
 
-  /// Runs at most one refresh at a time and hands the result to every waiter.
-  Future<bool> _refreshOnce() {
-    return _refreshing ??= _performRefresh().whenComplete(() {
+  /// Exchanges the stored refresh token for a new session - the one place
+  /// that does. At most one runs at a time and every caller gets its answer:
+  /// the token rotates on use, and a second exchange of the same token is a
+  /// replay, which the server answers by ending every session of the user
+  /// (plan section 2.8). Start-up restores the session through here too.
+  ///
+  /// [deviceId] goes with the exchange when this call starts it.
+  Future<RenewedSession> renewSession({String? deviceId}) {
+    return _refreshing ??= _performRefresh(deviceId).whenComplete(() {
       _refreshing = null;
     });
   }
 
-  Future<bool> _performRefresh() async {
+  Future<RenewedSession> _performRefresh(String? deviceId) async {
     final refreshToken = await _storage.read(SecureStorageKeys.refreshToken);
     if (refreshToken == null || refreshToken.isEmpty) {
-      return false;
+      return const RenewedSession(SessionRenewal.none);
     }
 
     try {
       final response = await _dio.post<dynamic>(
         'api/auth/refresh',
-        data: {'refreshToken': refreshToken},
+        data: {'refreshToken': refreshToken, 'deviceId': ?deviceId},
         options: Options(extra: {'skipAuth': true}),
       );
 
       final status = response.statusCode ?? 0;
       if (status < 200 || status >= 300) {
-        return false;
+        // Only a refusal of the token itself ends the session. "Too many
+        // requests" or a server that is starting up says nothing about it:
+        // throwing the token away then signed people out for no reason
+        // (T-269).
+        return RenewedSession(
+          status == 400 || status == 401 || status == 403
+              ? SessionRenewal.ended
+              : SessionRenewal.unavailable,
+        );
       }
 
       final json = response.data as Map<String, dynamic>;
@@ -334,9 +384,9 @@ final class ApiClient {
         json['refreshToken'] as String,
       );
 
-      return true;
+      return RenewedSession(SessionRenewal.renewed, json);
     } on DioException {
-      return false;
+      return const RenewedSession(SessionRenewal.unavailable);
     }
   }
 

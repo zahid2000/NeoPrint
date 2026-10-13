@@ -125,9 +125,11 @@ final class AuthState {
     this.pendingEmail,
     this.error,
     this.isBusy = false,
+    this.restoreStalled = false,
   });
 
-  const AuthState.restoring() : this(status: AuthStatus.restoring);
+  const AuthState.restoring({bool stalled = false})
+    : this(status: AuthStatus.restoring, restoreStalled: stalled);
 
   const AuthState.signedOut({ApiException? error})
     : this(status: AuthStatus.signedOut, error: error);
@@ -141,6 +143,11 @@ final class AuthState {
   /// Why the last action failed; the screen words it (`apiErrorText`).
   final ApiException? error;
   final bool isBusy;
+
+  /// While restoring: the server could not be reached, so nothing is known
+  /// about the stored session yet. The start screen says so and keeps trying;
+  /// the user is not sent to sign in for a session that may be fine (T-269).
+  final bool restoreStalled;
 
   AuthState copyWith({
     AuthStatus? status,

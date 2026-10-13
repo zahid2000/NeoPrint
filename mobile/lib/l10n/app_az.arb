@@ -113,6 +113,7 @@
   "commonLoading": "Yüklənir…",
   "commonComingSoon": "Bu bölmə növbəti addımlarda əlavə olunacaq.",
 
+  "splashUnreachable": "Serverə qoşulmaq mümkün olmadı. Hesabınızdan çıxılmayıb — əlaqə yarananda tətbiq özü açılacaq. İnternet bağlantısını yoxlayın.",
   "errorNetwork": "Serverə qoşulmaq mümkün olmadı. İnternet bağlantısını yoxlayıb yenidən cəhd edin.",
   "errorCancelled": "Əməliyyat ləğv edildi.",
   "errorServer": "Serverdə xəta baş verdi. Bir az sonra yenidən cəhd edin.",

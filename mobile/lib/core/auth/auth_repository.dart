@@ -107,33 +107,39 @@ final class AuthRepository {
 
   /// Restores a session from the stored refresh token.
   ///
-  /// Returns null when there is nothing to restore, which is the normal state
-  /// on a fresh install.
+  /// Returns null when there is nothing to restore - the normal state on a
+  /// fresh install - or the server says the session is over.
+  ///
+  /// Throws [ApiException.unreachable] when the server gave no verdict: it
+  /// could not be reached, or was too busy. The stored token is kept then,
+  /// and the caller tries again rather than sending the user to sign in
+  /// (T-269).
   Future<AuthSession?> restore() async {
-    final refreshToken = await _storage.read(SecureStorageKeys.refreshToken);
-    if (refreshToken == null || refreshToken.isEmpty) {
+    final stored = await _storage.read(SecureStorageKeys.refreshToken);
+    if (stored == null || stored.isEmpty) {
       return null;
     }
 
-    try {
-      final session = await _api.send<AuthSession>(
-        method: 'POST',
-        path: 'api/auth/refresh',
-        authenticated: false,
-        body: {'refreshToken': refreshToken, 'deviceId': await _deviceId()},
-        parse: (data) => AuthSession.fromJson(data as Map<String, dynamic>),
-      );
+    // Through the client's one exchange: a request that finds its access
+    // token missing at the same moment waits for this one instead of
+    // spending the same refresh token a second time.
+    final renewed = await _api.renewSession(deviceId: await _deviceId());
 
-      await _persist(session);
-      return session;
-    } on ApiException catch (error) {
-      // A refused token is spent or stolen; keeping it would only make every
-      // start fail the same way.
-      if (!error.isNetworkError) {
+    switch (renewed.outcome) {
+      case SessionRenewal.renewed:
+        return AuthSession.fromJson(renewed.json!);
+
+      case SessionRenewal.unavailable:
+        throw const ApiException.unreachable();
+
+      case SessionRenewal.none:
+        return null;
+
+      case SessionRenewal.ended:
+        // A refused token is spent or revoked; keeping it would only make
+        // every start fail the same way.
         await _storage.delete(SecureStorageKeys.refreshToken);
-      }
-
-      return null;
+        return null;
     }
   }
 
@@ -183,7 +189,11 @@ final class AuthRepository {
   );
 
   /// Signs out and forgets the stored token.
-  Future<void> signOut() async {
+  ///
+  /// [pushToken] is this device's push token: sent with the sign-out, so the
+  /// server stops pushing to this phone in the same request that ends the
+  /// session - it needs no access token, which may have run out (T-268).
+  Future<void> signOut({String? pushToken}) async {
     final refreshToken = await _storage.read(SecureStorageKeys.refreshToken);
 
     if (refreshToken != null && refreshToken.isNotEmpty) {
@@ -192,7 +202,7 @@ final class AuthRepository {
           method: 'POST',
           path: 'api/auth/logout',
           authenticated: false,
-          body: {'refreshToken': refreshToken},
+          body: {'refreshToken': refreshToken, 'fcmToken': ?pushToken},
           parse: (_) {},
         );
       } on ApiException {

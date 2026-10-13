@@ -1,6 +1,8 @@
-import '../l10n/app_language.dart';
+import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../l10n/app_language.dart';
 
 import '../network/api_base_url.dart';
 import '../network/api_client.dart';
@@ -62,8 +64,15 @@ final currentUserProvider = Provider<UserProfile?>(
 /// one place: an unconfirmed email cannot reach the app, and neither can an
 /// outstanding consent.
 final class AuthController extends Notifier<AuthState> {
+  /// How long the start screen waits before it asks the server again by itself.
+  static const retryRestoreAfter = Duration(seconds: 5);
+
+  Timer? _retry;
+
   @override
   AuthState build() {
+    ref.onDispose(() => _retry?.cancel());
+
     // Restoring starts immediately; the splash screen shows while it runs.
     Future.microtask(restore);
     return const AuthState.restoring();
@@ -72,20 +81,27 @@ final class AuthController extends Notifier<AuthState> {
   AuthRepository get _repository => ref.read(authRepositoryProvider);
 
   /// Restores a session from the stored refresh token.
+  ///
+  /// A server that cannot be reached is not a sign-out (T-269): the stored
+  /// session stays, the start screen says the server is out of reach, and the
+  /// restore is tried again - by itself every few seconds, and at once when
+  /// the user asks.
   Future<void> restore() async {
+    _retry?.cancel();
+
+    if (state.status != AuthStatus.restoring) {
+      return;
+    }
+
     try {
       final session = await _repository.restore();
 
-      if (session == null) {
-        state = const AuthState.signedOut();
-        return;
-      }
-
-      state = _fromSession(session);
-    } on ApiException catch (error) {
-      // A network failure at start is not a sign-out: the user keeps their
-      // stored token and can retry.
-      state = AuthState.signedOut(error: error.isNetworkError ? error : null);
+      state = session == null
+          ? const AuthState.signedOut()
+          : _fromSession(session);
+    } on ApiException {
+      state = const AuthState.restoring(stalled: true);
+      _retry = Timer(retryRestoreAfter, () => unawaited(restore()));
     }
   }
 
@@ -215,18 +231,24 @@ final class AuthController extends Notifier<AuthState> {
     );
   }
 
-  /// Signs out. This device stops getting the user's push first, while the
-  /// session still lets it say so; a failure there does not keep anyone in.
+  /// Signs out, and this device stops getting the user's push (T-268): its
+  /// push token goes to the server with the sign-out itself, and the phone
+  /// gives the token up, so nothing sent to it arrives any more - whether or
+  /// not the server heard. A failure there does not keep anyone in.
   Future<void> signOut() async {
+    _retry?.cancel();
     _signingOut = true;
     try {
+      String? pushToken;
       try {
-        await ref.read(pushRegistrationProvider).unregister();
-      } on Object {
-        // The token stays on the account until FCM reports it gone or another
-        // account registers it; nothing more to do here.
+        pushToken = await ref.read(pushRegistrationProvider).release();
+      } on Exception {
+        // The phone's push service would not say (a platform exception, a
+        // timeout): the sign-out goes on without it. Only exceptions - an
+        // Error here is a fault in the app, and swallowing one is how this
+        // step went unnoticed doing nothing at all (T-268).
       }
-      await _repository.signOut();
+      await _repository.signOut(pushToken: pushToken);
       state = const AuthState.signedOut();
     } finally {
       _signingOut = false;
@@ -242,6 +264,17 @@ final class AuthController extends Notifier<AuthState> {
     if (state.status == AuthStatus.signedOut || _signingOut) {
       return;
     }
+
+    // Nobody is signed in on this phone any more: it stops getting the
+    // account's push too. The server cannot be told (there is no session to
+    // tell it with), so the phone gives its token up (T-268).
+    unawaited(
+      ref
+          .read(pushRegistrationProvider)
+          .release()
+          .then<void>((_) {})
+          .catchError((Object _) {}, test: (error) => error is Exception),
+    );
 
     state = const AuthState.signedOut(error: ApiException.sessionExpired());
   }

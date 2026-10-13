@@ -34,7 +34,6 @@ class FakeNotifications implements NotificationRepository {
 
 class FakePushApi implements PushDeviceApi {
   final registered = <({String token, String language, String platform})>[];
-  final removed = <String>[];
 
   @override
   Future<void> register({
@@ -43,9 +42,6 @@ class FakePushApi implements PushDeviceApi {
     required String platform,
   }) async =>
       registered.add((token: token, language: language, platform: platform));
-
-  @override
-  Future<void> remove(String token) async => removed.add(token);
 }
 
 class FakePushPlatform implements PushPlatform {
@@ -71,6 +67,15 @@ class FakePushPlatform implements PushPlatform {
 
   @override
   Future<PushEvent?> launchedBy() async => launch;
+
+  /// How many times the device was told to give its token up.
+  int forgotten = 0;
+
+  @override
+  Future<String?> current() async => deviceToken;
+
+  @override
+  Future<void> forget() async => forgotten++;
 
   @override
   String get platform => 'android';
@@ -403,15 +408,26 @@ void main() {
           ('fcm-2', 'ru'),
         ]);
 
-        await registration.unregister();
-        expect(api.removed, ['fcm-2']);
+        // The token to take off the account, and the phone gives it up.
+        expect(await registration.release(), 'fcm-2');
+        expect(platform.forgotten, 1);
+
+        // After that a renewed token is nobody's: it is not sent.
+        platform.refreshes.add('fcm-3');
+        await Future<void>.delayed(Duration.zero);
+        expect(api.registered, hasLength(2));
+
+        // A token registered on an earlier start (T-268): this run never
+        // registered, and the device is still taken off.
+        final earlier = FakePushPlatform(deviceToken: 'fcm-old');
+        expect(await PushRegistration(api, earlier).release(), 'fcm-old');
+        expect(earlier.forgotten, 1);
 
         // No push on this device: nothing is registered, nothing to take off.
         final none = PushRegistration(api, FakePushPlatform(deviceToken: null));
         await none.register('az');
-        await none.unregister();
+        expect(await none.release(), isNull);
         expect(api.registered, hasLength(2));
-        expect(api.removed, hasLength(1));
       },
     );
   });
