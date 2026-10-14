@@ -79,7 +79,7 @@ Skript deploy istifadəçisini `docker` qrupuna əlavə edir; bunun qüvvəyə m
 **80/tcp, 443/tcp** (və HTTP/3 üçün 443/udp) açılmalıdır — sertifikat 80 və 443
 üzərindən alınır.
 
-Tələblər: Ubuntu 22.04 və ya 24.04; **4 GB RAM** və ~20 GB disk tövsiyə olunur
+Tələblər: Ubuntu 22.04, 24.04 və ya 26.04 (26.04.1 LTS-də yoxlanılıb); **4 GB RAM** və ~20 GB disk tövsiyə olunur
 (Mongo, RabbitMQ, iki RustFS və LibreOffice-li converter bir yerdədir; converter
 təkbaşına 2 GB-a qədər götürə bilər). Bu rəqəmlər hesablamadır, bu serverdə
 ölçülməyib.
@@ -94,7 +94,18 @@ ssh-keygen -t ed25519 -f neoprint-deploy -N "" -C "neoprint-deploy"
 ```
 
 İki fayl yaranır: `neoprint-deploy` (gizli — GitHub-a gedəcək) və
-`neoprint-deploy.pub` (açıq — serverə gedəcək). Açıq açarı serverə əlavə edin:
+`neoprint-deploy.pub` (açıq — serverə gedəcək). Açıq açarı serverə əlavə edin.
+
+**Deploy istifadəçisi ayrıca, parolsuz hesabdırsa** (tövsiyə olunan: `sudo adduser --disabled-password --gecos "" deploy`,
+sonra `sudo bash server-setup.sh deploy`), açarı onun yerinə `sudo`-su olan hesabla qoyun —
+`/home/deploy`-a başqa hesab `sudo`-suz yaza bilmir, `-t` isə `sudo`-ya parolu soruşmağa imkan verir:
+
+```powershell
+scp neoprint-deploy.pub <admin_hesabı>@<SERVER_IP>:~/
+ssh -t <admin_hesabı>@<SERVER_IP> "sudo install -d -m 700 -o deploy -g deploy /home/deploy/.ssh && sudo sh -c 'cat ~<admin_hesabı>/neoprint-deploy.pub >> /home/deploy/.ssh/authorized_keys' && sudo chown deploy:deploy /home/deploy/.ssh/authorized_keys && sudo chmod 600 /home/deploy/.ssh/authorized_keys && rm ~/neoprint-deploy.pub"
+```
+
+Deploy istifadəçisi daxil olduğunuz hesabın özüdürsə:
 
 ```powershell
 # PowerShell
@@ -117,6 +128,14 @@ qoşulur, başqasına token vermir):
 
 ```bash
 ssh-keyscan -t ed25519 <SERVER_IP>            # port 22 deyilsə: ssh-keyscan -p <PORT> -t ed25519 <SERVER_IP>
+```
+
+Windows-un `ssh-keyscan`-ı yeni OpenSSH ilə (məs. Ubuntu 26.04) danışa bilmir
+(`choose_kex: unsupported KEX method`) və boş qaytarır. O halda açarı serverin özündən götürün:
+
+```powershell
+$key = (ssh <istifadəçi>@<SERVER_IP> "cat /etc/ssh/ssh_host_ed25519_key.pub").Split(' ')[0..1] -join ' '
+gh variable set TEST_SERVER_KNOWN_HOSTS --body "<SERVER_IP> $key"
 ```
 
 Çıxan sətir (`<SERVER_IP> ssh-ed25519 AAAA…`) növbəti addımda lazımdır.
