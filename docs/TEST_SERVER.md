@@ -285,6 +285,10 @@ bildirişləri bu serverdə əlavə quraşdırma tələb edir (domen və Firebas
 powershell -ExecutionPolicy Bypass -File tools\dev-kiosk\start-kiosk.ps1 -ApiUrl https://<HOST>
 ```
 
+`<HOST>` — sertifikatdakı addır (`108-181-184-118.sslip.io` kimi), **IP deyil**: `https://<IP>`
+ünvanında TLS qurulmur (`tlsv1 alert internal error`), kiosk serverə çatmır və QR göstərmir.
+Mobil tətbiqə və brauzerə də eyni ad yazılır.
+
 Cihaz paneldə görünəndə onu oradakı kioska bağlayın (`KIOSK_SETUP.md`).
 
 ---
