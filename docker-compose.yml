@@ -51,6 +51,11 @@ services:
   openbao-init:
     image: openbao/openbao:2.6.2
     container_name: neoprint-openbao-init
+    # Root, not the image's openbao user (uid 100): on a Linux host Docker
+    # creates ./.openbao owned by root, so uid 100 cannot write there, and only
+    # root can hand the AppRole files to the API's user (init.sh). Docker
+    # Desktop's bind mounts hid both (T-274).
+    user: "0:0"
     depends_on:
       openbao:
         condition: service_healthy
