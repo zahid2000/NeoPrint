@@ -37,5 +37,6 @@ USER nginx
 
 EXPOSE 80
 
+# 127.0.0.1, not localhost: see the healthcheck in docker-compose.yml (T-274).
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
-  CMD wget -q -O /dev/null http://localhost:80/healthz || exit 1
+  CMD wget -q -O /dev/null http://127.0.0.1:80/healthz || exit 1

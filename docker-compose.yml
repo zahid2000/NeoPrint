@@ -365,7 +365,10 @@ services:
     ports:
       - "8080:80"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:80/healthz || exit 1"]
+      # 127.0.0.1, not localhost: where the container has IPv6 loopback,
+      # localhost is ::1 first, nginx listens on IPv4 only and busybox wget
+      # does not try the next address (T-274).
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:80/healthz || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
