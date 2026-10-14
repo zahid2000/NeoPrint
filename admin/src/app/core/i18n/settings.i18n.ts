@@ -52,7 +52,7 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.PrintJob.MaxAutoRetries':
       'Printerin dayandırdığı sifariş cəmi neçə dəfə çapa göndərilir (1–10). Bu qədər cəhddən sonra sifariş özü davam etmir: incident açılır, sahibi isə onu ləğv edib məbləği geri ala bilər.',
     'settings.description.Notification.MinSeverity':
-      'Incident bu səviyyədən başlayaraq kioska baxan hesablara email ilə bildirilir: Critical, High və ya Medium. Aşağı səviyyəlilər yalnız paneldə görünür.',
+      'Incident bu səviyyədən başlayaraq kioska baxan hesablara email ilə bildirilir. Dəyər: Critical (Kritik), High (Yüksək) və ya Medium (Orta). Daha aşağı səviyyəlilər yalnız paneldə görünür.',
     'settings.description.Notification.TelegramEnabled':
       'Incident bildirişlərinin Telegram kanalı. Söndürülüdür: kanal pilotdan sonra açılacaq, bunun üçün botun açarı da lazımdır.',
     'settings.description.Kiosk.TelemetryRetentionDays':
@@ -265,7 +265,7 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.PrintJob.MaxAutoRetries':
       'Сколько всего раз заказ, остановленный принтером, отправляется на печать (1–10). После этого он сам не продолжается: открывается инцидент, а владелец может отменить заказ и вернуть деньги.',
     'settings.description.Notification.MinSeverity':
-      'Начиная с этого уровня инцидент отправляется по email учётным записям, которые следят за киоском: Critical, High или Medium. Менее серьёзные видны только в панели.',
+      'Начиная с этого уровня инцидент отправляется по email учётным записям, которые следят за киоском. Значение: Critical (Критический), High (Высокий) или Medium (Средний). Менее серьёзные видны только в панели.',
     'settings.description.Notification.TelegramEnabled':
       'Канал Telegram для уведомлений об инцидентах. Выключен: канал откроется после пилота, для него нужен ещё и токен бота.',
     'settings.description.Kiosk.TelemetryRetentionDays':
