@@ -44,6 +44,35 @@ public sealed class PrinterTelemetryStore : IPrinterTelemetryStore
         return [.. newest.Select(group => BsonSerializer.Deserialize<PrinterTelemetrySample>(group["sample"].AsBsonDocument))];
     }
 
+    public async Task<IReadOnlyList<PrinterTelemetrySample>> LatestOfKiosksAsync(
+        IReadOnlyCollection<Guid>? kioskIds, DateTime since, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<PrinterTelemetrySample>.Filter.Gte(sample => sample.Timestamp, since);
+
+        if (kioskIds is not null)
+        {
+            filter &= Builders<PrinterTelemetrySample>.Filter.In(sample => sample.Printer.KioskId, kioskIds);
+        }
+
+        var newest = await Samples
+            .Aggregate()
+            .Match(filter)
+            .Sort(Builders<PrinterTelemetrySample>.Sort.Descending(sample => sample.Timestamp))
+            .Group(new BsonDocument
+            {
+                ["_id"] = new BsonDocument
+                {
+                    ["kiosk"] = $"${nameof(PrinterTelemetrySample.Printer)}.{nameof(PrinterKey.KioskId)}",
+                    ["printer"] = $"${nameof(PrinterTelemetrySample.Printer)}.{nameof(PrinterKey.PrinterName)}",
+                },
+                ["sample"] = new BsonDocument("$first", "$$ROOT"),
+            })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return [.. newest.Select(group => BsonSerializer.Deserialize<PrinterTelemetrySample>(group["sample"].AsBsonDocument))];
+    }
+
     public async Task<PrinterTelemetrySample?> LatestAsync(Guid kioskId, string printer, CancellationToken cancellationToken = default)
         => await Samples
             .Find(sample => sample.Printer.KioskId == kioskId && sample.Printer.PrinterName == printer)

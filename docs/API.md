@@ -671,6 +671,13 @@ oxunuşu olan printer siyahıdan düşür): `[ { "kioskId", "sample": { …yuxar
 "printer": { "kioskId", "printerName" }, "selected" }, "stale" } ]`. `stale` — seçilmiş printer üçün
 3 dəqiqə, digərləri üçün 30 dəqiqə xəbər yoxdursa.
 
+### `GET /api/admin/printers`
+
+`printers.view`. "Printerlər (ümumi)" səhifəsi (plan 8A.3, T-212): hesabın əhatəsindəki **bütün** kioskların hər
+printerinin son oxunuşu — element yuxarıdakı ilə eynidir (`{ kioskId, sample, stale }`), kiosk üzrə, seçilmiş printer
+birinci. 7 gündən köhnə oxunuş düşür. Süzgəc ("az toner", "xətalı", "offline") paneldə tətbiq olunur — siyahı kiçikdir
+(kiosk başına bir neçə printer) və `PrinterTelemetryUpdated` ilə canlı yenilənir.
+
 ### `GET /api/admin/kiosks/{id}/printers/telemetry/history?printer=&from=&to=&points=120`
 
 `printers.view`. Qrafik üçün: aralıq (default son 1 gün, ən çox 31 gün) dilimlərə bölünür, hər

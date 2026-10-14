@@ -86,6 +86,12 @@ public sealed record PrinterTelemetryEvent(
 /// <summary>The latest reading of every printer of a kiosk, the selected one first.</summary>
 public sealed record GetPrinterTelemetryQuery(Guid AdminUserId, Guid KioskId) : IRequest<IReadOnlyList<PrinterTelemetryView>>;
 
+/// <summary>
+/// The latest reading of every printer of every kiosk the account sees (plan
+/// section 8A.3, "Printerlər (ümumi)"): by kiosk, the selected printer first.
+/// </summary>
+public sealed record GetAllPrinterTelemetryQuery(Guid AdminUserId) : IRequest<IReadOnlyList<PrinterTelemetryView>>;
+
 public sealed record GetPrinterTelemetryHistoryQuery(
     Guid AdminUserId, Guid KioskId, string Printer, DateTime? From, DateTime? To, int Points = 120)
     : IRequest<IReadOnlyList<PrinterTelemetryPoint>>;
@@ -101,6 +107,13 @@ public interface IPrinterTelemetryStore
 
     /// <summary>The newest sample of each printer of the kiosk since <paramref name="since"/>.</summary>
     Task<IReadOnlyList<PrinterTelemetrySample>> LatestAsync(Guid kioskId, DateTime since, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The newest sample of each printer of each of the kiosks since
+    /// <paramref name="since"/>; null <paramref name="kioskIds"/> is every kiosk.
+    /// </summary>
+    Task<IReadOnlyList<PrinterTelemetrySample>> LatestOfKiosksAsync(
+        IReadOnlyCollection<Guid>? kioskIds, DateTime since, CancellationToken cancellationToken = default);
 
     Task<PrinterTelemetrySample?> LatestAsync(Guid kioskId, string printer, CancellationToken cancellationToken = default);
 
@@ -316,6 +329,7 @@ public static class PrinterTelemetryChanges
 public sealed class PrinterTelemetryHandlers :
     IRequestHandler<ReportPrinterTelemetryCommand>,
     IRequestHandler<GetPrinterTelemetryQuery, IReadOnlyList<PrinterTelemetryView>>,
+    IRequestHandler<GetAllPrinterTelemetryQuery, IReadOnlyList<PrinterTelemetryView>>,
     IRequestHandler<GetPrinterTelemetryHistoryQuery, IReadOnlyList<PrinterTelemetryPoint>>,
     IRequestHandler<GetPrinterTelemetryEventsQuery, IReadOnlyList<PrinterTelemetryEvent>>
 {
@@ -472,6 +486,35 @@ public sealed class PrinterTelemetryHandlers :
                 .ThenBy(sample => sample.Printer.PrinterName, StringComparer.OrdinalIgnoreCase)
                 .Select(sample => new PrinterTelemetryView(
                     kiosk.Id, sample, now - sample.Timestamp > (sample.Selected ? StaleAfter : StaleAfterWhenIdle))),
+        ];
+    }
+
+    /// <inheritdoc cref="GetAllPrinterTelemetryQuery" />
+    public async Task<IReadOnlyList<PrinterTelemetryView>> Handle(GetAllPrinterTelemetryQuery request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var effective = await _permissions.ResolveAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false);
+
+        if (!effective.AllKiosks && effective.KioskIds.Count == 0)
+        {
+            return [];
+        }
+
+        var now = _clock.UtcNow;
+        var latest = await _store
+            .LatestOfKiosksAsync(effective.AllKiosks ? null : effective.KioskIds, now - ForgottenAfter, cancellationToken)
+            .ConfigureAwait(false);
+
+        return
+        [
+            .. latest
+                .Where(sample => effective.CanSee(sample.Printer.KioskId))
+                .OrderBy(sample => sample.Printer.KioskId)
+                .ThenByDescending(sample => sample.Selected)
+                .ThenBy(sample => sample.Printer.PrinterName, StringComparer.OrdinalIgnoreCase)
+                .Select(sample => new PrinterTelemetryView(
+                    sample.Printer.KioskId, sample, now - sample.Timestamp > (sample.Selected ? StaleAfter : StaleAfterWhenIdle))),
         ];
     }
 

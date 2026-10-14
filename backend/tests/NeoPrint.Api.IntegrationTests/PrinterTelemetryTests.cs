@@ -6,6 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 using MongoDB.Driver;
 
+using NeoPrint.Domain.Admin;
+using NeoPrint.Infrastructure.Persistence;
+
 namespace NeoPrint.Api.IntegrationTests;
 
 /// <summary>
@@ -267,5 +270,71 @@ public sealed class PrinterTelemetryTests
         await SendAsync(kiosk.Client, new { name = "   ", state = "idle" });
 
         (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kiosk.KioskId}/printers/telemetry")).GetArrayLength().Should().Be(1);
+    }
+
+    [DockerFact]
+    public async Task The_printers_page_lists_every_kiosk_printer_the_account_sees_and_no_other()
+    {
+        if (Skip) { return; }
+
+        using var mine = await TestKiosks.ActivatedAsync(_fixture, $"prn-{Guid.NewGuid():N}"[..20]);
+        using var theirs = await TestKiosks.ActivatedAsync(_fixture, $"prn-{Guid.NewGuid():N}"[..20]);
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+
+        await SendAsync(mine.Client, Reading(black: 7), Reading("A spare printer"));
+        await SendAsync(theirs.Client, Reading());
+
+        var everything = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/printers")).EnumerateArray().ToList();
+        everything.Select(row => row.GetProperty("kioskId").GetGuid()).Should().Contain([mine.KioskId, theirs.KioskId]);
+
+        var ours = everything.Where(row => row.GetProperty("kioskId").GetGuid() == mine.KioskId).ToList();
+        ours.Should().HaveCount(2);
+        ours[0].GetProperty("sample").GetProperty("printer").GetProperty("printerName").GetString().Should().Be(Selected, "the selected printer first");
+        ours[0].GetProperty("sample").GetProperty("supplies")[0].GetProperty("levelPercent").GetInt32().Should().Be(7);
+        ours[0].GetProperty("stale").GetBoolean().Should().BeFalse();
+
+        // An account that looks after one kiosk sees that kiosk's printers only.
+        using var scoped = await ScopedAdminAsync(KioskScope.Only(mine.KioskId), Permissions.PrintersView);
+        var seen = (await scoped.GetFromJsonAsync<JsonElement>("/api/admin/printers")).EnumerateArray().ToList();
+        seen.Should().HaveCount(2).And.OnlyContain(row => row.GetProperty("kioskId").GetGuid() == mine.KioskId);
+
+        // Without the permission, nothing.
+        using var blind = await ScopedAdminAsync(KioskScope.Everything(), Permissions.KiosksView);
+        (await blind.GetAsync("/api/admin/printers")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    private async Task<HttpClient> ScopedAdminAsync(KioskScope kioskScope, params string[] permissions)
+    {
+        const string password = "PrinterPagePassword!2026";
+
+        using var superAdmin = await TestKiosks.SuperAdminAsync(_fixture);
+        var role = await superAdmin.PostAsJsonAsync("/api/admin/roles", new
+        {
+            name = $"Printers role {Guid.NewGuid():N}",
+            description = "Created by the integration tests.",
+            permissions,
+        });
+        role.StatusCode.Should().Be(HttpStatusCode.OK, await role.Content.ReadAsStringAsync());
+
+        using var scope = _fixture.Services.CreateScope();
+        var hasher = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.IPasswordHasher<AdminUser>>();
+        var account = new AdminUser
+        {
+            Email = $"printers.{Guid.NewGuid():N}@neoprint.test",
+            FullName = "Printers page",
+            RoleIds = [(await role.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid()],
+            KioskScope = kioskScope,
+            IsActive = true,
+        };
+        account.PasswordHash = hasher.HashPassword(account, password);
+        await scope.ServiceProvider.GetRequiredService<MongoContext>().AdminUsers.InsertOneAsync(account);
+
+        var client = _fixture.CreateApiClient();
+        var login = await client.PostAsJsonAsync("/api/auth/admin/login", new { email = account.Email, password });
+        login.StatusCode.Should().Be(HttpStatusCode.OK, await login.Content.ReadAsStringAsync());
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer", (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accessToken").GetString());
+
+        return client;
     }
 }
