@@ -699,5 +699,63 @@
 
   "deleteDone": "Учётная запись удалена.",
 
-  "deleteLoadFailed": "Не удалось загрузить: {reason}"
+  "deleteLoadFailed": "Не удалось загрузить: {reason}",
+
+  "pinSetupTitle": "Задайте PIN-код",
+
+  "pinSetupHint": "Эти 4 цифры будут запрашиваться при каждом открытии приложения. Если телефон попадёт в чужие руки, в ваш аккаунт не войдут.",
+
+  "pinConfirmTitle": "Повторите PIN-код",
+
+  "pinConfirmHint": "Введите те же 4 цифры ещё раз.",
+
+  "pinMismatch": "PIN-коды не совпадают. Введите новый PIN заново.",
+
+  "pinUnlockTitle": "Введите PIN-код",
+
+  "pinUnlockHint": "Аккаунт {email}",
+
+  "pinWrong": "Неверный PIN. Осталось попыток: {count}. Когда они закончатся, вы выйдете из аккаунта.",
+
+  "pinForgot": "Забыл PIN-код",
+
+  "pinForgotTitle": "Забыли PIN-код?",
+
+  "pinForgotBody": "Вы выйдете из аккаунта на этом телефоне. Войдите снова по email и паролю и задайте новый PIN.",
+
+  "pinForgotConfirm": "Выйти",
+
+  "pinSignOut": "Выйти",
+
+  "pinDelete": "Удалить",
+
+  "pinBiometricButton": "Открыть по отпечатку или лицу",
+
+  "pinBiometricPrompt": "Откройте NeoPrint",
+
+  "pinBiometricCancel": "Ввести PIN",
+
+  "pinBiometricOfferTitle": "Открывать по отпечатку или лицу?",
+
+  "pinBiometricOfferBody": "Приложение можно открывать отпечатком пальца или распознаванием лица, без PIN-кода. PIN по-прежнему работает.",
+
+  "pinBiometricOfferYes": "Да",
+
+  "pinBiometricOfferNo": "Не сейчас",
+
+  "pinChangeCurrentTitle": "Текущий PIN",
+
+  "pinChangeNewTitle": "Новый PIN",
+
+  "pinChanged": "PIN-код изменён.",
+
+  "securityTitle": "PIN и биометрия",
+
+  "securityChangePin": "Изменить PIN",
+
+  "securityBiometrics": "Открывать по отпечатку или лицу",
+
+  "securityBiometricsHint": "В дополнение к PIN; PIN по-прежнему работает.",
+
+  "securityPinMandatory": "PIN-блокировка обязательна для каждого аккаунта и не отключается. Она запрашивается при открытии приложения и после возврата, если оно было в фоне дольше 5 минут."
 }

@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <!-- Push (step 5, T-146): Android 13 and later ask for it after sign-in. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Unlocking the app with a fingerprint or a face (T-270). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
 
     <application

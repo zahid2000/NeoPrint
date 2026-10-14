@@ -699,5 +699,63 @@
 
   "deleteDone": "Your account was deleted.",
 
-  "deleteLoadFailed": "Could not load it: {reason}"
+  "deleteLoadFailed": "Could not load it: {reason}",
+
+  "pinSetupTitle": "Set a PIN",
+
+  "pinSetupHint": "These 4 digits will be asked every time the app opens. If your phone ends up in someone else's hands, they cannot get into your account.",
+
+  "pinConfirmTitle": "Repeat the PIN",
+
+  "pinConfirmHint": "Type the same 4 digits once more.",
+
+  "pinMismatch": "The PINs do not match. Type the new PIN again from the start.",
+
+  "pinUnlockTitle": "Enter your PIN",
+
+  "pinUnlockHint": "Account {email}",
+
+  "pinWrong": "Wrong PIN. Attempts left: {count}. When they run out you will be signed out.",
+
+  "pinForgot": "I forgot my PIN",
+
+  "pinForgotTitle": "Forgot your PIN?",
+
+  "pinForgotBody": "You will be signed out on this phone. Sign in again with your email and password and set a new PIN.",
+
+  "pinForgotConfirm": "Sign out",
+
+  "pinSignOut": "Sign out",
+
+  "pinDelete": "Delete",
+
+  "pinBiometricButton": "Open with fingerprint or face",
+
+  "pinBiometricPrompt": "Open NeoPrint",
+
+  "pinBiometricCancel": "Use PIN",
+
+  "pinBiometricOfferTitle": "Open with fingerprint or face?",
+
+  "pinBiometricOfferBody": "The app can open with your phone's fingerprint or face recognition, without typing the PIN. The PIN still works.",
+
+  "pinBiometricOfferYes": "Yes",
+
+  "pinBiometricOfferNo": "Not now",
+
+  "pinChangeCurrentTitle": "Current PIN",
+
+  "pinChangeNewTitle": "New PIN",
+
+  "pinChanged": "PIN changed.",
+
+  "securityTitle": "PIN and biometrics",
+
+  "securityChangePin": "Change PIN",
+
+  "securityBiometrics": "Open with fingerprint or face",
+
+  "securityBiometricsHint": "In addition to the PIN; the PIN still works.",
+
+  "securityPinMandatory": "The PIN lock is required for every account and cannot be switched off. It is asked when the app opens and when it comes back after more than 5 minutes in the background."
 }

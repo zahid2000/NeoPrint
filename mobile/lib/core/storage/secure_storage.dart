@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 /// refresh token to live there and nowhere else - it is the one credential on
 /// the device that can mint new access tokens.
 ///
-/// Besides it only the per-install id and the chosen language. Access tokens
+/// Besides it only the per-install id, the chosen language and the app's PIN. Access tokens
 /// live for fifteen minutes and stay in memory; putting them in the keychain
 /// would only slow sign-in down.
 abstract interface class SecureStorage {
@@ -35,6 +35,17 @@ abstract final class SecureStorageKeys {
   /// `<userId>|<az|en|ru|system>` (T-152). Not a secret; kept here because
   /// this is the app's only store (plan section 2.0, no preferences package).
   static const language = 'app_language';
+
+  /// The app's PIN (T-270), as `<userId>|<pin>`: one of another account is
+  /// no PIN. Never leaves the phone.
+  static const pin = 'app_pin';
+
+  /// Wrong PINs in a row, kept here so that killing the app does not reset
+  /// the count (T-270).
+  static const pinFailures = 'app_pin_failures';
+
+  /// The account whose fingerprint or face opens the app (T-270).
+  static const pinBiometrics = 'app_pin_biometrics';
 }
 
 /// [SecureStorage] over the platform channel.

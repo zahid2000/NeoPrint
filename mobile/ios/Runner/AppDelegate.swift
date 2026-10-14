@@ -1,4 +1,5 @@
 import Flutter
+import LocalAuthentication
 import Security
 import UIKit
 import VisionKit
@@ -33,6 +34,10 @@ import VisionKit
 
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NeoPrintSecureStore") {
       SecureStore.register(with: registrar)
+    }
+
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NeoPrintBiometrics") {
+      Biometrics.register(with: registrar)
     }
   }
 }
@@ -382,5 +387,49 @@ final class SecureStore: NSObject {
 
   private static func bad(_ result: FlutterResult) {
     result(FlutterError(code: "BAD_ARGUMENT", message: "key and value are required", details: nil))
+  }
+}
+
+/// Unlocking the app with Face ID or Touch ID (T-270), over our own channel and
+/// LocalAuthentication - no library (the owner's decision of 2026-10-14). It
+/// only answers "the owner of this phone is here": nothing is unsealed with
+/// it, and the PIN stays the way in.
+///
+/// Written without a Mac to build it on: compiled and checked with the rest of
+/// the iOS build before the pilot (docs/TASKS.md T-187).
+final class Biometrics: NSObject {
+  static let channelName = "az.neoprint/biometrics"
+
+  static func register(with registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(name: channelName, binaryMessenger: registrar.messenger())
+
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "available":
+        var error: NSError?
+        result(LAContext().canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error))
+      case "authenticate":
+        let arguments = call.arguments as? [String: Any]
+        let title = arguments?["title"] as? String ?? ""
+        let cancel = arguments?["cancel"] as? String ?? ""
+        let context = LAContext()
+        var error: NSError?
+
+        guard !title.isEmpty,
+              context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+          result(false)
+          return
+        }
+
+        context.localizedCancelTitle = cancel
+        // Without a fallback button: the app asks for the PIN itself.
+        context.localizedFallbackTitle = ""
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: title) { ok, _ in
+          DispatchQueue.main.async { result(ok) }
+        }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 }

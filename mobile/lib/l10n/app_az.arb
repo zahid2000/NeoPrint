@@ -1214,5 +1214,65 @@
   "deleteDone": "Hesabınız silindi.",
 
   "deleteLoadFailed": "Məlumatı yükləmək alınmadı: {reason}",
-  "@deleteLoadFailed": { "placeholders": {"reason":{"type":"String"}} }
+  "@deleteLoadFailed": { "placeholders": {"reason":{"type":"String"}} },
+
+  "pinSetupTitle": "PIN kod qurun",
+
+  "pinSetupHint": "Tətbiqi hər açanda bu 4 rəqəm soruşulacaq. Telefonunuz başqasının əlinə keçsə, hesabınıza girə bilməyəcək.",
+
+  "pinConfirmTitle": "PIN-i təkrarlayın",
+
+  "pinConfirmHint": "Eyni 4 rəqəmi bir daha yazın.",
+
+  "pinMismatch": "PIN-lər üst-üstə düşmür. Yeni PIN-i əvvəldən yazın.",
+
+  "pinUnlockTitle": "PIN kodu daxil edin",
+
+  "pinUnlockHint": "{email} hesabı",
+  "@pinUnlockHint": {"placeholders":{"email":{"type":"String"}}},
+
+  "pinWrong": "PIN səhvdir. Qalan cəhd: {count}. Cəhdlər bitəndə hesabdan çıxılacaq.",
+  "@pinWrong": {"placeholders":{"count":{"type":"int"}}},
+
+  "pinForgot": "PIN-i unutdum",
+
+  "pinForgotTitle": "PIN-i unutmusunuz?",
+
+  "pinForgotBody": "Bu telefonda hesabdan çıxılacaq. Email və şifrə ilə yenidən daxil olub yeni PIN quracaqsınız.",
+
+  "pinForgotConfirm": "Çıxış et",
+
+  "pinSignOut": "Çıxış",
+
+  "pinDelete": "Sil",
+
+  "pinBiometricButton": "Barmaq izi və ya üz ilə aç",
+
+  "pinBiometricPrompt": "NeoPrint-i açın",
+
+  "pinBiometricCancel": "PIN yazacağam",
+
+  "pinBiometricOfferTitle": "Barmaq izi və ya üz ilə açılsın?",
+
+  "pinBiometricOfferBody": "Tətbiqi PIN yazmadan, telefonun barmaq izi və ya üz tanıması ilə açmaq olar. PIN yenə də işləyəcək.",
+
+  "pinBiometricOfferYes": "Bəli",
+
+  "pinBiometricOfferNo": "İndi yox",
+
+  "pinChangeCurrentTitle": "Hazırkı PIN",
+
+  "pinChangeNewTitle": "Yeni PIN",
+
+  "pinChanged": "PIN dəyişdirildi.",
+
+  "securityTitle": "PIN və biometrika",
+
+  "securityChangePin": "PIN-i dəyiş",
+
+  "securityBiometrics": "Barmaq izi və ya üz ilə açmaq",
+
+  "securityBiometricsHint": "PIN-dən əlavə; PIN yenə də işləyir.",
+
+  "securityPinMandatory": "PIN kilidi hər hesab üçün məcburidir və söndürülmür. Tətbiq açılanda və 5 dəqiqədən çox arxa fonda qalıb qayıdanda soruşulur."
 }

@@ -9,6 +9,8 @@ import '../../features/auth/splash_screen.dart';
 import '../../features/consents/consents_screen.dart';
 import '../../features/files/camera_capture_screen.dart';
 import '../../features/scanner/document_scan_screen.dart';
+import '../../features/security/pin_screen.dart';
+import '../../features/security/security_settings_screen.dart';
 import '../../features/files/file_models.dart';
 import '../../features/files/file_preview_screen.dart';
 import '../../features/files/files_screen.dart';
@@ -42,6 +44,7 @@ import '../../shared/widgets/bottom_nav_shell.dart';
 import '../../shared/widgets/redirect_to.dart';
 import '../auth/auth_controller.dart';
 import '../auth/auth_models.dart';
+import '../security/app_lock.dart';
 import '../features/readiness.dart';
 import 'app_links.dart';
 
@@ -65,6 +68,11 @@ abstract final class Routes {
   static const scheduled = '/scheduled';
   static const profile = '/profile';
 
+  /// The app's lock (T-270).
+  static const pin = '/pin';
+  static const pinSetup = '/pin/setup';
+  static const security = '/security';
+
   static const scan = '/scan';
   static String pay(String paymentId) => '/pay/$paymentId';
   static const wallet = '/wallet';
@@ -87,10 +95,20 @@ abstract final class Routes {
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final notifier = ValueNotifier<AuthStatus>(AuthStatus.restoring);
+  // Bumped whenever the sign-in or the app's lock changes: the redirect
+  // below reads both.
+  final notifier = ValueNotifier<int>(0);
 
   ref.listen<AuthState>(authControllerProvider, (previous, next) {
-    notifier.value = next.status;
+    if (previous?.status != next.status) {
+      notifier.value++;
+    }
+  }, fireImmediately: true);
+
+  ref.listen<AppLockState>(appLockProvider, (previous, next) {
+    if (previous?.status != next.status) {
+      notifier.value++;
+    }
   }, fireImmediately: true);
 
   ref.onDispose(notifier.dispose);
@@ -138,6 +156,31 @@ final routerProvider = Provider<GoRouter>((ref) {
           return location == Routes.consents ? null : Routes.consents;
 
         case AuthStatus.signedIn:
+          // The app's lock comes before everything else (T-270).
+          switch (ref.read(appLockProvider).status) {
+            case AppLockStatus.off:
+              // Being decided - a moment: the start screen stays.
+              return location == Routes.splash ? null : Routes.splash;
+            case AppLockStatus.setup:
+              return location == Routes.pinSetup ? null : Routes.pinSetup;
+            case AppLockStatus.locked:
+              // Back where the user was once the lock opens.
+              if (location == Routes.pin) {
+                return null;
+              }
+              final from =
+                  location == Routes.splash || location.startsWith(Routes.pin)
+                  ? null
+                  : state.uri.toString();
+              return from == null
+                  ? Routes.pin
+                  : '${Routes.pin}?from=${Uri.encodeComponent(from)}';
+            case AppLockStatus.unlocked:
+              if (location == Routes.pin || location == Routes.pinSetup) {
+                return state.uri.queryParameters['from'] ?? Routes.home;
+              }
+          }
+
           // Nobody should sit on a sign-in screen while signed in.
           const authScreens = {
             Routes.splash,
@@ -165,6 +208,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.consents,
         builder: (_, __) => const ConsentsScreen(),
+      ),
+      GoRoute(
+        path: Routes.pin,
+        builder: (_, __) => const PinScreen(mode: PinMode.unlock),
+      ),
+      GoRoute(
+        path: Routes.pinSetup,
+        builder: (_, __) => const PinScreen(mode: PinMode.setup),
+      ),
+      GoRoute(
+        path: Routes.security,
+        builder: (_, __) => const SecuritySettingsScreen(),
       ),
 
       // Full screen, above the tabs: paying and the money screens are a task

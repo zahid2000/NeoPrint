@@ -24,6 +24,7 @@ class MainActivity : FlutterActivity() {
     private val worker = Executors.newSingleThreadExecutor()
     private val scanner = DocumentScanner(this, worker)
     private val secureStore = SecureStore(this)
+    private val biometrics = Biometrics(this)
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -31,6 +32,7 @@ class MainActivity : FlutterActivity() {
         registerShare(flutterEngine)
         scanner.register(flutterEngine.dartExecutor.binaryMessenger)
         secureStore.register(flutterEngine.dartExecutor.binaryMessenger)
+        biometrics.register(flutterEngine.dartExecutor.binaryMessenger)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HEIC_CHANNEL)
             .setMethodCallHandler { call, result ->

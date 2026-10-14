@@ -130,6 +130,14 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () => showLanguageSheet(context),
             ),
 
+          // The app's PIN and the fingerprint or face (T-270).
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: Text(l10n.securityTitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(Routes.security),
+          ),
+
           if (Readiness.legalDocuments)
             ListTile(
               leading: const Icon(Icons.description_outlined),
