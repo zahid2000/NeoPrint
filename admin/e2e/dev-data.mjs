@@ -139,12 +139,17 @@ export function purgeKiosk(api, kioskId, deviceIds = []) {
   `);
 }
 
-/** Removes a warehouse item the check made, and its movements. */
+/** Removes a warehouse item the check made, its movements, and the "running low" incidents about it. */
 export function purgeItem(api, itemId) {
   localOnly(api);
 
   return mongo(`
     const item = ${ids([itemId])}[0];
-    print(db.inventory_movements.deleteMany({ ItemId: item }).deletedCount + db.inventory_items.deleteOne({ _id: item }).deletedCount);
+    const incidents = db.incidents.find({ EntityId: item }, { _id: 1 }).toArray().map((row) => row._id);
+    let removed = db.inventory_movements.deleteMany({ ItemId: item }).deletedCount + db.inventory_items.deleteOne({ _id: item }).deletedCount;
+    removed += db.incident_notifications.deleteMany({ IncidentId: { $in: incidents } }).deletedCount;
+    removed += db.state_transitions.deleteMany({ EntityId: { $in: incidents } }).deletedCount;
+    removed += db.incidents.deleteMany({ _id: { $in: incidents } }).deletedCount;
+    print(removed);
   `);
 }

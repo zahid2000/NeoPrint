@@ -1611,6 +1611,25 @@ node e2e/monitoring.mjs ../docs/screenshots/step-7/t212 # eyni, ekran görüntü
 **Telefonda panel (T-212):** ekran 900 px-dən dar olanda yan menyu bağlı açılır, ☰ ilə səhifənin üstündə açılır və səhifə
 seçiləndə özü bağlanır.
 
+## 7q. Addım 7A — admin: əməliyyat səhifələri (plan 8A.3, 9.9; T-213)
+
+Menyuda "Printerlər"dən sonra: **Incident-lər** (canlı; yeni `Critical` / `High` incident üçün səs + brauzer bildirişi —
+səhifədəki "Bildirişləri aç" ilə), **Servis tapşırıqları** (SLA rəqəmləri, yeni tapşırıq, təyin et / prioritet / ləğv),
+**Anbar** (məhsullar və hərəkətlər), **Xəbərdarlıq qaydaları** (indi həddən aşağı olanlar + qaydalar), **Audit jurnalı**
+(`audit.view` — dev hesablarından yalnız SuperAdmin-də var).
+
+```bash
+cd admin
+node e2e/supply-flow.mjs        # plan 9.9 başdan sona: kağız 150 → Warning, 40 → Critical (admin + operator panelində canlı),
+                                # avtomatik tapşırıq operatora, operator telefondan "Tam doldur" + anbardan bağlama,
+                                # sayğac dolu, anbar −1, alert bağlanır, proqnoz görünür
+node e2e/operations.mjs         # beş səhifə: incident canlı gəlir → Baxıram → Bağla; tapşırıq yarat / prioritet / ləğv;
+                                # anbar məhsulu + hərəkət; kiosk qaydası yarat / sil; audit süzgəci; 390 px
+node e2e/operations.mjs ../docs/screenshots/step-7/t213   # ekran görüntüləri ilə
+```
+
+Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını silir (T-266).
+
 ---
 
 ## 8. Build, test, lint
