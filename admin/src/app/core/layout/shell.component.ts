@@ -1,4 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,8 +9,9 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { filter, map } from 'rxjs';
 
 import { Permissions } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
@@ -16,6 +19,9 @@ import { ThemeService } from '../theme/theme.service';
 import { LiveIndicatorComponent } from '../../shared/live-indicator.component';
 import { SupportedLanguage, languageNames, supportedLanguages } from '../i18n/languages';
 import { panelConnection } from '../realtime/panel-connection';
+
+/** Below this width the menu covers the page rather than sitting beside it (tokens.css uses the same). */
+const narrowScreen = '(max-width: 900px)';
 
 /** One entry in the sidebar. */
 interface NavItem {
@@ -60,6 +66,7 @@ export class ShellComponent {
   private readonly auth = inject(AuthService);
   private readonly theme_ = inject(ThemeService);
   private readonly translate = inject(TranslateService);
+  private readonly breakpoints = inject(BreakpointObserver);
 
   readonly admin = this.auth.admin;
 
@@ -71,7 +78,15 @@ export class ShellComponent {
    * it takes you.
    */
   readonly themeTooltip = computed(() => (this.theme() === 'dark' ? 'theme.light' : 'theme.dark'));
-  readonly sidenavOpen = signal(true);
+  /**
+   * A phone or a narrow window (the same limit as tokens.css): the menu goes
+   * over the page instead of beside it, and stays shut until asked for.
+   */
+  readonly narrow = toSignal(this.breakpoints.observe(narrowScreen).pipe(map((state) => state.matches)), {
+    initialValue: this.breakpoints.isMatched(narrowScreen),
+  });
+
+  readonly sidenavOpen = signal(!this.narrow());
 
   readonly languages = supportedLanguages.map((code) => ({
     code,
@@ -256,6 +271,24 @@ export class ShellComponent {
   constructor() {
     // The live connection, for as long as the shell is on screen.
     panelConnection();
+
+    // Turning a tablet or resizing the window: the menu follows the width.
+    effect(() => {
+      const narrow = this.narrow();
+      untracked(() => this.sidenavOpen.set(!narrow));
+    });
+
+    // On a narrow screen a chosen page closes the menu that covers it.
+    inject(Router)
+      .events.pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(inject(DestroyRef)),
+      )
+      .subscribe(() => {
+        if (this.narrow()) {
+          this.sidenavOpen.set(false);
+        }
+      });
   }
 
   selectLanguage(language: SupportedLanguage): void {

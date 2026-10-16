@@ -100,6 +100,19 @@ export function formatTime(value: string | Date | null | undefined): string {
   return Number.isNaN(date.getTime()) ? '—' : `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/** `18:33:07`: a time read live, where the seconds show that it moved. */
+export function formatClock(value: string | Date | null | undefined): string {
+  if (!value) {
+    return '—';
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 /** `12,5 MB` (az, ru) or `12.5 MB` (en). */
 export function formatBytes(bytes: number | null | undefined, language?: string): string {
   if (bytes === null || bytes === undefined || bytes < 0) {

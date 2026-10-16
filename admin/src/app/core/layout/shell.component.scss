@@ -80,4 +80,11 @@
   .shell__content {
     padding: var(--space-4);
   }
+
+  // The toolbar keeps its controls; the words that would push them off the
+  // screen go - the avatar's menu still names the account.
+  .shell__title,
+  .shell__account-name {
+    display: none;
+  }
 }

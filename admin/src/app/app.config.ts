@@ -72,8 +72,13 @@ const updateCheckMs = 3000;
 const reloadedKey = 'neoprint.reloadedForBuild';
 
 /** Whether a newer build was found and made the active one. Never throws: without it the panel opens as it is. */
-async function newerBuild(updates: SwUpdate): Promise<boolean> {
-  if (!updates.isEnabled || !navigator.onLine || sessionStorage.getItem(reloadedKey)) {
+export async function newerBuild(updates: SwUpdate): Promise<boolean> {
+  // No service worker serves this page - a first visit, or a browser without
+  // one: the page came from the server and is the newest build. Asking would
+  // wait for a worker that registers only once the panel has started (T-278).
+  const controlled = typeof navigator !== 'undefined' && !!navigator.serviceWorker?.controller;
+
+  if (!updates.isEnabled || !controlled || !navigator.onLine || sessionStorage.getItem(reloadedKey)) {
     sessionStorage.removeItem(reloadedKey);
 
     return false;

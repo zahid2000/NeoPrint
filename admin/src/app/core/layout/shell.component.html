@@ -1,5 +1,10 @@
 <mat-sidenav-container class="shell">
-  <mat-sidenav class="shell__sidenav" mode="side" [opened]="sidenavOpen()">
+  <mat-sidenav
+    class="shell__sidenav"
+    [mode]="narrow() ? 'over' : 'side'"
+    [opened]="sidenavOpen()"
+    (openedChange)="sidenavOpen.set($event)"
+  >
     <div class="shell__brand">
       <mat-icon>print</mat-icon>
       <span>NeoPrint</span>
@@ -67,7 +72,7 @@
 
       <button mat-button type="button" [matMenuTriggerFor]="accountMenu">
         <span class="shell__avatar">{{ initial() }}</span>
-        {{ admin()?.fullName || admin()?.email }}
+        <span class="shell__account-name">{{ admin()?.fullName || admin()?.email }}</span>
       </button>
 
       <mat-menu #accountMenu>

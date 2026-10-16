@@ -12,7 +12,7 @@ import { liveRefresh } from '../../core/realtime/live-refresh';
 import { TelemetryLiveStore } from '../../core/realtime/telemetry-live.store';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
-import { formatBytes, formatCount, formatDateTime, formatTime } from '../../shared/format.pipes';
+import { formatBytes, formatClock, formatCount, formatDateTime, formatTime } from '../../shared/format.pipes';
 import { LineChartComponent, LineSeries } from '../../shared/line-chart.component';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
@@ -80,7 +80,7 @@ const limits = { memoryPercent: 90, latencyMs: 2000, diskGb: 2 };
     } @else if (reading(); as current) {
       @if (current.sample; as sample) {
         <p class="neo-caption status__at">
-          {{ 'monitoring.status.reportedAt' | translate: { time: at(sample.timestamp) } }}
+          {{ 'monitoring.status.reportedAt' | translate: { time: clock(sample.timestamp) } }}
         </p>
 
         @if (stale()) {
@@ -382,6 +382,11 @@ export class KioskStatusComponent implements OnInit {
     return formatDateTime(timestamp, { today: this.text('common.today'), yesterday: this.text('common.yesterday') });
   }
 
+  /** The last report's time to the second: a new one every 30 seconds shows. */
+  clock(timestamp: string): string {
+    return formatClock(timestamp);
+  }
+
   /** "Son: X · Orta: Y · Maks: Z", or null when the range has no value at all. */
   private summary(values: (number | null)[], format: (value: number) => string): string | null {
     const known = values.filter((value): value is number => value !== null);
@@ -443,7 +448,10 @@ export class KioskStatusComponent implements OnInit {
             value:
               system?.clockOffsetMs == null
                 ? null
-                : this.text('monitoring.value.seconds', { value: (system.clockOffsetMs / 1000).toFixed(1) }),
+                : this.text('monitoring.value.seconds', {
+                    // A few milliseconds behind is "0.0", not "-0.0".
+                    value: (Math.round(system.clockOffsetMs / 100) / 10 || 0).toFixed(1),
+                  }),
             breach: since('clock'),
           },
         ],

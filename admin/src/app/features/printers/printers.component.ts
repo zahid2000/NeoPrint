@@ -148,7 +148,7 @@ interface PrinterRow {
               <th mat-header-cell *matHeaderCellDef class="printers__number">{{ 'monitoring.printers.colPages' | translate }}</th>
               <td mat-cell *matCellDef="let row" class="printers__number neo-nowrap">
                 @if (row.lifetimePages === null) {
-                  <span class="neo-caption">—</span>
+                  <span class="neo-caption">{{ 'monitoring.printerNotReported' | translate }}</span>
                 } @else {
                   {{ row.lifetimePages | count }}
                 }

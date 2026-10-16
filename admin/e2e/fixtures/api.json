@@ -4,6 +4,7 @@
   "",
   "kiosks",
   "kiosks/new",
+  "printers",
   "print-jobs",
   "suspected",
   "payments",
@@ -2456,6 +2457,43 @@
     },
     "items": []
    }
+  },
+  "GET /api/admin/printers": [
+   {
+    "kioskId": "07b60a14-f48c-432a-a815-19c68d09e250",
+    "stale": false,
+    "sample": {
+     "timestamp": "2026-10-15T09:00:00Z",
+     "printer": {
+      "kioskId": "07b60a14-f48c-432a-a815-19c68d09e250",
+      "printerName": "NeoPrint Fake Printer"
+     },
+     "selected": true,
+     "manufacturer": "NeoPrint",
+     "model": "Fake printer",
+     "driverName": "neoprint-fake",
+     "connection": "Other",
+     "state": "idle",
+     "stateReasons": [],
+     "online": true,
+     "supplies": [
+      {
+       "name": "Black Cartridge",
+       "type": "toner",
+       "levelPercent": 40
+      }
+     ],
+     "trays": [],
+     "lifetimePages": 1200,
+     "spoolerJobs": []
+    }
+   }
+  ],
+  "GET /api/admin/supply-alerts": {
+   "items": [],
+   "total": 0,
+   "page": 1,
+   "pageSize": 500
   }
  }
 }
