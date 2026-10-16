@@ -212,3 +212,159 @@ export interface SupplyRule {
 }
 
 export type SupplyRuleInput = Omit<SupplyRule, 'id' | 'isGlobal'>;
+
+// ---------------------------------------------------------------------------
+// The operations pages (step 7A, M9): incidents, service tasks, the warehouse,
+// supply rules and the audit log.
+// ---------------------------------------------------------------------------
+
+/** One order an incident touched, with its payment and refunds (plan section 9.6). */
+export interface AffectedOrder {
+  readonly jobId: string;
+  readonly jobCode: string;
+  readonly status: string;
+  readonly registered: boolean;
+  readonly reason?: string | null;
+  readonly paymentId?: string | null;
+  readonly paid?: number | null;
+  readonly currency?: string | null;
+  readonly paymentStatus?: string | null;
+  readonly refunds: readonly {
+    readonly id: string;
+    readonly status: string;
+    readonly amount: number;
+    readonly destination: string;
+    readonly reason: string;
+    readonly createdAt: string;
+  }[];
+}
+
+/** GET /api/admin/incidents/{id}. */
+export interface IncidentDetail {
+  readonly incident: {
+    readonly id: string;
+    readonly type: string;
+    readonly severity: string;
+    readonly status: string;
+    readonly details: string;
+    readonly kioskId?: string | null;
+    readonly kioskCode?: string | null;
+    readonly createdAt: string;
+    readonly acknowledgedAt?: string | null;
+    readonly acknowledgedBy?: string | null;
+    readonly resolvedAt?: string | null;
+    readonly resolvedBy?: string | null;
+    readonly resolution?: string | null;
+  };
+  readonly affected: readonly AffectedOrder[];
+}
+
+/** A service task with all it records (GET /api/admin/service-tasks). */
+export interface ServiceTaskDetail {
+  readonly id: string;
+  readonly kioskId: string;
+  readonly kioskCode?: string | null;
+  readonly kioskName?: string | null;
+  readonly type: string;
+  readonly priority: string;
+  readonly status: 'Open' | 'Assigned' | 'InProgress' | 'Done' | 'Cancelled';
+  readonly source: string;
+  readonly resource?: string | null;
+  readonly variant?: string | null;
+  readonly assignedTo?: string | null;
+  readonly assignedToName?: string | null;
+  readonly dueAt?: string | null;
+  readonly notes?: string | null;
+  readonly createdAt: string;
+  readonly assignedAt?: string | null;
+  readonly startedAt?: string | null;
+  readonly completedAt?: string | null;
+  readonly escalatedAt?: string | null;
+  readonly cancelReason?: string | null;
+  readonly completion?: {
+    readonly paper?: string | null;
+    readonly sheetsAdded?: number | null;
+    readonly inventoryItemId?: string | null;
+    readonly quantity?: number | null;
+    readonly note?: string | null;
+  } | null;
+}
+
+export interface ServiceTaskSummary {
+  readonly open: number;
+  readonly overdue: number;
+  readonly unassigned: number;
+  readonly completedLastWeek: number;
+  readonly averageMinutes?: number | null;
+}
+
+export interface ServiceTaskAssignee {
+  readonly id: string;
+  readonly fullName: string;
+  readonly operator: boolean;
+  readonly activeTasks: number;
+}
+
+export interface InventoryItemInput {
+  readonly sku: string;
+  readonly name: string;
+  readonly type: string;
+  readonly compatiblePrinterModels: readonly string[];
+  readonly unit: string;
+  readonly sheetsPerUnit?: number | null;
+  readonly minStock: number;
+  readonly location?: string | null;
+  readonly isActive: boolean;
+}
+
+export interface InventoryMovement {
+  readonly id: string;
+  readonly itemId: string;
+  readonly itemName?: string | null;
+  readonly type: string;
+  readonly quantity: number;
+  readonly stockAfter: number;
+  readonly kioskId?: string | null;
+  readonly taskId?: string | null;
+  readonly by?: string | null;
+  readonly at: string;
+  readonly note?: string | null;
+}
+
+export interface SupplyAlertRow {
+  readonly id: string;
+  readonly kioskId: string;
+  readonly kioskCode?: string | null;
+  readonly resource: string;
+  readonly variant?: string | null;
+  readonly unit: string;
+  readonly level: 'Warning' | 'Critical';
+  readonly value: number;
+  readonly raisedAt: string;
+  readonly levelSince?: string | null;
+}
+
+export interface AuditLogEntry {
+  readonly id: string;
+  readonly at: string;
+  readonly adminUserId?: string | null;
+  readonly adminName?: string | null;
+  readonly actorType: string;
+  readonly action: string;
+  readonly entityType: string;
+  readonly entityId?: string | null;
+  readonly before?: string | null;
+  readonly after?: string | null;
+  readonly ip?: string | null;
+  readonly reason?: string | null;
+  readonly correlationId?: string | null;
+}
+
+export interface AuditLogFilter {
+  readonly action?: string;
+  readonly entityType?: string;
+  readonly entityId?: string;
+  readonly adminUserId?: string;
+  readonly from?: Date | null;
+  readonly to?: Date | null;
+}

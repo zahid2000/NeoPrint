@@ -1,6 +1,7 @@
 add
 admin_panel_settings
 arrow_back
+assignment
 block
 calculate
 cancel
@@ -11,6 +12,7 @@ chevron_right
 cloud
 confirmation_number
 content_copy
+crisis_alert
 dark_mode
 dashboard
 delete
@@ -44,6 +46,7 @@ map
 menu
 more_vert
 network_check
+notifications_active
 pause
 payments
 people
@@ -86,4 +89,5 @@ verified
 visibility
 visibility_off
 vpn_key
+warehouse
 warning

@@ -126,6 +126,10 @@ const SERVER_VALUES = {
     ],
   },
   'monitoring.printers.filter.': { values: ['all', 'lowToner', 'faulty', 'unreachable'] },
+  // The operations pages (T-213).
+  'ops.inventory.movement.': { enum: 'InventoryMovementType' },
+  'ops.inventory.quantityHint.': { enum: 'InventoryMovementType' },
+  'ops.tasks.source.': { enum: 'ServiceTaskSource' },
 };
 
 // ---------------------------------------------------------------------------

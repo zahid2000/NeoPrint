@@ -18,6 +18,7 @@ import { storageTranslations } from './storage.i18n';
 import { referralsTranslations } from './referrals.i18n';
 import { operatorTranslations } from './operator.i18n';
 import { monitoringTranslations } from './monitoring.i18n';
+import { operationsTranslations } from './operations.i18n';
 import type { PageTranslations } from './page-translations';
 
 import { SupportedLanguage, supportedLanguages } from './languages';
@@ -1030,6 +1031,7 @@ const pages: readonly PageTranslations[] = [
   moneyTranslations,
   operatorTranslations,
   monitoringTranslations,
+  operationsTranslations,
 ];
 
 for (const language of supportedLanguages) {

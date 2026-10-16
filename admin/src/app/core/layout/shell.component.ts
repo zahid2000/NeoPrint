@@ -122,6 +122,36 @@ export class ShellComponent {
       permissions: [Permissions.printersView],
     },
     {
+      path: '/incidents',
+      labelKey: 'nav.incidents',
+      icon: 'crisis_alert',
+      permissions: [Permissions.incidentsView],
+    },
+    {
+      path: '/service-tasks',
+      labelKey: 'nav.serviceTasks',
+      icon: 'assignment',
+      permissions: [Permissions.serviceTasksView],
+    },
+    {
+      path: '/inventory',
+      labelKey: 'nav.inventory',
+      icon: 'warehouse',
+      permissions: [Permissions.inventoryView],
+    },
+    {
+      path: '/supply-rules',
+      labelKey: 'nav.supplyRules',
+      icon: 'notifications_active',
+      permissions: [Permissions.suppliesView],
+    },
+    {
+      path: '/audit',
+      labelKey: 'nav.audit',
+      icon: 'history',
+      permissions: [Permissions.auditView],
+    },
+    {
       path: '/print-jobs',
       labelKey: 'nav.printJobs',
       icon: 'receipt_long',

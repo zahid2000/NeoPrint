@@ -137,6 +137,31 @@ export const routes: Routes = [
         loadComponent: () => import('./features/printers/printers.component').then((m) => m.PrintersComponent),
       },
       {
+        path: 'incidents',
+        canActivate: [permissionGuard(Permissions.incidentsView)],
+        loadComponent: () => import('./features/operations/incidents.component').then((m) => m.IncidentsComponent),
+      },
+      {
+        path: 'service-tasks',
+        canActivate: [permissionGuard(Permissions.serviceTasksView)],
+        loadComponent: () => import('./features/operations/service-tasks.component').then((m) => m.ServiceTasksComponent),
+      },
+      {
+        path: 'inventory',
+        canActivate: [permissionGuard(Permissions.inventoryView)],
+        loadComponent: () => import('./features/operations/inventory.component').then((m) => m.InventoryComponent),
+      },
+      {
+        path: 'supply-rules',
+        canActivate: [permissionGuard(Permissions.suppliesView)],
+        loadComponent: () => import('./features/operations/supply-rules.component').then((m) => m.SupplyRulesComponent),
+      },
+      {
+        path: 'audit',
+        canActivate: [permissionGuard(Permissions.auditView)],
+        loadComponent: () => import('./features/operations/audit-log.component').then((m) => m.AuditLogComponent),
+      },
+      {
         path: 'print-jobs',
         canActivate: [permissionGuard(Permissions.jobsView)],
         loadComponent: () =>

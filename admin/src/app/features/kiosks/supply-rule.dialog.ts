@@ -10,6 +10,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
+import { KioskListItem } from '../../core/api/admin-api.service';
 import { MonitoringApiService } from '../../core/api/monitoring-api.service';
 import { SupplyChannel, SupplyRule, SupplyRuleInput } from '../../core/api/step7.models';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
@@ -22,8 +23,14 @@ export interface SupplyRuleDialogData {
   /** The kiosks a new rule is for: this kiosk's tab makes rules for this kiosk only. */
   readonly kioskIds: readonly string[];
 
-  /** Shown in the title: "KSK-9002 üçün qayda". */
+  /** Shown in the title: "KSK-9002 üçün qayda". Empty on the rules page. */
   readonly kioskCode: string;
+
+  /**
+   * The rules page (T-213): the rule may be for every kiosk or for some, chosen
+   * here. Absent on a kiosk's own tab, where the kiosk is given.
+   */
+  readonly kiosks?: readonly KioskListItem[];
 }
 
 /** What a rule may watch (plan section 2.15). */
@@ -59,7 +66,11 @@ export const taskPriorities = ['Low', 'Normal', 'High', 'Critical'] as const;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title>
-      {{ (data.rule ? 'monitoring.rules.editTitle' : 'monitoring.rules.newTitle') | translate: { kiosk: data.kioskCode } }}
+      @if (data.kiosks) {
+        {{ (data.rule ? 'ops.rules.editTitle' : 'ops.rules.newTitle') | translate }}
+      } @else {
+        {{ (data.rule ? 'monitoring.rules.editTitle' : 'monitoring.rules.newTitle') | translate: { kiosk: data.kioskCode } }}
+      }
     </h2>
     <mat-dialog-content class="neo-dialog">
       @if (problem(); as problem) {
@@ -67,6 +78,21 @@ export const taskPriorities = ['Low', 'Normal', 'High', 'Critical'] as const;
       }
 
       <div class="rule__form">
+        @if (data.kiosks) {
+          <mat-form-field class="rule__wide">
+            <mat-label>{{ 'ops.rules.name' | translate }}</mat-label>
+            <input matInput maxlength="80" [ngModel]="name()" (ngModelChange)="name.set($event)" />
+          </mat-form-field>
+          <mat-form-field class="rule__wide">
+            <mat-label>{{ 'ops.rules.where' | translate }}</mat-label>
+            <mat-select multiple [ngModel]="kioskIds()" (ngModelChange)="kioskIds.set($event)">
+              @for (kiosk of data.kiosks; track kiosk.id) {
+                <mat-option [value]="kiosk.id">{{ kiosk.code }} — {{ kiosk.name }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>{{ 'ops.rules.whereHint' | translate }}</mat-hint>
+          </mat-form-field>
+        }
         <mat-form-field>
           <mat-label>{{ 'monitoring.rules.resource' | translate }}</mat-label>
           <mat-select [ngModel]="resource()" (ngModelChange)="setResource($event)">
@@ -155,6 +181,10 @@ export const taskPriorities = ['Low', 'Normal', 'High', 'Critical'] as const;
       gap: var(--space-2) var(--space-4);
     }
 
+    .rule__wide {
+      grid-column: 1 / -1;
+    }
+
     .rule__channels {
       display: flex;
       flex-wrap: wrap;
@@ -189,6 +219,8 @@ export class SupplyRuleDialogComponent {
   private readonly rule = this.data.rule;
 
   readonly resource = signal<string>(this.rule?.resource ?? 'Toner');
+  readonly name = signal(this.rule?.name ?? '');
+  readonly kioskIds = signal<string[]>([...(this.rule?.kioskIds ?? this.data.kioskIds)]);
   readonly variant = signal(this.rule?.resourceVariant ?? '');
   readonly unit = signal<'Sheets' | 'Percent'>(this.rule?.unit ?? 'Percent');
   readonly warning = signal<number | null>(this.rule?.warningThreshold ?? null);
@@ -225,7 +257,12 @@ export class SupplyRuleDialogComponent {
   });
 
   readonly valid = computed(
-    () => this.warning() !== null && this.critical() !== null && !this.thresholdProblem() && this.selected().length > 0,
+    () =>
+      this.warning() !== null &&
+      this.critical() !== null &&
+      !this.thresholdProblem() &&
+      this.selected().length > 0 &&
+      (!this.data.kiosks || this.name().trim().length > 0),
   );
 
   setResource(resource: string): void {
@@ -243,8 +280,8 @@ export class SupplyRuleDialogComponent {
 
   async save(): Promise<void> {
     const input: SupplyRuleInput = {
-      name: this.rule?.name ?? `${this.data.kioskCode} — ${this.resource()}`,
-      kioskIds: this.rule?.kioskIds ?? this.data.kioskIds,
+      name: this.data.kiosks ? this.name().trim() : (this.rule?.name ?? `${this.data.kioskCode} — ${this.resource()}`),
+      kioskIds: this.data.kiosks ? this.kioskIds() : (this.rule?.kioskIds ?? this.data.kioskIds),
       resource: this.resource(),
       resourceVariant: this.paper() ? null : this.variant().trim() || null,
       unit: this.unit(),
