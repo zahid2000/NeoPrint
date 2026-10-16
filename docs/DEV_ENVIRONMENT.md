@@ -1589,6 +1589,28 @@ panel əvvəlcə yeni build-i yoxlayır və bir dəfə özü yenilənir. İnkiş
 əməliyyat düymələrini söndürür; əlaqə qayıdanda özü yenilənir. Server əlçatmaz ikən tətbiq bağlanıb yenidən açılsa giriş
 səhifəsi görünür (sessiya server olmadan bərpa olunmur — `DECISIONS.md`, 2026-10-13).
 
+## 7p. Addım 7A — admin: kiosk və printer səhifələri (plan 7.8–7.10, 8A.3; T-212)
+
+Kiosk detalında yeni tab-lar: **Cari vəziyyət** (kioskun son hesabatı, canlı; son 24 saat / 7 gün qrafikləri), **Servis
+tapşırıqları**, **Incident-lər**, **Əmrlər** (Dayandır / Davam et, tətbiqi və kompüteri yenidən başlat, bütün əmrlər və
+nəticələri). **Sərf** tab-ında printerin toner səviyyələri, proqnoz və bu kioskda işləyən xəbərdarlıq qaydaları ("Bu kiosk üçün
+qayda"). Printerlər tab-ında printerin adı onun öz səhifəsini açır (`/kiosks/<id>/printers/<ad>`). Menyuda yeni səhifə
+**Printerlər** (`/printers`) — bütün kioskların printerləri, süzgəc "Az toner / Xətalı / Əlçatmaz".
+
+```bash
+docker compose up -d && docker start neoprint-kshot     # stack və KSK-9002 (Linux konteyner kiosku)
+node tools/dev-kiosk/telemetry.mjs                      # KSK-9002-nin son hesabatı və printeri (API-dən)
+cd admin
+node e2e/monitoring.mjs                                 # yeni səhifələr real stack-də: canlı hesabat, Dayandır → Davam et,
+                                                        # printer səhifəsi, Printerlər, 390 px, məhdud hesab
+node e2e/monitoring.mjs ../docs/screenshots/step-7/t212 # eyni, ekran görüntüləri ilə (host adı / IP maskalanır)
+```
+
+`monitoring.mjs` KSK-9002-ni dayandırıb yenidən işə salır və yoxlama üçün yaratdığı məhdud hesabı sonda söndürür.
+
+**Telefonda panel (T-212):** ekran 900 px-dən dar olanda yan menyu bağlı açılır, ☰ ilə səhifənin üstündə açılır və səhifə
+seçiləndə özü bağlanır.
+
 ---
 
 ## 8. Build, test, lint
