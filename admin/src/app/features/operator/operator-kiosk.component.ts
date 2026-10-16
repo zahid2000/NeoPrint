@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -244,9 +244,10 @@ export class OperatorKioskComponent {
 
   constructor() {
     // The id comes from the route after construction, and changes when another kiosk is opened.
+    // Only the id is followed: what the fetch reads and writes must not start it again (T-279).
     effect(() => {
       this.id();
-      void this.screen.reload();
+      untracked(() => void this.screen.reload());
     });
   }
 

@@ -878,14 +878,30 @@ public sealed class FilesApiTests
             .FindByIdAsync(id);
 
         using var direct = _fixture.CreateDirectStorageClient();
-        var listing = await direct.ListObjectsV2Async(new ListObjectsV2Request
-        {
-            BucketName = NeoPrintApiFixture.FilesBucket,
-            Prefix = $"files/{stored!.UserId:N}/{id:N}/",
-        });
 
-        listing.S3Objects.Select(o => o.Key[(o.Key.LastIndexOf('/') + 1)..])
-            .Should().BeEquivalentTo("original.png", "v1.png", "print-v1.pdf");
+        // The background worker converts the file too: the file is Ready the
+        // moment it is saved, and the replaced PDF goes right after (T-280).
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        List<string> names;
+
+        while (true)
+        {
+            var listing = await direct.ListObjectsV2Async(new ListObjectsV2Request
+            {
+                BucketName = NeoPrintApiFixture.FilesBucket,
+                Prefix = $"files/{stored!.UserId:N}/{id:N}/",
+            });
+            names = [.. listing.S3Objects.Select(o => o.Key[(o.Key.LastIndexOf('/') + 1)..])];
+
+            if (!names.Contains("print.pdf") || DateTime.UtcNow > deadline)
+            {
+                break;
+            }
+
+            await Task.Delay(200);
+        }
+
+        names.Should().BeEquivalentTo("original.png", "v1.png", "print-v1.pdf");
     }
 
     [DockerFact]

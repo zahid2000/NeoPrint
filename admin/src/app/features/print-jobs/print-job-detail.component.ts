@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -339,9 +339,10 @@ export class PrintJobDetailComponent {
   });
 
   constructor() {
+    // Only the id is followed: what the fetch reads and writes must not start it again (T-279).
     effect(() => {
       this.id();
-      void this.load();
+      untracked(() => void this.load());
     });
 
     // The job moves while it is watched: the kiosk's queue event says so.

@@ -11,6 +11,7 @@ import { AdminHubService } from '../../core/realtime/admin-hub.service';
 import { FakeHub } from '../../core/realtime/fake-hub.testing';
 import { liveDebounceMs } from '../../core/realtime/live-refresh';
 import { concernsOf } from './operator-kiosk-card.component';
+import { OperatorKioskComponent } from './operator-kiosk.component';
 import { OperatorKiosksComponent } from './operator-kiosks.component';
 import { OperatorTasksComponent } from './operator-tasks.component';
 import { OperatorKioskCard, ServiceTask } from './operator.models';
@@ -278,5 +279,38 @@ describe('OperatorTasksComponent', () => {
     await settle();
 
     expect([...element().querySelectorAll('article')].map((item) => item.getAttribute('data-task'))).toEqual(['t-mine']);
+  });
+});
+
+// T-279: the page followed what its own fetch read and wrote, and asked the server again without pause.
+describe('OperatorKioskComponent', () => {
+  it('asks for its kiosk once, and again only when another kiosk is opened', async () => {
+    vi.useFakeTimers();
+    localStorage.clear();
+    const { backend } = setUp(Permissions.operatorPanel, Permissions.kiosksView);
+    const detail = { kiosk: card(), telemetry: null, incidents: [], tasks: [] };
+    const fixture = TestBed.createComponent(OperatorKioskComponent);
+
+    fixture.componentRef.setInput('id', 'k-1');
+    fixture.detectChanges();
+    backend.expectOne('/api/admin/operator/kiosks/k-1').flush(detail);
+
+    for (let round = 0; round < 5; round++) {
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+    }
+    backend.expectNone('/api/admin/operator/kiosks/k-1');
+
+    fixture.componentRef.setInput('id', 'k-2');
+    fixture.detectChanges();
+    backend.expectOne('/api/admin/operator/kiosks/k-2').flush({ ...detail, kiosk: card({ id: 'k-2' }) });
+    await vi.advanceTimersByTimeAsync(0);
+    fixture.detectChanges();
+    backend.expectNone('/api/admin/operator/kiosks/k-2');
+
+    fixture.destroy();
+    backend.verify();
+    vi.useRealTimers();
+    localStorage.clear();
   });
 });
