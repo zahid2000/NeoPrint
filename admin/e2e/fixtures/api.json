@@ -5,6 +5,10 @@
   "kiosks",
   "kiosks/new",
   "printers",
+  "incidents",
+  "service-tasks",
+  "inventory",
+  "supply-rules",
   "print-jobs",
   "suspected",
   "payments",
@@ -2494,6 +2498,49 @@
    "total": 0,
    "page": 1,
    "pageSize": 500
-  }
+  },
+  "GET /api/admin/service-tasks/summary": {
+   "open": 1,
+   "overdue": 0,
+   "unassigned": 0,
+   "completedLastWeek": 2,
+   "averageMinutes": 95
+  },
+  "GET /api/admin/inventory/movements": {
+   "items": [
+    {
+     "id": "f0f0f0f0-0000-4000-8000-000000000001",
+     "itemId": "f0f0f0f0-0000-4000-8000-000000000002",
+     "itemName": "A4",
+     "type": "Purchase",
+     "quantity": 10,
+     "stockAfter": 10,
+     "at": "2026-10-15T09:00:00Z"
+    }
+   ],
+   "total": 1,
+   "page": 1,
+   "pageSize": 30
+  },
+  "GET /api/admin/supply-rules": [
+   {
+    "id": "f0f0f0f0-0000-4000-8000-000000000003",
+    "name": "A4",
+    "isGlobal": true,
+    "kioskIds": [],
+    "resource": "PaperA4",
+    "resourceVariant": null,
+    "unit": "Sheets",
+    "warningThreshold": 200,
+    "criticalThreshold": 50,
+    "channels": [
+     "AdminPanel",
+     "OperatorPanel"
+    ],
+    "createServiceTask": true,
+    "taskPriority": "Normal",
+    "isActive": true
+   }
+  ]
  }
 }
