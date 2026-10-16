@@ -24,7 +24,8 @@ namespace NeoPrint.Application.Supplies;
 /// <param name="Statuses">Names of <see cref="ServiceTaskStatus"/>; empty for every status.</param>
 /// <param name="Mine">Only the tasks that are with the caller.</param>
 public sealed record ListServiceTasksQuery(
-    Guid AdminUserId, IReadOnlyCollection<string>? Statuses, Guid? KioskId, bool Mine, int Page, int PageSize) : IRequest<ServiceTaskPage>;
+    Guid AdminUserId, IReadOnlyCollection<string>? Statuses, Guid? KioskId, bool Mine, int Page, int PageSize, bool Unassigned = false)
+    : IRequest<ServiceTaskPage>;
 
 public sealed record ServiceTaskPage(IReadOnlyList<ServiceTaskView> Items, long Total, int Page, int PageSize);
 
@@ -182,7 +183,8 @@ public sealed class ServiceTaskHandlers :
                 effective.AllKiosks ? null : effective.KioskIds,
                 (page - 1) * size,
                 size,
-                cancellationToken)
+                cancellationToken,
+                request.Unassigned)
             .ConfigureAwait(false);
 
         var kiosks = (await _kiosks.ListAsync(cancellationToken).ConfigureAwait(false)).ToDictionary(kiosk => kiosk.Id);

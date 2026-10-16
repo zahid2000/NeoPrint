@@ -136,6 +136,12 @@ public sealed class ServiceTaskRepository : IServiceTaskRepository
     public async Task<IReadOnlyList<ServiceTask>> ListActiveAsync(CancellationToken cancellationToken = default)
         => await _context.ServiceTasks.Find(task => task.Active).ToListAsync(cancellationToken).ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<ServiceTask>> ListCompletedSinceAsync(DateTime since, CancellationToken cancellationToken = default)
+        => await _context.ServiceTasks
+            .Find(task => task.Status == ServiceTaskStatus.Done && task.CompletedAt >= since)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<(IReadOnlyList<ServiceTask> Items, long Total)> ListAsync(
         IReadOnlyCollection<ServiceTaskStatus>? statuses,
         Guid? kioskId,
@@ -143,7 +149,8 @@ public sealed class ServiceTaskRepository : IServiceTaskRepository
         IReadOnlyCollection<Guid>? scope,
         int skip,
         int take,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool unassignedOnly = false)
     {
         var builder = Builders<ServiceTask>.Filter;
         var query = builder.Empty;
@@ -166,6 +173,11 @@ public sealed class ServiceTaskRepository : IServiceTaskRepository
         if (scope is not null)
         {
             query &= builder.In(task => task.KioskId, scope);
+        }
+
+        if (unassignedOnly)
+        {
+            query &= builder.Eq(task => task.AssignedTo, null);
         }
 
         var total = await _context.ServiceTasks.CountDocumentsAsync(query, cancellationToken: cancellationToken).ConfigureAwait(false);

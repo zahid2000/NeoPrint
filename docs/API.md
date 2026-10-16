@@ -2059,7 +2059,7 @@ doldurma sayğacı həmişəlik təyin edir. Sifariş qaydası dəyişməyib: `P
 
 | Endpoint | İcazə | Qeyd |
 |---|---|---|
-| `GET /api/admin/service-tasks?status=&kioskId=&mine=&page=&pageSize=` | `service.tasks.view` | Əvvəl görüləcəklər, ən təcililər yuxarıda. `mine=true` — yalnız çağıranın tapşırıqları. `{ id, kioskId, kioskCode, kioskName, type, priority, status, source, resource, variant, assignedTo, assignedToName, dueAt, notes, createdAt, assignedAt, startedAt, completedAt, escalatedAt, cancelReason, completion }` |
+| `GET /api/admin/service-tasks?status=&kioskId=&mine=&unassigned=&page=&pageSize=` | `service.tasks.view` | Əvvəl görüləcəklər, ən təcililər yuxarıda. `mine=true` — yalnız çağıranın tapşırıqları; `unassigned=true` — yalnız hovuzdakılar (heç kimə verilməyən, T-213). `{ id, kioskId, kioskCode, kioskName, type, priority, status, source, resource, variant, assignedTo, assignedToName, dueAt, notes, createdAt, assignedAt, startedAt, completedAt, escalatedAt, cancelReason, completion }` |
 | `GET /api/admin/service-tasks/{id}` | `service.tasks.view` | |
 | `POST /api/admin/service-tasks` | `service.tasks.manage` | `Idempotency-Key`. `{ kioskId, type, priority?, notes?, dueAt?, assignTo? }` — `assignTo` verilməsə sistem operator seçir |
 | `PUT /api/admin/service-tasks/{id}` | `service.tasks.manage` | `{ priority, notes?, dueAt? }` — yalnız bitməmiş tapşırıq (`409 serviceTasks.notEditable`) |
@@ -2069,6 +2069,7 @@ doldurma sayğacı həmişəlik təyin edir. Sifariş qaydası dəyişməyib: `P
 | `POST /api/admin/service-tasks/{id}/complete` | `service.tasks.complete` | `Idempotency-Key`. `{ paper?, refillMode?: Add \| Full \| Exact, sheets?, inventoryItemId?, quantity?, note? }`. `RefillPaper` — kioskun sayğacı doldurulur (default `Full`, kağız ölçüsü tapşırıqdan); `ReplaceToner` / `ReplaceDrum` — `supply_events`-ə `Replaced` yazılır; `inventoryItemId` verilibsə anbardan `UsedAtKiosk` hərəkəti ilə çıxılır (çatmırsa `409 inventory.notEnough` və heç nə dəyişmir). Yalnız başlayan operator tamamlayır |
 | `POST /api/admin/service-tasks/{id}/cancel` | `service.tasks.manage` | `{ reason }` — məcburi (`400`); tamamlanmış tapşırıq üçün `409`. Tapşırıq silinmir |
 | `GET /api/admin/service-tasks/assignees?kioskId=` | `service.tasks.manage` | Tapşırığın kimə verilə biləcəyi (T-213): aktiv, kiosk əhatəsində, `service.tasks.complete` icazəsi olan hesablar — `{ id, fullName, operator, activeTasks }`; `operator = true` — tapşırığı icra edən, paylamayan hesab (sistemin özü yalnız bunlardan seçir), əvvəl onlar, sonra ən az məşğul olan. Əhatədən kənar kiosk `404` |
+| `GET /api/admin/service-tasks/summary` | `service.tasks.view` | SLA göstəriciləri (T-213), hesabın kiosk əhatəsində: `{ open, overdue, unassigned, completedLastWeek, averageMinutes }` — görüləcək, müddəti keçən, hovuzda, son 7 gündə bitən və onların yaradılmadan bitənə qədər orta müddəti (dəqiqə; bitən yoxdursa sahə yoxdur) |
 
 **Avtomatik tapşırıq:** qayda `createServiceTask = true` isə alert ilə birlikdə açılır (`source = AlertRule`); alert `Critical`
 olanda prioritet `Critical`-a qalxır; proqnoz `Service.ForecastLeadHours` (24) içində bitmə göstərirsə hədd keçilməsə də

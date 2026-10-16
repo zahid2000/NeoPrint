@@ -96,8 +96,15 @@ public sealed class AdminServiceTasksController : ControllerBase
         [FromQuery] bool mine = false,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] bool unassigned = false,
         CancellationToken cancellationToken = default)
-        => Ok(await _sender.Send(new ListServiceTasksQuery(AdminId, status, kioskId, mine, page, pageSize), cancellationToken));
+        => Ok(await _sender.Send(new ListServiceTasksQuery(AdminId, status, kioskId, mine, page, pageSize, unassigned), cancellationToken));
+
+    /// <summary>The SLA figures above the list: open, overdue, in the pool, finished this week and how long that took.</summary>
+    [HttpGet("summary")]
+    [HasPermission(Permissions.ServiceTasksView)]
+    public async Task<ActionResult<ServiceTaskSummary>> Summary(CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new GetServiceTaskSummaryQuery(AdminId), cancellationToken));
 
     [HttpGet("{id:guid}")]
     [HasPermission(Permissions.ServiceTasksView)]

@@ -5,6 +5,8 @@ using System.Text.Json;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using MongoDB.Driver;
+
 using NeoPrint.Domain.Admin;
 using NeoPrint.Infrastructure.Persistence;
 
@@ -93,6 +95,52 @@ public sealed class AdminAuditTests
         // An account that manages tasks of another kiosk cannot ask about this one.
         using var outsider = await AccountAsync(KioskScope.Only(other.KioskId), Permissions.ServiceTasksManage);
         (await outsider.GetAsync($"/api/admin/service-tasks/assignees?kioskId={kiosk.KioskId}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [DockerFact]
+    public async Task The_task_list_counts_what_is_open_late_and_in_the_pool_and_lists_the_pool_on_its_own()
+    {
+        if (Skip) { return; }
+
+        using var kiosk = await TestKiosks.ActivatedAsync(_fixture, $"sla-{Guid.NewGuid():N}"[..20]);
+        var worker = await AccountIdAsync(KioskScope.Only(kiosk.KioskId), "SLA operator", Permissions.ServiceTasksComplete);
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+
+        async Task<Guid> CreateAsync(object body)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/service-tasks") { Content = JsonContent.Create(body) };
+            request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+            var response = await admin.SendAsync(request);
+            response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+
+            return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        }
+
+        var late = await CreateAsync(new { kioskId = kiosk.KioskId, type = "Cleaning", dueAt = DateTime.UtcNow.AddHours(1), assignTo = worker });
+
+        // A due time cannot be set in the past; time passes it instead.
+        using (var services = _fixture.Services.CreateScope())
+        {
+            await services.ServiceProvider.GetRequiredService<MongoContext>().ServiceTasks.UpdateOneAsync(
+                task => task.Id == late,
+                Builders<NeoPrint.Domain.Supplies.ServiceTask>.Update.Set(task => task.DueAt, DateTime.UtcNow.AddHours(-1)));
+        }
+        var pooled = await CreateAsync(new { kioskId = kiosk.KioskId, type = "Other", notes = "Nobody yet" });
+        (await admin.PostAsJsonAsync($"/api/admin/service-tasks/{pooled}/assign", new { assignTo = (Guid?)null })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // An account that looks after this kiosk only: the figures are this kiosk's.
+        using var scoped = await AccountAsync(KioskScope.Only(kiosk.KioskId), Permissions.ServiceTasksView);
+        var summary = await scoped.GetFromJsonAsync<JsonElement>("/api/admin/service-tasks/summary");
+        summary.GetProperty("open").GetInt32().Should().Be(2);
+        summary.GetProperty("overdue").GetInt32().Should().Be(1);
+        summary.GetProperty("unassigned").GetInt32().Should().Be(1);
+        summary.GetProperty("completedLastWeek").GetInt32().Should().Be(0);
+        (summary.TryGetProperty("averageMinutes", out var average) ? average.ValueKind : JsonValueKind.Null)
+            .Should().Be(JsonValueKind.Null, "nothing was finished: no average");
+
+        var pool = (await scoped.GetFromJsonAsync<JsonElement>($"/api/admin/service-tasks?kioskId={kiosk.KioskId}&unassigned=true"))
+            .GetProperty("items").EnumerateArray().ToList();
+        pool.Should().ContainSingle().Which.GetProperty("id").GetGuid().Should().Be(pooled);
     }
 
     private async Task<Guid> AccountIdAsync(KioskScope scope, string name, params string[] permissions)

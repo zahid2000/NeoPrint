@@ -60,6 +60,7 @@ public interface IServiceTaskRepository
 
     /// <summary>The most urgent first, then the oldest.</summary>
     /// <param name="scope">Null for every kiosk; otherwise only these.</param>
+    /// <param name="unassignedOnly">Only the tasks nobody has been given (the pool).</param>
     Task<(IReadOnlyList<ServiceTask> Items, long Total)> ListAsync(
         IReadOnlyCollection<ServiceTaskStatus>? statuses,
         Guid? kioskId,
@@ -67,7 +68,11 @@ public interface IServiceTaskRepository
         IReadOnlyCollection<Guid>? scope,
         int skip,
         int take,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        bool unassignedOnly = false);
+
+    /// <summary>The tasks finished since then: for how long a task takes (the SLA figures).</summary>
+    Task<IReadOnlyList<ServiceTask>> ListCompletedSinceAsync(DateTime since, CancellationToken cancellationToken = default);
 }
 
 /// <summary>The <c>inventory_items</c> and <c>inventory_movements</c> collections.</summary>
