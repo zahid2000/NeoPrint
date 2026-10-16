@@ -1,0 +1,17 @@
+// The kiosk detail tabs that are a list with an "Açıq / Hamısı" choice above it.
+.tab__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--space-4);
+
+  p {
+    margin: 0;
+  }
+}
+
+.tab__block {
+  display: block;
+}

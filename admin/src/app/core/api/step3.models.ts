@@ -3,6 +3,8 @@
  * the queue, paper (docs/API.md). Field names follow the API's camelCase JSON.
  */
 
+import type { SupplyAlert, SupplyForecast, SupplyLevel } from '../../features/operator/operator.models';
+
 export interface PrinterCapabilities {
   readonly color: boolean;
   readonly duplex: boolean;
@@ -194,6 +196,15 @@ export interface SupplyEvent {
 export interface KioskSupplies {
   readonly paper: Readonly<Record<string, PaperStock>>;
   readonly events: readonly SupplyEvent[];
+
+  /** What the selected printer says of its toner, drum and the rest (step 7A). */
+  readonly levels?: readonly SupplyLevel[];
+
+  /** When each supply runs out at the rate of the last fortnight. */
+  readonly forecasts?: readonly SupplyForecast[];
+
+  /** The supplies below their rule now. */
+  readonly alerts?: readonly SupplyAlert[];
 }
 
 /** Below this share of the tray the counter is shown as running low (plan section 2.15). */

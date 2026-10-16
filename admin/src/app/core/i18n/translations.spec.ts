@@ -81,6 +81,14 @@ describe('translations', () => {
     'MinIO',
     'Scality RING',
     'OpenStreetMap',
+    // The kiosk and printer pages (T-212): product names, and words Azerbaijani writes the same.
+    'LibreOffice',
+    'Ghostscript',
+    'Wi-Fi',
+    'Telegram',
+    'USB',
+    'MAC',
+    'Model',
   ]);
 
   /** English words that have Azerbaijani equivalents and must not leak into az. */

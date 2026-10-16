@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
+import { RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
@@ -16,7 +17,6 @@ import { AdminHubService } from '../../core/realtime/admin-hub.service';
 import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
-import { DateTimePipe } from '../../shared/format.pipes';
 import { commandResults } from '../../core/realtime/command-results';
 import { NotifyService } from '../../shared/notify.service';
 import { Problem, toProblem } from '../../shared/problem';
@@ -31,7 +31,9 @@ type OverrideChoice = 'follow' | 'off';
 /**
  * Kiosk detail → Printers (plan sections 7.7, 8A.3): what the kiosk found,
  * which one prints, what the kiosk may offer, and the commands that ask the
- * kiosk to look again or to print its test page. Results arrive live.
+ * kiosk to look again or to print its test page. Each printer opens its own
+ * page; every command the kiosk was sent is listed in "Əmrlər" (T-212), and
+ * how the ones sent from here ended is said aloud (T-271).
  */
 @Component({
   selector: 'app-kiosk-printers',
@@ -42,11 +44,11 @@ type OverrideChoice = 'follow' | 'off';
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTableModule,
+    RouterLink,
     TranslatePipe,
     EmptyStateComponent,
     ErrorBannerComponent,
     StatusChipComponent,
-    DateTimePipe,
   ],
   template: `
     <p class="neo-muted neo-body-small">{{ 'printers.tabDescription' | translate }}</p>
@@ -100,7 +102,9 @@ type OverrideChoice = 'follow' | 'off';
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef>{{ 'printers.colName' | translate }}</th>
               <td mat-cell *matCellDef="let printer">
-                <strong>{{ printer.name }}</strong>
+                <a [routerLink]="['/kiosks', kioskId(), 'printers', printer.name]">
+                  <strong>{{ printer.name }}</strong>
+                </a>
               </td>
             </ng-container>
             <ng-container matColumnDef="driver">
@@ -175,43 +179,7 @@ type OverrideChoice = 'follow' | 'off';
         }
       }
 
-      <h3>{{ 'printers.commandsTitle' | translate }}</h3>
-      @if (commands().length === 0) {
-        <app-empty-state icon="terminal" [message]="'printers.commandsEmpty' | translate" />
-      } @else {
-        <div class="neo-table-wrapper">
-          <table mat-table class="neo-table" [dataSource]="commands()">
-            <ng-container matColumnDef="type">
-              <th mat-header-cell *matHeaderCellDef>{{ 'printers.colCommand' | translate }}</th>
-              <td mat-cell *matCellDef="let command">{{ 'printers.command.' + command.type | translate }}</td>
-            </ng-container>
-            <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>{{ 'printers.colStatus' | translate }}</th>
-              <td mat-cell *matCellDef="let command">
-                <app-status-chip
-                  [status]="command.status"
-                  [text]="'printers.commandStatus.' + command.status | translate"
-                />
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="result">
-              <th mat-header-cell *matHeaderCellDef>{{ 'printers.colResult' | translate }}</th>
-              <td mat-cell *matCellDef="let command">{{ command.result }}</td>
-            </ng-container>
-            <ng-container matColumnDef="sent">
-              <th mat-header-cell *matHeaderCellDef>{{ 'printers.colSent' | translate }}</th>
-              <td mat-cell *matCellDef="let command">{{ command.createdAt | dateTime }}</td>
-            </ng-container>
-            <ng-container matColumnDef="completed">
-              <th mat-header-cell *matHeaderCellDef>{{ 'printers.colCompleted' | translate }}</th>
-              <td mat-cell *matCellDef="let command">{{ command.completedAt | dateTime }}</td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="commandColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: commandColumns"></tr>
-          </table>
-        </div>
-      }
+      <p class="neo-caption">{{ 'monitoring.printers.commandsMoved' | translate }}</p>
     }
   `,
   styles: `
@@ -258,7 +226,6 @@ export class KioskPrintersComponent implements OnInit {
   readonly statusChange = output<string>();
 
   readonly columns = ['name', 'driver', 'status', 'capabilities', 'choose'];
-  readonly commandColumns = ['type', 'status', 'result', 'sent', 'completed'];
 
   readonly capabilities: readonly { key: Capability; label: string }[] = [
     { key: 'color', label: 'printers.capColor' },
@@ -267,7 +234,6 @@ export class KioskPrintersComponent implements OnInit {
   ];
 
   readonly view = signal<KioskPrinters | null>(null);
-  readonly commands = signal<KioskCommand[]>([]);
   readonly loading = signal(true);
   readonly problem = signal<Problem | null>(null);
   readonly busy = signal<string | null>(null);
@@ -297,20 +263,16 @@ export class KioskPrintersComponent implements OnInit {
         }
       }),
       this.hub.on<KioskCommand>(HubEvents.commandResult, (command) => {
-        if (command.kioskId === this.kioskId()) {
-          this.commands.update((list) => [command, ...list.filter((item) => item.id !== command.id)]);
-
-          // A passed test print is what takes the kiosk into service.
-          if (command.type === 'TestPrint' && command.status === 'Succeeded') {
-            void this.load();
-          }
+        // A passed test print is what takes the kiosk into service.
+        if (command.kioskId === this.kioskId() && command.type === 'TestPrint' && command.status === 'Succeeded') {
+          void this.load();
         }
       }),
     ];
     inject(DestroyRef).onDestroy(() => off.forEach((unsubscribe) => unsubscribe()));
 
-    // After a gap in the connection the list and the commands are asked for
-    // again - unless a choice on this page is waiting to be saved.
+    // After a gap in the connection the list is asked for again - unless a
+    // choice on this page is waiting to be saved.
     liveRefresh({ events: [], reload: () => (this.changed() ? null : this.load()) });
   }
 
@@ -322,13 +284,7 @@ export class KioskPrintersComponent implements OnInit {
     this.problem.set(null);
 
     try {
-      const [view, commands] = await Promise.all([
-        firstValueFrom(this.api.kioskPrinters(this.kioskId())),
-        firstValueFrom(this.api.kioskCommands(this.kioskId())),
-      ]);
-
-      this.apply(view);
-      this.commands.set(commands);
+      this.apply(await firstValueFrom(this.api.kioskPrinters(this.kioskId())));
     } catch (error) {
       this.problem.set(toProblem(error));
     } finally {
@@ -375,8 +331,6 @@ export class KioskPrintersComponent implements OnInit {
           ? await firstValueFrom(this.api.testPrint(this.kioskId()))
           : await firstValueFrom(this.api.refreshKioskPrinters(this.kioskId()));
 
-      // The kiosk may have answered already: its row is not put back to "sent".
-      this.commands.update((list) => (list.some((item) => item.id === command.id) ? list : [command, ...list]));
       this.notify.success('printers.sent');
       this.results.sent(command);
     });

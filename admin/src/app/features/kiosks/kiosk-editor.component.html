@@ -513,6 +513,14 @@
         </mat-tab>
       }
 
+      <mat-tab [label]="'kiosks.tabStatus' | translate">
+        <ng-template matTabContent>
+          <section class="editor__tab">
+            <app-kiosk-status [kioskId]="current.id" />
+          </section>
+        </ng-template>
+      </mat-tab>
+
       @if (canPrinters()) {
         <mat-tab [label]="'kiosks.tabPrinters' | translate">
           <ng-template matTabContent>
@@ -545,11 +553,39 @@
         <mat-tab [label]="'kiosks.tabSupplies' | translate">
           <ng-template matTabContent>
             <section class="editor__tab">
-              <app-kiosk-supplies [kioskId]="current.id" />
+              <app-kiosk-supplies [kioskId]="current.id" [kioskCode]="current.code" />
             </section>
           </ng-template>
         </mat-tab>
       }
+
+      @if (canTasks()) {
+        <mat-tab [label]="'kiosks.tabTasks' | translate">
+          <ng-template matTabContent>
+            <section class="editor__tab">
+              <app-kiosk-tasks [kioskId]="current.id" />
+            </section>
+          </ng-template>
+        </mat-tab>
+      }
+
+      @if (canIncidents()) {
+        <mat-tab [label]="'kiosks.tabIncidents' | translate">
+          <ng-template matTabContent>
+            <section class="editor__tab">
+              <app-kiosk-incidents [kioskId]="current.id" />
+            </section>
+          </ng-template>
+        </mat-tab>
+      }
+
+      <mat-tab [label]="'kiosks.tabCommands' | translate">
+        <ng-template matTabContent>
+          <section class="editor__tab">
+            <app-kiosk-commands [kioskId]="current.id" />
+          </section>
+        </ng-template>
+      </mat-tab>
 
       @if (canDevices()) {
         <mat-tab [label]="'kiosks.tabDevice' | translate">

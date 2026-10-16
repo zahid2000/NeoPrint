@@ -93,6 +93,39 @@ const SERVER_VALUES = {
   'settings.description.': { settings: true },
   'features.flag.': { flags: true, suffixes: ['.name', '.description'] },
   'language.': { values: ['az', 'en', 'ru'] },
+  // The kiosk and printer pages (T-212).
+  'monitoring.incidentStatus.': { enum: 'IncidentStatus' },
+  'monitoring.alertLevel.': { enum: 'SupplyAlertLevel' },
+  'monitoring.resource.': { enum: 'SupplyResource' },
+  'monitoring.channel.': { enum: 'AlertChannels', except: { None: 'a flag value meaning "no channel", never listed' } },
+  'monitoring.group.': { values: ['app', 'system', 'network', 'peripherals', 'work', 'services'] },
+  'monitoring.metric.': {
+    values: [
+      'version', 'startedAt', 'screen', 'session', 'lastCrashAt',
+      'os', 'hostname', 'cpu', 'memory', 'systemDisk', 'spoolDisk', 'uptime', 'clockOffset',
+      'connection', 'localIp', 'latency', 'hub', 'hubLastReconnectAt',
+      'flash', 'qrScanner', 'screenSize',
+      'queueLength', 'currentJob', 'jobsToday', 'sheetsToday', 'spoolFiles', 'failedFlashUploads', 'pendingCommands',
+      'libreOffice', 'ghostscript', 'configurationAt', 'featureFlags',
+    ],
+  },
+  'monitoring.chart.': { values: ['cpu', 'memory', 'latency', 'disk'] },
+  'monitoring.printerState.': { values: ['stale', 'unreachable', 'stopped', 'attention', 'printing', 'ready', 'unknown'] },
+  'monitoring.printerStateRaw.': { values: ['idle', 'printing', 'stopped'] },
+  'monitoring.printer.': {
+    values: [
+      'manufacturer', 'model', 'serial', 'firmware', 'driver', 'connection', 'mac', 'uri',
+      'lifetimePages', 'colorPages', 'monoPages',
+      'color', 'duplex', 'paperSizes', 'trayNames', 'resolution', 'formats',
+    ],
+  },
+  'monitoring.printerEvent.': {
+    values: [
+      'State', 'Online', 'Reasons', 'Error', 'SupplyReplaced', 'PaperRefilled',
+      'JamStarted', 'JamEnded', 'PaperOutStarted', 'PaperOutEnded', 'CoverOpened', 'CoverClosed',
+    ],
+  },
+  'monitoring.printers.filter.': { values: ['all', 'lowToner', 'faulty', 'unreachable'] },
 };
 
 // ---------------------------------------------------------------------------

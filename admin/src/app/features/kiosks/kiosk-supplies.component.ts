@@ -11,7 +11,15 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
+import { MatDialog } from '@angular/material/dialog';
+import { TranslateService } from '@ngx-translate/core';
+
 import { AdminApiService } from '../../core/api/admin-api.service';
+import { MonitoringApiService } from '../../core/api/monitoring-api.service';
+import { SupplyRule } from '../../core/api/step7.models';
+import { confirmAction } from '../../shared/confirm.dialog';
+import { StatusChipComponent } from '../../shared/status-chip.component';
+import { SupplyRuleDialogComponent, SupplyRuleDialogData } from './supply-rule.dialog';
 import { KioskSupplies, PaperRefillMode, PaperStock, lowPaperShare } from '../../core/api/step3.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
@@ -46,6 +54,7 @@ const papers = ['A4', 'A3'] as const;
     TranslatePipe,
     EmptyStateComponent,
     ErrorBannerComponent,
+    StatusChipComponent,
     DateTimePipe,
   ],
   template: `
@@ -104,6 +113,36 @@ const papers = ['A4', 'A3'] as const;
             }
           </div>
         }
+        @for (level of levels(); track level.key) {
+          <div class="neo-card supplies__tray">
+            <strong>{{ level.name }}</strong>
+            <p class="supplies__level">{{ level.percent }}%</p>
+            <div
+              class="supplies__bar"
+              role="progressbar"
+              [attr.aria-valuenow]="level.percent"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <span
+                class="supplies__fill"
+                [class.supplies__fill--low]="level.alert === 'Warning'"
+                [class.supplies__fill--out]="level.alert === 'Critical'"
+                [style.width.%]="level.percent"
+              ></span>
+            </div>
+            @if (level.alert) {
+              <span>
+                <app-status-chip
+                  [status]="level.alert"
+                  [toneOverride]="level.alert === 'Critical' ? 'danger' : 'warning'"
+                  [text]="'monitoring.alertLevel.' + level.alert | translate"
+                />
+              </span>
+            }
+            <p class="neo-caption">{{ 'monitoring.supplies.readAt' | translate: { at: (level.readAt | dateTime) } }}</p>
+          </div>
+        }
       </div>
 
       @if (canRefill() && refillable().length > 0) {
@@ -160,6 +199,115 @@ const papers = ['A4', 'A3'] as const;
             </button>
           </div>
         </section>
+      }
+
+      <h3>{{ 'monitoring.forecast.title' | translate }}</h3>
+      @if ((current.forecasts ?? []).length === 0) {
+        <p class="neo-caption">{{ 'monitoring.forecast.empty' | translate }}</p>
+      } @else {
+        <div class="neo-table-wrapper">
+          <table mat-table class="neo-table" [dataSource]="current.forecasts ?? []">
+            <ng-container matColumnDef="resource">
+              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.forecast.colResource' | translate }}</th>
+              <td mat-cell *matCellDef="let forecast">{{ resourceName(forecast.resource, forecast.variant) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="current">
+              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.forecast.colCurrent' | translate }}</th>
+              <td mat-cell *matCellDef="let forecast" class="neo-nowrap">{{ amount(forecast.current, forecast.unit) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="perDay">
+              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.forecast.colPerDay' | translate }}</th>
+              <td mat-cell *matCellDef="let forecast" class="neo-nowrap">{{ amount(forecast.perDay, forecast.unit) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="runsOut">
+              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.forecast.colRunsOut' | translate }}</th>
+              <td mat-cell *matCellDef="let forecast" class="neo-nowrap">
+                @if (forecast.runsOutAt) {
+                  {{ forecast.runsOutAt | dateTime }}
+                } @else {
+                  <span class="neo-caption">{{ 'monitoring.forecast.noUse' | translate }}</span>
+                }
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="forecastColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: forecastColumns"></tr>
+          </table>
+        </div>
+      }
+
+      <div class="supplies__rules-head">
+        <h3>{{ 'monitoring.rules.title' | translate }}</h3>
+        @if (canManageRules()) {
+          <button mat-stroked-button type="button" (click)="editRule(null)">
+            <mat-icon>add</mat-icon>
+            {{ 'monitoring.rules.add' | translate }}
+          </button>
+        }
+      </div>
+      @if (rules() === null) {
+        <div class="neo-skeleton neo-skeleton--block"></div>
+      } @else if (rules()!.length === 0) {
+        <p class="neo-caption">{{ 'monitoring.rules.empty' | translate }}</p>
+      } @else {
+        <div class="neo-table-wrapper">
+          <table mat-table class="neo-table" [dataSource]="rules()!">
+            <ng-container matColumnDef="resource">
+              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.forecast.colResource' | translate }}</th>
+              <td mat-cell *matCellDef="let rule">
+                {{ resourceName(rule.resource, rule.resourceVariant) }}
+                @if (!rule.isActive) {
+                  <span class="neo-caption supplies__block">{{ 'monitoring.rules.inactive' | translate }}</span>
+                }
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="warning">
+              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.rules.colWarning' | translate }}</th>
+              <td mat-cell *matCellDef="let rule" class="neo-nowrap">{{ amount(rule.warningThreshold, rule.unit) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="critical">
+              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.rules.colCritical' | translate }}</th>
+              <td mat-cell *matCellDef="let rule" class="neo-nowrap">{{ amount(rule.criticalThreshold, rule.unit) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="channels">
+              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.rules.channels' | translate }}</th>
+              <td mat-cell *matCellDef="let rule">{{ channelNames(rule.channels) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="task">
+              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.rules.colTask' | translate }}</th>
+              <td mat-cell *matCellDef="let rule">
+                {{ (rule.createServiceTask ? 'operator.priority.' + rule.taskPriority : 'monitoring.rules.noTask') | translate }}
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="source">
+              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.rules.colSource' | translate }}</th>
+              <td mat-cell *matCellDef="let rule">
+                <app-status-chip
+                  [status]="rule.isGlobal ? 'Global' : 'Kiosk'"
+                  [toneOverride]="rule.isGlobal ? 'neutral' : 'info'"
+                  [iconOverride]="rule.isGlobal ? 'language' : 'storefront'"
+                  [text]="(rule.isGlobal ? 'monitoring.rules.global' : 'monitoring.rules.thisKiosk') | translate"
+                />
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let rule" class="neo-nowrap">
+                @if (canManageRules() && !rule.isGlobal) {
+                  <button mat-icon-button type="button" [attr.aria-label]="'common.edit' | translate" (click)="editRule(rule)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" [attr.aria-label]="'common.delete' | translate" (click)="deleteRule(rule)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="ruleColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: ruleColumns"></tr>
+          </table>
+        </div>
       }
 
       <h3>{{ 'supplies.eventsTitle' | translate }}</h3>
@@ -257,6 +405,27 @@ const papers = ['A4', 'A3'] as const;
       background: var(--warning-500);
     }
 
+    .supplies__fill--out {
+      background: var(--danger-500);
+    }
+
+    .supplies__rules-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+      align-items: center;
+      justify-content: space-between;
+      margin: var(--space-6) 0 var(--space-2);
+    }
+
+    .supplies__rules-head h3 {
+      margin: 0;
+    }
+
+    .supplies__block {
+      display: block;
+    }
+
     .supplies__form {
       display: flex;
       flex-wrap: wrap;
@@ -284,9 +453,40 @@ export class KioskSuppliesComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotifyService);
 
+  private readonly monitoring = inject(MonitoringApiService);
+  private readonly dialog = inject(MatDialog);
+  private readonly translate = inject(TranslateService);
+
   readonly kioskId = input.required<string>();
 
+  /** The kiosk's code, for the rule dialog's title. */
+  readonly kioskCode = input<string>('');
+
   readonly columns = ['at', 'event', 'paper', 'change', 'after'];
+  readonly forecastColumns = ['resource', 'current', 'perDay', 'runsOut'];
+  readonly ruleColumns = ['resource', 'warning', 'critical', 'channels', 'task', 'source', 'actions'];
+
+  /** The rules that apply here: the global ones and this kiosk's own. */
+  readonly rules = signal<readonly SupplyRule[] | null>(null);
+
+  readonly canManageRules = computed(() => this.auth.can(Permissions.supplyRulesManage));
+
+  /** What the printer says of each of its supplies, with the alert it is under, if any. */
+  readonly levels = computed(() => {
+    const supplies = this.supplies();
+    const alerts = supplies?.alerts ?? [];
+
+    return (supplies?.levels ?? []).map((level) => ({
+      key: `${level.resource}:${level.variant ?? level.name}`,
+      name: level.name,
+      percent: Math.round(level.percent),
+      readAt: level.readAt,
+      alert:
+        alerts.find(
+          (alert) => alert.resource === level.resource && (!alert.variant || alert.variant === level.variant || alert.variant === level.name),
+        )?.level ?? null,
+    }));
+  });
   readonly modes: readonly PaperRefillMode[] = ['Add', 'Full', 'Exact'];
 
   readonly supplies = signal<KioskSupplies | null>(null);
@@ -378,6 +578,75 @@ export class KioskSuppliesComponent implements OnInit {
 
   ngOnInit(): void {
     void this.load();
+    void this.loadRules();
+  }
+
+  async loadRules(): Promise<void> {
+    try {
+      const rules = await firstValueFrom(this.monitoring.supplyRules());
+      const kioskId = this.kioskId();
+
+      this.rules.set(rules.filter((rule) => rule.isGlobal || rule.kioskIds.includes(kioskId)));
+    } catch {
+      // The rules are secondary on this tab: without them the counters still show.
+      this.rules.set([]);
+    }
+  }
+
+  /** "Toner (Black Cartridge)", "A4 kağızı". */
+  resourceName(resource: string, variant?: string | null): string {
+    const name = this.translate.instant(`monitoring.resource.${resource}`) as string;
+
+    return variant ? `${name} (${variant})` : name;
+  }
+
+  /** "120 vərəq", "15%". */
+  amount(value: number, unit: string): string {
+    const rounded = Math.round(value * 10) / 10;
+
+    return unit === 'Percent' ? `${rounded}%` : (this.translate.instant('monitoring.unit.sheets', { value: rounded }) as string);
+  }
+
+  channelNames(channels: readonly string[]): string {
+    return channels.map((channel) => this.translate.instant(`monitoring.channel.${channel}`) as string).join(', ');
+  }
+
+  editRule(rule: SupplyRule | null): void {
+    const data: SupplyRuleDialogData = { rule, kioskIds: [this.kioskId()], kioskCode: this.kioskCode() };
+
+    this.dialog
+      .open(SupplyRuleDialogComponent, { data, width: '640px', maxWidth: 'calc(100vw - 32px)' })
+      .afterClosed()
+      .subscribe((saved) => {
+        if (saved) {
+          this.notify.success('monitoring.rules.saved');
+          void this.loadRules();
+          void this.load(true);
+        }
+      });
+  }
+
+  async deleteRule(rule: SupplyRule): Promise<void> {
+    const text = (key: string): string => this.translate.instant(key) as string;
+    const confirmed = await confirmAction(this.dialog, {
+      title: text('monitoring.rules.deleteTitle'),
+      explanation: text('monitoring.rules.deleteExplanation'),
+      confirmLabel: text('common.delete'),
+      cancelLabel: text('common.cancel'),
+    });
+
+    if (confirmed === undefined) {
+      return;
+    }
+
+    try {
+      await firstValueFrom(this.monitoring.deleteSupplyRule(rule.id));
+      this.notify.success('monitoring.rules.deleted');
+      void this.loadRules();
+      void this.load(true);
+    } catch (error) {
+      this.notify.error(toProblem(error).message);
+    }
   }
 
   /** A quiet fetch is one nobody asked for: one that fails leaves the tab as it is. */

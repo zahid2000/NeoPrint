@@ -495,6 +495,52 @@ a {
 }
 
 /*
+ * One reading in a group card: its name on the left, its value on the right
+ * (docs/DESIGN_SYSTEM.md, "ölçü sətri"). A value over its limit is in the
+ * warning colour with an icon and the limit written out.
+ */
+.neo-metric {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  justify-content: space-between;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--neutral-100);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  dt {
+    color: var(--neutral-600);
+    font-size: var(--font-size-caption);
+  }
+
+  dd {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    align-items: center;
+    justify-content: flex-end;
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  mat-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    font-size: var(--icon-size);
+  }
+}
+
+.neo-metric--warning dd,
+.neo-metric--warning mat-icon {
+  color: var(--warning-500);
+}
+
+/*
  * Something the reader should know and may act on, that is not an error: icon,
  * words, at most one button (docs/DESIGN_SYSTEM.md, "canlı səhifədə
  * saxlanmamış dəyişiklik").

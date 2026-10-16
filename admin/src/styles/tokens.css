@@ -98,6 +98,9 @@
   --status-chip-height: 24px;
   --icon-size: 20px;
   --sidebar-width: 260px;
+
+  /* A small chart in a card: kiosk telemetry, a printer's counters. */
+  --chart-height: 200px;
 }
 
 /*

@@ -101,6 +101,12 @@ export class ShellComponent {
       permissions: [Permissions.kiosksView],
     },
     {
+      path: '/printers',
+      labelKey: 'nav.printers',
+      icon: 'print',
+      permissions: [Permissions.printersView],
+    },
+    {
       path: '/print-jobs',
       labelKey: 'nav.printJobs',
       icon: 'receipt_long',

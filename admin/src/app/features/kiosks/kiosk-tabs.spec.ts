@@ -89,8 +89,8 @@ describe('KioskPrintersComponent', () => {
     fixture.detectChanges();
 
     backend.expectOne(`/api/admin/kiosks/${kioskId}/printers`).flush(printers);
-    backend.expectOne(`/api/admin/kiosks/${kioskId}/commands`).flush([]);
     await fixture.whenStable();
+    fixture.detectChanges();
 
     return fixture;
   }
@@ -114,9 +114,18 @@ describe('KioskPrintersComponent', () => {
     expect(component.changed()).toBe(false);
   });
 
-  it('puts a command result from the hub at the top, for this kiosk only', async () => {
+  it('opens each printer on its own page; a passed test print of this kiosk asks again and tells the page', async () => {
     const fixture = await load();
-    const component = fixture.componentInstance;
+    const link = (fixture.nativeElement as HTMLElement).querySelector('td a') as HTMLAnchorElement;
+
+    expect(link.textContent?.trim()).toBe('HP LaserJet');
+    expect(link.getAttribute('href')).toBe(`/kiosks/${kioskId}/printers/HP%20LaserJet`);
+
+    // The commands are listed on the "Əmrlər" tab now, not here (T-212).
+    expect((fixture.nativeElement as HTMLElement).querySelectorAll('table').length).toBe(1);
+
+    const statuses: string[] = [];
+    fixture.componentInstance.statusChange.subscribe((status) => statuses.push(status));
     const command = {
       id: 'c1',
       kioskId,
@@ -128,23 +137,12 @@ describe('KioskPrintersComponent', () => {
     };
 
     hub.fire('CommandResult', { ...command, kioskId: 'another' });
-    expect(component.commands()).toEqual([]);
-
-    const statuses: string[] = [];
-    fixture.componentInstance.statusChange.subscribe((status) => statuses.push(status));
+    backend.expectNone(`/api/admin/kiosks/${kioskId}/printers`);
 
     hub.fire('CommandResult', command);
-    expect(component.commands()).toEqual([command]);
-
-    // A passed test print takes the kiosk into service: the tab asks again and tells the page.
     backend.expectOne(`/api/admin/kiosks/${kioskId}/printers`).flush(printers);
-    backend.expectOne(`/api/admin/kiosks/${kioskId}/commands`).flush([command]);
     await fixture.whenStable();
     expect(statuses).toEqual(['Online']);
-
-    // The same command again replaces the row rather than adding one.
-    hub.fire('CommandResult', { ...command, status: 'Failed' });
-    expect(component.commands().map((item) => item.status)).toEqual(['Failed']);
   });
 });
 
@@ -197,7 +195,11 @@ describe('KioskSuppliesComponent', () => {
 
   beforeEach(() => ({ backend } = setUp([Permissions.suppliesView, Permissions.paperRefill])));
 
-  afterEach(() => backend.verify());
+  // The rules under the counters are asked for on their own (T-212); tests that are not about them answer "none".
+  afterEach(() => {
+    backend.match('/api/admin/supply-rules').forEach((request) => request.flush([]));
+    backend.verify();
+  });
 
   async function load() {
     const fixture = TestBed.createComponent(KioskSuppliesComponent);
@@ -263,6 +265,60 @@ describe('KioskSuppliesComponent', () => {
 
     expect(tray()).not.toContain('supplies.counterUnset');
     expect(tray()).toContain('supplies.empty');
+  });
+
+  // T-212: what the printer says of its toner, when it runs out, and the rules at work.
+  it('shows the toner under its alert, the forecast and the rules that apply to this kiosk', async () => {
+    const fixture = TestBed.createComponent(KioskSuppliesComponent);
+    fixture.componentRef.setInput('kioskId', kioskId);
+    fixture.componentRef.setInput('kioskCode', 'KSK-9002');
+    fixture.detectChanges();
+
+    backend.expectOne(`/api/admin/kiosks/${kioskId}/supplies`).flush({
+      ...supplies,
+      levels: [{ resource: 'Toner', variant: 'Black', name: 'Black Cartridge', percent: 7, readAt: '2026-10-15T09:00:00Z' }],
+      forecasts: [{ resource: 'PaperA4', variant: null, unit: 'Sheets', current: 420, perDay: 60, runsOutAt: '2026-10-22T09:00:00Z' }],
+      alerts: [
+        { id: 'a1', kioskId, resource: 'Toner', variant: 'Black', unit: 'Percent', level: 'Warning', value: 7, raisedAt: '2026-10-15T08:00:00Z' },
+      ],
+    });
+    const rule = (id: string, isGlobal: boolean, kioskIds: string[]) => ({
+      id,
+      name: id,
+      isGlobal,
+      kioskIds,
+      resource: 'Toner',
+      resourceVariant: null,
+      unit: 'Percent',
+      warningThreshold: 15,
+      criticalThreshold: 3,
+      channels: ['AdminPanel'],
+      createServiceTask: true,
+      taskPriority: 'Normal',
+      isActive: true,
+    });
+    backend
+      .expectOne('/api/admin/supply-rules')
+      .flush([rule('global', true, []), rule('mine', false, [kioskId]), rule('theirs', false, ['other-kiosk'])]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const page = fixture.nativeElement as HTMLElement;
+    const toner = [...page.querySelectorAll('.supplies__tray')].find((card) => card.textContent?.includes('Black Cartridge'));
+
+    expect(toner?.textContent).toContain('7%');
+    expect(toner?.querySelector('.supplies__fill--low'), 'the bar is in the warning colour').not.toBeNull();
+    expect(toner?.textContent).toContain('monitoring.alertLevel.Warning');
+
+    expect(page.textContent).toContain('monitoring.forecast.title');
+    expect(page.textContent).not.toContain('monitoring.forecast.empty');
+
+    // The global rule and this kiosk's own; another kiosk's rule is not shown.
+    const rules = [...page.querySelectorAll('table')].find((table) => table.textContent?.includes('monitoring.rules.colSource'));
+    const rows = rules?.querySelectorAll('tbody tr, tr.mat-mdc-row') ?? [];
+    expect(rows.length).toBe(2);
+    expect(rules?.textContent).toContain('monitoring.rules.global');
+    expect(rules?.textContent).toContain('monitoring.rules.thisKiosk');
   });
 
   it('checks the count the way the server does', async () => {

@@ -35,7 +35,11 @@ import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { PrintJobsComponent } from '../print-jobs/print-jobs.component';
 import { KioskPrintersComponent } from './kiosk-printers.component';
+import { KioskCommandsComponent } from './kiosk-commands.component';
+import { KioskIncidentsComponent } from './kiosk-incidents.component';
 import { KioskQueueComponent } from './kiosk-queue.component';
+import { KioskStatusComponent } from './kiosk-status.component';
+import { KioskTasksComponent } from './kiosk-tasks.component';
 import { KioskSuppliesComponent } from './kiosk-supplies.component';
 
 /** The PIN rules the server enforces: 4 to 12 digits. */
@@ -76,6 +80,10 @@ const pinPattern = /^[0-9]{4,12}$/;
     KioskPrintersComponent,
     KioskQueueComponent,
     KioskSuppliesComponent,
+    KioskStatusComponent,
+    KioskTasksComponent,
+    KioskIncidentsComponent,
+    KioskCommandsComponent,
     PrintJobsComponent,
   ],
   templateUrl: './kiosk-editor.component.html',
@@ -150,6 +158,8 @@ export class KioskEditorComponent implements OnInit {
   readonly canPrinters = computed(() => this.auth.canAny([Permissions.printersView]));
   readonly canJobs = computed(() => this.auth.canAny([Permissions.jobsView]));
   readonly canSupplies = computed(() => this.auth.canAny([Permissions.suppliesView]));
+  readonly canTasks = computed(() => this.auth.canAny([Permissions.serviceTasksView]));
+  readonly canIncidents = computed(() => this.auth.canAny([Permissions.incidentsView]));
   readonly canDelete = computed(
     () =>
       this.auth.canAny([Permissions.kiosksDelete]) &&
