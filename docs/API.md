@@ -2068,6 +2068,7 @@ doldurma sayğacı həmişəlik təyin edir. Sifariş qaydası dəyişməyib: `P
 | `POST /api/admin/service-tasks/{id}/start` | `service.tasks.complete` | "Başla". Hovuzdakı tapşırıq çağıranın olur; başqasının tapşırığı üçün `409 serviceTasks.notYours` |
 | `POST /api/admin/service-tasks/{id}/complete` | `service.tasks.complete` | `Idempotency-Key`. `{ paper?, refillMode?: Add \| Full \| Exact, sheets?, inventoryItemId?, quantity?, note? }`. `RefillPaper` — kioskun sayğacı doldurulur (default `Full`, kağız ölçüsü tapşırıqdan); `ReplaceToner` / `ReplaceDrum` — `supply_events`-ə `Replaced` yazılır; `inventoryItemId` verilibsə anbardan `UsedAtKiosk` hərəkəti ilə çıxılır (çatmırsa `409 inventory.notEnough` və heç nə dəyişmir). Yalnız başlayan operator tamamlayır |
 | `POST /api/admin/service-tasks/{id}/cancel` | `service.tasks.manage` | `{ reason }` — məcburi (`400`); tamamlanmış tapşırıq üçün `409`. Tapşırıq silinmir |
+| `GET /api/admin/service-tasks/assignees?kioskId=` | `service.tasks.manage` | Tapşırığın kimə verilə biləcəyi (T-213): aktiv, kiosk əhatəsində, `service.tasks.complete` icazəsi olan hesablar — `{ id, fullName, operator, activeTasks }`; `operator = true` — tapşırığı icra edən, paylamayan hesab (sistemin özü yalnız bunlardan seçir), əvvəl onlar, sonra ən az məşğul olan. Əhatədən kənar kiosk `404` |
 
 **Avtomatik tapşırıq:** qayda `createServiceTask = true` isə alert ilə birlikdə açılır (`source = AlertRule`); alert `Critical`
 olanda prioritet `Critical`-a qalxır; proqnoz `Service.ForecastLeadHours` (24) içində bitmə göstərirsə hədd keçilməsə də
@@ -2127,6 +2128,13 @@ alert; 70 — printer cavab vermir / səbəb bildirir; 60 — printer seçilməy
 | `supply-forecast` | saatda bir | Proqnoz tapşırıqları |
 | `service-task-escalation` | 5 dəqiqə | Başlanmayan `Critical` tapşırıqlar |
 | `inventory-low-stock` | saatda bir | Anbar minimumu |
+
+## Audit jurnalı (`/api/admin/audit-logs`, Addım 7A, M9 — T-213)
+
+`GET /api/admin/audit-logs?action=&entityType=&entityId=&adminUserId=&actorType=&from=&to=&correlationId=&page=&pageSize=` — `audit.view`.
+Ən yenilər əvvəl: `{ items: [ { id, at, adminUserId, adminName, actorType, action, entityType, entityId, before, after, ip, reason, correlationId } ], total, page, pageSize }`.
+`action` prefiksdir (`kiosks.` — bütün kiosk əməliyyatları); `actorType`: `Admin` / `Kiosk` / `System` / `User`; `from` > `to` → `400 audit.rangeInvalid`; `pageSize` ən çox 200.
+Kiosk əhatəsi məhdud hesab yalnız öz kiosklarına aid sətirləri görür (`entityType = Kiosk`, `entityId` əhatədə) — hesablar, qiymətlər, tənzimləmələr haqqında sətirlər ona göstərilmir. `before` / `after` yazıldığı kimi qaytarılır (JSON və ya sadə dəyər); panel JSON-u sahə-sahə müqayisə edir.
 
 ## Hələ mövcud olmayan endpoint-lər
 

@@ -104,6 +104,12 @@ public sealed class AdminServiceTasksController : ControllerBase
     public async Task<ActionResult<ServiceTaskView>> Get(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new GetServiceTaskQuery(AdminId, id), cancellationToken));
 
+    /// <summary>Who a task of the kiosk may be given to: operators first, the least busy on top.</summary>
+    [HttpGet("assignees")]
+    [HasPermission(Permissions.ServiceTasksManage)]
+    public async Task<ActionResult<IReadOnlyList<ServiceTaskAssignee>>> Assignees([FromQuery] Guid kioskId, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new ListServiceTaskAssigneesQuery(AdminId, kioskId), cancellationToken));
+
     [HttpPost]
     [HasPermission(Permissions.ServiceTasksManage)]
     [Idempotent]

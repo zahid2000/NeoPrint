@@ -219,6 +219,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminSessionFactory, AdminSessionFactory>();
 
         services.AddScoped<IAuditWriter, MongoAuditWriter>();
+        services.AddScoped<Application.Admin.IAuditLogReader, MongoAuditLogReader>();
         services.AddScoped<ISettingsReader, CachedSettingsReader>();
         services.AddScoped<CachedSettingsReader>();
 
