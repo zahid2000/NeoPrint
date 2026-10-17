@@ -81,6 +81,14 @@ Published legal document versions must remain identifiable.
 dəyişəndə növbəti başlanğıcda `collMod` ilə tətbiq olunur). Hadisələrdə fayl
 adı və şəxsi məlumat yoxdur — yalnız kataloqdakı sahələr saxlanılır.
 
+**Pilot hesabatının günləri (`analytics_days`, T-214)** — bir kiosk və bir Bakı günü üçün
+yalnız say və növlər (format, səbəb açarı, ekran adı, kağız ölçüsü, ciddilik): fayl adı,
+hesab, sessiya identifikatoru yoxdur. TTL yoxdur — pilotdan sonra da qərar üçün qalır.
+Gün mənbə qeydlərindən hər dəfə yenidən hesablanır; mənbə hadisələri artıq saxlanılmayan
+günü (`Analytics.RetentionDays`-dən köhnə) yenidən hesablamaq rədd olunur, printer
+telemetriyası artıq olmayan gündə (`Kiosk.TelemetryRetentionDays`) əvvəl yazılmış toner
+rəqəmləri saxlanılır — düzgün rəqəm sıfırla əvəz olunmur.
+
 ## Kiosk telemetriyası
 
 `kiosk_telemetry` — MongoDB time-series kolleksiyası (hər kioskdan 30 saniyədə bir

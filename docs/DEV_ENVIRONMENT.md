@@ -1630,6 +1630,35 @@ node e2e/operations.mjs ../docs/screenshots/step-7/t213   # ekran görüntülər
 
 Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını silir (T-266).
 
+## 7r. Addım 7A — pilot hesabatı (plan 2.17; T-214)
+
+Yeni kod üçün: `docker compose up -d --build api admin`. Yeni kolleksiya (`analytics_days`) və
+indekslər API başlayanda özü yaranır; köhnə məlumat üçün heç nə etmək lazım deyil — API başlayanda
+`AnalyticsRollupJob` bir dəfə işləyir və keçmiş günləri doldurur.
+
+- Panel: **Pilot hesabatı** (`http://localhost:8080/pilot-report`, `analytics.view`) — tarix aralığı,
+  kiosk, "CSV yüklə". Bu günün rəqəmləri canlıdır, keçmiş günlər saatlıq rollup-dandır.
+- Keçmiş günləri yenidən hesablamaq (məs. düzəlişdən sonra; təkrar işlətmək zərərsizdir):
+
+  ```bash
+  curl -X POST http://localhost:5080/api/admin/analytics/pilot/rebuild \
+    -H "Authorization: Bearer <ADMIN_TOKEN>" -H "Content-Type: application/json" \
+    -d '{"from":"2026-10-01","to":"2026-10-16"}'
+  ```
+
+- Real stack yoxlaması (öz kioskunu yaradır, sonda hər şeyi silir; Chrome və ya Edge lazımdır):
+
+  ```bash
+  cd admin
+  node e2e/pilot-report.mjs                                  # 82 yoxlama
+  node e2e/pilot-report.mjs ../docs/screenshots/step-7/t214  # + ekran görüntüləri
+  ```
+
+  Skript kiosk kimi davranır: ziyarət hadisələri, uğurlu çap, bankın rədd etdiyi ödəniş, printerin
+  dayandırdığı çap (avtomatik refund), ödənişdən əvvəl ləğv, admin refund-u; rəqəmləri əl ilə
+  hesablanmış gözlənilənlə müqayisə edir, telefon enində əhatəsi məhdud hesabla yoxlayır, CSV-ni və
+  rollup-un iki dəfə işləməsini yoxlayır. Giriş limiti (dəqiqədə 10) aşılırsa özü bir dəqiqə gözləyir.
+
 ---
 
 ## 8. Build, test, lint

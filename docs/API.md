@@ -538,7 +538,7 @@ Cihaz heç bir kioska bağlı deyilsə → `403`.
 
 ### `POST /api/kiosks/me/analytics`
 
-Kiosk token, `Idempotency-Key` — **paketin** açarı (itən cavabdan sonra eyni paket eyni açarla yenidən gəlir, bir dəfə saxlanılır). `{ "events": [{ "event", "sessionId", "at", "props": { … } }] }`, ən çox 200 hadisə → `202 { "accepted", "rejected" }`. Yalnız kataloqdakı hadisə və sahələr saxlanılır (plan 2.17): `screen_view {screen}`, `file_selected {format, sizeMb, pages}`, `conversion_failed {format, error}`, `options_set {copies, color, duplex, paper, pagesPerSheet, range}`, `price_shown {total, currency}`, `order_placed {sheets, jobCode}`, `print_completed {sheets, jobCode}`, `print_failed {sheets, error, jobCode}`, `flow_abandoned {lastScreen, seconds}`; başqa sahə (məs. fayl adı) və naməlum hadisə atılır, dəyər 64 simvola kəsilir. 7 gündən köhnə və ya 5 dəqiqədən çox gələcəkdə olan hadisə atılır. Pis hadisə bütün paketi rədd etmir. `analytics_events` — MongoDB time-series, `Analytics.RetentionDays` (180) sonra özü silinir.
+Kiosk token, `Idempotency-Key` — **paketin** açarı (itən cavabdan sonra eyni paket eyni açarla yenidən gəlir, bir dəfə saxlanılır). `{ "events": [{ "event", "sessionId", "at", "props": { … } }] }`, ən çox 200 hadisə → `202 { "accepted", "rejected" }`. Yalnız kataloqdakı hadisə və sahələr saxlanılır (plan 2.17): `screen_view {screen}`, `file_selected {format, sizeMb, pages}`, `conversion_failed {format, error}`, `options_set {copies, color, duplex, paper, pagesPerSheet, range}`, `price_shown {total, currency}`, `order_placed {sheets, jobCode}`, `print_completed {sheets, jobCode}`, `print_failed {sheets, error, jobCode}`, `flow_abandoned {lastScreen, seconds}`, `payment_started {method}`, `payment_succeeded {method, seconds}`, `payment_failed {method, seconds}`, `payment_expired {method, seconds}` (T-214); başqa sahə (məs. fayl adı) və naməlum hadisə atılır, dəyər 64 simvola kəsilir. 7 gündən köhnə və ya 5 dəqiqədən çox gələcəkdə olan hadisə atılır. Pis hadisə bütün paketi rədd etmir. `analytics_events` — MongoDB time-series, `Analytics.RetentionDays` (180) sonra özü silinir.
 
 ### `POST /api/kiosks/heartbeat`
 
@@ -2129,6 +2129,69 @@ alert; 70 — printer cavab vermir / səbəb bildirir; 60 — printer seçilməy
 | `supply-forecast` | saatda bir | Proqnoz tapşırıqları |
 | `service-task-escalation` | 5 dəqiqə | Başlanmayan `Critical` tapşırıqlar |
 | `inventory-low-stock` | saatda bir | Anbar minimumu |
+
+## Pilot hesabatı (`/api/admin/analytics`, Addım 7A, M10 — T-214)
+
+Plan 2.17. Hər iki endpoint `analytics.view` tələb edir; əhatəsi məhdud hesab yalnız öz
+kiosklarının rəqəmlərini görür.
+
+### `GET /api/admin/analytics/pilot?from=&to=&kioskId=`
+
+Bakı günləri (`yyyy-MM-dd`, ikisi də daxil, ən çox 366 gün; gələcək gün → `400 analytics.periodInFuture`).
+`kioskId` hesabın görmədiyi kioskdursa `404 notFound.kiosk`. Keçmiş günlər `analytics_days`-dən
+(saatlıq `AnalyticsRollupJob`), bu gün isə sorğu anında eyni qaydalarla hesablanır.
+
+```json
+{
+  "from": "2026-10-04", "to": "2026-10-17", "kioskId": "…", "currency": "AZN",
+  "computedAt": "2026-10-17T14:10:45Z",
+  "totals": { "visits": 7, "orders": 5, "printsSucceeded": 2, "printsFailed": 1, "cancelled": 3,
+              "refunds": 2, "refunded": 0.40, "sales": 0.60, "net": 0.20, "averagePrintSeconds": 60,
+              "paperSheets": 4, "testSheets": 0, "tonerReplaced": 0,
+              "paymentsStarted": 4, "paymentsSucceeded": 3, "incidents": 1 },
+  "funnel": [ { "step": "selected", "count": 6 }, { "step": "previewed", "count": 5, "loss": 16.7 }, … ],
+  "formats": [ { "format": "pdf", "selected": 3, "failed": 0, "share": 50 } ],
+  "appFormats": [ … ],
+  "paymentFailures": [ { "key": "payments.declined", "text": "Bank ödənişi rədd etdi.", "count": 1 } ],
+  "methods": [ { "method": "BankQr", "started": 4, "succeeded": 3 } ],
+  "abandoned": [ { "key": "Browse", "count": 2 } ],
+  "conversionErrors": [ { "key": "pdf.damaged", "text": "…", "count": 1 } ],
+  "printErrors": [ { "key": "printer.paperJam", "text": "…", "count": 1 } ],
+  "refundReasons": [ { "key": "SystemError", "count": 1 } ],
+  "paper": [ { "key": "A4", "count": 4 } ],
+  "toner": [ { "key": "Black Toner", "count": 3 } ],
+  "incidents": [ { "key": "Critical", "count": 1 } ],
+  "days": [ { "day": "2026-10-17", "live": true, "visits": 7, "orders": 5, "printsSucceeded": 2,
+              "printsFailed": 1, "net": 0.20, "paperSheets": 4, "incidents": 1 } ]
+}
+```
+
+- **Funnel** (`step`: `selected`, `previewed`, `options`, `paymentScreen`, `paid`, `printing`, `printed`):
+  fləşkadan başlayan ziyarətlər, sessiyası ilə; ziyarət başladığı gündə sayılır; hər addım əvvəlkindən
+  keçməyi tələb edir. İlk üç addım kiosk hadisələrindən (`file_selected` / `conversion_failed`,
+  `screen_view Options`, `order_placed`), sonrakılar sifarişin özündən (`PaidAt` / `PaymentSkipped`,
+  `StartedAt`, `Completed`). `loss` — əvvəlki addımdan düşənlərin faizi.
+- **Pul, refund, çap, ləğv, sərf, incident** analitika hadisələrindən deyil, mənbə qeydlərindən:
+  `payments` (gəlir gəlir hesabatı ilə eyni qayda — çap ödənişinin pul hissəsi `PaidAt` günündə;
+  ödəniş cəhdi və xətası `CreatedAt` günündə, səbəb `FailureReason` açarı, vaxtı bitən —
+  `analytics.paymentExpired`), `refunds` (`Succeeded`, `CompletedAt`), `print_attempts`
+  (`Completed` / `Interrupted` + `ErrorCode`; müddət `FinishedAt − StartedAt`), `state_transitions`
+  (sifariş → `Cancelled`), `supply_events` (`JobPrinted`, `TestPrint`, kağızdan başqa `Replaced`),
+  seçilmiş printerin səviyyələri (`printer_telemetry`, düşmələrin cəmi, faiz bəndi), `incidents`.
+- `text` — serverin mətninin ilk cümləsi (oxucunun dilində); açarın mətni yoxdursa sahə yoxdur.
+- `appFormats` — tətbiqdən yüklənən fayllar (`files`, kioskdan asılı deyil): yalnız bütün kioskları
+  görən hesaba və kiosk seçilməyəndə.
+
+### `POST /api/admin/analytics/pilot/rebuild`
+
+`{ "from": "2026-10-01", "to": "2026-10-16" }` → `200 { "from", "to", "days" }`. Hesabın görə bildiyi
+kioskların günlərini mənbədən yenidən hesablayır və `analytics_days`-ə üstündən yazır — təkrar
+işlətmək rəqəmi dəyişmir. `Analytics.RetentionDays`-dən köhnə gün → `400 analytics.rebuildTooOld`.
+Audit: `analytics.rebuilt`.
+
+`AnalyticsRollupJob` (Hangfire, hər saat `:23`, API başlayanda bir dəfə də): son 8 günü (kiosk
+hadisəsi 7 gün gecikə bilər) və hadisələri hələ saxlanılan, sənədi olmayan köhnə günləri (bir qaçışda
+ən çox 31 gün) hesablayır.
 
 ## Audit jurnalı (`/api/admin/audit-logs`, Addım 7A, M9 — T-213)
 

@@ -29,6 +29,22 @@ Pilot aşağıdakıların hamısı bağlanmadan başlamır. Hər sətrin mənbə
 tənzimləmə ilə söndürülüdür (`Notification.TelegramEnabled`), pilot üçün bot token-i və qrup lazım deyil.
 Incident-lər pilotda panel (canlı) və email ilə bildirilir.
 
+## Uğur meyarları — qaralama (T-214 → T-219)
+
+Pilotun sonunda **Pilot hesabatı**na (`/pilot-report`, bütün pilot günləri, pilot kioskunu seçib) baxıb
+aşağıdakılara cavab veririk. Hədlər qəsdən boş qoyulub — layihə sahibi ilə təsdiqlənəndən sonra yazılır.
+
+| # | Sual | Hesabatda harada | Hədd (təsdiq gözləyir) |
+|---|---|---|---|
+| 1 | Fayl seçənlərin neçə faizi uğurlu çapa qədər çatır? | "Kioskda müştəri yolu": son addım / birinci addım | … % |
+| 2 | Ən çox itki hansı addımdadır və o, düzəldilə bilən səbəbdəndirmi (ekran, qiymət, ödəniş)? | Funnel-də "ən çox burada düşür" + "Harada imtina edirlər" | itki … %-dən az |
+| 3 | Ödənişə keçənlərin neçə faizi ödəyir; bank rəddi və vaxtın bitməsi nə qədərdir? | "Ödəniş xətaları (səbəb üzrə)", "Üsullara görə" → Uğur | … % |
+| 4 | Ödənilən çapların neçə faizi uğursuz olur və nə səbəbə (kağız ilişməsi, printer əlçatmaz)? | "Uğursuz çap", "Çap dayandı" | … %-dən az |
+| 5 | Gələn faylların neçə faizi açılmır və hansı formatlar problemlidir? | "Format paylanması" → Açılmadı, "Fayl açılmadı" | … %-dən az |
+| 6 | Refund-ların sayı və səbəbi; avtomatik refund-lar vaxtında bağlanırmı? | "Refund", "Refund səbəbləri" (+ Qaytarmalar səhifəsi) | sifarişlərin … %-dən az |
+| 7 | Kritik incident-lər və kioskun dayanması pilotu nə qədər pozdu? | "Incident" (ciddiliyə görə) + İncident-lər səhifəsi | Kritik: … |
+| 8 | Kağız / toner sərfi proqnoza uyğundurmu, gündəlik gəlir xərcləri ödəyirmi? | "Sərf", "Xalis gəlir", günlər cədvəli | … ₼ / gün |
+
 ## Hüquqşünasa suallar
 
 Layihə sahibi hüquqşünasla dəqiqləşdirir; cavab gələndə müvafiq tapşırıq və hüquqi sənəd yenilənir.
