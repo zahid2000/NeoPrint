@@ -20,6 +20,7 @@
   "referrals",
   "customers",
   "revenue",
+  "pilot-report",
   "devices",
   "pricing",
   "formats",
@@ -2541,6 +2542,249 @@
     "taskPriority": "Normal",
     "isActive": true
    }
-  ]
+  ],
+  "GET /api/admin/analytics/pilot": {
+   "from": "2026-10-04",
+   "to": "2026-10-17",
+   "currency": "AZN",
+   "computedAt": "2026-10-17T14:10:44.818Z",
+   "totals": {
+    "visits": 72,
+    "orders": 58,
+    "printsSucceeded": 33,
+    "printsFailed": 2,
+    "cancelled": 24,
+    "refunds": 18,
+    "refunded": 4.55,
+    "sales": 12.7,
+    "net": 8.15,
+    "averagePrintSeconds": 3,
+    "paperSheets": 56,
+    "testSheets": 13,
+    "tonerReplaced": 0,
+    "paymentsStarted": 56,
+    "paymentsSucceeded": 50,
+    "incidents": 63
+   },
+   "funnel": [
+    {
+     "step": "selected",
+     "count": 23
+    },
+    {
+     "step": "previewed",
+     "count": 23,
+     "loss": 0
+    },
+    {
+     "step": "options",
+     "count": 16,
+     "loss": 30.4
+    },
+    {
+     "step": "paymentScreen",
+     "count": 12,
+     "loss": 25
+    }
+   ],
+   "formats": [
+    {
+     "format": "pdf",
+     "selected": 17,
+     "failed": 0,
+     "share": 56.7
+    },
+    {
+     "format": "jpg",
+     "selected": 6,
+     "failed": 0,
+     "share": 20
+    },
+    {
+     "format": "docx",
+     "selected": 3,
+     "failed": 2,
+     "share": 10
+    },
+    {
+     "format": "xlsx",
+     "selected": 2,
+     "failed": 1,
+     "share": 6.7
+    }
+   ],
+   "appFormats": [
+    {
+     "format": "pdf",
+     "selected": 56,
+     "failed": 5,
+     "share": 57.7
+    },
+    {
+     "format": "bmp",
+     "selected": 5,
+     "failed": 0,
+     "share": 5.2
+    },
+    {
+     "format": "csv",
+     "selected": 5,
+     "failed": 0,
+     "share": 5.2
+    },
+    {
+     "format": "jpg",
+     "selected": 5,
+     "failed": 0,
+     "share": 5.2
+    }
+   ],
+   "paymentFailures": [
+    {
+     "key": "analytics.paymentExpired",
+     "text": "Ödəniş vaxtı bitdi: müştəri ödəməyib, heç nə tutulmayıb.",
+     "count": 6
+    }
+   ],
+   "methods": [
+    {
+     "method": "Wallet",
+     "started": 32,
+     "succeeded": 32
+    },
+    {
+     "method": "BankQr",
+     "started": 11,
+     "succeeded": 8
+    },
+    {
+     "method": "Card",
+     "started": 6,
+     "succeeded": 6
+    },
+    {
+     "method": "MobileApp",
+     "started": 3,
+     "succeeded": 0
+    }
+   ],
+   "abandoned": [
+    {
+     "key": "Browse",
+     "count": 36
+    },
+    {
+     "key": "Options",
+     "count": 5
+    },
+    {
+     "key": "QrPayment",
+     "count": 4
+    },
+    {
+     "key": "PaymentMethod",
+     "count": 3
+    }
+   ],
+   "conversionErrors": [
+    {
+     "key": "conversion.notStarted",
+     "text": "Çevirici proqram işə düşmədi.",
+     "count": 4
+    }
+   ],
+   "printErrors": [
+    {
+     "key": "printer.paperJam",
+     "text": "Printerdə kağız sıxışıb.",
+     "count": 2
+    }
+   ],
+   "refundReasons": [
+    {
+     "key": "ScheduleCancel",
+     "count": 6
+    },
+    {
+     "key": "AdminManual",
+     "count": 4
+    },
+    {
+     "key": "UserCancel",
+     "count": 4
+    },
+    {
+     "key": "SystemError",
+     "count": 3
+    }
+   ],
+   "paper": [
+    {
+     "key": "A4",
+     "count": 56
+    }
+   ],
+   "toner": [],
+   "incidents": [
+    {
+     "key": "Medium",
+     "count": 29
+    },
+    {
+     "key": "Critical",
+     "count": 27
+    },
+    {
+     "key": "High",
+     "count": 7
+    }
+   ],
+   "days": [
+    {
+     "day": "2026-10-04",
+     "live": false,
+     "visits": 17,
+     "orders": 35,
+     "printsSucceeded": 19,
+     "printsFailed": 0,
+     "net": 6.35,
+     "paperSheets": 40,
+     "incidents": 0
+    },
+    {
+     "day": "2026-10-05",
+     "live": false,
+     "visits": 11,
+     "orders": 3,
+     "printsSucceeded": 3,
+     "printsFailed": 0,
+     "net": 0.6,
+     "paperSheets": 3,
+     "incidents": 0
+    },
+    {
+     "day": "2026-10-06",
+     "live": false,
+     "visits": 0,
+     "orders": 0,
+     "printsSucceeded": 0,
+     "printsFailed": 0,
+     "net": 0,
+     "paperSheets": 0,
+     "incidents": 0
+    },
+    {
+     "day": "2026-10-07",
+     "live": false,
+     "visits": 0,
+     "orders": 0,
+     "printsSucceeded": 0,
+     "printsFailed": 0,
+     "net": 0,
+     "paperSheets": 0,
+     "incidents": 0
+    }
+   ]
+  }
  }
 }

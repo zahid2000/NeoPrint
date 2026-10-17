@@ -13,7 +13,7 @@
 // this machine.
 // ---------------------------------------------------------------------------
 import { execFileSync } from 'node:child_process';
-import { generateKeyPairSync, randomUUID } from 'node:crypto';
+import { generateKeyPairSync, randomUUID, sign } from 'node:crypto';
 
 const container = process.env.NEOPRINT_MONGO_CONTAINER ?? 'neoprint-mongo';
 // The compose file's development database account (docs/DEV_ENVIRONMENT.md section 3); never a real one.
@@ -49,14 +49,16 @@ function localOnly(api) {
 
 /**
  * A machine that has just been switched on: it registers and is given the code
- * its screen would show. Its private key is thrown away - it never calls in.
+ * its screen would show. Its private key stays in this process - a check that
+ * acts as the kiosk signs in with it (kioskSession); nothing writes it down.
  *
  * @param call The check's own `call(method, path, body, anonymous)`.
+ * @returns The registration's answer and `privateKey`.
  */
-export function registerMachine(call, hostname) {
-  const { publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+export async function registerMachine(call, hostname) {
+  const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 
-  return call(
+  const answer = await call(
     'POST',
     '/api/devices/register',
     {
@@ -78,6 +80,35 @@ export function registerMachine(call, hostname) {
     },
     true,
   );
+
+  return { ...answer, privateKey };
+}
+
+/**
+ * Signs in as the kiosk, the way the kiosk application does (plan section
+ * 7.11): a challenge, signed with the machine's key.
+ *
+ * @returns `call(method, path, body, headers)` with the kiosk's token.
+ */
+export async function kioskSession(api, deviceId, privateKey) {
+  const post = async (path, body) => {
+    const response = await fetch(`${api}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!response.ok) throw new Error(`${path}: ${response.status}`);
+    return response.json();
+  };
+  const { nonce } = await post('/api/devices/challenge', { deviceId });
+  const signature = sign('sha256', Buffer.from(nonce, 'utf8'), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64');
+  const { accessToken } = await post('/api/devices/token', { deviceId, nonce, signature });
+
+  return async (method, path, body, headers = {}) => {
+    const response = await fetch(`${api}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID(), ...headers },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`kiosk ${method} ${path}: ${response.status} ${(await response.text()).slice(0, 200)}`);
+    return response.status === 204 || response.status === 202 && response.headers.get('content-length') === '0' ? null : response.json();
+  };
 }
 
 /**
@@ -101,7 +132,7 @@ export async function makeKiosk(call, name) {
     selectedPrinterName: 'Test printer',
   });
 
-  return { id: made.kioskId, code: made.kioskCode, deviceId: machine.deviceId };
+  return { id: made.kioskId, code: made.kioskCode, deviceId: machine.deviceId, privateKey: machine.privateKey };
 }
 
 /**
@@ -117,10 +148,18 @@ export function purgeKiosk(api, kioskId, deviceIds = []) {
     const own = (name) => db[name].find({ KioskId: kiosk }, { _id: 1 }).toArray().map((row) => row._id);
     const tasks = own('service_tasks');
     const incidents = own('incidents');
+    // Orders and their money (T-214): what hangs off a payment carries no kiosk of its own.
+    const jobs = own('print_jobs');
+    const payments = own('payments');
+    const refunds = db.refunds.find({ PaymentId: { $in: payments } }, { _id: 1 }).toArray().map((row) => row._id);
     let removed = 0;
 
     removed += db.incident_notifications.deleteMany({ IncidentId: { $in: incidents } }).deletedCount;
-    removed += db.state_transitions.deleteMany({ EntityId: { $in: [kiosk, ...devices, ...tasks, ...incidents] } }).deletedCount;
+    removed += db.state_transitions.deleteMany({ EntityId: { $in: [kiosk, ...devices, ...tasks, ...incidents, ...jobs, ...payments, ...refunds] } }).deletedCount;
+
+    for (const name of ['refunds', 'refund_vouchers', 'receipts', 'fiscal_receipts', 'mock_bank_transactions', 'mock_refunds', 'promo_usages']) {
+      removed += db[name].deleteMany({ $or: [{ PaymentId: { $in: payments } }, { JobId: { $in: jobs } }] }).deletedCount;
+    }
 
     for (const name of db.getCollectionNames()) {
       // Not the audit log, and nothing that is the database's or the job server's own.
