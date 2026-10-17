@@ -154,6 +154,51 @@ public sealed class UserQrTests
     }
 
     [PdfiumFact]
+    public async Task A_preparation_printed_and_then_deleted_by_its_file_s_rule_leaves_the_list_and_one_the_user_deleted_stays()
+    {
+        if (Skip)
+        {
+            return;
+        }
+
+        using var kiosk = await ReadyKioskAsync(_fixture, "qr-printed-gone");
+        using var user = await TestUsers.ConfirmedAsync(_fixture);
+
+        // A sensitive scan, deleted once printed (T-200).
+        var scan = await SessionTests.UploadReadyPdfAsync(_fixture, user.Client, pages: 1);
+        (await user.Client.PutAsJsonAsync($"/api/files/{scan}/auto-delete", new { rule = "AfterPrint" })).StatusCode.Should().Be(HttpStatusCode.OK);
+        var printed = (await (await PostAsync(user.Client, "/api/prepared-prints", new { fileId = scan, options = new { color = false } }))
+            .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        // Another one whose file the user deleted, never printed.
+        var other = await SessionTests.UploadReadyPdfAsync(_fixture, user.Client, pages: 1);
+        var unprinted = (await (await PostAsync(user.Client, "/api/prepared-prints", new { fileId = other, options = new { color = false } }))
+            .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var files = await (await ScanAsync(kiosk.Client, await CodeAsync(user.Client))).Content.ReadFromJsonAsync<JsonElement>();
+        var order = await OrderAsync(kiosk.Client, files.GetProperty("grant").GetGuid(), printed, Guid.NewGuid().ToString("N"));
+        var jobId = (await order.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var intent = await IntentAsync(kiosk.Client, jobId);
+        (await SimulateAsync(_fixture, intent.GetProperty("id").GetGuid())).StatusCode.Should().Be(HttpStatusCode.OK);
+        await EventuallyAsync(
+            () => kiosk.Client.GetFromJsonAsync<JsonElement>($"/api/print-jobs/{jobId}"),
+            j => j.GetProperty("status").GetString() == "Queued",
+            "the order in the queue");
+        await ReportAsync(kiosk.Client, jobId, "Printing");
+        await ReportAsync(kiosk.Client, jobId, "Completed", sides: 1, sheets: 1);
+
+        await EventuallyAsync(
+            () => user.Client.GetAsync($"/api/files/{scan}"),
+            r => r.StatusCode == HttpStatusCode.NotFound,
+            "the scan deleted after its print");
+        (await user.Client.DeleteAsync($"/api/files/{other}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var items = (await user.Client.GetFromJsonAsync<JsonElement>("/api/prepared-prints")).GetProperty("items").EnumerateArray().ToList();
+        items.Should().NotContain(i => i.GetProperty("id").GetGuid() == printed, "printed and gone by its rule: done, not a problem");
+        items.Single(i => i.GetProperty("id").GetGuid() == unprinted).GetProperty("state").GetString().Should().Be("FileUnavailable");
+    }
+
+    [PdfiumFact]
     public async Task A_preparation_paid_in_advance_waits_for_its_kiosk_and_its_owner_s_qr()
     {
         if (Skip)

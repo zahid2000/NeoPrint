@@ -223,7 +223,14 @@ public sealed class PreparedPrintHandlers :
         foreach (var item in prepared)
         {
             var file = await _files.FindByIdAsync(item.FileId, cancellationToken).ConfigureAwait(false);
-            views.Add(PreparedView(item, file, item.LastJobId is { } jobId ? lastJobs.GetValueOrDefault(jobId) : null));
+            var lastJob = item.LastJobId is { } jobId ? lastJobs.GetValueOrDefault(jobId) : null;
+
+            if (PrintedThenErased(file, lastJob))
+            {
+                continue;
+            }
+
+            views.Add(PreparedView(item, file, lastJob));
         }
 
         foreach (var job in held)
@@ -355,6 +362,16 @@ public sealed class PreparedPrintHandlers :
     private async Task<int> AutoCancelDaysAsync(CancellationToken cancellationToken)
         => Math.Clamp(
             await _settings.GetIntAsync(SettingKeys.PreparedPrintAutoCancelDays, 7, cancellationToken).ConfigureAwait(false), 1, 90);
+
+    /// <summary>
+    /// Printed at the kiosk, then its file went by its own rule (T-200;
+    /// docs/DECISIONS.md 2026-10-11): done, not a problem - it leaves the list,
+    /// and the print is in "Son sifarişlər". A file the user deleted
+    /// themselves, unprinted, stays as "Fayl əlçatan deyil".
+    /// </summary>
+    public static bool PrintedThenErased(StoredFile? file, PrintJob? lastJob)
+        => file is { DeletedAt: not null, AutoDelete: not AutoDeleteRule.Never, PrintedAt: not null }
+           && lastJob is { Status: PrintJobStatus.Completed };
 
     internal static MyPreparedPrintView PreparedView(PreparedPrint prepared, StoredFile? file, PrintJob? lastJob)
     {
