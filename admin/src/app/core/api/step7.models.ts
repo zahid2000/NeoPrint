@@ -368,3 +368,100 @@ export interface AuditLogFilter {
   readonly from?: Date | null;
   readonly to?: Date | null;
 }
+
+// --- Pilot report (step 7A, M10; plan section 2.17) -----------------------
+
+/** A reason and how often; `text` is the server's short text, missing when it has none. */
+export interface PilotReason {
+  readonly key: string;
+  readonly text?: string;
+  readonly count: number;
+}
+
+export interface PilotCount {
+  readonly key: string;
+  readonly count: number;
+}
+
+export interface PilotFormat {
+  readonly format: string;
+  readonly selected: number;
+  readonly failed: number;
+  /** Percent of the files chosen. */
+  readonly share: number;
+}
+
+export interface PilotMethod {
+  readonly method: string;
+  readonly started: number;
+  readonly succeeded: number;
+}
+
+/** The funnel's steps, in order (`PilotReportHandlers.Steps`). */
+export const pilotSteps = ['selected', 'previewed', 'options', 'paymentScreen', 'paid', 'printing', 'printed'] as const;
+export type PilotStep = (typeof pilotSteps)[number];
+
+export interface PilotStepRow {
+  readonly step: PilotStep;
+  readonly count: number;
+  /** Percent of the step before that did not get here; missing for the first step. */
+  readonly loss?: number;
+}
+
+export interface PilotTotals {
+  readonly visits: number;
+  readonly orders: number;
+  readonly printsSucceeded: number;
+  readonly printsFailed: number;
+  readonly cancelled: number;
+  readonly refunds: number;
+  readonly refunded: number;
+  readonly sales: number;
+  readonly net: number;
+  /** Missing when no print was measured. */
+  readonly averagePrintSeconds?: number;
+  readonly paperSheets: number;
+  readonly testSheets: number;
+  readonly tonerReplaced: number;
+  readonly paymentsStarted: number;
+  readonly paymentsSucceeded: number;
+  readonly incidents: number;
+}
+
+export interface PilotDayRow {
+  /** `yyyy-MM-dd`, a Baku day. */
+  readonly day: string;
+  /** Today, worked out on the spot. */
+  readonly live: boolean;
+  readonly visits: number;
+  readonly orders: number;
+  readonly printsSucceeded: number;
+  readonly printsFailed: number;
+  readonly net: number;
+  readonly paperSheets: number;
+  readonly incidents: number;
+}
+
+export interface PilotReport {
+  readonly from: string;
+  readonly to: string;
+  readonly kioskId?: string;
+  readonly currency: string;
+  /** When the oldest past day shown was worked out; missing when the span is only today. */
+  readonly computedAt?: string;
+  readonly totals: PilotTotals;
+  readonly funnel: readonly PilotStepRow[];
+  readonly formats: readonly PilotFormat[];
+  /** The app's uploads: only for an account that sees every kiosk, with no kiosk chosen. */
+  readonly appFormats?: readonly PilotFormat[];
+  readonly paymentFailures: readonly PilotReason[];
+  readonly methods: readonly PilotMethod[];
+  readonly abandoned: readonly PilotCount[];
+  readonly conversionErrors: readonly PilotReason[];
+  readonly printErrors: readonly PilotReason[];
+  readonly refundReasons: readonly PilotCount[];
+  readonly paper: readonly PilotCount[];
+  readonly toner: readonly PilotCount[];
+  readonly incidents: readonly PilotCount[];
+  readonly days: readonly PilotDayRow[];
+}

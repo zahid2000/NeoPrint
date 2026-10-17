@@ -238,6 +238,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/money/revenue.component').then((m) => m.RevenueComponent),
       },
       {
+        path: 'pilot-report',
+        canActivate: [permissionGuard(Permissions.analyticsView)],
+        loadComponent: () =>
+          import('./features/analytics/pilot-report.component').then((m) => m.PilotReportComponent),
+      },
+      {
         path: 'pricing',
         canActivate: [permissionGuard(Permissions.pricingManage)],
         loadComponent: () =>

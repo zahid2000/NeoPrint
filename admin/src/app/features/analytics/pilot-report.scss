@@ -1,0 +1,227 @@
+// "Pilot hesabatı" (docs/DESIGN_SYSTEM.md, T-214): every value from the tokens.
+
+.pilot__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pilot__period {
+  width: 280px;
+  max-width: 100%;
+}
+
+.pilot__computed {
+  margin: 0;
+}
+
+.pilot__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.pilot__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pilot__stat-value {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+
+  mat-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    font-size: var(--icon-size);
+  }
+}
+
+.pilot__stat-value--danger {
+  color: var(--danger-500);
+}
+
+.pilot__stat-value--warning {
+  color: var(--warning-500);
+}
+
+.pilot__stat-none {
+  margin-block: var(--space-2);
+}
+
+.pilot__card-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pilot__sub-title {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pilot__funnel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pilot__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Name, count and loss on the first line; the bar under them across the whole
+// width, so every step's bar starts and ends in the same place; the note on
+// the step that loses the most under its bar.
+.pilot__step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'name count loss'
+    'bar bar bar'
+    'note note note';
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+}
+
+.pilot__step-name {
+  grid-area: name;
+}
+
+.pilot__step-count {
+  grid-area: count;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.pilot__bar {
+  grid-area: bar;
+  display: block;
+  height: var(--space-2);
+  overflow: hidden;
+  background: var(--neutral-100);
+  border-radius: var(--radius-sm);
+}
+
+.pilot__bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--brand-500);
+  border-radius: var(--radius-sm);
+}
+
+.pilot__loss {
+  grid-area: loss;
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  justify-content: flex-end;
+  min-width: var(--space-16);
+  color: var(--neutral-600);
+  font-size: var(--font-size-caption);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+
+  mat-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    font-size: var(--icon-size);
+  }
+}
+
+.pilot__loss--worst {
+  color: var(--warning-500);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pilot__worst-text {
+  grid-area: note;
+  color: var(--warning-500);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pilot__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: var(--space-4);
+}
+
+.pilot__table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--neutral-200);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  th {
+    color: var(--neutral-600);
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-medium);
+  }
+
+  th + th,
+  td + td {
+    padding-inline-start: var(--space-3);
+  }
+}
+
+.pilot__number {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  .pilot__table & {
+    text-align: end;
+  }
+}
+
+.pilot__code {
+  display: block;
+}
+
+// Label left, value right.
+.pilot__rows {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+
+  dt {
+    color: var(--neutral-600);
+  }
+
+  dd {
+    margin: 0;
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (max-width: 600px) {
+  .pilot__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pilot__csv {
+    width: 100%;
+  }
+}

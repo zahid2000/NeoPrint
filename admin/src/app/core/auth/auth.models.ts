@@ -97,6 +97,7 @@ export const Permissions = {
 
   // Step 4: money and customers (plan section 8A.2).
   reportsView: 'reports.view',
+  analyticsView: 'analytics.view',
   paymentsView: 'payments.view',
   paymentsRefund: 'payments.refund',
   refundsView: 'refunds.view',

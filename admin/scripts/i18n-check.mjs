@@ -130,6 +130,14 @@ const SERVER_VALUES = {
   'ops.inventory.movement.': { enum: 'InventoryMovementType' },
   'ops.inventory.quantityHint.': { enum: 'InventoryMovementType' },
   'ops.tasks.source.': { enum: 'ServiceTaskSource' },
+  // The pilot report (T-214): the funnel's steps (PilotReportHandlers.Steps) and the kiosk's screens (FlowStage, desktop).
+  'pilot.step.': { values: ['selected', 'previewed', 'options', 'paymentScreen', 'paid', 'printing', 'printed'] },
+  'pilot.screen.': {
+    values: [
+      'Browse', 'Working', 'Preview', 'Edit', 'Options', 'Placed', 'CancelLookup', 'CancelConfirm', 'CancelDone',
+      'PaymentMethod', 'QrPayment', 'PaymentExpired', 'UserFiles', 'Collected', 'Layout', 'Unknown',
+    ],
+  },
 };
 
 // ---------------------------------------------------------------------------

@@ -32,6 +32,8 @@ const EXTRA = [
   'link_off',
   // customer-detail.component.ts: iconOverride on a personal document's chip
   'lock',
+  // pilot-report.component.ts: iconOverride on today's "Canlı" chip
+  'sensors',
 ];
 
 function files(dir) {

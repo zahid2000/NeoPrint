@@ -218,6 +218,12 @@ export class ShellComponent {
       permissions: [Permissions.reportsView],
     },
     {
+      path: '/pilot-report',
+      labelKey: 'nav.pilotReport',
+      icon: 'insights',
+      permissions: [Permissions.analyticsView],
+    },
+    {
       path: '/devices',
       labelKey: 'nav.devices',
       icon: 'devices',

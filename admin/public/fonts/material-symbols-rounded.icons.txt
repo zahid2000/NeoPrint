@@ -30,6 +30,7 @@ group
 history
 inbox
 info
+insights
 inventory_2
 invert_colors
 key
@@ -72,6 +73,7 @@ rule
 search
 search_off
 sell
+sensors
 settings
 shield
 star
@@ -84,6 +86,7 @@ task_alt
 terminal
 timer_off
 toggle_on
+trending_down
 undo
 verified
 visibility

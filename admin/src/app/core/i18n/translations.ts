@@ -19,6 +19,7 @@ import { referralsTranslations } from './referrals.i18n';
 import { operatorTranslations } from './operator.i18n';
 import { monitoringTranslations } from './monitoring.i18n';
 import { operationsTranslations } from './operations.i18n';
+import { analyticsTranslations } from './analytics.i18n';
 import type { PageTranslations } from './page-translations';
 
 import { SupportedLanguage, supportedLanguages } from './languages';
@@ -1032,6 +1033,7 @@ const pages: readonly PageTranslations[] = [
   operatorTranslations,
   monitoringTranslations,
   operationsTranslations,
+  analyticsTranslations,
 ];
 
 for (const language of supportedLanguages) {
