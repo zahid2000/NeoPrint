@@ -79,6 +79,6 @@ export function findRawKeys() {
 
 /** The pages every signed-in administrator can reach from the menu. */
 export const menuRoutes = [
-  '', 'kiosks', 'kiosks/new', 'printers', 'incidents', 'service-tasks', 'inventory', 'supply-rules', 'audit', 'print-jobs', 'suspected', 'payments', 'refunds', 'fiscal', 'receipts', 'vouchers', 'promos',
+  '', 'kiosks', 'kiosks/new', 'printers', 'incidents', 'service-tasks', 'inventory', 'supply-rules', 'audit', 'system-jobs', 'print-jobs', 'suspected', 'payments', 'refunds', 'fiscal', 'receipts', 'vouchers', 'promos',
   'referrals', 'customers', 'revenue', 'pilot-report', 'devices', 'pricing', 'formats', 'features', 'admins', 'roles', 'storage', 'settings', 'legal',
 ];
