@@ -177,10 +177,14 @@ public sealed class FcmPushSender : IPushSender, IDisposable
                     continue;
                 }
 
-                // UNREGISTERED: the app was removed or the token rotated; a token
-                // from another Firebase project, or one that is not a token at all.
+                // UNREGISTERED (or a bare 404 NOT_FOUND): the app was removed or the
+                // token rotated; a token from another Firebase project, or one that
+                // is not a token at all. The device is dropped, not retried (T-283).
+                // Anything else - our key without its IAM role (403
+                // PERMISSION_DENIED), quota, FCM down - is retried, then dead-lettered.
                 if (error is "UNREGISTERED" or "SENDER_ID_MISMATCH"
-                    || (response.StatusCode == HttpStatusCode.BadRequest && error is "INVALID_ARGUMENT"))
+                    || (response.StatusCode == HttpStatusCode.BadRequest && error is "INVALID_ARGUMENT")
+                    || (response.StatusCode == HttpStatusCode.NotFound && error is "NOT_FOUND"))
                 {
                     _logger.LogInformation(
                         "FCM refused token {TokenHash}: {Status} {Error}.", hash, (int)response.StatusCode, error);

@@ -66,7 +66,11 @@ public sealed class FcmPushSenderTests
     [InlineData(HttpStatusCode.NotFound, "NOT_FOUND", "UNREGISTERED", PushResult.TokenGone)]
     [InlineData(HttpStatusCode.BadRequest, "INVALID_ARGUMENT", "INVALID_ARGUMENT", PushResult.TokenGone)]
     [InlineData(HttpStatusCode.Forbidden, "PERMISSION_DENIED", "SENDER_ID_MISMATCH", PushResult.TokenGone)]
+    [InlineData(HttpStatusCode.NotFound, "NOT_FOUND", "", PushResult.TokenGone)]
+    [InlineData(HttpStatusCode.BadRequest, "INVALID_ARGUMENT", "", PushResult.TokenGone)]
+    [InlineData(HttpStatusCode.Forbidden, "PERMISSION_DENIED", "", PushResult.Failed)]
     [InlineData(HttpStatusCode.TooManyRequests, "RESOURCE_EXHAUSTED", "QUOTA_EXCEEDED", PushResult.Failed)]
+    [InlineData(HttpStatusCode.InternalServerError, "INTERNAL", "INTERNAL", PushResult.Failed)]
     [InlineData(HttpStatusCode.ServiceUnavailable, "UNAVAILABLE", "UNAVAILABLE", PushResult.Failed)]
     public async Task FCM_answers_become_delivered_gone_or_try_again(HttpStatusCode status, string grpc, string code, PushResult expected)
     {
@@ -193,8 +197,12 @@ public sealed class FcmPushSenderTests
                 return Json(HttpStatusCode.Unauthorized, """{"error":{"code":401,"status":"UNAUTHENTICATED"}}""");
             }
 
+            // An empty code is FCM's answer without its FcmError detail: the gRPC status alone
+            // (403 PERMISSION_DENIED when the key's account lacks its IAM role - T-163, T-283).
             return SendError is { } error
-                ? Json(SendStatus, $$$"""{"error":{"code":{{{(int)SendStatus}}},"status":"{{{error.Status}}}","details":[{"@type":"type.googleapis.com/google.firebase.fcm.v1.FcmError","errorCode":"{{{error.Code}}}"}]}}""")
+                ? error.Code.Length == 0
+                    ? Json(SendStatus, $$$"""{"error":{"code":{{{(int)SendStatus}}},"status":"{{{error.Status}}}"}}""")
+                    : Json(SendStatus, $$$"""{"error":{"code":{{{(int)SendStatus}}},"status":"{{{error.Status}}}","details":[{"@type":"type.googleapis.com/google.firebase.fcm.v1.FcmError","errorCode":"{{{error.Code}}}"}]}}""")
                 : Json(HttpStatusCode.OK, """{"name":"projects/test-project/messages/1"}""");
         }
 

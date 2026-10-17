@@ -155,6 +155,39 @@ public sealed partial class OperationsJobsTests
         (await context.Wallets.Find(w => w.Id == broken.Id).SingleAsync()).Balance.Should().Be(Money.FromAzn(5), "nothing is corrected automatically");
     }
 
+    [DockerFact]
+    public async Task A_money_incident_stays_open_after_its_cause_is_gone_and_a_person_closes_it_only_with_a_reason()
+    {
+        if (Skip) { return; }
+
+        using var scope = _fixture.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+
+        var broken = Wallet.For(Guid.NewGuid());
+        var line = broken.Post(WalletTransactionType.TopUp, Money.FromAzn(4), 0, "it-topup", $"it:{Guid.NewGuid():N}", null, DateTime.UtcNow);
+        await context.Wallets.InsertOneAsync(broken); // the ledger line is not written yet
+        await SendAsync(new RunWalletLedgerCheckCommand());
+        var incident = (await IncidentsAsync(RunWalletLedgerCheckHandler.KeyOf(broken.UserId))).Should().ContainSingle().Subject;
+
+        // The cause goes away: the check finds nothing, the incident stays for a person (T-284).
+        await context.WalletTransactions.InsertOneAsync(line);
+        (await SendAsync(new RunWalletLedgerCheckCommand())).Findings.Should().NotContain(f => f.Ref == broken.UserId.ToString());
+        (await IncidentsAsync(RunWalletLedgerCheckHandler.KeyOf(broken.UserId))).Should().ContainSingle()
+            .Which.Status.Should().Be(IncidentStatus.Open, "a money incident is never closed by the system");
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        (await admin.PostAsJsonAsync($"/api/admin/incidents/{incident.Id}/resolve", new { note = " " }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest, "closing without a reason is refused");
+        (await admin.PostAsJsonAsync($"/api/admin/incidents/{incident.Id}/resolve", new { }))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await IncidentsAsync(RunWalletLedgerCheckHandler.KeyOf(broken.UserId))).Single().Status.Should().Be(IncidentStatus.Open);
+
+        (await admin.PostAsJsonAsync($"/api/admin/incidents/{incident.Id}/resolve", new { note = "Ledger sətri gec yazılıb, balans düzdür" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await IncidentsAsync(RunWalletLedgerCheckHandler.KeyOf(broken.UserId))).Single().Status.Should().Be(IncidentStatus.Resolved);
+        (await AuditCountAsync("incidents.resolve", incident.Id.ToString())).Should().Be(1);
+    }
+
     // -----------------------------------------------------------------------
     // Payments against their orders, refunds and receipts
     // -----------------------------------------------------------------------
@@ -283,6 +316,12 @@ public sealed partial class OperationsJobsTests
 
         using var blind = await AccountAsync(KioskScope.Everything(), Permissions.AuditView);
         (await blind.GetAsync("/api/admin/system/jobs")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // SuperAdmin has it by itself; the seeded Admin role only when it is given by hand (T-284).
+        using var scope = _fixture.Services.CreateScope();
+        var roles = scope.ServiceProvider.GetRequiredService<MongoContext>().AdminRoles;
+        (await roles.Find(r => r.Name == AdminRole.SuperAdminName).SingleAsync()).EffectivePermissions.Should().Contain(Permissions.SystemJobsView);
+        (await roles.Find(r => r.Name == "Admin").SingleAsync()).EffectivePermissions.Should().NotContain(Permissions.SystemJobsView);
     }
 
     [DockerFact]

@@ -119,6 +119,9 @@ public sealed class DatabaseSeeder
                     Permissions.AdminsManage,
                     Permissions.RolesManage,
                     Permissions.AuditView,
+
+                    // Given by hand, also on a new install (T-284).
+                    Permissions.SystemJobsView,
                 ], StringComparer.Ordinal),
             ],
         };
