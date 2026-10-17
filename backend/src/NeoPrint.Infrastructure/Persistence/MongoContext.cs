@@ -163,6 +163,9 @@ public sealed class MongoContext
     /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 2.17).</summary>
     public MongoSet<Domain.Analytics.AnalyticsEvent> AnalyticsEvents => Set<Domain.Analytics.AnalyticsEvent>("analytics_events");
 
+    /// <summary>The pilot report's rolled-up days (plan section 2.17, <c>AnalyticsRollupJob</c>).</summary>
+    public MongoSet<Domain.Analytics.PilotDay> AnalyticsDays => Set<Domain.Analytics.PilotDay>("analytics_days");
+
     /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 7.9).</summary>
     public MongoSet<KioskTelemetrySample> KioskTelemetry => Set<KioskTelemetrySample>("kiosk_telemetry");
 
@@ -597,11 +600,20 @@ public sealed class MongoContext
             (Builders<SupplyEvent>.IndexKeys.Ascending(movement => movement.KioskId).Descending(movement => movement.At),
                 Named("ix_supply_events_kiosk_at")));
 
-        // One row per job and attempt: a report sent again replaces it.
+        // One row per job and attempt: a report sent again replaces it. The
+        // pilot report reads a kiosk's attempts by when they were reported.
         await CreateAsync(PrintAttempts,
             (Builders<Domain.PrintJobs.PrintAttempt>.IndexKeys
                 .Ascending(attempt => attempt.JobId).Ascending(attempt => attempt.AttemptNo),
-                Unique("ux_print_attempts_job_attempt")));
+                Unique("ux_print_attempts_job_attempt")),
+            (Builders<Domain.PrintJobs.PrintAttempt>.IndexKeys
+                .Ascending(attempt => attempt.KioskId).Ascending(attempt => attempt.UpdatedAt),
+                Named("ix_print_attempts_kiosk_updated")));
+
+        // The pilot report reads a span of days, for some kiosks or all.
+        await CreateAsync(AnalyticsDays,
+            (Builders<Domain.Analytics.PilotDay>.IndexKeys.Ascending(day => day.Day).Ascending(day => day.KioskId),
+                Named("ix_analytics_days_day_kiosk")));
 
         // A printer's history, newest first (plan section 7.10).
         await CreateAsync(PrinterEvents,

@@ -505,6 +505,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         jobs => jobs.LowStockAsync(CancellationToken.None),
         NeoPrint.Infrastructure.Supplies.SupplyJobs.HourlyAtHalfPast);
 
+    // The pilot report's days (plan sections 2.17, 6).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob>(
+        NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob.JobId,
+        job => job.RunAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob.Hourly);
+
     // Which providers answer: for the panel, and for noticing a primary that
     // has gone quiet (plan section 2.10).
     recurring.AddOrUpdate<StorageMirrorJobs>(
