@@ -140,6 +140,7 @@ public static class DependencyInjection
         services.AddScoped<Application.Analytics.IAnalyticsEventRepository, AnalyticsEventRepository>();
         services.AddScoped<Application.Analytics.IPilotSourceReader, MongoPilotSourceReader>();
         services.AddScoped<Application.Analytics.IPilotDayRepository, PilotDayRepository>();
+        services.AddScoped<Application.Analytics.IAnalyticsRejectionStore, AnalyticsRejectionStore>();
         services.AddScoped<Analytics.AnalyticsRollupJob>();
         services.AddScoped<Application.Kiosks.IKioskTelemetryStore, Kiosks.KioskTelemetryStore>();
         services.AddScoped<Application.Kiosks.IKioskStatusCache, Kiosks.RedisKioskStatusCache>();

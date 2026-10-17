@@ -80,6 +80,24 @@ public static class AnalyticsCatalog
         };
 
     /// <summary>
+    /// The name and properties a kiosk built before T-214 sends, under today's
+    /// name (T-282): such kiosks stay in the field until the update system of
+    /// step 7B replaces them. <c>payment_method {method}</c> is
+    /// <c>payment_started</c>; <c>payment_ended {status}</c> is
+    /// <c>payment_failed</c> when the bank said no, <c>payment_expired</c>
+    /// otherwise - it never said which method. Any other name is returned as it is.
+    /// </summary>
+    public static (string? Name, IReadOnlyDictionary<string, string?>? Props) Current(string? name, IReadOnlyDictionary<string, string?>? props)
+        => name switch
+        {
+            "payment_method" => ("payment_started", props),
+            "payment_ended" => (
+                props?.GetValueOrDefault("status") == "Failed" ? "payment_failed" : "payment_expired",
+                new Dictionary<string, string?>(StringComparer.Ordinal)),
+            _ => (name, props),
+        };
+
+    /// <summary>
     /// The properties of <paramref name="name"/> the catalogue allows, cut to
     /// length; null when the event is not one a kiosk sends.
     /// </summary>

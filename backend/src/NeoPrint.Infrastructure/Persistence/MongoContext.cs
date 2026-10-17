@@ -166,6 +166,9 @@ public sealed class MongoContext
     /// <summary>The pilot report's rolled-up days (plan section 2.17, <c>AnalyticsRollupJob</c>).</summary>
     public MongoSet<Domain.Analytics.PilotDay> AnalyticsDays => Set<Domain.Analytics.PilotDay>("analytics_days");
 
+    /// <summary>Kiosk analytics events that were not kept, per kiosk and Baku day (T-282).</summary>
+    public MongoSet<Domain.Analytics.AnalyticsRejectionDay> AnalyticsRejections => Set<Domain.Analytics.AnalyticsRejectionDay>("analytics_rejections");
+
     /// <summary>A time-series collection, created by <see cref="ApplyRetentionAsync"/> (plan section 7.9).</summary>
     public MongoSet<KioskTelemetrySample> KioskTelemetry => Set<KioskTelemetrySample>("kiosk_telemetry");
 

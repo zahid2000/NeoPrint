@@ -1,4 +1,8 @@
+using System.Text.RegularExpressions;
+
 using MediatR;
+
+using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Common;
@@ -11,6 +15,24 @@ namespace NeoPrint.Application.Analytics;
 public interface IAnalyticsEventRepository
 {
     Task AddManyAsync(IReadOnlyCollection<AnalyticsEvent> events, CancellationToken cancellationToken = default);
+}
+
+/// <summary>Why kiosk events were not kept, counted per kiosk and Baku day (T-282).</summary>
+public interface IAnalyticsRejectionStore
+{
+    /// <summary>Adds to the day's counts (an increment, not a replace: every batch adds its own).</summary>
+    Task AddAsync(Guid kioskId, string day, AnalyticsRejections counts, string? lastUnknown, DateTime at, CancellationToken cancellationToken = default);
+
+    /// <summary>Every kiosk's days from <paramref name="fromDay"/> on.</summary>
+    Task<IReadOnlyList<AnalyticsRejectionDay>> ListAsync(string fromDay, CancellationToken cancellationToken = default);
+}
+
+/// <param name="UnknownEvent">A name the catalogue does not list (nor an older name it maps).</param>
+/// <param name="NoSession">No session id, or one too long.</param>
+/// <param name="OutOfTime">Older than a week, or ahead of the server's clock.</param>
+public sealed record AnalyticsRejections(int UnknownEvent, int NoSession, int OutOfTime)
+{
+    public int Total => UnknownEvent + NoSession + OutOfTime;
 }
 
 /// <summary>One event as the kiosk sends it.</summary>
@@ -59,15 +81,26 @@ public sealed class RecordKioskAnalyticsHandler : IRequestHandler<RecordKioskAna
     /// <summary>A kiosk clock a little ahead is tolerated.</summary>
     private static readonly TimeSpan MaxSkew = TimeSpan.FromMinutes(5);
 
+    private static readonly Regex UnsafeName = new("[^a-z0-9_.-]", RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(50));
+
     private readonly IKioskDeviceRepository _devices;
     private readonly IAnalyticsEventRepository _events;
+    private readonly IAnalyticsRejectionStore _rejections;
     private readonly IClock _clock;
+    private readonly ILogger<RecordKioskAnalyticsHandler> _logger;
 
-    public RecordKioskAnalyticsHandler(IKioskDeviceRepository devices, IAnalyticsEventRepository events, IClock clock)
+    public RecordKioskAnalyticsHandler(
+        IKioskDeviceRepository devices,
+        IAnalyticsEventRepository events,
+        IAnalyticsRejectionStore rejections,
+        IClock clock,
+        ILogger<RecordKioskAnalyticsHandler> logger)
     {
         _devices = devices;
         _events = events;
+        _rejections = rejections;
         _clock = clock;
+        _logger = logger;
     }
 
     public async Task<AnalyticsBatchResult> Handle(RecordKioskAnalyticsCommand request, CancellationToken cancellationToken)
@@ -83,17 +116,32 @@ public sealed class RecordKioskAnalyticsHandler : IRequestHandler<RecordKioskAna
 
         var now = _clock.UtcNow;
         var kept = new List<AnalyticsEvent>();
+        int unknown = 0, noSession = 0, outOfTime = 0;
+        string? lastUnknown = null;
 
         foreach (var input in request.Events)
         {
             var at = input.At.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(input.At, DateTimeKind.Utc) : input.At.ToUniversalTime();
 
-            if (AnalyticsCatalog.KioskProps(input.Event, input.Props) is not { } props
-                || string.IsNullOrWhiteSpace(input.SessionId)
-                || input.SessionId.Length > 64
-                || at < now - MaxAge
-                || at > now + MaxSkew)
+            // A kiosk from before T-214 still says payment_method / payment_ended (T-282).
+            var (name, raw) = AnalyticsCatalog.Current(input.Event, input.Props);
+
+            if (AnalyticsCatalog.KioskProps(name, raw) is not { } props)
             {
+                unknown++;
+                lastUnknown = Safe(input.Event);
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(input.SessionId) || input.SessionId.Length > 64)
+            {
+                noSession++;
+                continue;
+            }
+
+            if (at < now - MaxAge || at > now + MaxSkew)
+            {
+                outOfTime++;
                 continue;
             }
 
@@ -103,7 +151,7 @@ public sealed class RecordKioskAnalyticsHandler : IRequestHandler<RecordKioskAna
                 Source = AnalyticsSource.Kiosk,
                 KioskId = kioskId,
                 SessionId = input.SessionId,
-                Event = input.Event!,
+                Event = name!,
                 Props = props,
             });
         }
@@ -113,6 +161,50 @@ public sealed class RecordKioskAnalyticsHandler : IRequestHandler<RecordKioskAna
             await _events.AddManyAsync(kept, cancellationToken).ConfigureAwait(false);
         }
 
-        return new AnalyticsBatchResult(kept.Count, request.Events.Count - kept.Count);
+        var rejected = new AnalyticsRejections(unknown, noSession, outOfTime);
+
+        if (rejected.Total > 0)
+        {
+            // Not silent (T-282): the log says it, the meter counts it, and the
+            // admin panel's "Arxa plan işləri" shows it per kiosk and day.
+            _logger.LogWarning(
+                "Kiosk {KioskId} sent {Rejected} analytics events that were not kept: {Unknown} unknown (last: {LastUnknown}), {NoSession} without a session, {OutOfTime} out of time.",
+                kioskId,
+                rejected.Total,
+                unknown,
+                lastUnknown,
+                noSession,
+                outOfTime);
+            Count(unknown, "unknownEvent");
+            Count(noSession, "noSession");
+            Count(outOfTime, "outOfTime");
+
+            await _rejections
+                .AddAsync(kioskId, PilotDayBuilder.DayOf(now), rejected, lastUnknown, now, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return new AnalyticsBatchResult(kept.Count, rejected.Total);
+    }
+
+    private static void Count(int count, string reason)
+    {
+        if (count > 0)
+        {
+            NeoPrintMetrics.AnalyticsEventsRejected.Add(count, new KeyValuePair<string, object?>("reason", reason));
+        }
+    }
+
+    /// <summary>A name a kiosk sent, safe to log and to show: its own characters only, cut short.</summary>
+    private static string? Safe(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        var safe = UnsafeName.Replace(name.Trim().ToLowerInvariant(), "?");
+
+        return safe.Length > 40 ? safe[..40] : safe;
     }
 }

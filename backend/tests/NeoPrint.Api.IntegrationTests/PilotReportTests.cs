@@ -74,6 +74,39 @@ public sealed class PilotReportTests
     }
 
     [DockerFact]
+    public async Task An_older_kiosks_payment_names_are_kept_under_todays_and_an_unknown_event_is_counted_not_lost()
+    {
+        if (Skip) { return; }
+
+        using var kiosk = await TestKiosks.ActivatedAsync(_fixture, $"plt-{Guid.NewGuid():N}"[..20]);
+        var visit = Guid.NewGuid().ToString("N");
+        var at = DateTime.UtcNow.AddMinutes(-1);
+
+        var batch = await SendAnalyticsAsync(kiosk.Client,
+        [
+            Event("payment_method", visit, at, ("method", "BankQr")),
+            Event("payment_ended", visit, at.AddSeconds(30), ("status", "Failed")),
+            Event("payment_ended", visit, at.AddSeconds(50), ("status", "Expired")),
+            Event("brand_new_thing", visit, at.AddSeconds(55), ("x", "1")),
+            Event("screen_view", string.Empty, at.AddSeconds(56), ("screen", "Browse")),
+        ]);
+
+        batch.GetProperty("accepted").GetInt32().Should().Be(3);
+        batch.GetProperty("rejected").GetInt32().Should().Be(2);
+
+        using var services = _fixture.Services.CreateScope();
+        var context = services.ServiceProvider.GetRequiredService<MongoContext>();
+        var kept = await context.AnalyticsEvents.Find(e => e.KioskId == kiosk.KioskId).ToListAsync();
+        kept.Select(e => e.Event).Should().BeEquivalentTo(["payment_started", "payment_failed", "payment_expired"]);
+        kept.Single(e => e.Event == "payment_started").Props.Should().ContainKey("method");
+
+        var counted = await context.AnalyticsRejections.Find(row => row.KioskId == kiosk.KioskId).SingleAsync();
+        counted.UnknownEvent.Should().Be(1);
+        counted.NoSession.Should().Be(1);
+        counted.LastUnknownName.Should().Be("brand_new_thing");
+    }
+
+    [DockerFact]
     public async Task The_rollup_run_twice_counts_once_and_a_past_day_comes_from_it()
     {
         if (Skip) { return; }
