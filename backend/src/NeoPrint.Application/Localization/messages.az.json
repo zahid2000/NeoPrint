@@ -707,6 +707,7 @@
   "incidents.telemetry.hubDown": "Kioskun canlı bağlantısı (SignalR) {minutes} dəqiqədir qopuqdur. Əmrlər və növbə gecikə bilər — şəbəkəni yoxlayın.",
   "incidents.telemetry.memoryHigh": "Kioskun yaddaşı {minutes} dəqiqədir {percent}% doludur (hədd: 90%). Davam edərsə tətbiqi yenidən başladın.",
   "telemetry.rangeInvalid": "Başlanğıc vaxtı son vaxtdan əvvəl olmalıdır.",
+  "audit.rangeInvalid": "Aralığın başlanğıcı sonundan əvvəl olmalıdır. Tarixləri yoxlayın.",
   "incidents.telemetry.spoolerStuck": "\"{printer}\" printerinin sistem növbəsində {jobId} işi {minutes} dəqiqədir qalıb. Printerə və kağıza baxın; iş ilişibsə kioskda növbəni təmizləyin.",
   "inventory.minStockInvalid": "Minimum qalıq mənfi ola bilməz.",
   "inventory.movementTypeUnknown": "Belə anbar hərəkəti növü yoxdur.",

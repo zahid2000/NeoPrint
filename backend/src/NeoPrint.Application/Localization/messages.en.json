@@ -707,6 +707,7 @@
   "incidents.telemetry.hubDown": "The kiosk's live connection (SignalR) has been down for {minutes} minutes. Commands and the queue may be late - check the network.",
   "incidents.telemetry.memoryHigh": "The kiosk's memory has been {percent}% full for {minutes} minutes (limit: 90%). If it continues, restart the application.",
   "telemetry.rangeInvalid": "The start time must be before the end time.",
+  "audit.rangeInvalid": "The start of the range must be before its end. Check the dates.",
   "incidents.telemetry.spoolerStuck": "Job {jobId} has been in the system queue of printer \"{printer}\" for {minutes} minutes. Check the printer and its paper; if the job is stuck, clear the queue on the kiosk.",
   "inventory.minStockInvalid": "The minimum stock cannot be negative.",
   "inventory.movementTypeUnknown": "There is no such kind of warehouse movement.",
