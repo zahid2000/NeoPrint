@@ -1642,6 +1642,30 @@ node e2e/operations.mjs ../docs/screenshots/step-7/t213   # ekran görüntülər
 
 Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını silir (T-266).
 
+## 7u. Addım 7A — kiçik düzəlişlər (T-216)
+
+Yeni kod üçün: `docker compose up -d --build api`; Linux konteyner kioskunun **image**-i də yenilənməlidir
+(skript aktivləşdirməni saxlayır): `bash tools/dev-kiosk/build-linux-kiosk.sh`. Windows kiosku: `start-kiosk.ps1`
+yeni kodu özü yığır. Mobil: yeni APK (`flutter run` və ya test serverindəki APK).
+
+- **"N telefon qoşulub" restart-dan sonra (T-170):** kiosk açılanda və yenidən qoşulanda `GET /api/kiosks/me/sessions`
+  soruşur. Yoxlamaq: tətbiqdə kioska qoşulun, `docker restart neoprint-kshot` → nişan geri gəlir, QR yenidən oxudulmur.
+- **"Cihazı ayır"-dan sonra köhnə ad (T-170):** aktivləşdirmə ekranının başlığında kiosk adı yoxdur.
+- **Real stack yoxlaması** (iki müvəqqəti hesab, müvəqqəti ikinci konteyner kiosku `neoprint-kshot-m12`; KSK-9002
+  ayrılmır, yalnız restart olunur; hamısı sonda silinir):
+
+  ```bash
+  cd admin
+  node e2e/kiosk-header.mjs                                  # yoxlamalar
+  node e2e/kiosk-header.mjs ../docs/screenshots/step-7/t216  # + ekran görüntüləri
+  ```
+
+- **Şəbəkəsiz açılış (T-199):** emulyatorda təyyarə rejimi və ya `adb shell svc wifi disable; adb shell svc data disable`,
+  tətbiqi bağlayıb açın → "İnternet yoxdur"; şəbəkə qayıdanda tətbiq özü açılır. API-ni dayandırsanız
+  (`docker compose stop api`) — "Server cavab vermir".
+- **Çap olunub silinən hazırlıq (T-200):** faylda "Çapdan sonra sil" qaydası, "Kiosk üçün hazırla", kioskda QR ilə çap →
+  hazırlıq "Hazırladıqlarım"-dan çıxır, çap "Son sifarişlər"dədir.
+
 ## 7t. Addım 7A — arxa plan işləri və Hangfire paneli (plan 6; T-215)
 
 Yeni kod üçün: `docker compose up -d --build api admin`. Yeni kolleksiya (`job_runs`), tənzimləmələr

@@ -192,3 +192,69 @@ export function purgeItem(api, itemId) {
     print(removed);
   `);
 }
+
+/**
+ * An app user for the check alone (T-216): registered, confirmed with the code
+ * Mailpit caught, signed in. The seeded accounts are left alone.
+ *
+ * @returns `{ id, email, token }`.
+ */
+export async function throwawayUser(api, mailpit = process.env.NEOPRINT_MAILPIT ?? 'http://localhost:8025') {
+  localOnly(api);
+
+  const email = `e2e-${randomUUID().slice(0, 8)}@neoprint.test`;
+  const json = async (path, body) => {
+    const response = await fetch(`${api}${path}`, {
+      method: body ? 'POST' : 'GET',
+      headers: { 'Content-Type': 'application/json', 'Accept-Language': 'az' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!response.ok) throw new Error(`${path}: ${response.status}`);
+    return response.json();
+  };
+
+  const [privacy, terms] = [await json('/api/legal/Privacy?lang=az'), await json('/api/legal/Terms?lang=az')];
+  await json('/api/auth/register', {
+    email,
+    password: `E2e!${randomUUID()}`,
+    language: 'az',
+    consents: [{ docType: 'Privacy', version: privacy.version }, { docType: 'Terms', version: terms.version }],
+  });
+
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const found = await (await fetch(`${mailpit}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}&limit=1`)).json();
+    const message = found.messages?.length ? await (await fetch(`${mailpit}/api/v1/message/${found.messages[0].ID}`)).json() : null;
+    const code = /\b(\d{6})\b/.exec(message?.Text ?? '')?.[1];
+
+    if (code) {
+      const { accessToken } = await json('/api/auth/confirm-email', { email, code });
+      return { id: JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64url').toString()).sub, email, token: accessToken };
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  throw new Error('No confirmation e-mail in Mailpit.');
+}
+
+/** Removes a user the check made and what was written for them (not the audit log). */
+export function purgeUser(api, userId) {
+  localOnly(api);
+
+  return mongo(`
+    const user = ${ids([userId])}[0];
+    let removed = 0;
+    for (const name of ['notifications', 'data_exports', 'refresh_tokens', 'consents', 'email_confirmations', 'wallets', 'wallet_transactions']) {
+      removed += db[name].deleteMany({ UserId: user }).deletedCount;
+    }
+    removed += db.users.deleteOne({ _id: user }).deletedCount;
+    print(removed);
+  `);
+}
+
+/** Removes machines the check registered that never became a kiosk's. */
+export function purgeDevices(api, deviceIds) {
+  localOnly(api);
+
+  return mongo(`print(db.kiosk_devices.deleteMany({ _id: { $in: ${ids(deviceIds)} }, KioskId: null }).deletedCount);`);
+}
