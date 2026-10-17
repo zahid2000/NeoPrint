@@ -166,6 +166,9 @@ public sealed class MongoContext
     /// <summary>The pilot report's rolled-up days (plan section 2.17, <c>AnalyticsRollupJob</c>).</summary>
     public MongoSet<Domain.Analytics.PilotDay> AnalyticsDays => Set<Domain.Analytics.PilotDay>("analytics_days");
 
+    /// <summary>The runs of the system's own checks (T-215), for the admin panel; kept 90 days.</summary>
+    public MongoSet<Domain.Operations.JobRun> JobRuns => Set<Domain.Operations.JobRun>("job_runs");
+
     /// <summary>Kiosk analytics events that were not kept, per kiosk and Baku day (T-282).</summary>
     public MongoSet<Domain.Analytics.AnalyticsRejectionDay> AnalyticsRejections => Set<Domain.Analytics.AnalyticsRejectionDay>("analytics_rejections");
 
@@ -612,6 +615,13 @@ public sealed class MongoContext
             (Builders<Domain.PrintJobs.PrintAttempt>.IndexKeys
                 .Ascending(attempt => attempt.KioskId).Ascending(attempt => attempt.UpdatedAt),
                 Named("ix_print_attempts_kiosk_updated")));
+
+        // The latest run of each job; a run is history after 90 days.
+        await CreateAsync(JobRuns,
+            (Builders<Domain.Operations.JobRun>.IndexKeys.Ascending(run => run.Job).Descending(run => run.FinishedAt),
+                Named("ix_job_runs_job_finished")),
+            (Builders<Domain.Operations.JobRun>.IndexKeys.Ascending(run => run.FinishedAt),
+                Expiring("ttl_job_runs", TimeSpan.FromDays(90))));
 
         // The pilot report reads a span of days, for some kiosks or all.
         await CreateAsync(AnalyticsDays,

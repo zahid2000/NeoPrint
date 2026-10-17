@@ -59,6 +59,9 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
     /// <summary>True when Docker is unavailable and the fixture did not start.</summary>
     public bool Skipped { get; private set; }
 
+    /// <summary>The broker's management API, as the dead-letter check reaches it.</summary>
+    public string RabbitManagementUrl => $"http://{_rabbit!.Hostname}:{_rabbit.GetMappedPublicPort(15672)}/";
+
     public async Task InitializeAsync()
     {
         if (new DockerFactAttribute().Skip is not null)
@@ -71,7 +74,8 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         // transactions, which MongoDB only offers on a replica set.
         _mongo = new MongoDbBuilder("mongo:7.0.43").WithReplicaSet("rs0").Build();
         _redis = new RedisBuilder("redis:7.2.16-alpine").Build();
-        _rabbit = new RabbitMqBuilder("rabbitmq:3.13-management").Build();
+        // The management API too: the dead-letter check reads the queues through it (T-215).
+        _rabbit = new RabbitMqBuilder("rabbitmq:3.13-management").WithPortBinding(15672, assignRandomHostPort: true).Build();
 
         // Object storage, so the encryption is exercised against a real S3
         // server rather than a stub: what "the stored object is unreadable"
@@ -123,6 +127,11 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
                      NeoPrint.Infrastructure.Supplies.SupplyJobs.ForecastJobId,
                      NeoPrint.Infrastructure.Supplies.SupplyJobs.EscalationJobId,
                      NeoPrint.Infrastructure.Supplies.SupplyJobs.LowStockJobId,
+                     // The system's own checks (T-215): a test runs them when its data is ready.
+                     NeoPrint.Infrastructure.Operations.OperationsJobs.FileCleanupJobId,
+                     NeoPrint.Infrastructure.Operations.OperationsJobs.DeadLetterJobId,
+                     NeoPrint.Infrastructure.Operations.OperationsJobs.PaymentConsistencyJobId,
+                     NeoPrint.Infrastructure.Refunds.WalletLedgerReconciliationJob.RecurringId,
                  })
         {
             recurring.RemoveIfExists(job);
@@ -408,6 +417,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         // would throttle the suite rather than the thing under test. The
         // limiter itself is covered by its own test, which turns it back on.
         builder.UseSetting("RateLimits:Disabled", "true");
+        builder.UseSetting("RabbitMq:ManagementUrl", RabbitManagementUrl);
 
         // The mock bank calls back over HTTP; here the test server answers.
         builder.UseSetting("Payments:MockBank:CallbackBaseUrl", "http://localhost");
@@ -476,6 +486,9 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
         return WithWebHostBuilder(builder =>
         {
             configure(builder);
+
+            // Nor its panel: building it would hand Hangfire's process-wide configuration to this host.
+            builder.UseSetting("Hangfire:Dashboard", "false");
             builder.ConfigureTestServices(services =>
             {
                 // The web host itself is a hosted service too; it stays.

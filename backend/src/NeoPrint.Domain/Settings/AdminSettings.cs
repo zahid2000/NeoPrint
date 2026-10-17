@@ -146,6 +146,8 @@ public static class SettingKeys
     public const string FilesUserQuotaGb = "Files.UserQuotaGb";
     public const string FilesAllowedFormats = "Files.AllowedFormats";
     public const string FilesVersionsToKeep = "Files.VersionsToKeep";
+    public const string FilesCleanupDryRun = "Files.CleanupDryRun";
+    public const string FilesCleanupGraceHours = "Files.CleanupGraceHours";
     public const string StorageSyncParallelism = "Storage.SyncParallelism";
     public const string StorageSourceRetentionDays = "Storage.SourceRetentionDays";
     public const string StorageReconciliationCron = "Storage.ReconciliationCron";
@@ -219,6 +221,8 @@ public static class SettingKeys
         new(FilesUserQuotaGb, "1", SettingValueType.Integer, "İstifadəçi başına saxlama kvotası (GB)"),
         new(FilesAllowedFormats, DefaultAllowedFormats, SettingValueType.StringList, "İcazəli fayl formatları"),
         new(FilesVersionsToKeep, "5", SettingValueType.Integer, "Saxlanılan redaktə versiyalarının sayı"),
+        new(FilesCleanupDryRun, "true", SettingValueType.Boolean, "Fayl təmizləmə yalnız nəyi siləcəyini yazır, heç nə silmir"),
+        new(FilesCleanupGraceHours, "24", SettingValueType.Integer, "İstifadə olunmayan obyekt bu qədər saatdan təzədirsə silinmir"),
         new(StorageSyncParallelism, "4", SettingValueType.Integer, "Sinxronizasiyada paralel obyekt sayı"),
         new(StorageSourceRetentionDays, "30", SettingValueType.Integer, "Migrasiyadan sonra mənbədə saxlanma müddəti"),
         new(StorageReconciliationCron, "0 3 * * *", SettingValueType.Cron, "Mirror rejimində gecəlik uyğunlaşdırma"),

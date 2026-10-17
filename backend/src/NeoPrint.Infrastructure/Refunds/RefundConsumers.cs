@@ -2,6 +2,8 @@ using MassTransit;
 
 using MediatR;
 
+using NeoPrint.Application.Operations;
+
 using Microsoft.Extensions.Logging;
 
 using NeoPrint.Application.Abstractions;
@@ -197,64 +199,11 @@ public sealed class WalletLedgerReconciliationJob
 {
     public const string RecurringId = "wallet-ledger-reconciliation";
 
-    private const int Page = 200;
+    private readonly ISender _sender;
 
-    private readonly IWalletRepository _wallets;
-    private readonly IWalletTransactionRepository _ledger;
-    private readonly IncidentReporter _incidents;
-    private readonly ILogger<WalletLedgerReconciliationJob> _logger;
+    public WalletLedgerReconciliationJob(ISender sender) => _sender = sender;
 
-    public WalletLedgerReconciliationJob(
-        IWalletRepository wallets, IWalletTransactionRepository ledger, IncidentReporter incidents, ILogger<WalletLedgerReconciliationJob> logger)
-    {
-        _wallets = wallets;
-        _ledger = ledger;
-        _incidents = incidents;
-        _logger = logger;
-    }
-
+    /// <summary>Finds, never fixes (T-215): <see cref="RunWalletLedgerCheckCommand"/>.</summary>
     [Hangfire.DisableConcurrentExecution(timeoutInSeconds: 3600)]
-    public async Task RunAsync(CancellationToken cancellationToken)
-    {
-        var mismatches = 0;
-
-        for (var skip = 0; ; skip += Page)
-        {
-            var wallets = await _wallets.ListAsync(skip, Page, cancellationToken).ConfigureAwait(false);
-
-            foreach (var wallet in wallets)
-            {
-                var (amount, pages) = await _ledger.SumAsync(wallet.UserId, cancellationToken).ConfigureAwait(false);
-
-                if (amount == wallet.Balance && pages == wallet.BonusPages)
-                {
-                    continue;
-                }
-
-                mismatches++;
-                await _incidents
-                    .RaiseAsync(
-                        IncidentType.Other,
-                        IncidentSeverity.High,
-                        UserMessage.Of(
-                            "incidents.walletMismatch",
-                            ("balance", wallet.Balance.Amount),
-                            ("ledger", amount.Amount),
-                            ("pages", wallet.BonusPages),
-                            ("ledgerPages", pages)),
-                        $"wallet-mismatch:{wallet.UserId}",
-                        cancellationToken,
-                        entityType: "Wallet",
-                        entityId: wallet.UserId)
-                    .ConfigureAwait(false);
-            }
-
-            if (wallets.Count < Page)
-            {
-                break;
-            }
-        }
-
-        _logger.LogInformation("Wallet ledger reconciliation finished: {Mismatches} mismatch(es).", mismatches);
-    }
+    public Task RunAsync(CancellationToken cancellationToken) => _sender.Send(new RunWalletLedgerCheckCommand(), cancellationToken);
 }

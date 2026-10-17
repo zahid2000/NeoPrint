@@ -141,6 +141,13 @@ public static class DependencyInjection
         services.AddScoped<Application.Analytics.IPilotSourceReader, MongoPilotSourceReader>();
         services.AddScoped<Application.Analytics.IPilotDayRepository, PilotDayRepository>();
         services.AddScoped<Application.Analytics.IAnalyticsRejectionStore, AnalyticsRejectionStore>();
+        services.AddScoped<Application.Operations.IJobRunStore, MongoJobRunStore>();
+        services.AddScoped<Application.Operations.IFileReferenceReader, MongoFileReferenceReader>();
+        services.AddScoped<Application.Operations.IMoneySnapshotReader, MongoMoneySnapshotReader>();
+        services.AddScoped<Application.Operations.IStoredObjectLister, Storage.S3StoredObjectLister>();
+        services.AddScoped<Application.Operations.IDeadLetterInspector, Messaging.RabbitMqDeadLetterInspector>();
+        services.AddHttpClient(Messaging.RabbitMqDeadLetterInspector.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(10));
+        services.AddScoped<Operations.OperationsJobs>();
         services.AddScoped<Analytics.AnalyticsRollupJob>();
         services.AddScoped<Application.Kiosks.IKioskTelemetryStore, Kiosks.KioskTelemetryStore>();
         services.AddScoped<Application.Kiosks.IKioskStatusCache, Kiosks.RedisKioskStatusCache>();

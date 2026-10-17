@@ -93,6 +93,7 @@ public static class Permissions
     public const string AdminsManage = "admins.manage";
     public const string RolesManage = "roles.manage";
     public const string AuditView = "audit.view";
+    public const string SystemJobsView = "system.jobs.view";
 
     /// <summary>The catalogue, grouped as the admin panel displays it.</summary>
     public static readonly IReadOnlyList<PermissionGroup> Catalogue =
@@ -128,7 +129,7 @@ public static class Permissions
             FeaturesManage, LegalManage,
         ]),
         new("incidents", "Incident-lər", [IncidentsView, IncidentsAcknowledge, IncidentsResolve]),
-        new("system", "Sistem", [StorageManage, AdminsManage, RolesManage, AuditView]),
+        new("system", "Sistem", [StorageManage, AdminsManage, RolesManage, AuditView, SystemJobsView]),
     ];
 
     /// <summary>Every permission in the catalogue.</summary>

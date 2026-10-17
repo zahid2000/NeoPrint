@@ -250,6 +250,9 @@ builder.Services.AddScoped<RequireFeatureFilter>();
 // (docs/IDEMPOTENCY.md).
 builder.Services.AddScoped<IdempotencyFilter>();
 
+// The Hangfire panel's forms carry an antiforgery token when the service is there (T-215).
+builder.Services.AddAntiforgery();
+
 builder.Services.AddControllers(options =>
     {
         // Applied globally; it only acts on endpoints carrying
@@ -505,6 +508,21 @@ await using (var scope = app.Services.CreateAsyncScope())
         jobs => jobs.LowStockAsync(CancellationToken.None),
         NeoPrint.Infrastructure.Supplies.SupplyJobs.HourlyAtHalfPast);
 
+    // The system's own checks (plan section 6, T-215): orphaned objects, the
+    // dead-letter queues, payments against refunds, ledger and receipts.
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Operations.OperationsJobs>(
+        NeoPrint.Infrastructure.Operations.OperationsJobs.FileCleanupJobId,
+        jobs => jobs.FileCleanupAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Operations.OperationsJobs.FileCleanupCron);
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Operations.OperationsJobs>(
+        NeoPrint.Infrastructure.Operations.OperationsJobs.DeadLetterJobId,
+        jobs => jobs.DeadLettersAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Operations.OperationsJobs.EveryFiveMinutes);
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Operations.OperationsJobs>(
+        NeoPrint.Infrastructure.Operations.OperationsJobs.PaymentConsistencyJobId,
+        jobs => jobs.PaymentConsistencyAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Operations.OperationsJobs.PaymentConsistencyCron);
+
     // The pilot report's days (plan sections 2.17, 6).
     recurring.AddOrUpdate<NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob>(
         NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob.JobId,
@@ -586,6 +604,9 @@ app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Hangfire's panel, behind its SuperAdmin ticket (T-167, T-215).
+app.UseNeoPrintHangfireDashboard();
 
 app.MapControllers();
 
