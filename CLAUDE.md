@@ -37,6 +37,7 @@ Hər sessiyanın əvvəlində oxu: plandakı təlimat bölməsi, Bölmə 2.0 (ki
 - Kod və commit İngilis dilində; UI mətnləri lokalizasiya fayllarında (az default, en, ru).
 - **Ünsiyyət dili Azərbaycan dilidir:** bütün hesabatlar, suallar, izahlar, DoD cədvəlləri, tapılan baqların təsviri və risk xəbərdarlıqları Azərbaycan dilində yazılır. Yalnız kod, identifikatorlar, kod şərhləri, commit mesajları və sənəd fayllarının texniki adları (`docs/API.md`, `docs/DECISIONS.md`) İngilis dilində qalır. `docs/` altındaki sənədlərin məzmunu da Azərbaycan dilindədir.
 - Task üçün lazım olmayan faylı dəyişmə, böyük refactor etmə.
+- **Hər push-dan əvvəl dəyişən sahələrin lokal unit testləri işlədilir (T-281):** admin — `npm test` (translations / i18n spec daxil) və `i18n-check`; backend — təsir olunan test sinifləri (mesaj kataloqu dəyişibsə `Application` / `Shared` testləri); mobil və desktop — eyni qayda. M hesabatında "lokal test işlədildi" sətri olur.
 
 ## Arxitektura
 - Modular monolith: Domain (texnologiyadan asılı deyil) → Application (use-case) → Infrastructure → API/Host. Controller-də business logic yoxdur.
