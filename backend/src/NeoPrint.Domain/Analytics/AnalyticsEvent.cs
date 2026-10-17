@@ -45,8 +45,14 @@ public sealed class AnalyticsEvent
 
 /// <summary>
 /// The events a kiosk may send and the properties each may carry (plan
-/// section 2.17). Payment events arrive with payments (plan step 4).
+/// section 2.17).
 /// </summary>
+/// <remarks>
+/// Money, refunds and printing are not counted from these events but from
+/// the records that hold them (payments, refunds, print attempts): an event
+/// can be lost on a kiosk that stays offline, a payment cannot. The events
+/// say what only the screen knows - which file, which screen, how long.
+/// </remarks>
 public static class AnalyticsCatalog
 {
     /// <summary>The longest property value kept.</summary>
@@ -64,6 +70,13 @@ public static class AnalyticsCatalog
             ["print_completed"] = Keys("sheets", "jobCode"),
             ["print_failed"] = Keys("sheets", "error", "jobCode"),
             ["flow_abandoned"] = Keys("lastScreen", "seconds"),
+
+            // T-214: the payment screens. The kiosk used to send them under
+            // names this catalogue did not list, and every one was dropped.
+            ["payment_started"] = Keys("method"),
+            ["payment_succeeded"] = Keys("method", "seconds"),
+            ["payment_failed"] = Keys("method", "seconds"),
+            ["payment_expired"] = Keys("method", "seconds"),
         };
 
     /// <summary>

@@ -28,6 +28,7 @@ public sealed partial class PrintFlowViewModel
 
     private PrintJobInfo? _placedJob;
     private PaymentInfo? _payment;
+    private DateTime? _paymentOpenedAt;
     private CancellationTokenSource? _watch;
     private string? _emailKey;
     private int _promoCheck;
@@ -391,7 +392,8 @@ public sealed partial class PrintFlowViewModel
         try
         {
             var payment = await Task.Run(() => _orders.OpenPaymentAsync(job.Id, method, CancellationToken.None)).ConfigureAwait(true);
-            Track("payment_method", ("method", method));
+            _paymentOpenedAt = DateTime.UtcNow;
+            Track("payment_started", ("method", method));
             ShowPayment(payment);
         }
         catch (KioskApiException exception)
@@ -503,7 +505,7 @@ public sealed partial class PrintFlowViewModel
             PaymentDeclined = latest.Status == "Failed";
             OnPropertyChanged(nameof(ExpiredTitle));
             OnPropertyChanged(nameof(ExpiredBody));
-            Track("payment_ended", ("status", latest.Status));
+            Track(latest.Status == "Failed" ? "payment_failed" : "payment_expired", ("method", latest.Method), ("seconds", PaymentSeconds()));
             Stage = FlowStage.PaymentExpired;
         }
     }
@@ -543,6 +545,12 @@ public sealed partial class PrintFlowViewModel
 
         Leave();
     }
+
+    /// <summary>How long the customer has been paying, for the pilot report (plan section 2.17).</summary>
+    private string? PaymentSeconds()
+        => _paymentOpenedAt is { } opened
+            ? ((int)Math.Max(0, (DateTime.UtcNow - opened).TotalSeconds)).ToString(CultureInfo.InvariantCulture)
+            : null;
 
     private int SecondsLeft()
         => _payment is { } payment ? Math.Max(0, (int)Math.Ceiling((payment.ExpiresAt - DateTime.UtcNow).TotalSeconds)) : 0;
@@ -596,7 +604,7 @@ public sealed partial class PrintFlowViewModel
             }
         }
 
-        Track("payment_succeeded", ("method", payment.Method));
+        Track("payment_succeeded", ("method", payment.Method), ("seconds", PaymentSeconds()));
         _visitDone = true;
         Stage = FlowStage.Placed;
         OnPropertyChanged(nameof(HasPayment));

@@ -147,6 +147,46 @@ public sealed class KioskAnalyticsTests : IDisposable
     }
 
     [Fact]
+    public async Task Paying_is_reported_under_the_names_the_backend_keeps_with_the_method_and_how_long()
+    {
+        // T-214: the kiosk sent "payment_method" and "payment_ended", which the
+        // backend's catalogue does not list - every one of them was dropped.
+        var recorder = new Recorder();
+        var kit = await OrderTestKit.CreateAsync(skipPayment: false);
+        _kits.Add(kit);
+        kit.Pdf(1, _drive, "a.pdf");
+
+        var flow = new PrintFlowViewModel(kit.Orders, new FakeRemovableDriveWatcher(), recorder, pageImage: _ => null)
+        {
+            Language = "az",
+            Delay = (_, token) => Task.Delay(5, token),
+        };
+        await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
+        await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
+        flow.ContinueCommand.Execute(null);
+        await flow.PlaceCommand.ExecuteAsync(null);
+
+        await flow.PayWithBankCommand.ExecuteAsync(null);
+        var declined = kit.Backend.Payments.Values.Single();
+        kit.Backend.Payments[declined.Id] = declined with { Status = "Failed", QrContent = null };
+        await flow.RefreshPaymentAsync();
+
+        flow.RetryPaymentCommand.Execute(null);
+        await flow.PayWithAppCommand.ExecuteAsync(null);
+        var paid = kit.Backend.Payments.Values.Single(payment => payment.Id != declined.Id);
+        kit.Backend.Payments[paid.Id] = paid with { Status = "Succeeded", PaidAt = DateTime.UtcNow };
+        await flow.RefreshPaymentAsync();
+
+        recorder.Names.Should().ContainInOrder("order_placed", "payment_started", "payment_failed", "payment_started", "payment_succeeded");
+        recorder.Names.Should().NotContain(["payment_method", "payment_ended"]);
+        recorder.Events.First(recorded => recorded.Name == "payment_started").Props["method"].Should().Be("BankQr");
+        recorder.Of("payment_failed")["method"].Should().Be("BankQr");
+        recorder.Of("payment_succeeded")["method"].Should().Be("MobileApp");
+        recorder.Of("payment_succeeded")["seconds"].Should().MatchRegex("^[0-9]+$");
+        recorder.Sessions.Should().ContainSingle("paying is part of the same visit");
+    }
+
+    [Fact]
     public async Task Walking_away_is_reported_with_the_screen_and_how_long()
     {
         var recorder = new Recorder();
