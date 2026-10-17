@@ -37,6 +37,9 @@ public interface IKioskSessionStore
     /// <summary>The user's open session, if any: one per user.</summary>
     Task<KioskSession?> FindForUserAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>The sessions open at one kiosk now, whoever's they are.</summary>
+    Task<IReadOnlyList<KioskSession>> ListForKioskAsync(Guid kioskId, DateTime now, CancellationToken cancellationToken = default);
+
     /// <summary>Ends it. True only for the one call that ended it, so its end is announced once.</summary>
     Task<bool> RemoveAsync(Guid id, CancellationToken cancellationToken = default);
 
@@ -70,6 +73,47 @@ public sealed record GetCurrentKioskSessionQuery(Guid UserId) : IRequest<KioskSe
 
 /// <summary>Ends the user's session; ending one that is already over is no error.</summary>
 public sealed record CloseKioskSessionCommand(Guid UserId, Guid SessionId) : IRequest;
+
+/// <summary>
+/// The sessions open at the calling kiosk (<c>GET kiosks/me/sessions</c>, T-170):
+/// a kiosk that starts again shows "N telefon qoşulub" without anyone scanning
+/// its QR again (docs/DECISIONS.md 2026-10-11).
+/// </summary>
+public sealed record GetKioskOpenSessionsQuery(Guid DeviceId) : IRequest<IReadOnlyList<KioskOpenSession>>;
+
+/// <summary>A phone joined to the kiosk, and until when; never whose (the screen is in a public place).</summary>
+public sealed record KioskOpenSession(Guid SessionId, DateTime ExpiresAt);
+
+/// <inheritdoc cref="GetKioskOpenSessionsQuery" />
+public sealed class GetKioskOpenSessionsHandler : IRequestHandler<GetKioskOpenSessionsQuery, IReadOnlyList<KioskOpenSession>>
+{
+    private readonly IKioskDeviceRepository _devices;
+    private readonly IKioskSessionStore _sessions;
+    private readonly IClock _clock;
+
+    public GetKioskOpenSessionsHandler(IKioskDeviceRepository devices, IKioskSessionStore sessions, IClock clock)
+    {
+        _devices = devices;
+        _sessions = sessions;
+        _clock = clock;
+    }
+
+    public async Task<IReadOnlyList<KioskOpenSession>> Handle(GetKioskOpenSessionsQuery request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var device = await _devices.FindByIdAsync(request.DeviceId, cancellationToken).ConfigureAwait(false);
+
+        if (device?.KioskId is not { } kioskId)
+        {
+            throw new DomainException("devices.notBound");
+        }
+
+        var open = await _sessions.ListForKioskAsync(kioskId, _clock.UtcNow, cancellationToken).ConfigureAwait(false);
+
+        return [.. open.OrderBy(session => session.ExpiresAt).Select(session => new KioskOpenSession(session.Id, session.ExpiresAt))];
+    }
+}
 
 /// <summary>Announces the sessions whose time ran out (every minute).</summary>
 public sealed record ExpireKioskSessionsCommand : IRequest<int>;

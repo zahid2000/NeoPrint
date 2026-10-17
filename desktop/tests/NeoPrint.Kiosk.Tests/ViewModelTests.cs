@@ -58,6 +58,50 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void After_a_restart_the_header_counts_the_phones_the_server_says_are_joined()
+    {
+        var model = new MainWindowViewModel();
+        var heard = Guid.NewGuid();
+        model.SessionOpened(heard, DateTime.UtcNow.AddMinutes(10));
+
+        // What the server has replaces what this screen heard: the one heard has
+        // since closed, two others are open and one is already past its end.
+        model.ReplaceSessions(
+        [
+            (Guid.NewGuid(), DateTime.UtcNow.AddMinutes(9)),
+            (Guid.NewGuid(), DateTime.UtcNow.AddMinutes(4)),
+            (Guid.NewGuid(), DateTime.UtcNow.AddSeconds(-5)),
+        ]);
+
+        model.ConnectedPhones.Should().Be(2);
+        model.ConnectedPhonesText.Should().Be("2 telefon qoşulub");
+
+        model.ReplaceSessions([]);
+        model.HasConnectedPhones.Should().BeFalse();
+    }
+
+    [Fact]
+    public void A_detached_kiosk_shows_nothing_of_the_kiosk_it_was_on_the_activation_screen()
+    {
+        var model = new MainWindowViewModel();
+        model.ApplyConfiguration(new KioskConfiguration(
+            Guid.NewGuid(), "KSK-0042", "Old Library Kiosk", "Online", "az", null, new PrinterCapabilityFlags(true, true, true), [], null, 5, 50, 200, null,
+            new Dictionary<string, PaperStockLevel>(), new Dictionary<string, bool>(), 15, 24, DateTime.UtcNow));
+        model.KioskName.Should().Be("Old Library Kiosk");
+        model.SessionOpened(Guid.NewGuid(), DateTime.UtcNow.AddMinutes(10));
+
+        model.ForgetKiosk();
+        model.Apply(new EnrollmentState(
+            KioskLifecycle.Revoked, "K7QM-4XPT", DateTime.UtcNow.AddMinutes(30), "neoprint://activate/x", Guid.NewGuid(), null, []));
+
+        model.Screen.Should().Be(KioskScreen.Activation);
+        model.KioskName.Should().BeNull();
+        model.KioskCode.Should().BeNull();
+        model.HasConnectedPhones.Should().BeFalse();
+        model.ShowKioskQr.Should().BeFalse();
+    }
+
+    [Fact]
     public void An_activated_kiosk_shows_its_qr_and_code_in_the_footer()
     {
         var model = new MainWindowViewModel();

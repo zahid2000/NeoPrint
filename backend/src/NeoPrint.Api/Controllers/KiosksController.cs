@@ -9,6 +9,7 @@ using NeoPrint.Application.Analytics;
 using NeoPrint.Application.Devices;
 using NeoPrint.Application.Kiosks;
 using NeoPrint.Application.PrintJobs;
+using NeoPrint.Application.Sessions;
 
 namespace NeoPrint.Api.Controllers;
 
@@ -186,6 +187,20 @@ public sealed class KiosksController : ControllerBase
         }
 
         return Ok(await _sender.Send(new GetKioskQueueQuery(deviceId.Value), cancellationToken));
+    }
+
+    /// <summary>The phones joined to this kiosk now (T-170): asked when the kiosk starts or reconnects.</summary>
+    [HttpGet("me/sessions")]
+    [Authorize(Policy = AuthorizationPolicies.Kiosk)]
+    public async Task<ActionResult<IReadOnlyList<KioskOpenSession>>> Sessions(CancellationToken cancellationToken)
+    {
+        var deviceId = _currentUser.DeviceId;
+        if (deviceId is null)
+        {
+            return Forbid();
+        }
+
+        return Ok(await _sender.Send(new GetKioskOpenSessionsQuery(deviceId.Value), cancellationToken));
     }
 
     /// <summary>

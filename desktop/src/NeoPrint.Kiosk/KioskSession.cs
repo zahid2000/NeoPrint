@@ -642,6 +642,14 @@ public sealed class KioskSession
                 await OnUiAsync(() => _model.SetQueue(Map(queue))).ConfigureAwait(false);
             })
             .ConfigureAwait(false);
+
+        // The phones joined while this kiosk was down or out of touch (T-170).
+        await TryAsync("sessions", async () =>
+            {
+                var open = await api.GetOpenSessionsAsync(cancellationToken).ConfigureAwait(false);
+                await OnUiAsync(() => _model.ReplaceSessions(open.Select(session => (session.SessionId, session.ExpiresAt)))).ConfigureAwait(false);
+            })
+            .ConfigureAwait(false);
     }
 
     private Task RefreshConfigurationAsync(KioskRuntime runtime, CancellationToken cancellationToken)
@@ -660,6 +668,7 @@ public sealed class KioskSession
                 _model.Flow?.Reset();
                 _model.Flow = null;
                 _model.SetQueue([]);
+                _model.ForgetKiosk();
                 _model.Screen = KioskScreen.Activation;
             })
             .ConfigureAwait(false);

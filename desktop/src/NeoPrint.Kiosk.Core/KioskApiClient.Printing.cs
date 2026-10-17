@@ -87,6 +87,9 @@ public sealed record QueueItem(
     string? FileName,
     DateTime? QueuedAt);
 
+/// <summary>A phone joined to this kiosk, until when (T-170); never whose.</summary>
+public sealed record OpenSession(Guid SessionId, DateTime ExpiresAt);
+
 /// <summary>
 /// The backend said no, and said why: the message is already in the
 /// language the kiosk asked for (Accept-Language), the code is the rule.
@@ -279,6 +282,10 @@ public sealed partial class KioskApiClient
     /// <summary>This kiosk's queue, in order.</summary>
     public Task<IReadOnlyList<QueueItem>> GetQueueAsync(CancellationToken cancellationToken = default)
         => GetAsync<IReadOnlyList<QueueItem>>("api/kiosks/me/queue", cancellationToken);
+
+    /// <summary>The phones joined to this kiosk now (T-170), never whose.</summary>
+    public Task<IReadOnlyList<OpenSession>> GetOpenSessionsAsync(CancellationToken cancellationToken = default)
+        => GetAsync<IReadOnlyList<OpenSession>>("api/kiosks/me/sessions", cancellationToken);
 
     private async Task<T> GetAsync<T>(string path, CancellationToken cancellationToken)
     {

@@ -1502,6 +1502,10 @@ Növbə sırası ilə (`Queued` + `Printing`): `[{ jobId, jobCode, position, sta
 
 Növbə Redis sorted set-dədir (`queue:{kioskId}`, bal = növbəyə düşmə vaxtı); həqiqət mənbəyi MongoDB-dir. Redis cavab verməsə oxuma MongoDB-dən gedir, boş set MongoDB ilə yoxlanıb bərpa olunur, `print-queue-reconciliation` Hangfire işi hər dəqiqə bütün növbələri MongoDB-dən yenidən qurur.
 
+### `GET /api/kiosks/me/sessions` (T-170)
+
+Bu kioska indi qoşulan telefonlar: `[{ sessionId, expiresAt }]` (bitmə vaxtına görə). **Kimin olduğu yoxdur** — ekran ictimai yerdədir. Kiosk açılanda və hub-a yenidən qoşulanda soruşur və başlıqdakı "N telefon qoşulub" nişanını bundan qurur (hub-ın `SessionOpened` / `SessionClosed` mesajları qaçırılmış ola bilər). Mənbə Redis-dəki `sessions:info`-dur; bağlanan və vaxtı keçən sessiya orada qalmır. İstifadəçi token-i ilə — `403`.
+
 ### Printerlər və əmrlər (Bölmə 7.7, 7.8)
 
 Kiosk (kiosk token):

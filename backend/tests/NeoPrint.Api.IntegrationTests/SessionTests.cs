@@ -100,6 +100,44 @@ public sealed class SessionTests
     }
 
     [DockerFact]
+    public async Task A_kiosk_that_starts_again_reads_the_phones_joined_to_it_and_no_one_else_s()
+    {
+        if (Skip)
+        {
+            return;
+        }
+
+        using var kiosk = await ReadyKioskAsync(_fixture, "session-restart");
+        using var other = await ReadyKioskAsync(_fixture, "session-restart-other");
+        using var one = await TestUsers.ConfirmedAsync(_fixture);
+        using var two = await TestUsers.ConfirmedAsync(_fixture);
+        using var elsewhere = await TestUsers.ConfirmedAsync(_fixture);
+
+        (await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/sessions")).GetArrayLength().Should().Be(0);
+
+        var first = await OpenAsync(one.Client, kiosk.KioskCode);
+        var second = await OpenAsync(two.Client, kiosk.KioskCode);
+        await OpenAsync(elsewhere.Client, other.KioskCode);
+
+        // What the kiosk shows after a restart: two phones, by session and end, never whose.
+        var open = await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/sessions");
+        open.EnumerateArray().Select(s => s.GetProperty("sessionId").GetGuid()).Should().BeEquivalentTo([Id(first), Id(second)]);
+        open.EnumerateArray().Should().AllSatisfy(s =>
+        {
+            s.GetProperty("expiresAt").GetDateTime().Should().BeAfter(DateTime.UtcNow);
+            s.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo(["sessionId", "expiresAt"]);
+        });
+
+        // A phone that leaves is no longer counted.
+        (await one.Client.DeleteAsync($"/api/sessions/{Id(first)}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/sessions"))
+            .EnumerateArray().Select(s => s.GetProperty("sessionId").GetGuid()).Should().BeEquivalentTo([Id(second)]);
+
+        // A user's token is not a kiosk's.
+        (await two.Client.GetAsync("/api/kiosks/me/sessions")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [DockerFact]
     public async Task A_kiosk_not_taking_orders_opens_no_session_and_a_hidden_one_is_not_found()
     {
         if (Skip)

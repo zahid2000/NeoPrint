@@ -78,6 +78,24 @@ public sealed class RedisKioskSessionStore : IKioskSessionStore
             : null;
     }
 
+    /// <remarks>
+    /// Reads <c>sessions:info</c> whole: it holds the open sessions only (an
+    /// ended one leaves it), a handful per kiosk, and a kiosk asks once when it
+    /// starts or reconnects.
+    /// </remarks>
+    public async Task<IReadOnlyList<KioskSession>> ListForKioskAsync(Guid kioskId, DateTime now, CancellationToken cancellationToken = default)
+    {
+        var entries = await _redis.GetDatabase().HashGetAllAsync(Info).ConfigureAwait(false);
+
+        return
+        [
+            .. entries
+                .Select(entry => entry.Value.IsNullOrEmpty ? null : JsonSerializer.Deserialize<KioskSession>(entry.Value.ToString(), Json))
+                .OfType<KioskSession>()
+                .Where(session => session.KioskId == kioskId && session.ExpiresAt > now),
+        ];
+    }
+
     public async Task<bool> RemoveAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var database = _redis.GetDatabase();

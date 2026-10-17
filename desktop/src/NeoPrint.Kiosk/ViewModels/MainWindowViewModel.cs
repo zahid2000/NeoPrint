@@ -512,6 +512,38 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// The sessions the server says are open here (T-170): after a restart or a
+    /// lost connection the badge is rebuilt from them, not from what this
+    /// screen happened to hear.
+    /// </summary>
+    public void ReplaceSessions(IEnumerable<(Guid SessionId, DateTime ExpiresAt)> open)
+    {
+        ArgumentNullException.ThrowIfNull(open);
+
+        _sessions.Clear();
+
+        foreach (var (sessionId, expiresAt) in open)
+        {
+            _sessions[sessionId] = expiresAt.ToUniversalTime();
+        }
+
+        ForgetEndedSessions();
+        SessionsChanged();
+    }
+
+    /// <summary>
+    /// The device was detached (T-170): nothing of the kiosk it belonged to
+    /// stays on screen - not its name in the header, its code or its phones.
+    /// </summary>
+    public void ForgetKiosk()
+    {
+        KioskName = null;
+        KioskCode = null;
+        _sessions.Clear();
+        SessionsChanged();
+    }
+
     /// <summary>A missed "closed" message does not leave the badge on: past its end, a session is gone.</summary>
     private void ForgetEndedSessions()
     {
