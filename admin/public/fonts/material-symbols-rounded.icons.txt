@@ -10,6 +10,7 @@ check_circle
 chevron_left
 chevron_right
 cloud
+cloud_off
 confirmation_number
 content_copy
 crisis_alert
@@ -48,6 +49,7 @@ menu
 more_vert
 network_check
 notifications_active
+open_in_new
 pause
 payments
 people
@@ -70,11 +72,14 @@ refresh
 report
 restart_alt
 rule
+schedule
+science
 search
 search_off
 sell
 sensors
 settings
+settings_suggest
 shield
 star
 storage

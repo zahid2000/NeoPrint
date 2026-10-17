@@ -465,3 +465,50 @@ export interface PilotReport {
   readonly incidents: readonly PilotCount[];
   readonly days: readonly PilotDayRow[];
 }
+
+// --- Background jobs (step 7A, M11; plan section 6) -----------------------
+
+/** The jobs whose runs the server keeps (`JobNames`). */
+export const systemJobNames = ['dead-letters', 'file-cleanup', 'wallet-ledger', 'payment-consistency'] as const;
+export type SystemJobName = (typeof systemJobNames)[number];
+
+export interface JobFinding {
+  /** `deleted`, `wouldDelete`, `walletMismatch`, `paidNotPrinted`, `refundWithoutLedger`, ... */
+  readonly kind: string;
+  /** A storage key, a payment or an account id. */
+  readonly ref: string;
+  readonly amount?: number;
+  readonly other?: number;
+  /** An account's PublicId, for a balance mismatch. */
+  readonly label?: string;
+}
+
+export interface DeadLetterQueue {
+  readonly name: string;
+  readonly messages: number;
+  readonly oldestAt?: string;
+}
+
+export interface JobRunSummary {
+  readonly startedAt: string;
+  readonly finishedAt: string;
+  readonly dryRun: boolean;
+  readonly succeeded: boolean;
+  readonly error?: string;
+  readonly counts: Readonly<Record<string, number>>;
+  readonly findings: readonly JobFinding[];
+  readonly queues?: readonly DeadLetterQueue[];
+}
+
+export interface RejectedEvents {
+  readonly kioskId: string;
+  readonly kioskCode?: string;
+  readonly today: number;
+  readonly week: number;
+  readonly lastUnknownName?: string;
+}
+
+export interface SystemJobs {
+  readonly runs: Readonly<Partial<Record<SystemJobName, JobRunSummary>>>;
+  readonly analytics: { readonly today: number; readonly week: number; readonly kiosks: readonly RejectedEvents[] };
+}

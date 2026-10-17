@@ -76,6 +76,10 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Files.AllowedFormats': 'Qəbul olunan fayl formatları.',
     'settings.description.Files.VersionsToKeep':
       'Hər faylın saxlanılan redaktə versiyalarının sayı.',
+    'settings.description.Files.CleanupDryRun':
+      'Açıqdırsa fayl təmizləmə heç nə silmir, yalnız nəyi siləcəyini "Arxa plan işləri" səhifəsində göstərir.',
+    'settings.description.Files.CleanupGraceHours':
+      'İstifadə olunmayan obyekt bu qədər saatdan təzədirsə silinmir (yazılması hələ bitməmiş ola bilər).',
     'settings.description.Storage.SyncParallelism':
       'Saxlama sinxronizasiyasında eyni anda köçürülən obyekt sayı.',
     'settings.description.Storage.SourceRetentionDays':
@@ -182,6 +186,10 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Files.UserQuotaGb': 'The total size of files each user can keep (GB).',
     'settings.description.Files.AllowedFormats': 'The file formats that are accepted.',
     'settings.description.Files.VersionsToKeep': 'How many edited versions of each file are kept.',
+    'settings.description.Files.CleanupDryRun':
+      'When on, the file cleanup deletes nothing and only lists what it would delete on the Background jobs page.',
+    'settings.description.Files.CleanupGraceHours':
+      'An unused object younger than this many hours is not deleted (its write may not have finished).',
     'settings.description.Storage.SyncParallelism':
       'How many objects a storage synchronisation copies at once.',
     'settings.description.Storage.SourceRetentionDays':
@@ -289,6 +297,10 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Files.AllowedFormats': 'Принимаемые форматы файлов.',
     'settings.description.Files.VersionsToKeep':
       'Сколько отредактированных версий каждого файла хранится.',
+    'settings.description.Files.CleanupDryRun':
+      'Если включено, очистка файлов ничего не удаляет, а только показывает на странице «Фоновые задачи», что удалила бы.',
+    'settings.description.Files.CleanupGraceHours':
+      'Неиспользуемый объект моложе стольких часов не удаляется (его запись может быть не закончена).',
     'settings.description.Storage.SyncParallelism':
       'Сколько объектов копируется одновременно при синхронизации хранилища.',
     'settings.description.Storage.SourceRetentionDays':

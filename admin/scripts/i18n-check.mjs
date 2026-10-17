@@ -130,6 +130,9 @@ const SERVER_VALUES = {
   'ops.inventory.movement.': { enum: 'InventoryMovementType' },
   'ops.inventory.quantityHint.': { enum: 'InventoryMovementType' },
   'ops.tasks.source.': { enum: 'ServiceTaskSource' },
+  // The background jobs page (T-215): the jobs the server keeps runs of, and what the money check finds.
+  'bgjobs.name.': { values: ['dead-letters', 'file-cleanup', 'wallet-ledger', 'payment-consistency'] },
+  'bgjobs.money.': { values: ['paidNotPrinted', 'refundWithoutLedger', 'walletPaymentWithoutLedger', 'paidWithoutFiscal'] },
   // The pilot report (T-214): the funnel's steps (PilotReportHandlers.Steps) and the kiosk's screens (FlowStage, desktop).
   'pilot.step.': { values: ['selected', 'previewed', 'options', 'paymentScreen', 'paid', 'printing', 'printed'] },
   'pilot.screen.': {

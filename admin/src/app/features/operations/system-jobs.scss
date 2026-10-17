@@ -1,0 +1,133 @@
+// "Arxa plan işləri" (docs/DESIGN_SYSTEM.md, T-215): every value from the tokens.
+
+.jobs__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jobs__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.jobs__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-left: var(--space-1) solid transparent;
+}
+
+.jobs__card--bad {
+  border-left-color: var(--danger-500);
+}
+
+.jobs__card--warn {
+  border-left-color: var(--warning-500);
+}
+
+.jobs__card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jobs__card-title {
+  margin: 0;
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-semibold);
+}
+
+.jobs__sub-title {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+}
+
+.jobs__when {
+  margin: 0;
+}
+
+.jobs__ok {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  color: var(--success-500);
+
+  mat-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    font-size: var(--icon-size);
+  }
+}
+
+.jobs__card .neo-notice--warning {
+  background: var(--warning-bg);
+
+  > mat-icon {
+    color: var(--warning-500);
+  }
+}
+
+.jobs__table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--neutral-200);
+    text-align: start;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  th {
+    color: var(--neutral-600);
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-medium);
+  }
+
+  th + th,
+  td + td {
+    padding-inline-start: var(--space-3);
+  }
+
+  .jobs__number {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+}
+
+.jobs__danger {
+  color: var(--danger-500);
+}
+
+.jobs__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  overflow-wrap: anywhere;
+
+  // The kind, the payment or key and the amount: words apart, wrapping on a phone.
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    align-items: baseline;
+  }
+}
+
+dl {
+  margin: 0;
+}

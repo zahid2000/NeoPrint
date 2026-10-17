@@ -14,6 +14,7 @@ import {
   ServiceTaskDetail,
   ServiceTaskSummary,
   SupplyAlertRow,
+  SystemJobs,
 } from './step7.models';
 
 /** A write that must not happen twice if it is sent again. */
@@ -192,5 +193,16 @@ export class OperationsApiService {
     }
 
     return this.http.get<Page<AuditLogEntry>>('/api/admin/audit-logs', { params });
+  }
+
+  // --- background jobs (plan section 6, T-215) -----------------------------
+
+  systemJobs(): Observable<SystemJobs> {
+    return this.http.get<SystemJobs>('/api/admin/system/jobs');
+  }
+
+  /** A ticket (a cookie for the panel's own path) before the Hangfire panel is opened. */
+  hangfireSession(): Observable<void> {
+    return this.http.post<void>('/api/admin/hangfire-session', null);
   }
 }

@@ -69,6 +69,7 @@ export const Permissions = {
   adminsManage: 'admins.manage',
   rolesManage: 'roles.manage',
   auditView: 'audit.view',
+  systemJobsView: 'system.jobs.view',
 
   operatorPanel: 'operator.panel',
 

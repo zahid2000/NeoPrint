@@ -152,6 +152,12 @@ export class ShellComponent {
       permissions: [Permissions.auditView],
     },
     {
+      path: '/system-jobs',
+      labelKey: 'nav.systemJobs',
+      icon: 'settings_suggest',
+      permissions: [Permissions.systemJobsView],
+    },
+    {
       path: '/print-jobs',
       labelKey: 'nav.printJobs',
       icon: 'receipt_long',
