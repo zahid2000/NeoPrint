@@ -73,6 +73,13 @@ const shot = async (name, target = page) => {
   if (!shots) return;
   mkdirSync(shots, { recursive: true });
   await target.waitForTimeout(500);
+  // The repository is public: an address in the picture is hidden first.
+  await target.evaluate(() => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      node.nodeValue = node.nodeValue.replace(/\b\d{1,3}(\.\d{1,3}){3}\b/g, '•••');
+    }
+  });
   await target.screenshot({ path: join(shots, `${name}.png`), fullPage: true });
 };
 
@@ -121,8 +128,9 @@ try {
     .then(() => check(true, 'incident: "Baxıram" — it is taken on'))
     .catch(() => check(false, 'incident: "Baxıram" did not change it'));
   await incidentRow.click();
-  await page.locator('tr.ops__detail').first().waitFor({ timeout: 10_000 });
-  check((await page.locator('tr.ops__detail').first().innerText()).includes('Baxılmağa başlandı'), 'incident: its row opens its history');
+  await page.locator('tr.ops__detail', { hasText: 'Baxılmağa başlandı' }).first().waitFor({ timeout: 10_000 })
+    .then(() => check(true, 'incident: its row opens its history'))
+    .catch(() => check(false, 'incident: its row did not open its history'));
   await shot('10-incidents');
   await incidentRow.locator('button', { hasText: 'Bağla' }).click();
   await dialog().locator('textarea, input').first().fill('E2E: yoxlama üçün bağlandı');
