@@ -29,21 +29,25 @@ Pilot aşağıdakıların hamısı bağlanmadan başlamır. Hər sətrin mənbə
 tənzimləmə ilə söndürülüdür (`Notification.TelegramEnabled`), pilot üçün bot token-i və qrup lazım deyil.
 Incident-lər pilotda panel (canlı) və email ilə bildirilir.
 
-## Uğur meyarları — qaralama (T-214 → T-219)
+## Uğur meyarları (T-214, T-282 → T-219)
 
-Pilotun sonunda **Pilot hesabatı**na (`/pilot-report`, bütün pilot günləri, pilot kioskunu seçib) baxıb
-aşağıdakılara cavab veririk. Hədlər qəsdən boş qoyulub — layihə sahibi ilə təsdiqlənəndən sonra yazılır.
+> **Təklif — pilotdan əvvəl təsdiqlənir.** Hədləri layihə sahibi 2026-10-17-də təklif edib (T-282); pilot başlamazdan
+> əvvəl son dəfə təsdiqlənir və bu qeyd götürülür.
 
-| # | Sual | Hesabatda harada | Hədd (təsdiq gözləyir) |
+Pilotun sonunda **Pilot hesabatı**na (`/pilot-report`, bütün pilot günləri, pilot kioskunu seçib) və göstərilən
+səhifələrə baxıb hər sətrin nəticəsini yazırıq.
+
+| # | Meyar | Hədd (təklif) | Haradan oxunur |
 |---|---|---|---|
-| 1 | Fayl seçənlərin neçə faizi uğurlu çapa qədər çatır? | "Kioskda müştəri yolu": son addım / birinci addım | … % |
-| 2 | Ən çox itki hansı addımdadır və o, düzəldilə bilən səbəbdəndirmi (ekran, qiymət, ödəniş)? | Funnel-də "ən çox burada düşür" + "Harada imtina edirlər" | itki … %-dən az |
-| 3 | Ödənişə keçənlərin neçə faizi ödəyir; bank rəddi və vaxtın bitməsi nə qədərdir? | "Ödəniş xətaları (səbəb üzrə)", "Üsullara görə" → Uğur | … % |
-| 4 | Ödənilən çapların neçə faizi uğursuz olur və nə səbəbə (kağız ilişməsi, printer əlçatmaz)? | "Uğursuz çap", "Çap dayandı" | … %-dən az |
-| 5 | Gələn faylların neçə faizi açılmır və hansı formatlar problemlidir? | "Format paylanması" → Açılmadı, "Fayl açılmadı" | … %-dən az |
-| 6 | Refund-ların sayı və səbəbi; avtomatik refund-lar vaxtında bağlanırmı? | "Refund", "Refund səbəbləri" (+ Qaytarmalar səhifəsi) | sifarişlərin … %-dən az |
-| 7 | Kritik incident-lər və kioskun dayanması pilotu nə qədər pozdu? | "Incident" (ciddiliyə görə) + İncident-lər səhifəsi | Kritik: … |
-| 8 | Kağız / toner sərfi proqnoza uyğundurmu, gündəlik gəlir xərcləri ödəyirmi? | "Sərf", "Xalis gəlir", günlər cədvəli | … ₼ / gün |
+| 1 | Fayl seçənlərdən uğurla çap olunanlar | **≥ 50%** | Pilot hesabatı → "Kioskda müştəri yolu": "Uğurla çap olundu" / "Fayl seçildi" |
+| 2 | Ödəniş uğuru (başlanan ödənişlərdən uğurlu) | **≥ 85%** | "Ödəniş xətaları" → "Üsullara görə" → Uğur (hamısı birlikdə) |
+| 3 | Ödənilmiş sifarişlərdən uğurla çap olunanlar | **≥ 97%** | Funnel: "Uğurla çap olundu" / "Ödənildi"; "Uğursuz çap" və "Çap dayandı" səbəbləri |
+| 4 | Açılmayan fayllar | **≤ 5%** | "Format paylanması": Açılmadı / Seçilib (cəm) |
+| 5 | Orta müddət | **≤ 3 dəq** | "Orta çap müddəti"; ziyarətin uzunluğu — "Harada imtina edirlər" (`seconds`) |
+| 6 | İkiqat çap, itmiş pul, fiskal çeksiz satış | **0** | Arxa plan işləri → "Ödəniş uzlaşdırması" və "Balans uzlaşdırması" (tapıntı 0), Fiskal çeklər (uğursuz 0), Baxış gözləyən sifarişlər (`Suspected` həll olunub) |
+| 7 | Çap xətasında avtomatik refund | **100%** | Pilot hesabatı: "Çap dayandı" sayı = "Refund səbəbləri" → Sistem xətası + Qismən çap; Qaytarmalar → "Uğursuzlar" boş |
+| 8 | Kiosk əlçatanlığı | **≥ 95%** | Kiosk → Cari vəziyyət (son 7 gün) və "Əlaqə yoxdur" incident-lərinin müddəti |
+| 9 | Critical incident-in bağlanma müddəti | **≤ 4 saat** | Incident-lər → "Bağlanan", ciddilik "Kritik": açılıb → bağlanıb |
 
 ## Hüquqşünasa suallar
 

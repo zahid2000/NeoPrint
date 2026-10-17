@@ -1630,6 +1630,12 @@ node e2e/operations.mjs ../docs/screenshots/step-7/t213   # ekran görüntülər
 
 Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını silir (T-266).
 
+## 7s. Push-dan əvvəl yoxlama (T-282)
+
+Bir dəfə, klonda: `git config core.hooksPath .githooks`. Bundan sonra hər `git push`-dan əvvəl
+`.githooks/pre-push` `node tools/tasks-lint`-i işlədir; `docs/TASKS.md`-də pis sətir varsa push olmur.
+Dəyişən sahələrin lokal unit testləri (admin `npm test`, `i18n-check`, backend test sinifləri) əvvəlcə əl ilə işlədilir (`CLAUDE.md`).
+
 ## 7r. Addım 7A — pilot hesabatı (plan 2.17; T-214)
 
 Yeni kod üçün: `docker compose up -d --build api admin`. Yeni kolleksiya (`analytics_days`) və

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Runs before every push (T-282, CLAUDE.md): the task registry must be well
+# formed. One-time setup per clone:  git config core.hooksPath .githooks
+#
+# The local unit tests of what changed are run by hand before this (CLAUDE.md);
+# this hook is the part a machine can always check.
+root="$(git rev-parse --show-toplevel)" || exit 1
+
+if ! node "$root/tools/tasks-lint" >/dev/null 2>&1; then
+  node "$root/tools/tasks-lint"
+  echo "pre-push: docs/TASKS.md is not well formed - nothing was pushed." >&2
+  exit 1
+fi
