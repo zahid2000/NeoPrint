@@ -511,6 +511,9 @@ await using (var scope = app.Services.CreateAsyncScope())
         job => job.RunAsync(CancellationToken.None),
         NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob.Hourly);
 
+    // Once at start as well: after an upgrade the days are there without waiting for the hour (it is safe to run again).
+    recurring.Trigger(NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob.JobId);
+
     // Which providers answer: for the panel, and for noticing a primary that
     // has gone quiet (plan section 2.10).
     recurring.AddOrUpdate<StorageMirrorJobs>(

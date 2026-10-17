@@ -396,12 +396,14 @@ public sealed class PilotReportHandlers :
             Counts(kioskDays.SelectMany(day => day.Paper)),
             Counts(kioskDays.SelectMany(day => day.Toner)),
             Counts(kioskDays.SelectMany(day => day.Incidents)),
+            // Every date of the span, a quiet one too: a missing row would read as "not counted".
             [
-                .. days.GroupBy(day => day.Day, StringComparer.Ordinal)
-                    .OrderBy(group => group.Key, StringComparer.Ordinal)
+                .. Enumerable.Range(0, request.To.DayNumber - request.From.DayNumber + 1)
+                    .Select(offset => Text(request.From.AddDays(offset)))
+                    .GroupJoin(days, date => date, day => day.Day, (date, group) => (Key: date, Days: group.ToList()), StringComparer.Ordinal)
                     .Select(group =>
                     {
-                        var kiosk = group.Where(day => day.KioskId is not null).ToList();
+                        var kiosk = group.Days.Where(day => day.KioskId is not null).ToList();
                         return new PilotDayView(
                             group.Key,
                             group.Key == today,
@@ -409,7 +411,7 @@ public sealed class PilotReportHandlers :
                             kiosk.Sum(day => day.Orders),
                             kiosk.Sum(day => day.PrintsSucceeded),
                             kiosk.Sum(day => day.PrintsFailed),
-                            group.Sum(day => day.Sales - day.Refunded),
+                            group.Days.Sum(day => day.Sales - day.Refunded),
                             kiosk.Sum(day => day.Paper.Sum(paper => paper.Count)),
                             kiosk.Sum(day => day.Incidents.Sum(incident => incident.Count)));
                     }),
