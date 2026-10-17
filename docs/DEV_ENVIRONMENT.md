@@ -1630,6 +1630,31 @@ node e2e/operations.mjs ../docs/screenshots/step-7/t213   # ekran görüntülər
 
 Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını silir (T-266).
 
+## 7t. Addım 7A — arxa plan işləri və Hangfire paneli (plan 6; T-215)
+
+Yeni kod üçün: `docker compose up -d --build api admin`. Yeni kolleksiya (`job_runs`), tənzimləmələr
+(`Files.CleanupDryRun` = true, `Files.CleanupGraceHours` = 24) və icazə (`system.jobs.view`) API başlayanda
+özü yaranır. SuperAdmin icazəni avtomatik alır; mövcud "Admin" rolu yeni icazəni almır — lazımdırsa
+**Rollar**-dan əlavə edin.
+
+- Panel: **Arxa plan işləri** (`http://localhost:8080/system-jobs`) — DLQ, fayl təmizləmə, balans və ödəniş
+  uzlaşdırması, atılan kiosk hadisələri. SuperAdmin üçün **Hangfire paneli** düyməsi yeni tabda
+  `http://localhost:8080/api/admin/hangfire`-i açır (birbaşa ünvanla açmaq olmur — əvvəl bilet lazımdır).
+- İşi dərhal işə salmaq: Hangfire paneli → **Recurring jobs** → işi seçin → **Trigger now**
+  (`file-cleanup`, `dead-letter-monitor`, `payment-consistency`, `wallet-ledger-reconciliation`). Hər əməliyyat
+  audit jurnalına düşür.
+- Fayl təmizləməni həqiqətən işlətmək: **Tənzimləmələr → Files.CleanupDryRun = false** (əvvəl sınaq qaçışının
+  siyahısına baxın).
+- RabbitMQ management API (DLQ yoxlaması): `http://localhost:15672` (hesab `.env.openbao-seed`-dəki
+  `RABBITMQ_DEFAULT_USER`). Başqa ünvan lazımdırsa: `RabbitMq__ManagementUrl`.
+- Real stack yoxlaması (öz məlumatını yaradır və sonda silir; Chrome / Edge lazımdır):
+
+  ```bash
+  cd admin
+  node e2e/operations-jobs.mjs                                  # pozulmuş məlumat → gözlənilən incident / silmə
+  node e2e/operations-jobs.mjs ../docs/screenshots/step-7/t215  # + ekran görüntüləri
+  ```
+
 ## 7s. Push-dan əvvəl yoxlama (T-282)
 
 Bir dəfə, klonda: `git config core.hooksPath .githooks`. Bundan sonra hər `git push`-dan əvvəl

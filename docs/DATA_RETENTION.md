@@ -25,6 +25,27 @@ skan saxlananda və ya ekrandan çıxılanda silinir. Android-də Google Play xi
 verilən kimi, skaner saxlamadan bağlananda və növbəti skan başlamazdan əvvəl silir. Qalereyaya heç nə
 yazılmır. Yoxlama: `bash tools/dev-mobile/emu.sh cache` (debug build).
 
+### Yetim obyektlərin təmizlənməsi — `FileCleanupJob` (Addım 7A, M11, T-215)
+
+Saatlıq (`:41`). Bütün aktiv provayderlərdə `files/{user}/{file}/...` obyektlərini siyahılayır və heç bir
+canlı sənədin göstərmədiyi obyektləri silir: redaktənin əvəz etdiyi PDF və ya versiya (dərhal silmə
+alınmayıbsa), silinmiş faylın qalığı, sənədi olmayan obyekt. Qaydalar (`FileCleanupPlanner`, bu ardıcıllıqla):
+
+1. Faylın canlı sənədi (silinməyib) obyekti göstərirsə — **qalır** (orijinal, PDF, versiyalar, tərtibat obyektləri).
+2. Fayl **açıq sifarişə** (Completed / Cancelled / Expired olmayan), **refund-u olan sifarişə**, **aktiv planlı
+   çapa** (`ClosedAt` yoxdur) və ya **"Kiosk üçün hazırla" sifarişinə** (`RemovedAt` yoxdur) bağlıdırsa, və ya
+   belə sifariş obyektdən çap edirsə (`PrintFile`) — **heç vaxt silinmir**.
+3. `Files.CleanupGraceHours` (24) saatdan təzədirsə — qalır (sənədin yazılması hələ bitməmiş ola bilər);
+   düz 24 saatlıq obyekt silinir.
+4. Qalanı silinir — bütün provayderlərdən (`IFileStorage.DeleteAsync`); hər silmə audit-ə
+   (`files.cleanup.deleted`, əvvəlki dəyər — açar), sayı və ölçüsü qaçış qeydinə (`job_runs`) və
+   `NeoPrint` metrikasına.
+
+`Files.CleanupDryRun` (default **true**) — sınaq rejimi: heç nə silinmir, silinəcəklər "Arxa plan işləri"
+səhifəsində göstərilir; rejimi admin baxıb söndürür. Təkrar qaçış eyni nəticəni verir: silinmiş obyekt
+artıq siyahıda yoxdur. `files/`-dan kənar açarlara (qəbzlər, ixrac arxivləri) toxunmur — onların öz işləri var.
+`job_runs` 90 gün saxlanılır (TTL).
+
 ## Delete process
 
 1.  Mark file as deleting/deleted according to domain rules.

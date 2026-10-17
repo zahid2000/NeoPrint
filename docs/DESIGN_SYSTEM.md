@@ -299,7 +299,7 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
   - **Fayl təmizləmə:** son qaçışın rəqəmləri `.neo-metric` sətirləri ilə — Baxılan obyekt · Silinən (və ya sınaqda "Silinəcək") · Boşalan yer (bayt formatı) · Qorunan (açıq sifariş / refund / planlı çap / hazırlanmış sifariş) · Təzə olduğu üçün saxlanan. Sınaq rejimində `.neo-notice` `warning`: "Sınaq rejimi: heç nə silinmir; aşağıdakılar silinərdi" və silinəcək obyektlərin siyahısı (ən çox 20, açar `code`, ölçü); rejim `Files.CleanupDryRun` tənzimləməsindədir.
   - **Balans uzlaşdırması:** Yoxlanan hesab · Uyğunsuzluq; uyğunsuzluqların cədvəli (Hesab — PublicId, `users.view` varsa istifadəçiyə link · Balans · Ledger cəmi · Fərq `danger`).
   - **Ödəniş uzlaşdırması:** tapıntı növü üzrə say (Ödənilib, çap və refund yoxdur · Refund var, ledger yoxdur · Balansdan ödəniş ledger-də yoxdur · Fiskal çeki yoxdur) və son tapıntıların siyahısı (növ · ödəniş — `payments.view` varsa link · nə vaxtdan).
-  - **Kiosk analitikası:** son 24 saatda və 7 gündə atılan hadisələr; 24 saatda atılan varsa `.neo-notice` `warning` (incident deyil): "Kiosklardan tanınmayan analitika hadisələri gəlir — pilot hesabatı natamam ola bilər" + kiosk üzrə say.
+  - **Kiosk analitikası:** bu gün (Bakı) və son 7 gündə atılan hadisələr; bu gün atılan varsa `.neo-notice` `warning` (incident deyil): "Kiosklardan tanınmayan analitika hadisələri gəlir — pilot hesabatı natamam ola bilər" + kiosk üzrə say.
 - Rəqəmlər 0-dırsa da göstərilir (bu səhifədə 0 "yaxşıdır" deməkdir); iş heç işləməyibsə rəqəm yerinə "Hələ işləməyib".
 
 **Kartlar.** `--neutral-0` fon, `--neutral-200` kənar, `--radius-md`, daxili boşluq 16 (kiosk 24).

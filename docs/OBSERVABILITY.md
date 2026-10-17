@@ -62,6 +62,14 @@ Bu kateqoriya `Program.cs`-də söndürülüb, çünki səviyyəni handler seçi
 
 ## Metrics
 
+**Hazırda (T-215, T-282):** backend sayğacları .NET-in öz `System.Diagnostics.Metrics` API-si ilə
+`NeoPrint` meter-indədir (paket yoxdur; OpenTelemetry ixracatçısı təsdiqlənəndə eyni adlarla çıxacaq):
+`neoprint.analytics.events_rejected` (`reason`), `neoprint.files.cleanup.deleted`,
+`neoprint.files.cleanup.deleted_bytes`, `neoprint.messaging.dead_letter_messages` (`queue`),
+`neoprint.reconciliation.findings` (`check`, `kind`). Bu gün oxumaq:
+`dotnet-counters monitor -n NeoPrint.Api --counters NeoPrint`. Eyni rəqəmlər admin panelinin
+"Arxa plan işləri" səhifəsindədir (`job_runs`, `analytics_rejections`).
+
 Recommended business/technical metrics:
 
 ### Kiosk

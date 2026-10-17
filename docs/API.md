@@ -2130,6 +2130,48 @@ alert; 70 — printer cavab vermir / səbəb bildirir; 60 — printer seçilməy
 | `service-task-escalation` | 5 dəqiqə | Başlanmayan `Critical` tapşırıqlar |
 | `inventory-low-stock` | saatda bir | Anbar minimumu |
 
+## Arxa plan işləri və Hangfire paneli (Addım 7A, M11 — T-215)
+
+### `GET /api/admin/system/jobs`
+
+`system.jobs.view` + bütün kioskları görən hesab (əhatəsi məhdud hesab → `403`). Hər yoxlamanın son qaçışı
+(`runs`, açar: `dead-letters`, `file-cleanup`, `wallet-ledger`, `payment-consistency`; heç işləməyən yoxdur)
+və atılan kiosk analitika hadisələri.
+
+```json
+{
+  "runs": {
+    "dead-letters": { "startedAt": "…", "finishedAt": "…", "dryRun": false, "succeeded": true,
+                      "counts": { "queues": 31, "messages": 1 }, "findings": [],
+                      "queues": [ { "name": "receipt-consumer_error", "messages": 1, "oldestAt": "…" } ] },
+    "file-cleanup": { "dryRun": true, "counts": { "examined": 40, "deleted": 2, "deletedBytes": 2048, "protected": 3, "recent": 1, "failed": 0 },
+                      "findings": [ { "kind": "wouldDelete", "ref": "files/…/print-v1.pdf", "amount": 1024 } ] },
+    "wallet-ledger": { "counts": { "checked": 12, "mismatches": 1 },
+                       "findings": [ { "kind": "walletMismatch", "ref": "<userId>", "amount": 5.00, "other": 0.00, "label": "NP-ABC123" } ] },
+    "payment-consistency": { "counts": { "payments": 9, "paidNotPrinted": 1, "refundWithoutLedger": 0, "walletPaymentWithoutLedger": 0, "paidWithoutFiscal": 0 } }
+  },
+  "analytics": { "today": 4, "week": 9, "kiosks": [ { "kioskId": "…", "kioskCode": "KSK-9002", "today": 4, "week": 9, "lastUnknownName": "brand_new_thing" } ] }
+}
+```
+
+Yoxlamalar (Hangfire; hamısı tapır, heç nəyi düzəltmir; incident hər səbəb üçün açıq qaldıqca bir dəfə, audit — açılanda):
+
+| İş | Nə vaxt | Tapıntı → incident |
+|---|---|---|
+| `dead-letter-monitor` | 5 dəq | `*_error` / `*_skipped` növbəsində mesaj → `High` (`dead-letter:{növbə}`), növbə boşalanda sistem bağlayır. Ən köhnə mesajın yaşı `MT-Fault-Timestamp`-dən (mesaj yerinə qaytarılır, məzmunu oxunmur) |
+| `file-cleanup` | saatlıq `:41` | incident yoxdur; `docs/DATA_RETENTION.md` — qaydalar |
+| `wallet-ledger-reconciliation` | gündəlik 04:00 | ledger cəmi ≠ `Balance` / bonus → `Critical` (`wallet-mismatch:{user}`), audit `reconciliation.walletMismatch` |
+| `payment-consistency` | saatlıq `:51`, son 30 gün | `paidNotPrinted` (uğurlu ödəniş, sifariş Cancelled / Expired, refund yoxdur, 1 saatdan çox) — `Critical`; `refundWithoutLedger` (balansa / bonusa refund `Succeeded`, ledger sətri yoxdur) — `Critical`; `walletPaymentWithoutLedger` (balansdan / bonusla ödəniş, ledger-də çıxılma yoxdur) — `Critical`; `paidWithoutFiscal` (pul hissəsi olan çap ödənişi və ya `OnTopUp` rejimində balans artırılması, `Fiscal.MaxPendingMinutes`-dən sonra çeki yoxdur; `Fiscal.Enabled = false` olanda yoxlanmır) — `High`. Audit `reconciliation.{növ}` |
+
+### `POST /api/admin/hangfire-session` → Hangfire paneli `/api/admin/hangfire`
+
+`system.jobs.view` + **SuperAdmin** rolu (başqası → `403`). Cavab `204` və cookie `neoprint_hangfire`: ASP.NET
+data protection ilə qorunan hesab id-si, 30 dəqiqə, `Path=/api/admin/hangfire`, `HttpOnly`, `SameSite=Strict`,
+Development-dən başqa yerdə `Secure`. Audit: `hangfire.opened` (kim, IP). Panel hər sorğuda hesabın aktiv və
+SuperAdmin olduğunu yenidən yoxlayır (rol alınsa və ya hesab söndürülsə panel dərhal bağlanır). Production-da da tam
+idarə (işə sal, yenidən növbəyə qoy, sil); hər vəziyyət dəyişən əməliyyat audit-dədir: `hangfire.action` — obyekt id-si
+işin adı / id-si, "sonra" — panelin əməliyyat yolu (`/recurring/trigger`). Panelin formaları antiforgery ilə qorunur.
+
 ## Pilot hesabatı (`/api/admin/analytics`, Addım 7A, M10 — T-214)
 
 Plan 2.17. Hər iki endpoint `analytics.view` tələb edir; əhatəsi məhdud hesab yalnız öz
