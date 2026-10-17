@@ -1173,6 +1173,18 @@ cd mobile && flutter build web --dart-define=NEOPRINT_API_URL=http://localhost:5
 Brauzer bildiriş icazəsini soruşur. Push yalnız tətbiq **arxa planda** olanda sistem bildirişi kimi görünür; ön planda
 tətbiqin öz banneri çıxır. Tətbiqi bağlayıb (web-də tabı başqa taba keçirib) yuxarıdakı axınlardan birini edin.
 
+**Etibarsız token yoxlaması (T-283).** Müvəqqəti hesab yaradır, ona saxta cihaz token-i yazır, məlumat ixracı ilə
+`ExportReady` bildirişi yaradır və yoxlayır: FCM token-i rədd edir, token hesabdan silinir, bildiriş bitir,
+`notification-delivery_error` növbəsinə heç nə düşmür; sonda hesabı silir (seed hesablara toxunmur). FCM açarı
+yoxdursa yalnız çatdırılma yolunu göstərir:
+
+```bash
+node tools/dev-push/token-check.mjs
+```
+
+Token silinir: `UNREGISTERED`, `SENDER_ID_MISMATCH`, `400 INVALID_ARGUMENT`, `404 NOT_FOUND`. Retry, sonra DLQ və `High`
+incident: `403 PERMISSION_DENIED` (açarın IAM rolu — yuxarıda 3-cü bənd), `429`, `5xx`, şəbəkə.
+
 **FlutterFire CLI-ni yenidən işlətsəniz** (`flutterfire configure`): yalnız `lib/firebase_options.dart` saxlanılır.
 CLI-nin `android/settings.gradle.kts` və `android/app/build.gradle.kts`-ə əlavə etdiyi `com.google.gms.google-services`
 sətirlərini silin — tətbiq onlarsız işləyir, CI isə onlarla `google-services.json` axtarıb düşür.
@@ -1634,8 +1646,8 @@ Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını
 
 Yeni kod üçün: `docker compose up -d --build api admin`. Yeni kolleksiya (`job_runs`), tənzimləmələr
 (`Files.CleanupDryRun` = true, `Files.CleanupGraceHours` = 24) və icazə (`system.jobs.view`) API başlayanda
-özü yaranır. SuperAdmin icazəni avtomatik alır; mövcud "Admin" rolu yeni icazəni almır — lazımdırsa
-**Rollar**-dan əlavə edin.
+özü yaranır. SuperAdmin icazəni avtomatik alır; "Admin" rolu onu **almır** — nə mövcud bazada, nə təzə
+quraşdırmada (qərar T-284). Lazımdırsa **Rollar → Admin → `system.jobs.view`** əl ilə əlavə edin.
 
 - Panel: **Arxa plan işləri** (`http://localhost:8080/system-jobs`) — DLQ, fayl təmizləmə, balans və ödəniş
   uzlaşdırması, atılan kiosk hadisələri. SuperAdmin üçün **Hangfire paneli** düyməsi yeni tabda

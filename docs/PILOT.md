@@ -49,6 +49,16 @@ səhifələrə baxıb hər sətrin nəticəsini yazırıq.
 | 8 | Kiosk əlçatanlığı | **≥ 95%** | Kiosk → Cari vəziyyət (son 7 gün) və "Əlaqə yoxdur" incident-lərinin müddəti |
 | 9 | Critical incident-in bağlanma müddəti | **≤ 4 saat** | Incident-lər → "Bağlanan", ciddilik "Kritik": açılıb → bağlanıb |
 
+## Gündəlik baxış (qaralama, T-284 → T-219)
+
+> Tam siyahı Addım 7B-də (T-219) yazılır; layihə sahibinin indidən istədiyi bəndlər burada saxlanılır.
+
+| # | Nəyə baxılır | Harada | Nə edilir |
+|---|---|---|---|
+| 1 | **Fayl təmizləmənin sınaq siyahısı** — `Files.CleanupDryRun = true` ilə pilot başlayır; iş saatda bir "silinəcək" obyektləri yazır, heç nə silmir | Arxa plan işləri → "Fayl təmizləmə" (siyahı və ölçü) | Siyahıda açıq sifarişin, refund-un, planlı çapın və ya "Kiosk üçün hazırla"-nın faylı **yoxdursa** və bir neçə gün eyni mənzərədirsə — **Tənzimləmələr → `Files.CleanupDryRun` = false**, əl ilə (T-284). Şübhəli obyekt görünərsə söndürülmür, tapıntı kimi yazılır |
+| 2 | Açıq pul incident-ləri (balans və ödəniş uzlaşdırması) | Incident-lər, ciddilik "Kritik" | Sistem bağlamır; baxıb səbəb qeydi ilə bağlanır |
+| 3 | Dead-letter növbələri | Arxa plan işləri → "Uğursuz mesajlar" | Mesaj varsa səbəbi araşdırılır |
+
 ## Hüquqşünasa suallar
 
 Layihə sahibi hüquqşünasla dəqiqləşdirir; cavab gələndə müvafiq tapşırıq və hüquqi sənəd yenilənir.
