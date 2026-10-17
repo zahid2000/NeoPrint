@@ -93,14 +93,22 @@ final class AuthController extends Notifier<AuthState> {
       return;
     }
 
+    if (state.restoreStalled) {
+      state = AuthState.restoring(
+        stalled: true,
+        offline: state.restoreOffline,
+        checking: true,
+      );
+    }
+
     try {
       final session = await _repository.restore();
 
       state = session == null
           ? const AuthState.signedOut()
           : _fromSession(session);
-    } on ApiException {
-      state = const AuthState.restoring(stalled: true);
+    } on ApiException catch (error) {
+      state = AuthState.restoring(stalled: true, offline: error.noInternet);
       _retry = Timer(retryRestoreAfter, () => unawaited(restore()));
     }
   }

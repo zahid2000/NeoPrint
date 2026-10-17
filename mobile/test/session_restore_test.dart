@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -311,8 +312,10 @@ void main() {
     await settle(tester);
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('Server cavab vermir'), findsOneWidget);
     expect(find.textContaining('Hesabınızdan çıxılmayıb'), findsOneWidget);
     expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
+    expect(find.text('İnternet yoxdur'), findsNothing);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Yenidən cəhd et'));
     await settle(tester);
@@ -320,6 +323,93 @@ void main() {
     expect(
       app.container.read(authControllerProvider).status,
       AuthStatus.signedIn,
+    );
+  });
+
+  // T-199 (2026-10-11): opened without a network, the app showed the sign-in
+  // screen with no word of why.
+  testWidgets('opened without internet, the start screen says so - not the '
+      'sign-in screen - and opens by itself once the phone is online', (
+    tester,
+  ) async {
+    final app = wire();
+    addTearDown(app.container.dispose);
+
+    app.server
+      ..then('/api/auth/refresh', noInternet)
+      ..then('/api/auth/refresh', noInternet)
+      ..then('/api/auth/refresh', session());
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: app.container,
+        child: const MaterialApp(
+          locale: Locale('az'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: SplashScreen(),
+        ),
+      ),
+    );
+    await settle(tester);
+
+    var state = app.container.read(authControllerProvider);
+    expect(
+      state.status,
+      AuthStatus.restoring,
+      reason: 'not the sign-in screen',
+    );
+    expect(state.restoreOffline, isTrue);
+    expect(find.text('İnternet yoxdur'), findsOneWidget);
+    expect(find.byIcon(Icons.wifi_off), findsOneWidget);
+    expect(find.textContaining('Hesabınızdan çıxılmayıb'), findsOneWidget);
+    expect(find.text('Server cavab vermir'), findsNothing);
+    expect(app.storage.values[SecureStorageKeys.refreshToken], 'refresh-1');
+
+    // The button asks at once; still offline, the screen stays as it was.
+    await tester.tap(find.widgetWithText(FilledButton, 'Yenidən cəhd et'));
+    await settle(tester);
+    expect(find.text('İnternet yoxdur'), findsOneWidget);
+    expect(app.server.sent, hasLength(2));
+
+    // Online again: by itself, a few seconds later.
+    await tester.pump(AuthController.retryRestoreAfter);
+    await settle(tester);
+    state = app.container.read(authControllerProvider);
+    expect(state.status, AuthStatus.signedIn);
+  });
+
+  test('"no internet" is told from "the server does not answer" by the '
+      "platform's own words", () {
+    DioException failure(Object? error, {DioExceptionType? type}) =>
+        DioException(
+          requestOptions: RequestOptions(path: 'api/auth/refresh'),
+          type: type ?? DioExceptionType.connectionError,
+          error: error,
+        );
+
+    for (final offline in [
+      "SocketException: Failed host lookup: 'api.neoprint.az' (OS Error: No address associated with hostname, errno = 7)",
+      'SocketException: Network is unreachable (OS Error: Network is unreachable, errno = 101)',
+      'SocketException: nodename nor servname provided, or not known',
+    ]) {
+      expect(ApiClient.isNoInternet(failure(offline)), isTrue, reason: offline);
+    }
+
+    for (final server in [
+      'SocketException: Connection refused (OS Error: Connection refused, errno = 111)',
+      'SocketException: Connection reset by peer',
+      null,
+    ]) {
+      expect(ApiClient.isNoInternet(failure(server)), isFalse, reason: server);
+    }
+
+    expect(
+      ApiClient.isNoInternet(
+        failure('Failed host lookup', type: DioExceptionType.connectionTimeout),
+      ),
+      isFalse,
+      reason: 'a timeout is the server being slow',
     );
   });
 }

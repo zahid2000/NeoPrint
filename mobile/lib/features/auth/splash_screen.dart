@@ -19,9 +19,10 @@ class SplashScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final stalled = ref.watch(
-      authControllerProvider.select((state) => state.restoreStalled),
-    );
+    final state = ref.watch(authControllerProvider);
+    final stalled = state.restoreStalled;
+    final offline = state.restoreOffline;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: Center(
@@ -39,22 +40,35 @@ class SplashScreen extends ConsumerWidget {
               ),
               const SizedBox(height: Spacing.x8),
               if (stalled) ...[
+                // No internet on this device, or the server not answering
+                // (T-199): a wait, not an error - neutral colour.
                 Icon(
-                  Icons.cloud_off_outlined,
+                  offline ? Icons.wifi_off : Icons.cloud_off_outlined,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(height: Spacing.x3),
                 Text(
-                  AppLocalizations.of(context).splashUnreachable,
+                  offline ? l10n.splashOfflineTitle : l10n.splashServerTitle,
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium,
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: Spacing.x2),
+                Text(
+                  offline ? l10n.splashOfflineBody : l10n.splashServerBody,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: Spacing.x4),
-                FilledButton(
-                  onPressed: () =>
-                      ref.read(authControllerProvider.notifier).restore(),
-                  child: Text(AppLocalizations.of(context).commonRetry),
-                ),
+                if (state.restoreChecking)
+                  const CircularProgressIndicator()
+                else
+                  FilledButton(
+                    onPressed: () =>
+                        ref.read(authControllerProvider.notifier).restore(),
+                    child: Text(l10n.commonRetry),
+                  ),
               ] else
                 const CircularProgressIndicator(),
             ],

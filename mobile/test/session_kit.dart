@@ -1,6 +1,7 @@
 // The app's session over a scripted server, for the tests of signing in,
 // restoring, signing out (T-268, T-269) and the app's lock (T-270).
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,10 @@ import 'package:neoprint/core/storage/secure_storage.dart';
 typedef Step = ({int? status, Map<String, dynamic>? body});
 
 const Step unreachable = (status: null, body: null);
+
+/// No answer because the phone has no network: the name of the server cannot
+/// be looked up, as Android says it in flight mode (T-199).
+const Step noInternet = (status: -1, body: null);
 
 /// A transport that plays its steps for a path in order, and remembers what
 /// it was sent. Written by hand: plan section 11 rules out a mocking library.
@@ -40,6 +45,17 @@ final class SteppedAdapter implements HttpClientAdapter {
     }
 
     final step = queue.removeAt(0);
+    if (step.status == -1) {
+      throw DioException.connectionError(
+        requestOptions: options,
+        reason: 'Connection failed',
+        error: const SocketException(
+          "Failed host lookup: 'api.example.test'",
+          osError: OSError('No address associated with hostname', 7),
+        ),
+      );
+    }
+
     if (step.status == null) {
       throw DioException.connectionError(
         requestOptions: options,

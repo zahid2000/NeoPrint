@@ -130,7 +130,9 @@ final class AuthRepository {
         return AuthSession.fromJson(renewed.json!);
 
       case SessionRenewal.unavailable:
-        throw const ApiException.unreachable();
+        throw renewed.noInternet
+            ? const ApiException.offline()
+            : const ApiException.unreachable();
 
       case SessionRenewal.none:
         return null;

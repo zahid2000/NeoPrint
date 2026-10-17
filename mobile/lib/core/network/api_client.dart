@@ -40,10 +40,20 @@ final class ApiException implements Exception {
     this.fieldErrors = const {},
     this.code,
     this.feature,
+    this.noInternet = false,
   });
 
   const ApiException.unreachable()
     : this(statusCode: null, message: '', kind: ApiErrorKind.unreachable);
+
+  /// Unreachable because this device has no network (T-199).
+  const ApiException.offline()
+    : this(
+        statusCode: null,
+        message: '',
+        kind: ApiErrorKind.unreachable,
+        noInternet: true,
+      );
 
   const ApiException.cancelled()
     : this(statusCode: 0, message: '', kind: ApiErrorKind.cancelled);
@@ -76,6 +86,11 @@ final class ApiException implements Exception {
   /// Whether this was a network problem rather than a refusal.
   bool get isNetworkError => kind == ApiErrorKind.unreachable;
 
+  /// Unreachable, and the request never left the device: no network, or the
+  /// server's name could not be looked up (T-199). False when the server
+  /// itself did not answer.
+  final bool noInternet;
+
   /// The first error recorded against a field, if any.
   String? errorFor(String field) => fieldErrors[field]?.firstOrNull;
 
@@ -103,9 +118,12 @@ enum SessionRenewal {
 
 /// What a renewal gave back: the session as the server sent it, when it did.
 final class RenewedSession {
-  const RenewedSession(this.outcome, [this.json]);
+  const RenewedSession(this.outcome, [this.json, this.noInternet = false]);
 
   final SessionRenewal outcome;
+
+  /// [SessionRenewal.unavailable] because this device has no network (T-199).
+  final bool noInternet;
 
   /// The body of `POST auth/refresh` when [outcome] is [SessionRenewal.renewed].
   final Map<String, dynamic>? json;
@@ -385,10 +403,30 @@ final class ApiClient {
       );
 
       return RenewedSession(SessionRenewal.renewed, json);
-    } on DioException {
-      return const RenewedSession(SessionRenewal.unavailable);
+    } on DioException catch (error) {
+      return RenewedSession(
+        SessionRenewal.unavailable,
+        null,
+        isNoInternet(error),
+      );
     }
   }
+
+  /// Whether a failed request never left this device: no network, or a name
+  /// that cannot be looked up (T-199). Read from the platform's own message -
+  /// the app has no connectivity package (plan section 2.0). A server that
+  /// refuses the connection or does not answer in time is not this.
+  static bool isNoInternet(DioException error) =>
+      error.response == null &&
+      (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.unknown) &&
+      _noInternet.hasMatch('${error.error ?? ''} ${error.message ?? ''}');
+
+  static final _noInternet = RegExp(
+    r'Failed host lookup|Network is unreachable|No address associated with '
+    r'hostname|nodename nor servname|errno = (7|51|101)\b',
+    caseSensitive: false,
+  );
 
   static ApiException _toApiException(DioException error) {
     if (error.type == DioExceptionType.cancel) {
@@ -412,7 +450,9 @@ final class ApiClient {
       );
     }
 
-    return const ApiException.unreachable();
+    return isNoInternet(error)
+        ? const ApiException.offline()
+        : const ApiException.unreachable();
   }
 
   static Object? _decodeJson(List<int> bytes) {

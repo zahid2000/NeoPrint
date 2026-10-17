@@ -126,10 +126,20 @@ final class AuthState {
     this.error,
     this.isBusy = false,
     this.restoreStalled = false,
+    this.restoreOffline = false,
+    this.restoreChecking = false,
   });
 
-  const AuthState.restoring({bool stalled = false})
-    : this(status: AuthStatus.restoring, restoreStalled: stalled);
+  const AuthState.restoring({
+    bool stalled = false,
+    bool offline = false,
+    bool checking = false,
+  }) : this(
+         status: AuthStatus.restoring,
+         restoreStalled: stalled,
+         restoreOffline: offline,
+         restoreChecking: checking,
+       );
 
   const AuthState.signedOut({ApiException? error})
     : this(status: AuthStatus.signedOut, error: error);
@@ -148,6 +158,13 @@ final class AuthState {
   /// about the stored session yet. The start screen says so and keeps trying;
   /// the user is not sent to sign in for a session that may be fine (T-269).
   final bool restoreStalled;
+
+  /// Stalled because this device has no internet, rather than the server
+  /// not answering (T-199): the start screen says which.
+  final bool restoreOffline;
+
+  /// Stalled, and asking again right now.
+  final bool restoreChecking;
 
   AuthState copyWith({
     AuthStatus? status,
