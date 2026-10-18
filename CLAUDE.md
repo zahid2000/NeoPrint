@@ -1,5 +1,9 @@
 # NeoPrint — Claude Code qaydaları
 
+## ⛔ SƏRT QAYDA — ünsiyyət yalnız Azərbaycan dilində (T-285)
+
+**Bütün hesabatlar, cədvəl başlıqları, xülasələr, suallar, izahlar və layihə sahibinə yazılan hər mətn Azərbaycan dilindədir.** İngiliscə hesabat **qadağandır** (M12 hesabatı ingiliscə gəldi — təkrarlanmamalıdır). Orijinal qalanlar yalnız: ad və kod identifikatorları, commit mesajları, fayl adları, əmrlər. **Hər hesabatı göndərməzdən əvvəl özünü yoxla:** ingiliscə cümlə varsa — göndərmə, Azərbaycancaya çevir.
+
 ## Mənbələr və prioritet
 1. `docs/NeoPrint-PLAN.md` — layihənin əsas spesifikasiyası.
 2. `docs/ARCHITECTURE_RULES.md`
