@@ -79,8 +79,8 @@ düzəldildi (`DECISIONS.md`).
 | `google_mlkit_barcode_scanning` | 0.16.1 (+ `google_mlkit_commons` 0.13.0) | MIT | Kioskun ödəniş QR-ını telefonun özündə oxumaq — Google ML Kit, şəbəkəsiz (Addım 4, plan Bölmə 2.0). Yalnız Android və iOS; web-də ödəniş `neoprint://pay/{id}` linki ilə açılır |
 | `image` | 4.10.1 (+ tranzitiv `archive`, `crypto`, `posix` — MIT / BSD-3) | MIT | Skanın səhifələri skanerdən sonra: kəsmə, fırlatma, filtr, parlaqlıq və real ölçü üçün 300 DPI JPEG (Addım 6, plan Bölmə 2.0, 2.11). Saf Dart, fon isolate-də |
 | `com.google.android.gms:play-services-mlkit-document-scanner` (Android, Gradle) | 16.0.0 | Google ML Kit / Google APIs şərtləri (pulsuz, rəsmi vendor, bağlı binary) | Sənəd skanı — kənar aşkarlama, perspektiv düzəlişi, çoxsəhifəli skan; Google Play xidmətlərinin daxilində, şəbəkəyə heç nə göndərmir (Addım 6, plan Bölmə 2.0 "Öz platform channel-larımız: Android ML Kit Document Scanner"). `tools/license-check` Gradle-i skan etmir — burada əl ilə qeyd olunur. iOS-da sistem çərçivəsi VisionKit (əlavə asılılıq yoxdur) |
-| `flutter_map` | 8.3.2 | BSD-3-Clause | Kiosklar xəritəsi — OpenStreetMap, Google Maps açarı / ödənişi yoxdur (Addım 5, plan 2.0 istisnası). Tile ünvanı `NEOPRINT_MAP_TILE_URL` ilə; ictimai OSM serveri yalnız development-də (T-061) |
-| `latlong2` | 0.10.1 | Apache-2.0 | `flutter_map` API-sinin koordinat tipi (`LatLng`); flutter_map-in öz asılılığıdır, kodda birbaşa istifadə üçün pinlənib (2026-10-02 təsdiqlənib) |
+| `maplibre_gl` | 0.27.1 (+ `maplibre_gl_platform_interface`, `maplibre_gl_web` 0.27.1) | BSD-3-Clause | Kiosklar xəritəsi — OpenFreeMap vektor tile-ları, MapLibre Native ilə (T-217; 2026-10-18 təsdiqlənib, T-286). Stil və atribusiya serverin ayarından (`GET /api/map/config`). Web build-də istifadə olunmur (plugin orada JS-i CDN-dən yükləyərdi). `flutter_map` və `latlong2` silindi. Android-də **JDK 21** tələb edir |
+| Android (Gradle) — `maplibre_gl`-in gətirdikləri | `org.maplibre.gl:android-sdk-opengl` 13.5.0, `maplibre-android-gestures` 0.0.4 — BSD-2-Clause; `android-sdk-geojson` / `android-sdk-turf` 6.0.1, `com.squareup.okhttp3:okhttp` 5.4.0, `com.squareup.okio:okio` 3.17.0, `com.google.code.gson:gson` 2.10.1, `com.jakewharton.timber:timber` 5.0.1, `kotlinx-coroutines` 1.10.2, `org.jspecify:jspecify` 1.0.0, `androidx.*` — Apache-2.0 | yuxarıda | MapLibre Native-in özü və onun HTTP / JSON / log kitabxanaları. `com.google.android.gms:play-services-base` / `-location` (Google Android SDK şərtləri, bağlı binary) **yeni deyil** — `geolocator` onları artıq gətirirdi (`location` 21.2.0 → 21.4.0). `tools/license-check` Gradle-i skan etmir — siyahı `./gradlew :maplibre_gl:dependencies --configuration releaseRuntimeClasspath` ilə çıxarılıb (2026-10-18) |
 | `geolocator` | 14.1.1 | MIT | "Yaxınımda" — istifadəçinin yeri (Addım 5); Android / iOS / web implementasiyaları Baseflow-un öz paketləridir |
 | `firebase_core` | 4.15.0 | BSD-3-Clause (Google, FlutterFire) | Push üçün Firebase-in işə salınması (Addım 5, T-146, plan 2.0). Konfiqurasiya `lib/firebase_options.dart`-dadır (public identifikatorlar); Gradle `google-services` plagini istifadə olunmur |
 | `firebase_messaging` | 16.7.0 | BSD-3-Clause (Google, FlutterFire) | Push qəbulu: FCM token, ön planda gələn mesaj, toxunulan push (Addım 5, T-146). Göndərmə backend-in öz FCM HTTP v1 klientindədir — FirebaseAdmin yoxdur |
@@ -111,13 +111,12 @@ Birbaşa asılılıqlar (`admin/package.json`), versiyalar pinli.
 | `@microsoft/signalr` | 9.0.6 | MIT | `/hubs/admin` klienti |
 | `@ngx-translate/core` | 17.0.0 | MIT | az / en / ru |
 | `chart.js` | 4.5.0 | MIT | Dashboard qrafikləri |
-| `leaflet` | 1.9.4 | BSD-2-Clause (plan 2.0-da istisna) | Kiosk xəritəsi (OpenStreetMap) |
+| `maplibre-gl` | 6.11.2 | BSD-3-Clause | Kiosk xəritəsi — OpenFreeMap vektor tile-ları (T-217; 2026-10-18 təsdiqlənib, T-286). İlk xəritə ilə lazy yüklənir; worker paneldən (`/maplibre/`). 24 tranzitiv asılılıq (`@mapbox/*`, `@maplibre/*`, `pbf`, `earcut`, `gl-matrix`, `kdbush`, …) — ISC / BSD-2 / BSD-3 / MIT / (MIT OR Apache-2.0), `tools/license-check` keçir. `leaflet` silindi |
 | `rxjs` | 7.8.2 | Apache-2.0 | Angular asılılığı |
 | `tslib` | 2.8.1 | 0BSD | TypeScript runtime köməkçiləri |
 | `@angular/build` | 21.2.24 | MIT | Angular |
 | `@angular/cli` | 21.2.24 | MIT | Angular |
 | `@angular/compiler-cli` | 21.2.23 | MIT | Angular |
-| `@types/leaflet` | 1.9.20 | MIT | Leaflet tipləri |
 | `angular-eslint` | 21.1.0 | MIT | Tərtibat / lint / test |
 | `eslint` | 9.39.0 | MIT | Tərtibat / lint / test |
 | `jsdom` | 28.0.0 | MIT | Testlərin DOM mühiti |
@@ -176,6 +175,8 @@ Hər ikisi yalnız build / lint zamanı oxunur, brauzer bundle-ına düşmür.
 |---|---|---|---|
 | `caniuse-lite` | CC-BY-4.0 | "caniuse.com" — Alexis Deveria və töhfə verənlər | `browserslist` üçün brauzer dəstək məlumatı (Angular build) |
 | `spdx-exceptions` | CC-BY-3.0 | Linux Foundation (SPDX Workgroup) | SPDX lisenziya istisna identifikatorlarının rəsmi siyahısı (lint alətləri) |
+
+**Xəritə məlumatı (T-217) — paket deyil, iş vaxtı xidmətdən yüklənir:** OpenStreetMap məlumatı (ODbL 1.0, "© OpenStreetMap contributors"), OpenMapTiles sxemi və stili (CC-BY-4.0 / BSD-3, "© OpenMapTiles"), OpenFreeMap xidməti (MIT; pulsuz, SLA yoxdur). Atribusiya hər xəritənin altında keçid kimi göstərilir və ayarda silinə bilmir (`Map.Attribution`).
 
 ---
 
