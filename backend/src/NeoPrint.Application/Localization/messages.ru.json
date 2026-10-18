@@ -552,6 +552,8 @@
   "settings.valueInteger": "Значение должно быть целым числом.",
   "settings.valueRange": "Значение должно быть от {min} до {max}.",
   "settings.valueSeverity": "Значение должно быть Critical, High или Medium.",
+  "settings.mapStyleUrl": "Адрес стиля карты должен быть полным адресом, начинающимся с https.",
+  "settings.mapAttribution": "Атрибуция должна состоять из частей «текст|https-адрес» (через «;»), а ссылку OpenStreetMap (https://www.openstreetmap.org/copyright) удалить нельзя.",
   "storage.accessKeyRequired": "Укажите ключ доступа (access key).",
   "storage.actionNotNow": "Это действие недоступно для задачи в состоянии {status}.",
   "storage.actionUnknown": "Неизвестное действие: pause, resume, cancel или retry-failed.",

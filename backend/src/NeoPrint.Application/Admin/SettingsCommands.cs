@@ -107,6 +107,17 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
             {
                 yield return new ValidationError(key, "settings.valueSeverity");
             }
+
+            // The map (T-217): a style the apps can load, and the data's licence always credited.
+            if (key == SettingKeys.MapStyleUrl && !MapSettings.IsValidStyleUrl(value))
+            {
+                yield return new ValidationError(key, "settings.mapStyleUrl");
+            }
+
+            if (key == SettingKeys.MapAttribution && MapSettings.ParseAttribution(value) is null)
+            {
+                yield return new ValidationError(key, "settings.mapAttribution");
+            }
         }
     }
 

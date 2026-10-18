@@ -463,6 +463,41 @@ public sealed class AdminConfigTests
     }
 
     [DockerFact]
+    public async Task The_map_config_is_public_holds_only_the_style_and_attribution_and_moves_to_another_server_by_a_setting()
+    {
+        if (Skip) { return; }
+
+        // Anonymous: the app shows the map before anyone signs in (T-217).
+        using var anonymous = _fixture.CreateApiClient();
+        var config = await anonymous.GetFromJsonAsync<JsonElement>("/api/map/config");
+        config.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo(["styleUrl", "attribution"]);
+        config.GetProperty("styleUrl").GetString().Should().Be("https://tiles.openfreemap.org/styles/liberty");
+        config.GetProperty("attribution").EnumerateArray().Select(a => a.GetProperty("label").GetString())
+            .Should().Equal("OpenFreeMap", "© OpenMapTiles", "© OpenStreetMap contributors");
+
+        using var admin = await SuperAdminAsync();
+
+        async Task<HttpStatusCode> SaveAsync(string key, string value)
+            => (await admin.PutAsJsonAsync("/api/admin/settings", new { values = new Dictionary<string, string> { [key] = value } })).StatusCode;
+
+        (await SaveAsync("Map.StyleUrl", "http://tiles.example.az/style.json")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Map.Attribution", "NeoPrint|https://tiles.example.az")).Should().Be(HttpStatusCode.BadRequest, "OpenStreetMap is always credited");
+
+        // An own tile server: a setting, no new app.
+        (await SaveAsync("Map.StyleUrl", "https://tiles.example.az/styles/liberty.json")).Should().Be(HttpStatusCode.OK);
+        (await SaveAsync("Map.Attribution", "NeoPrint|https://tiles.example.az;© OpenStreetMap contributors|https://www.openstreetmap.org/copyright"))
+            .Should().Be(HttpStatusCode.OK);
+
+        var moved = await anonymous.GetFromJsonAsync<JsonElement>("/api/map/config");
+        moved.GetProperty("styleUrl").GetString().Should().Be("https://tiles.example.az/styles/liberty.json");
+        moved.GetProperty("attribution").GetArrayLength().Should().Be(2);
+
+        // Put them back, so the other tests see the seeded values.
+        (await SaveAsync("Map.StyleUrl", "https://tiles.openfreemap.org/styles/liberty")).Should().Be(HttpStatusCode.OK);
+        (await SaveAsync("Map.Attribution", MapSettings.DefaultAttribution)).Should().Be(HttpStatusCode.OK);
+    }
+
+    [DockerFact]
     public async Task An_unknown_setting_is_refused_before_anything_is_written()
     {
         if (Skip) { return; }

@@ -552,6 +552,8 @@
   "settings.valueInteger": "Dəyər tam ədəd olmalıdır.",
   "settings.valueRange": "Dəyər {min} ilə {max} arasında olmalıdır.",
   "settings.valueSeverity": "Dəyər Critical, High və ya Medium olmalıdır.",
+  "settings.mapStyleUrl": "Xəritənin stil ünvanı https ilə başlayan tam ünvan olmalıdır.",
+  "settings.mapAttribution": "Atribusiya \"mətn|https-ünvan\" hissələrindən ibarət olmalıdır (\";\" ilə ayrılır) və OpenStreetMap keçidi (https://www.openstreetmap.org/copyright) silinə bilməz.",
   "storage.accessKeyRequired": "Giriş açarı (access key) tələb olunur.",
   "storage.actionNotNow": "Bu əməliyyat {status} vəziyyətindəki iş üçün mümkün deyil.",
   "storage.actionUnknown": "Naməlum əməliyyat: pause, resume, cancel və ya retry-failed.",

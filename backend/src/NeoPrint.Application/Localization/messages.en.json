@@ -552,6 +552,8 @@
   "settings.valueInteger": "The value must be a whole number.",
   "settings.valueRange": "The value must be between {min} and {max}.",
   "settings.valueSeverity": "The value must be Critical, High or Medium.",
+  "settings.mapStyleUrl": "The map style address must be a full address starting with https.",
+  "settings.mapAttribution": "The attribution must be made of \"text|https-address\" parts (separated by \";\"), and the OpenStreetMap link (https://www.openstreetmap.org/copyright) cannot be removed.",
   "storage.accessKeyRequired": "The access key is required.",
   "storage.actionNotNow": "This action is not possible for a job that is {status}.",
   "storage.actionUnknown": "Unknown action: pause, resume, cancel or retry-failed.",

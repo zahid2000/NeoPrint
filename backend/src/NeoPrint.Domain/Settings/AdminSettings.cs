@@ -169,6 +169,8 @@ public static class SettingKeys
     public const string UpdateKeepVersions = "Update.KeepVersions";
     public const string EnrollmentTokenTtlHours = "Enrollment.TokenTtlHours";
     public const string KioskCrashLoopThreshold = "Kiosk.CrashLoopThreshold";
+    public const string MapStyleUrl = "Map.StyleUrl";
+    public const string MapAttribution = "Map.Attribution";
 
     /// <summary>The MVP file formats (plan section 2.2).</summary>
     public const string DefaultAllowedFormats =
@@ -244,6 +246,8 @@ public static class SettingKeys
         new(UpdateKeepVersions, "3", SettingValueType.Integer, "Kioskda saxlanılan versiya sayı"),
         new(EnrollmentTokenTtlHours, "72", SettingValueType.Integer, "Enrollment token-inin etibarlılıq müddəti"),
         new(KioskCrashLoopThreshold, "3", SettingValueType.Integer, "10 dəqiqədə çöküş həddi → təhlükəsiz rejim"),
+        new(MapStyleUrl, MapSettings.DefaultStyleUrl, SettingValueType.String, "Xəritənin stil ünvanı (https); öz tile serverinə keçid üçün dəyişdirilir"),
+        new(MapAttribution, MapSettings.DefaultAttribution, SettingValueType.String, "Xəritənin atribusiyası: \"mətn|https-ünvan\", \";\" ilə ayrılır; OpenStreetMap keçidi məcburidir"),
     ];
 }
 
