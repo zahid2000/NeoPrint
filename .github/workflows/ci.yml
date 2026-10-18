@@ -215,12 +215,13 @@ jobs:
 
       # The Android build compiles the Kotlin platform code (the HEIC channel)
       # and the plugins, which analyze and test never touch. The runner image
-      # carries the Android SDK; Java 17 is what the Gradle plugin needs.
+      # carries the Android SDK; Java 21 is what the map plugin (maplibre_gl,
+      # T-217) compiles for - the app itself still targets 17.
       - name: Install Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - name: Build Android (debug)
         run: flutter build apk --debug

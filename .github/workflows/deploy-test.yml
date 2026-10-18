@@ -14,7 +14,6 @@
 #   TEST_SERVER_DIR          optional, /opt/neoprint
 #   TEST_DOMAIN              optional; <ip>.sslip.io without it
 #   TEST_ACME_EMAIL          optional; contact for the certificates
-#   TEST_MAP_TILE_URL        optional; map tiles for the APK
 #
 # No application secret passes through here: the server generates its own
 # (deploy/test-server/deploy.sh) and they never leave it.
@@ -318,7 +317,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       # The release build is signed with the debug key (android/app/build.gradle.kts),
       # and a runner makes itself a new one every time: Android then refuses
@@ -340,13 +339,10 @@ jobs:
       # The run number as the build number, so each build is newer than the
       # last to Android.
       - name: Build
-        env:
-          MAP_TILE_URL: ${{ vars.TEST_MAP_TILE_URL }}
+        # The map's style comes from the server's settings (T-217): nothing
+        # about it is built into the APK.
         run: |
           args=(--release "--build-number=$GITHUB_RUN_NUMBER" "--dart-define=NEOPRINT_API_URL=https://$HOST")
-          if [ -n "$MAP_TILE_URL" ]; then
-            args+=("--dart-define=NEOPRINT_MAP_TILE_URL=$MAP_TILE_URL")
-          fi
 
           flutter build apk "${args[@]}"
           cp build/app/outputs/flutter-apk/app-release.apk "$RUNNER_TEMP/neoprint-test.apk"

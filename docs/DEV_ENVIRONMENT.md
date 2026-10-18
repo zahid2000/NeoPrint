@@ -1642,6 +1642,45 @@ node e2e/operations.mjs ../docs/screenshots/step-7/t213   # ekran görüntülər
 
 Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını silir (T-266).
 
+## 7v. Addım 7A — xəritə: OpenFreeMap (T-217)
+
+**Bir dəfə, bu kompüterdə — JDK 21:** xəritə plugin-i (`maplibre_gl`) Android-də Java 21 ilə compile olunur;
+Flutter standart olaraq Android Studio-nun JDK 17-sini götürür və build `invalid source release: 21` ilə düşür:
+
+```bash
+flutter config --jdk-dir="C:Program FilesJavajdk-21"   # quraşdırılmış JDK 21-in yolu
+flutter doctor -v | grep -i "java version"                  # 21 göstərməlidir
+# geri qaytarmaq: flutter config --jdk-dir=""
+```
+
+Yeni kod üçün: `docker compose up -d --build api admin` və mobil üçün `cd mobile && flutter pub get` (paketlər
+dəyişib: `flutter_map` / `latlong2` → `maplibre_gl`; admində `leaflet` → `maplibre-gl`, `npm ci`).
+
+- **Ayarlar:** **Tənzimləmələr → `Map.StyleUrl`** (standart `https://tiles.openfreemap.org/styles/liberty`) və
+  **`Map.Attribution`** (`mətn|https-ünvan`, `;` ilə; OpenStreetMap keçidi silinə bilmir). Tətbiq və panel
+  `GET /api/map/config`-dən oxuyur (autentifikasiyasız):
+
+  ```bash
+  curl http://localhost:5080/api/map/config
+  ```
+
+- **Öz tile serverinə keçid:** `Map.StyleUrl`-i dəyişin; panelin CSP-si üçün admin konteynerinə yeni host:
+  `NEOPRINT_MAP_ORIGIN=https://tiles.example.az` (compose / server `.env`), sonra `docker compose up -d admin`.
+  Yeni APK və ya panel build-i lazım deyil.
+- **Panelin CSP-si:** `curl -sI http://localhost:8080/kiosks | grep -i content-security`.
+- **Real stack yoxlaması (admin):**
+
+  ```bash
+  cd admin
+  node e2e/map.mjs                                   # masaüstü, telefon, kiosk forması, host bloklananda
+  node e2e/map.mjs ../docs/screenshots/step-7/t217   # + ekran görüntüləri
+  ```
+
+- **Mobil (Android emulyatoru):** Kiosklar → **Xəritə**; atribusiyanın keçidləri brauzerdə açılır. Xəritə serveri
+  əlçatmaz olanda 8 saniyədən sonra siyahı + "Xəritə yüklənmədi". Emulyatorda bloklamaq üçün:
+  `adb shell "echo '127.0.0.1 tiles.openfreemap.org' >> /etc/hosts"` (yalnız root-lu emulyator) və ya
+  **Tənzimləmələr**-də `Map.StyleUrl`-i müvəqqəti əlçatmaz ünvana (`https://tiles.invalid/style.json`) dəyişin, sonra geri qaytarın.
+
 ## 7u. Addım 7A — kiçik düzəlişlər (T-216)
 
 Yeni kod üçün: `docker compose up -d --build api`; Linux konteyner kioskunun **image**-i də yenilənməlidir
@@ -1747,10 +1786,8 @@ cd mobile && flutter analyze && flutter test && dart format --set-exit-if-change
 flutter build web          # lokalda; Android build CI-da (Android SDK 36 lazımdır)
 # Hazır web build-i lokal API ilə açmaq üçün (release build default olaraq api.neoprint.az-a gedir):
 flutter build web --dart-define=NEOPRINT_API_URL=http://localhost:5080/
-# Kiosklar xəritəsi: release build ictimai OSM tile serverini işlətmir (T-061) — tile ünvanı verilməyibsə
-# yalnız siyahı görünür. Lokal yoxlama üçün (az sayda sorğu, OSM siyasətinə uyğun):
-flutter build web --dart-define=NEOPRINT_API_URL=http://localhost:5080/ "--dart-define=NEOPRINT_MAP_TILE_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-# flutter run (debug) xəritəni əlavə parametrsiz göstərir.
+# Kiosklar xəritəsi (T-217): stil serverin ayarındandır (Map.StyleUrl), build parametri yoxdur.
+# Web build-də xəritə yoxdur (siyahı + "Xəritə bu versiyada yoxdur") — xəritəni Android-də yoxlayın.
 
 # Admin
 cd admin && npm run lint && npm test && npm run build

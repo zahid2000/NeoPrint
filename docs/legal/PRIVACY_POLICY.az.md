@@ -92,6 +92,11 @@ işarələnir. Bu sənədlər üçün:
 - **Ödəniş provayderi** — ödənişin emalı üçün.
 - **Fiskal (e-kassa) provayderi** — qanunla tələb olunan çeklərin verilməsi üçün.
 - **Push bildiriş xidməti** — bildirişlərin çatdırılması üçün.
+- **Xəritə xidməti (OpenFreeMap)** — kiosklar xəritəsini açanda xəritə hissələri (tile-lar) birbaşa
+  `tiles.openfreemap.org`-dan yüklənir; bu zaman cihazınızın **IP ünvanı** və brauzer / tətbiq
+  məlumatı OpenFreeMap-ə və onun CDN-i **Cloudflare**-ə çatır. Hesabınız, adınız və ya
+  yeriniz xəritə xidmətinə göndərilmir. Xəritəni açmasanız, bu sorğu getmir. *(Qaralama qeydi,
+  T-286: hüquqşünas yoxlayır — T-162.)*
 
 Üçüncü tərəf analitika və reklam sistemlərindən **istifadə etmirik**.
 
