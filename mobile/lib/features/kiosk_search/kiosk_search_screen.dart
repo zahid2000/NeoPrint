@@ -15,7 +15,6 @@ import 'kiosk_map_view.dart';
 import 'kiosk_models.dart';
 import 'kiosk_search_controller.dart';
 import 'kiosk_status_view.dart';
-import 'map_tiles.dart';
 import 'user_location.dart';
 
 /// The kiosks tab (plan section 8.2, step 5): search by name, code or
@@ -74,10 +73,7 @@ class _KioskSearchScreenState extends ConsumerState<KioskSearchScreen> {
     final controller = ref.read(kioskSearchProvider.notifier);
     final results = ref.watch(kioskResultsProvider);
 
-    // Without a tile server for this build there is no map, only the list
-    // (map_tiles.dart, T-061).
-    final mapAvailable = MapTiles.url != null;
-    final view = mapAvailable ? search.view : KioskView.list;
+    final view = search.view;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.navKiosks)),
@@ -124,24 +120,23 @@ class _KioskSearchScreenState extends ConsumerState<KioskSearchScreen> {
                 runSpacing: Spacing.x2,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  if (mapAvailable)
-                    SegmentedButton<KioskView>(
-                      segments: [
-                        ButtonSegment(
-                          value: KioskView.list,
-                          icon: const Icon(Icons.view_list_outlined),
-                          label: Text(l10n.kioskViewList),
-                        ),
-                        ButtonSegment(
-                          value: KioskView.map,
-                          icon: const Icon(Icons.map_outlined),
-                          label: Text(l10n.kioskViewMap),
-                        ),
-                      ],
-                      selected: {view},
-                      onSelectionChanged: (selected) =>
-                          controller.setView(selected.single),
-                    ),
+                  SegmentedButton<KioskView>(
+                    segments: [
+                      ButtonSegment(
+                        value: KioskView.list,
+                        icon: const Icon(Icons.view_list_outlined),
+                        label: Text(l10n.kioskViewList),
+                      ),
+                      ButtonSegment(
+                        value: KioskView.map,
+                        icon: const Icon(Icons.map_outlined),
+                        label: Text(l10n.kioskViewMap),
+                      ),
+                    ],
+                    selected: {view},
+                    onSelectionChanged: (selected) =>
+                        controller.setView(selected.single),
+                  ),
                   FilterChip(
                     // Chosen, the chip shows its tick instead of the icon.
                     avatar: search.nearMe

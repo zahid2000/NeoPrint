@@ -13,7 +13,13 @@ import 'package:neoprint/features/kiosk_search/user_location.dart';
 import 'package:neoprint/features/session/session_controller.dart';
 import 'package:neoprint/features/session/session_models.dart';
 import 'package:neoprint/features/session/session_repository.dart';
+import 'package:neoprint/core/platform/browser.dart';
+import 'package:neoprint/features/kiosk_search/kiosk_map_view.dart';
+import 'package:neoprint/features/kiosk_search/map/kiosk_map_engine.dart';
+import 'package:neoprint/features/kiosk_search/map/map_config.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
+
+import 'map_fakes.dart';
 
 /// A kiosk search the test scripts: it records what it was asked and
 /// answers with [kiosks], or with [error].
@@ -100,21 +106,33 @@ class _NoSession implements SessionRepository {
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
 
-Widget app(Widget home, FakeKiosks kiosks, {UserLocation? location}) =>
-    ProviderScope(
-      overrides: [
-        kioskRepositoryProvider.overrideWithValue(kiosks),
-        sessionRepositoryProvider.overrideWithValue(_NoSession()),
-        if (location != null) userLocationProvider.overrideWithValue(location),
-      ],
-      child: MaterialApp(
-        theme: AppTheme.light(),
-        locale: const Locale('az'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: home,
-      ),
-    );
+Widget app(
+  Widget home,
+  FakeKiosks kiosks, {
+  UserLocation? location,
+  FakeMapEngine? map,
+  FakeMapConfig? mapConfig,
+  List<Uri>? opened,
+}) => ProviderScope(
+  overrides: [
+    kioskRepositoryProvider.overrideWithValue(kiosks),
+    kioskMapEngineProvider.overrideWithValue(map ?? FakeMapEngine()),
+    mapConfigRepositoryProvider.overrideWithValue(mapConfig ?? FakeMapConfig()),
+    browserProvider.overrideWithValue((url) async {
+      opened?.add(url);
+      return true;
+    }),
+    sessionRepositoryProvider.overrideWithValue(_NoSession()),
+    if (location != null) userLocationProvider.overrideWithValue(location),
+  ],
+  child: MaterialApp(
+    theme: AppTheme.light(),
+    locale: const Locale('az'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: home,
+  ),
+);
 
 void main() {
   group('kiosk list', () {
@@ -240,15 +258,38 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
+      final map = FakeMapEngine();
+      final opened = <Uri>[];
       await tester.pumpWidget(
-        app(const KioskSearchScreen(), FakeKiosks([elmler, mayis])),
+        app(
+          const KioskSearchScreen(),
+          FakeKiosks([elmler, mayis]),
+          map: map,
+          opened: opened,
+        ),
       );
       await tester.pumpAndSettle();
-
       await tester.tap(find.text('Xəritə'));
       await tester.pumpAndSettle();
 
-      expect(find.text('© OpenStreetMap contributors'), findsOneWidget);
+      // The style the server names, a pin per kiosk in the result.
+      expect(
+        find.text('style: https://tiles.openfreemap.org/styles/liberty'),
+        findsOneWidget,
+      );
+      expect(map.requests.last.pins.map((pin) => pin.id), ['k1', 'k2']);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      // The attribution: all three, each a link that opens its owner's page.
+      for (final label in [
+        'OpenFreeMap',
+        '© OpenMapTiles',
+        '© OpenStreetMap contributors',
+      ]) {
+        expect(find.text(label), findsOneWidget, reason: label);
+      }
+      await tester.tap(find.text('© OpenStreetMap contributors'));
+      expect(opened, [Uri.parse('https://www.openstreetmap.org/copyright')]);
       for (final status in [
         'İşləyir',
         'Fasilədə',
@@ -258,7 +299,7 @@ void main() {
         expect(find.text(status), findsOneWidget, reason: 'legend: $status');
       }
 
-      await tester.tap(find.bySemanticsLabel('Elmlər, İşləyir'));
+      await tester.tap(find.text('pin: Elmlər, İşləyir'));
       await tester.pumpAndSettle();
 
       // The card reads as words, not one letter a line.
@@ -266,6 +307,95 @@ void main() {
       expect(name.width, greaterThan(name.height));
       expect(find.text('530 m'), findsOneWidget);
       expect(find.widgetWithText(OutlinedButton, 'Ətraflı'), findsOneWidget);
+    });
+
+    testWidgets(
+      'a map that does not load in time gives way to the list, with why and a '
+      'retry, and each opening tries again',
+      (tester) async {
+        tester.view.physicalSize = const Size(430, 932);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+
+        final map = FakeMapEngine(loads: false);
+        final config = FakeMapConfig();
+        await tester.pumpWidget(
+          app(
+            const KioskSearchScreen(),
+            FakeKiosks([elmler, mayis]),
+            map: map,
+            mapConfig: config,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Xəritə'));
+        await tester.pump();
+        await tester.pump();
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+        // The style never comes.
+        await tester.pump(mapLoadTimeout);
+        await tester.pump();
+        expect(find.text('Xəritə yüklənmədi'), findsOneWidget);
+        expect(
+          find.textContaining('Kiosklar aşağıdakı siyahıdadır'),
+          findsOneWidget,
+        );
+        expect(find.byKey(const Key('fake-map')), findsNothing);
+        // The same kiosks, as the list.
+        expect(find.text('Elmlər'), findsOneWidget);
+        expect(find.text('28 May'), findsOneWidget);
+
+        // The map server is back: "Yenidən cəhd et" draws it.
+        map.loads = true;
+        await tester.tap(
+          find.widgetWithText(OutlinedButton, 'Yenidən cəhd et'),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('fake-map')), findsOneWidget);
+        expect(find.text('Xəritə yüklənmədi'), findsNothing);
+        expect(config.asked, 2, reason: 'the settings are asked again');
+      },
+    );
+
+    testWidgets('settings that cannot be read give the same fallback', (
+      tester,
+    ) async {
+      final config = FakeMapConfig()..fails = true;
+      await tester.pumpWidget(
+        app(const KioskSearchScreen(), FakeKiosks([elmler]), mapConfig: config),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Xəritə'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Xəritə yüklənmədi'), findsOneWidget);
+      expect(find.text('Elmlər'), findsOneWidget);
+    });
+
+    testWidgets('where no map can be drawn (the web build), the list and why', (
+      tester,
+    ) async {
+      final config = FakeMapConfig();
+      await tester.pumpWidget(
+        app(
+          const KioskSearchScreen(),
+          FakeKiosks([elmler]),
+          map: FakeMapEngine(available: false),
+          mapConfig: config,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Xəritə'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Xəritə bu versiyada yoxdur'), findsOneWidget);
+      expect(find.text('Elmlər'), findsOneWidget);
+      expect(
+        find.widgetWithText(OutlinedButton, 'Yenidən cəhd et'),
+        findsNothing,
+      );
+      expect(config.asked, 0, reason: 'no map, nothing asked');
     });
 
     testWidgets('a failed load says so and retries', (tester) async {
