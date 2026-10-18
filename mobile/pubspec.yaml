@@ -42,13 +42,10 @@ dependencies:
   # opens the same payment from the neoprint://pay link instead.
   google_mlkit_barcode_scanning: 0.16.1
 
-  # The kiosks map on OpenStreetMap, with no Google Maps key or fee (BSD-3;
-  # plan section 2.0, an approved exception).
-  flutter_map: 8.3.2
-
-  # The coordinate type flutter_map's own API takes (Apache-2.0; flutter_map
-  # depends on it anyway - approved 2026-10-02, docs/DECISIONS.md).
-  latlong2: 0.10.1
+  # The kiosks map: OpenFreeMap vector tiles drawn by MapLibre Native
+  # (BSD-3; approved 2026-10-18, T-286). No key, no fee; the style comes
+  # from the server's settings.
+  maplibre_gl: 0.27.1
 
   # Where the user is, for "near me" (MIT; plan section 2.0).
   geolocator: 14.1.1
