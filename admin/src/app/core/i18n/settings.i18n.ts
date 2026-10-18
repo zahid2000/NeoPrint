@@ -80,6 +80,10 @@ export const settingsTranslations: PageTranslations = {
       'Açıqdırsa fayl təmizləmə heç nə silmir, yalnız nəyi siləcəyini "Arxa plan işləri" səhifəsində göstərir.',
     'settings.description.Files.CleanupGraceHours':
       'İstifadə olunmayan obyekt bu qədər saatdan təzədirsə silinmir (yazılması hələ bitməmiş ola bilər).',
+    'settings.description.Map.StyleUrl':
+      'Xəritənin stil ünvanı (https). Standart — OpenFreeMap. Öz tile serverinə keçəndə dəyişdirilir; panelin CSP-sindəki NEOPRINT_MAP_ORIGIN də yenilənməlidir.',
+    'settings.description.Map.Attribution':
+      'Xəritənin altındakı atribusiya: "mətn|https-ünvan" hissələri, ";" ilə ayrılır. Hər hissə keçid kimi göstərilir; OpenStreetMap keçidi silinə bilməz.',
     'settings.description.Storage.SyncParallelism':
       'Saxlama sinxronizasiyasında eyni anda köçürülən obyekt sayı.',
     'settings.description.Storage.SourceRetentionDays':
@@ -190,6 +194,10 @@ export const settingsTranslations: PageTranslations = {
       'When on, the file cleanup deletes nothing and only lists what it would delete on the Background jobs page.',
     'settings.description.Files.CleanupGraceHours':
       'An unused object younger than this many hours is not deleted (its write may not have finished).',
+    'settings.description.Map.StyleUrl':
+      "The map style address (https). Default: OpenFreeMap. Changed when moving to an own tile server; NEOPRINT_MAP_ORIGIN in the panel's CSP must follow.",
+    'settings.description.Map.Attribution':
+      'The attribution under the map: "text|https-address" parts separated by ";". Each part is shown as a link; the OpenStreetMap link cannot be removed.',
     'settings.description.Storage.SyncParallelism':
       'How many objects a storage synchronisation copies at once.',
     'settings.description.Storage.SourceRetentionDays':
@@ -301,6 +309,10 @@ export const settingsTranslations: PageTranslations = {
       'Если включено, очистка файлов ничего не удаляет, а только показывает на странице «Фоновые задачи», что удалила бы.',
     'settings.description.Files.CleanupGraceHours':
       'Неиспользуемый объект моложе стольких часов не удаляется (его запись может быть не закончена).',
+    'settings.description.Map.StyleUrl':
+      'Адрес стиля карты (https). По умолчанию — OpenFreeMap. Меняется при переходе на свой сервер тайлов; NEOPRINT_MAP_ORIGIN в CSP панели тоже нужно обновить.',
+    'settings.description.Map.Attribution':
+      'Атрибуция под картой: части «текст|https-адрес» через «;». Каждая часть показывается ссылкой; ссылку OpenStreetMap удалить нельзя.',
     'settings.description.Storage.SyncParallelism':
       'Сколько объектов копируется одновременно при синхронизации хранилища.',
     'settings.description.Storage.SourceRetentionDays':

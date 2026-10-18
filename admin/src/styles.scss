@@ -565,6 +565,18 @@ a {
   }
 }
 
+/*
+ * A kiosk on the map (T-217): MapLibre places the element outside any
+ * component, so its look is here. The fill is a status token, set inline.
+ */
+.neo-map-marker {
+  width: var(--space-4);
+  height: var(--space-4);
+  border: 2px solid var(--neutral-0);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
 /* The spinner a busy button shows beside its unchanged label. */
 .neo-button-spinner {
   display: inline-block;

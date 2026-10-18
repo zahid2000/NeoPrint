@@ -8,12 +8,15 @@ import {
   inject,
   input,
   output,
+  signal,
   viewChild,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
-import * as L from 'leaflet';
 
 import { ThemeService } from '../core/theme/theme.service';
+import { EngineMarker, MAP_ENGINE, MapAttributionLink, MapConfigService, MapHandle, MapPoint } from '../core/map/map-engine';
 import { StatusTone } from './status-chip.component';
 
 /** One point on the map. */
@@ -29,7 +32,10 @@ export interface MapMarker {
 }
 
 /** Baku: where the service starts, and where an empty map opens. */
-const defaultCenter: L.LatLngTuple = [40.4093, 49.8671];
+const defaultCenter: MapPoint = { lat: 40.4093, lng: 49.8671 };
+
+/** How long the style may take before the map is given up on (T-286). */
+export const mapLoadTimeoutMs = 8000;
 
 const toneTokens: Record<StatusTone, string> = {
   success: '--success-500',
@@ -39,22 +45,59 @@ const toneTokens: Record<StatusTone, string> = {
   neutral: '--neutral-400',
 };
 
+type MapState = 'loading' | 'ready' | 'failed';
+
 /**
- * Kiosks on an OpenStreetMap map (Leaflet), or a point picker for the kiosk
- * form (docs/DESIGN_SYSTEM.md section 4, "Xəritə").
+ * Kiosks on the OpenFreeMap map (MapLibre), or a point picker for the kiosk
+ * form (docs/DESIGN_SYSTEM.md section 4, "Xəritə"; T-217).
  *
- * Markers are circles in the colour of their status tone, read from the
- * design tokens so the theme applies. Colour is never the only signal: the
- * page shows a legend with icons and words, and a marker's popup names the
- * kiosk and its status.
+ * The style and the attribution are the server's settings. The attribution is
+ * always under the map, every part a link, and cannot be folded away. A map
+ * that does not load in {@link mapLoadTimeoutMs} gives way to a notice with a
+ * retry - never an empty box - and each new map tries again.
+ *
+ * Markers are circles in the colour of their status tone (a design token, so
+ * the theme applies). Colour is never the only signal: the page shows a legend
+ * with icons and words, and a marker's popup names the kiosk.
  */
 @Component({
   selector: 'app-kiosk-map',
-  imports: [TranslatePipe],
+  imports: [MatButtonModule, MatIconModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div #host class="map" role="application" [attr.aria-label]="label()"></div>
-    <p class="neo-caption map__attribution">{{ 'common.mapAttribution' | translate }}</p>
+    @if (state() === 'failed') {
+      <div class="neo-notice map__failed" role="status">
+        <mat-icon aria-hidden="true">map</mat-icon>
+        <span>
+          <strong>{{ 'map.failedTitle' | translate }}</strong>
+          {{ (picking() ? 'map.failedPick' : 'map.failedList') | translate }}
+        </span>
+        <button mat-stroked-button type="button" (click)="retry()">
+          <mat-icon aria-hidden="true">refresh</mat-icon>
+          {{ 'common.retry' | translate }}
+        </button>
+      </div>
+    }
+
+    <div
+      #host
+      class="map"
+      [class.map--hidden]="state() === 'failed'"
+      [attr.aria-busy]="state() === 'loading'"
+      role="application"
+      [attr.aria-label]="label()"
+    ></div>
+
+    @if (state() !== 'failed' && attribution().length > 0) {
+      <p class="neo-caption map__attribution" data-map-attribution>
+        @for (link of attribution(); track link.url; let last = $last) {
+          <a [href]="link.url" target="_blank" rel="noopener noreferrer">{{ link.label }}</a>
+          @if (!last) {
+            <span aria-hidden="true"> · </span>
+          }
+        }
+      </p>
+    }
   `,
   styles: `
     :host {
@@ -66,6 +109,19 @@ const toneTokens: Record<StatusTone, string> = {
       border: 1px solid var(--neutral-200);
       border-radius: var(--radius-md);
       overflow: hidden;
+      background: var(--neutral-50);
+    }
+
+    .map--hidden {
+      display: none;
+    }
+
+    .map__failed {
+      background: var(--warning-bg);
+
+      > mat-icon {
+        color: var(--warning-500);
+      }
     }
 
     .map__attribution {
@@ -76,6 +132,8 @@ const toneTokens: Record<StatusTone, string> = {
 })
 export class KioskMapComponent {
   private readonly theme = inject(ThemeService);
+  private readonly engine = inject(MAP_ENGINE);
+  private readonly settings = inject(MapConfigService);
   private readonly host = viewChild.required<ElementRef<HTMLDivElement>>('host');
 
   readonly markers = input<readonly MapMarker[]>([]);
@@ -91,11 +149,14 @@ export class KioskMapComponent {
   readonly markerClick = output<string>();
   readonly pick = output<{ lat: number; lng: number }>();
 
-  private map?: L.Map;
-  private layer?: L.LayerGroup;
+  protected readonly state = signal<MapState>('loading');
+  protected readonly attribution = signal<readonly MapAttributionLink[]>([]);
+
+  private map?: MapHandle;
+  private destroyed = false;
 
   constructor() {
-    afterNextRender(() => this.create());
+    afterNextRender(() => void this.create());
 
     effect(() => {
       // Redrawn when the markers, the picked point or the theme change.
@@ -105,50 +166,73 @@ export class KioskMapComponent {
       this.draw(markers, picked);
     });
 
-    inject(DestroyRef).onDestroy(() => this.map?.remove());
+    inject(DestroyRef).onDestroy(() => {
+      this.destroyed = true;
+      this.map?.remove();
+    });
   }
 
-  private create(): void {
-    this.map = L.map(this.host().nativeElement, {
-      center: defaultCenter,
-      zoom: 11,
-      attributionControl: false,
-    });
+  protected retry(): void {
+    void this.create();
+  }
 
-    // The standard OpenStreetMap tiles; the attribution is shown under the
-    // map, as their usage policy requires.
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(this.map);
+  private async create(): Promise<void> {
+    this.map?.remove();
+    this.map = undefined;
+    this.state.set('loading');
 
-    this.layer = L.layerGroup().addTo(this.map);
+    try {
+      const config = await this.settings.config();
+      this.attribution.set(config.attribution);
 
-    this.map.on('click', (event: L.LeafletMouseEvent) => {
-      if (this.picking()) {
-        this.pick.emit({
-          lat: Number(event.latlng.lat.toFixed(6)),
-          lng: Number(event.latlng.lng.toFixed(6)),
-        });
+      const map = await this.engine.create(this.host().nativeElement, {
+        styleUrl: config.styleUrl,
+        center: defaultCenter,
+        zoom: 11,
+      });
+
+      if (this.destroyed) {
+        map.remove();
+        return;
       }
-    });
 
-    this.draw(this.markers(), this.picked());
-    this.fit();
+      this.map = map;
+      map.onClick((point) => {
+        if (this.picking()) {
+          this.pick.emit({ lat: Number(point.lat.toFixed(6)), lng: Number(point.lng.toFixed(6)) });
+        }
+      });
+
+      await withTimeout(map.ready, mapLoadTimeoutMs);
+      if (this.destroyed) {
+        return;
+      }
+
+      this.state.set('ready');
+      this.draw(this.markers(), this.picked());
+      this.fit();
+    } catch {
+      // The map server, or the settings, did not answer: the notice, not an empty box.
+      this.map?.remove();
+      this.map = undefined;
+
+      if (!this.destroyed) {
+        this.state.set('failed');
+      }
+    }
   }
 
   private draw(markers: readonly MapMarker[], picked: { lat: number; lng: number } | null): void {
-    if (!this.map || !this.layer) {
+    if (!this.map || this.state() !== 'ready') {
       return;
     }
 
-    this.layer.clearLayers();
-
-    for (const marker of markers) {
-      const circle = L.circleMarker([marker.lat, marker.lng], {
-        radius: 9,
-        weight: 2,
-        color: this.token('--neutral-0'),
-        fillColor: this.token(toneTokens[marker.tone]),
-        fillOpacity: 1,
-      });
+    const drawn: EngineMarker[] = markers.map((marker) => {
+      const element = this.dot(toneTokens[marker.tone]);
+      element.setAttribute('data-marker', marker.id);
+      element.setAttribute('role', 'button');
+      element.setAttribute('aria-label', marker.title);
+      element.addEventListener('click', () => this.markerClick.emit(marker.id));
 
       // Text content, not an HTML string: names come from administrators.
       const popup = document.createElement('div');
@@ -162,43 +246,51 @@ export class KioskMapComponent {
         popup.append(subtitle);
       }
 
-      circle.bindPopup(popup);
-      circle.on('click', () => this.markerClick.emit(marker.id));
-      circle.addTo(this.layer);
-    }
+      return { lat: marker.lat, lng: marker.lng, element, popup };
+    });
 
     if (picked) {
-      L.circleMarker([picked.lat, picked.lng], {
-        radius: 10,
-        weight: 3,
-        color: this.token('--neutral-0'),
-        fillColor: this.token('--brand-500'),
-        fillOpacity: 1,
-      }).addTo(this.layer);
+      const element = this.dot('--brand-500');
+      element.setAttribute('data-picked', '');
+      drawn.push({ lat: picked.lat, lng: picked.lng, element });
     }
+
+    this.map.setMarkers(drawn);
   }
 
   /** Frames every marker, or the picked point, once the map exists. */
   private fit(): void {
-    if (!this.map) {
-      return;
-    }
-
-    const points: L.LatLngTuple[] = this.markers().map((marker) => [marker.lat, marker.lng]);
+    const points: MapPoint[] = this.markers().map((marker) => ({ lat: marker.lat, lng: marker.lng }));
     const picked = this.picked();
 
     if (picked) {
-      points.push([picked.lat, picked.lng]);
+      points.push(picked);
     }
 
-    if (points.length === 1) {
-      this.map.setView(points[0], 15);
-    } else if (points.length > 1) {
-      this.map.fitBounds(L.latLngBounds(points), { padding: [32, 32] });
-    }
+    this.map?.fit(points);
   }
 
-  private token(name: string): string {
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  /** A marker: a circle filled with a design token's colour, so the theme applies. */
+  private dot(token: string): HTMLElement {
+    const element = document.createElement('div');
+    element.className = 'neo-map-marker';
+    element.style.background = `var(${token})`;
+    return element;
   }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('map timeout')), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
 }

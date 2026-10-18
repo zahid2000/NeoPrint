@@ -1,0 +1,8 @@
+# The panel's pages (T-217): scripts only from this origin, and the only other
+# host it may talk to is the map's (styles, sprites, fonts and tiles), from
+# NEOPRINT_MAP_ORIGIN - an own tile server is a change of that variable, not a
+# new build. Styles may be inline: Angular Material puts component styles in
+# <style> elements. MapLibre draws in a worker served from here (/maplibre/)
+# and turns images into blobs. Not sent with /api/: the Hangfire panel there
+# has inline scripts of its own and sits behind its own login.
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${NEOPRINT_MAP_ORIGIN}; font-src 'self' data:; connect-src 'self' ${NEOPRINT_MAP_ORIGIN}; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
