@@ -17,6 +17,14 @@ import { AdminLoginResponse, AdminSummary } from './auth.models';
 export const tokenMarginMs = 30_000;
 
 /**
+ * That this browser holds a session worth restoring (T-288): written when one
+ * starts or is renewed, removed when it ends. Not a secret - the refresh token
+ * itself is an HttpOnly cookie the panel cannot read - only what spares a
+ * browser that never signed in an exchange the server must refuse (401).
+ */
+export const sessionHintKey = 'neoprint.admin.session';
+
+/**
  * Sign-in state for the admin panel (plan sections 2.8, 8A.1).
  *
  * The access token is held in a signal and never written to storage: it lives
@@ -143,8 +151,16 @@ export class AuthService {
     return this.refreshing;
   }
 
-  /** Restores a session at startup. Silent: no session is the normal state. */
+  /**
+   * Restores a session at startup. Silent: no session is the normal state,
+   * and with no sign of one in this browser nothing is asked (T-288).
+   */
   async restore(): Promise<void> {
+    if (!readHint()) {
+      this.restoring.set(false);
+      return;
+    }
+
     try {
       await firstValueFrom(this.refresh());
     } catch {
@@ -259,11 +275,34 @@ export class AuthService {
     const expiresAt = Date.parse(response.accessTokenExpiresAt);
     this.accessTokenExpiresAt = Number.isNaN(expiresAt) ? Number.MAX_SAFE_INTEGER : expiresAt;
     this.currentAdmin.set(response.admin);
+    writeHint(true);
   }
 
   private clear(): void {
     this.accessToken.set(null);
     this.accessTokenExpiresAt = 0;
     this.currentAdmin.set(null);
+    writeHint(false);
+  }
+}
+
+/** Storage can be refused (a private window, blocked site data): then it is "no sign". */
+function readHint(): boolean {
+  try {
+    return localStorage.getItem(sessionHintKey) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeHint(present: boolean): void {
+  try {
+    if (present) {
+      localStorage.setItem(sessionHintKey, '1');
+    } else {
+      localStorage.removeItem(sessionHintKey);
+    }
+  } catch {
+    // Nothing to remember it in: the next start asks for sign-in.
   }
 }

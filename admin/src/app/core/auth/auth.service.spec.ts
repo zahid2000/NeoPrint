@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 import { describe, beforeEach, afterEach, expect, it } from 'vitest';
 
 import { AdminLoginResponse, AdminSummary } from './auth.models';
-import { AuthService } from './auth.service';
+import { AuthService, sessionHintKey } from './auth.service';
 
 function admin(overrides: Partial<AdminSummary> = {}): AdminSummary {
   return {
@@ -39,6 +39,7 @@ describe('AuthService', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
+    localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -150,6 +151,7 @@ describe('AuthService', () => {
   });
 
   it('restores a session from the refresh cookie at startup', async () => {
+    localStorage.setItem(sessionHintKey, '1');
     const restored = service.restore();
 
     http.expectOne('/api/auth/admin/refresh').flush(loginResponse());
@@ -160,7 +162,8 @@ describe('AuthService', () => {
     expect(service.isRestoring()).toBe(false);
   });
 
-  it('treats a refused refresh at startup as no session, not an error', async () => {
+  it('treats a refused refresh at startup as no session, not an error, and forgets it', async () => {
+    localStorage.setItem(sessionHintKey, '1');
     const restored = service.restore();
 
     http
@@ -171,6 +174,25 @@ describe('AuthService', () => {
 
     expect(service.isSignedIn()).toBe(false);
     expect(service.isRestoring()).toBe(false);
+    expect(localStorage.getItem(sessionHintKey)).toBeNull();
+  });
+
+  // T-288: the sign-in page of a browser that never signed in wrote a 401 to the console.
+  it('asks nothing at startup when this browser holds no session, and remembers one once it starts and until it ends', async () => {
+    await service.restore();
+    http.expectNone('/api/auth/admin/refresh');
+    expect(service.isRestoring()).toBe(false);
+    expect(service.isSignedIn()).toBe(false);
+
+    const signedIn = service.signIn('admin@neoprint.test', 'password').toPromise();
+    http.expectOne('/api/auth/admin/login').flush(loginResponse());
+    await signedIn;
+    expect(localStorage.getItem(sessionHintKey)).toBe('1');
+
+    const signedOut = service.signOut();
+    http.expectOne('/api/auth/admin/logout').flush(null);
+    await signedOut;
+    expect(localStorage.getItem(sessionHintKey)).toBeNull();
   });
 
   it('keeps the previous permissions when a reload fails', async () => {
