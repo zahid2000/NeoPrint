@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../core/theme/tokens.dart';
@@ -63,10 +64,14 @@ class _MapLibreKioskMapState extends State<_MapLibreKioskMap> {
       _controller = controller;
       controller.onCircleTapped.add(_tapped);
     },
-    onStyleLoadedCallback: () async {
+    onStyleLoadedCallback: () {
       _styleLoaded = true;
-      await _draw(fit: true);
+      // Loaded is the style having come from the map server - what the
+      // screen's timeout waits for. Drawing the pins comes after and may be
+      // slow on a slow phone; it must not turn a working map into the
+      // fallback (T-217, found on the emulator).
       widget.request.onLoaded();
+      unawaited(_draw(fit: true));
     },
     onMapClick: (_, __) => widget.request.onMapTap(),
   );
@@ -85,27 +90,37 @@ class _MapLibreKioskMapState extends State<_MapLibreKioskMap> {
     }
 
     final tokens = context.tokens;
-    await controller.clearCircles();
+    final pins = widget.request.pins;
 
-    for (final pin in widget.request.pins) {
-      await controller.addCircle(
-        CircleOptions(
-          geometry: LatLng(pin.lat, pin.lng),
-          circleRadius: pin.isMe
-              ? Spacing.x2
-              : pin.selected
-              ? Spacing.x4
-              : Spacing.x3,
-          circleColor: _hex(pin.colour),
-          circleStrokeColor: _hex(tokens.neutral0),
-          circleStrokeWidth: pin.isMe ? 3 : 2,
-        ),
-        {'id': pin.isMe ? '' : pin.id},
+    try {
+      await controller.clearCircles();
+      // One call for every pin: a call each was seconds on a slow phone.
+      await controller.addCircles(
+        [
+          for (final pin in pins)
+            CircleOptions(
+              geometry: LatLng(pin.lat, pin.lng),
+              circleRadius: pin.isMe
+                  ? Spacing.x2
+                  : pin.selected
+                  ? Spacing.x4
+                  : Spacing.x3,
+              circleColor: _hex(pin.colour),
+              circleStrokeColor: _hex(tokens.neutral0),
+              circleStrokeWidth: pin.isMe ? 3 : 2,
+            ),
+        ],
+        [
+          for (final pin in pins) {'id': pin.isMe ? '' : pin.id},
+        ],
       );
-    }
 
-    if (fit) {
-      await _fit(controller);
+      if (fit) {
+        await _fit(controller);
+      }
+    } on PlatformException {
+      // The map went while drawing (the screen left it, or gave up on it):
+      // nothing to draw on any more.
     }
   }
 
