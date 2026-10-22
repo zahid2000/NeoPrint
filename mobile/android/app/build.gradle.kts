@@ -27,6 +27,25 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Only the ABIs this build is for (T-292). `--target-platform` limits
+        // Flutter's own libraries, but the plugins' native ones (MapLibre, the
+        // ML Kit barcode engine) came for every ABI - an arm64 APK carried
+        // x86_64 and 32-bit arm copies too. Not with --split-per-abi, which
+        // makes its own per-ABI APKs and refuses a filter beside it. Flutter's
+        // filter is off for this (gradle.properties, disable-abi-filtering).
+        val abis = mapOf(
+            "android-arm" to "armeabi-v7a",
+            "android-arm64" to "arm64-v8a",
+            "android-x64" to "x86_64",
+        )
+        val targets = (project.findProperty("target-platform") as String?)
+            ?.split(",")
+            ?.mapNotNull { abis[it.trim()] }
+        // Without a target platform (a plain Gradle build), Flutter's own three.
+        if (project.findProperty("split-per-abi") != "true") {
+            ndk { abiFilters += targets?.takeIf { it.isNotEmpty() } ?: abis.values }
+        }
     }
 
     buildTypes {
