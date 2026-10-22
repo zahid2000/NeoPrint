@@ -197,12 +197,13 @@ export function purgeItem(api, itemId) {
  * An app user for the check alone (T-216): registered, confirmed with the code
  * Mailpit caught, signed in. The seeded accounts are left alone.
  *
- * @returns `{ id, email, token }`.
+ * @returns `{ id, email, password, token }` - the password for signing in on a device, never a real one.
  */
 export async function throwawayUser(api, mailpit = process.env.NEOPRINT_MAILPIT ?? 'http://localhost:8025') {
   localOnly(api);
 
   const email = `e2e-${randomUUID().slice(0, 8)}@neoprint.test`;
+  const password = `E2e!${randomUUID().slice(0, 12)}`;
   const json = async (path, body) => {
     const response = await fetch(`${api}${path}`, {
       method: body ? 'POST' : 'GET',
@@ -216,7 +217,7 @@ export async function throwawayUser(api, mailpit = process.env.NEOPRINT_MAILPIT 
   const [privacy, terms] = [await json('/api/legal/Privacy?lang=az'), await json('/api/legal/Terms?lang=az')];
   await json('/api/auth/register', {
     email,
-    password: `E2e!${randomUUID()}`,
+    password,
     language: 'az',
     consents: [{ docType: 'Privacy', version: privacy.version }, { docType: 'Terms', version: terms.version }],
   });
@@ -228,7 +229,7 @@ export async function throwawayUser(api, mailpit = process.env.NEOPRINT_MAILPIT 
 
     if (code) {
       const { accessToken } = await json('/api/auth/confirm-email', { email, code });
-      return { id: JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64url').toString()).sub, email, token: accessToken };
+      return { id: JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64url').toString()).sub, email, password, token: accessToken };
     }
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
