@@ -1642,6 +1642,21 @@ node e2e/operations.mjs ../docs/screenshots/step-7/t213   # ekran görüntülər
 
 Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını silir (T-266).
 
+## 7w. Addım 7A — M13-ün davamı (T-287…T-292)
+
+- **Admin paneli: bir dəfə yenidən daxil olun (T-288).** Panel açılışda sessiyanı yalnız brauzerdə onun izi
+  (`localStorage`: `neoprint.admin.session`) varsa bərpa edir; bu dəyişiklikdən əvvəl daxil olmuş brauzer bir dəfə
+  giriş səhifəsinə düşür. Sessiyasız brauzerin giriş səhifəsində artıq 401 yoxdur.
+- **Admin asılılıqları (T-289):** Angular 21.2.25 — `cd admin && npm ci`.
+- **Mobil APK (T-292):** ABI süzgəci tətbiqin özündədir (`android/gradle.properties`: `disable-abi-filtering=true`).
+  Telefon üçün: `flutter build apk --release --target-platform android-arm,android-arm64 --split-debug-info=<qovluq>`;
+  emulyator üçün: `flutter build apk --debug --target-platform android-x64`. APK-nın tərkibi:
+  `flutter build apk --release --target-platform android-arm64 --analyze-size` (`--split-debug-info` ilə birlikdə işləmir).
+- **16 KB hizalama (T-290):** `zipalign -c -P 16 -v 4 <apk>` (Android SDK `build-tools`) və
+  `llvm-objdump -p <lib.so> | grep LOAD` (NDK) — LOAD hizalaması ≥ `2**14` olmalıdır.
+- **Admin render testi:** `.mjs` faylları `text/javascript` kimi verilməlidir (MapLibre worker-i) — nginx və
+  `e2e/render.test.mjs` belə edir; render testi xarici hostlara sorğunu bloklayır.
+
 ## 7v. Addım 7A — xəritə: OpenFreeMap (T-217)
 
 **Bir dəfə, bu kompüterdə — JDK 21:** xəritə plugin-i (`maplibre_gl`) Android-də Java 21 ilə compile olunur;
