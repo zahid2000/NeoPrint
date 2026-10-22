@@ -39,7 +39,7 @@ const routes = [...recorded.routes, ...operator.routes];
 const phone = { width: 390, height: 844 };
 
 const types = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
   '.woff2': 'font/woff2', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.txt': 'text/plain',
 };
 
@@ -81,10 +81,16 @@ for (const pass of passes) for (const language of languages) {
   test(`${pass.name} shows words, not keys (${language})`, { timeout: 300_000 }, async () => {
     const context = await browser.newContext({ viewport: pass.viewport, locale: language, serviceWorkers: 'block' });
     await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [languageKey, language]);
+    // A browser that has signed in before keeps a sign of it (T-288): without it the
+    // panel asks for no session at all and every page opens the sign-in.
+    await context.addInitScript(() => localStorage.setItem('neoprint.admin.session', '1'));
 
     const unanswered = new Set();
 
     await context.route('**/hubs/**', (route) => route.abort());
+    // Nothing leaves this machine: the map's host (T-217) is refused at once, so the
+    // map shows its notice - which is checked for words like any other text.
+    await context.route((url) => !url.href.startsWith(origin), (route) => route.abort());
     await context.route('**/api/**', (route) => {
       const request = route.request();
       const url = new URL(request.url());

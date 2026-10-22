@@ -2785,6 +2785,23 @@
      "incidents": 0
     }
    ]
+  },
+  "GET /api/map/config": {
+   "styleUrl": "https://tiles.invalid/styles/liberty",
+   "attribution": [
+    {
+     "label": "OpenFreeMap",
+     "url": "https://openfreemap.org"
+    },
+    {
+     "label": "© OpenMapTiles",
+     "url": "https://www.openmaptiles.org/"
+    },
+    {
+     "label": "© OpenStreetMap contributors",
+     "url": "https://www.openstreetmap.org/copyright"
+    }
+   ]
   }
  }
 }
