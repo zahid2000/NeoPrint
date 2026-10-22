@@ -341,11 +341,19 @@ jobs:
       - name: Build
         # The map's style comes from the server's settings (T-217): nothing
         # about it is built into the APK.
+        #
+        # Phones only: 32- and 64-bit arm (T-287). x86_64 is for emulators, which
+        # take a debug build; the app's ABI filter keeps the plugins' x86_64
+        # libraries out as well (T-292). The Dart symbols go to an artifact of
+        # their own rather than into the APK, for reading a crash's stack later.
         run: |
-          args=(--release "--build-number=$GITHUB_RUN_NUMBER" "--dart-define=NEOPRINT_API_URL=https://$HOST")
+          args=(--release "--build-number=$GITHUB_RUN_NUMBER" "--dart-define=NEOPRINT_API_URL=https://$HOST"
+            --target-platform android-arm,android-arm64
+            "--split-debug-info=$RUNNER_TEMP/symbols")
 
           flutter build apk "${args[@]}"
           cp build/app/outputs/flutter-apk/app-release.apk "$RUNNER_TEMP/neoprint-test.apk"
+          echo "APK size: $(stat -c %s "$RUNNER_TEMP/neoprint-test.apk") bytes" >> "$GITHUB_STEP_SUMMARY"
         working-directory: mobile
 
       - name: Upload the APK
@@ -354,6 +362,14 @@ jobs:
           name: neoprint-test-apk
           path: ${{ runner.temp }}/neoprint-test.apk
           if-no-files-found: error
+
+      - name: Upload the Dart symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: neoprint-test-apk-symbols
+          path: ${{ runner.temp }}/symbols
+          if-no-files-found: error
+          retention-days: 90
 
       # Also onto the server, so a phone can take it straight from a link.
       - name: Put the APK on the server

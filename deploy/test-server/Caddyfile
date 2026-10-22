@@ -37,7 +37,12 @@
 		root * /srv/downloads
 		@apk path *.apk
 		header @apk Content-Type application/vnd.android.package-archive
-		header Cache-Control "no-store"
+		header @apk Content-Disposition "attachment; filename=\"neoprint-test.apk\""
+		# Asked again each time, but with its ETag: the same build answers 304
+		# and is not downloaded twice; a new deploy is a new ETag (T-292).
+		# file_server answers ranges (a broken download resumes) and sends the
+		# file with sendfile; an APK is already compressed, so no encode here.
+		header Cache-Control "no-cache"
 		file_server
 	}
 
