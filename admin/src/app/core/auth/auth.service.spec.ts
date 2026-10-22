@@ -177,6 +177,17 @@ describe('AuthService', () => {
     expect(localStorage.getItem(sessionHintKey)).toBeNull();
   });
 
+  it('keeps the sign of a session when the server is only out of reach at startup', async () => {
+    localStorage.setItem(sessionHintKey, '1');
+    const restored = service.restore();
+
+    http.expectOne('/api/auth/admin/refresh').error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
+    await restored;
+
+    expect(service.isSignedIn()).toBe(false);
+    expect(localStorage.getItem(sessionHintKey)).toBe('1');
+  });
+
   // T-288: the sign-in page of a browser that never signed in wrote a 401 to the console.
   it('asks nothing at startup when this browser holds no session, and remembers one once it starts and until it ends', async () => {
     await service.restore();

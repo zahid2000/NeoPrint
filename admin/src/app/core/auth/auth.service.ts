@@ -163,8 +163,12 @@ export class AuthService {
 
     try {
       await firstValueFrom(this.refresh());
-    } catch {
-      this.clear();
+    } catch (error) {
+      // Only the server's no ends the session here. A server out of reach
+      // says nothing about it: the hint stays, and the next start asks again
+      // (the operator's installed panel opened offline - T-288, pwa check).
+      const refused = error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
+      this.clear(refused);
     } finally {
       this.restoring.set(false);
     }
@@ -278,11 +282,15 @@ export class AuthService {
     writeHint(true);
   }
 
-  private clear(): void {
+  /** @param forget Whether the session is over, not only out of reach for now. */
+  private clear(forget = true): void {
     this.accessToken.set(null);
     this.accessTokenExpiresAt = 0;
     this.currentAdmin.set(null);
-    writeHint(false);
+
+    if (forget) {
+      writeHint(false);
+    }
   }
 }
 
