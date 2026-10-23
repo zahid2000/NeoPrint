@@ -215,6 +215,9 @@ public sealed class AdminConnections
 
     public void Closed(string connectionId) => _open.TryRemove(connectionId, out _);
 
+    /// <summary>Whether the account has a connection here that has joined all its groups.</summary>
+    public bool IsOpen(Guid adminId) => _open.Values.Any(open => open.AdminId == adminId);
+
     /// <summary>Ends every connection of the account; how many there were.</summary>
     public int Close(Guid adminId)
     {

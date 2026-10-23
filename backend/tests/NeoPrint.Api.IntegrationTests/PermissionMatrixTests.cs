@@ -463,6 +463,15 @@ public sealed class PermissionMatrixTests
                 panels.Add((caller, await RawHubConnection.ConnectAsync(_fixture, "admin", caller.Token)));
             }
 
+            // The handshake is answered before the hub has put the connection in
+            // its groups; the account counts as connected once it has.
+            var connections = _fixture.Services.GetRequiredService<NeoPrint.Api.Hubs.AdminConnections>();
+            foreach (var caller in callers.Admins)
+            {
+                var adminId = Guid.Parse(JsonDocument.Parse(Convert.FromBase64String(Base64(caller.Token.Split('.')[1]))).RootElement.GetProperty("sub").GetString()!);
+                await EventuallyAsync(() => Task.FromResult(connections.IsOpen(adminId)), open => open, $"{caller.Name} in its groups", seconds: 15);
+            }
+
             // The hub is for an admin token.
             foreach (var token in new[] { callers.User.Client.DefaultRequestHeaders.Authorization!.Parameter!, callers.Theirs.AccessToken })
             {
@@ -680,6 +689,12 @@ public sealed class PermissionMatrixTests
         };
 
         return ok ? null : $"{code}, expected {expected}";
+    }
+
+    private static string Base64(string url)
+    {
+        var text = url.Replace('-', '+').Replace('_', '/');
+        return text.PadRight(text.Length + ((4 - (text.Length % 4)) % 4), '=');
     }
 
     private static StringContent Json(string body) => new(body, System.Text.Encoding.UTF8, "application/json");
