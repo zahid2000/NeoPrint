@@ -21,7 +21,7 @@ Pilot aşağıdakıların hamısı bağlanmadan başlamır. Hər sətrin mənbə
 | 6 | Real ödəniş və e-kassa provayderləri (sandbox), telefonla ödəniş | Layihə sahibi + Claude | Provayder seçimi və sandbox sənədi (layihə sahibində) | T-099, T-219 | MT-06 | Açıq — Addım 7B |
 | 7 | Admin test dəstinin başqa kompüterdə işlədilməsi (bu maşında `vitest` forks işə düşmür; CI yaşıldır) | Layihə sahibi | Başqa Windows / Linux kompüteri | T-171 | `docs/DEV_ENVIRONMENT.md` — admin testləri | Açıq |
 | 8 | "Production-da məcburi açar silinəndə API başlamır" — ayrıca (staging) OpenBao-da | Claude | Staging mühiti | T-169 | — | Açıq — Addım 7B |
-| 9 | Vizual yenidən dizayn, açılış ekranı və ikon | Layihə sahibi (nümunələr) + Claude | Nümunələr | T-022, T-201 | — | Açıq — Addım 7B |
+| 9 | Vizual yenidən dizayn, açılış ekranı və ikon (dizayn mənbəyi: Figma "ZSPrint Kiosk", T-303) | Layihə sahibi (nümunələr) + Claude | Nümunələr | T-022, T-201 | — | Açıq — Addım 7B |
 | 10 | Production SMTP: göndərən domen, SPF / DKIM (və DMARC) — istifadəçi emaili (qeydiyyat kodu, qəbz) və incident emaili (Critical / High, kioskun əhatəsindəki hesablara) spam-a düşmədən çatmalıdır | Layihə sahibi (domen, SMTP provayderi) + Claude | Domen, SMTP hesabı; OpenBao-da SMTP açarları | T-219, T-241 | MT-06 №8 (email hissəsi) | Açıq — Addım 7B |
 | 11 | iOS: test build-i iPhone-da (PIN, Face ID, Keychain, giriş, sifariş, ödəniş — MT-09-un iOS hissəsi), pilot üçün TestFlight və APNs push | Layihə sahibi (Apple Developer hesabı, iPhone) + Claude | Apple Developer Program ($99/il), iPhone | T-273 | MT-09 (iOS sətirləri) | Təxirə salındı — pilotdan əvvəl |
 
@@ -35,6 +35,14 @@ siyahını göstərir; uzunmüddətli həll — öz tile serveri (`Map.StyleUrl`
 **Pilot tələbi deyil (qərar 2026-10-12):** incident-lərin Telegram botu Faza 2-yə keçirilib (T-243) — kanal
 tənzimləmə ilə söndürülüdür (`Notification.TelegramEnabled`), pilot üçün bot token-i və qrup lazım deyil.
 Incident-lər pilotda panel (canlı) və email ilə bildirilir.
+
+
+**Son tarixlər (layihə sahibi, 2026-10-23, T-305):**
+- **Proqramın adı** (T-298): M21-dən (domen, SMTP göndərən ünvan) və M23-dən (loqo, ikon) **əvvəl**; Google Play-ə ilk
+  yükləmədən (T-275) əvvəl **mütləq** — sonra `applicationId` dəyişmir. M21-ə çatanda Claude xatırladır.
+- **Production bazası təmiz başlayır** (T-300): development məlumatı köçürülmür, yalnız seed; pilot hesabatı ilk gündən
+  yalnız real müştərilərin rəqəmlərini göstərir. Pilot zamanı yoxlama üçün işlədilən hesablar admin paneldə
+  "Test hesabı" kimi işarələnir (səbəb məcburidir, audit-ə yazılır).
 
 ## Uğur meyarları (T-214, T-282 → T-219)
 

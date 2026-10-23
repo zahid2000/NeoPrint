@@ -109,6 +109,21 @@ Validasiya xətasında (`400`) `errors` sahə üzrə mətnlərdir; tək xəta ol
 
 `detail` sahəsi istifadəçiyə göstərilmək üçün yazılır və Azərbaycan dilindədir.
 
+### Kiosk əhatəsi (T-245, T-261, T-295, T-301)
+
+Əhatəsi məhdud hesab (`kioskScope`) yalnız öz kiosklarının qeydlərini görür və onlarla işləyir:
+
+- **Siyahılar** öz kiosklarının qeydlərini qaytarır (`kioskId` ilə başqa kiosk soruşulsa — `404` və ya boş): kiosklar, printerlər,
+  cihazlar (+ aktivləşdirmə gözləyənlər), sifarişlər, baxış gözləyən sifarişlər, ödənişlər, refund-lar, fiskal çeklər, qəbzlər,
+  müraciətlər, incident-lər, servis tapşırıqları, xəbərdarlıqlar və qaydalar, anbar hərəkətləri, gəlir və pilot hesabatı.
+  Kioskusuz qeyd (balans artırma, kioska bağlı olmayan app sifarişi) yalnız bütün kioskları görən hesaba görünür.
+- **Tək qeyd** (`{id}`) başqa kioskundursa — `404` (oxuma, dəyişmə, təkrar, göndərmə, bağlama, silmə). Qeyd başqa kioska
+  aid olduğu üçün rədd edilən yazma əməliyyatları: cihazın başqa kioskdan götürülməsi — `403`; bütün kiosklar üçün qayda —
+  `403 supplyRules.outsideScope`.
+- **Panel hadisələri** (`/hubs/admin`) yalnız həmin kioskun əhatəsindəki hesablara gedir.
+
+Yoxlama: `PermissionMatrixTests` (hər kiosk qeydinin endpoint-i, siyahılar və hadisələr).
+
 ### Audit səbəbi (`X-Audit-Reason`)
 
 Admin panelində dağıdıcı əməliyyat (silmə, mənbəni təmizləmə, ləğv) səbəb tələb edir
@@ -121,9 +136,16 @@ token-i ilə qəbul olunur, 500 simvoldan uzunu kəsilir.
 | Sahə | Limit |
 |---|---|
 | Auth (`/api/auth/*`) | IP üzrə, konfiqurasiya olunan pəncərə |
-| Digər | Qlobal, IP üzrə |
+| Digər | Dəqiqədə 120 (`GlobalPerMinute`) — **çağıranın özünə görə** (T-306): daxil olmuş panel, telefon və kiosk öz token-i ilə (token növü + `sub`), anonim — IP üzrə |
 
 Konfiqurasiya: `RateLimits:*`. Testdə `RateLimits:Disabled=true`.
+
+**Proksi arxasında IP (T-306):** `X-Forwarded-For` yalnız `ForwardedHeaders:KnownNetworks`-dakı (CIDR, vergüllə və ya
+massiv) şəbəkədən gələn sorğuda qəbul olunur, `ForwardedHeaders:ForwardLimit` (default 2: Caddy → admin nginx). Başqa
+çağıranın başlığına inanılmır — limitdən yayınmaq üçün ünvan seçə bilməz. Səhv yazılmış şəbəkə API-ni başlatmır.
+
+**`429` cavabı:** `Retry-After` başlığı (saniyə) və problem gövdəsi — `title` / `detail` sorğunun dilində ("N saniyədən sonra
+yenidən cəhd edin"), `code: problem.tooManyRequests`, `retryAfter`.
 
 ---
 
@@ -1845,6 +1867,7 @@ Hamısı admin tokeni ilə; siyahılar adminin **kiosk əhatəsinə** daraldıl�
 | `GET /api/admin/users?search=&status=Active\|Blocked&page=&pageSize=` | `users.view` | Tətbiq müştəriləri (adminlər `api/admin/admins`-dir). `search` — email-in bir hissəsi və ya dəqiq `NP-XXXXXX`; silinmiş hesablar yoxdur |
 | `GET /api/admin/users/{id}` | `users.view` | `profile`, `language`, `wallet`, `recentJobs[]` (son 20), `fileCount`, `fileBytes`, `referred`, `consents[]`; Addım 6: `files[]` (son 50, yalnız metadata — `{ id, maskedName, extension, sizeBytes, source, isSensitive, status, pageCount, createdAt }`; **ad serverdə maskalanır**: ilk iki hərf + `•••` + uzantı, həssas faylın adı tam gizli; məzmun və tam ad heç vaxt qaytarılmır) və `referrals` — `{ invitedBy?: { id, publicId }, totals: { registered, rewarded, waiting, bonusPagesEarned }, items[] }` (onun son 20 dəvəti, aşağıdakı `ReferralRow`) |
 | `GET /api/admin/referrals?status=Waiting|Rewarded|Held&page=&pageSize=` | `referrals.view` | Referral proqramı: `totals` `{ registered, rewarded, waiting, held, bonusPagesGiven }` (bütün proqram üzrə; `held` — ilk ödənişli çap oldu, bonus yazılmadı; `bonusPagesGiven` — dəvət edən + dəvət olunan), `top[]` (ən çox mükafatı olan 10 dəvət edən: `{ inviter, invited, rewarded, bonusPages }`), `items[]` — tarixçə, ən yenisi əvvəl: `ReferralRow` = `{ id, inviter: { id, publicId }, invitee: { id, publicId }, status: Registered|Rewarded, hold: None|SameDevice|MonthlyLimit|InviterInactive, createdAt, qualifiedAt?, inviterBonusPages, inviteeBonusPages }`, `total`, `page`, `pageSize` (≤ 100). İstifadəçilər PublicId ilə verilir, email yoxdur (silinmiş hesabın `publicId`-si boşdur). Yanlış `status` → `400 referrals.statusInvalid` |
+| `POST /api/admin/users/{id}/test-account` (`Idempotency-Key`) | `users.test.mark` | **Test hesabı (T-300).** `{ isTest, reason }`; `reason` məcburi (`400 users.reasonRequired`), audit `users.testAccount.set / clear`. İşarəli hesabın sifarişləri, ödənişləri, refund-ları, çap cəhdləri, ləğvləri və faylları pilot hesabatından və gəlir hesabatından çıxarılır (kağız sərfi və incident-lər qalır; ledger və uzlaşdırmalar dəyişmir); saxlanan pilot günləri yenidən hesablanır. Cavab — `CustomerRow` (`isTestAccount`). Təkrar eyni dəyər heç nə dəyişmir. İcazə Admin şablonunda yoxdur — SuperAdmin-də avtomatik, başqasına əl ilə |
 | `POST /api/admin/users/{id}/block` · `.../unblock` (`Idempotency-Key`) | `users.block` | `{ reason }` məcburi (1–500, `400 users.reasonRequired`), audit-ə düşür. Blok: bütün refresh token-lər ləğv olunur və istifadəçi Redis blocklist-ə düşür — əlindəki access token **dərhal** `403` alır (Redis cavab vermirsə yoxlama MongoDB-dəki statusa keçir). Balansa toxunulmur. Təkrar blok / aktiv hesabı blokdan çıxarmaq heç nə dəyişmir |
 
 ## Hesabın dili (`User` token, Addım 5, T-152)

@@ -1,8 +1,8 @@
 # Addım 7B — plan (T-297)
 
 Tarix: 2026-10-23. Əsas: plan Addım 7 (yeniləmə sistemi, buraxılış), Bölmə 7.11–7.12, `docs/TASKS.md` T-219, T-204
-qərarları, `docs/PILOT.md`. **Bu sənəd plandır — kod 7A qəbul olunandan və layihə sahibi bu planı təsdiqləyəndən sonra
-başlayır.** Hər M əvvəlki kimi: dizayn qaydası koddan əvvəl, az / en / ru, testlər, real stack, CI, deploy (T-277),
+qərarları, `docs/PILOT.md`. **Layihə sahibi 2026-10-23-də təsdiqlədi (T-305): M-lər və ardıcıllıq olduğu kimi; M22 (ad) açılmır
+(T-298).** Kod `v0.7.1`-dən (T-299…T-301, T-304) sonra başlayır. Hər M əvvəlki kimi: dizayn qaydası koddan əvvəl, az / en / ru, testlər, real stack, CI, deploy (T-277),
 hesabat, təsdiq.
 
 Həcm: **S** — 1–2 iş sessiyası, **M** — 3–4, **L** — 5 və daha çox.
@@ -26,10 +26,10 @@ Həcm: **S** — 1–2 iş sessiyası, **M** — 3–4, **L** — 5 və daha ço
 | **M17** | **Agent updater:** endir → SHA-256 + imza → `Kiosk.UpdateWindow`-da, queue və ödəniş boş olanda keçid (`current` symlink / junction) → sağlamlıq yoxlaması (`Update.HealthTimeoutMinutes`) → uğursuzsa avtomatik rollback + incident (High); `Update.KeepVersions`; Agent özünü yeniləmə (`Agent.Updater`); provisioning yeniləməsi (`ProvisioningVersion`); log yükləmə. Yeniləmədən sonra kimlik, spool, sayğac qorunur (test). Real stack: Linux konteyner kioskunda iki versiya, qəsdən xətalı versiya → rollback | M15, M16 | — | L |
 | **M18** | **Admin: Buraxılışlar, rollout-lar, Enrollment token-lər; kiosk detalında versiya / yeniləmə statusu, log yükləmə, yeniləmə əmrləri.** DoD: yeni versiya pilot kanalına → kiosk boş anda **yenidən qeydiyyatsız** yenilənir; xətalı versiya → rollback + incident; enrollment token ilə yeni kiosk heç kim ekrana baxmadan aktivləşir | M16, M17 | — | M |
 | **M19** | **Golden image və provisioning:** `prepare-image.sh` / `.ps1` (kimlik, keş, `machine-id` təmizlənir; Windows `sysprep /generalize`), `--offline-package`, `--channel`; Linux skriptinin idempotentliyi konteyner / VM-də CI testi; Windows — Pester yoxlama skripti | M15 | Windows IoT Enterprise VM və ya cihaz (T-093), Ubuntu 24.04 kiosk cihazı + flaş (T-094) — cihazda yoxlama layihə sahibi ilə | M |
-| **M20** | **Staging compose + T-169:** ayrıca OpenBao ilə staging; "Production-da məcburi açar silinəndə API başlamır" real yoxlanır | — | — | S |
-| **M21** | **Domen, TLS, production SMTP:** test serveri `sslip.io`-dan domenə (T-272), SPF / DKIM / DMARC, SMTP açarları OpenBao-da; qeydiyyat kodu, qəbz və incident emailinin spam-a düşmədən çatması (MT-06 №8) | — | **Domen**, SMTP provayderi və hesabı, DNS-ə giriş | S |
-| **M22** | **Ad dəyişdirmə** (yalnız ad qərarı gəlsə — bölmə 4) | Ad qərarı | Yeni ad, domen, loqo | S–M |
-| **M23** | **Vizual yenidən dizayn (T-022) və açılış ekranı / ikon (T-201):** token faylları (admin, mobil, kiosk) və ümumi komponentlər; Android splash, iOS `LaunchScreen`, tətbiq ikonu; kiosk ekranları | M22 (ad qərarı varsa) | Nümunələr — bölmə 3 | M–L |
+| **M20** | **Staging compose + T-169:** ayrıca OpenBao ilə staging; "Production-da məcburi açar silinəndə API başlamır" real yoxlanır. **Staging və production bazası təmiz başlayır:** development məlumatı (test kioskları, dev hesabları, test sifarişləri) köçürülmür — yalnız seed (rollar, tənzimləmələr, hüquqi sənədlər, ilk SuperAdmin) (T-300). **Paralel:** bank və e-kassa provayder araşdırması (T-302, `docs/PROVIDERS.md`) — implementasiya M25–M26-da | — | — | S |
+| **M21** | **Domen, TLS, production SMTP:** production bazası təmiz — yalnız seed (T-300); test serveri `sslip.io`-dan domenə (T-272), SPF / DKIM / DMARC, SMTP açarları OpenBao-da; qeydiyyat kodu, qəbz və incident emailinin spam-a düşmədən çatması (MT-06 №8) | — | **Domen**, SMTP provayderi və hesabı, DNS-ə giriş. **Ad qərarı bu M-dən əvvəl** (domen və göndərən ünvan ondan asılıdır) — M21-ə çatanda Claude xatırladır | S |
+| **M22** | **Ad dəyişdirmə** (yalnız ad qərarı gəlsə — bölmə 4) | Ad qərarı | Yeni ad, domen, loqo. **Hələlik açılmır (T-298).** Son tarix: M21-dən və M23-dən əvvəl; Google Play-ə ilk yükləmədən (T-275) əvvəl **mütləq** | S–M |
+| **M23** | **Vizual yenidən dizayn (T-022) və açılış ekranı / ikon (T-201):** token faylları (admin, mobil, kiosk) və ümumi komponentlər; Android splash, iOS `LaunchScreen`, tətbiq ikonu; kiosk ekranları | M22 (ad qərarı varsa) | **Dizayn mənbəyi: Figma-dakı "ZSPrint Kiosk" faylı** (link layihə sahibindən, T-303); bölmə 3-dəki nümunələr bu fayldan götürülür | M–L |
 | **M24** | **Sənədlər:** `ADMIN_GUIDE.md`, `OPERATOR_GUIDE.md` (ekran görüntüləri ilə, redizayndan sonra), `PILOT.md` yekun (T-171 xatırlatması), README; hüquqi qaralamaların son redaktəsi (T-162) | M23 | Hüquqşünasın rəyi (T-162), `PILOT.md`-dəki hüquqi sual | M |
 | **M25** | **Real bank adapteri (sandbox):** QR / kart ödənişi, callback imzası, refund; ləğvdə **"Karta qaytar"** (T-242); telefonla ödəniş | — | **Provayder seçimi, sandbox sənədi və açarları** (OpenBao-ya özünüz yazırsınız) | L |
 | **M26** | **Real e-kassa adapteri (sandbox):** fiskal çek, ləğv, uzlaşdırma | M25 (ödəniş axını) | **Provayder seçimi, sandbox sənədi və açarları** | M–L |
