@@ -372,7 +372,19 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 - **Hər səhifənin başlığı `app-page-header`-dir** (idarə paneli də): başlıq ölçüsü, izah və altındakı boşluq bir yerdən gəlir. Səhifənin kökü `.neo-page`-dir (və ya onun bərabəri — sütun, `--space-6` aralıq).
 - **Detal səhifəsində "siyahıya qayıt" keçidi** səhifənin ən üstündə, solda dayanır (`.neo-back`), başlıqdan əvvəl. Mərkəzdə və ya başlığın altında olmur.
 - **Yan menyu:** sığmayan ad ikinci sətrə keçir, üç nöqtə ilə kəsilmir ("Baxış gözləyən sifarişlər", "Переключатели функций").
-- **Dar ekranda yan menyu (≤ 900 px, `tokens.css`-dəki eyni sərhəd; T-212):** menyu məzmunun yanında yer tutmur — standart bağlıdır, ☰ ilə məzmunun üstündə açılır (arxa fon kölgəli, kölgəyə toxunanda bağlanır) və səhifə seçiləndən sonra özü bağlanır. Geniş ekranda əvvəlki kimi yanda, açıq qalır. Dar ekranda yuxarı zolaqda "NeoPrint admin" yazısı və hesabın adı gizlənir — düymələr (☰, canlı göstərici, tema, dil, avatar) sığır; ad avatarın menyusundadır.
+- **Yan menyunun qrupları (T-304):** səhifələr alt-alta, məntiqi qruplarda; alt qrup yoxdur. Qrupsuz, ən yuxarıda: İdarə paneli, Operator paneli. Qruplar bu ardıcıllıqla:
+  1. **Monitorinq** — Kiosklar, Printerlər, Incident-lər, Cihazlar;
+  2. **Əməliyyatlar** — Sifarişlər, Baxış gözləyən sifarişlər, Servis tapşırıqları;
+  3. **Anbar** — Anbar, Xəbərdarlıq qaydaları;
+  4. **Maliyyə** — Ödənişlər, Qaytarmalar, Fiskal çeklər, Qəbzlər;
+  5. **Müştərilər və marketinq** — Müştərilər, Voucher-lər, Promokodlar, Referral;
+  6. **Hesabatlar** — Gəlir hesabatı, Pilot hesabatı;
+  7. **Tənzimləmələr** — Qiymətlər, Formatlar, Funksiya açarları, Tənzimləmələr, Hüquqi sənədlər;
+  8. **İdarəetmə** — Adminlər, Rollar, Audit jurnalı, Arxa plan işləri, Storage.
+
+  Qrup başlığı `--font-size-caption`, `--neutral-600`, böyük hərflə deyil, adi yazı ilə; solda `chevron_right` ikonu (`--icon-size`), açıq qrupda 90° fırlanır (`--motion-fast`). Başlıq düymədir (`aria-expanded`), toxunma sahəsi `--touch-target`. Elementlər qrup başlığından `--space-3` içəridə deyil — ikonları eyni xəttə düşür. Qruplar arasında `--space-2` boşluq. Rola görə boş qalan qrup göstərilmir (element görünürlüyü icazədən gəlir, dəyişmir). Aktiv səhifənin qrupu həmişə açıqdır; açıq / yığılı vəziyyət brauzerdə yadda qalır (`localStorage`, yalnız rahatlıq üçün — oxuna bilməsə hamısı açıqdır). Bütün ölçü, rəng və hərəkət token-lərdəndir — redizayn (M23) yalnız token-ləri dəyişir, quruluşu yox.
+- **Ekran enində yan menyu (T-304):** **> 1024 px** — menyu yanda, tam (qruplarla). **601–1024 px** — ikon zolağı (`--sidebar-rail-width`): yalnız element ikonları, ad tooltip-dədir (`matTooltip`, sağda), qruplar arasında ayırıcı xətt (`--neutral-200`), qrup başlığı yoxdur; ☰ tam menyunu məzmunun üstündə açır. **≤ 600 px** — drawer: standart bağlıdır, ☰ ilə məzmunun üstündə açılır, səhifə seçiləndə bağlanır (aşağıdakı dar ekran qaydası).
+- **Dar ekranda yan menyu (≤ 600 px — T-304-dən; əvvəl ≤ 900 px idi, T-212):** menyu məzmunun yanında yer tutmur — standart bağlıdır, ☰ ilə məzmunun üstündə açılır (arxa fon kölgəli, kölgəyə toxunanda bağlanır) və səhifə seçiləndən sonra özü bağlanır. Geniş ekranda əvvəlki kimi yanda, açıq qalır. Dar ekranda yuxarı zolaqda "NeoPrint admin" yazısı və hesabın adı gizlənir — düymələr (☰, canlı göstərici, tema, dil, avatar) sığır; ad avatarın menyusundadır.
 - **Cədvəldə bölünməyən dəyərlər:** kod (`KSK-9002`, sifariş kodu), tarix + saat və məbləğ bir sətirdə qalır (`.neo-nowrap`); yer azdırsa ad və ünvan sütunu daralır, onlar yox.
 - **Serverin daxili dəyəri ekrana çıxmır:** `MobileApp`, `Mixed`, `none`, `az` kimi dəyərlər həmişə lüğətdəki adı ilə göstərilir ("NeoPrint tətbiqi", "Qarışıq", "Azərbaycan"); heç nə demirsə ("none") göstərilmir.
 - **Səhifəyə aid açıq incident-lər** (məs. Fiskal çeklər, T-129): başlığın dərhal altında, səhifənin başqa kartlarından (parametrlər, filtr) əvvəl ayrıca kart. Kartın sol kənarı ciddiliyin rəngindədir (Critical/High — `danger`, Medium — `warning`). Başlıqda "Açıq incident-lər" və say göstərilir. Hər sətirdə:
