@@ -2035,9 +2035,9 @@ məhdud hesab yalnız öz kiosklarının alert və tapşırıqlarını görür �
 
 | Endpoint | İcazə | Qeyd |
 |---|---|---|
-| `GET /api/admin/supply-rules` | `supplies.view` | Bütün qaydalar: `{ id, name, isGlobal, kioskIds[], resource, resourceVariant, unit, warningThreshold, criticalThreshold, channels[], createServiceTask, taskPriority, isActive }` |
+| `GET /api/admin/supply-rules` | `supplies.view` | Hesabın görə bildiyi qaydalar — bütün kiosklarınkı və əhatəsindəki kioskun adı olanlar; əhatəsi məhdud hesaba `kioskIds`-də yalnız öz kioskları göstərilir (T-295): `{ id, name, isGlobal, kioskIds[], resource, resourceVariant, unit, warningThreshold, criticalThreshold, channels[], createServiceTask, taskPriority, isActive }` |
 | `POST /api/admin/supply-rules` | `supply.rules.manage` | `Idempotency-Key`. `resource`: `PaperA4` / `PaperA3` / `Toner` / `Drum` / `WasteToner` / `Other`; `unit`: `Sheets` (yalnız kağız) / `Percent`; `kioskIds` boşdursa qlobal; `resourceVariant` — tonerin rəngi / adı (boşdursa hamısı); `channels`: `AdminPanel`, `OperatorPanel`, `Email`, `Telegram`. Yanlış qayda `400` (`supplyRules.thresholdsOrder`, `…unitPercentOnly`, `…percentTooHigh`, `…channelRequired` və s.); olmayan kiosk `404` |
-| `PUT /api/admin/supply-rules/{id}` · `DELETE …/{id}` | `supply.rules.manage` | Dəyişiklikdən sonra bütün kiosklar dərhal yenidən qiymətləndirilir; audit `supplyRules.create / update / delete` |
+| `PUT /api/admin/supply-rules/{id}` · `DELETE …/{id}` | `supply.rules.manage` | Dəyişiklikdən sonra bütün kiosklar dərhal yenidən qiymətləndirilir; audit `supplyRules.create / update / delete`. **Kiosk əhatəsi (T-295):** əhatəsi məhdud hesab yalnız bütün kioskları öz əhatəsində olan qaydanı yaradır / dəyişir / silir — qlobal qayda və ya əhatədən kənar kiosku da əhatə edən qayda `403 supplyRules.outsideScope`; heç bir kioskunu görmədiyi qayda `404`, əhatədən kənar kiosk `404` |
 | `GET /api/admin/supply-alerts?active=true&kioskId=&page=&pageSize=` | `supplies.view` | Aktiv alert-lər (`active=false` — bağlananlar): `{ id, kioskId, kioskCode, resource, variant, unit, level: Warning \| Critical, value, active, raisedAt, levelSince, clearedAt, serviceTaskId, ruleId }`; əvvəl `Critical` |
 
 **Qaydanın seçilməsi:** kiosk üçün qayda varsa qlobal qaydanı əvəz edir; rəng göstərən qayda göstərməyəndən üstündür.
@@ -2090,8 +2090,8 @@ tapşırıqsız bərpa olunsa (məs. admin paneldən doldurma) başlanmamış av
 |---|---|---|
 | `GET /api/admin/inventory/items?includeInactive=&type=&printerModel=` | `inventory.view` | Azalanlar yuxarıda. `printerModel` — yalnız həmin printerə uyğun olanlar ("Toner dəyişdirildi" üçün). `{ id, sku, name, type, compatiblePrinterModels[], unit, sheetsPerUnit, minStock, stock, location, isActive, isLow, lowSince }` |
 | `POST /api/admin/inventory/items` · `PUT …/items/{id}` | `inventory.manage` | `type`: `PaperA4Ream` / `PaperA3Ream` / `Toner` / `Drum` / `Other`; `sku` unikaldır (`409 inventory.skuTaken`). Material silinmir — `isActive = false` |
-| `GET /api/admin/inventory/movements?itemId=&kioskId=&page=&pageSize=` | `inventory.view` | Yenilər yuxarıda: `{ id, itemId, itemName, type, quantity (işarəli), stockAfter, kioskId, taskId, by, at, note }` |
-| `POST /api/admin/inventory/movements` | `inventory.manage` | `Idempotency-Key`. `{ itemId, type: Purchase \| IssueToOperator \| UsedAtKiosk \| Adjustment \| WriteOff, quantity, kioskId?, note? }`. `quantity` müsbətdir, yalnız `Adjustment`-də işarəlidir. Qalıq sıfırdan aşağı düşmür (`409 inventory.notEnough`) |
+| `GET /api/admin/inventory/movements?itemId=&kioskId=&page=&pageSize=` | `inventory.view` | Yenilər yuxarıda; əhatəsi məhdud hesab kioskusuz hərəkətləri və öz kiosklarınınkını görür, əhatədən kənar `kioskId` — `404` (T-295): `{ id, itemId, itemName, type, quantity (işarəli), stockAfter, kioskId, taskId, by, at, note }` |
+| `POST /api/admin/inventory/movements` | `inventory.manage` | `Idempotency-Key`. `{ itemId, type: Purchase \| IssueToOperator \| UsedAtKiosk \| Adjustment \| WriteOff, quantity, kioskId?, note? }`. `quantity` müsbətdir, yalnız `Adjustment`-də işarəlidir. Qalıq sıfırdan aşağı düşmür (`409 inventory.notEnough`); əhatədən kənar `kioskId` — `404` (T-295) |
 
 | `POST /api/admin/inventory/items/{id}/take` | `operator.panel` | `Idempotency-Key`. `{ quantity, note? }` — "Özümə götürürəm": `IssueToOperator` hərəkəti **çağıranın öz adına** yazılır, qalıqdan çox götürmək olmur (`409 inventory.notEnough`). Anbardarın icazəsini (`inventory.manage`) tələb etmir, çünki yalnız çağıranın öz götürdüyünü qeyd edir |
 

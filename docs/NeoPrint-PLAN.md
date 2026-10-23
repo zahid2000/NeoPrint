@@ -83,13 +83,12 @@ NeoPrint — çoxfunksiyalı terminal (kiosk) printer platformasıdır. 4 hissə
 | Mobile | `file_picker` | MIT | Fayl seçimi |
 | Mobile | `image` | MIT | Şəkil emalı (kəsmə, filtr) |
 | Mobile | `google_mlkit_barcode_scanning` | MIT | QR oxuma (`camera` ilə) |
-| Mobile | `flutter_map` | BSD-3 | OpenStreetMap xəritəsi (Google Maps API açarı / ödənişi tələb etmir); MIT alternativi yoxdur — **istisna** |
-| Mobile | `latlong2` | Apache-2.0 | `flutter_map`-in öz API-sinin koordinat tipi (`LatLng`); flutter_map onsuz da ondan asılıdır — 2026-10-02 layihə sahibi təsdiqlədi |
+| Mobile | `maplibre_gl` 0.27.1 | BSD-3 | Vektor xəritə (MapLibre Native), OpenFreeMap tile-ları — API açarı / ödəniş yoxdur; MIT alternativi yoxdur — **istisna**. 2026-10-22 layihə sahibi təsdiqlədi (T-217, T-286); `flutter_map` və `latlong2` çıxarıldı |
 | Admin | Angular, Angular Material / CDK, Angular Service Worker | MIT (Google) | Platforma, PWA |
 | Admin | `@microsoft/signalr` | MIT (Microsoft) | Real-time |
 | Admin | `@ngx-translate/core` | MIT | Runtime dil dəyişmə |
 | Admin | `chart.js` | MIT | Qrafiklər |
-| Admin | `leaflet` | BSD-2 | Xəritə; MIT alternativi yoxdur — **istisna** |
+| Admin | `maplibre-gl` 6.11.2 | BSD-3 | Vektor xəritə (MapLibre GL JS), OpenFreeMap tile-ları; MIT alternativi yoxdur — **istisna**. 2026-10-22 layihə sahibi təsdiqlədi (T-217, T-286); `leaflet` çıxarıldı |
 
 **Öz kodumuzla yazılanlar (kitabxana əvəzinə)**
 | Ehtiyac | Həll |
@@ -130,7 +129,7 @@ NeoPrint — çoxfunksiyalı terminal (kiosk) printer platformasıdır. 4 hissə
 | MediatR v13+, MassTransit v9+, FluentAssertions v8+ | Kommersiya lisenziyası | Son pulsuz versiyalar pinlənir (12.x / 8.x / 7.x) |
 | Hangfire Pro paketləri | Pullu | Hangfire.Core (pulsuz) kifayətdir |
 | Magick.NET, Serilog, FluentValidation, Mapster, Refit, CliWrap, PDFtoImage, PdfSharpCore, FirebaseAdmin | MIT olmayan və ya lazımsız asılılıq | Yuxarıdakı öz həllər |
-| Google Maps (mobil) | API açarı, ödəniş | `flutter_map` + OpenStreetMap |
+| Google Maps (mobil) | API açarı, ödəniş | `maplibre_gl` + OpenFreeMap (T-217) |
 
 ### 2.1 Platforma
 | Mövzu | Qərar |
@@ -740,9 +739,9 @@ Paketlər yalnız Bölmə 2.0 siyahısından. Burada hər hissənin ümumi qurul
 
 - **Backend:** .NET 8, ASP.NET Core Web API, SignalR (Redis backplane), MediatR 12, MassTransit 8 (RabbitMQ + Mongo outbox), Hangfire (+ Hangfire.Mongo), MongoDB.Driver, StackExchange.Redis, AWSSDK.S3, MailKit, QuestPDF, PDFsharp, SkiaSharp, NeoPrint.Pdfium, QRCoder. Docker image: LibreOffice + Ghostscript (+ GhostPCL, GhostXPS) + fontlar (`fonts-dejavu`, `fonts-liberation`, `fonts-crosextra-carlito`, `fonts-crosextra-caladea`) + PDFium binary.
 - **Kiosk:** UI (`NeoPrint.Kiosk`) + Agent (`NeoPrint.Kiosk.Agent`, .NET Worker Service — Windows Service / systemd). Avalonia 11, CommunityToolkit.Mvvm, SignalR client, PDFsharp, SkiaSharp, NeoPrint.Pdfium, QRCoder, System.Management (Windows), Lextm.SharpSnmpLib. Kioskda quraşdırılır: LibreOffice, Ghostscript (+ GhostPCL, GhostXPS), (Linux) CUPS, udisks2, cage, fontlar.
-- **Mobile:** Flutter 3 / Dart 3, flutter_riverpod, go_router, dio, web_socket_channel (öz SignalR klienti), camera + google_mlkit_barcode_scanning, geolocator, flutter_map, file_picker, image, firebase_core, firebase_messaging, intl; öz platform channel-lar.
+- **Mobile:** Flutter 3 / Dart 3, flutter_riverpod, go_router, dio, web_socket_channel (öz SignalR klienti), camera + google_mlkit_barcode_scanning, geolocator, maplibre_gl, file_picker, image, firebase_core, firebase_messaging, intl; öz platform channel-lar.
 - **Monorepo paylaşımı:** `desktop/` layihələri `backend/src/NeoPrint.Contracts` və `backend/shared/*` layihələrinə `ProjectReference` ilə bağlanır (ayrıca NuGet paketi yoxdur).
-- **Admin:** Angular (standalone, signals, new control flow, TypeScript strict), Angular Material/CDK, Angular Service Worker (Operator PWA), @microsoft/signalr, @ngx-translate/core, chart.js, leaflet. Test: Angular CLI-nin default test runner-i; lint: angular-eslint.
+- **Admin:** Angular (standalone, signals, new control flow, TypeScript strict), Angular Material/CDK, Angular Service Worker (Operator PWA), @microsoft/signalr, @ngx-translate/core, chart.js, maplibre-gl. Test: Angular CLI-nin default test runner-i; lint: angular-eslint.
 
 ### Docker Compose (development)
 | Servis | Image | Port |
@@ -1221,7 +1220,7 @@ Mənbələr:
 | auth | Splash, Onboarding (1 dəfə), Register (+ referral kod sahəsi, deep link-dən avtomatik), Confirm email, Login, Forgot password |
 | consents | Məxfilik siyasəti + İstifadə şərtləri qəbulu (qeydiyyatda və yeni versiyada), sənəd mətnləri backend-dən |
 | home | Balans + bonus səhifə kartı, "QR scan" düyməsi (kiosk / ödəniş / voucher QR-ını tanıyır), aktiv job-lar, son qəbzlər |
-| kiosk_search | Siyahı + xəritə (flutter_map + OpenStreetMap), axtarış (ad, kod, Id), yaxınlıq filtri, kiosk detalı (status, imkanlar, qiymətlər, queue uzunluğu, "kağız azdır" xəbərdarlığı), "Sessiya aç" |
+| kiosk_search | Siyahı + xəritə (maplibre_gl + OpenFreeMap, T-217), axtarış (ad, kod, Id), yaxınlıq filtri, kiosk detalı (status, imkanlar, qiymətlər, queue uzunluğu, "kağız azdır" xəbərdarlığı), "Sessiya aç" |
 | session | Aktiv sessiya banneri, fayl seç → print axını; sessiya TTL bitəndə bildiriş |
 | files | Fayl yükləmə (file picker, kamera; HEIC → JPEG platforma API-si ilə), siyahı (mənbə badge-i: Yüklənib / Skan / Tərtibat / USB / Paylaşılıb; "Həssas" nişanı), baxış (backend səhifə şəkilləri), redaktə (PDF səhifələri, şəkil, TXT), versiyalar, avtomatik silinmə seçimi, sil, paylaş, "Kiosk üçün hazırla" |
 | print | Parametrlər, promokod, bonus istifadə toggle, qiymət (seçilmiş kioskun profili + həcm endirimi), "Ödə" |
@@ -1295,7 +1294,7 @@ Mənbələr:
 |---|---|
 | Login | Email, şifrə, blok mesajı, ilk girişdə şifrə dəyişmə |
 | Dashboard | Kiosk status kartları (Online/Paused/Offline/NotConfigured), açıq incident-lər, aktiv supply alert-lər (Warning/Critical), gecikən servis tapşırıqları, az anbar qalığı, uğursuz refund və fiskal çek sayı, DLQ sayı, bugünkü job sayı və gəlir, son 7 günün gəlir qrafiki, "Konfiqurasiya tələb olunur" siyahısı |
-| Kiosklar | Siyahı + xəritə görünüşü (Leaflet), status filtri |
+| Kiosklar | Siyahı + xəritə görünüşü (MapLibre GL JS + OpenFreeMap, T-217), status filtri |
 | Kiosk yarat/redaktə | Ad, kod (avtomatik `KSK-XXXX`), ünvan, xəritədə nöqtə seçimi, queue göstərmə limiti (3/5), **maksimum fayl ölçüsü** və **maksimum səhifə** ("Default istifadə et"), **qiymət profili**, **fiskal terminal ID**, **kağız kapasitetləri** (A4/A3), **default dil**, **admin PIN** (dəyişdirmək mümkün). Kiosk qeydi cihazsız yaradıla bilər (`NotActivated`) və sonra cihaz bağlanır |
 | Cihazlar | Tab-lar: **Aktivləşdirmə gözləyənlər** (kod ilə axtarış, cihaz məlumatı, printerlər, "Yeni kiosk kimi aktivləşdir" / "Mövcud kioska bağla" sehrbazı) · **Aktiv cihazlar** (kiosk, platforma, versiya, son əlaqə, barmaq izi, "Cihazı ayır") · **Enrollment token-lər** (yarat — kiosk seçimi və ya yeni kiosk şablonu; hazır provisioning əmrini kopyala; ləğv et) · **Ləğv edilmiş / vaxtı keçmiş** |
 | Buraxılışlar | Paketlər (komponent, platforma, versiya, kanal, imza statusu), rollout yarat (hamısı / kiosklar / faiz / kanal), pauza / davam / geri çək, kiosk versiyaları cədvəli (UI, Agent, provisioning, yeniləmə statusu, son xəta) |
@@ -1570,7 +1569,7 @@ Mənbələr:
 
 #### Addım 5 — Mobil funksiyalar və məxfilik
 **İşlər**
-- Kiosk axtarışı (mətn + geo `2dsphere`), flutter_map siyahı + xəritə + detal (qiymətlər, kağız xəbərdarlığı)
+- Kiosk axtarışı (mətn + geo `2dsphere`), flutter_map (7A-da `maplibre_gl`-ə keçdi — T-217) siyahı + xəritə + detal (qiymətlər, kağız xəbərdarlığı)
 - Sessions (Redis TTL), `SessionOpened/Closed`, mobil sessiya ilə çap (9.3)
 - Şəxsi QR (HMAC, rotasiya, backend PNG), `pending-for-user`, kioskda QR skaner input servisi + UserQrFiles ekranı (9.4)
 - Schedules API + `ScheduledPrintDueJob` + `ScheduledPrintAutoCancelJob`, mobil planlama ekranları (9.5)
