@@ -1642,6 +1642,24 @@ node e2e/operations.mjs ../docs/screenshots/step-7/t213   # ekran görüntülər
 
 Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını silir (T-266).
 
+## 7x. v0.7.1 — sorğu limiti, test hesabları, kiosk əhatəsi, qruplu menyu (T-299…T-306)
+
+- **Konteynerləri yenidən qurun:** `docker compose up -d --build api admin`. `docker-compose.yml`-də API-yə
+  `ForwardedHeaders__KnownNetworks` əlavə olunub — panelin sorğuları artıq admin nginx-in deyil, brauzerin ünvanı ilə
+  sayılır (T-306).
+- **Sorğu limiti hər hesaba ayrıdır** (dəqiqədə 120). Panel limiti keçəndə "Serverdə xəta" yox, "N saniyədən sonra
+  yenidən cəhd edin" yazır. Giriş IP üzrə dəqiqədə 10, cihaz qeydiyyatı saatda 10 qalır — e2e skriptlərini dalbadal
+  çox işlədəndə bu limitlərə dəymək normaldır (`Retry-After` nə qədər gözləməyi deyir).
+- **Test hesabları (T-300):** API başlayanda `dev-user@neoprint.local` və `*@neoprint.test` throwaway-lər test hesabı
+  kimi işarələnir; onların sifarişləri pilot və gəlir hesabatına düşmür. İstənilən istifadəçini admin paneldə
+  **Müştərilər → istifadəçi → "Test hesabı kimi işarələ"** ilə işarələmək olar (səbəb məcburi; icazə `users.test.mark` —
+  SuperAdmin-də var, Admin rolunda yoxdur).
+- **Bir kiosklu hesab** başqa kioskun cihazını, refund-unu, fiskal çekini, qəbzini və müraciətini artıq görmür (T-301).
+- **Menyu qruplardadır (T-304):** qrupu başlığına basıb yığmaq olar, brauzer yadda saxlayır
+  (`localStorage`: `neoprint.admin.navGroups`; silsəniz hamısı açılır). Planşet enində yalnız ikonlar, telefonda ☰.
+- Yoxlama skriptləri (`admin/`): `node e2e/nav.mjs` (menyu — hər rol, üç en), `node e2e/operations.mjs` (indi hər run öz
+  admin hesabı ilə işləyir və sonda onu söndürür).
+
 ## 7w. Addım 7A — M13-ün davamı (T-287…T-292)
 
 - **Admin paneli: bir dəfə yenidən daxil olun (T-288).** Panel açılışda sessiyanı yalnız brauzerdə onun izi

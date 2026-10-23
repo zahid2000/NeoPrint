@@ -60,7 +60,47 @@ const kiosk = await makeKiosk(call, 'E2E əməliyyat');
 const items = [];
 let rule = null;
 
+// The panel on the desktop is driven by an account of the run's own, with the
+// SuperAdmin role: the limit is per account (120 a minute, T-306), and two runs
+// back to back as one account spend more in a minute than a person would (T-299).
+const root = await (async () => {
+  const response = await fetch(`${api}/api/auth/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'dev-superadmin@neoprint.local', password }),
+  });
+  return (await response.json()).accessToken;
+})();
+const asRoot = async (method, path, body) => {
+  const response = await fetch(`${api}${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${root}`, 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID() },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(`${method} ${path}: ${response.status} ${(await response.text()).slice(0, 200)}`);
+  return response.status === 204 ? null : response.json();
+};
+const superRole = (await asRoot('GET', '/api/admin/roles')).find((role) => role.isSystem);
+const runEmail = `ops-check-${stamp}-${randomUUID().slice(0, 6)}@neoprint.local`;
+const firstPassword = `O1-${randomUUID().slice(0, 12)}!a`;
+const runPassword = `O2-${randomUUID().slice(0, 12)}!a`;
+const runAccount = await asRoot('POST', '/api/admin/admins', {
+  email: runEmail, fullName: 'Operations check', password: firstPassword, roleIds: [superRole.id], allKiosks: true, kioskIds: [],
+});
+{
+  const login = await fetch(`${api}/api/auth/admin/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: runEmail, password: firstPassword }),
+  });
+  const first = (await login.json()).accessToken;
+  await fetch(`${api}/api/auth/admin/change-password`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${first}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword: firstPassword, newPassword: runPassword }),
+  });
+}
+
 const takeAway = async () => {
+  await asRoot('POST', `/api/admin/admins/${runAccount.id}/active`, { isActive: false, reason: 'operations check finished' }).catch(() => undefined);
   items.forEach((id) => purgeItem(api, id));
   if (rule) await call('DELETE', `/api/admin/supply-rules/${rule}`).catch(() => undefined);
   purgeKiosk(api, kiosk.id, [kiosk.deviceId]);
@@ -121,8 +161,8 @@ const pick = async (field, option) => {
 
 try {
   await page.goto(`${base}/login`, { waitUntil: 'networkidle' });
-  await page.locator('input[type=email]').fill('dev-superadmin@neoprint.local');
-  await page.locator('input[type=password]').fill(password);
+  await page.locator('input[type=email]').fill(runEmail);
+  await page.locator('input[type=password]').fill(runPassword);
   await page.locator('button[type=submit]').click();
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20_000 });
 
@@ -145,7 +185,15 @@ try {
   await incidentRow.click();
   await page.locator('tr.ops__detail', { hasText: 'Baxılmağa başlandı' }).first().waitFor({ timeout: 10_000 })
     .then(() => check(true, 'incident: its row opens its history'))
-    .catch(() => check(false, 'incident: its row did not open its history'));
+    .catch(async () => {
+      check(false, 'incident: its row did not open its history');
+      // What the page showed and what it was told (T-299): the cause, not a retry.
+      const where = shots ?? resolve('e2e-failure');
+      mkdirSync(where, { recursive: true });
+      await page.screenshot({ path: join(where, 'history-failure.png'), fullPage: true });
+      console.error(`history: open row ${await page.locator('tr.ops__row--open').count()}, detail rows ${await page.locator('tr.ops__detail').count()}; the page at ${join(where, 'history-failure.png')}`);
+      refused.forEach((line) => console.error(`refused: ${line}`));
+    });
   await shot('10-incidents');
   await incidentRow.locator('button', { hasText: 'Bağla' }).click();
   await dialog().locator('textarea, input').first().fill('E2E: yoxlama üçün bağlandı');
@@ -251,11 +299,14 @@ try {
   const phoneContext = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'az', isMobile: true, hasTouch: true, serviceWorkers: 'block' });
   const phone = await phoneContext.newPage();
   await phone.goto(`${base}/login`, { waitUntil: 'networkidle' });
-  await phone.locator('input[type=email]').fill('dev-superadmin@neoprint.local');
+  // Another account than the desktop's: one person does not drive two panels
+  // at once, and the limit is per account (T-299, T-306). The audit log is not
+  // the Admin role's; its phone width is the walk's.
+  await phone.locator('input[type=email]').fill('dev-admin@neoprint.local');
   await phone.locator('input[type=password]').fill(password);
   await phone.locator('button[type=submit]').click();
   await phone.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20_000 });
-  for (const [route, name] of [['incidents', 'Incident-lər'], ['service-tasks', 'Servis tapşırıqları'], ['inventory', 'Anbar'], ['supply-rules', 'Xəbərdarlıq qaydaları'], ['audit', 'Audit jurnalı']]) {
+  for (const [route, name] of [['incidents', 'Incident-lər'], ['service-tasks', 'Servis tapşırıqları'], ['inventory', 'Anbar'], ['supply-rules', 'Xəbərdarlıq qaydaları']]) {
     await phone.goto(`${base}/${route}`, { waitUntil: 'networkidle' });
     await clean(phone, `${name}, 390 px`);
     await shot(`16-${route}-phone`, phone);
