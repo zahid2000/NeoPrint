@@ -118,6 +118,14 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
                 Extensions = { ["feature"] = disabled.Feature },
             },
 
+            // Seen, not to be changed: it also concerns kiosks outside the scope (T-295).
+            OutsideScopeException outside => new ProblemDetails
+            {
+                Title = Title("problem.forbidden"),
+                Detail = Messages.Write(outside.Text),
+                Status = StatusCodes.Status403Forbidden,
+            },
+
             DomainException domain => new ProblemDetails
             {
                 Title = Title("problem.rejected"),
@@ -203,6 +211,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
         {
             DomainException domain => domain.Text.Key,
             AuthenticationException authentication => authentication.Text.Key,
+            OutsideScopeException outside => outside.Text.Key,
             PaymentProviderUnavailableException => "payments.providerUnavailable",
             PaymentOutcomeUnknownException => "payments.outcomeUnknown",
             FileProcessingUnavailableException => FileProcessingUnavailableException.MessageKey,

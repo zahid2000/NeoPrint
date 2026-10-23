@@ -32,7 +32,7 @@ public sealed class AdminSuppliesController : ControllerBase
     [HttpGet("supply-rules")]
     [HasPermission(Permissions.SuppliesView)]
     public async Task<ActionResult<IReadOnlyList<SupplyRuleView>>> Rules(CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new ListSupplyRulesQuery(), cancellationToken));
+        => Ok(await _sender.Send(new ListSupplyRulesQuery(AdminId), cancellationToken));
 
     /// <summary>A rule for every kiosk, or for the kiosks it names - where it replaces the global one.</summary>
     [HttpPost("supply-rules")]
@@ -240,7 +240,7 @@ public sealed class AdminInventoryController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
         CancellationToken cancellationToken = default)
-        => Ok(await _sender.Send(new ListInventoryMovementsQuery(itemId, kioskId, page, pageSize), cancellationToken));
+        => Ok(await _sender.Send(new ListInventoryMovementsQuery(AdminId, itemId, kioskId, page, pageSize), cancellationToken));
 
     /// <summary>
     /// "Özümə götürürəm" (plan section 8B, "Anbar"): an operator writes down

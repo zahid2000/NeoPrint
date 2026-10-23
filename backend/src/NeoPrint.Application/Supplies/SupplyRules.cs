@@ -2,6 +2,7 @@ using MediatR;
 
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Admin;
+using NeoPrint.Application.Common;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Supplies;
 
@@ -11,7 +12,11 @@ namespace NeoPrint.Application.Supplies;
 // Rules: "Xəbərdarlıq qaydaları" (plan sections 2.15, 8A.3)
 // ---------------------------------------------------------------------------
 
-public sealed record ListSupplyRulesQuery : IRequest<IReadOnlyList<SupplyRuleView>>;
+/// <summary>
+/// The rules the account may see (T-295): one for every kiosk, and one that
+/// names a kiosk in its scope - showing only the kiosks of its scope.
+/// </summary>
+public sealed record ListSupplyRulesQuery(Guid AdminUserId) : IRequest<IReadOnlyList<SupplyRuleView>>;
 
 /// <param name="KioskIds">Empty: the rule is for every kiosk.</param>
 /// <param name="Channels">Names of <see cref="AlertChannels"/>: <c>AdminPanel</c>, <c>OperatorPanel</c>, <c>Email</c>, <c>Telegram</c>.</param>
@@ -78,16 +83,26 @@ public sealed class SupplyRuleHandlers :
 
     /// <inheritdoc cref="ListSupplyRulesQuery" />
     public async Task<IReadOnlyList<SupplyRuleView>> Handle(ListSupplyRulesQuery request, CancellationToken cancellationToken)
-        => [.. (await _rules.ListAsync(cancellationToken).ConfigureAwait(false))
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var effective = await _permissions.ResolveAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false);
+
+        return [.. (await _rules.ListAsync(cancellationToken).ConfigureAwait(false))
+            .Where(rule => effective.AllKiosks || rule.IsGlobal || rule.KioskIds.Any(effective.CanSee))
             .OrderBy(rule => rule.Resource)
             .ThenByDescending(rule => rule.IsGlobal)
             .ThenBy(rule => rule.Name, StringComparer.CurrentCultureIgnoreCase)
-            .Select(SupplyRuleView.Of)];
+            .Select(SupplyRuleView.Of)
+            .Select(view => effective.AllKiosks ? view : view with { KioskIds = [.. view.KioskIds.Where(effective.CanSee)] })];
+    }
 
     /// <inheritdoc cref="CreateSupplyRuleCommand" />
     public async Task<SupplyRuleView> Handle(CreateSupplyRuleCommand request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        await MayWriteAsync(request.AdminUserId, existing: null, request.Rule, cancellationToken).ConfigureAwait(false);
 
         var rule = new SupplyAlertRule { CreatedAt = _clock.UtcNow };
 
@@ -108,6 +123,7 @@ public sealed class SupplyRuleHandlers :
 
         var rule = await _rules.FindByIdAsync(request.RuleId, cancellationToken).ConfigureAwait(false)
                    ?? throw new NotFoundException("supplyRule");
+        await MayWriteAsync(request.AdminUserId, rule, request.Rule, cancellationToken).ConfigureAwait(false);
         var before = Describe(rule);
 
         await ApplyAsync(rule, request.Rule, cancellationToken).ConfigureAwait(false);
@@ -125,6 +141,7 @@ public sealed class SupplyRuleHandlers :
 
         var rule = await _rules.FindByIdAsync(request.RuleId, cancellationToken).ConfigureAwait(false)
                    ?? throw new NotFoundException("supplyRule");
+        await MayWriteAsync(request.AdminUserId, rule, input: null, cancellationToken).ConfigureAwait(false);
 
         await _rules.DeleteAsync(rule.Id, cancellationToken).ConfigureAwait(false);
         await _audit
@@ -161,6 +178,38 @@ public sealed class SupplyRuleHandlers :
 
         return new SupplyAlertPage(
             [.. items.Select(alert => SupplyAlertView.Of(alert, codes.GetValueOrDefault(alert.KioskId)))], total, page, size);
+    }
+
+    /// <summary>
+    /// A rule is written by an account that sees every kiosk it is for (T-295):
+    /// one that looks after some kiosks writes rules for those, never one for
+    /// every kiosk - that would set the alerts of kiosks it may not see.
+    /// </summary>
+    /// <exception cref="NotFoundException">The rule, or a kiosk it names, is not the account's to see.</exception>
+    /// <exception cref="OutsideScopeException">The rule is also for a kiosk outside the account's scope.</exception>
+    private async Task MayWriteAsync(Guid adminUserId, SupplyAlertRule? existing, SupplyRuleInput? input, CancellationToken cancellationToken)
+    {
+        var effective = await _permissions.ResolveAsync(adminUserId, cancellationToken).ConfigureAwait(false);
+        if (effective.AllKiosks)
+        {
+            return;
+        }
+
+        if (existing is not null && !existing.IsGlobal && !existing.KioskIds.Any(effective.CanSee))
+        {
+            throw new NotFoundException("supplyRule");
+        }
+
+        if (input?.KioskIds is { Count: > 0 } kiosks && kiosks.Any(kioskId => !effective.CanSee(kioskId)))
+        {
+            throw new NotFoundException("kiosk");
+        }
+
+        if ((existing is not null && (existing.IsGlobal || !existing.KioskIds.All(effective.CanSee)))
+            || (input is not null && input.KioskIds is not { Count: > 0 }))
+        {
+            throw new OutsideScopeException("supplyRules.outsideScope");
+        }
     }
 
     /// <exception cref="NotFoundException">The rule names a kiosk there is not.</exception>

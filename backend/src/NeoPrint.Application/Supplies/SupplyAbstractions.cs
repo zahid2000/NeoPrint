@@ -91,8 +91,9 @@ public interface IInventoryRepository
     Task AddMovementAsync(InventoryMovement movement, CancellationToken cancellationToken = default);
 
     /// <summary>The newest first.</summary>
+    /// <param name="kioskScope">Null: every movement. Otherwise those of no kiosk and of these kiosks.</param>
     Task<(IReadOnlyList<InventoryMovement> Items, long Total)> ListMovementsAsync(
-        Guid? itemId, Guid? kioskId, int skip, int take, CancellationToken cancellationToken = default);
+        Guid? itemId, Guid? kioskId, IReadOnlyCollection<Guid>? kioskScope, int skip, int take, CancellationToken cancellationToken = default);
 }
 
 /// <summary>How much paper a kiosk used, read from <c>supply_events</c>.</summary>

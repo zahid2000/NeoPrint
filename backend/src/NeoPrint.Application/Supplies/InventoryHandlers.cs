@@ -39,7 +39,8 @@ public sealed record RecordInventoryMovementCommand(
     Guid AdminUserId, Guid ItemId, string Type, decimal Quantity, Guid? KioskId, string? Note, string? Ip)
     : IRequest<InventoryItemView>, ITransactionalRequest;
 
-public sealed record ListInventoryMovementsQuery(Guid? ItemId, Guid? KioskId, int Page, int PageSize) : IRequest<InventoryMovementPage>;
+/// <summary>The movements the account may see (T-295): those of no kiosk and of the kiosks in its scope.</summary>
+public sealed record ListInventoryMovementsQuery(Guid AdminUserId, Guid? ItemId, Guid? KioskId, int Page, int PageSize) : IRequest<InventoryMovementPage>;
 
 public sealed record InventoryMovementPage(IReadOnlyList<InventoryMovementView> Items, long Total, int Page, int PageSize);
 
@@ -61,15 +62,22 @@ public sealed class InventoryHandlers :
 {
     private readonly IInventoryRepository _inventory;
     private readonly IKioskRepository _kiosks;
+    private readonly IPermissionResolver _permissions;
     private readonly IncidentReporter _incidents;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
 
     public InventoryHandlers(
-        IInventoryRepository inventory, IKioskRepository kiosks, IncidentReporter incidents, IAuditWriter audit, IClock clock)
+        IInventoryRepository inventory,
+        IKioskRepository kiosks,
+        IPermissionResolver permissions,
+        IncidentReporter incidents,
+        IAuditWriter audit,
+        IClock clock)
     {
         _inventory = inventory;
         _kiosks = kiosks;
+        _permissions = permissions;
         _incidents = incidents;
         _audit = audit;
         _clock = clock;
@@ -168,7 +176,10 @@ public sealed class InventoryHandlers :
             throw new DomainException("inventory.movementTypeUnknown");
         }
 
-        if (request.KioskId is { } kioskId && await _kiosks.FindByIdAsync(kioskId, cancellationToken).ConfigureAwait(false) is null)
+        // A kiosk out of the account's scope is one it does not know of (T-295).
+        if (request.KioskId is { } kioskId
+            && (await _kiosks.FindByIdAsync(kioskId, cancellationToken).ConfigureAwait(false) is null
+                || !(await _permissions.ResolveAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false)).CanSee(kioskId)))
         {
             throw new NotFoundException("kiosk");
         }
@@ -207,10 +218,16 @@ public sealed class InventoryHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var effective = await _permissions.ResolveAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false);
+        if (request.KioskId is { } asked && !effective.CanSee(asked))
+        {
+            throw new NotFoundException("kiosk");
+        }
+
         var page = Math.Max(1, request.Page);
         var size = Math.Clamp(request.PageSize, 1, 100);
         var (items, total) = await _inventory
-            .ListMovementsAsync(request.ItemId, request.KioskId, (page - 1) * size, size, cancellationToken)
+            .ListMovementsAsync(request.ItemId, request.KioskId, effective.AllKiosks ? null : effective.KioskIds, (page - 1) * size, size, cancellationToken)
             .ConfigureAwait(false);
         var names = (await _inventory.ListAsync(cancellationToken).ConfigureAwait(false)).ToDictionary(item => item.Id, item => item.Name);
 

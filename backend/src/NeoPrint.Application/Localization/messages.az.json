@@ -774,6 +774,7 @@
   "supplies.unit.sheets": "vərəq",
   "supplyRules.channelRequired": "Ən azı bir bildiriş kanalı seçilməlidir.",
   "supplyRules.channelUnknown": "Belə bildiriş kanalı yoxdur.",
+  "supplyRules.outsideScope": "Bu qayda əhatənizdən kənar kiosklara da aiddir — onu yalnız bütün kiosklara baxan hesab dəyişə bilər. Öz kiosklarınız üçün ayrıca qayda yaradın.",
   "supplyRules.nameInvalid": "Qaydanın adı yazılmalıdır (ən çox 100 simvol).",
   "supplyRules.paperHasNoVariant": "Kağız qaydasında rəng və ya ad yazılmır.",
   "supplyRules.percentTooHigh": "Faizlə verilən hədd 100-dən böyük ola bilməz.",

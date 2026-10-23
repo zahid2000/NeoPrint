@@ -225,7 +225,7 @@ public sealed class InventoryRepository : IInventoryRepository
         => _context.InventoryMovements.InsertOneAsync(movement, cancellationToken);
 
     public async Task<(IReadOnlyList<InventoryMovement> Items, long Total)> ListMovementsAsync(
-        Guid? itemId, Guid? kioskId, int skip, int take, CancellationToken cancellationToken = default)
+        Guid? itemId, Guid? kioskId, IReadOnlyCollection<Guid>? kioskScope, int skip, int take, CancellationToken cancellationToken = default)
     {
         var builder = Builders<InventoryMovement>.Filter;
         var query = builder.Empty;
@@ -238,6 +238,12 @@ public sealed class InventoryRepository : IInventoryRepository
         if (kioskId is { } kiosk)
         {
             query &= builder.Eq(movement => movement.KioskId, kiosk);
+        }
+
+        if (kioskScope is not null)
+        {
+            query &= builder.Eq(movement => movement.KioskId, null)
+                     | builder.In(movement => movement.KioskId, kioskScope.Select(id => (Guid?)id));
         }
 
         var total = await _context.InventoryMovements.CountDocumentsAsync(query, cancellationToken: cancellationToken).ConfigureAwait(false);

@@ -774,6 +774,7 @@
   "supplies.unit.sheets": "sheets",
   "supplyRules.channelRequired": "At least one notification channel has to be chosen.",
   "supplyRules.channelUnknown": "There is no such notification channel.",
+  "supplyRules.outsideScope": "This rule also covers kiosks outside your scope — only an account that sees every kiosk can change it. Create a separate rule for your own kiosks.",
   "supplyRules.nameInvalid": "The rule needs a name (100 characters at most).",
   "supplyRules.paperHasNoVariant": "A paper rule names no colour or supply.",
   "supplyRules.percentTooHigh": "A threshold in percent cannot be above 100.",
