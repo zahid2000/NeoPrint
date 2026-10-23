@@ -1,4 +1,5 @@
 using MediatR;
+using NeoPrint.Application.Admin;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -78,12 +79,14 @@ public sealed class AdminRefundsController : ControllerBase
     private string? Ip => HttpContext.Connection.RemoteIpAddress?.ToString();
 
     [HttpGet("payments/{id:guid}/refund-options")]
+    [KioskScoped(RecordKind.Payment)]
     [HasPermission(Permissions.PaymentsRefund)]
     public async Task<ActionResult<RefundOptionsView>> Options(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new GetRefundOptionsQuery(id), cancellationToken));
 
     /// <summary>"Qaytar" / "Job-u ləğv et və qaytar": the reason is mandatory; planned at once and carried out, a provider refund that does not answer goes on in the background.</summary>
     [HttpPost("payments/{id:guid}/refund")]
+    [KioskScoped(RecordKind.Payment)]
     [Idempotent]
     [HasPermission(Permissions.PaymentsRefund)]
     public async Task<ActionResult<AdminRefundResult>> Refund(Guid id, [FromBody] AdminRefundRequest request, CancellationToken cancellationToken)
@@ -106,15 +109,17 @@ public sealed class AdminRefundsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
-        => Ok(await _sender.Send(new ListRefundsQuery(status, reason, paymentId, page, pageSize), cancellationToken));
+        => Ok(await _sender.Send(new ListRefundsQuery(_currentUser.AdminUserId ?? throw new UnauthorizedAccessException(), status, reason, paymentId, page, pageSize), cancellationToken));
 
     [HttpGet("refunds/{id:guid}")]
+    [KioskScoped(RecordKind.Refund)]
     [HasPermission(Permissions.RefundsView)]
     public async Task<ActionResult<RefundView>> Get(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new GetRefundQuery(id), cancellationToken));
 
     /// <summary>A failed refund again, the same way or to another destination ("Təkrarla" / "İstiqaməti dəyiş").</summary>
     [HttpPost("refunds/{id:guid}/retry")]
+    [KioskScoped(RecordKind.Refund)]
     [Idempotent]
     [HasPermission(Permissions.RefundsRetry)]
     public async Task<ActionResult<RefundView>> Retry(Guid id, [FromBody] RetryRefundRequest? request, CancellationToken cancellationToken)

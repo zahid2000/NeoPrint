@@ -43,7 +43,8 @@ public interface IRefundRepository
     Task<(IReadOnlyList<Refund> Items, long Total)> SearchAsync(RefundFilter filter, int skip, int take, CancellationToken cancellationToken = default);
 }
 
-public sealed record RefundFilter(IReadOnlyCollection<RefundStatus>? Statuses, IReadOnlyCollection<RefundReason>? Reasons, Guid? PaymentId);
+/// <param name="Kiosks">Null: every refund. Otherwise only those of payments made at these kiosks (T-301).</param>
+public sealed record RefundFilter(IReadOnlyCollection<RefundStatus>? Statuses, IReadOnlyCollection<RefundReason>? Reasons, Guid? PaymentId, IReadOnlyCollection<Guid>? Kiosks = null);
 
 /// <summary>The unique dedup key refused a second refund for the same decision.</summary>
 public sealed class DuplicateRefundException : Exception

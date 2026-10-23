@@ -38,7 +38,7 @@ public sealed class AdminDevicesController : ControllerBase
     [HasPermission(Permissions.DevicesView)]
     public async Task<ActionResult<IReadOnlyList<DeviceListItem>>> List(
         [FromQuery] DeviceStatus? status, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new ListDevicesQuery(status), cancellationToken));
+        => Ok(await _sender.Send(new ListDevicesQuery(_currentUser.AdminUserId ?? throw new UnauthorizedAccessException(), status), cancellationToken));
 
     /// <summary>
     /// Finds a device from a pairing code an admin typed, or from the QR an
@@ -61,6 +61,16 @@ public sealed class AdminDevicesController : ControllerBase
     {
         var adminId = _currentUser.AdminUserId;
         if (adminId is null)
+        {
+            return Forbid();
+        }
+
+        // A device that already serves a kiosk is that kiosk's: moving it is
+        // taking the machine away from it, so that kiosk must be in scope too
+        // (T-301 - an operator of one kiosk could move another kiosk's device
+        // onto their own and leave that kiosk without one).
+        var device = await _sender.Send(new FindDeviceQuery(id), cancellationToken);
+        if (device?.KioskId is { } current && !await IsInScopeAsync(adminId.Value, current, cancellationToken))
         {
             return Forbid();
         }

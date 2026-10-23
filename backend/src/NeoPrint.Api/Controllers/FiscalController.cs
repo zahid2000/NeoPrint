@@ -37,15 +37,17 @@ public sealed class AdminFiscalController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
-        => Ok(await _sender.Send(new ListFiscalReceiptsQuery(status, type, paymentId, page, pageSize), cancellationToken));
+        => Ok(await _sender.Send(new ListFiscalReceiptsQuery(_currentUser.AdminUserId ?? throw new UnauthorizedAccessException(), status, type, paymentId, page, pageSize), cancellationToken));
 
     [HttpGet("fiscal-receipts/{id:guid}")]
+    [KioskScoped(RecordKind.FiscalReceipt)]
     [HasPermission(Permissions.FiscalView)]
     public async Task<ActionResult<FiscalReceiptView>> Get(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new GetFiscalReceiptQuery(id), cancellationToken));
 
     /// <summary>"Təkrarla": a failed or waiting receipt is tried now, with a fresh count.</summary>
     [HttpPost("fiscal-receipts/{id:guid}/retry")]
+    [KioskScoped(RecordKind.FiscalReceipt)]
     [Idempotent]
     [HasPermission(Permissions.FiscalManage)]
     public async Task<ActionResult<FiscalReceiptView>> Retry(Guid id, CancellationToken cancellationToken)

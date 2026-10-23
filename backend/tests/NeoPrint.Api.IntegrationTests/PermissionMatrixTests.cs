@@ -444,6 +444,226 @@ public sealed class PermissionMatrixTests
     }
 
     // -----------------------------------------------------------------------
+    // Every kiosk-bound record: another kiosk's (T-301)
+    // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// The records that belong to a kiosk, by the route parameter that names
+    /// them. Everything an admin endpoint takes by id and that is a kiosk's is
+    /// here; what is not here belongs to no kiosk (roles, admins, users and
+    /// wallets, promos, prices, storage, enrollment tokens, warehouse items).
+    /// </summary>
+    private static readonly string[] KioskBound =
+    [
+        "api/admin/kiosks/", "api/admin/operator/kiosks/", "api/admin/payments/", "api/admin/print-jobs/",
+        "api/admin/refunds/", "api/admin/fiscal-receipts/", "api/admin/receipts/", "api/admin/incidents/",
+        "api/admin/service-tasks/", "api/admin/devices/", "api/admin/support/claims/", "api/admin/supply-rules/",
+    ];
+
+    [DockerFact]
+    public async Task An_account_that_looks_after_one_kiosk_can_neither_read_nor_change_nor_remove_anything_of_another_kiosk()
+    {
+        if (Skip) { return; }
+
+        var callers = await CallersAsync("matrix-x");
+        var superAdmin = callers.Admins.Single(caller => caller.Name == "SuperAdmin").Client;
+        var scoped = callers.Admins.Single(caller => caller.Scoped).Client;
+        var theirs = callers.Theirs;
+
+        // One of everything, at the other kiosk.
+        var their = await TheirRecordsAsync(superAdmin, theirs);
+
+        async Task<string?> StatusAsync(string path)
+        {
+            var body = await superAdmin.GetFromJsonAsync<JsonElement>(path);
+            return (body.TryGetProperty("incident", out var incident) ? incident : body).GetProperty("status").GetString();
+        }
+        var taskBefore = await StatusAsync($"/api/admin/service-tasks/{their["task"]}");
+        var incidentBefore = await StatusAsync($"/api/admin/incidents/{their["incident"]}");
+
+        string? IdFor(string template)
+        {
+            var path = template.TrimStart('/');
+            if (path.StartsWith("api/admin/kiosks/{kioskId:guid}", StringComparison.Ordinal)) { return their["kiosk"]; }
+
+            return KioskBound.FirstOrDefault(prefix => path.StartsWith(prefix, StringComparison.Ordinal)) switch
+            {
+                "api/admin/kiosks/" or "api/admin/operator/kiosks/" => their["kiosk"],
+                "api/admin/payments/" => their["payment"],
+                "api/admin/print-jobs/" => their["job"],
+                "api/admin/refunds/" => their["refund"],
+                "api/admin/fiscal-receipts/" => their["fiscal"],
+                "api/admin/receipts/" => their["receipt"],
+                "api/admin/incidents/" => their["incident"],
+                "api/admin/service-tasks/" => their["task"],
+                "api/admin/devices/" => their["device"],
+                "api/admin/support/claims/" => their["claim"],
+                "api/admin/supply-rules/" => their["rule"],
+                _ => null,
+            };
+        }
+
+        var tried = new List<string>();
+        var wrong = new List<string>();
+
+        foreach (var endpoint in Endpoints())
+        {
+            var template = endpoint.RoutePattern.RawText!.TrimStart('/');
+            if (!template.Contains('{', StringComparison.Ordinal) || IdFor(template) is not { } id)
+            {
+                continue;
+            }
+
+            // A second parameter is the action of a storage job and the like; none of those is a kiosk's.
+            var path = "/" + System.Text.RegularExpressions.Regex.Replace(template, @"\{[^}]+\}", id);
+            foreach (var method in endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods ?? ["GET"])
+            {
+                using var request = new HttpRequestMessage(new HttpMethod(method), path);
+                request.Headers.Add(IdempotencyFilter.HeaderName, Guid.NewGuid().ToString());
+                if (method is "POST" or "PUT")
+                {
+                    request.Content = Json("{}");
+                }
+
+                using var response = await scoped.SendAsync(request);
+                var code = (int)response.StatusCode;
+                var body = await response.Content.ReadAsStringAsync();
+                tried.Add($"{method} {template}: {code}");
+
+                // Not found or not allowed. A refused body (400) changes nothing either; it is
+                // listed so the report shows which endpoints check the body first.
+                if (code is not (403 or 404 or 400) || body.Contains(theirs.KioskCode, StringComparison.Ordinal))
+                {
+                    wrong.Add($"{method} {template}: {code} {body[..Math.Min(body.Length, 160)]}");
+                }
+            }
+        }
+
+        // The lists: nothing of the other kiosk, unfiltered or asked for by name.
+        foreach (var list in new[]
+                 {
+                     "api/admin/payments", "api/admin/refunds", "api/admin/fiscal-receipts", "api/admin/receipts",
+                     "api/admin/print-jobs", "api/admin/print-jobs/suspected", "api/admin/incidents", "api/admin/service-tasks",
+                     "api/admin/devices", "api/admin/support/claims", "api/admin/supply-rules", "api/admin/supply-alerts?active=",
+                     "api/admin/inventory/movements", "api/admin/kiosks", "api/admin/printers", "api/admin/operator/kiosks",
+                     "api/admin/dashboard/payments", $"api/admin/reports/revenue?{LastWeek}", $"api/admin/analytics/pilot?{LastWeek}",
+                 })
+        {
+            foreach (var asked in new[] { list, $"{list}{(list.Contains('?', StringComparison.Ordinal) ? "&" : "?")}kioskId={theirs.KioskId}" })
+            {
+                using var response = await scoped.GetAsync(asked);
+                var body = await response.Content.ReadAsStringAsync();
+                tried.Add($"GET {asked.Replace(theirs.KioskId.ToString(), "{theirs}", StringComparison.Ordinal)}: {(int)response.StatusCode}");
+
+                if (response.StatusCode is not (HttpStatusCode.OK or HttpStatusCode.NotFound)
+                    || their.Values.Any(value => body.Contains(value, StringComparison.OrdinalIgnoreCase))
+                    || body.Contains(theirs.KioskCode, StringComparison.Ordinal))
+                {
+                    wrong.Add($"GET {asked}: {(int)response.StatusCode}, names the other kiosk's records");
+                }
+            }
+        }
+
+        // Where the body is checked before the kiosk (400 above), a body that would pass:
+        // still not found, so the scope holds and not only the validation.
+        var kioskAsItIs = await superAdmin.GetStringAsync($"/api/admin/kiosks/{theirs.KioskId}");
+        foreach (var (method, path, body) in new (string, string, string)[]
+                 {
+                     ("PUT", $"/api/admin/kiosks/{theirs.KioskId}", kioskAsItIs),
+                     ("POST", $"/api/admin/kiosks/{theirs.KioskId}/admin-pin", """{"pin":"2468"}"""),
+                     ("POST", $"/api/admin/devices/{theirs.DeviceId}/activate", $$"""{"kioskId":"{{callers.Mine.KioskId}}"}"""),
+                     ("POST", $"/api/admin/incidents/{their["incident"]}/resolve", """{"note":"matrix"}"""),
+                     ("POST", $"/api/admin/print-jobs/{their["job"]}/cancel", """{"reason":"matrix"}"""),
+                     ("POST", $"/api/admin/print-jobs/{their["job"]}/resolve", """{"decision":"NoRefund","reason":"matrix","note":"matrix"}"""),
+                     ("POST", $"/api/admin/service-tasks/{their["task"]}/cancel", """{"reason":"matrix"}"""),
+                     ("PUT", $"/api/admin/service-tasks/{their["task"]}", """{"priority":"Low"}"""),
+                     ("PUT", $"/api/admin/supply-rules/{their["rule"]}", Rule(callers.Mine.KioskId.ToString())),
+                     ("POST", $"/api/admin/kiosks/{theirs.KioskId}/paper/refill", """{"paper":"A4","mode":"Add","sheets":1}"""),
+                 })
+        {
+            using var request = new HttpRequestMessage(new HttpMethod(method), path) { Content = Json(body) };
+            request.Headers.Add(IdempotencyFilter.HeaderName, Guid.NewGuid().ToString());
+            using var response = await scoped.SendAsync(request);
+            var template = path.Replace(theirs.KioskId.ToString(), "{theirs}", StringComparison.Ordinal);
+            tried.Add($"{method} {template} (a body that would pass): {(int)response.StatusCode}");
+
+            if (response.StatusCode is not (HttpStatusCode.NotFound or HttpStatusCode.Forbidden))
+            {
+                wrong.Add($"{method} {template} with a body that would pass: {(int)response.StatusCode} {(await response.Content.ReadAsStringAsync())[..Math.Min(160, (int)(response.Content.Headers.ContentLength ?? 160))]}");
+            }
+        }
+
+        // What was tried, for the report (T-301).
+        Console.WriteLine(string.Join(Environment.NewLine, tried));
+
+        wrong.Should().BeEmpty(string.Join(Environment.NewLine, wrong));
+
+        // Nothing of theirs was changed or removed: the SuperAdmin still reads it all as it was.
+        (await superAdmin.GetAsync($"/api/admin/kiosks/{theirs.KioskId}")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await StatusAsync($"/api/admin/service-tasks/{their["task"]}")).Should().Be(taskBefore);
+        (await StatusAsync($"/api/admin/incidents/{their["incident"]}")).Should().Be(incidentBefore);
+        (await superAdmin.GetFromJsonAsync<JsonElement>("/api/admin/supply-rules")).EnumerateArray()
+            .Should().Contain(rule => rule.GetProperty("id").GetString() == their["rule"]);
+    }
+
+    /// <summary>A paid guest order with its payment, fiscal receipt and receipt, a refund, an incident, a task, a claim and a rule - all of one kiosk.</summary>
+    private async Task<Dictionary<string, string>> TheirRecordsAsync(HttpClient superAdmin, TestKiosk theirs)
+    {
+        var paid = await PaidBankJobAsync(_fixture, theirs);
+        string jobCode;
+        using (var lookup = _fixture.Services.CreateScope())
+        {
+            jobCode = (await lookup.ServiceProvider.GetRequiredService<MongoContext>().PrintJobs.Find(j => j.Id == paid.JobId).FirstAsync()).JobCode;
+        }
+
+        (await theirs.Client.PostAsJsonAsync("/api/incidents", new { type = "PaperJam" })).EnsureSuccessStatusCode();
+
+        var task = await superAdmin.PostAsync("/api/admin/service-tasks", Json($$"""{"kioskId":"{{theirs.KioskId}}","type":"Cleaning"}"""));
+        task.StatusCode.Should().Be(HttpStatusCode.OK, await task.Content.ReadAsStringAsync());
+
+        var rule = await superAdmin.PostAsync("/api/admin/supply-rules", Json(Rule(theirs.KioskId.ToString())));
+        rule.StatusCode.Should().Be(HttpStatusCode.OK, await rule.Content.ReadAsStringAsync());
+
+        using (var anonymous = _fixture.CreateApiClient())
+        {
+            using var claim = new HttpRequestMessage(HttpMethod.Post, "/api/support/claims")
+            {
+                Content = JsonContent.Create(new { jobCode, kioskCode = theirs.KioskCode, text = "Çap çıxmadı" }),
+            };
+            claim.Headers.Add(IdempotencyFilter.HeaderName, Guid.NewGuid().ToString());
+            (await anonymous.SendAsync(claim)).EnsureSuccessStatusCode();
+        }
+
+        // The incident above paused the kiosk: the guest's waiting bank payment is refunded by itself (plan 9.6).
+
+        using var scope = _fixture.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+        var fiscal = await EventuallyAsync(
+            () => context.FiscalReceipts.Find(r => r.PaymentId == paid.PaymentId).FirstOrDefaultAsync(), r => r is not null, "the fiscal receipt");
+        var receipt = await EventuallyAsync(
+            () => context.Receipts.Find(r => r.PaymentId == paid.PaymentId).FirstOrDefaultAsync(), r => r is not null, "the receipt");
+        var refundRow = await EventuallyAsync(
+            () => context.Refunds.Find(r => r.PaymentId == paid.PaymentId).FirstOrDefaultAsync(), r => r is not null, "the automatic refund");
+        var incident = await context.Incidents.Find(i => i.KioskId == theirs.KioskId && i.Status == Domain.Incidents.IncidentStatus.Open).FirstAsync();
+        var claimRow = await context.SupportClaims.Find(c => c.KioskId == theirs.KioskId).FirstAsync();
+
+        return new Dictionary<string, string>
+        {
+            ["kiosk"] = theirs.KioskId.ToString(),
+            ["device"] = theirs.DeviceId.ToString(),
+            ["payment"] = paid.PaymentId.ToString(),
+            ["job"] = paid.JobId.ToString(),
+            ["refund"] = refundRow!.Id.ToString(),
+            ["fiscal"] = fiscal!.Id.ToString(),
+            ["receipt"] = receipt!.Id.ToString(),
+            ["incident"] = incident.Id.ToString(),
+            ["task"] = (await task.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!,
+            ["claim"] = claimRow.Id.ToString(),
+            ["rule"] = (await rule.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!,
+        };
+    }
+
+    // -----------------------------------------------------------------------
     // Step 7A: role x panel event
     // -----------------------------------------------------------------------
 
@@ -497,23 +717,38 @@ public sealed class PermissionMatrixTests
                 await payments.IncidentRaisedAsync(Guid.NewGuid(), "PaperJam", "Warning", kioskId: kioskId);
                 await payments.IncidentResolvedAsync(Guid.NewGuid(), "PaperJam", "Resolved", kioskId: kioskId);
 
+                // Money, orders and machines of the kiosk (T-301).
+                await notifier.QueueUpdatedAsync(kioskId, []);
+                await notifier.DeviceActivatedAsync(Guid.NewGuid(), kioskId);
+                await notifier.DeviceRevokedAsync(Guid.NewGuid(), kioskId);
+                await payments.PaymentSucceededAsync(Guid.NewGuid(), kioskId, 1m);
+                await payments.RefundStatusChangedAsync(Guid.NewGuid(), Guid.NewGuid(), "Succeeded", kioskId: kioskId);
+                await payments.FiscalStatusChangedAsync(Guid.NewGuid(), "Issued", kioskId: kioskId);
+
                 // Everybody hears this one: the end of what the test sent.
                 await notifier.PermissionsChangedAsync(Guid.Empty);
             }
 
-            var audienceOf = new Dictionary<string, string>
+            // Who may hear each: any one of these permissions - what the page behind it asks for.
+            var audienceOf = new Dictionary<string, string[]>
             {
-                ["KioskStatusChanged"] = Permissions.KiosksView,
-                ["KioskTelemetryUpdated"] = Permissions.KiosksView,
-                ["CommandResult"] = Permissions.KiosksView,
-                ["PrinterTelemetryUpdated"] = Permissions.PrintersView,
-                ["KioskPrintersUpdated"] = Permissions.PrintersView,
-                ["SupplyAlertRaised"] = Permissions.SuppliesView,
-                ["SupplyAlertCleared"] = Permissions.SuppliesView,
-                ["ServiceTaskAssigned"] = Permissions.ServiceTasksView,
-                ["ServiceTaskUpdated"] = Permissions.ServiceTasksView,
-                ["IncidentRaised"] = Permissions.IncidentsView,
-                ["IncidentResolved"] = Permissions.IncidentsView,
+                ["KioskStatusChanged"] = [Permissions.KiosksView],
+                ["KioskTelemetryUpdated"] = [Permissions.KiosksView],
+                ["CommandResult"] = [Permissions.KiosksView],
+                ["PrinterTelemetryUpdated"] = [Permissions.PrintersView],
+                ["KioskPrintersUpdated"] = [Permissions.PrintersView],
+                ["SupplyAlertRaised"] = [Permissions.SuppliesView],
+                ["SupplyAlertCleared"] = [Permissions.SuppliesView],
+                ["ServiceTaskAssigned"] = [Permissions.ServiceTasksView],
+                ["ServiceTaskUpdated"] = [Permissions.ServiceTasksView],
+                ["IncidentRaised"] = [Permissions.IncidentsView],
+                ["IncidentResolved"] = [Permissions.IncidentsView],
+                ["QueueUpdated"] = [Permissions.JobsView],
+                ["DeviceActivated"] = [Permissions.DevicesView],
+                ["DeviceRevoked"] = [Permissions.DevicesView],
+                ["PaymentSucceeded"] = [Permissions.PaymentsView],
+                ["RefundStatusChanged"] = [Permissions.RefundsView, Permissions.PaymentsView],
+                ["FiscalStatusChanged"] = [Permissions.FiscalView, Permissions.ReceiptsView, Permissions.PaymentsView],
             };
 
             var wrong = new List<string>();
@@ -532,7 +767,7 @@ public sealed class PermissionMatrixTests
 
                 var expected = caller.Scoped
                     ? []
-                    : audienceOf.Where(pair => caller.Permissions.Contains(pair.Value)).Select(pair => pair.Key).ToHashSet();
+                    : audienceOf.Where(pair => pair.Value.Any(caller.Permissions.Contains)).Select(pair => pair.Key).ToHashSet();
 
                 if (!heard.SetEquals(expected))
                 {

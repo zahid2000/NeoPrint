@@ -42,7 +42,7 @@ public sealed record AdminRetryRefundCommand(Guid AdminUserId, Guid RefundId, st
 
 public sealed record GetRefundQuery(Guid RefundId) : IRequest<RefundView>;
 
-public sealed record ListRefundsQuery(IReadOnlyCollection<string>? Statuses, IReadOnlyCollection<string>? Reasons, Guid? PaymentId, int Page, int PageSize)
+public sealed record ListRefundsQuery(Guid AdminUserId, IReadOnlyCollection<string>? Statuses, IReadOnlyCollection<string>? Reasons, Guid? PaymentId, int Page, int PageSize)
     : IRequest<RefundPage>;
 
 /// <summary>The refund status page an anonymous customer opens from the QR (plan section 2.9: <c>neoprint.az/refund/{id}</c>).</summary>
@@ -119,6 +119,7 @@ public sealed class RefundAdminHandlers :
     private readonly IEventPublisher _events;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
+    private readonly Admin.IPermissionResolver _permissions;
     private readonly ILogger<RefundAdminHandlers> _logger;
 
     public RefundAdminHandlers(
@@ -134,6 +135,7 @@ public sealed class RefundAdminHandlers :
         IAuditWriter audit,
         IEventPublisher events,
         ICorrelationContext correlation,
+        Admin.IPermissionResolver permissions,
         IClock clock,
         ILogger<RefundAdminHandlers> logger)
     {
@@ -150,6 +152,7 @@ public sealed class RefundAdminHandlers :
         _events = events;
         _correlation = correlation;
         _clock = clock;
+        _permissions = permissions;
         _logger = logger;
     }
 
@@ -356,12 +359,16 @@ public sealed class RefundAdminHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // Only the kiosks of the account's scope (T-301); null when it sees them all.
+        var effective = await _permissions.ResolveAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false);
+        IReadOnlyCollection<Guid>? kiosks = effective.AllKiosks ? null : effective.KioskIds;
         var page = Math.Max(1, request.Page);
         var size = Math.Clamp(request.PageSize, 1, 100);
         var filter = new RefundFilter(
             request.Statuses?.Select(s => Enum.TryParse<RefundStatus>(s, out var v) ? (RefundStatus?)v : null).OfType<RefundStatus>().ToList(),
             request.Reasons?.Select(s => Enum.TryParse<RefundReason>(s, out var v) ? (RefundReason?)v : null).OfType<RefundReason>().ToList(),
-            request.PaymentId);
+            request.PaymentId,
+            kiosks);
 
         var (items, total) = await _refunds.SearchAsync(filter, (page - 1) * size, size, cancellationToken).ConfigureAwait(false);
 

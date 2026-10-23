@@ -45,10 +45,15 @@ public sealed class ReceiptRepository : IReceiptRepository
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
     public async Task<(IReadOnlyList<Receipt> Items, long Total)> SearchAsync(
-        string? number, Guid? paymentId, int skip, int take, CancellationToken cancellationToken = default)
+        string? number, Guid? paymentId, int skip, int take, CancellationToken cancellationToken = default, IReadOnlyCollection<Guid>? kiosks = null)
     {
         var builder = Builders<Receipt>.Filter;
         var query = builder.Empty;
+
+        if (kiosks is not null)
+        {
+            query &= builder.In(r => r.KioskId, kiosks.Select(id => (Guid?)id));
+        }
 
         if (!string.IsNullOrEmpty(number))
         {

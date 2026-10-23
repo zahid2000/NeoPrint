@@ -1,4 +1,5 @@
 using MediatR;
+using NeoPrint.Application.Admin;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -97,9 +98,10 @@ public sealed class AdminReceiptsController : ControllerBase
     [HasPermission(Permissions.ReceiptsView)]
     public async Task<ActionResult<ReceiptPage>> List(
         [FromQuery] string? number, [FromQuery] Guid? paymentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
-        => Ok(await _sender.Send(new ListReceiptsQuery(number, paymentId, page, pageSize), cancellationToken));
+        => Ok(await _sender.Send(new ListReceiptsQuery(_currentUser.AdminUserId ?? throw new UnauthorizedAccessException(), number, paymentId, page, pageSize), cancellationToken));
 
     [HttpGet("{id:guid}/pdf")]
+    [KioskScoped(RecordKind.Receipt)]
     [HasPermission(Permissions.ReceiptsView)]
     public async Task<IActionResult> Pdf(Guid id, CancellationToken cancellationToken)
     {
@@ -109,6 +111,7 @@ public sealed class AdminReceiptsController : ControllerBase
 
     /// <summary>Sends it again to the addresses it already went to; the admin cannot add one.</summary>
     [HttpPost("{id:guid}/resend")]
+    [KioskScoped(RecordKind.Receipt)]
     [Idempotent]
     [HasPermission(Permissions.ReceiptsView)]
     public async Task<ActionResult<ReceiptView>> Resend(Guid id, CancellationToken cancellationToken)

@@ -31,7 +31,7 @@ public interface ISupportClaimRepository
     Task<long> CountOpenForJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 
     Task<(IReadOnlyList<SupportClaim> Items, long Total)> SearchAsync(
-        IReadOnlyCollection<ClaimStatus>? statuses, Guid? jobId, int skip, int take, CancellationToken cancellationToken = default);
+        IReadOnlyCollection<ClaimStatus>? statuses, Guid? jobId, int skip, int take, CancellationToken cancellationToken = default, IReadOnlyCollection<Guid>? kiosks = null);
 }
 
 /// <summary>
@@ -54,7 +54,7 @@ public sealed record OpenAppClaimCommand(Guid UserId, Guid JobId, string? Text) 
 /// <summary>The user's claims and their answers, newest first.</summary>
 public sealed record ListMyClaimsQuery(Guid UserId) : IRequest<IReadOnlyList<SupportClaimView>>;
 
-public sealed record ListClaimsQuery(IReadOnlyCollection<string>? Statuses, Guid? JobId, int Page, int PageSize) : IRequest<SupportClaimPage>;
+public sealed record ListClaimsQuery(Guid AdminUserId, IReadOnlyCollection<string>? Statuses, Guid? JobId, int Page, int PageSize) : IRequest<SupportClaimPage>;
 
 /// <summary>An admin's answer; the app shows it (push with the mobile step).</summary>
 public sealed record AnswerClaimCommand(Guid AdminUserId, Guid ClaimId, string? Reply, string? Ip) : IRequest<SupportClaimView>, ITransactionalRequest;
@@ -121,6 +121,7 @@ public sealed class SupportClaimHandlers :
     private readonly Refunds.IRefundRepository _refunds;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
+    private readonly Admin.IPermissionResolver _permissions;
     private readonly ILogger<SupportClaimHandlers> _logger;
 
     public SupportClaimHandlers(
@@ -129,6 +130,7 @@ public sealed class SupportClaimHandlers :
         IKioskRepository kiosks,
         Refunds.IRefundRepository refunds,
         IAuditWriter audit,
+        Admin.IPermissionResolver permissions,
         IClock clock,
         ILogger<SupportClaimHandlers> logger)
     {
@@ -138,6 +140,7 @@ public sealed class SupportClaimHandlers :
         _refunds = refunds;
         _audit = audit;
         _clock = clock;
+        _permissions = permissions;
         _logger = logger;
     }
 
@@ -230,7 +233,10 @@ public sealed class SupportClaimHandlers :
             .ToList();
         var page = Math.Max(1, request.Page);
         var size = Math.Clamp(request.PageSize, 1, 100);
-        var (items, total) = await _claims.SearchAsync(statuses, request.JobId, (page - 1) * size, size, cancellationToken).ConfigureAwait(false);
+        // Only the kiosks of the account's scope (T-301); null when it sees them all.
+        var effective = await _permissions.ResolveAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false);
+        IReadOnlyCollection<Guid>? kiosks = effective.AllKiosks ? null : effective.KioskIds;
+        var (items, total) = await _claims.SearchAsync(statuses, request.JobId, (page - 1) * size, size, cancellationToken, kiosks).ConfigureAwait(false);
 
         return new SupportClaimPage([.. items.Select(SupportClaimView.From)], total, page, size);
     }

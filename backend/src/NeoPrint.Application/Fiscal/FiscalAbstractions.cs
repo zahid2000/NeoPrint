@@ -75,13 +75,15 @@ public interface IFiscalReceiptRepository
     /// <summary>Pending receipts made before <paramref name="createdBefore"/>: late enough for an incident.</summary>
     Task<IReadOnlyList<FiscalReceipt>> ListPendingSinceAsync(DateTime createdBefore, int take, CancellationToken cancellationToken = default);
 
+    /// <param name="kiosks">Null: every receipt. Otherwise only those of these kiosks (T-301).</param>
     Task<(IReadOnlyList<FiscalReceipt> Items, long Total)> SearchAsync(
         IReadOnlyCollection<FiscalReceiptStatus>? statuses,
         IReadOnlyCollection<FiscalReceiptType>? types,
         Guid? paymentId,
         int skip,
         int take,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        IReadOnlyCollection<Guid>? kiosks = null);
 
     Task<long> CountAsync(FiscalReceiptStatus status, CancellationToken cancellationToken = default);
 }

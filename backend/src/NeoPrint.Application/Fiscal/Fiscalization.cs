@@ -45,7 +45,7 @@ public sealed record AdminRetryFiscalReceiptCommand(Guid AdminUserId, Guid Recei
 public sealed record GetFiscalReceiptQuery(Guid ReceiptId) : IRequest<FiscalReceiptView>;
 
 public sealed record ListFiscalReceiptsQuery(
-    IReadOnlyCollection<string>? Statuses, IReadOnlyCollection<string>? Types, Guid? PaymentId, int Page, int PageSize)
+    Guid AdminUserId, IReadOnlyCollection<string>? Statuses, IReadOnlyCollection<string>? Types, Guid? PaymentId, int Page, int PageSize)
     : IRequest<FiscalReceiptPage>;
 
 /// <summary>The receipt's fiscal part, for the kiosk's receipt screen, the app and the PDF.</summary>
@@ -146,6 +146,7 @@ public sealed class FiscalizationHandlers :
     private readonly IEventPublisher _events;
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
+    private readonly Admin.IPermissionResolver _permissions;
     private readonly ILogger<FiscalizationHandlers> _logger;
 
     public FiscalizationHandlers(
@@ -163,6 +164,7 @@ public sealed class FiscalizationHandlers :
         IAuditWriter audit,
         IEventPublisher events,
         ICorrelationContext correlation,
+        Admin.IPermissionResolver permissions,
         IClock clock,
         ILogger<FiscalizationHandlers> logger)
     {
@@ -181,6 +183,7 @@ public sealed class FiscalizationHandlers :
         _events = events;
         _correlation = correlation;
         _clock = clock;
+        _permissions = permissions;
         _logger = logger;
     }
 
@@ -547,7 +550,10 @@ public sealed class FiscalizationHandlers :
         var types = Parse<FiscalReceiptType>(request.Types, "type");
         var page = Math.Max(1, request.Page);
         var size = Math.Clamp(request.PageSize, 1, 100);
-        var (items, total) = await _receipts.SearchAsync(statuses, types, request.PaymentId, (page - 1) * size, size, cancellationToken).ConfigureAwait(false);
+        // Only the kiosks of the account's scope (T-301); null when it sees them all.
+        var effective = await _permissions.ResolveAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false);
+        IReadOnlyCollection<Guid>? kiosks = effective.AllKiosks ? null : effective.KioskIds;
+        var (items, total) = await _receipts.SearchAsync(statuses, types, request.PaymentId, (page - 1) * size, size, cancellationToken, kiosks).ConfigureAwait(false);
 
         return new FiscalReceiptPage([.. items.Select(FiscalReceiptView.From)], total, page, size);
     }

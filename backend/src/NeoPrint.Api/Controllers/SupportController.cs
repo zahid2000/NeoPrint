@@ -1,4 +1,5 @@
 using MediatR;
+using NeoPrint.Application.Admin;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -98,9 +99,10 @@ public sealed class AdminClaimsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
-        => Ok(await _sender.Send(new ListClaimsQuery(status, jobId, page, pageSize), cancellationToken));
+        => Ok(await _sender.Send(new ListClaimsQuery(_currentUser.AdminUserId ?? throw new UnauthorizedAccessException(), status, jobId, page, pageSize), cancellationToken));
 
     [HttpPost("{id:guid}/answer")]
+    [KioskScoped(RecordKind.SupportClaim)]
     [Idempotent]
     [HasPermission(Permissions.PaymentsRefund)]
     public async Task<ActionResult<SupportClaimView>> Answer(Guid id, [FromBody] AnswerClaimRequest request, CancellationToken cancellationToken)
@@ -111,6 +113,7 @@ public sealed class AdminClaimsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/close")]
+    [KioskScoped(RecordKind.SupportClaim)]
     [Idempotent]
     [HasPermission(Permissions.PaymentsRefund)]
     public async Task<ActionResult<SupportClaimView>> Close(Guid id, CancellationToken cancellationToken)

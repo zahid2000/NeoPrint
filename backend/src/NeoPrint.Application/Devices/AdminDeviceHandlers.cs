@@ -183,7 +183,7 @@ public sealed class ActivateDeviceHandler : IRequestHandler<ActivateDeviceComman
                 previous.Revoke(actor.Because("devices.reason.replaced"), now);
                 await _devices.UpdateAsync(previous, cancellationToken).ConfigureAwait(false);
                 await _notifier.DeviceRevokedAsync(previous.Id, cancellationToken).ConfigureAwait(false);
-                await _panels.DeviceRevokedAsync(previous.Id, cancellationToken).ConfigureAwait(false);
+                await _panels.DeviceRevokedAsync(previous.Id, kiosk.Id, cancellationToken).ConfigureAwait(false);
 
                 _logger.LogInformation(
                     "Device {PreviousDeviceId} was revoked because {DeviceId} took over kiosk {KioskCode}.",
@@ -382,7 +382,7 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
             .ConfigureAwait(false);
 
         await _notifier.DeviceRevokedAsync(device.Id, cancellationToken).ConfigureAwait(false);
-        await _panels.DeviceRevokedAsync(device.Id, cancellationToken).ConfigureAwait(false);
+        await _panels.DeviceRevokedAsync(device.Id, kioskId, cancellationToken).ConfigureAwait(false);
 
         return Unit.Value;
     }

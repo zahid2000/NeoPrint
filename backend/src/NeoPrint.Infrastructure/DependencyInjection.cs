@@ -227,6 +227,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminUserRepository, AdminUserRepository>();
         services.AddScoped<IAdminRoleRepository, AdminRoleRepository>();
         services.AddScoped<IPermissionResolver, CachedPermissionResolver>();
+        services.AddScoped<IKioskOwnershipReader, KioskOwnershipReader>();
         services.AddScoped<IAdminSessionFactory, AdminSessionFactory>();
 
         services.AddScoped<IAuditWriter, MongoAuditWriter>();

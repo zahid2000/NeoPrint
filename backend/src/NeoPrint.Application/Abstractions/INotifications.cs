@@ -56,7 +56,8 @@ public interface IAdminNotifier
 
     Task DeviceActivatedAsync(Guid deviceId, Guid kioskId, CancellationToken cancellationToken = default);
 
-    Task DeviceRevokedAsync(Guid deviceId, CancellationToken cancellationToken = default);
+    /// <param name="kioskId">The kiosk it was bound to, when it was: only those who see that kiosk hear of it (T-301).</param>
+    Task DeviceRevokedAsync(Guid deviceId, Guid? kioskId = null, CancellationToken cancellationToken = default);
 
     /// <summary>A feature flag changed.</summary>
     Task FeatureFlagsChangedAsync(CancellationToken cancellationToken = default);

@@ -10,19 +10,24 @@ public sealed class ListDevicesHandler : IRequestHandler<ListDevicesQuery, IRead
 {
     private readonly IKioskDeviceRepository _devices;
     private readonly IKioskRepository _kiosks;
+    private readonly IPermissionResolver _permissions;
     private readonly IClock _clock;
 
-    public ListDevicesHandler(IKioskDeviceRepository devices, IKioskRepository kiosks, IClock clock)
+    public ListDevicesHandler(IKioskDeviceRepository devices, IKioskRepository kiosks, IPermissionResolver permissions, IClock clock)
     {
         _devices = devices;
         _kiosks = kiosks;
+        _permissions = permissions;
         _clock = clock;
     }
 
     public async Task<IReadOnlyList<DeviceListItem>> Handle(
         ListDevicesQuery request, CancellationToken cancellationToken)
     {
-        var devices = await _devices.ListAsync(request.Status, cancellationToken).ConfigureAwait(false);
+        var effective = await _permissions.ResolveAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false);
+        var devices = (await _devices.ListAsync(request.Status, cancellationToken).ConfigureAwait(false))
+            .Where(device => device.KioskId is not { } kioskId || effective.CanSee(kioskId))
+            .ToList();
 
         var kiosks = (await _kiosks.ListAsync(cancellationToken).ConfigureAwait(false))
             .ToDictionary(kiosk => kiosk.Id);

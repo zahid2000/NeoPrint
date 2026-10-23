@@ -323,16 +323,19 @@ public sealed class SignalRAdminNotifier : IAdminNotifier
         => _hub.Clients.Group(AdminHub.AllAdminsGroup)
             .SendAsync("PermissionsChanged", new { roleId }, cancellationToken);
 
-    // A device waiting to be activated belongs to no kiosk yet, and the list of
-    // devices is one list for whoever may read it (GET admin/devices).
+    // A device waiting to be activated belongs to no kiosk yet: everyone who may
+    // read the devices sees it (GET admin/devices). Once it is a kiosk's, only
+    // those who see that kiosk hear about it (T-301); for the others it leaves
+    // their list of waiting devices at the next refresh.
     public Task DeviceRegisteredAsync(Guid deviceId, CancellationToken cancellationToken = default)
         => Holders(AdminAudience.Devices).SendAsync("DeviceRegistered", new { deviceId }, cancellationToken);
 
     public Task DeviceActivatedAsync(Guid deviceId, Guid kioskId, CancellationToken cancellationToken = default)
-        => Holders(AdminAudience.Devices).SendAsync("DeviceActivated", new { deviceId, kioskId }, cancellationToken);
+        => About(AdminAudience.Devices, kioskId).SendAsync("DeviceActivated", new { deviceId, kioskId }, cancellationToken);
 
-    public Task DeviceRevokedAsync(Guid deviceId, CancellationToken cancellationToken = default)
-        => Holders(AdminAudience.Devices).SendAsync("DeviceRevoked", new { deviceId }, cancellationToken);
+    public Task DeviceRevokedAsync(Guid deviceId, Guid? kioskId = null, CancellationToken cancellationToken = default)
+        => (kioskId is { } kiosk ? About(AdminAudience.Devices, kiosk) : Holders(AdminAudience.Devices))
+            .SendAsync("DeviceRevoked", new { deviceId }, cancellationToken);
 
     public Task FeatureFlagsChangedAsync(CancellationToken cancellationToken = default)
         => Holders(AdminAudience.Features).SendAsync("FeatureFlagsChanged", cancellationToken);

@@ -61,10 +61,16 @@ public sealed class FiscalReceiptRepository : IFiscalReceiptRepository
         Guid? paymentId,
         int skip,
         int take,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyCollection<Guid>? kiosks = null)
     {
         var builder = Builders<FiscalReceipt>.Filter;
         var query = builder.Empty;
+
+        if (kiosks is not null)
+        {
+            query &= builder.In(r => r.KioskId, kiosks.Select(id => (Guid?)id));
+        }
 
         if (statuses is { Count: > 0 })
         {

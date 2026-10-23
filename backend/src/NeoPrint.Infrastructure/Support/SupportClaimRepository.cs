@@ -32,10 +32,15 @@ public sealed class SupportClaimRepository : ISupportClaimRepository
         => _context.SupportClaims.CountDocumentsAsync(c => c.JobId == jobId && c.Status == ClaimStatus.Open, cancellationToken);
 
     public async Task<(IReadOnlyList<SupportClaim> Items, long Total)> SearchAsync(
-        IReadOnlyCollection<ClaimStatus>? statuses, Guid? jobId, int skip, int take, CancellationToken cancellationToken = default)
+        IReadOnlyCollection<ClaimStatus>? statuses, Guid? jobId, int skip, int take, CancellationToken cancellationToken = default, IReadOnlyCollection<Guid>? kiosks = null)
     {
         var builder = Builders<SupportClaim>.Filter;
         var query = builder.Empty;
+
+        if (kiosks is not null)
+        {
+            query &= builder.In(c => c.KioskId, kiosks.Select(id => (Guid?)id));
+        }
 
         if (statuses is { Count: > 0 })
         {

@@ -17,7 +17,8 @@ public interface IReceiptRepository
     /// <summary>Receipts still rendered without their fiscal receipt, made after <paramref name="since"/>.</summary>
     Task<IReadOnlyList<Receipt>> ListWithoutFiscalAsync(DateTime since, int take, CancellationToken cancellationToken = default);
 
-    Task<(IReadOnlyList<Receipt> Items, long Total)> SearchAsync(string? number, Guid? paymentId, int skip, int take, CancellationToken cancellationToken = default);
+    /// <param name="kiosks">Null: every receipt. Otherwise only those of these kiosks (T-301).</param>
+    Task<(IReadOnlyList<Receipt> Items, long Total)> SearchAsync(string? number, Guid? paymentId, int skip, int take, CancellationToken cancellationToken = default, IReadOnlyCollection<Guid>? kiosks = null);
 }
 
 /// <summary>The receipt number: a gapless count per year (plan section 5, <c>NP-2026-000001</c>).</summary>

@@ -56,7 +56,7 @@ public sealed record AdminResendReceiptCommand(Guid AdminUserId, Guid ReceiptId,
 
 public sealed record ListMyReceiptsQuery(Guid UserId) : IRequest<IReadOnlyList<ReceiptView>>;
 
-public sealed record ListReceiptsQuery(string? Number, Guid? PaymentId, int Page, int PageSize) : IRequest<ReceiptPage>;
+public sealed record ListReceiptsQuery(Guid AdminUserId, string? Number, Guid? PaymentId, int Page, int PageSize) : IRequest<ReceiptPage>;
 
 /// <summary>The PDF, for its owner or an admin; re-made when the stored copy cannot be read.</summary>
 /// <param name="UserId">Null for an admin.</param>
@@ -113,6 +113,7 @@ public sealed class ReceiptHandlers :
     private readonly IFiscalReceiptRepository _fiscal;
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
+    private readonly Admin.IPermissionResolver _permissions;
     private readonly ILogger<ReceiptHandlers> _logger;
 
     public ReceiptHandlers(
@@ -129,6 +130,7 @@ public sealed class ReceiptHandlers :
         IUserRepository users,
         IFiscalReceiptRepository fiscal,
         IAuditWriter audit,
+        Admin.IPermissionResolver permissions,
         IClock clock,
         ILogger<ReceiptHandlers> logger)
     {
@@ -146,6 +148,7 @@ public sealed class ReceiptHandlers :
         _fiscal = fiscal;
         _audit = audit;
         _clock = clock;
+        _permissions = permissions;
         _logger = logger;
     }
 
@@ -383,10 +386,14 @@ public sealed class ReceiptHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // Only the kiosks of the account's scope (T-301); null when it sees them all.
+        var effective = await _permissions.ResolveAsync(request.AdminUserId, cancellationToken).ConfigureAwait(false);
+        IReadOnlyCollection<Guid>? kiosks = effective.AllKiosks ? null : effective.KioskIds;
+
         var page = Math.Max(1, request.Page);
         var size = Math.Clamp(request.PageSize, 1, 100);
         var (items, total) = await _receipts
-            .SearchAsync(request.Number?.Trim().ToUpperInvariant(), request.PaymentId, (page - 1) * size, size, cancellationToken)
+            .SearchAsync(request.Number?.Trim().ToUpperInvariant(), request.PaymentId, (page - 1) * size, size, cancellationToken, kiosks)
             .ConfigureAwait(false);
         var views = new List<ReceiptView>(items.Count);
 

@@ -88,6 +88,17 @@ public sealed class RefundRepository : IRefundRepository
         var builder = Builders<Refund>.Filter;
         var query = builder.Empty;
 
+        if (filter.Kiosks is { } kiosks)
+        {
+            var nullable = kiosks.Select(id => (Guid?)id).ToList();
+            var payments = await _context.Payments
+                .Find(payment => nullable.Contains(payment.KioskId))
+                .Project(payment => payment.Id)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            query &= builder.In(r => r.PaymentId, payments);
+        }
+
         if (filter.Statuses is { Count: > 0 } statuses)
         {
             query &= builder.In(r => r.Status, statuses);

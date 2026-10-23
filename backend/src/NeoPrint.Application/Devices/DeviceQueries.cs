@@ -29,7 +29,12 @@ public sealed record DeviceListItem(
     IReadOnlyCollection<string> ReportedPrinters);
 
 /// <summary>Devices, optionally filtered by status.</summary>
-public sealed record ListDevicesQuery(DeviceStatus? Status) : IRequest<IReadOnlyList<DeviceListItem>>;
+/// <summary>
+/// The devices the account may see (T-301): those waiting to be activated -
+/// an operator binds them to a kiosk of their own - and those of the kiosks in
+/// its scope. Another kiosk's machine, its name and its address, are not shown.
+/// </summary>
+public sealed record ListDevicesQuery(Guid AdminUserId, DeviceStatus? Status) : IRequest<IReadOnlyList<DeviceListItem>>;
 
 /// <summary>An enrollment token, without the token itself.</summary>
 public sealed record EnrollmentTokenListItem(
