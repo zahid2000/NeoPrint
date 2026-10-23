@@ -305,6 +305,8 @@ export interface CustomerRow {
   readonly emailConfirmed: boolean;
   readonly createdAt: string;
   readonly blockedAt?: string;
+  /** A test account: its orders are left out of the pilot and revenue reports (T-300). */
+  readonly isTestAccount?: boolean;
 }
 
 export interface CustomerJob {

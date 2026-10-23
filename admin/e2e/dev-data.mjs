@@ -229,7 +229,10 @@ export async function throwawayUser(api, mailpit = process.env.NEOPRINT_MAILPIT 
 
     if (code) {
       const { accessToken } = await json('/api/auth/confirm-email', { email, code });
-      return { id: JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64url').toString()).sub, email, password, token: accessToken };
+      const id = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64url').toString()).sub;
+      // A test account from the start: what it orders is not the pilot's (T-300).
+      mongo(`print(db.users.updateOne({ _id: ${ids([id])}[0] }, { $set: { IsTestAccount: true } }).modifiedCount);`);
+      return { id, email, password, token: accessToken };
     }
 
     await new Promise((resolve) => setTimeout(resolve, 1000));

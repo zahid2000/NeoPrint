@@ -39,7 +39,8 @@ public sealed record CustomerRow(
     string Status,
     bool EmailConfirmed,
     DateTime CreatedAt,
-    DateTime? BlockedAt);
+    DateTime? BlockedAt,
+    bool IsTestAccount = false);
 
 public sealed record CustomerPage(IReadOnlyList<CustomerRow> Items, long Total, int Page, int PageSize);
 
@@ -91,6 +92,13 @@ public sealed record BlockCustomerCommand(Guid AdminUserId, Guid UserId, string?
 
 public sealed record UnblockCustomerCommand(Guid AdminUserId, Guid UserId, string? Reason, string? Ip) : IRequest<CustomerRow>;
 
+/// <summary>
+/// Marks an account as a test account, or takes the mark away (T-300). A
+/// reason is required and audited: it changes what the reports show. The
+/// pilot report's kept days are worked out again.
+/// </summary>
+public sealed record SetCustomerTestAccountCommand(Guid AdminUserId, Guid UserId, bool IsTest, string? Reason, string? Ip) : IRequest<CustomerRow>;
+
 /// <summary>The database half of <see cref="BlockCustomerCommand"/>, in one transaction.</summary>
 public sealed record RecordCustomerBlockCommand(Guid AdminUserId, Guid UserId, bool Blocked, string Reason, string? Ip)
     : IRequest<CustomerRow>, ITransactionalRequest;
@@ -100,7 +108,8 @@ public sealed class AdminCustomerHandlers :
     IRequestHandler<GetCustomerQuery, CustomerDetail>,
     IRequestHandler<BlockCustomerCommand, CustomerRow>,
     IRequestHandler<UnblockCustomerCommand, CustomerRow>,
-    IRequestHandler<RecordCustomerBlockCommand, CustomerRow>
+    IRequestHandler<RecordCustomerBlockCommand, CustomerRow>,
+    IRequestHandler<SetCustomerTestAccountCommand, CustomerRow>
 {
     /// <summary>Longer than an access token lives (15 minutes), so none outlasts the entry.</summary>
     private static readonly TimeSpan BlocklistFor = TimeSpan.FromMinutes(20);
@@ -286,6 +295,41 @@ public sealed class AdminCustomerHandlers :
         return Row(user);
     }
 
+    /// <inheritdoc cref="SetCustomerTestAccountCommand" />
+    public async Task<CustomerRow> Handle(SetCustomerTestAccountCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var reason = Reason(request.Reason);
+        var user = await FindAsync(request.UserId, cancellationToken).ConfigureAwait(false);
+
+        // Asked twice: the same answer, nothing written twice.
+        if (!user.MarkAsTest(request.IsTest))
+        {
+            return Row(user);
+        }
+
+        await _users.UpdateAsync(user, cancellationToken).ConfigureAwait(false);
+        await _audit
+            .WriteAsync(
+                new AuditEntry(
+                    request.AdminUserId,
+                    request.IsTest ? "users.testAccount.set" : "users.testAccount.clear",
+                    "User",
+                    user.Id.ToString(),
+                    (!request.IsTest).ToString(),
+                    request.IsTest.ToString(),
+                    request.Ip,
+                    reason),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        // The kept days of the pilot report counted the account as it was.
+        await _sender.Send(new Analytics.RecomputePilotHistoryCommand(), cancellationToken).ConfigureAwait(false);
+
+        return Row(user);
+    }
+
     private async Task<User> FindAsync(Guid userId, CancellationToken cancellationToken)
         => await _users.FindByIdAsync(userId, cancellationToken).ConfigureAwait(false)
            ?? throw new NotFoundException("user");
@@ -311,5 +355,6 @@ public sealed class AdminCustomerHandlers :
         user.Status.ToString(),
         user.EmailConfirmed,
         user.CreatedAt,
-        user.BlockedAt);
+        user.BlockedAt,
+        user.IsTestAccount);
 }

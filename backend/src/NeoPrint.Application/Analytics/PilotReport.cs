@@ -53,6 +53,12 @@ public sealed record RunAnalyticsRollupCommand : IRequest<int>;
 /// <summary>Works the days out again from the records (after a fix, or for days the job never saw).</summary>
 /// <param name="From">First Baku day, included.</param>
 /// <param name="To">Last Baku day, included.</param>
+/// <summary>
+/// Every kept day of every kiosk worked out again - after an account was marked
+/// as a test account or unmarked (T-300). Internal: no endpoint sends it.
+/// </summary>
+public sealed record RecomputePilotHistoryCommand : IRequest<int>;
+
 public sealed record RebuildPilotDaysCommand(Guid AdminUserId, DateOnly From, DateOnly To, string? Ip) : IRequest<PilotRebuildResult>;
 
 public sealed record PilotRebuildResult(DateOnly From, DateOnly To, int Days);
@@ -127,6 +133,7 @@ public sealed record PilotReportView(
 public sealed class PilotReportHandlers :
     IRequestHandler<RunAnalyticsRollupCommand, int>,
     IRequestHandler<RebuildPilotDaysCommand, PilotRebuildResult>,
+    IRequestHandler<RecomputePilotHistoryCommand, int>,
     IRequestHandler<GetPilotReportQuery, PilotReportView>
 {
     /// <summary>The days the job works out again each hour: a kiosk's events may arrive a week late.</summary>
@@ -207,6 +214,18 @@ public sealed class PilotReportHandlers :
     }
 
     /// <inheritdoc cref="RebuildPilotDaysCommand" />
+    /// <inheritdoc cref="RecomputePilotHistoryCommand" />
+    public async Task<int> Handle(RecomputePilotHistoryCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var today = Today();
+        var oldest = await OldestKeptAsync(today, cancellationToken).ConfigureAwait(false);
+        var kiosks = await _kiosks.ListAsync(cancellationToken).ConfigureAwait(false);
+
+        return await RollupAsync(oldest, today, [.. kiosks], includeApp: true, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<PilotRebuildResult> Handle(RebuildPilotDaysCommand request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);

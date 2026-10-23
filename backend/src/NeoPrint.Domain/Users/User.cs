@@ -133,6 +133,25 @@ public sealed class User : Entity
     public DateTime? BlockedAt { get; set; }
 
     /// <summary>
+    /// A test account (T-300): it works like any other, and what it orders and
+    /// pays is left out of the pilot report and the revenue report. The money
+    /// is real all the same - the ledgers and the reconciliations count it.
+    /// </summary>
+    public bool IsTestAccount { get; set; }
+
+    /// <returns>False when the account already was what was asked: nothing changed.</returns>
+    public bool MarkAsTest(bool isTest)
+    {
+        if (IsTestAccount == isTest)
+        {
+            return false;
+        }
+
+        IsTestAccount = isTest;
+        return true;
+    }
+
+    /// <summary>
     /// An admin stops the account (plan section 8A.3, "İstifadəçilər"). The
     /// wallet is kept as it is - blocking takes no money - and unblocking
     /// gives everything back.

@@ -57,6 +57,14 @@ public sealed class AdminCustomersController : ControllerBase
     [HasPermission(Permissions.UsersBlock)]
     public async Task<ActionResult<CustomerRow>> Unblock(Guid id, [FromBody] CustomerReasonRequest? request, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new UnblockCustomerCommand(AdminId, id, request?.Reason, Ip), cancellationToken));
+
+    /// <summary>A test account, or not (T-300): its orders leave the pilot and revenue reports. The reason is required and audited.</summary>
+    [HttpPost("{id:guid}/test-account")]
+    [HasPermission(Permissions.UsersMarkTest)]
+    public async Task<ActionResult<CustomerRow>> TestAccount(Guid id, [FromBody] CustomerTestAccountRequest? request, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SetCustomerTestAccountCommand(AdminId, id, request?.IsTest ?? false, request?.Reason, Ip), cancellationToken));
 }
 
 public sealed record CustomerReasonRequest(string? Reason);
+
+public sealed record CustomerTestAccountRequest(bool IsTest, string? Reason);

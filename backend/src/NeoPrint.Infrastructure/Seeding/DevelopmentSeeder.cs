@@ -284,6 +284,17 @@ public sealed class DevelopmentSeeder
             .AnyAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        // The development user and the checks' throwaway users (*@neoprint.test) are
+        // test accounts: what they order at the development kiosks is not the
+        // pilot's (T-300). Also on a database that was seeded before the mark.
+        await _context.Users
+            .UpdateManyAsync(
+                Builders<User>.Filter.Eq(user => user.Email, TestUserEmail)
+                | Builders<User>.Filter.Regex(user => user.Email, new MongoDB.Bson.BsonRegularExpression(@"@neoprint\.test$")),
+                Builders<User>.Update.Set(user => user.IsTestAccount, true),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
         if (userExists)
         {
             return;
@@ -297,6 +308,7 @@ public sealed class DevelopmentSeeder
             ReferralCode = User.NewReferralCode(),
             EmailConfirmed = true,
             Language = "az",
+            IsTestAccount = true,
         };
 
         user.PasswordHash = _userHasher.HashPassword(user, password);

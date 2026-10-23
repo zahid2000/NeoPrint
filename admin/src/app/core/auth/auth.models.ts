@@ -109,6 +109,7 @@ export const Permissions = {
   incidentsView: 'incidents.view',
   usersView: 'users.view',
   usersBlock: 'users.block',
+  usersMarkTest: 'users.test.mark',
   walletsAdjust: 'wallets.adjust',
   promosManage: 'promos.manage',
   referralsView: 'referrals.view',

@@ -47,6 +47,17 @@ public sealed class MongoPilotSourceReader : IPilotSourceReader
         var after = to.AddDays(1);
         var nullableKiosks = kiosks.Select(id => (Guid?)id).ToList();
 
+        // Test accounts and what they did are left out (T-300): their orders,
+        // payments, refunds, prints, cancellations and files. The paper and the
+        // incidents stay - a test print used real paper.
+        var testers = await _context.Users.Find(user => user.IsTestAccount).Project(user => user.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var testerIds = testers.Select(id => (Guid?)id).ToList();
+        var testJobs = testers.Count == 0
+            ? []
+            : (await _context.PrintJobs.Find(job => testerIds.Contains(job.UserId)).Project(job => job.Id).ToListAsync(cancellationToken).ConfigureAwait(false))
+                .ToHashSet();
+        bool Tester(Guid? userId) => userId is { } id && testers.Contains(id);
+
         var events = await _context.AnalyticsEvents
             .Find(e => e.Source == AnalyticsSource.Kiosk && nullableKiosks.Contains(e.KioskId) && e.Timestamp >= before && e.Timestamp < after)
             .ToListAsync(cancellationToken)
@@ -121,7 +132,7 @@ public sealed class MongoPilotSourceReader : IPilotSourceReader
         var files = includeApp
             ? await _context.Files
                 .Find(f => f.CreatedAt >= from && f.CreatedAt < to && (f.Status == FileStatus.Ready || f.Status == FileStatus.Failed))
-                .Project(f => new { f.CreatedAt, f.Extension, f.Status, f.FailureReason })
+                .Project(f => new { f.CreatedAt, f.Extension, f.Status, f.FailureReason, f.UserId })
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false)
             : [];
@@ -132,11 +143,11 @@ public sealed class MongoPilotSourceReader : IPilotSourceReader
                     .Select(e => new PilotEventRow(e.Timestamp, e.KioskId!.Value, e.SessionId, e.Event, e.Props)),
             ],
             [
-                .. jobs.Select(job => new PilotJobRow(
+                .. jobs.Where(job => !Tester(job.UserId)).Select(job => new PilotJobRow(
                     job.Id, job.KioskId, job.JobCode, job.CreatedAt, job.Status, job.PaidAt, job.PaymentSkipped, job.StartedAt)),
             ],
             [
-                .. payments.Select(p => new PilotPaymentRow(
+                .. payments.Where(p => !Tester(p.UserId)).Select(p => new PilotPaymentRow(
                     p.KioskId,
                     p.CreatedAt,
                     p.PaidAt,
@@ -148,23 +159,23 @@ public sealed class MongoPilotSourceReader : IPilotSourceReader
             [
                 .. refunds
                     .Select(r => (Refund: r, Payment: refundPayments.GetValueOrDefault(r.PaymentId)))
-                    .Where(pair => pair.Payment is { Purpose: PaymentPurpose.PrintJob } && Counted(pair.Payment.KioskId, kiosks, includeApp))
+                    .Where(pair => pair.Payment is { Purpose: PaymentPurpose.PrintJob } && Counted(pair.Payment.KioskId, kiosks, includeApp) && !Tester(pair.Payment.UserId))
                     .Select(pair => new PilotRefundRow(pair.Payment!.KioskId, pair.Refund.CompletedAt!.Value, pair.Refund.Amount.Amount, pair.Refund.Reason.ToString())),
             ],
             [
-                .. attempts.Select(a => new PilotAttemptRow(
+                .. attempts.Where(a => !testJobs.Contains(a.JobId)).Select(a => new PilotAttemptRow(
                     a.KioskId, a.FinishedAt ?? a.UpdatedAt, a.Status, a.ErrorCode, a.StartedAt, a.FinishedAt, a.ReportedSheets)),
             ],
             [
                 .. cancelledIds
-                    .Where(t => cancelledKiosks.ContainsKey(t.EntityId))
+                    .Where(t => cancelledKiosks.ContainsKey(t.EntityId) && !testJobs.Contains(t.EntityId))
                     .Select(t => new PilotCancelRow(cancelledKiosks[t.EntityId], t.CreatedAt)),
             ],
             [.. supplies.Select(s => new PilotSupplyRow(s.KioskId, s.At, s.Resource, s.Type, s.Delta))],
             levels,
             [.. incidents.Select(i => new PilotIncidentRow(i.KioskId, i.CreatedAt, i.Severity))],
             [
-                .. files.Select(f => new PilotFileRow(
+                .. files.Where(f => !testers.Contains(f.UserId)).Select(f => new PilotFileRow(
                     f.CreatedAt,
                     f.Extension,
                     f.Status == FileStatus.Failed,

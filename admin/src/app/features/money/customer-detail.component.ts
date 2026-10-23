@@ -81,7 +81,22 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
               [status]="d.profile.status"
               [text]="'money.customerStatus.' + d.profile.status | translate"
             />
+            @if (d.profile.isTestAccount) {
+              <app-status-chip
+                status="Test"
+                toneOverride="info"
+                iconOverride="science"
+                [text]="'customerDetail.testAccount' | translate"
+                data-test-account
+              />
+            }
           </div>
+          @if (canMarkTest()) {
+            <button mat-stroked-button type="button" (click)="setTestAccount(!d.profile.isTestAccount)">
+              <mat-icon>science</mat-icon>
+              {{ (d.profile.isTestAccount ? 'customerDetail.unmarkTest' : 'customerDetail.markTest') | translate }}
+            </button>
+          }
           @if (canBlock()) {
             @if (d.profile.status === 'Blocked') {
               <button mat-stroked-button type="button" (click)="setBlocked(false)">
@@ -319,6 +334,8 @@ export class CustomerDetailComponent implements OnInit {
   readonly problem = signal<Problem | null>(null);
 
   readonly canBlock = computed(() => this.auth.can(Permissions.usersBlock));
+
+  readonly canMarkTest = computed(() => this.auth.can(Permissions.usersMarkTest));
   readonly canAdjust = computed(() => this.auth.can(Permissions.walletsAdjust));
 
   readonly outcome = referralOutcome;
@@ -337,6 +354,32 @@ export class CustomerDetailComponent implements OnInit {
       ]);
       this.detail.set(detail);
       this.entries.set(ledger.items);
+    } catch (error) {
+      this.problem.set(toProblem(error));
+    }
+  }
+
+  /** Test account or not (T-300): it changes what the reports count, so a reason is asked and audited. */
+  async setTestAccount(isTest: boolean): Promise<void> {
+    const t = (key: string): string => this.translate.instant(key) as string;
+    const result = await confirmAction(this.dialog, {
+      title: t(isTest ? 'customerDetail.markTestTitle' : 'customerDetail.unmarkTestTitle'),
+      explanation: t(isTest ? 'customerDetail.markTestExplanation' : 'customerDetail.unmarkTestExplanation'),
+      confirmLabel: t(isTest ? 'customerDetail.markTest' : 'customerDetail.unmarkTest'),
+      cancelLabel: t('common.cancel'),
+      destructive: false,
+      requireReason: true,
+      reasonLabel: t('common.reason'),
+    });
+
+    if (!result?.reason) {
+      return;
+    }
+
+    try {
+      await firstValueFrom(this.api.setCustomerTestAccount(this.id(), isTest, result.reason));
+      this.notify.success(isTest ? 'customerDetail.markedTest' : 'customerDetail.unmarkedTest');
+      await this.load();
     } catch (error) {
       this.problem.set(toProblem(error));
     }

@@ -38,6 +38,9 @@ public interface IUserRepository
     /// <summary>How many accounts this user invited (plan section 2.6).</summary>
     Task<long> CountReferredAsync(Guid userId, CancellationToken cancellationToken = default);
 
+    /// <summary>The test accounts (T-300): what they order is left out of the reports.</summary>
+    Task<IReadOnlySet<Guid>> ListTestAccountIdsAsync(CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Registers a device for this user's push, replacing an older entry for
     /// the same token. The token is taken off every other account first: a

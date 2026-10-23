@@ -86,6 +86,7 @@ public sealed class AdminFinanceHandlers :
     private readonly IIncidentRepository _incidents;
     private readonly IPermissionResolver _permissions;
     private readonly IKioskRepository _kiosks;
+    private readonly IUserRepository _users;
     private readonly IClock _clock;
 
     public AdminFinanceHandlers(
@@ -96,6 +97,7 @@ public sealed class AdminFinanceHandlers :
         IIncidentRepository incidents,
         IPermissionResolver permissions,
         IKioskRepository kiosks,
+        IUserRepository users,
         IClock clock)
     {
         _vouchers = vouchers;
@@ -105,6 +107,7 @@ public sealed class AdminFinanceHandlers :
         _incidents = incidents;
         _permissions = permissions;
         _kiosks = kiosks;
+        _users = users;
         _clock = clock;
     }
 
@@ -184,7 +187,13 @@ public sealed class AdminFinanceHandlers :
 
         var fromUtc = Utc(from);
         var toUtc = Utc(to.AddDays(1));
-        var paid = scope is { Count: 0 } ? [] : await _payments.ListPaidAsync(fromUtc, toUtc, scope, cancellationToken).ConfigureAwait(false);
+        // What test accounts paid is left out of the report (T-300); the money is real, the ledgers count it.
+        var testers = await _users.ListTestAccountIdsAsync(cancellationToken).ConfigureAwait(false);
+        bool Tester(Payment payment) => payment.UserId is { } owner && testers.Contains(owner);
+
+        List<Payment> paid = scope is { Count: 0 }
+            ? []
+            : [.. (await _payments.ListPaidAsync(fromUtc, toUtc, scope, cancellationToken).ConfigureAwait(false)).Where(p => !Tester(p))];
         var sales = paid.Where(p => p.Purpose == PaymentPurpose.PrintJob).ToList();
 
         var refunds = new List<(DateOnly Day, decimal Amount)>();
@@ -197,6 +206,7 @@ public sealed class AdminFinanceHandlers :
 
             // Only refunds of print payments the admin may see.
             if (payment is { Purpose: PaymentPurpose.PrintJob }
+                && !Tester(payment)
                 && (scope is null || (payment.KioskId is { } k && scope.Contains(k))))
             {
                 refunds.Add((Day(refund.CompletedAt!.Value), refund.Amount.Amount));

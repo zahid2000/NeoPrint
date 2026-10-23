@@ -122,6 +122,9 @@ public sealed class DatabaseSeeder
 
                     // Given by hand, also on a new install (T-284).
                     Permissions.SystemJobsView,
+
+                    // What leaves the reports is a SuperAdmin's to choose, or given by hand (T-300).
+                    Permissions.UsersMarkTest,
                 ], StringComparer.Ordinal),
             ],
         };

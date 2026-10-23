@@ -79,6 +79,14 @@ public sealed class UserRepository : IUserRepository
     public Task<long> CountReferredAsync(Guid userId, CancellationToken cancellationToken = default)
         => _context.Users.CountDocumentsAsync(user => user.ReferredBy == userId, cancellationToken: cancellationToken);
 
+    public async Task<IReadOnlySet<Guid>> ListTestAccountIdsAsync(CancellationToken cancellationToken = default)
+        => (await _context.Users
+                .Find(user => user.IsTestAccount)
+                .Project(user => user.Id)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false))
+            .ToHashSet();
+
     public Task SetLanguageAsync(Guid userId, string language, CancellationToken cancellationToken = default)
         => _context.Users.UpdateOneAsync(
             Builders<User>.Filter.Eq(user => user.Id, userId),

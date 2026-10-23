@@ -236,6 +236,11 @@ export class MoneyApiService {
     return this.http.get<CustomerDetail>(`/api/admin/users/${id}`);
   }
 
+  /** Marks a test account, or takes the mark away (T-300). */
+  setCustomerTestAccount(id: string, isTest: boolean, reason: string): Observable<CustomerRow> {
+    return this.http.post<CustomerRow>(`/api/admin/users/${id}/test-account`, { isTest, reason }, idempotent());
+  }
+
   setCustomerBlocked(id: string, blocked: boolean, reason: string): Observable<CustomerRow> {
     return this.http.post<CustomerRow>(
       `/api/admin/users/${id}/${blocked ? 'block' : 'unblock'}`,

@@ -72,6 +72,9 @@ public static class Permissions
     // Users
     public const string UsersView = "users.view";
     public const string UsersBlock = "users.block";
+
+    /// <summary>Marks an account as a test account, which takes it out of the reports (T-300).</summary>
+    public const string UsersMarkTest = "users.test.mark";
     public const string WalletsAdjust = "wallets.adjust";
 
     // Configuration
@@ -122,7 +125,7 @@ public static class Permissions
             PaymentsView, PaymentsRefund, RefundsView, RefundsRetry, ReceiptsView, VouchersView,
             FiscalView, FiscalManage,
         ]),
-        new("users", "İstifadəçilər", [UsersView, UsersBlock, WalletsAdjust]),
+        new("users", "İstifadəçilər", [UsersView, UsersBlock, UsersMarkTest, WalletsAdjust]),
         new("config", "Konfiqurasiya",
         [
             PricingManage, SettingsManage, PromosManage, ReferralsView, FormatsManage,
