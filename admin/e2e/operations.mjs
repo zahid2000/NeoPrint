@@ -32,11 +32,16 @@ const check = (ok, text) => {
   if (!ok) failures.push(text);
 };
 
+// What the check prepares and reads by itself goes as the development Admin, not
+// as the SuperAdmin whose panel it drives: the limit is per account (120 a
+// minute, T-306), and the two panels of one run already spend most of the
+// SuperAdmin's - with its own calls on top, a run started right after another
+// was refused (T-299).
 const token = await (async () => {
   const response = await fetch(`${api}/api/auth/admin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'dev-superadmin@neoprint.local', password }),
+    body: JSON.stringify({ email: 'dev-admin@neoprint.local', password }),
   });
   return (await response.json()).accessToken;
 })();
@@ -68,6 +73,16 @@ const page = await context.newPage();
 const errors = [];
 page.on('console', (m) => m.type() === 'error' && !/Failed to load resource/.test(m.text()) && errors.push(m.text().slice(0, 200)));
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
+// Every answer the panel was refused, with its problem code: what a banner on the page stands for (T-299).
+const refused = [];
+const sent = [];
+page.on('request', (r) => r.url().includes('/api/') && sent.push([Date.now(), new URL(r.url()).pathname]));
+page.on('response', async (r) => {
+  if (r.url().includes('/api/') && r.status() >= 400) {
+    const body = await r.text().catch(() => '');
+    refused.push(`${r.status()} ${r.request().method()} ${new URL(r.url()).pathname} ${body.slice(0, 300)}`);
+  }
+});
 
 const shot = async (name, target = page) => {
   if (!shots) return;
@@ -245,10 +260,24 @@ try {
     await clean(phone, `${name}, 390 px`);
     await shot(`16-${route}-phone`, phone);
   }
+} catch (error) {
+  refused.forEach((line) => console.error(`refused: ${line}`));
+  // What the page showed when a step gave up, and which step it was (T-299).
+  failures.push(String(error.message ?? error).split('\n')[0]);
+  console.error(error.message ?? error);
+  const where = shots ?? resolve('e2e-failure');
+  mkdirSync(where, { recursive: true });
+  await page.screenshot({ path: join(where, 'failure.png'), fullPage: true }).catch(() => undefined);
+  console.error(`The page at the failure: ${join(where, 'failure.png')}`);
 } finally {
   await browser.close();
   await takeAway();
 }
 
+{
+  const peak = Math.max(0, ...sent.map(([at]) => sent.filter(([other]) => other >= at && other < at + 60_000).length));
+  const top = Object.entries(sent.reduce((all, [, path]) => ({ ...all, [path]: (all[path] ?? 0) + 1 }), {})).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  console.log(`panel requests: ${sent.length}, most in one minute: ${peak}; ${top.map(([p, n]) => `${n}× ${p}`).join(', ')}`);
+}
 console.log(failures.length === 0 ? '\nEverything as it should be.' : `\n${failures.length} problem(s).`);
 process.exit(failures.length === 0 ? 0 : 1);

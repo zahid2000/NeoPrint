@@ -279,12 +279,18 @@ builder.Services.AddProblemDetails(options =>
 
 builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
 
+// The caller's own address behind the proxy (T-306): only the configured proxy
+// networks are believed.
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(
+    options => RequestLimits.ConfigureForwardedHeaders(options, builder.Configuration));
+
 // Rate limits from plan section 6, tunable through configuration.
 var rateLimits = RateLimitSettings.FromConfiguration(builder.Configuration);
 
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = RequestLimits.OnRejectedAsync;
 
     options.AddPolicy("auth", context => rateLimits.Disabled
         ? RateLimitPartition.GetNoLimiter("all")
@@ -336,7 +342,7 @@ builder.Services.AddRateLimiter(options =>
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => rateLimits.Disabled
         ? RateLimitPartition.GetNoLimiter("all")
         : RateLimitPartition.GetFixedWindowLimiter(
-            context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            RequestLimits.CallerKey(context),
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = rateLimits.GlobalPerMinute,
@@ -572,6 +578,9 @@ await using (var scope = app.Services.CreateAsyncScope())
 // Pipeline
 // ---------------------------------------------------------------------------
 
+// Before anything reads the caller's address: the rate limits, the audit log (T-306).
+app.UseForwardedHeaders();
+
 // First, so every line a request produces carries the correlation id -
 // including the ones the exception handler writes (docs/OBSERVABILITY.md).
 app.UseNeoPrintCorrelationId();
@@ -600,9 +609,12 @@ else
     app.UseHttpsRedirection();
 }
 
+app.UseAuthentication();
+
+// After authentication, so a signed-in caller is counted as itself and not by
+// the address it shares with everyone behind the proxy (T-306).
 app.UseRateLimiter();
 
-app.UseAuthentication();
 app.UseAuthorization();
 
 // Hangfire's panel, behind its SuperAdmin ticket (T-167, T-215).

@@ -91,6 +91,11 @@ export function describeError(error: unknown): string {
     return 'error.network';
   }
 
+  // Too many requests is not the server breaking: it says to wait (T-306).
+  if (error.status === 429 && !(error.error as { detail?: string } | null)?.detail) {
+    return 'error.tooManyRequests';
+  }
+
   const body = error.error as
     | { detail?: string; title?: string; errors?: Record<string, string[]> }
     | null

@@ -446,6 +446,8 @@
   "problem.processingUnavailable": "Служба обработки документов не отвечает",
   "problem.providerUnavailable": "Платёжный сервис не отвечает",
   "problem.rejected": "Запрос отклонён",
+  "problem.tooManyRequests": "Слишком много запросов за короткое время",
+  "problem.tooManyRequestsDetail": "Повторите через {seconds} с. Ничего не потеряно — данные на месте после повторной загрузки страницы.",
   "problem.unexpected": "Произошла непредвиденная ошибка",
   "problem.unreadable": "Не удалось прочитать сохранённый объект",
   "problem.validation": "Запрос не прошёл проверку",
