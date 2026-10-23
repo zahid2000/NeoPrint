@@ -21,7 +21,6 @@ using Microsoft.Extensions.Logging;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Infrastructure.Seeding;
 
-using Testcontainers.MongoDb;
 using Testcontainers.RabbitMq;
 using Testcontainers.Redis;
 
@@ -47,7 +46,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
 {
     private const string RootToken = "neoprint-integration-root";
 
-    private MongoDbContainer? _mongo;
+    private IContainer? _mongo;
     private IContainer? _storage;
     private RedisContainer? _redis;
     private RabbitMqContainer? _rabbit;
@@ -202,7 +201,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
 
         await WriteAsync(bao, "backend/core", new Dictionary<string, string>
         {
-            ["NEOPRINT_MONGO_URI"] = _mongo!.GetConnectionString(),
+            ["NEOPRINT_MONGO_URI"] = MongoConnectionString,
             ["NEOPRINT_REDIS"] = _redis!.GetConnectionString(),
             ["NEOPRINT_RABBITMQ_URI"] = _rabbit!.GetConnectionString(),
             ["NEOPRINT_JWT_SIGNING_KEY"] = key,
@@ -297,33 +296,92 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
     /// The Mongo replica set, for tests that need a database of their own next
     /// to the application's rather than sharing its collections.
     /// </summary>
-    public string MongoConnectionString => _mongo!.GetConnectionString();
+    public string MongoConnectionString
+        => $"mongodb://{_mongo!.Hostname}:{_mongo.GetMappedPublicPort(MongoPort)}/?directConnection=true";
 
-    private static MongoDbContainer Mongo() => new MongoDbBuilder("mongo:7.0.43").WithReplicaSet("rs0").Build();
+    private const int MongoPort = 27017;
 
     /// <summary>
-    /// Starts MongoDB; once in a while (about one CI run in a hundred, and on a
-    /// developer machine) mongod has exited by the time the replica set is
-    /// initiated - "container is not running" - and every test of the run fails
-    /// (T-296). What mongod said is written out, so the cause can be read, and
-    /// a new container is tried once. A second failure fails the run.
+    /// A single-node replica set, started as mongod itself - without the image's
+    /// init phase (T-299).
     /// </summary>
+    /// <remarks>
+    /// Testcontainers' MongoDB module puts a keyfile script into
+    /// <c>/docker-entrypoint-initdb.d</c>, so the image's entrypoint first runs a
+    /// temporary mongod on 27017, stops it and starts the real one. With a
+    /// replica set the temporary one can still hold the port, and the real one
+    /// exits with 48, "Address already in use" - about one start in forty under
+    /// load (12 of 520 measured), and the whole run failed as "container is not
+    /// running". Without an init phase there is no second mongod: 0 of 150.
+    /// No user and no keyfile: the container lives as long as the run, and only
+    /// the run reaches its port.
+    /// </remarks>
+    private static IContainer Mongo() => new ContainerBuilder("mongo:7.0.43")
+        .WithCommand("--replSet", "rs0", "--bind_ip_all")
+        .WithPortBinding(MongoPort, assignRandomHostPort: true)
+        .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("Waiting for connections"))
+        .Build();
+
+    /// <summary>Starts MongoDB and makes it the primary of its replica set; what went wrong is written out (T-299).</summary>
     private async Task StartMongoAsync()
     {
         try
         {
             await _mongo!.StartAsync();
+
+            var initiated = await _mongo.ExecAsync(
+                ["mongosh", "--quiet", "--eval", $"rs.initiate({{_id:'rs0',members:[{{_id:0,host:'localhost:{MongoPort}'}}]}}).ok"]);
+            if (initiated.ExitCode != 0)
+            {
+                throw new InvalidOperationException($"rs.initiate failed: {initiated.Stdout}{initiated.Stderr}");
+            }
+
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            while ((await _mongo.ExecAsync(["mongosh", "--quiet", "--eval", "db.hello().isWritablePrimary"])).Stdout.Trim() != "true")
+            {
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new TimeoutException("MongoDB did not become the primary of its replica set in 30 seconds.");
+                }
+
+                await Task.Delay(250);
+            }
         }
-        catch (Exception first)
+        catch (Exception exception)
         {
+            // Everything that can say why: how the container ended - its exit
+            // code, whether it was killed for memory, Docker's own error - the
+            // disk Docker has, and the last of what mongod wrote.
             var (stdout, stderr) = await _mongo!.GetLogsAsync();
-            Console.Error.WriteLine($"MongoDB did not start ({first.GetType().Name}: {first.Message}); its log follows, and a new container is tried once.");
+            Console.Error.WriteLine($"MongoDB did not start ({exception.GetType().Name}: {exception.Message}).");
+            Console.Error.WriteLine($"Container state: {Docker("inspect", "--format", "{{json .State}}", _mongo.Id)}");
+            Console.Error.WriteLine($"Docker disk: {Docker("system", "df")}");
             Console.Error.WriteLine(stdout.Length > 8000 ? stdout[^8000..] : stdout);
             Console.Error.WriteLine(stderr.Length > 8000 ? stderr[^8000..] : stderr);
+            throw;
+        }
+    }
 
-            await _mongo.DisposeAsync();
-            _mongo = Mongo();
-            await _mongo.StartAsync();
+    /// <summary>What the Docker CLI says, or why it could not be asked.</summary>
+    private static string Docker(params string[] arguments)
+    {
+        try
+        {
+            var start = new System.Diagnostics.ProcessStartInfo("docker") { RedirectStandardOutput = true, RedirectStandardError = true };
+            foreach (var argument in arguments)
+            {
+                start.ArgumentList.Add(argument);
+            }
+
+            using var process = System.Diagnostics.Process.Start(start)!;
+            var text = process.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+            process.WaitForExit(10_000);
+
+            return text.Trim();
+        }
+        catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return $"(docker could not be asked: {exception.Message})";
         }
     }
 

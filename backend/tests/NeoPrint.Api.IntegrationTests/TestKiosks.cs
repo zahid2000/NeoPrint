@@ -6,6 +6,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace NeoPrint.Api.IntegrationTests;
 
 /// <summary>
@@ -178,6 +180,29 @@ internal sealed class RawHubConnection : IAsyncDisposable
             CancellationToken.None);
 
         (await connection.NextAsync(TimeSpan.FromSeconds(10))).Should().Be("{}", "the server accepts the protocol");
+
+        // The handshake is answered before the hub has put the connection in its
+        // groups; an event sent in between is not heard. The admin hub says the
+        // account is connected only once it has (T-301: two tests heard nothing
+        // of what was sent right after connecting, under load).
+        if (hub == "admin")
+        {
+            var payload = token.Split('.')[1].Replace('-', '+').Replace('_', '/');
+            var subject = JsonDocument.Parse(Convert.FromBase64String(payload.PadRight(payload.Length + ((4 - (payload.Length % 4)) % 4), '=')))
+                .RootElement.GetProperty("sub").GetString();
+            var connections = fixture.Services.GetRequiredService<NeoPrint.Api.Hubs.AdminConnections>();
+            var deadline = DateTime.UtcNow.AddSeconds(15);
+
+            while (!connections.IsOpen(Guid.Parse(subject!)))
+            {
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new TimeoutException("The panel connection did not join its groups in 15 seconds.");
+                }
+
+                await Task.Delay(50);
+            }
+        }
 
         return connection;
     }
