@@ -511,9 +511,12 @@ public sealed class PermissionMatrixTests
 
             foreach (var (caller, hub) in panels)
             {
+                // The end marker goes to another group; over the Redis backplane it
+                // may overtake what was sent before it, so a little longer is listened.
                 var heard = (await hub.ReadUntilAsync(
                         (target, argument) => target == "PermissionsChanged" && argument.GetProperty("roleId").GetGuid() == Guid.Empty,
                         TimeSpan.FromSeconds(15)))
+                    .Concat(await hub.ReadForAsync(TimeSpan.FromSeconds(3)))
                     .Select(item => item.Target)
                     .Where(audienceOf.ContainsKey)
                     .ToHashSet();

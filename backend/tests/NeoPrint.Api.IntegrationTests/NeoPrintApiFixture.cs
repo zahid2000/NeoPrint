@@ -72,7 +72,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
 
         // A single-node replica set: the outbox and the wallet updates need
         // transactions, which MongoDB only offers on a replica set.
-        _mongo = new MongoDbBuilder("mongo:7.0.43").WithReplicaSet("rs0").Build();
+        _mongo = Mongo();
         _redis = new RedisBuilder("redis:7.2.16-alpine").Build();
         // The management API too: the dead-letter check reads the queues through it (T-215).
         _rabbit = new RabbitMqBuilder("rabbitmq:3.13-management").WithPortBinding(15672, assignRandomHostPort: true).Build();
@@ -97,7 +97,7 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
             .Build();
 
         await Task.WhenAll(
-            _mongo.StartAsync(),
+            StartMongoAsync(),
             _redis.StartAsync(),
             _rabbit.StartAsync(),
             _storage.StartAsync(),
@@ -298,6 +298,34 @@ public sealed class NeoPrintApiFixture : WebApplicationFactory<Program>, IAsyncL
     /// to the application's rather than sharing its collections.
     /// </summary>
     public string MongoConnectionString => _mongo!.GetConnectionString();
+
+    private static MongoDbContainer Mongo() => new MongoDbBuilder("mongo:7.0.43").WithReplicaSet("rs0").Build();
+
+    /// <summary>
+    /// Starts MongoDB; once in a while (about one CI run in a hundred, and on a
+    /// developer machine) mongod has exited by the time the replica set is
+    /// initiated - "container is not running" - and every test of the run fails
+    /// (T-296). What mongod said is written out, so the cause can be read, and
+    /// a new container is tried once. A second failure fails the run.
+    /// </summary>
+    private async Task StartMongoAsync()
+    {
+        try
+        {
+            await _mongo!.StartAsync();
+        }
+        catch (Exception first)
+        {
+            var (stdout, stderr) = await _mongo!.GetLogsAsync();
+            Console.Error.WriteLine($"MongoDB did not start ({first.GetType().Name}: {first.Message}); its log follows, and a new container is tried once.");
+            Console.Error.WriteLine(stdout.Length > 8000 ? stdout[^8000..] : stdout);
+            Console.Error.WriteLine(stderr.Length > 8000 ? stderr[^8000..] : stderr);
+
+            await _mongo.DisposeAsync();
+            _mongo = Mongo();
+            await _mongo.StartAsync();
+        }
+    }
 
     /// <summary>The image docker-compose.yml pins; the two must not drift apart.</summary>
     public const string RustFsImage =

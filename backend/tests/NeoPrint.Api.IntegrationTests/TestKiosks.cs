@@ -267,6 +267,38 @@ internal sealed class RawHubConnection : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Every invocation that arrives within <paramref name="window"/>. The
+    /// Redis backplane gives no order between groups, so what was sent to one
+    /// group may still come after what was sent later to another. The
+    /// connection is not read again afterwards: a cancelled receive ends it.
+    /// </summary>
+    public async Task<List<(string Target, JsonElement Argument)>> ReadForAsync(TimeSpan window)
+    {
+        var deadline = DateTime.UtcNow + window;
+        var heard = new List<(string Target, JsonElement Argument)>();
+
+        try
+        {
+            while (DateTime.UtcNow < deadline)
+            {
+                using var document = JsonDocument.Parse(await NextAsync(deadline - DateTime.UtcNow));
+
+                if (document.RootElement.TryGetProperty("target", out var name) && name.GetString() is { } target)
+                {
+                    var arguments = document.RootElement.GetProperty("arguments");
+                    heard.Add((target, arguments.GetArrayLength() > 0 ? arguments[0].Clone() : default));
+                }
+            }
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or WebSocketException)
+        {
+            // The window is over.
+        }
+
+        return heard;
+    }
+
     private async Task<string> NextAsync(TimeSpan timeout)
     {
         var buffer = new byte[64 * 1024];
