@@ -1,33 +1,62 @@
 <mat-sidenav-container class="shell">
   <mat-sidenav
     class="shell__sidenav"
-    [mode]="narrow() ? 'over' : 'side'"
-    [opened]="sidenavOpen()"
-    (openedChange)="sidenavOpen.set($event)"
+    [class.shell__sidenav--rail]="iconsOnly()"
+    [mode]="sidenavMode()"
+    [opened]="layout() === 'rail' || sidenavOpen()"
+    (openedChange)="layout() === 'rail' ? railExpanded.set(false) : sidenavOpen.set($event)"
   >
     <div class="shell__brand">
       <mat-icon>print</mat-icon>
-      <span>NeoPrint</span>
+      @if (!iconsOnly()) {
+        <span>NeoPrint</span>
+      }
     </div>
 
     <mat-divider />
 
-    <mat-nav-list>
-      @for (item of navItems(); track item.path) {
-        <a
-          mat-list-item
-          class="shell__nav-item"
-          [routerLink]="item.path"
-          routerLinkActive
-          #link="routerLinkActive"
-          [routerLinkActiveOptions]="{ exact: item.path === '/' }"
-          [activated]="link.isActive"
-        >
-          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-          <span matListItemTitle class="shell__nav-label">{{ item.labelKey | translate }}</span>
-        </a>
+    <nav class="shell__nav" [attr.aria-label]="'nav.menu' | translate">
+      @for (section of sections(); track section.group ?? 'top') {
+        @if (section.group) {
+          @if (iconsOnly()) {
+            <mat-divider class="shell__group-divider" />
+          } @else {
+            <button
+              type="button"
+              class="shell__group"
+              [attr.aria-expanded]="isOpen(section)"
+              [attr.data-nav-group]="section.group"
+              (click)="toggleGroup(section)"
+            >
+              <mat-icon class="shell__group-chevron" [class.shell__group-chevron--open]="isOpen(section)">chevron_right</mat-icon>
+              <span>{{ groupLabels[section.group] | translate }}</span>
+            </button>
+          }
+        }
+
+        @if (iconsOnly() || isOpen(section)) {
+          <mat-nav-list class="shell__group-items" [attr.data-nav-items]="section.group ?? 'top'">
+            @for (item of section.items; track item.path) {
+              <a
+                mat-list-item
+                class="shell__nav-item"
+                [routerLink]="item.path"
+                [activated]="isCurrent(item)"
+                [attr.aria-current]="isCurrent(item) ? 'page' : null"
+                [matTooltip]="iconsOnly() ? (item.labelKey | translate) : ''"
+                matTooltipPosition="right"
+                [attr.aria-label]="iconsOnly() ? (item.labelKey | translate) : null"
+              >
+                <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+                @if (!iconsOnly()) {
+                  <span matListItemTitle class="shell__nav-label">{{ item.labelKey | translate }}</span>
+                }
+              </a>
+            }
+          </mat-nav-list>
+        }
       }
-    </mat-nav-list>
+    </nav>
   </mat-sidenav>
 
   <mat-sidenav-content>

@@ -3,6 +3,69 @@
 
   &__sidenav {
     width: var(--sidebar-width);
+
+    // A tablet: a strip of icons beside the page; the names are in tooltips (T-304).
+    &--rail {
+      width: var(--sidebar-rail-width);
+    }
+  }
+
+  &__nav {
+    padding-bottom: var(--space-4);
+  }
+
+  // A group's heading: a button that opens and shuts it (docs/DESIGN_SYSTEM.md 5.3).
+  &__group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: var(--touch-target);
+    margin-top: var(--space-2);
+    padding: 0 var(--space-4);
+    border: 0;
+    background: none;
+    color: var(--neutral-600);
+    font: inherit;
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-semibold);
+    text-align: left;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--brand-500);
+      outline-offset: -2px;
+    }
+  }
+
+  &__group-chevron {
+    flex: none;
+    font-size: var(--icon-size);
+    width: var(--icon-size);
+    height: var(--icon-size);
+    transition: transform var(--motion-fast);
+
+    &--open {
+      transform: rotate(90deg);
+    }
+  }
+
+  & &__group-items {
+    padding-top: 0;
+  }
+
+  &__group-divider {
+    margin-block: var(--space-2);
+  }
+
+  // Icons only: centred, no room for a label.
+  &__sidenav--rail &__nav-item {
+    justify-content: center;
+  }
+
+  &__sidenav--rail &__brand {
+    justify-content: center;
+    padding-inline: 0;
   }
 
   &__brand {
@@ -76,7 +139,7 @@
 
 // A phone or an operator's tablet: the sidebar would leave no room for the
 // content, so it collapses to the menu button (plan section 8A.1).
-@media (max-width: 900px) {
+@media (max-width: 600px) {
   .shell__content {
     padding: var(--space-4);
   }

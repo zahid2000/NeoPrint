@@ -98,6 +98,8 @@
   --status-chip-height: 24px;
   --icon-size: 20px;
   --sidebar-width: 260px;
+  /* A tablet's menu: icons only (T-304). */
+  --sidebar-rail-width: 72px;
 
   /* A small chart in a card: kiosk telemetry, a printer's counters. */
   --chart-height: 200px;
