@@ -241,6 +241,8 @@ public sealed class PermissionMatrixTests
             {
                 var status = await SendAsync(caller.Client, call, callers);
                 var allowed = caller.Permissions.Contains(call.Permission)
+                              // An account of some kiosks has nothing of the whole service (T-311).
+                              && !(caller.Scoped && Permissions.GlobalOnly.Contains(call.Permission))
                               // The Hangfire panel is a SuperAdmin's, whatever a role says (T-167).
                               && (call.Template != "api/admin/hangfire-session" || caller.Name == "SuperAdmin");
 
