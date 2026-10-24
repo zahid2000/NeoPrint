@@ -69,6 +69,12 @@ public sealed class ReleaseRollout : Entity
 
     public Guid? CreatedBy { get; set; }
 
+    /// <summary>
+    /// A security fix (T-321): the kiosks it reaches do not wait for the update
+    /// window - only for a moment with no customer.
+    /// </summary>
+    public bool Urgent { get; set; }
+
     public DateTime? EndedAt { get; private set; }
 
     /// <summary>Whether the rollout still offers its release.</summary>

@@ -118,6 +118,14 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
                 Extensions = { ["feature"] = disabled.Feature },
             },
 
+            // Too much to take: the caller sends less (kiosk logs, T-321).
+            PayloadTooLargeException tooLarge => new ProblemDetails
+            {
+                Title = Title("problem.tooLarge"),
+                Detail = Messages.Write(tooLarge.Text),
+                Status = StatusCodes.Status413PayloadTooLarge,
+            },
+
             // Seen, not to be changed: it also concerns kiosks outside the scope (T-295).
             OutsideScopeException outside => new ProblemDetails
             {
@@ -212,6 +220,7 @@ public sealed class ProblemDetailsExceptionHandler : IExceptionHandler
             DomainException domain => domain.Text.Key,
             AuthenticationException authentication => authentication.Text.Key,
             OutsideScopeException outside => outside.Text.Key,
+            PayloadTooLargeException tooLarge => tooLarge.Text.Key,
             PaymentProviderUnavailableException => "payments.providerUnavailable",
             PaymentOutcomeUnknownException => "payments.outcomeUnknown",
             FileProcessingUnavailableException => FileProcessingUnavailableException.MessageKey,

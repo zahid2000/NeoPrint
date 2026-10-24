@@ -215,7 +215,8 @@ public static class Messages
 
         var dot = value.IndexOf('.', StringComparison.Ordinal);
 
-        if (dot <= 0 || dot == value.Length - 1)
+        // One point only: "3.27.9" is a version, not a number (T-321).
+        if (dot <= 0 || dot == value.Length - 1 || value.IndexOf('.', dot + 1) >= 0)
         {
             return value;
         }

@@ -42,7 +42,23 @@ public sealed record KioskConfigResponse(
     IReadOnlyList<string>? AllowedFormats = null,
     bool PaperBlockWhenInsufficient = true,
     int IdleResetSeconds = 90,
-    int TelemetrySeconds = 30);
+    int TelemetrySeconds = 30,
+    KioskUpdateSettingsDto? Update = null);
+
+/// <summary>
+/// When and how the kiosk updates itself (plan section 7.12, T-321;
+/// docs/KIOSK_UPDATES.md).
+/// </summary>
+/// <param name="Window">The hours updates may be applied in, the kiosk's local time ("02:00-05:00").</param>
+/// <param name="MaxIdleWaitMinutes">How long a moment with no customer is waited for before new customers are turned away.</param>
+/// <param name="MaxLogUploadMb">The largest compressed log upload the backend takes.</param>
+public sealed record KioskUpdateSettingsDto(
+    string Window,
+    int CheckIntervalMinutes,
+    int HealthTimeoutMinutes,
+    int KeepVersions,
+    int MaxIdleWaitMinutes,
+    int MaxLogUploadMb);
 
 /// <summary>
 /// The rates of the kiosk's pricing profile, so the options screen shows a

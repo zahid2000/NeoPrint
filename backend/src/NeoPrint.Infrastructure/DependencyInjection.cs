@@ -135,6 +135,7 @@ public static class DependencyInjection
         services.AddScoped<IKioskCommandRepository, KioskCommandRepository>();
         services.AddScoped<Application.Releases.IReleaseRepository, ReleaseRepository>();
         services.AddScoped<Application.Releases.IReleaseRolloutRepository, ReleaseRolloutRepository>();
+        services.AddScoped<Application.Kiosks.IKioskLogRepository, KioskLogRepository>();
         services.AddSingleton<Application.Releases.IReleaseKeys, Releases.ConfiguredReleaseKeys>();
         services.AddScoped<IPrintJobRepository, PrintJobRepository>();
         services.AddScoped<IPrintAttemptRepository, PrintAttemptRepository>();

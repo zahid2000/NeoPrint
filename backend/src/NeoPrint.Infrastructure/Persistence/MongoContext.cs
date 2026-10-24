@@ -121,6 +121,9 @@ public sealed class MongoContext
     public MongoSet<Domain.Storage.StorageSyncFailure> StorageSyncFailures => Set<Domain.Storage.StorageSyncFailure>("storage_sync_failures");
     public MongoSet<KioskCommand> KioskCommands => Set<KioskCommand>("kiosk_commands");
 
+    /// <summary>Logs kiosks sent on an UploadLogs command (T-321).</summary>
+    public MongoSet<KioskLog> KioskLogs => Set<KioskLog>("kiosk_logs");
+
     public MongoSet<Domain.Releases.Release> Releases => Set<Domain.Releases.Release>("releases");
 
     public MongoSet<Domain.Releases.ReleaseRollout> ReleaseRollouts => Set<Domain.Releases.ReleaseRollout>("release_rollouts");
@@ -463,6 +466,12 @@ public sealed class MongoContext
                 Named("ix_release_rollouts_platform_status")),
             (Builders<Domain.Releases.ReleaseRollout>.IndexKeys.Ascending(rollout => rollout.ReleaseId),
                 Named("ix_release_rollouts_release")));
+
+        await CreateAsync(KioskLogs,
+            // A kiosk's logs, newest first; and what is due for deletion.
+            (Builders<KioskLog>.IndexKeys.Ascending(log => log.KioskId).Descending(log => log.CreatedAt),
+                Named("ix_kiosk_logs_kiosk_created")),
+            (Builders<KioskLog>.IndexKeys.Ascending(log => log.ExpiresAt), Named("ix_kiosk_logs_expires")));
 
         await CreateAsync(KioskCommands,
             (Builders<KioskCommand>.IndexKeys

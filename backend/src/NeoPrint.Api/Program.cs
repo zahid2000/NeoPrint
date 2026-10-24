@@ -524,6 +524,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         jobs => jobs.PaymentConsistencyAsync(CancellationToken.None),
         NeoPrint.Infrastructure.Operations.OperationsJobs.PaymentConsistencyCron);
 
+    // Kiosk logs past their keeping time (T-321).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Kiosks.KioskLogJobs>(
+        NeoPrint.Infrastructure.Kiosks.KioskLogJobs.PurgeJobId,
+        jobs => jobs.PurgeAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Kiosks.KioskLogJobs.Daily);
+
     // The pilot report's days (plan sections 2.17, 6).
     recurring.AddOrUpdate<NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob>(
         NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob.JobId,

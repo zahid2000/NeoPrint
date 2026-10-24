@@ -284,6 +284,107 @@ public sealed class ReleaseTests : IDisposable
 
     // -----------------------------------------------------------------------
 
+    [DockerFact]
+    public async Task A_version_a_kiosk_took_back_raises_an_incident_and_is_not_offered_to_it_again_until_update_now()
+    {
+        if (Skip) { return; }
+
+        await using var host = Host();
+        using var admin = await AdminAsync(host);
+        using var kiosk = await ReadyKioskAsync(_fixture, "release-rollback");
+        using var api = KioskClient(host, kiosk);
+
+        var package = Package(NewVersion(major: 3), seed: 7);
+        var version = ReleaseVersionOf(package);
+        var releaseId = (await (await UploadAsync(admin, package, Sign(_current, package.Manifest))).Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        // A security fix: the kiosk is told not to wait for the update window.
+        var rollout = await admin.PostAsJsonAsync("/api/admin/rollouts", new { releaseId, target = "Kiosks", kioskIds = new[] { kiosk.KioskId }, urgent = true });
+        rollout.StatusCode.Should().Be(HttpStatusCode.OK, await rollout.Content.ReadAsStringAsync());
+        (await rollout.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("urgent").GetBoolean().Should().BeTrue();
+        (await OffersAsync(api)).Single(o => o.GetProperty("releaseId").GetGuid() == releaseId).GetProperty("urgent").GetBoolean().Should().BeTrue();
+
+        // Waiting for a moment with no customer, then turning new ones away: both are shown to the panel.
+        foreach (var status in new[] { "WaitingForIdle", "Draining", "Applying", "HealthCheck" })
+        {
+            (await api.PostAsJsonAsync("/api/kiosks/me/update-status", new { component = "App", version, status }))
+                .StatusCode.Should().Be(HttpStatusCode.NoContent, status);
+        }
+
+        // It failed its health check and went back: High incident, panel and e-mail; not offered again.
+        (await api.PostAsJsonAsync("/api/kiosks/me/update-status", new { component = "App", version, status = "RolledBack", messageKey = "updates.healthTimeout" }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await api.PostAsJsonAsync("/api/kiosks/me/update-status", new { component = "App", version, status = "RolledBack", messageKey = "updates.healthTimeout" }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent, "said twice");
+
+        var incidents = await IncidentsAsync(kiosk.KioskId);
+        incidents.Should().ContainSingle(i => i.Type == Domain.Incidents.IncidentType.UpdateFailed);
+        var incident = incidents.Single(i => i.Type == Domain.Incidents.IncidentType.UpdateFailed);
+        incident.Severity.Should().Be(Domain.Incidents.IncidentSeverity.High);
+        incident.Details.Should().Contain("incidents.kiosk.updateRolledBack").And.Contain(version).And.Contain("reasonMessage=updates.healthTimeout");
+        Application.Localization.Messages.Write(Domain.Common.UserMessage.Decode(incident.Details)).Should().Contain(version).And.NotContain("{");
+
+        (await OffersAsync(api)).Should().NotContain(o => o.GetProperty("releaseId").GetGuid() == releaseId);
+        (await api.GetAsync($"/api/releases/{releaseId}/download")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // "İndi yenilə": an administrator asks for it again on purpose.
+        (await admin.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/update-now", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await OffersAsync(api)).Should().Contain(o => o.GetProperty("releaseId").GetGuid() == releaseId);
+
+        // Taken back by an administrator ("Əvvəlki versiyaya qaytar"): not an incident.
+        var other = NewVersion(major: 4);
+        (await api.PostAsJsonAsync("/api/kiosks/me/update-status", new { component = "Agent", version = other, status = "RolledBack", messageKey = "updates.rolledBackByAdmin" }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await IncidentsAsync(kiosk.KioskId)).Should().ContainSingle(i => i.Type == Domain.Incidents.IncidentType.UpdateFailed);
+    }
+
+    [DockerFact]
+    public async Task A_download_cut_off_goes_on_from_where_it_stopped_and_the_kiosk_learns_when_to_update()
+    {
+        if (Skip) { return; }
+
+        await using var host = Host();
+        using var admin = await AdminAsync(host);
+        using var kiosk = await ReadyKioskAsync(_fixture, "release-range");
+        using var api = KioskClient(host, kiosk);
+
+        var package = Package(NewVersion(major: 5), seed: 900);
+        var releaseId = (await (await UploadAsync(admin, package, Sign(_current, package.Manifest))).Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+        (await admin.PostAsJsonAsync("/api/admin/rollouts", new { releaseId, target = "Kiosks", kioskIds = new[] { kiosk.KioskId } }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await OffersAsync(api)).Single(o => o.GetProperty("releaseId").GetGuid() == releaseId).GetProperty("urgent").GetBoolean().Should().BeFalse();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/releases/{releaseId}/download");
+        request.Headers.Range = new RangeHeaderValue(1000, null);
+        var tail = await api.SendAsync(request);
+        tail.StatusCode.Should().Be(HttpStatusCode.PartialContent);
+        tail.Content.Headers.ContentRange!.From.Should().Be(1000);
+        tail.Content.Headers.ContentRange.Length.Should().Be(package.Bytes.Length);
+        (await tail.Content.ReadAsByteArrayAsync()).Should().Equal(package.Bytes[1000..]);
+
+        foreach (var range in new[] { new RangeHeaderValue(package.Bytes.Length, null), new RangeHeaderValue(0, 10) })
+        {
+            using var wrong = new HttpRequestMessage(HttpMethod.Get, $"/api/releases/{releaseId}/download");
+            wrong.Headers.Range = range;
+            (await api.SendAsync(wrong)).StatusCode.Should().Be(HttpStatusCode.RequestedRangeNotSatisfiable, range.ToString());
+        }
+
+        // When and how: the update window and the timings come with the configuration.
+        var update = (await api.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("update");
+        update.GetProperty("window").GetString().Should().MatchRegex(@"^\d{2}:\d{2}-\d{2}:\d{2}$");
+        update.GetProperty("maxIdleWaitMinutes").GetInt32().Should().BePositive();
+        update.GetProperty("healthTimeoutMinutes").GetInt32().Should().BePositive();
+        update.GetProperty("keepVersions").GetInt32().Should().BePositive();
+    }
+
+    private async Task<List<Domain.Incidents.Incident>> IncidentsAsync(Guid kioskId)
+    {
+        using var scope = _fixture.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<MongoContext>().Incidents.Find(i => i.KioskId == kioskId).ToListAsync();
+    }
+
     private sealed record TestPackage(byte[] Bytes, byte[] Manifest, string FileName, string Sha256);
 
     private static string ReleaseVersionOf(TestPackage package) => ReleaseManifest.Parse(package.Manifest).Version.ToString();

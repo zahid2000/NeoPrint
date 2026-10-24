@@ -37,6 +37,12 @@ public enum IncidentType
 
     /// <summary>A kiosk's clock has been a minute or more off the server's for minutes (plan section 7.9).</summary>
     ClockOff = 18,
+
+    /// <summary>
+    /// An update did not take on a kiosk: refused, failed, or taken back after
+    /// its health check (plan section 7.12, step 5; T-321).
+    /// </summary>
+    UpdateFailed = 19,
 }
 
 public enum IncidentSeverity

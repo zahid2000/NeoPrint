@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -172,6 +173,7 @@ const pilotTargets: readonly TargetChoice[] = ['kiosks', 'pilot'];
   imports: [
     FormsModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
@@ -225,6 +227,11 @@ const pilotTargets: readonly TargetChoice[] = ['kiosks', 'pilot'];
           <input matInput type="number" min="1" max="100" [ngModel]="percent()" (ngModelChange)="percent.set($event)" [disabled]="busy()" />
         </mat-form-field>
       }
+
+      <mat-checkbox data-field="urgent" [ngModel]="urgent()" (ngModelChange)="urgent.set($event)" [disabled]="busy()">
+        {{ 'releases.urgent' | translate }}
+      </mat-checkbox>
+      <p class="neo-caption rollout__hint">{{ 'releases.urgentHint' | translate }}</p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" mat-dialog-close [disabled]="busy()">{{ 'common.cancel' | translate }}</button>
@@ -247,6 +254,10 @@ const pilotTargets: readonly TargetChoice[] = ['kiosks', 'pilot'];
     .rollout__field {
       width: 100%;
     }
+
+    .rollout__hint {
+      margin: 0 0 0 var(--space-6);
+    }
   `,
 })
 export class RolloutDialogComponent {
@@ -261,6 +272,7 @@ export class RolloutDialogComponent {
   readonly target = signal<TargetChoice | null>(null);
   readonly kioskIds = signal<string[]>([]);
   readonly percent = signal<number | null>(null);
+  readonly urgent = signal(false);
   readonly busy = signal(false);
   readonly problem = signal<Problem | null>(null);
 
@@ -294,7 +306,7 @@ export class RolloutDialogComponent {
     this.problem.set(null);
 
     try {
-      this.ref.close(await firstValueFrom(this.api.createRollout(rollout)));
+      this.ref.close(await firstValueFrom(this.api.createRollout({ ...rollout, urgent: this.urgent() })));
     } catch (error) {
       this.problem.set(toProblem(error));
     } finally {

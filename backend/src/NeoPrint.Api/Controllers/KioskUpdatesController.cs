@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Kiosks;
 using NeoPrint.Application.Releases;
 using NeoPrint.Domain.Kiosks;
 using NeoPrint.Domain.Releases;
@@ -50,7 +51,64 @@ public sealed class KioskUpdatesController : ControllerBase
         }
 
         var download = await _sender.Send(new OpenReleasePackageQuery(deviceId, id), cancellationToken);
+        Response.Headers.AcceptRanges = "bytes";
+
+        // A download cut off (power, network) goes on from where it stopped
+        // (T-321): "bytes=N-" only - the kiosk never asks for anything else.
+        // The store hands out a decrypting stream that cannot seek, so the
+        // first N bytes are read past.
+        if (Request.Headers.Range.ToString() is { Length: > 0 } range)
+        {
+            await using var content = download.Content;
+            var match = System.Text.RegularExpressions.Regex.Match(range, @"^bytes=(\d+)-$");
+            if (!match.Success || !long.TryParse(match.Groups[1].Value, out var from) || from >= download.Size)
+            {
+                Response.Headers.ContentRange = $"bytes */{download.Size}";
+                return StatusCode(StatusCodes.Status416RangeNotSatisfiable);
+            }
+
+            await SkipAsync(content, from, cancellationToken);
+            Response.StatusCode = StatusCodes.Status206PartialContent;
+            Response.ContentType = "application/octet-stream";
+            Response.ContentLength = download.Size - from;
+            Response.Headers.ContentRange = $"bytes {from}-{download.Size - 1}/{download.Size}";
+            await content.CopyToAsync(Response.Body, cancellationToken);
+            return new EmptyResult();
+        }
+
         return File(download.Content, "application/octet-stream", download.FileName, enableRangeProcessing: false);
+    }
+
+    /// <summary>
+    /// The kiosk's logs on an UploadLogs command (T-321): a gzip file of text
+    /// lines, at most <c>Logs.MaxUploadMb</c>; cleaned of personal data again
+    /// here and kept encrypted.
+    /// </summary>
+    [HttpPost("kiosks/me/logs")]
+    [RequestSizeLimit(110L * 1024 * 1024)]
+    public async Task<ActionResult<KioskLogView>> Logs([FromQuery] Guid? commandId, CancellationToken cancellationToken)
+    {
+        if (_currentUser.DeviceId is not { } deviceId)
+        {
+            return Forbid();
+        }
+
+        return Ok(await _sender.Send(new UploadKioskLogCommand(deviceId, Request.Body, commandId, _currentUser.Ip), cancellationToken));
+    }
+
+    private static async Task SkipAsync(Stream content, long count, CancellationToken cancellationToken)
+    {
+        var buffer = new byte[81920];
+        while (count > 0)
+        {
+            var read = await content.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, count)), cancellationToken);
+            if (read == 0)
+            {
+                break;
+            }
+
+            count -= read;
+        }
     }
 
     /// <summary>Where an update of one component stands on this kiosk.</summary>

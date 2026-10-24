@@ -16,7 +16,16 @@ export type RolloutStatus = 'Active' | 'Paused' | 'Completed' | 'RolledBack';
 export type RolloutAction = 'pause' | 'resume' | 'complete' | 'rollback';
 
 /** Where an update stands on a kiosk (backend `KioskUpdateStatus`). */
-export type KioskUpdateStatus = 'Downloading' | 'Ready' | 'Applying' | 'HealthCheck' | 'Succeeded' | 'Failed' | 'RolledBack';
+export type KioskUpdateStatus =
+  | 'Downloading'
+  | 'Ready'
+  | 'WaitingForIdle'
+  | 'Draining'
+  | 'Applying'
+  | 'HealthCheck'
+  | 'Succeeded'
+  | 'Failed'
+  | 'RolledBack';
 
 export interface Release {
   readonly id: string;
@@ -53,6 +62,8 @@ export interface Rollout {
   readonly createdAt: string;
   readonly endedAt: string | null;
   readonly reaches: number;
+  /** A security fix: kiosks do not wait for the update window (T-321). */
+  readonly urgent: boolean;
 }
 
 export interface ReleasesPage {
@@ -91,6 +102,7 @@ export interface NewRollout {
   readonly kioskIds?: readonly string[];
   readonly percent?: number;
   readonly channel?: ReleaseChannel;
+  readonly urgent?: boolean;
 }
 
 function idempotent(): { headers: HttpHeaders } {

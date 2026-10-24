@@ -226,6 +226,10 @@ public sealed class PermissionMatrixTests
         new("POST", "api/admin/kiosks/{id:guid}/reapply-provisioning", Permissions.KioskCommandsUpdate, Target.TheirKiosk),
         new("POST", "api/admin/kiosks/{id:guid}/restart-agent", Permissions.KioskCommandsRestart, Target.TheirKiosk),
         new("POST", "api/admin/kiosks/{id:guid}/upload-logs", Permissions.KioskLogsDownload, Target.TheirKiosk),
+
+        // Step 7B, M17 (T-321): the logs a kiosk uploaded.
+        new("GET", "api/admin/kiosks/{id:guid}/logs", Permissions.KioskLogsDownload, Target.TheirKiosk),
+        new("GET", "api/admin/kiosks/{id:guid}/logs/{logId:guid}", Permissions.KioskLogsDownload, Target.TheirKiosk),
     ];
 
     /// <summary>What names the other kiosk in its body: for the scoped account the same as its id in the route.</summary>
@@ -247,6 +251,9 @@ public sealed class PermissionMatrixTests
         new("GET", "api/kiosks/me/update", "kiosk"),
         new("POST", "api/kiosks/me/update-status", "kiosk", Body: """{"component":"App","version":"1.0.0","status":"Downloading"}"""),
         new("GET", "api/releases/{id:guid}/download", "kiosk", Target.Nothing),
+
+        // Step 7B, M17 (T-321).
+        new("POST", "api/kiosks/me/logs", "kiosk", Body: "{}"),
     ];
 
     [DockerFact]
@@ -991,7 +998,8 @@ public sealed class PermissionMatrixTests
             .Replace("{kiosk}", callers.Theirs.KioskId.ToString(), StringComparison.Ordinal)
             .Replace("{item}", callers.ItemId.ToString(), StringComparison.Ordinal);
 
-        var path = "/" + call.Template.Replace("{id:guid}", id.ToString(), StringComparison.Ordinal);
+        var path = "/" + call.Template.Replace("{id:guid}", id.ToString(), StringComparison.Ordinal)
+            .Replace("{logId:guid}", Guid.NewGuid().ToString(), StringComparison.Ordinal);
         if (call.Query is not null)
         {
             path += "?" + Fill(call.Query);

@@ -50,6 +50,8 @@ const rolloutChips: Record<Rollout['status'], Chip> = {
 const updateChips: Record<KioskUpdateState['status'], Chip> = {
   Downloading: { tone: 'info', icon: 'download' },
   Ready: { tone: 'info', icon: 'schedule' },
+  WaitingForIdle: { tone: 'info', icon: 'hourglass_empty' },
+  Draining: { tone: 'warning', icon: 'do_not_disturb_on' },
   Applying: { tone: 'info', icon: 'progress_activity' },
   HealthCheck: { tone: 'info', icon: 'progress_activity' },
   Succeeded: { tone: 'success', icon: 'check_circle' },
@@ -233,6 +235,14 @@ const rolloutActions: Record<Rollout['status'], readonly RolloutAction[]> = {
                           [iconOverride]="rolloutChip(o).icon"
                           [text]="'releases.rolloutStatus.' + o.status | translate"
                         />
+                        @if (o.urgent) {
+                          <app-status-chip
+                            status="urgent"
+                            toneOverride="warning"
+                            iconOverride="bolt"
+                            [text]="'releases.urgentChip' | translate"
+                          />
+                        }
                       </td>
                     </ng-container>
                     <ng-container matColumnDef="reaches">

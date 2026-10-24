@@ -21,6 +21,7 @@ delete_sweep
 deployed_code
 description
 devices
+do_not_disturb_on
 download
 edit
 edit_note
@@ -30,6 +31,7 @@ error_outline
 forward_to_inbox
 group
 history
+hourglass_empty
 inbox
 info
 insights

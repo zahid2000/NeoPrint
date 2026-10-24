@@ -167,6 +167,9 @@ public static class SettingKeys
     public const string UpdateCheckIntervalMinutes = "Update.CheckIntervalMinutes";
     public const string UpdateHealthTimeoutMinutes = "Update.HealthTimeoutMinutes";
     public const string UpdateKeepVersions = "Update.KeepVersions";
+    public const string UpdateMaxIdleWaitMinutes = "Update.MaxIdleWaitMinutes";
+    public const string LogsMaxUploadMb = "Logs.MaxUploadMb";
+    public const string LogsRetentionDays = "Logs.RetentionDays";
     public const string EnrollmentTokenTtlHours = "Enrollment.TokenTtlHours";
     public const string KioskCrashLoopThreshold = "Kiosk.CrashLoopThreshold";
     public const string MapStyleUrl = "Map.StyleUrl";
@@ -244,6 +247,9 @@ public static class SettingKeys
         new(UpdateCheckIntervalMinutes, "15", SettingValueType.Integer, "Agent-in yeni versiya yoxlama intervalı"),
         new(UpdateHealthTimeoutMinutes, "5", SettingValueType.Integer, "Yeniləmədən sonra sağlamlıq gözləmə müddəti"),
         new(UpdateKeepVersions, "3", SettingValueType.Integer, "Kioskda saxlanılan versiya sayı"),
+        new(UpdateMaxIdleWaitMinutes, "30", SettingValueType.Integer, "Boş anın gözlənildiyi ən uzun müddət; sonra yeni müştəri qəbul edilmir"),
+        new(LogsMaxUploadMb, "10", SettingValueType.Integer, "Kioskun bir dəfəyə yüklədiyi logun ən böyük ölçüsü (sıxılmış, MB)"),
+        new(LogsRetentionDays, "30", SettingValueType.Integer, "Kiosk loglarının saxlanma müddəti"),
         new(EnrollmentTokenTtlHours, "72", SettingValueType.Integer, "Enrollment token-inin etibarlılıq müddəti"),
         new(KioskCrashLoopThreshold, "3", SettingValueType.Integer, "10 dəqiqədə çöküş həddi → təhlükəsiz rejim"),
         new(MapStyleUrl, MapSettings.DefaultStyleUrl, SettingValueType.String, "Xəritənin stil ünvanı (https); öz tile serverinə keçid üçün dəyişdirilir"),

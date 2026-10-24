@@ -220,6 +220,15 @@ public sealed partial class MessagesTests
             .Should().StartWith(language == "en" ? $"The file is {expected} MB" : language == "az" ? $"Fayl {expected} MB" : $"Размер файла {expected} МБ");
 
     [Theory]
+    [InlineData("az")]
+    [InlineData("ru")]
+    [InlineData("en")]
+    public void A_version_is_written_as_it_is_not_as_a_number(string language)
+        => Messages.Write(UserMessage.Of("incidents.kiosk.updateFailed", ("kiosk", "KSK-0001"),
+                ("componentMessage", "releases.component.app"), ("version", "0.8.12"), ("reasonMessage", "updates.reasonUnknown")), language)
+            .Should().Contain("0.8.12");
+
+    [Theory]
     [InlineData("files.notReady", true)]
     [InlineData("auth.passwordTooShort", true)]
     [InlineData("Fayl tapılmadı.", false)]

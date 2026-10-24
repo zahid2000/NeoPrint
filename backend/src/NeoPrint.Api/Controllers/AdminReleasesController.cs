@@ -121,7 +121,7 @@ public sealed class AdminReleasesController : ControllerBase
         }
 
         return Ok(await _sender.Send(
-            new CreateRolloutCommand(AdminId, request.ReleaseId, request.Target, request.KioskIds, request.Percent, request.Channel, _currentUser.Ip),
+            new CreateRolloutCommand(AdminId, request.ReleaseId, request.Target, request.KioskIds, request.Percent, request.Channel, _currentUser.Ip, request.Urgent),
             cancellationToken));
     }
 
@@ -187,6 +187,7 @@ public sealed record CreateRolloutRequest(
     RolloutTarget Target,
     IReadOnlyCollection<Guid>? KioskIds,
     int? Percent,
-    ReleaseChannel? Channel);
+    ReleaseChannel? Channel,
+    bool Urgent = false);
 
 public sealed record UpdateChannelRequest(ReleaseChannel Channel);

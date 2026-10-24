@@ -2865,7 +2865,8 @@
      "status": "Active",
      "createdAt": "2026-10-25T09:05:00Z",
      "endedAt": null,
-     "reaches": 1
+     "reaches": 1,
+     "urgent": true
     },
     {
      "id": "8e2f7d6b-4a5c-4b1d-8f0e-5d4b6c7a8f93",
@@ -2880,7 +2881,8 @@
      "status": "RolledBack",
      "createdAt": "2026-10-25T08:50:00Z",
      "endedAt": "2026-10-25T09:30:00Z",
-     "reaches": 0
+     "reaches": 0,
+     "urgent": false
     }
    ]
   },

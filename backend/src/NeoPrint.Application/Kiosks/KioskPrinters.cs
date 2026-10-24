@@ -470,6 +470,13 @@ public sealed class KioskPrinterHandlers :
             }
         }
 
+        // "İndi yenilə": a version this kiosk took back may be tried again
+        // (T-321) - an administrator is asking for it on purpose.
+        if (request.Type == KioskCommandType.UpdateNow && kiosk.RetryUpdates())
+        {
+            await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
+        }
+
         // Pressed twice, or sent again after a lost answer: the command that
         // is still open is the answer - not a second restart behind the first.
         var open = await _commands.ListOpenAsync(kiosk.Id, cancellationToken).ConfigureAwait(false);

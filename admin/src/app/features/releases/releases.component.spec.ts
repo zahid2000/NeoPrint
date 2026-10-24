@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MatDialog } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
@@ -15,13 +15,14 @@ import { translations } from '../../core/i18n/translations';
 import { AdminHubService } from '../../core/realtime/admin-hub.service';
 import { FakeHub } from '../../core/realtime/fake-hub.testing';
 import { liveDebounceMs } from '../../core/realtime/live-refresh';
+import { RolloutDialogComponent } from './release-dialogs';
 import { ReleasesComponent } from './releases.component';
 
 let backend: HttpTestingController;
 let hub: FakeHub;
 let dialogAnswer: unknown;
 
-function setUp(permissions: string[] = [Permissions.releasesView, Permissions.releasesManage]): void {
+function setUp(permissions: string[] = [Permissions.releasesView, Permissions.releasesManage], extra: unknown[] = []): void {
   hub = new FakeHub();
   dialogAnswer = undefined;
 
@@ -42,6 +43,7 @@ function setUp(permissions: string[] = [Permissions.releasesView, Permissions.re
           canAny: (list: readonly string[]) => list.some((permission) => permissions.includes(permission)),
         },
       },
+      ...(extra as never[]),
     ],
   });
 
@@ -98,6 +100,7 @@ const rollout = (overrides: Partial<Rollout> = {}): Rollout => ({
   createdAt: '2026-10-25T09:10:00Z',
   endedAt: null,
   reaches: 3,
+  urgent: false,
   ...overrides,
 });
 
@@ -253,6 +256,44 @@ describe('Buraxılışlar', () => {
     fixture.detectChanges();
 
     expect(text(fixture, '[data-tab="releases"] app-empty-state')).toContain('Hələ paket yüklənməyib');
+  });
+
+  it('marks an urgent rollout, and shows a kiosk waiting for an idle moment or turning customers away (T-321)', async () => {
+    const fixture = await open(
+      { ...page(), rollouts: [rollout({ urgent: true })] },
+      [
+        kiosk({ updates: [{ component: 'App', version: '0.8.0', status: 'WaitingForIdle', message: null, reportedAt: '2026-10-25T02:05:00Z' }] }),
+        kiosk({ kioskId: 'k-2', code: 'KSK-9003', updates: [{ component: 'App', version: '0.8.0', status: 'Draining', message: null, reportedAt: '2026-10-25T02:40:00Z' }] }),
+      ],
+    );
+    await tab(fixture, 1);
+    expect(text(fixture, '[data-rollout="o-1"]')).toContain('Təcili');
+
+    await tab(fixture, 2);
+    expect(text(fixture, '[data-tab="kiosks"]')).toContain('Boş an gözlənilir');
+    expect(text(fixture, '[data-tab="kiosks"]')).toContain('Yeni müştəri qəbul edilmir');
+  });
+
+  it('sends an urgent rollout only when it is ticked (T-321)', async () => {
+    const closed: unknown[] = [];
+    setUp(undefined, [
+      { provide: MAT_DIALOG_DATA, useValue: { release: release(), kiosks: [] } },
+      { provide: MatDialogRef, useValue: { close: (value: unknown) => closed.push(value) } },
+    ]);
+    const fixture = TestBed.createComponent(RolloutDialogComponent);
+    fixture.detectChanges();
+    const dialog = fixture.componentInstance;
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Təcili (təhlükəsizlik) yeniləmə');
+    dialog.target.set('pilot');
+    dialog.urgent.set(true);
+    const created = dialog.create();
+    const request = backend.expectOne('/api/admin/rollouts');
+    expect(request.request.body).toEqual({ releaseId: 'r-1', target: 'Channel', channel: 'Pilot', urgent: true });
+    request.flush(rollout({ urgent: true }));
+    await created;
+
+    expect(closed).toHaveLength(1);
   });
 
   it('says what went wrong when the page may not be read', async () => {

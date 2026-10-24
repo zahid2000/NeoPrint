@@ -164,6 +164,12 @@ public sealed class Kiosk : Entity
     /// <summary>The last update report of each component (<c>POST kiosks/me/update-status</c>).</summary>
     public List<KioskUpdateState> UpdateStates { get; set; } = [];
 
+    /// <summary>
+    /// Versions this kiosk took back after installing them (T-321): never
+    /// offered to it again, until an administrator presses "İndi yenilə".
+    /// </summary>
+    public List<KioskSkippedRelease> SkippedReleases { get; set; } = [];
+
     public List<AvailablePrinter> AvailablePrinters { get; set; } = [];
 
     public SelectedPrinter? SelectedPrinter { get; set; }
@@ -659,6 +665,31 @@ public sealed class Kiosk : Entity
             MessageKey = messageKey,
             ReportedAt = reportedAt,
         });
+
+        // A version that failed its health check here is not tried here again
+        // (docs/KIOSK_UPDATES.md, step 11) - the kiosk would roll it back again.
+        if (status == KioskUpdateStatus.RolledBack && !Skips(component, version))
+        {
+            SkippedReleases.Add(new KioskSkippedRelease { Component = component, Version = version, At = reportedAt });
+        }
+
+        return true;
+    }
+
+    /// <summary>Whether this kiosk took this version back and is not to be offered it.</summary>
+    public bool Skips(ReleaseComponent component, string version)
+        => SkippedReleases.Any(skipped => skipped.Component == component && skipped.Version == version);
+
+    /// <summary>"İndi yenilə": the versions taken back may be tried again.</summary>
+    /// <returns>Whether any were skipped.</returns>
+    public bool RetryUpdates()
+    {
+        if (SkippedReleases.Count == 0)
+        {
+            return false;
+        }
+
+        SkippedReleases.Clear();
         return true;
     }
 }
@@ -688,6 +719,25 @@ public enum KioskUpdateStatus
 
     /// <summary>Applied, failed its health check and was taken back.</summary>
     RolledBack = 6,
+
+    /// <summary>Ready, waiting for the update window and a kiosk with no customer (T-321).</summary>
+    WaitingForIdle = 7,
+
+    /// <summary>
+    /// Waited longer than <c>Update.MaxIdleWaitMinutes</c>: no new customer is
+    /// taken, the one there finishes, then the update is applied (T-321).
+    /// </summary>
+    Draining = 8,
+}
+
+/// <summary>A version a kiosk took back (T-321).</summary>
+public sealed class KioskSkippedRelease
+{
+    public ReleaseComponent Component { get; set; }
+
+    public string Version { get; set; } = string.Empty;
+
+    public DateTime At { get; set; }
 }
 
 public sealed class KioskUpdateState

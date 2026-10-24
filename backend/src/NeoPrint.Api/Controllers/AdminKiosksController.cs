@@ -309,6 +309,21 @@ public sealed class AdminKiosksController : ControllerBase
     public async Task<ActionResult<KioskCommandView>> UploadLogs(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.UploadLogs, _currentUser.Ip), cancellationToken));
 
+    /// <summary>The logs this kiosk uploaded, newest first (T-321).</summary>
+    [HttpGet("{id:guid}/logs")]
+    [HasPermission(Permissions.KioskLogsDownload)]
+    public async Task<ActionResult<IReadOnlyList<Application.Kiosks.KioskLogView>>> Logs(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new Application.Kiosks.ListKioskLogsQuery(AdminId, id), cancellationToken));
+
+    /// <summary>One uploaded log file (gzip); the download is on the record.</summary>
+    [HttpGet("{id:guid}/logs/{logId:guid}")]
+    [HasPermission(Permissions.KioskLogsDownload)]
+    public async Task<IActionResult> Log(Guid id, Guid logId, CancellationToken cancellationToken)
+    {
+        var log = await _sender.Send(new Application.Kiosks.OpenKioskLogQuery(AdminId, id, logId, _currentUser.Ip), cancellationToken);
+        return File(log.Content, "application/gzip", log.FileName);
+    }
+
     [HttpGet("{id:guid}/commands")]
     [HasPermission(Permissions.KiosksView)]
     public async Task<ActionResult<IReadOnlyList<KioskCommandView>>> Commands(Guid id, CancellationToken cancellationToken)

@@ -109,7 +109,8 @@ public sealed record CreateRolloutCommand(
     IReadOnlyCollection<Guid>? KioskIds,
     int? Percent,
     ReleaseChannel? Channel,
-    string? Ip = null) : IRequest<RolloutView>, Behaviors.ITransactionalRequest;
+    string? Ip = null,
+    bool Urgent = false) : IRequest<RolloutView>, Behaviors.ITransactionalRequest;
 
 public enum RolloutAction
 {
@@ -181,7 +182,8 @@ public sealed record RolloutView(
     string Status,
     DateTime CreatedAt,
     DateTime? EndedAt,
-    int Reaches);
+    int Reaches,
+    bool Urgent = false);
 
 /// <summary>The releases page: the key set this server accepts, the releases and the rollouts.</summary>
 public sealed record ReleasesPageView(
@@ -211,6 +213,7 @@ public sealed record KioskOfferView(string Component, string Version);
 /// <param name="Manifest">The signed manifest, exactly as signed.</param>
 /// <param name="Signature">The detached signature file.</param>
 /// <param name="Download">Where to fetch the package, relative to the API.</param>
+/// <param name="Urgent">A security fix: applied at the first idle moment, not only in the update window (T-321).</param>
 public sealed record KioskReleaseOffer(
     string Component,
     Guid ReleaseId,
@@ -218,7 +221,8 @@ public sealed record KioskReleaseOffer(
     string Manifest,
     string Signature,
     long Size,
-    string Download);
+    string Download,
+    bool Urgent = false);
 
 /// <param name="Withdrawn">SHA-256 of every withdrawn package of the kiosk's platform: never install them.</param>
 public sealed record KioskUpdateView(

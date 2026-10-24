@@ -119,6 +119,10 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Update.HealthTimeoutMinutes':
       'Yeniləmədən sonra kioskun sağlam işləməsi bu qədər gözlənilir; olmasa geri qaytarılır.',
     'settings.description.Update.KeepVersions': 'Kioskda saxlanılan əvvəlki versiyaların sayı.',
+    'settings.description.Update.MaxIdleWaitMinutes':
+      'Boş an (müştərisiz kiosk) bu qədər dəqiqə gözlənilir; sonra yeni müştəri qəbul edilmir, cari müştəri işini bitirir.',
+    'settings.description.Logs.MaxUploadMb': 'Kiosk logunun bir yükləmədə ən böyük ölçüsü (sıxılmış, MB).',
+    'settings.description.Logs.RetentionDays': 'Kioskdan yüklənmiş loglar bu qədər gün saxlanılır, sonra silinir.',
     'settings.description.Enrollment.TokenTtlHours':
       'Yeni kioskun qoşulma tokeni bu qədər saat etibarlıdır.',
     'settings.description.Kiosk.CrashLoopThreshold':
@@ -231,6 +235,10 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Update.HealthTimeoutMinutes':
       'How long a kiosk has to run healthily after an update before it is rolled back.',
     'settings.description.Update.KeepVersions': 'How many earlier versions the kiosk keeps.',
+    'settings.description.Update.MaxIdleWaitMinutes':
+      'How long an idle moment (no customer) is waited for; after that no new customer is taken and the one there finishes.',
+    'settings.description.Logs.MaxUploadMb': 'The largest kiosk log upload (compressed, MB).',
+    'settings.description.Logs.RetentionDays': 'Kiosk logs are kept this many days, then deleted.',
     'settings.description.Enrollment.TokenTtlHours':
       'How many hours an enrollment token for a new kiosk stays valid.',
     'settings.description.Kiosk.CrashLoopThreshold':
@@ -347,6 +355,10 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Update.HealthTimeoutMinutes':
       'Сколько киоск должен стабильно работать после обновления, иначе оно откатывается.',
     'settings.description.Update.KeepVersions': 'Сколько предыдущих версий хранится в киоске.',
+    'settings.description.Update.MaxIdleWaitMinutes':
+      'Сколько минут ждать момента без клиентов; после этого новые клиенты не принимаются, текущий завершает работу.',
+    'settings.description.Logs.MaxUploadMb': 'Наибольший размер одной выгрузки журнала киоска (в сжатом виде, МБ).',
+    'settings.description.Logs.RetentionDays': 'Журналы киоска хранятся столько дней, затем удаляются.',
     'settings.description.Enrollment.TokenTtlHours':
       'Сколько часов действует токен подключения нового киоска.',
     'settings.description.Kiosk.CrashLoopThreshold':

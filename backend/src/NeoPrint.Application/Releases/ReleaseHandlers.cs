@@ -13,6 +13,7 @@ using NeoPrint.Application.Localization;
 using NeoPrint.Application.PrintJobs;
 using NeoPrint.Crypto.Releases;
 using NeoPrint.Domain.Common;
+using NeoPrint.Domain.Incidents;
 using NeoPrint.Domain.Kiosks;
 using NeoPrint.Domain.Releases;
 
@@ -40,6 +41,9 @@ public sealed class ReleaseHandlers :
     /// <summary>A manifest or a signature is a few hundred bytes.</summary>
     public const int MaxSmallFile = 16 * 1024;
 
+    /// <summary>The kiosk's reason for a version an administrator took back on purpose: no incident.</summary>
+    public const string RolledBackByAdminKey = "updates.rolledBackByAdmin";
+
     private const int MaxRolloutKiosks = 500;
 
     private readonly IReleaseRepository _releases;
@@ -55,6 +59,7 @@ public sealed class ReleaseHandlers :
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly ReleaseSettings _settings;
+    private readonly Refunds.IncidentReporter _incidents;
     private readonly ILogger<ReleaseHandlers> _logger;
 
     public ReleaseHandlers(
@@ -71,6 +76,7 @@ public sealed class ReleaseHandlers :
         ICorrelationContext correlation,
         IClock clock,
         IOptions<ReleaseSettings> settings,
+        Refunds.IncidentReporter incidents,
         ILogger<ReleaseHandlers> logger)
     {
         _releases = releases;
@@ -86,6 +92,7 @@ public sealed class ReleaseHandlers :
         _correlation = correlation;
         _clock = clock;
         _settings = settings.Value;
+        _incidents = incidents;
         _logger = logger;
     }
 
@@ -308,6 +315,7 @@ public sealed class ReleaseHandlers :
             Target = request.Target,
             CreatedBy = request.AdminUserId,
             CreatedAt = _clock.UtcNow,
+            Urgent = request.Urgent,
         };
 
         var problems = new List<ValidationError>();
@@ -485,7 +493,8 @@ public sealed class ReleaseHandlers :
             return new KioskUpdateView(null, _keys.Accepted.Name, [], []);
         }
 
-        var offers = Offers(kiosk, await OfferingAsync(cancellationToken).ConfigureAwait(false));
+        var offering = await OfferingAsync(cancellationToken).ConfigureAwait(false);
+        var offers = Offers(kiosk, offering);
         var withdrawn = await _releases.ListWithdrawnShaAsync(platform, cancellationToken).ConfigureAwait(false);
 
         return new KioskUpdateView(
@@ -499,7 +508,9 @@ public sealed class ReleaseHandlers :
                     release.Manifest,
                     release.Signature,
                     release.Size,
-                    $"api/releases/{release.Id}/download")),
+                    $"api/releases/{release.Id}/download",
+                    offering.Rollouts.Any(rollout => rollout.ReleaseId == release.Id && rollout.Urgent
+                                                     && rollout.IsOffering && rollout.Reaches(kiosk.Id, kiosk.UpdateChannel)))),
             ],
             withdrawn);
     }
@@ -559,6 +570,29 @@ public sealed class ReleaseHandlers :
                 .ConfigureAwait(false);
         }
 
+        // An update that did not take is somebody's to look at: the panel and
+        // e-mail (High, plan section 7.12 step 5). Not a version an
+        // administrator took back on purpose ("Əvvəlki versiyaya qaytar").
+        if (request.Status is KioskUpdateStatus.Failed or KioskUpdateStatus.RolledBack && messageKey != RolledBackByAdminKey)
+        {
+            await _incidents
+                .RaiseAsync(
+                    IncidentType.UpdateFailed,
+                    IncidentSeverity.High,
+                    UserMessage.Of(
+                        request.Status == KioskUpdateStatus.RolledBack ? "incidents.kiosk.updateRolledBack" : "incidents.kiosk.updateFailed",
+                        ("kiosk", kiosk.Code),
+                        ("componentMessage", $"releases.component.{request.Component.ToString().ToLowerInvariant()}"),
+                        ("version", request.Version),
+                        ("reasonMessage", messageKey ?? "updates.reasonUnknown")),
+                    $"kiosk-update:{kiosk.Id:N}:{request.Component}:{request.Version}:{request.Status}",
+                    cancellationToken,
+                    kiosk.Id,
+                    nameof(Kiosk),
+                    kiosk.Id)
+                .ConfigureAwait(false);
+        }
+
         await _admins.KioskUpdateReportedAsync(await VersionViewAsync(kiosk, cancellationToken).ConfigureAwait(false), cancellationToken)
             .ConfigureAwait(false);
 
@@ -576,7 +610,7 @@ public sealed class ReleaseHandlers :
     /// <summary>
     /// What a kiosk is offered: of each component, the newest release an
     /// active rollout reaches it with - not withdrawn, of its platform and of
-    /// this server's key set.
+    /// this server's key set, and not one the kiosk took back (T-321).
     /// </summary>
     private IReadOnlyList<Release> Offers(Kiosk kiosk, Offering offering)
     {
@@ -592,7 +626,8 @@ public sealed class ReleaseHandlers :
                 .Where(rollout => rollout.IsOffering && rollout.Platform == platform && rollout.Reaches(kiosk.Id, kiosk.UpdateChannel))
                 .Select(rollout => offering.Releases.GetValueOrDefault(rollout.ReleaseId))
                 .OfType<Release>()
-                .Where(release => !release.IsWithdrawn && release.KeySet == _keys.Accepted.Name && release.Platform == platform)
+                .Where(release => !release.IsWithdrawn && release.KeySet == _keys.Accepted.Name && release.Platform == platform
+                                  && !kiosk.Skips(release.Component, release.Version))
                 .GroupBy(release => release.Component)
                 .Select(group => group.MaxBy(release => ReleaseVersion.Parse(release.Version))!)
                 .OrderBy(release => release.Component),
@@ -677,7 +712,8 @@ public sealed class ReleaseHandlers :
         rollout.Status.ToString(),
         rollout.CreatedAt,
         rollout.EndedAt,
-        kiosks.Count(kiosk => Rid(kiosk.Platform) == rollout.Platform && rollout.Reaches(kiosk.Id, kiosk.UpdateChannel)));
+        kiosks.Count(kiosk => Rid(kiosk.Platform) == rollout.Platform && rollout.Reaches(kiosk.Id, kiosk.UpdateChannel)),
+        rollout.Urgent);
 
     private static KioskVersionView VersionView(Kiosk kiosk, IReadOnlyList<Release> offers) => new(
         kiosk.Id,

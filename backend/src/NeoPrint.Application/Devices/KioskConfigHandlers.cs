@@ -144,7 +144,14 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
                 : [.. allowed.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)],
             await _settings.GetBoolAsync(SettingKeys.PaperBlockWhenInsufficient, true, cancellationToken).ConfigureAwait(false),
             await _settings.GetIntAsync(SettingKeys.KioskIdleResetSeconds, 90, cancellationToken).ConfigureAwait(false),
-            await _settings.GetIntAsync(SettingKeys.KioskTelemetrySeconds, 30, cancellationToken).ConfigureAwait(false));
+            await _settings.GetIntAsync(SettingKeys.KioskTelemetrySeconds, 30, cancellationToken).ConfigureAwait(false),
+            new KioskUpdateSettingsDto(
+                await _settings.GetAsync(SettingKeys.KioskUpdateWindow, cancellationToken).ConfigureAwait(false) ?? "02:00-05:00",
+                await _settings.GetIntAsync(SettingKeys.UpdateCheckIntervalMinutes, 15, cancellationToken).ConfigureAwait(false),
+                await _settings.GetIntAsync(SettingKeys.UpdateHealthTimeoutMinutes, 5, cancellationToken).ConfigureAwait(false),
+                await _settings.GetIntAsync(SettingKeys.UpdateKeepVersions, 3, cancellationToken).ConfigureAwait(false),
+                await _settings.GetIntAsync(SettingKeys.UpdateMaxIdleWaitMinutes, 30, cancellationToken).ConfigureAwait(false),
+                await _settings.GetIntAsync(SettingKeys.LogsMaxUploadMb, 10, cancellationToken).ConfigureAwait(false)));
     }
 }
 
