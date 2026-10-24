@@ -1989,6 +1989,8 @@ docker exec -it neoprint-mongo mongosh -u neoprint -p devMongoPassword \
 
 Production açarları yalnız layihə sahibinin oflayn kompüterindədir (`docs/RELEASE_SIGNING.md`). Development kiosku **staging** dəsti ilə yığılır (`-p:ReleaseKeySet=staging`; `tools/dev-kiosk` skriptləri bunu özü verir); staging özəl açarı bu kompüterdə, repodan kənarda — `%USERPROFILE%\.neoprint\release-keys\staging\`:
 
+**CI paketini test serveri üçün bir əmrlə hazırlamaq (T-320):** `powershell -ExecutionPolicy Bypass -File tools\release-sign\staging-quickstart.ps1` — açar, son CI staging artefaktları, imza, yoxlama, panelə yüklənəcək fayllar (`docs/RELEASE_SIGNING.md`, "Staging: sürətli başlanğıc"). Lokal yığılmış paket üçün:
+
 ```bash
 dotnet build tools/release-sign
 T="dotnet tools/release-sign/bin/Debug/net8.0/release-sign.dll"
