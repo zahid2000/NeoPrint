@@ -1,12 +1,12 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
@@ -20,17 +20,17 @@ import { LiveIndicatorComponent } from '../../shared/live-indicator.component';
 import { SupportedLanguage, languageNames, supportedLanguages } from '../i18n/languages';
 import { panelConnection } from '../realtime/panel-connection';
 import {
+  GroupChoice,
   NavItem,
   NavLayout,
   NavSection,
   isActive,
   navGroupLabels,
-  isGroupOpen,
   navSections,
+  openGroup,
   phoneScreen,
-  readCollapsed,
   tabletScreen,
-  writeCollapsed,
+  toggleChoice,
 } from './nav-groups';
 
 /**
@@ -103,11 +103,13 @@ export class ShellComponent {
 
   readonly sidenavOpen = signal(this.layoutNow() === 'full');
 
+  private readonly sidenav = viewChild.required(MatSidenav);
+
   /** The page on screen, for which group stays open. */
   private readonly url = signal(inject(Router).url);
 
-  /** The groups shut in this browser. */
-  private readonly collapsed = signal(readCollapsed(this.storage()));
+  /** A group opened or shut by hand on this page. */
+  private readonly choice = signal<GroupChoice | null>(null);
 
   readonly languages = supportedLanguages.map((code) => ({
     code,
@@ -359,8 +361,11 @@ export class ShellComponent {
   /** The menu in its groups; a group this account has nothing in is not shown. */
   readonly sections = computed(() => navSections(this.navItems()));
 
+  /** One group at a time: the page's own, or the one chosen by hand (T-319). */
+  private readonly openSection = computed(() => openGroup(this.sections(), this.url(), this.choice()));
+
   isOpen(section: NavSection): boolean {
-    return isGroupOpen(section, this.collapsed(), this.url());
+    return section.group === null || section.group === this.openSection();
   }
 
   isCurrent(item: NavItem): boolean {
@@ -372,28 +377,11 @@ export class ShellComponent {
       return;
     }
 
-    const next = new Set(this.collapsed());
-
-    if (this.isOpen(section)) {
-      next.add(section.group);
-    } else {
-      next.delete(section.group);
-    }
-
-    this.collapsed.set(next);
-    writeCollapsed(this.storage(), next);
+    this.choice.set(toggleChoice(this.openSection(), section.group, this.url()));
   }
 
   private layoutNow(): NavLayout {
     return this.breakpoints.isMatched(phoneScreen) ? 'drawer' : this.breakpoints.isMatched(tabletScreen) ? 'rail' : 'full';
-  }
-
-  private storage(): Storage | undefined {
-    try {
-      return globalThis.localStorage;
-    } catch {
-      return undefined;
-    }
   }
 
   readonly initial = computed(() => {
@@ -408,6 +396,24 @@ export class ShellComponent {
     }
 
     this.sidenavOpen.update((open) => !open);
+  }
+
+  /**
+   * The sidenav opened or shut itself (its backdrop, Escape). On a tablet it
+   * never shuts: the full menu folds back into the icons (T-319) - the input
+   * stays true, so the sidenav has to be opened again by hand.
+   */
+  sidenavChanged(open: boolean): void {
+    if (this.layout() !== 'rail') {
+      this.sidenavOpen.set(open);
+      return;
+    }
+
+    this.railExpanded.set(false);
+
+    if (!open) {
+      void this.sidenav().open();
+    }
   }
 
   toggleTheme(): void {

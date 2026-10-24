@@ -4,7 +4,7 @@
     [class.shell__sidenav--rail]="iconsOnly()"
     [mode]="sidenavMode()"
     [opened]="layout() === 'rail' || sidenavOpen()"
-    (openedChange)="layout() === 'rail' ? railExpanded.set(false) : sidenavOpen.set($event)"
+    (openedChange)="sidenavChanged($event)"
   >
     <div class="shell__brand">
       <mat-icon>print</mat-icon>

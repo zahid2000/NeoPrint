@@ -8,9 +8,9 @@
 //   node e2e/nav.mjs                                  # from admin/
 //   node e2e/nav.mjs ../docs/screenshots/step-7/t304
 //
-// For each: the groups shown and none of them empty; the page's own group open;
-// a group shut stays shut after a reload, and its page reopens it; no console
-// error. The one-kiosk account it makes is switched off at the end.
+// For each: the groups shown and none of them empty; the page's own group open
+// and no other (one group at a time, T-319); it shuts by hand; opening another
+// shuts it; another page opens its own group; no console error. The one-kiosk account it makes is switched off at the end.
 // Needs Chrome or Edge on the machine.
 // ---------------------------------------------------------------------------
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -132,11 +132,14 @@ try {
       }
 
       const seen = await menu(page);
+      // /kiosks is in Monitorinq; an account without it sees every group shut.
+      const own = seen.groups.some((g) => g.id === 'monitoring') ? 'monitoring' : '';
       if (screen === 'tablet') {
         check(seen.labels === 0 && seen.groups.length === 0 && seen.links > 0, `${label}: icons only (${seen.links}), no names and no group headings`);
       } else {
         check(seen.sections.every((s) => s.items > 0), `${label}: no empty group — ${seen.groups.map((g) => g.label).join(', ')}`);
-        check(seen.groups.find((g) => g.id === 'monitoring')?.open !== false, `${label}: the group of the page on screen (Monitorinq) is open`);
+        const open = seen.groups.filter((g) => g.open).map((g) => g.id);
+        check(open.join() === own, `${label}: only the group of the page on screen is open — ${open.join(', ') || 'none'}`);
       }
       check(!seen.sideways, `${label}: no sideways scroll`);
       if (shots) {
@@ -144,24 +147,28 @@ try {
         await page.screenshot({ path: join(shots, `${name}-${screen}.png`) });
       }
 
-      // Shut a group that is not the page's, reload: still shut; open its page: open again.
+      // One group at a time (T-319): the page's own shuts by hand, another opened shuts the one before,
+      // and a page of the other group opens that group alone.
       if (screen === 'desktop') {
         const other = seen.groups.find((g) => g.id !== 'monitoring');
+        const opened = async () => {
+          await page.waitForTimeout(300);
+          return (await menu(page)).groups.filter((g) => g.open).map((g) => g.id);
+        };
+        if (own) {
+          await page.locator(`[data-nav-group="${own}"]`).click();
+          check((await opened()).length === 0, `${label}: the page's own group shuts too`);
+          await page.locator(`[data-nav-group="${own}"]`).click();
+        }
         if (other) {
           await page.locator(`[data-nav-group="${other.id}"]`).click();
-          await page.reload({ waitUntil: 'networkidle' });
-          const after = await menu(page);
-          check(after.groups.find((g) => g.id === other.id)?.open === false, `${label}: "${other.label}" stays shut after a reload`);
-          const href = await page.evaluate(() => [...document.querySelectorAll('a.shell__nav-item')].map((a) => a.getAttribute('href')));
-          const section = (await page.evaluate((id) => [...document.querySelectorAll(`[data-nav-items="${id}"] a`)].length, other.id));
-          check(section === 0, `${label}: its pages are hidden while it is shut (${href.length} links shown)`);
-          await page.locator(`[data-nav-group="${other.id}"]`).click();
+          check((await opened()).join() === other.id, `${label}: opening "${other.label}" shuts the one open before`);
           const firstPage = await page.locator(`[data-nav-items="${other.id}"] a.shell__nav-item`).first().getAttribute('href');
-          await page.locator(`[data-nav-group="${other.id}"]`).click();
-          await page.goto(`${base}${firstPage}`, { waitUntil: 'networkidle' });
-          check((await menu(page)).groups.find((g) => g.id === other.id)?.open === true, `${label}: on ${firstPage} its group opens by itself`);
-          await page.locator(`[data-nav-group="${other.id}"]`).click();
-          await page.locator(`[data-nav-group="${other.id}"]`).click();
+          await page.locator(`[data-nav-items="${other.id}"] a.shell__nav-item`).first().click();
+          await page.waitForURL((url) => url.pathname === firstPage, { timeout: 15_000 });
+          check((await opened()).join() === other.id, `${label}: on ${firstPage} only its group is open`);
+          await page.reload({ waitUntil: 'networkidle' });
+          check((await opened()).join() === other.id, `${label}: after a reload, too`);
         }
       }
 

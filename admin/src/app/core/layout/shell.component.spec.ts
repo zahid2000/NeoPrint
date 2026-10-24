@@ -3,15 +3,17 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatSidenav } from '@angular/material/sidenav';
+import { By } from '@angular/platform-browser';
 import { Router, provideRouter } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { AdminLoginResponse } from '../auth/auth.models';
 import { AuthService } from '../auth/auth.service';
 import { AdminHubService } from '../realtime/admin-hub.service';
-import { collapsedGroupsKey, navSections, readCollapsed } from './nav-groups';
+import { navSections } from './nav-groups';
 import { ShellComponent } from './shell.component';
 
 /** The hub, without a server: the shell opens it, the indicator reads it. */
@@ -92,31 +94,46 @@ describe('ShellComponent menu (T-304)', () => {
       element.getAttribute('href'),
     );
 
-  beforeEach(() => localStorage.removeItem(collapsedGroupsKey));
-  afterEach(() => localStorage.removeItem(collapsedGroupsKey));
-
   it('shows the groups in their order, and none this account has nothing in', async () => {
     await open('full', ['kiosks.view', 'incidents.view', 'payments.view', 'refunds.view', 'audit.view']);
 
     expect(groups()).toEqual(['monitoring', 'finance', 'administration']);
-    expect(links()).toEqual(['/', '/kiosks', '/incidents', '/payments', '/refunds', '/audit']);
+    // On a page without a group every group starts shut.
+    expect(links()).toEqual(['/']);
   });
 
-  it('shuts a group, remembers it in this browser, and keeps the group of the page on screen open', async () => {
+  it("keeps one group open at a time: the page's own, another opened by hand, or none (T-319)", async () => {
     await open('full', ['kiosks.view', 'payments.view']);
+    const heading = (group: string) =>
+      fixture.nativeElement.querySelector(`[data-nav-group="${group}"]`) as HTMLButtonElement;
+    const click = (group: string) => {
+      heading(group).click();
+      fixture.detectChanges();
+    };
 
-    (fixture.nativeElement.querySelector('[data-nav-group="finance"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    expect(links()).not.toContain('/payments');
-    expect(readCollapsed(localStorage).has('finance')).toBe(true);
-    expect(fixture.nativeElement.querySelector('[data-nav-group="finance"]').getAttribute('aria-expanded')).toBe('false');
-
-    // On a finance page its group is open, shut or not.
     await TestBed.inject(Router).navigateByUrl('/payments/123');
     fixture.detectChanges();
 
-    expect(links()).toContain('/payments');
+    // The group of the page on screen is open, the others shut.
+    expect(links()).toEqual(['/', '/payments']);
+    expect(heading('finance').getAttribute('aria-expanded')).toBe('true');
+    expect(heading('monitoring').getAttribute('aria-expanded')).toBe('false');
+
+    // It shuts like any other.
+    click('finance');
+    expect(links()).toEqual(['/']);
+    expect(heading('finance').getAttribute('aria-expanded')).toBe('false');
+
+    // Opening a group shuts the one open before.
+    click('finance');
+    click('monitoring');
+    expect(links()).toEqual(['/', '/kiosks']);
+    expect(heading('finance').getAttribute('aria-expanded')).toBe('false');
+
+    // Another page opens its own group and nothing else.
+    await TestBed.inject(Router).navigateByUrl('/payments');
+    fixture.detectChanges();
+    expect(links()).toEqual(['/', '/payments']);
   });
 
   it('on a tablet shows the icons only, with the names in tooltips and no group headings', async () => {
@@ -126,6 +143,31 @@ describe('ShellComponent menu (T-304)', () => {
     expect(fixture.nativeElement.querySelector('.shell__nav-label')).toBeNull();
     expect(links()).toEqual(['/', '/kiosks', '/payments']);
     expect(fixture.nativeElement.querySelector('a[href="/kiosks"]').getAttribute('aria-label')).toBe('nav.kiosks');
+  });
+
+  it('on a tablet folds the full menu back into the icons when it shuts itself, never into nothing (T-319)', async () => {
+    await open('rail', ['kiosks.view', 'payments.view']);
+    const shell = fixture.componentInstance;
+    const sidenav = fixture.debugElement.query(By.directive(MatSidenav)).injector.get(MatSidenav);
+
+    shell.toggleSidenav();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(shell.iconsOnly()).toBe(false);
+
+    // The backdrop or Escape: the sidenav shuts itself.
+    await sidenav.close();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(shell.iconsOnly()).toBe(true);
+    expect(sidenav.opened).toBe(true);
+    expect(links()).toEqual(['/', '/kiosks', '/payments']);
+
+    // And ☰ opens it in full again.
+    shell.toggleSidenav();
+    fixture.detectChanges();
+    expect(shell.iconsOnly()).toBe(false);
   });
 
   it('on a phone keeps the menu shut until it is asked for', async () => {

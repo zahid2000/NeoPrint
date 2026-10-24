@@ -76,42 +76,33 @@ export function isActive(item: NavItem, url: string): boolean {
   return item.path === '/' ? path === '/' : path === item.path || path.startsWith(`${item.path}/`);
 }
 
+/** A group opened or shut by hand, on the page it was done on. */
+export interface GroupChoice {
+  /** The one group left open; null when every group was shut. */
+  readonly group: NavGroupId | null;
+  readonly path: string;
+}
+
+function pathOf(url: string): string {
+  return url.split(/[?#]/)[0];
+}
+
 /**
- * Whether a group shows its entries: always when the page on screen is in it,
- * otherwise unless it was shut.
+ * The one group that shows its entries (T-319): the group chosen by hand on
+ * this page, otherwise the group of the page on screen; none on a page
+ * without a group. Opening another page forgets the choice.
  */
-export function isGroupOpen(section: NavSection, collapsed: ReadonlySet<string>, url: string): boolean {
-  return (
-    section.group === null ||
-    !collapsed.has(section.group) ||
-    section.items.some((item) => isActive(item, url))
-  );
+export function openGroup(sections: readonly NavSection[], url: string, choice: GroupChoice | null): NavGroupId | null {
+  if (choice && choice.path === pathOf(url)) {
+    return choice.group;
+  }
+
+  return sections.find((section) => section.group && section.items.some((item) => isActive(item, url)))?.group ?? null;
 }
 
-/** Where the shut groups are kept: a per-browser convenience, never anything the server needs. */
-export const collapsedGroupsKey = 'neoprint.admin.navGroups';
-
-/** The groups shut in this browser; none when the browser keeps nothing or what it kept is unreadable. */
-export function readCollapsed(storage: Pick<Storage, 'getItem'> | undefined): Set<string> {
-  try {
-    const kept: unknown = JSON.parse(storage?.getItem(collapsedGroupsKey) ?? '[]');
-
-    return new Set(
-      Array.isArray(kept)
-        ? kept.filter((id): id is string => (navGroups as readonly string[]).includes(id as string))
-        : [],
-    );
-  } catch {
-    return new Set();
-  }
-}
-
-export function writeCollapsed(storage: Pick<Storage, 'setItem'> | undefined, collapsed: ReadonlySet<string>): void {
-  try {
-    storage?.setItem(collapsedGroupsKey, JSON.stringify([...collapsed]));
-  } catch {
-    // A private window or blocked site data: the groups simply open again next time.
-  }
+/** What a click on a group heading leaves open: that group, or nothing when it was the open one. */
+export function toggleChoice(open: NavGroupId | null, clicked: NavGroupId, url: string): GroupChoice {
+  return { group: open === clicked ? null : clicked, path: pathOf(url) };
 }
 
 /** What the sidebar is at a width (docs/DESIGN_SYSTEM.md 5.3). */
