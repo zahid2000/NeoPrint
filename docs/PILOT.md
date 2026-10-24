@@ -24,6 +24,7 @@ Pilot aşağıdakıların hamısı bağlanmadan başlamır. Hər sətrin mənbə
 | 9 | Vizual yenidən dizayn, açılış ekranı və ikon (dizayn mənbəyi: Figma "ZSPrint Kiosk", T-303) | Layihə sahibi (nümunələr) + Claude | Nümunələr | T-022, T-201 | — | Açıq — Addım 7B |
 | 10 | Production SMTP: göndərən domen, SPF / DKIM (və DMARC) — istifadəçi emaili (qeydiyyat kodu, qəbz) və incident emaili (Critical / High, kioskun əhatəsindəki hesablara) spam-a düşmədən çatmalıdır | Layihə sahibi (domen, SMTP provayderi) + Claude | Domen, SMTP hesabı; OpenBao-da SMTP açarları | T-219, T-241 | MT-06 №8 (email hissəsi) | Açıq — Addım 7B |
 | 11 | iOS: test build-i iPhone-da (PIN, Face ID, Keychain, giriş, sifariş, ödəniş — MT-09-un iOS hissəsi), pilot üçün TestFlight və APNs push | Layihə sahibi (Apple Developer hesabı, iPhone) + Claude | Apple Developer Program ($99/il), iPhone | T-273 | MT-09 (iOS sətirləri) | Təxirə salındı — pilotdan əvvəl |
+| 12 | **Production buraxılış açarları** (oflayn açar mərasimi): `current` + `next` cütləri oflayn kompüterdə, iki şifrəli USB iki ayrı yerdə, public açarlar `ReleaseKeys.production.cs`-də. Onsuz pilot kiosku heç bir yeniləməni qəbul etmir. **M19-dan (golden image) əvvəl bitməlidir** | Layihə sahibi | Oflayn noutbuk, 2 USB (`docs/RELEASE_SIGNING.md` §3) | T-315 | — | Açıq — M19-dan əvvəl |
 
 **Xəritə və məxfilik (T-286, qeyd):** kiosklar xəritəsi OpenFreeMap-dən yüklənir — xəritəni açan
 istifadəçinin IP ünvanı OpenFreeMap-ə və Cloudflare-ə çatır. Məxfilik siyasəti qaralamasında yazılıb
@@ -31,6 +32,8 @@ istifadəçinin IP ünvanı OpenFreeMap-ə və Cloudflare-ə çatır. Məxfilik 
 zəmanət vermir (SLA yoxdur, xəbərdarlıqsız dayana bilər): xəritə yüklənməyəndə tətbiq və panel
 siyahını göstərir; uzunmüddətli həll — öz tile serveri (`Map.StyleUrl` ayarı + panelin
 `NEOPRINT_MAP_ORIGIN`-i).
+
+**API bir nüsxədir (qərar 2026-10-25):** qlobal, giriş, refresh və anonim müraciət limitləri API prosesinin yaddaşındadır — pilotda tək API nüsxəsi üçün məqbuldur. API bir neçə nüsxəyə (scale) keçəndə bu limitlər Redis-ə köçürülür (`docs/DEPLOY.md` §2), əks halda limit nüsxə sayına vurulur.
 
 **Pilot tələbi deyil (qərar 2026-10-12):** incident-lərin Telegram botu Faza 2-yə keçirilib (T-243) — kanal
 tənzimləmə ilə söndürülüdür (`Notification.TelegramEnabled`), pilot üçün bot token-i və qrup lazım deyil.

@@ -44,6 +44,8 @@ qalır (T-204). Sənəd gec gəlsə, M27-nin artefakt hissəsi onlarsız hazırl
 real printer (T-092), çapın ortasında elektrik kəsilməsi (T-089), Windows kiosk (T-093, T-220), admin testləri başqa
 kompüterdə (T-171), iOS (T-187, T-273).
 
+**Qeyd (2026-10-25, layihə sahibinin qərarı):** 7B sonunda API tək nüsxədir; yaddaşdakı sorğu limitləri (qlobal, giriş, refresh, anonim müraciət) bir neçə nüsxəyə keçiddə Redis-ə köçürülür — Faza 2 (Addım 8) işi. Production buraxılış açarları (T-315) M19-dan əvvəl hazır olmalıdır; M16–M18 staging açar dəsti ilə işləyir (T-316).
+
 ## 3. Redizayn üçün lazım olan nümunələr (T-022, T-201)
 
 1. **Rəng palitrası:** əsas (brend) rəng və 1–2 köməkçi rəng — hex kodu ilə və ya bəyəndiyiniz bir şəkil / sayt.

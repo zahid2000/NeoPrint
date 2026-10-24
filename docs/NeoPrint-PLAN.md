@@ -1628,6 +1628,7 @@ Mənbələr:
 ### FAZA 2 — Pilotdan sonra (istifadəçi göstərişi ilə başlanır)
 
 #### Addım 8 — Etibarlılıq və təhlükəsizlik
+- **API-nin bir neçə nüsxəsi (scale):** yaddaşdakı sorğu limitləri (qlobal, giriş, refresh, anonim müraciət) Redis-ə köçürülür — pilotda API tək nüsxədir (qərar 2026-10-25, `docs/DEPLOY.md` §2).
 - **Uzaqdan texniki dəstək kanalı (fövqəladə hallar üçün):** WireGuard VPN (açıq mənbə, pulsuz) + Linux-da SSH, Windows-da OpenSSH Server; yalnız VPN daxilindən, yalnız açarla, admin paneldən kiosk üzrə açılıb-bağlanır, hər sessiya audit olunur. Gündəlik idarəetmə bunsuz, Agent vasitəsilə aparılır.
 - **Mərhələli rollout-un avtomatlaşdırılması:** pilot kanalında N saat problemsiz işlədikdən sonra `stable`-a avtomatik keçid; xəta faizi həddi keçəndə rollout-un avtomatik dayanması.
 - **Virus yoxlaması:** backend — ClamAV (`clamd` ayrıca konteyner, INSTREAM protokolu öz klientimizlə); Linux kiosk — lokal `clamd`; Windows kiosk — daxili Microsoft Defender (`MpCmdRun.exe -Scan -ScanType 3 -File`). Yoluxmuş fayl rədd edilir, incident + analitika hadisəsi.
