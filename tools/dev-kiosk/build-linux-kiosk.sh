@@ -22,7 +22,7 @@ docker network inspect neoprint_default >/dev/null 2>&1 || { echo "The compose n
 
 cp "$root/tools/dev-kiosk/linux-container/Dockerfile" "$root/tools/dev-kiosk/linux-container/run.sh" "$context/"
 dotnet publish "$root/desktop/src/NeoPrint.Kiosk/NeoPrint.Kiosk.csproj" \
-  -c Release -r linux-x64 --self-contained false -p:EnableWindowsTargeting=true -o "$context/app" -v q
+  -c Release -r linux-x64 --self-contained false -p:EnableWindowsTargeting=true -p:ReleaseKeySet=staging -o "$context/app" -v q
 
 # Git Bash would turn the context into a path docker cannot use; hand it over
 # as a Windows path there.

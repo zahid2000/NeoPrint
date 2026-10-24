@@ -146,6 +146,22 @@ jobs:
       - name: Build the release signing tool
         run: dotnet build tools/release-sign --configuration Release
 
+      # T-316: the key set is a build parameter. A production kiosk build holds
+      # nothing of the staging set (not its keys, not its name), and the other
+      # way round; the release workflow checks the real packages the same way.
+      - name: Check the release key sets in the builds
+        if: runner.os == 'Linux'
+        run: |
+          set -eu
+          for set in production staging; do
+            dotnet publish desktop/src/NeoPrint.Kiosk.Agent -c Release -r linux-x64 --self-contained false               -p:ReleaseKeySet=$set -o "out/agent-$set" -v q
+            dotnet tools/release-sign/bin/Release/net8.0/release-sign.dll check-build --dir "out/agent-$set" --key-set $set
+          done
+          # And the check itself catches the wrong set.
+          if dotnet tools/release-sign/bin/Release/net8.0/release-sign.dll check-build --dir out/agent-staging --key-set production; then
+            echo "check-build passed a staging build as production"; exit 1
+          fi
+
       - name: Test
         run: >-
           dotnet test desktop/NeoPrint.Kiosk.sln

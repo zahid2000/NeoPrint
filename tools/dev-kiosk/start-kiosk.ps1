@@ -36,7 +36,8 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 
 if (-not $NoBuild) {
     Write-Host "Build ($Configuration)..."
-    dotnet build $project -c $Configuration --nologo -v quiet
+    # Development kiosks carry the staging release keys (T-316, docs/RELEASE_SIGNING.md).
+    dotnet build $project -c $Configuration -p:ReleaseKeySet=staging --nologo -v quiet
     if ($LASTEXITCODE -ne 0) {
         Write-Host 'Build alınmadı — yuxarıdakı xətaya baxın.' -ForegroundColor Red
         exit $LASTEXITCODE

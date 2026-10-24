@@ -16,11 +16,14 @@ public enum ReleaseComponent
 /// The manifest of one release package: what it is, for which platform, and
 /// the SHA-256 of the package file (docs/RELEASE_SIGNING.md). CI writes it,
 /// the release key signs its exact bytes, and the kiosk reads it only after the
-/// signature has been checked.
+/// signature has been checked. <see cref="KeySet"/> says which kind of build
+/// the package is (T-316): a staging package carries the staging keys and is
+/// signed with a staging key; a production one, the production keys.
 /// </summary>
 public sealed record ReleaseManifest(
     ReleaseComponent Component,
     string Platform,
+    string KeySet,
     ReleaseVersion Version,
     ReleaseVersion MinAgentVersion,
     string File,
@@ -36,7 +39,7 @@ public sealed record ReleaseManifest(
     public static readonly IReadOnlyList<string> Platforms = ["win-x64", "linux-x64"];
 
     private static readonly string[] Fields =
-        ["schema", "component", "platform", "version", "minAgentVersion", "file", "size", "sha256", "commit", "createdAt"];
+        ["schema", "component", "platform", "keySet", "version", "minAgentVersion", "file", "size", "sha256", "commit", "createdAt"];
 
     /// <summary>The manifest as CI writes it: indented UTF-8 JSON with LF line ends.</summary>
     public byte[] ToBytes()
@@ -48,6 +51,7 @@ public sealed record ReleaseManifest(
             json.WriteNumber("schema", CurrentSchema);
             json.WriteString("component", Component.ToString());
             json.WriteString("platform", Platform);
+            json.WriteString("keySet", KeySet);
             json.WriteString("version", Version.ToString());
             json.WriteString("minAgentVersion", MinAgentVersion.ToString());
             json.WriteString("file", File);
@@ -127,6 +131,12 @@ public sealed record ReleaseManifest(
                 throw new FormatException($"The manifest's platform '{platform}' is not one of {string.Join(", ", Platforms)}.");
             }
 
+            var keySet = Text(root, "keySet");
+            if (!ReleaseKeySet.IsName(keySet))
+            {
+                throw new FormatException("The manifest's keySet is not a key set name.");
+            }
+
             var file = Text(root, "file");
             if (file.Length is 0 or > 200 || file != Path.GetFileName(file) || file.StartsWith('.')
                 || file.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')))
@@ -162,7 +172,7 @@ public sealed record ReleaseManifest(
                 throw new FormatException("The manifest's createdAt is not a UTC time (yyyy-MM-ddTHH:mm:ssZ).");
             }
 
-            return new ReleaseManifest(Enum.Parse<ReleaseComponent>(componentName), platform, VersionOf(root, "version"), VersionOf(root, "minAgentVersion"),
+            return new ReleaseManifest(Enum.Parse<ReleaseComponent>(componentName), platform, keySet, VersionOf(root, "version"), VersionOf(root, "minAgentVersion"),
                 file, size, sha256, commit, createdAt);
         }
     }

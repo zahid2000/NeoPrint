@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 using NeoPrint.Crypto.Releases;
 using NeoPrint.Kiosk.Core.Updates;
@@ -19,7 +20,7 @@ public sealed class ReleasePackageCheckTests : IDisposable
     private readonly string _dir = Directory.CreateTempSubdirectory("neoprint-release-").FullName;
 
     private static readonly ReleaseExpectation OnA040LinuxKiosk = new(
-        ReleaseComponent.App, "linux-x64", ReleaseVersion.Parse("0.4.0"), ReleaseVersion.Parse("0.4.0"), []);
+        ReleaseComponent.App, "linux-x64", "staging", ReleaseVersion.Parse("0.4.0"), ReleaseVersion.Parse("0.4.0"), []);
 
     public void Dispose()
     {
@@ -30,7 +31,7 @@ public sealed class ReleasePackageCheckTests : IDisposable
     }
 
     private ReleasePackageCheck Kiosk() =>
-        new([ReleasePublicKey.FromKey(_current), ReleasePublicKey.FromKey(_next)]);
+        new(new ReleaseKeySet("staging", [ReleasePublicKey.FromKey(_current), ReleasePublicKey.FromKey(_next)]));
 
     [Fact]
     public async Task A_package_signed_with_the_current_key_is_installed()
@@ -181,7 +182,7 @@ public sealed class ReleasePackageCheckTests : IDisposable
         var release = Release();
         release.Sign(_current);
 
-        (await new ReleasePackageCheck([]).CheckAsync(release.Manifest, release.Signature, release.Package, OnA040LinuxKiosk))
+        (await new ReleasePackageCheck(new ReleaseKeySet("production", [])).CheckAsync(release.Manifest, release.Signature, release.Package, OnA040LinuxKiosk))
             .Rejection.Should().Be(ReleaseRejection.UnknownKey);
     }
 
@@ -190,18 +191,82 @@ public sealed class ReleasePackageCheckTests : IDisposable
     {
         using var third = ECDsa.Create(ECCurve.NamedCurves.nistP256);
 
-        var act = () => new ReleasePackageCheck([ReleasePublicKey.FromKey(_current), ReleasePublicKey.FromKey(_next), ReleasePublicKey.FromKey(third)]);
+        var act = () => new ReleasePackageCheck(new ReleaseKeySet("staging", [ReleasePublicKey.FromKey(_current), ReleasePublicKey.FromKey(_next), ReleasePublicKey.FromKey(third)]));
 
         act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
-    public void The_compiled_in_keys_are_at_most_two_distinct_P256_public_keys()
+    public async Task A_package_of_one_key_set_is_refused_by_a_build_of_the_other()
     {
-        ReleaseKeys.Trusted.Should().HaveCountLessThanOrEqualTo(2);
-        ReleaseKeys.Trusted.Select(k => k.KeyId).Should().OnlyHaveUniqueItems();
-        (ReleaseKeys.Current + ReleaseKeys.Next).Should().NotContainEquivalentOf("PRIVATE", "a private key never goes into a build");
+        using var stagingNext = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        using var productionCurrent = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        using var productionNext = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var stagingBuild = new ReleasePackageCheck(new ReleaseKeySet("staging", [ReleasePublicKey.FromKey(_current), ReleasePublicKey.FromKey(stagingNext)]));
+        var productionBuild = new ReleasePackageCheck(new ReleaseKeySet("production", [ReleasePublicKey.FromKey(productionCurrent), ReleasePublicKey.FromKey(productionNext)]));
+
+        var staging = Release(keySet: "staging");
+        staging.Sign(_current);
+        (await stagingBuild.CheckAsync(staging.Manifest, staging.Signature, staging.Package, OnA040LinuxKiosk)).Accepted.Should().BeTrue();
+        (await productionBuild.CheckAsync(staging.Manifest, staging.Signature, staging.Package, OnA040LinuxKiosk))
+            .Rejection.Should().Be(ReleaseRejection.UnknownKey, "a pilot kiosk never installs a test build");
+
+        var production = Release(keySet: "production");
+        production.Sign(productionCurrent);
+        (await productionBuild.CheckAsync(production.Manifest, production.Signature, production.Package, OnA040LinuxKiosk)).Accepted.Should().BeTrue();
+        (await stagingBuild.CheckAsync(production.Manifest, production.Signature, production.Package, OnA040LinuxKiosk))
+            .Rejection.Should().Be(ReleaseRejection.UnknownKey);
+    }
+
+    [Fact]
+    public async Task A_package_labelled_for_the_other_key_set_is_refused_though_its_key_is_trusted()
+    {
+        var mislabelled = Release(keySet: "production");
+        mislabelled.Sign(_current);
+
+        (await Kiosk().CheckAsync(mislabelled.Manifest, mislabelled.Signature, mislabelled.Package, OnA040LinuxKiosk))
+            .Rejection.Should().Be(ReleaseRejection.WrongTarget);
+    }
+
+    [Fact]
+    public void The_two_key_sets_hold_at_most_two_public_keys_each_and_share_none()
+    {
+        var staging = KeySetFile("staging");
+        var production = KeySetFile("production");
+
+        foreach (var set in new[] { staging, production })
+        {
+            set.Pems.Should().HaveCountLessThanOrEqualTo(2);
+            set.Text.Should().NotContainEquivalentOf("PRIVATE KEY", "a private key never goes into a build");
+            set.Pems.Select(ReleasePublicKey.FromPem).Select(k => k.KeyId).Should().OnlyHaveUniqueItems();
+        }
+
+        staging.Pems.Should().HaveCount(2, "the test server and the development stack sign with staging keys");
+        staging.Pems.Select(pem => ReleasePublicKey.FromPem(pem).KeyId)
+            .Should().NotIntersectWith(production.Pems.Select(pem => ReleasePublicKey.FromPem(pem).KeyId));
+    }
+
+    [Fact]
+    public void The_kiosk_assembly_carries_its_own_key_set_and_nothing_of_the_other()
+    {
+        var own = ReleaseKeys.BuiltIn.Name;
+        var other = KeySetFile(own == "staging" ? "production" : "staging");
+        var assembly = File.ReadAllBytes(typeof(ReleaseKeys).Assembly.Location);
+
         _ = new ReleasePackageCheck();
+        KeySetFile(own).Pems.Should().HaveCount(ReleaseKeys.BuiltIn.Keys.Count);
+        foreach (var line in other.Pems.SelectMany(pem => pem.Split('\n')).Where(line => line.Length > 20 && !line.StartsWith('-')))
+        {
+            Contains(assembly, Encoding.Unicode.GetBytes(line)).Should().BeFalse($"the {own} build holds none of the {other.Name} keys");
+        }
+
+        Contains(assembly, Encoding.UTF8.GetBytes(other.ClassName)).Should().BeFalse($"the {own} build does not compile the {other.Name} set");
+        if (own == "production")
+        {
+            // Not even the word: no code path of a pilot kiosk knows a staging set.
+            Contains(assembly, Encoding.UTF8.GetBytes("staging"), ignoreCase: true).Should().BeFalse();
+            Contains(assembly, Encoding.Unicode.GetBytes("staging"), ignoreCase: true).Should().BeFalse();
+        }
     }
 
     [Fact]
@@ -237,6 +302,7 @@ public sealed class ReleasePackageCheckTests : IDisposable
 
     private TestRelease Release(
         string version = "0.5.0",
+        string keySet = "staging",
         string platform = "linux-x64",
         ReleaseComponent component = ReleaseComponent.App,
         string minAgentVersion = "0.4.0")
@@ -244,7 +310,7 @@ public sealed class ReleasePackageCheckTests : IDisposable
         var package = new byte[4096];
         new Random(313).NextBytes(package);
         var name = $"neoprint-kiosk-app-{version}-{platform}.tar.gz";
-        var manifest = new ReleaseManifest(component, platform, ReleaseVersion.Parse(version), ReleaseVersion.Parse(minAgentVersion),
+        var manifest = new ReleaseManifest(component, platform, keySet, ReleaseVersion.Parse(version), ReleaseVersion.Parse(minAgentVersion),
             name, package.Length, Convert.ToHexString(SHA256.HashData(package)).ToLowerInvariant(), "61b4baf",
             new DateTimeOffset(2026, 10, 24, 12, 0, 0, TimeSpan.Zero));
 
@@ -254,6 +320,37 @@ public sealed class ReleasePackageCheckTests : IDisposable
         File.WriteAllBytes(release.Package, package);
         return release;
     }
+
+    private sealed record KeySet(string Name, string ClassName, string Text, IReadOnlyList<string> Pems);
+
+    /// <summary>A key set file as it is in the repository: Updates/KeySets/ReleaseKeys.{name}.cs.</summary>
+    private static KeySet KeySetFile(string name)
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!Directory.Exists(Path.Combine(dir.FullName, "desktop", "src")))
+        {
+            dir = dir.Parent ?? throw new InvalidOperationException("The repository root was not found.");
+        }
+
+        var text = File.ReadAllText(Path.Combine(dir.FullName, "desktop", "src", "NeoPrint.Kiosk.Core", "Updates", "KeySets", $"ReleaseKeys.{name}.cs"));
+        var pems = Regex.Matches(text, "-----BEGIN PUBLIC KEY-----[^-]+-----END PUBLIC KEY-----")
+            .Select(match => string.Join('\n', match.Value.Split('\n').Select(line => line.Trim())))
+            .ToList();
+        return new KeySet(name, char.ToUpperInvariant(name[0]) + name[1..] + "ReleaseKeys", text, pems);
+    }
+
+    private static bool Contains(byte[] haystack, byte[] needle, bool ignoreCase = false)
+    {
+        if (ignoreCase)
+        {
+            haystack = haystack.Select(Lower).ToArray();
+            needle = needle.Select(Lower).ToArray();
+        }
+
+        return haystack.AsSpan().IndexOf(needle) >= 0;
+    }
+
+    private static byte Lower(byte b) => b is >= (byte)'A' and <= (byte)'Z' ? (byte)(b + 32) : b;
 
     private sealed record TestRelease(string Manifest, string Signature, string Package, byte[] PackageBytes)
     {

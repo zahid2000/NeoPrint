@@ -9,26 +9,33 @@ namespace NeoPrint.Kiosk.Core.Updates;
 /// </summary>
 public sealed class ReleasePackageCheck
 {
+    private readonly ReleaseKeySet _keys;
     private readonly ReleaseVerifier _verifier;
 
+    /// <summary>With the key set compiled into this build.</summary>
     public ReleasePackageCheck()
-        : this(ReleaseKeys.Trusted)
+        : this(ReleaseKeys.BuiltIn)
     {
     }
 
-    /// <summary>For tests: other keys than the compiled-in ones.</summary>
-    public ReleasePackageCheck(IEnumerable<ReleasePublicKey> trusted)
+    /// <summary>For tests: another set than the compiled-in one.</summary>
+    public ReleasePackageCheck(ReleaseKeySet keys)
     {
-        _verifier = new ReleaseVerifier(trusted);
-        if (_verifier.Trusted.Count > 2)
+        if (keys.Keys.Count > 2)
         {
-            throw new ArgumentException("A kiosk trusts two release keys: the current one and the next.", nameof(trusted));
+            throw new ArgumentException("A kiosk trusts two release keys: the current one and the next.", nameof(keys));
         }
+
+        _keys = keys;
+        _verifier = new ReleaseVerifier(keys.Keys);
     }
+
+    public string KeySet => _keys.Name;
 
     /// <param name="manifestPath">The package's <c>manifest.json</c>.</param>
     /// <param name="signaturePath">Its detached signature, <c>manifest.json.sig</c>.</param>
     /// <param name="packagePath">The package file the manifest names.</param>
+    /// <param name="expected">What the kiosk expects; its key set is always this build's.</param>
     public async Task<ReleaseCheck> CheckAsync(
         string manifestPath,
         string signaturePath,
@@ -46,6 +53,6 @@ public sealed class ReleasePackageCheck
         var manifest = await File.ReadAllBytesAsync(manifestPath, cancellationToken).ConfigureAwait(false);
         var signature = await File.ReadAllBytesAsync(signaturePath, cancellationToken).ConfigureAwait(false);
         await using var package = new FileStream(packagePath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
-        return await _verifier.CheckAsync(manifest, signature, package, expected, cancellationToken).ConfigureAwait(false);
+        return await _verifier.CheckAsync(manifest, signature, package, expected with { KeySet = _keys.Name }, cancellationToken).ConfigureAwait(false);
     }
 }

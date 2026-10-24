@@ -19,7 +19,7 @@ public enum ReleaseRejection
     /// <summary>Correctly signed, but not a manifest this build can read.</summary>
     MalformedManifest,
 
-    /// <summary>A package for another component or platform.</summary>
+    /// <summary>A package for another component, platform or key set.</summary>
     WrongTarget,
 
     /// <summary>The package was withdrawn after it was released.</summary>
@@ -36,12 +36,14 @@ public enum ReleaseRejection
 }
 
 /// <summary>What the kiosk expects of the package it is about to install.</summary>
+/// <param name="KeySet">The key set this build carries (<see cref="ReleaseKeySet.Name"/>).</param>
 /// <param name="Installed">The installed version of the component; the package must be newer. Null when nothing is installed yet.</param>
 /// <param name="AgentVersion">The version of the agent doing the install.</param>
 /// <param name="Withdrawn">SHA-256 (lower-case hex) of the packages withdrawn since their release.</param>
 public sealed record ReleaseExpectation(
     ReleaseComponent Component,
     string Platform,
+    string KeySet,
     ReleaseVersion? Installed,
     ReleaseVersion AgentVersion,
     IReadOnlyCollection<string> Withdrawn);
@@ -156,10 +158,12 @@ public sealed class ReleaseVerifier
             return ReleaseCheck.Refused(ReleaseRejection.MalformedManifest, e.Message);
         }
 
-        if (manifest.Component != expected.Component || !string.Equals(manifest.Platform, expected.Platform, StringComparison.Ordinal))
+        if (manifest.Component != expected.Component
+            || !string.Equals(manifest.Platform, expected.Platform, StringComparison.Ordinal)
+            || !string.Equals(manifest.KeySet, expected.KeySet, StringComparison.Ordinal))
         {
             return ReleaseCheck.Refused(ReleaseRejection.WrongTarget,
-                $"The package is {manifest.Component} for {manifest.Platform}; expected {expected.Component} for {expected.Platform}.", manifest);
+                $"The package is {manifest.Component} for {manifest.Platform} ({manifest.KeySet}); expected {expected.Component} for {expected.Platform} ({expected.KeySet}).", manifest);
         }
 
         if (expected.Withdrawn.Contains(manifest.Sha256, StringComparer.Ordinal))

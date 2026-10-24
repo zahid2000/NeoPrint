@@ -6,7 +6,8 @@
     on the owner's offline machine and verifies a package exactly as a kiosk
     does. Uses only the BCL (ECDSA P-256) - no package.
 
-    CI runs only "manifest" and "verify"; it never holds a private key.
+    CI runs only "manifest", "verify" and "check-build"; it never holds a
+    private key.
   -->
 
   <PropertyGroup>
@@ -21,9 +22,14 @@
     <ProjectReference Include="..\..\backend\shared\NeoPrint.Crypto\NeoPrint.Crypto.csproj" />
   </ItemGroup>
 
-  <!-- The kiosk's own compiled-in keys, so "verify" with no key given answers as a kiosk would. -->
+  <!--
+    Both kiosk key sets (T-316): "verify" with a key set answers as a kiosk of that
+    set would, "sign" and "sign-staging" refuse a key of the wrong set, and
+    "check-build" knows what must not be in a build.
+  -->
   <ItemGroup>
-    <Compile Include="..\..\desktop\src\NeoPrint.Kiosk.Core\Updates\ReleaseKeys.cs" Link="ReleaseKeys.cs" />
+    <Compile Include="..\..\desktop\src\NeoPrint.Kiosk.Core\Updates\KeySets\ReleaseKeys.production.cs" Link="KeySets\ReleaseKeys.production.cs" />
+    <Compile Include="..\..\desktop\src\NeoPrint.Kiosk.Core\Updates\KeySets\ReleaseKeys.staging.cs" Link="KeySets\ReleaseKeys.staging.cs" />
   </ItemGroup>
 
 </Project>

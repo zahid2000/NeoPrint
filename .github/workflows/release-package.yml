@@ -1,13 +1,18 @@
 # Kiosk release packages (T-313, docs/RELEASE_SIGNING.md).
 #
-# Builds, for each platform, the three packages a kiosk installs - the UI
-# (App), the Agent and the provisioning scripts - with a manifest each
-# (version, component, platform, size, SHA-256, MinAgentVersion) and a
-# SHA256SUMS file, and uploads them as one artifact.
+# Builds, for each platform and each key set, the three packages a kiosk
+# installs - the UI (App), the Agent and the provisioning scripts - with a
+# manifest each (version, component, platform, key set, size, SHA-256,
+# MinAgentVersion) and a SHA256SUMS file, and uploads them as one artifact.
+#
+# Key sets (T-316): "production" builds carry only the pilot kiosks' keys,
+# "staging" builds only the test server's and the development stack's. The set
+# is a build parameter, and each build is checked to hold nothing of the other.
 #
 # It does NOT sign. The release key never comes near CI (docs/DECISIONS.md,
 # 2026-10-11): the owner downloads the artifact, compares the SHA-256 with the
-# one this run printed, and signs the manifests offline with tools/release-sign.
+# one this run printed, and signs the manifests offline with tools/release-sign
+# (staging: release-sign sign-staging on the owner's machine).
 name: Release packages
 
 on:
@@ -32,19 +37,21 @@ env:
 
 jobs:
   package:
-    name: package (${{ matrix.rid }})
+    name: package (${{ matrix.rid }}, ${{ matrix.key_set }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
 
     strategy:
       fail-fast: false
       matrix:
+        key_set: [production, staging]
+        rid: [win-x64, linux-x64]
         include:
-          - os: windows-latest
-            rid: win-x64
+          - rid: win-x64
+            os: windows-latest
             provisioning: windows
-          - os: ubuntu-latest
-            rid: linux-x64
+          - rid: linux-x64
+            os: ubuntu-latest
             provisioning: linux
 
     defaults:
@@ -84,19 +91,27 @@ jobs:
               --configuration Release \
               --runtime ${{ matrix.rid }} \
               --self-contained \
-              -p:Version="$VERSION" \
+              -p:Version="$VERSION"               -p:ReleaseKeySet=${{ matrix.key_set }} \
               -p:SourceRevisionId="$GITHUB_SHA" \
               --output "out/$project"
           done
           mkdir -p "out/provisioning"
           cp -R "desktop/provisioning/${{ matrix.provisioning }}/." "out/provisioning/"
 
+      # A production build holds nothing of the staging set, a staging build nothing of the production set.
+      - name: Check the key set in the build
+        run: |
+          set -eu
+          for project in NeoPrint.Kiosk NeoPrint.Kiosk.Agent; do
+            dotnet tools/release-sign/bin/Release/net8.0/release-sign.dll check-build --dir "out/$project" --key-set ${{ matrix.key_set }}
+          done
+
       - name: Archive (zip on Windows, tar.gz on Linux - it keeps the execute bits)
         run: |
           set -eu
           mkdir -p dist
           pack() { # source-dir component
-            local name="neoprint-kiosk-$2-$VERSION-${{ matrix.rid }}"
+            local name="neoprint-kiosk-$2-$VERSION-${{ matrix.rid }}-${{ matrix.key_set }}"
             if [ "${{ matrix.rid }}" = "win-x64" ]; then
               pwsh -NoProfile -Command "Compress-Archive -Path 'out/$1/*' -DestinationPath 'dist/$name.zip'"
               echo "$name.zip"
@@ -117,7 +132,7 @@ jobs:
             dotnet tools/release-sign/bin/Release/net8.0/release-sign.dll manifest \
               --package "dist/$file" \
               --component "$component" \
-              --platform ${{ matrix.rid }} \
+              --platform ${{ matrix.rid }}               --key-set ${{ matrix.key_set }} \
               --version "$VERSION" \
               --min-agent-version "$MIN_AGENT" \
               --commit "$GITHUB_SHA" \
@@ -125,7 +140,7 @@ jobs:
           done < packages.txt
           (cd dist && sha256sum -- * > SHA256SUMS)
           {
-            echo "### Kiosk packages $VERSION (${{ matrix.rid }}) - unsigned"
+            echo "### Kiosk packages $VERSION (${{ matrix.rid }}, ${{ matrix.key_set }} keys) - unsigned"
             echo
             echo "Compare these with the files you sign (docs/RELEASE_SIGNING.md, step 3):"
             echo
@@ -138,7 +153,7 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: kiosk-release-${{ env.VERSION }}-${{ matrix.rid }}
+          name: kiosk-release-${{ env.VERSION }}-${{ matrix.rid }}-${{ matrix.key_set }}
           path: dist/
           if-no-files-found: error
           retention-days: 30

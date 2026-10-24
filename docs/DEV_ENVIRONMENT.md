@@ -1985,19 +1985,21 @@ docker exec -it neoprint-mongo mongosh -u neoprint -p devMongoPassword \
   --authenticationDatabase admin neoprint --quiet --eval 'db.getCollectionNames()'
 ```
 
-### Buraxılış paketini lokal yığmaq və test açarı ilə yoxlamaq (T-313)
+### Buraxılış paketini lokal yığmaq, staging açarı ilə imzalamaq və yoxlamaq (T-313, T-316)
 
-Real açarlar yalnız layihə sahibinin oflayn kompüterindədir (`docs/RELEASE_SIGNING.md`). Lokal sınaq üçün **atılacaq** açar repodan kənarda (məs. `%TEMP%`) yaradılır:
+Production açarları yalnız layihə sahibinin oflayn kompüterindədir (`docs/RELEASE_SIGNING.md`). Development kiosku **staging** dəsti ilə yığılır (`-p:ReleaseKeySet=staging`; `tools/dev-kiosk` skriptləri bunu özü verir); staging özəl açarı bu kompüterdə, repodan kənarda — `%USERPROFILE%\.neoprint\release-keys\staging\`:
 
 ```bash
 dotnet build tools/release-sign
 T="dotnet tools/release-sign/bin/Debug/net8.0/release-sign.dll"
-dotnet publish desktop/src/NeoPrint.Kiosk.Agent -c Release -r linux-x64 --self-contained -p:Version=0.8.0-pilot.1 -o "$TEMP/rs/out"
-(cd "$TEMP/rs/out" && tar -czf ../agent.tar.gz .)
-$T keygen --name test --out "$TEMP/rs/keys"                     # parol iki dəfə soruşulur
-$T manifest --package "$TEMP/rs/agent.tar.gz" --component Agent --platform linux-x64   --version 0.8.0-pilot.1 --min-agent-version 0.8.0-pilot.1 --out "$TEMP/rs/agent.tar.gz.manifest.json"
-$T sign --manifest "$TEMP/rs/agent.tar.gz.manifest.json" --package "$TEMP/rs/agent.tar.gz" --key "$TEMP/rs/keys/test.private.pem"
-$T verify --manifest "$TEMP/rs/agent.tar.gz.manifest.json" --package "$TEMP/rs/agent.tar.gz" --public-key "$TEMP/rs/keys/test.public.pem"
+dotnet publish desktop/src/NeoPrint.Kiosk.Agent -c Release -r linux-x64 --self-contained false -p:ReleaseKeySet=staging -o "$TEMP/rs/out"
+$T check-build --dir "$TEMP/rs/out" --key-set staging            # build-də yalnız staging dəsti
+(cd "$TEMP/rs/out" && tar -czf ../agent-staging.tar.gz .)
+$T manifest --package "$TEMP/rs/agent-staging.tar.gz" --component Agent --platform linux-x64 --key-set staging \
+  --version 0.8.0-dev.1 --min-agent-version 0.8.0-dev.1 --out "$TEMP/rs/agent-staging.tar.gz.manifest.json"
+$T sign-staging --manifest "$TEMP/rs/agent-staging.tar.gz.manifest.json" --package "$TEMP/rs/agent-staging.tar.gz"
+$T verify --key-set staging --manifest "$TEMP/rs/agent-staging.tar.gz.manifest.json" --package "$TEMP/rs/agent-staging.tar.gz"     # OK
+$T verify --key-set production --manifest "$TEMP/rs/agent-staging.tar.gz.manifest.json" --package "$TEMP/rs/agent-staging.tar.gz"  # REFUSED (UnknownKey)
 ```
 
-`--public-key` verilməsə `verify` kioskun öz (`ReleaseKeys.cs`) açarları ilə yoxlayır.
+CI artefaktı (`kiosk-release-<versiya>-<platforma>-staging`) üçün: `gh run download <run-id> -n <artefakt> -D "$TEMP/rel"`, sonra `$T sign-staging --dir "$TEMP/rel"`.

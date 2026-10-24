@@ -3,7 +3,7 @@ using NeoPrint.Crypto.Releases;
 namespace NeoPrint.Kiosk.Core.Updates;
 
 /// <summary>
-/// The public release keys every kiosk build trusts (docs/RELEASE_SIGNING.md).
+/// The public release keys this kiosk build trusts (docs/RELEASE_SIGNING.md).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -13,25 +13,21 @@ namespace NeoPrint.Kiosk.Core.Updates;
 /// release replaces the old key with a newly generated next one.
 /// </para>
 /// <para>
-/// Compiled in, never read from configuration: a kiosk is an untrusted device,
-/// and a key that a settings file could replace would let anyone who reaches
-/// the disk install their own build. Only public keys belong here; the private
-/// keys never leave the owner's offline machine.
-/// </para>
-/// <para>
-/// Empty until the owner generates the key pairs: with no trusted key every
-/// package is refused.
+/// Which set - production or staging - is decided when the kiosk is built
+/// (<c>-p:ReleaseKeySet=staging|production</c>, production by default; T-316):
+/// the project compiles only that set's file, so a production build holds no
+/// staging key, not even its name. Never read from configuration: a kiosk is
+/// an untrusted device, and a key that a settings file could replace would let
+/// anyone who reaches the disk install their own build.
 /// </para>
 /// </remarks>
 public static class ReleaseKeys
 {
-    /// <summary>The key releases are signed with today.</summary>
-    public const string Current = "";
-
-    /// <summary>The next key: generated with the current one, kept offline, used only after a rotation.</summary>
-    public const string Next = "";
-
-    /// <summary>The keys above that are set.</summary>
-    public static IReadOnlyList<ReleasePublicKey> Trusted { get; } =
-        new[] { Current, Next }.Where(pem => pem.Length > 0).Select(ReleasePublicKey.FromPem).ToList();
+    /// <summary>The set compiled into this build.</summary>
+    public static ReleaseKeySet BuiltIn { get; } =
+#if NEOPRINT_RELEASE_KEYS_STAGING
+        ReleaseKeySet.FromPems(StagingReleaseKeys.Name, StagingReleaseKeys.Current, StagingReleaseKeys.Next);
+#else
+        ReleaseKeySet.FromPems(ProductionReleaseKeys.Name, ProductionReleaseKeys.Current, ProductionReleaseKeys.Next);
+#endif
 }

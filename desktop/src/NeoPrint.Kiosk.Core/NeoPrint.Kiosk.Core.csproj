@@ -22,6 +22,27 @@
     <PackageReference Include="Lextm.SharpSnmpLib" />
   </ItemGroup>
 
+  <!--
+    The release keys this build trusts (T-316, docs/RELEASE_SIGNING.md):
+    production by default, staging only when asked for at build time with
+    -p:ReleaseKeySet=staging (test server, development stack). Only the chosen
+    set's file is compiled, so a production assembly carries no staging key.
+  -->
+  <PropertyGroup>
+    <ReleaseKeySet Condition="'$(ReleaseKeySet)' == ''">production</ReleaseKeySet>
+    <DefineConstants Condition="'$(ReleaseKeySet)' == 'staging'">$(DefineConstants);NEOPRINT_RELEASE_KEYS_STAGING</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Updates\KeySets\**" />
+    <Compile Include="Updates\KeySets\ReleaseKeys.$(ReleaseKeySet).cs" />
+  </ItemGroup>
+
+  <Target Name="CheckReleaseKeySet" BeforeTargets="BeforeBuild">
+    <Error Condition="'$(ReleaseKeySet)' != 'production' And '$(ReleaseKeySet)' != 'staging'"
+           Text="ReleaseKeySet is '$(ReleaseKeySet)'; it is production or staging." />
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="..\NeoPrint.Kiosk.Platform.Abstractions\NeoPrint.Kiosk.Platform.Abstractions.csproj" />
     <!-- The kiosk shares the contracts and the pricing rules with the backend

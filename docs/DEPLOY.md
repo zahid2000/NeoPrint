@@ -69,7 +69,20 @@ internet → Caddy (TLS) → API                      (/refund/* — ictimai ref
 - Konfiqurasiya: `RateLimits__*` (`docs/API.md` — "Rate limit"). Production-da `RateLimits__Disabled` **heç vaxt**
   təyin edilmir.
 
-## 3. Hələ yazılmalı olanlar (M20–M21)
+## 3. Kiosk buraxılışları: hansı açar dəsti harada — T-316
+
+| Mühit | Kiosk build-i | Paketlər |
+|---|---|---|
+| Development stack (`tools/dev-kiosk`, Linux konteyner kiosku) | `-p:ReleaseKeySet=staging` (skriptlər özü verir) | `*-staging` artefaktları, `release-sign sign-staging` |
+| Test serveri (`docs/TEST_SERVER.md`) — ona qoşulan bütün kiosklar | staging | `*-staging` |
+| Staging (M20) | staging | `*-staging` |
+| **Production / pilot kioskları** | **production** (parametr verilməsə də budur) | `*-production`, yalnız oflayn imza (`docs/RELEASE_SIGNING.md` §4) |
+
+- Production build staging açarını **daşımır** — CI-da `release-sign check-build` hər push-da və hər buraxılış paketində yoxlayır. Ona görə test serverindəki staging paketi pilot kioskuna yüklənsə belə `UnknownKey` ilə rədd olunur.
+- Admin panelə (M16) paket yüklənəndə manifestdəki `keySet` görünür; production serverinə staging paketi yükləmək mənasızdır — kiosklar onu qəbul etmir.
+- Pilot kiosku golden image-dən (M19) qurulmazdan əvvəl production açarları (T-315) `ReleaseKeys.production.cs`-də olmalıdır.
+
+## 4. Hələ yazılmalı olanlar (M20–M21)
 
 Staging compose; OpenBao (production açarları, T-169); domen və TLS; SMTP (SPF / DKIM / DMARC); **production
 bazası təmiz başlayır — yalnız seed** (T-300); ehtiyat nüsxə və bərpa; monitorinq.
