@@ -88,6 +88,34 @@ internal static class Program
 
         RegisterPlatform(services, configuration);
 
+        // The kiosk's own log files, what UploadLogs sends (T-321); cleaned as they are written.
+        services.AddSingleton<ILoggerProvider>(provider =>
+            new Core.Logging.FileLoggerProvider(provider.GetRequiredService<IAppPaths>().LogDirectory, "kiosk"));
+
+        // Updates (docs/KIOSK_UPDATES.md, T-321): the UI downloads and asks, the agent checks and switches.
+        services.AddSingleton(provider =>
+        {
+            var settings = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value;
+            var platform = Core.Updates.UpdatePaths.ForThisMachine();
+            return platform with
+            {
+                UpdatesRoot = string.IsNullOrWhiteSpace(settings.UpdatesRoot) ? platform.UpdatesRoot : settings.UpdatesRoot,
+                AgentRoot = string.IsNullOrWhiteSpace(settings.AgentRoot) ? platform.AgentRoot : settings.AgentRoot,
+            };
+        });
+        services.AddSingleton<Core.Updates.UpdateHostProxy>();
+        services.AddSingleton(provider => new Core.Updates.UpdateCoordinator(
+            provider.GetRequiredService<KioskApiClient>(),
+            provider.GetRequiredService<Core.Updates.UpdatePaths>(),
+            new Core.Updates.ReleasePackageCheck(),
+            provider.GetRequiredService<Core.Updates.UpdateHostProxy>(),
+            () => provider.GetRequiredService<KioskRuntime>().Configuration,
+            provider.GetRequiredService<IClock>(),
+            provider.GetRequiredService<ILogger<Core.Updates.UpdateCoordinator>>(),
+            KioskRuntime.AppVersion,
+            provider.GetRequiredService<IAppPaths>().LogDirectory,
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value.UpdateDownloadKBps));
+
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<DeviceEnrollmentService>();
         services.AddSingleton<ConfigurationCache>();
@@ -350,7 +378,9 @@ internal static class Program
                 (await provider.GetRequiredService<ISystemMetrics>().ReadAsync(cancellationToken).ConfigureAwait(false)).UptimeSeconds,
             clock: provider.GetRequiredService<IClock>(),
             safeMode: () => provider.GetRequiredService<KioskRuntime>().SafeMode,
-            pending: new PendingCommandStore(provider.GetRequiredService<IAppPaths>().StateDirectory)));
+            pending: new PendingCommandStore(provider.GetRequiredService<IAppPaths>().StateDirectory),
+            agentCommands: (commandId, type, acknowledged, cancellationToken) => provider.GetRequiredService<Core.Updates.UpdateCoordinator>()
+                .HandleCommandAsync(commandId, type, acknowledged, cancellationToken)));
         services.AddSingleton<KioskHubClient>();
         services.AddSingleton<ProvisioningHubClient>();
         services.AddSingleton(provider =>

@@ -284,6 +284,10 @@ public sealed partial class ScreenRenderTests : IDisposable
         // An administrator paused the kiosk (plan section 7.8).
         screens.Add(("14-maintenance", Shell(language, KioskScreen.Home, shell => shell.SetMaintenance(true))));
 
+        // An update waits for a moment with no customer, then is applied (T-321).
+        screens.Add(("15-update-draining", Shell(language, KioskScreen.Home, shell => shell.SetDraining(true))));
+        screens.Add(("16-update-applying", Shell(language, KioskScreen.Home, shell => shell.SetUpdating(true))));
+
         foreach (var destination in new[] { "Card", "Wallet", "Voucher" })
         {
             screens.Add(($"13-refund-{destination}", Shell(language, KioskScreen.Home, shell =>

@@ -260,6 +260,9 @@ public sealed class KioskHubClient : HubClientBase
     /// <summary>The phone left: the session and why (<c>Closed</c>, <c>Expired</c>, <c>Replaced</c>).</summary>
     public event Func<Guid, string, Task>? SessionClosed;
 
+    /// <summary>A rollout reaches this kiosk, or a release was withdrawn: ask what to run (T-321).</summary>
+    public event Func<Task>? UpdateAvailable;
+
     protected override void Register(HubConnection connection)
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -278,6 +281,7 @@ public sealed class KioskHubClient : HubClientBase
             : Task.CompletedTask);
         connection.On<KioskMessage>("PrinterConfigChanged", _ => Raise(PrinterConfigChanged));
         connection.On<KioskMessage>("KioskConfigChanged", _ => Raise(KioskConfigChanged));
+        connection.On<KioskMessage>("UpdateAvailable", _ => Raise(UpdateAvailable));
         connection.On<CommandMessage>("KioskCommand", message => CommandReceived is { } handler
             ? handler(message.CommandId, message.Type)
             : Task.CompletedTask);

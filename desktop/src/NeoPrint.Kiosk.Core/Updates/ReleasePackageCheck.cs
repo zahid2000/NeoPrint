@@ -52,7 +52,33 @@ public sealed class ReleasePackageCheck
 
         var manifest = await File.ReadAllBytesAsync(manifestPath, cancellationToken).ConfigureAwait(false);
         var signature = await File.ReadAllBytesAsync(signaturePath, cancellationToken).ConfigureAwait(false);
+        return await CheckAsync(manifest, signature, packagePath, expected, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>The same check with the manifest and signature in hand (as the backend offers them, T-321).</summary>
+    public async Task<ReleaseCheck> CheckAsync(
+        byte[] manifest,
+        byte[] signature,
+        string packagePath,
+        ReleaseExpectation expected,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(expected);
+
         await using var package = new FileStream(packagePath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
         return await _verifier.CheckAsync(manifest, signature, package, expected with { KeySet = _keys.Name }, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>The backend's message key for a refusal (<c>updates.signatureRefused</c>).</summary>
+    public static string MessageKey(ReleaseRejection rejection) => rejection switch
+    {
+        ReleaseRejection.UnknownKey or ReleaseRejection.BadSignature or ReleaseRejection.MalformedSignature => "updates.signatureRefused",
+        ReleaseRejection.MalformedManifest => "updates.refused.malformedManifest",
+        ReleaseRejection.WrongTarget => "updates.refused.wrongTarget",
+        ReleaseRejection.Withdrawn => "updates.withdrawn",
+        ReleaseRejection.NotNewer => "updates.notNewer",
+        ReleaseRejection.AgentTooOld => "updates.agentTooOld",
+        ReleaseRejection.PackageMismatch => "updates.packageMismatch",
+        _ => "updates.reasonUnknown",
+    };
 }

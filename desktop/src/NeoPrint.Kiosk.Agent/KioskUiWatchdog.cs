@@ -39,6 +39,30 @@ public sealed class AgentOptions
     /// within a minute.
     /// </summary>
     public int CrashLoopRestartDelaySeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Who runs the UI, so the updater can stop and start it (T-321):
+    /// <c>watchdog</c> (this agent, with <see cref="UiExecutablePath"/>),
+    /// <c>systemd</c> (a provisioned Linux kiosk), <c>shell-launcher</c>
+    /// (Windows). Empty: worked out from the platform and the path.
+    /// </summary>
+    public string UiHost { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The repair run of the provisioning scripts, <c>{folder}</c> being the
+    /// version folder; empty means <c>sudo -n {folder}/provision.sh --repair</c>.
+    /// </summary>
+    public string ProvisioningCommand { get; set; } = string.Empty;
+
+    /// <summary>Overrides of the provisioned folders (docs/KIOSK_UPDATES.md section 2); empty means the platform's.</summary>
+    public string InstallRoot { get; set; } = string.Empty;
+
+    public string UpdatesRoot { get; set; } = string.Empty;
+
+    public string AgentRoot { get; set; } = string.Empty;
+
+    /// <summary>Where <c>agent-YYYYMMDD.log</c> goes; empty means the platform's log folder.</summary>
+    public string LogDirectory { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -70,6 +94,13 @@ public sealed class KioskUiWatchdog : BackgroundService
 
     private Process? _ui;
 
+    // Set while the updater swaps versions: the UI is down on purpose, and is
+    // not started again until it is released (T-321).
+    private volatile bool _held;
+    private TaskCompletionSource _released = NewReleased();
+
+    private static TaskCompletionSource NewReleased() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     public KioskUiWatchdog(IOptions<AgentOptions> options, ILogger<KioskUiWatchdog> logger)
     {
         _options = options.Value;
@@ -95,6 +126,12 @@ public sealed class KioskUiWatchdog : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            if (_held)
+            {
+                await _released.Task.WaitAsync(stoppingToken).ConfigureAwait(false);
+                continue;
+            }
+
             try
             {
                 await RunUiAsync(stoppingToken).ConfigureAwait(false);
@@ -137,7 +174,7 @@ public sealed class KioskUiWatchdog : BackgroundService
         _ui.Dispose();
         _ui = null;
 
-        if (stoppingToken.IsCancellationRequested)
+        if (stoppingToken.IsCancellationRequested || _held)
         {
             return;
         }
@@ -146,6 +183,35 @@ public sealed class KioskUiWatchdog : BackgroundService
         // customer to look at, so it counts towards the crash loop either way.
         _logger.LogWarning("The kiosk UI exited with code {ExitCode}; restarting.", exitCode);
         RecordExit(DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>Stops the UI and keeps it stopped until <see cref="Release"/> (the updater's switch).</summary>
+    public async Task HoldAsync(CancellationToken cancellationToken)
+    {
+        _released = NewReleased();
+        _held = true;
+
+        if (_ui is { HasExited: false } ui)
+        {
+            _logger.LogInformation("Stopping the kiosk UI for an update.");
+            try
+            {
+                ui.Kill(entireProcessTree: true);
+                await ui.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException)
+            {
+                // Already gone.
+            }
+        }
+    }
+
+    /// <summary>Lets the UI start again - from whatever <c>current</c> now points at.</summary>
+    public void Release()
+    {
+        _held = false;
+        _recentExits.Clear();
+        _released.TrySetResult();
     }
 
     /// <summary>How long to wait before the next start: longer while the UI is crash-looping.</summary>

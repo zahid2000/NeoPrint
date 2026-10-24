@@ -846,5 +846,11 @@
   "kioskLogs.tooLarge": "The log file is too large: at most {max} MB (compressed).",
   "kioskLogs.notGzip": "The log file is not gzip-compressed text.",
   "notFound.kioskLog": "Kiosk log not found.",
-  "problem.tooLarge": "What was sent is too large"
+  "problem.tooLarge": "What was sent is too large",
+  "kioskCommands.logsUploaded": "The logs were uploaded; they can be downloaded from the kiosk's page.",
+  "kioskCommands.logsFailed": "The logs could not be uploaded; the kiosk will try again.",
+  "kioskCommands.agentRestarted": "The agent was restarted.",
+  "kioskCommands.provisioningApplied": "The provisioning scripts were applied again.",
+  "kioskCommands.rolledBack": "The kiosk went back to the previous version.",
+  "updates.agentNotAnswering": "The kiosk's agent service did not answer; the update was not applied."
 }

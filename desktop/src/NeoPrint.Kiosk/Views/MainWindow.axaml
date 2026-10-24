@@ -159,6 +159,11 @@
             <Panel IsVisible="{Binding Screen, Converter={x:Static vm:ScreenConverters.IsAdmin}}">
                 <views:AdminView DataContext="{Binding Admin}" />
             </Panel>
+
+            <!-- Over whatever is under it: the kiosk is about to be updated (T-321). -->
+            <Panel IsVisible="{Binding ShowUpdating}">
+                <views:UpdatingView />
+            </Panel>
         </Panel>
 
         <!-- QUEUE PANEL: 280px on the right, present on every screen -->

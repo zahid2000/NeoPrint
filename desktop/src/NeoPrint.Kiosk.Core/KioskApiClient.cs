@@ -85,7 +85,8 @@ public sealed record KioskConfiguration(
     IReadOnlyList<string>? AllowedFormats = null,
     bool PaperBlockWhenInsufficient = true,
     int IdleResetSeconds = 90,
-    int TelemetrySeconds = 30)
+    int TelemetrySeconds = 30,
+    KioskUpdateSettings? Update = null)
 {
     /// <summary>
     /// Whether a feature flag is on for this kiosk (plan section 2.16, T-160). A key
@@ -470,13 +471,14 @@ public sealed partial class KioskApiClient
         bool printerOnline,
         CancellationToken cancellationToken = default,
         bool safeMode = false,
-        string? printerProblem = null)
+        string? printerProblem = null,
+        string? provisioningVersion = null)
     {
         using var request = await CreateAuthenticatedRequestAsync(
             HttpMethod.Post, "api/kiosks/heartbeat", cancellationToken).ConfigureAwait(false);
 
         request.Content = JsonContent.Create(
-            new { appVersion, agentVersion, printerOnline, safeMode, printerProblem }, options: JsonOptions);
+            new { appVersion, agentVersion, printerOnline, safeMode, printerProblem, provisioningVersion }, options: JsonOptions);
 
         using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
 

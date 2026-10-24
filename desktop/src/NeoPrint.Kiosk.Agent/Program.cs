@@ -1,21 +1,30 @@
+using System.Runtime.InteropServices;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using NeoPrint.Kiosk.Agent;
+using NeoPrint.Kiosk.Agent.Updates;
+using NeoPrint.Kiosk.Core;
+using NeoPrint.Kiosk.Core.Logging;
+using NeoPrint.Kiosk.Core.Updates;
 
 // ---------------------------------------------------------------------------
 // The kiosk agent (plan section 7.12).
 //
 // A system service that starts before the UI and keeps the machine working:
-// it launches and watches the UI, applies updates inside the update window,
-// carries out remote commands and uploads logs. Running as a service is what
-// lets it restart a UI that has crashed and survive the UI being replaced
-// during an update.
+// it launches and watches the UI, applies updates and carries out the remote
+// commands the UI hands it (docs/KIOSK_UPDATES.md, T-321). Running as a
+// service is what lets it restart a UI that has crashed and survive the UI
+// being replaced during an update.
+//
+// It holds no credentials and never talks to the backend: the UI - the
+// backend's only client - downloads, and the agent checks and applies.
 //
 // Windows Service as LocalSystem; systemd unit as the neoprint account with a
-// narrow sudoers rule. The service and the UI watchdog are here; the updater
-// and the remote commands are plan step 7.
+// narrow sudoers rule.
 // ---------------------------------------------------------------------------
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -30,13 +39,58 @@ builder.Services.AddWindowsService(options => options.ServiceName = "NeoPrintAge
 builder.Services.AddSystemd();
 
 builder.Services.Configure<AgentOptions>(builder.Configuration.GetSection("Agent"));
-builder.Services.AddHostedService<KioskUiWatchdog>();
+var agentOptions = builder.Configuration.GetSection("Agent").Get<AgentOptions>() ?? new AgentOptions();
+
+var platformPaths = UpdatePaths.ForThisMachine();
+var paths = new UpdatePaths(
+    Or(agentOptions.InstallRoot, platformPaths.InstallRoot),
+    Or(agentOptions.UpdatesRoot, platformPaths.UpdatesRoot),
+    Or(agentOptions.AgentRoot, platformPaths.AgentRoot));
+
+var logDirectory = Or(
+    agentOptions.LogDirectory,
+    RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "NeoPrint", "logs")
+        : "/var/log/neoprint");
+builder.Logging.AddProvider(new FileLoggerProvider(logDirectory, "agent"));
+
+builder.Services.AddSingleton(paths);
+builder.Services.AddSingleton<IClock, SystemClock>();
+builder.Services.AddSingleton<KioskUiWatchdog>();
+builder.Services.AddHostedService(provider => provider.GetRequiredService<KioskUiWatchdog>());
+builder.Services.AddSingleton<IProvisioningRunner, ProvisioningRunner>();
+builder.Services.AddSingleton<IUiHost>(provider => (Or(agentOptions.UiHost, Default(agentOptions))) switch
+{
+    "watchdog" => new WatchdogUiHost(provider.GetRequiredService<KioskUiWatchdog>()),
+    "shell-launcher" => new ShellLauncherUiHost(provider.GetRequiredService<ILogger<ShellLauncherUiHost>>()),
+    _ => new SystemdUiHost(provider.GetRequiredService<ILogger<SystemdUiHost>>()),
+});
+builder.Services.AddSingleton(provider =>
+{
+    var lifetime = provider.GetRequiredService<IHostApplicationLifetime>();
+    return new UpdateApplier(
+        paths,
+        new ReleasePackageCheck(),
+        provider.GetRequiredService<IUiHost>(),
+        provider.GetRequiredService<IProvisioningRunner>(),
+        provider.GetRequiredService<IClock>(),
+        provider.GetRequiredService<ILogger<UpdateApplier>>(),
+        BuildVersion.Of(typeof(Program).Assembly),
+        // The service manager starts the agent again, from agent/current.
+        () => lifetime.StopApplication());
+});
+builder.Services.AddHostedService<AgentWorker>();
 
 var host = builder.Build();
 
 host.Services.GetRequiredService<ILoggerFactory>()
     .CreateLogger("NeoPrint.Kiosk.Agent")
-    .LogInformation("The NeoPrint agent is starting.");
+    .LogInformation("The NeoPrint agent {Version} is starting.", BuildVersion.Of(typeof(Program).Assembly));
 
 await host.RunAsync();
 
+static string Or(string value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+static string Default(AgentOptions options)
+    => RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "shell-launcher"
+        : string.IsNullOrWhiteSpace(options.UiExecutablePath) ? "systemd" : "watchdog";

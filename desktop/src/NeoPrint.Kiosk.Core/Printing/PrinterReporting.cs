@@ -169,6 +169,7 @@ public sealed class CommandProcessor
     private readonly DateTime _startedAt;
     private readonly Func<bool> _safeMode;
     private readonly PendingCommandStore _pending;
+    private readonly Func<Guid, string, bool, CancellationToken, Task<(bool, string, int)?>>? _agentCommands;
     private readonly HashSet<Guid> _done = [];
 
     /// <summary>How long a reboot may take to take the application down before it is called a failure.</summary>
@@ -194,8 +195,10 @@ public sealed class CommandProcessor
         Func<CancellationToken, Task<long?>>? uptimeSeconds = null,
         IClock? clock = null,
         Func<bool>? safeMode = null,
-        PendingCommandStore? pending = null)
+        PendingCommandStore? pending = null,
+        Func<Guid, string, bool, CancellationToken, Task<(bool, string, int)?>>? agentCommands = null)
     {
+        _agentCommands = agentCommands;
         _pending = pending ?? new PendingCommandStore(null);
         _safeMode = safeMode ?? (() => false);
         _reloadConfiguration = reloadConfiguration ?? (_ => Task.CompletedTask);
@@ -270,6 +273,11 @@ public sealed class CommandProcessor
                 "Resume" => await ReloadAsync("kioskCommands.resumed", cancellationToken).ConfigureAwait(false),
                 "RestartApp" => await RestartAsync(commandId, sentAt, acknowledged, cancellationToken).ConfigureAwait(false),
                 "Reboot" => await RebootAsync(commandId, sentAt, acknowledged, cancellationToken).ConfigureAwait(false),
+
+                // The agent's commands (T-321): the update coordinator acknowledges
+                // them and answers when they are done, maybe from the next process.
+                "UpdateNow" or "RollbackVersion" or "UploadLogs" or "ReapplyProvisioning" or "RestartAgent" when _agentCommands is not null
+                    => await _agentCommands(commandId, type, acknowledged, cancellationToken).ConfigureAwait(false),
                 _ => (false, "kioskCommands.unsupported", 0),
             };
 

@@ -846,5 +846,11 @@
   "kioskLogs.tooLarge": "Log faylı çox böyükdür: ən çox {max} MB (sıxılmış).",
   "kioskLogs.notGzip": "Log faylı gzip sıxılmış mətn deyil.",
   "notFound.kioskLog": "Kiosk logu tapılmadı.",
-  "problem.tooLarge": "Göndərilən məlumat çox böyükdür"
+  "problem.tooLarge": "Göndərilən məlumat çox böyükdür",
+  "kioskCommands.logsUploaded": "Loglar yükləndi; kiosk detalından endirmək olar.",
+  "kioskCommands.logsFailed": "Loglar yüklənmədi; kiosk sonra yenidən cəhd edəcək.",
+  "kioskCommands.agentRestarted": "Agent yenidən başladıldı.",
+  "kioskCommands.provisioningApplied": "Quraşdırma skriptləri yenidən tətbiq olundu.",
+  "kioskCommands.rolledBack": "Kiosk əvvəlki versiyaya qaytarıldı.",
+  "updates.agentNotAnswering": "Kioskun Agent servisi cavab vermədi; yeniləmə tətbiq olunmadı."
 }

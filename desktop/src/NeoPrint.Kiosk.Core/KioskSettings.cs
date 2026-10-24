@@ -82,4 +82,15 @@ public sealed class KioskSettings
     /// runs with it off so the real flow is what gets tested.
     /// </summary>
     public bool SkipPayment { get; set; }
+
+    /// <summary>
+    /// Overrides of the update folders the UI shares with the agent
+    /// (docs/KIOSK_UPDATES.md section 2, T-321); empty means the platform's.
+    /// </summary>
+    public string UpdatesRoot { get; set; } = string.Empty;
+
+    public string AgentRoot { get; set; } = string.Empty;
+
+    /// <summary>A limit for package downloads in KB/s, so an update does not take the kiosk's line (0: none).</summary>
+    public int UpdateDownloadKBps { get; set; }
 }

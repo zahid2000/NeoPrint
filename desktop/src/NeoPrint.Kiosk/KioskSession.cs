@@ -57,6 +57,8 @@ public sealed class KioskSession
         var drives = _services.GetRequiredService<IRemovableDriveWatcher>();
         var printers = _services.GetRequiredService<IPrinterService>();
         var api = _services.GetRequiredService<KioskApiClient>();
+        var updates = _services.GetRequiredService<Core.Updates.UpdateCoordinator>();
+        var updateHost = _services.GetRequiredService<Core.Updates.UpdateHostProxy>();
 
         using var session = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var token = session.Token;
@@ -145,6 +147,15 @@ public sealed class KioskSession
             // A phone joined or left (plan section 9.3): the header says so, never who.
             Func<Guid, DateTime, Task> sessionOpened = (sessionId, expiresAt) => OnUiAsync(() => _model.SessionOpened(sessionId, expiresAt));
             Func<Guid, string, Task> sessionClosed = (sessionId, _) => OnUiAsync(() => _model.SessionClosed(sessionId));
+            // A rollout reaches this kiosk (T-321): ask now rather than at the next interval.
+            Func<Task> updateAvailable = () =>
+            {
+                updates.Wake();
+                return Task.CompletedTask;
+            };
+            updateHost.Target = new ScreenUpdateHost(_model);
+            runtime.InstalledVersions = () => (updates.Agent?.AgentVersion, updates.Agent?.Installed.GetValueOrDefault(Core.Updates.UpdateComponents.Provisioning));
+
             var counters = _services.GetRequiredService<TelemetryCounters>();
             Action<PrinterActivity> activityChanged = activity =>
             {
@@ -186,6 +197,7 @@ public sealed class KioskSession
             hub.PaymentConfirmed += paymentConfirmed;
             hub.SessionOpened += sessionOpened;
             hub.SessionClosed += sessionClosed;
+            hub.UpdateAvailable += updateAvailable;
             worker.ActivityChanged += activityChanged;
             worker.JobFinished += jobFinished;
 
@@ -201,13 +213,21 @@ public sealed class KioskSession
                 hub.PaymentConfirmed -= paymentConfirmed;
                 hub.SessionOpened -= sessionOpened;
                 hub.SessionClosed -= sessionClosed;
+                hub.UpdateAvailable -= updateAvailable;
                 worker.ActivityChanged -= activityChanged;
+                updateHost.Target = null;
+                runtime.InstalledVersions = null;
                 worker.JobFinished -= jobFinished;
             });
 
             _ = RunGuardedAsync("kiosk hub", () => hub.StartAsync(token), token);
 
-            await TryAsync("printer report", () => reporter.ReportAsync(force: true, token)).ConfigureAwait(false);
+            var printersLookedAt = false;
+            await TryAsync("printer report", async () =>
+            {
+                await reporter.ReportAsync(force: true, token).ConfigureAwait(false);
+                printersLookedAt = true;
+            }).ConfigureAwait(false);
             await CatchUpAsync(runtime, commands, api, token).ConfigureAwait(false);
 
             if (_services.GetRequiredService<CrashLoopGuard>().CrashedLastRun)
@@ -229,8 +249,19 @@ public sealed class KioskSession
             _ = RunGuardedAsync("flash uploads", () => SendUploadsAsync(orders, token), token);
             _ = RunGuardedAsync("telemetry", () => SendTelemetryAsync(runtime, hub, commands, drives, api, token), token);
             _ = RunGuardedAsync("printer telemetry", () => SendPrinterTelemetryAsync(runtime, reporter, api, token), token);
+            _ = RunGuardedAsync("updates", () => updates.RunAsync(token), token);
 
-            await HeartbeatLoopAsync(runtime, printers, token).ConfigureAwait(false);
+            // The health check after an update (docs/KIOSK_UPDATES.md step 9): connected,
+            // a heartbeat answered, the printers looked at, and not in safe mode.
+            Action beat = () =>
+            {
+                if (!safeMode && printersLookedAt && runtime.IsBackendReachable && runtime.Configuration is not null)
+                {
+                    updates.MarkHealthy();
+                }
+            };
+
+            await HeartbeatLoopAsync(runtime, printers, token, beat).ConfigureAwait(false);
         }
         catch (DeviceRevokedException)
         {
@@ -506,7 +537,7 @@ public sealed class KioskSession
         });
     }
 
-    private async Task HeartbeatLoopAsync(KioskRuntime runtime, IPrinterService printers, CancellationToken cancellationToken)
+    private async Task HeartbeatLoopAsync(KioskRuntime runtime, IPrinterService printers, CancellationToken cancellationToken, Action? beat = null)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -532,6 +563,7 @@ public sealed class KioskSession
             await runtime
                 .BeatAsync(healthy, cancellationToken, healthy || selected is null ? null : PrinterErrors.For(state))
                 .ConfigureAwait(false);
+            beat?.Invoke();
 
             await OnUiAsync(() =>
                 {
@@ -595,7 +627,7 @@ public sealed class KioskSession
             {
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                     {
-                        if (_model.Screen == KioskScreen.Home && _model.Flow is { } flow)
+                        if (_model.Screen == KioskScreen.Home && !_model.TurnsCustomersAway && _model.Flow is { } flow)
                         {
                             Touch();
                             await flow.StartFromDriveAsync(inserted).ConfigureAwait(true);
@@ -709,4 +741,14 @@ public sealed class KioskSession
     }
 
     private static Task OnUiAsync(Action action) => Dispatcher.UIThread.InvokeAsync(action).GetTask();
+
+    /// <summary>The screen, for the update coordinator: read and changed on the UI thread.</summary>
+    private sealed class ScreenUpdateHost(MainWindowViewModel model) : Core.Updates.IUpdateHost
+    {
+        public bool IsIdle => Dispatcher.UIThread.Invoke(() => model.IsIdleForUpdate);
+
+        public void SetDraining(bool draining) => Dispatcher.UIThread.Post(() => model.SetDraining(draining));
+
+        public void SetUpdating(bool updating) => Dispatcher.UIThread.Post(() => model.SetUpdating(updating));
+    }
 }

@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NeoPrint.Kiosk.ViewModels"
+             x:Class="NeoPrint.Kiosk.Views.UpdatingView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <!-- "Yenilənir" (docs/DESIGN_SYSTEM.md, T-321): the kiosk turns new customers
+         away before an update, or is being updated. Laid over the content, with
+         the page's own background, so nothing under it can be touched; the
+         header, the queue and the footer stay. No action for the customer. -->
+
+    <Border Background="{DynamicResource Neutral50}">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Spacing="{DynamicResource Space6}" MaxWidth="820">
+            <Border Width="{DynamicResource StatusIconSize}" Height="{DynamicResource StatusIconSize}"
+                    Background="{DynamicResource InfoBg}"
+                    CornerRadius="{DynamicResource StatusIconRadius}"
+                    HorizontalAlignment="Center">
+                <PathIcon Data="{StaticResource IconSync}"
+                          Width="60" Height="60"
+                          Foreground="{DynamicResource Info500}" />
+            </Border>
+
+            <TextBlock Text="{Binding UpdatingTitle}" Classes="h1"
+                       HorizontalAlignment="Center" TextAlignment="Center"
+                       TextWrapping="Wrap" />
+
+            <TextBlock Text="{Binding UpdatingBody}" Classes="muted"
+                       HorizontalAlignment="Center" TextAlignment="Center"
+                       TextWrapping="Wrap" />
+        </StackPanel>
+    </Border>
+</UserControl>

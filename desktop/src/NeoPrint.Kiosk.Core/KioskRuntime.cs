@@ -48,6 +48,9 @@ public sealed class KioskRuntime
     /// <summary>How long to wait before the next telemetry report (<c>Kiosk.TelemetrySeconds</c>).</summary>
     public TimeSpan TelemetryInterval => TimeSpan.FromSeconds(Math.Max(5, _configuration?.TelemetrySeconds ?? 30));
 
+    /// <summary>The agent's and the provisioning scripts' versions, as the agent wrote them down (T-321).</summary>
+    public Func<(string? Agent, string? Provisioning)>? InstalledVersions { get; set; }
+
     /// <summary>This build's version, as the heartbeat and telemetry report it.</summary>
     public static string AppVersion => ThisAppVersion;
 
@@ -152,15 +155,17 @@ public sealed class KioskRuntime
         try
         {
             var timer = System.Diagnostics.Stopwatch.StartNew();
+            var (agentVersion, provisioningVersion) = InstalledVersions?.Invoke() ?? (null, null);
 
             var response = await _api
                 .SendHeartbeatAsync(
                     _configuration is null ? null : ThisAppVersion,
-                    _configuration is null ? null : ThisAppVersion,
+                    _configuration is null ? null : agentVersion,
                     printerOnline,
                     cancellationToken,
                     SafeMode,
-                    printerOnline ? null : printerProblem)
+                    printerOnline ? null : printerProblem,
+                    _configuration is null ? null : provisioningVersion)
                 .ConfigureAwait(false);
 
             IsBackendReachable = true;
@@ -210,5 +215,5 @@ public sealed class KioskRuntime
 
     /// <summary>The version this build reports.</summary>
     private static string ThisAppVersion =>
-        typeof(KioskRuntime).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+        Updates.BuildVersion.Of(typeof(KioskRuntime).Assembly);
 }

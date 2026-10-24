@@ -239,6 +239,61 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public KioskScreen RestingScreen => TakesOrders ? KioskScreen.Home : KioskScreen.OutOfService;
 
+    // ---- Updates (docs/KIOSK_UPDATES.md, T-321; DESIGN_SYSTEM.md "Kiosk: Yenilənir ekranı")
+
+    /// <summary>Waited too long for an idle moment: new customers are turned away; the one here finishes.</summary>
+    public bool IsDraining { get; private set; }
+
+    /// <summary>The agent is about to stop this UI for a new version.</summary>
+    public bool IsUpdating { get; private set; }
+
+    /// <summary>
+    /// The "Yenilənir" screen over the content: while updating, and while
+    /// turning customers away once nobody is in the middle of an order.
+    /// </summary>
+    public bool ShowUpdating => IsUpdating || (IsDraining && Screen is KioskScreen.Home or KioskScreen.OutOfService);
+
+    /// <summary>Whether a customer could start an order now; false while the kiosk turns them away.</summary>
+    public bool TurnsCustomersAway => IsDraining || IsUpdating;
+
+    public string UpdatingTitle => T(IsUpdating ? "updating.title" : "updating.drainingTitle");
+
+    public string UpdatingBody => T(IsUpdating ? "updating.body" : "updating.drainingBody");
+
+    public void SetDraining(bool on)
+    {
+        IsDraining = on;
+        UpdatingChanged();
+    }
+
+    public void SetUpdating(bool on)
+    {
+        IsUpdating = on;
+        UpdatingChanged();
+    }
+
+    /// <summary>
+    /// No customer and nothing at the printer (docs/KIOSK_UPDATES.md step 4):
+    /// a screen nobody is using, no phone connected, no job on the printer and,
+    /// while the printer works, none waiting for it. A paused or out-of-service
+    /// kiosk's waiting jobs stay in the spool and go on afterwards.
+    /// </summary>
+    public bool IsIdleForUpdate
+        => Screen is KioskScreen.Home or KioskScreen.OutOfService or KioskScreen.Offline or KioskScreen.Degraded
+               or KioskScreen.NotConfigured or KioskScreen.SafeMode
+           && !HasConnectedPhones
+           && !Queue.Any(entry => entry.IsPrinting)
+           && (Queue.Count == 0 || !TakesOrders);
+
+    private void UpdatingChanged()
+    {
+        OnPropertyChanged(nameof(IsDraining));
+        OnPropertyChanged(nameof(IsUpdating));
+        OnPropertyChanged(nameof(ShowUpdating));
+        OnPropertyChanged(nameof(UpdatingTitle));
+        OnPropertyChanged(nameof(UpdatingBody));
+    }
+
     /// <summary>
     /// What the notice says. A printer problem is said first, whatever else
     /// holds the kiosk: "the queue is being printed" - what a pause says - is
@@ -369,7 +424,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // Any read shows the scanner works, whatever was on the code.
         LastScanAt = DateTime.UtcNow;
 
-        if (!line.StartsWith("NPU:", StringComparison.Ordinal) || !CanPrintFromFlash || IsSafeMode)
+        if (!line.StartsWith("NPU:", StringComparison.Ordinal) || !CanPrintFromFlash || IsSafeMode || TurnsCustomersAway)
         {
             return false;
         }
@@ -726,6 +781,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     partial void OnScreenChanged(KioskScreen value)
     {
         OnPropertyChanged(nameof(ShowKioskQr));
+        OnPropertyChanged(nameof(ShowUpdating));
 
         if (value == KioskScreen.Flow)
         {

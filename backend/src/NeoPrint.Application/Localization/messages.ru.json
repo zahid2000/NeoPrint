@@ -846,5 +846,11 @@
   "kioskLogs.tooLarge": "Файл журнала слишком большой: не более {max} МБ (в сжатом виде).",
   "kioskLogs.notGzip": "Файл журнала не является текстом, сжатым gzip.",
   "notFound.kioskLog": "Журнал киоска не найден.",
-  "problem.tooLarge": "Отправлено слишком много данных"
+  "problem.tooLarge": "Отправлено слишком много данных",
+  "kioskCommands.logsUploaded": "Журналы выгружены; их можно скачать на странице киоска.",
+  "kioskCommands.logsFailed": "Журналы не выгружены; киоск попробует снова.",
+  "kioskCommands.agentRestarted": "Agent перезапущен.",
+  "kioskCommands.provisioningApplied": "Скрипты установки применены повторно.",
+  "kioskCommands.rolledBack": "Киоск возвращён к предыдущей версии.",
+  "updates.agentNotAnswering": "Служба Agent на киоске не ответила; обновление не применено."
 }
