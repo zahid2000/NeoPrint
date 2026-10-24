@@ -25,6 +25,44 @@ Paketin adında dəst görünür: `neoprint-kiosk-agent-0.8.0-linux-x64-staging.
 
 Staging açarının parolu açarın yanındakı `passphrase.txt`-dədir: bu, production açarından fərqli olaraq **məqsədli güzəştdir** — açar faylı tək başına kopyalansa açılmır, amma maşının özü qorunmalıdır.
 
+## Staging: sürətli başlanğıc (T-320)
+
+Test serverinə staging paketi yükləmək üçün **bir əmr** kifayətdir. Skript açarı yoxlayır (yoxdursa yaradır), son CI paketlərini endirir, imzalayır, yoxlayır və panelə hansı faylların yüklənəcəyini yazır. Heç nə serverə göndərilmir, özəl açar kompüterdən çıxmır.
+
+**Bir dəfə lazım olanlar:** .NET 8 SDK, GitHub CLI (`gh`) və `gh auth login` ilə giriş, repo kompüterdə.
+
+**Əmr** (PowerShell, repo qovluğunda):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\release-sign\staging-quickstart.ps1
+```
+
+Seçimlər: `-Platform linux-x64` və ya `-Platform win-x64` — yalnız bir platforma (standart: hər ikisi); `-RunId 40103493022` — konkret CI işi (standart: "Release packages"in son uğurlu işi); `-OutDir C:\yol` — paketlərin qovluğu (standart: `%USERPROFILE%\.neoprint\staging-packages\<iş nömrəsi>`).
+
+**Nə görməlisiniz:** beş addım, hər birinin sonunda yaşıl `OK`:
+
+1. `dotnet və gh var, GitHub-a giriş edilib`, `release-sign hazırdır`;
+2. `açar yerindədir və repodakı staging açarıdır`;
+3. `N artefakt endirildi`;
+4. hər paket üçün `signed with staging key e097a6082f6d3545` və `OK: ... key e097a6082f6d3545`, sonda `bütün paketlər imzalandı`;
+5. hər paket üçün üç fayl: **Paket** (`….tar.gz` və ya `….zip`), **Manifest** (`….manifest.json`), **İmza** (`….manifest.json.sig`).
+
+Sonra test serverinin panelində: **İdarəetmə → Buraxılışlar → "Paket yüklə"** → üç faylı seçin → kanal **Pilot** → **Yüklə**. Siyahıda yeni sətir görünür: komponent, versiya, platforma, dəst `staging`, açar `e097a6082f6d3545`, kanal Pilot.
+
+**Qırmızı `DAYANDI` görsəniz** — altındakı sarı sətir nə etmək lazım olduğunu deyir:
+
+| Mətn | Səbəb | Nə etməli |
+|---|---|---|
+| .NET SDK / GitHub CLI tapılmadı | Proqram quraşdırılmayıb | Quraşdırın, terminalı yenidən açın |
+| GitHub-a giriş edilməyib | `gh` hesabı tanımır | `gh auth login`, brauzerdə təsdiq |
+| "Release packages" workflow-unun uğurlu işi tapılmadı / Artefakt endirilmədi | Hələ iş yoxdur və ya artefaktın 30 günü keçib | GitHub → Actions → "Release packages" → "Run workflow" (versiya, məs. `0.8.0-pilot.2`), bitəndən sonra skripti yenidən başladın |
+| … artıq var (bu iş əvvəl endirilib) | Eyni iş ikinci dəfə | Köhnə qovluğu silin və ya `-OutDir` verin |
+| … imzalanmadı, yuxarıda `wrong passphrase` | Parol səhvdir | Skripti yenidən başladın, parolu diqqətlə yazın |
+| … imzalanmadı, yuxarıda `not the file in the manifest` | Endirilən fayl zədələnib | Qovluğu silin, yenidən başladın |
+| `DİQQƏT: bu kompüterdəki staging açarı repodakı staging açarı deyil` | Açar başqa kompüterdə yaradılıb və ya yenidir | Yalnız iki `.public.pem` faylını göndərin (`.private.pem` və `passphrase.txt` **heç vaxt**) — `ReleaseKeys.staging.cs` yenilənir, workflow yenidən işlədilir, sonra skript |
+
+**Açar yoxdursa** (yeni kompüter) skript `current` və `next` açarlarını yaradır və hər biri üçün parolu iki dəfə soruşur (ən azı 12 simvol; yazarkən ekranda heç nə görünmür — normaldır). Yeni açarı kiosklar hələ tanımır, ona görə skript yuxarıdakı `DİQQƏT` mesajı ilə dayanır. Parol `passphrase.txt`-də yoxdursa, imzalayarkən soruşulur.
+
 ## 1. Necə işləyir
 
 ```
@@ -145,7 +183,7 @@ Bir buraxılışda 6 production paketi var (3 komponent × 2 platforma) — 6 d�
 
 ### Staging paketləri (test serveri, development)
 
-Layihə sahibinin iş kompüterində (staging açarı orada), repodan:
+Ən sadəsi — yuxarıdakı "Staging: sürətli başlanğıc" skripti. Əl ilə, layihə sahibinin iş kompüterində (staging açarı orada), repodan:
 
 ```bash
 gh run download <run-id> -n kiosk-release-0.8.0-linux-x64-staging -D "$TEMP/rel"
