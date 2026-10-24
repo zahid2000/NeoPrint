@@ -226,6 +226,12 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
 
         kiosk.LastHeartbeatAt = now;
         kiosk.AppVersion = device.AppVersion;
+        kiosk.AgentVersion = device.AgentVersion;
+
+        if (!string.IsNullOrWhiteSpace(request.ProvisioningVersion) && request.ProvisioningVersion.Length <= 64)
+        {
+            kiosk.ProvisioningVersion = request.ProvisioningVersion;
+        }
 
         // A kiosk that went Offline because its heartbeat stopped comes back on
         // the next one, with no operator involved (plan section 7.9). Paused,

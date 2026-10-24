@@ -53,6 +53,15 @@
   <ItemGroup>
     <ProjectReference Include="..\NeoPrint.Application\NeoPrint.Application.csproj" />
     <ProjectReference Include="..\..\shared\NeoPrint.Crypto\NeoPrint.Crypto.csproj" />
+  </ItemGroup>
+
+  <!--
+    The kiosk's two release key sets (T-316, T-317): an uploaded package is
+    checked with exactly the public keys the kiosks of the accepted set carry.
+  -->
+  <ItemGroup>
+    <Compile Include="..\..\..\desktop\src\NeoPrint.Kiosk.Core\Updates\KeySets\ReleaseKeys.production.cs" Link="Releases\KeySets\ReleaseKeys.production.cs" />
+    <Compile Include="..\..\..\desktop\src\NeoPrint.Kiosk.Core\Updates\KeySets\ReleaseKeys.staging.cs" Link="Releases\KeySets\ReleaseKeys.staging.cs" />
     <!-- For the layout's JSON only. Drawing it is the converter tool's job. -->
     <ProjectReference Include="..\..\shared\NeoPrint.Layout\NeoPrint.Layout.csproj" />
   </ItemGroup>

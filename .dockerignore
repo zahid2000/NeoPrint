@@ -24,6 +24,8 @@ node_modules
 
 mobile
 desktop
+# The release key sets' public keys: the API checks uploaded packages with them (T-317).
+!desktop/src/NeoPrint.Kiosk.Core/Updates/KeySets/
 admin/node_modules
 
 docs

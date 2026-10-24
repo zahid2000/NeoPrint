@@ -93,6 +93,15 @@ public static class DependencyInjection
         AddAuth(services);
         AddPush(services, configuration);
 
+        // Which release key set this server accepts (T-316, T-317).
+        services.AddOptions<Application.Releases.ReleaseSettings>()
+            .Bind(configuration.GetSection(Application.Releases.ReleaseSettings.SectionName))
+            .Validate(
+                settings => settings.KeySet is ReleaseKeySets.ProductionReleaseKeys.Name or ReleaseKeySets.StagingReleaseKeys.Name,
+                $"Releases:KeySet is {ReleaseKeySets.ProductionReleaseKeys.Name} or {ReleaseKeySets.StagingReleaseKeys.Name} (docs/RELEASE_SIGNING.md).")
+            .Validate(settings => settings.MaxPackageMb is >= 1 and <= 250, "Releases:MaxPackageMb is 1-250.")
+            .ValidateOnStart();
+
         return services;
     }
 
@@ -124,6 +133,9 @@ public static class DependencyInjection
 
         // Print jobs, the queue and kiosk commands (plan step 3)
         services.AddScoped<IKioskCommandRepository, KioskCommandRepository>();
+        services.AddScoped<Application.Releases.IReleaseRepository, ReleaseRepository>();
+        services.AddScoped<Application.Releases.IReleaseRolloutRepository, ReleaseRolloutRepository>();
+        services.AddSingleton<Application.Releases.IReleaseKeys, Releases.ConfiguredReleaseKeys>();
         services.AddScoped<IPrintJobRepository, PrintJobRepository>();
         services.AddScoped<IPrintAttemptRepository, PrintAttemptRepository>();
         services.AddScoped<Application.Kiosks.ISupplyEventRepository, SupplyEventRepository>();

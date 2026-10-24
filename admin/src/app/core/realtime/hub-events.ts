@@ -32,6 +32,10 @@ export const HubEvents = {
   // Configuration
   featureFlagsChanged: 'FeatureFlagsChanged',
 
+  // Releases and the kiosks' versions (T-317)
+  releasesChanged: 'ReleasesChanged',
+  kioskUpdateReported: 'KioskUpdateReported',
+
   // Storage
   storageSyncProgress: 'StorageSyncProgress',
   storageSyncCompleted: 'StorageSyncCompleted',

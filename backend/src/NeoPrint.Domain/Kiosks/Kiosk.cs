@@ -1,4 +1,5 @@
 using NeoPrint.Domain.Common;
+using NeoPrint.Domain.Releases;
 
 namespace NeoPrint.Domain.Kiosks;
 
@@ -147,6 +148,21 @@ public sealed class Kiosk : Entity
     public KioskPlatform Platform { get; set; } = KioskPlatform.Unknown;
 
     public string? AppVersion { get; set; }
+
+    /// <summary>The agent's version, from the heartbeat (plan section 7.12).</summary>
+    public string? AgentVersion { get; set; }
+
+    /// <summary>The provisioning scripts' version, from the heartbeat (<c>ProvisioningVersion</c>).</summary>
+    public string? ProvisioningVersion { get; set; }
+
+    /// <summary>
+    /// Which releases reach this kiosk first: pilot kiosks get a release before
+    /// it is promoted to everyone (plan section 7.12, step 2).
+    /// </summary>
+    public ReleaseChannel UpdateChannel { get; set; } = ReleaseChannel.Stable;
+
+    /// <summary>The last update report of each component (<c>POST kiosks/me/update-status</c>).</summary>
+    public List<KioskUpdateState> UpdateStates { get; set; } = [];
 
     public List<AvailablePrinter> AvailablePrinters { get; set; } = [];
 
@@ -618,4 +634,72 @@ public sealed class Kiosk : Entity
 
         Status = status;
     }
+
+    /// <summary>
+    /// The kiosk says where an update of one component stands. Only the latest
+    /// report of each component is kept; a report older than the one kept -
+    /// one that arrived late - changes nothing.
+    /// </summary>
+    /// <returns>Whether anything changed.</returns>
+    public bool ReportUpdate(ReleaseComponent component, string version, KioskUpdateStatus status, string? messageKey, DateTime reportedAt)
+    {
+        var current = UpdateStates.FirstOrDefault(state => state.Component == component);
+        if (current is not null && (current.ReportedAt > reportedAt
+                                    || (current.ReportedAt == reportedAt && current.Version == version && current.Status == status)))
+        {
+            return false;
+        }
+
+        UpdateStates.RemoveAll(state => state.Component == component);
+        UpdateStates.Add(new KioskUpdateState
+        {
+            Component = component,
+            Version = version,
+            Status = status,
+            MessageKey = messageKey,
+            ReportedAt = reportedAt,
+        });
+        return true;
+    }
+}
+
+/// <summary>
+/// Where an update of one component stands on a kiosk (plan section 7.12,
+/// steps 3-5; docs/STATE_MACHINES.md "Update"). <c>Idle</c> is never reported.
+/// </summary>
+public enum KioskUpdateStatus
+{
+    Downloading = 0,
+
+    /// <summary>Downloaded and checked; waiting for the update window and an idle kiosk.</summary>
+    Ready = 1,
+
+    /// <summary>The switch to the new version is being made.</summary>
+    Applying = 2,
+
+    /// <summary>The new version runs; the health check is not over yet.</summary>
+    HealthCheck = 3,
+
+    /// <summary>Running, and the health check passed.</summary>
+    Succeeded = 4,
+
+    /// <summary>Refused (signature, hash, version) or could not be applied; nothing changed on the kiosk.</summary>
+    Failed = 5,
+
+    /// <summary>Applied, failed its health check and was taken back.</summary>
+    RolledBack = 6,
+}
+
+public sealed class KioskUpdateState
+{
+    public ReleaseComponent Component { get; set; }
+
+    public string Version { get; set; } = string.Empty;
+
+    public KioskUpdateStatus Status { get; set; }
+
+    /// <summary>What happened, as a message key (<c>updates.signatureRefused</c>).</summary>
+    public string? MessageKey { get; set; }
+
+    public DateTime ReportedAt { get; set; }
 }

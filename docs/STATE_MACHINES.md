@@ -235,6 +235,16 @@ Rollback:
 
 `HealthCheck | Failed → RolledBack`
 
+Kiosk bu vəziyyətləri `POST kiosks/me/update-status` ilə bildirir (`KioskUpdateStatus`, T-317); `Idle` bildirilmir. Backend hər komponentin yalnız son bildirişini saxlayır, gec gələn köhnə bildiriş heç nəyi dəyişmir; `Succeeded`, `Failed`, `RolledBack` audit-ə yazılır.
+
+## Release rollout (`ReleaseRollout`, T-317)
+
+`Active ⇄ Paused`
+
+`Active | Paused → Completed | RolledBack`
+
+`Completed` və `RolledBack` sondur — geri çəkilmiş yayım yenidən başlamır, yenisi yaradılır. Buraxılış geri çəkiləndə (`Release.Withdraw`) onun `Active` / `Paused` yayımları `RolledBack` olur (səbəb `releases.reason.withdrawn`). Kioska yalnız `Active` yayımın buraxılışı təklif olunur.
+
 ## ScheduledPrint
 
 `PendingPayment → Scheduled → AwaitingUser → Sent`

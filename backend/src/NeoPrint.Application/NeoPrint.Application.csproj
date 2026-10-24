@@ -30,6 +30,8 @@
     <ProjectReference Include="..\NeoPrint.Domain\NeoPrint.Domain.csproj" />
     <ProjectReference Include="..\NeoPrint.Contracts\NeoPrint.Contracts.csproj" />
     <ProjectReference Include="..\..\shared\NeoPrint.Pricing\NeoPrint.Pricing.csproj" />
+    <!-- Release manifests and signatures, checked at upload exactly as a kiosk checks them (T-317). -->
+    <ProjectReference Include="..\..\shared\NeoPrint.Crypto\NeoPrint.Crypto.csproj" />
   </ItemGroup>
 
 </Project>

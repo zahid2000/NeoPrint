@@ -298,6 +298,9 @@ services:
       # where the admin panel's nginx (and Caddy on the test server) sit, so a
       # caller is counted by its own address and not the proxy's (T-306).
       ForwardedHeaders__KnownNetworks: 172.16.0.0/12,192.168.0.0/16
+      # The development stack and the test server take staging release
+      # packages; production takes production ones, the default (T-316, T-317).
+      Releases__KeySet: staging
     ports:
       - "5080:8080"
     volumes:

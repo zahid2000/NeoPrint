@@ -18,6 +18,7 @@ dark_mode
 dashboard
 delete
 delete_sweep
+deployed_code
 description
 devices
 download
@@ -71,6 +72,7 @@ receipt_long
 refresh
 report
 restart_alt
+rocket_launch
 rule
 schedule
 science
@@ -92,7 +94,9 @@ terminal
 timer_off
 toggle_on
 trending_down
+trending_up
 undo
+upload
 verified
 visibility
 visibility_off

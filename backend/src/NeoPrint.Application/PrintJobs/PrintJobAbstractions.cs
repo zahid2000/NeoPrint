@@ -146,6 +146,12 @@ public interface IKioskNotifier
     /// <summary>A remote command for the kiosk (plan section 7.8).</summary>
     Task KioskCommandAsync(Guid kioskId, KioskCommandMessage command, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// What a kiosk is offered may have changed: it asks <c>GET kiosks/me/update</c>
+    /// again (plan section 7.12, step 3). Null tells every kiosk.
+    /// </summary>
+    Task UpdateAvailableAsync(Guid? kioskId, CancellationToken cancellationToken = default);
+
     /// <summary>A phone joined the kiosk (plan section 9.3): a small notice on its screen, never who.</summary>
     Task SessionOpenedAsync(Guid kioskId, Guid sessionId, DateTime expiresAt, CancellationToken cancellationToken = default);
 

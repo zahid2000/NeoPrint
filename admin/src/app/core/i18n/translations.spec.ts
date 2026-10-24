@@ -89,6 +89,13 @@ describe('translations', () => {
     'USB',
     'MAC',
     'Model',
+    // The releases page (T-317): platforms, the release key sets' names, and words Azerbaijani writes the same.
+    'Windows',
+    'Linux',
+    'staging',
+    'production',
+    'Agent',
+    'Pilot',
   ]);
 
   /** English words that have Azerbaijani equivalents and must not leak into az. */

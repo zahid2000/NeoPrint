@@ -100,7 +100,7 @@ export async function kioskSession(api, deviceId, privateKey) {
   const signature = sign('sha256', Buffer.from(nonce, 'utf8'), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64');
   const { accessToken } = await post('/api/devices/token', { deviceId, nonce, signature });
 
-  return async (method, path, body, headers = {}) => {
+  const call = async (method, path, body, headers = {}) => {
     const response = await fetch(`${api}${path}`, {
       method,
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', 'Idempotency-Key': randomUUID(), ...headers },
@@ -109,6 +109,10 @@ export async function kioskSession(api, deviceId, privateKey) {
     if (!response.ok) throw new Error(`kiosk ${method} ${path}: ${response.status} ${(await response.text()).slice(0, 200)}`);
     return response.status === 204 || response.status === 202 && response.headers.get('content-length') === '0' ? null : response.json();
   };
+  // For what is not JSON - a package download (T-317).
+  call.token = accessToken;
+
+  return call;
 }
 
 /**

@@ -21,6 +21,7 @@ import { monitoringTranslations } from './monitoring.i18n';
 import { operationsTranslations } from './operations.i18n';
 import { analyticsTranslations } from './analytics.i18n';
 import { systemJobsTranslations } from './system-jobs.i18n';
+import { releasesTranslations } from './releases.i18n';
 import type { PageTranslations } from './page-translations';
 
 import { SupportedLanguage, supportedLanguages } from './languages';
@@ -1066,6 +1067,7 @@ const pages: readonly PageTranslations[] = [
   operationsTranslations,
   analyticsTranslations,
   systemJobsTranslations,
+  releasesTranslations,
 ];
 
 for (const language of supportedLanguages) {

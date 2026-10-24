@@ -187,6 +187,13 @@ export class ShellComponent {
       group: 'administration',
     },
     {
+      path: '/releases',
+      labelKey: 'nav.releases',
+      icon: 'deployed_code',
+      permissions: [Permissions.releasesView],
+      group: 'administration',
+    },
+    {
       path: '/print-jobs',
       labelKey: 'nav.printJobs',
       icon: 'receipt_long',

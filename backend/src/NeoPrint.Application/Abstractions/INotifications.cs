@@ -113,5 +113,11 @@ public interface IAdminNotifier
         Guid kioskId, IReadOnlyList<PrintJobs.QueueEntry> queue, CancellationToken cancellationToken = default);
 
     /// <summary>A provider's health changed (every-minute check, plan section 2.10).</summary>
+    /// <summary>A release or a rollout changed: the releases page reloads (T-317).</summary>
+    Task ReleasesChangedAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>A kiosk reported where an update stands (<c>POST kiosks/me/update-status</c>).</summary>
+    Task KioskUpdateReportedAsync(Releases.KioskVersionView kiosk, CancellationToken cancellationToken = default);
+
     Task StorageHealthChangedAsync(Storage.StorageHealthChanged change, CancellationToken cancellationToken = default);
 }

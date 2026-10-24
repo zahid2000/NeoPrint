@@ -121,6 +121,10 @@ public sealed class MongoContext
     public MongoSet<Domain.Storage.StorageSyncFailure> StorageSyncFailures => Set<Domain.Storage.StorageSyncFailure>("storage_sync_failures");
     public MongoSet<KioskCommand> KioskCommands => Set<KioskCommand>("kiosk_commands");
 
+    public MongoSet<Domain.Releases.Release> Releases => Set<Domain.Releases.Release>("releases");
+
+    public MongoSet<Domain.Releases.ReleaseRollout> ReleaseRollouts => Set<Domain.Releases.ReleaseRollout>("release_rollouts");
+
     public MongoSet<Domain.PrintJobs.PrintJob> PrintJobs => Set<Domain.PrintJobs.PrintJob>("print_jobs");
     public MongoSet<Domain.PrintJobs.PrintAttempt> PrintAttempts => Set<Domain.PrintJobs.PrintAttempt>("print_attempts");
     public MongoSet<Domain.Payments.Payment> Payments => Set<Domain.Payments.Payment>("payments");
@@ -442,6 +446,23 @@ public sealed class MongoContext
             // FileAutoDeleteJob: the live files that delete themselves.
             (Builders<Domain.Files.StoredFile>.IndexKeys.Ascending(file => file.AutoDelete).Ascending(file => file.DeletedAt).Ascending(file => file.CreatedAt),
                 Named("ix_files_auto_delete")));
+
+        await CreateAsync(Releases,
+            // One package per component, platform, key set and version (T-317).
+            (Builders<Domain.Releases.Release>.IndexKeys
+                .Ascending(release => release.Component).Ascending(release => release.Platform)
+                .Ascending(release => release.KeySet).Ascending(release => release.Version),
+                Unique("ux_releases_component_platform_keyset_version")),
+            // GET kiosks/me/update: the withdrawn packages of a platform.
+            (Builders<Domain.Releases.Release>.IndexKeys.Ascending(release => release.Platform).Ascending(release => release.IsWithdrawn),
+                Named("ix_releases_platform_withdrawn")));
+
+        await CreateAsync(ReleaseRollouts,
+            // What a kiosk of a platform can be offered: the active rollouts.
+            (Builders<Domain.Releases.ReleaseRollout>.IndexKeys.Ascending(rollout => rollout.Platform).Ascending(rollout => rollout.Status),
+                Named("ix_release_rollouts_platform_status")),
+            (Builders<Domain.Releases.ReleaseRollout>.IndexKeys.Ascending(rollout => rollout.ReleaseId),
+                Named("ix_release_rollouts_release")));
 
         await CreateAsync(KioskCommands,
             (Builders<KioskCommand>.IndexKeys

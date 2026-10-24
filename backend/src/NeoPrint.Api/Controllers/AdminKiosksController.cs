@@ -276,6 +276,39 @@ public sealed class AdminKiosksController : ControllerBase
     public async Task<ActionResult<KioskCommandView>> Reboot(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Reboot, _currentUser.Ip), cancellationToken));
 
+    // The agent's commands (plan section 7.12; T-317). Sent and recorded here;
+    // the agent carries them out from M17, the panel shows their buttons in M18.
+
+    /// <summary>Asks for an update now and installs it at the next idle moment.</summary>
+    [HttpPost("{id:guid}/update-now")]
+    [HasPermission(Permissions.KioskCommandsUpdate)]
+    public async Task<ActionResult<KioskCommandView>> UpdateNow(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.UpdateNow, _currentUser.Ip), cancellationToken));
+
+    /// <summary>Goes back to the version before the installed one.</summary>
+    [HttpPost("{id:guid}/rollback-version")]
+    [HasPermission(Permissions.KioskCommandsUpdate)]
+    public async Task<ActionResult<KioskCommandView>> RollbackVersion(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RollbackVersion, _currentUser.Ip), cancellationToken));
+
+    /// <summary>Runs the provisioning scripts again in repair mode.</summary>
+    [HttpPost("{id:guid}/reapply-provisioning")]
+    [HasPermission(Permissions.KioskCommandsUpdate)]
+    public async Task<ActionResult<KioskCommandView>> ReapplyProvisioning(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.ReapplyProvisioning, _currentUser.Ip), cancellationToken));
+
+    /// <summary>Restarts the agent service.</summary>
+    [HttpPost("{id:guid}/restart-agent")]
+    [HasPermission(Permissions.KioskCommandsRestart)]
+    public async Task<ActionResult<KioskCommandView>> RestartAgent(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RestartAgent, _currentUser.Ip), cancellationToken));
+
+    /// <summary>Asks the kiosk to upload its compressed logs.</summary>
+    [HttpPost("{id:guid}/upload-logs")]
+    [HasPermission(Permissions.KioskLogsDownload)]
+    public async Task<ActionResult<KioskCommandView>> UploadLogs(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.UploadLogs, _currentUser.Ip), cancellationToken));
+
     [HttpGet("{id:guid}/commands")]
     [HasPermission(Permissions.KiosksView)]
     public async Task<ActionResult<IReadOnlyList<KioskCommandView>>> Commands(Guid id, CancellationToken cancellationToken)

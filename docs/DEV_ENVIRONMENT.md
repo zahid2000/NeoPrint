@@ -2003,3 +2003,14 @@ $T verify --key-set production --manifest "$TEMP/rs/agent-staging.tar.gz.manifes
 ```
 
 CI artefaktı (`kiosk-release-<versiya>-<platforma>-staging`) üçün: `gh run download <run-id> -n <artefakt> -D "$TEMP/rel"`, sonra `$T sign-staging --dir "$TEMP/rel"`.
+
+### Buraxılışlar və yayımlar — dev stack-də uçdan-uca yoxlama (T-317)
+
+```bash
+docker compose up -d --build api admin
+dotnet build tools/release-sign
+cd admin && node e2e/releases.mjs                          # şəkillərlə: node e2e/releases.mjs ../docs/screenshots/step-7b/m16
+```
+
+Skript öz versiyası ilə paket yığır, staging açarı ilə imzalayır (`sign-staging`), panelin API-sinə yükləyir; dəyişdirilmiş paketin və başqa dəstin paketinin rədd olunmasını, iki atılacaq kioskdan yalnız yayımın çatdığına paketin təklif olunmasını, bayt-bayt endirilməsini və `release-sign verify` ilə staging kioskunun qəbul, production kioskunun rədd etməsini, yeniləmə statusunun paneldə görünməsini və geri çəkməni yoxlayır. Sonda kiosklarını, buraxılışını və yayımlarını silir. Dev stack-in API-si `Releases__KeySet=staging`-dir (`docker-compose.yml`).
+

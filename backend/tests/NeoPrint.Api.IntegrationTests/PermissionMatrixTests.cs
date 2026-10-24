@@ -208,6 +208,24 @@ public sealed class PermissionMatrixTests
         new("POST", "api/admin/hangfire-session", Permissions.SystemJobsView),
         new("GET", "api/admin/operator/kiosks", Permissions.OperatorPanel),
         new("GET", "api/admin/operator/kiosks/{id:guid}", Permissions.OperatorPanel, Target.TheirKiosk),
+
+        // Step 7B, M16: releases, rollouts and the agent's commands (T-317).
+        new("GET", "api/admin/releases", Permissions.ReleasesView),
+        new("POST", "api/admin/releases", Permissions.ReleasesManage, Body: "{}"),
+        new("POST", "api/admin/releases/{id:guid}/promote", Permissions.ReleasesManage, Target.Nothing),
+        new("POST", "api/admin/releases/{id:guid}/withdraw", Permissions.ReleasesManage, Target.Nothing, """{"reason":"matrix"}"""),
+        new("POST", "api/admin/rollouts", Permissions.ReleasesManage, Body: $$"""{"releaseId":"{{Guid.Empty}}","target":"All"}"""),
+        new("POST", "api/admin/rollouts/{id:guid}/pause", Permissions.ReleasesManage, Target.Nothing),
+        new("POST", "api/admin/rollouts/{id:guid}/resume", Permissions.ReleasesManage, Target.Nothing),
+        new("POST", "api/admin/rollouts/{id:guid}/complete", Permissions.ReleasesManage, Target.Nothing),
+        new("POST", "api/admin/rollouts/{id:guid}/rollback", Permissions.ReleasesManage, Target.Nothing),
+        new("GET", "api/admin/kiosks/versions", Permissions.ReleasesView),
+        new("PUT", "api/admin/kiosks/{id:guid}/update-channel", Permissions.ReleasesManage, Target.TheirKiosk, """{"channel":"Stable"}"""),
+        new("POST", "api/admin/kiosks/{id:guid}/update-now", Permissions.KioskCommandsUpdate, Target.TheirKiosk),
+        new("POST", "api/admin/kiosks/{id:guid}/rollback-version", Permissions.KioskCommandsUpdate, Target.TheirKiosk),
+        new("POST", "api/admin/kiosks/{id:guid}/reapply-provisioning", Permissions.KioskCommandsUpdate, Target.TheirKiosk),
+        new("POST", "api/admin/kiosks/{id:guid}/restart-agent", Permissions.KioskCommandsRestart, Target.TheirKiosk),
+        new("POST", "api/admin/kiosks/{id:guid}/upload-logs", Permissions.KioskLogsDownload, Target.TheirKiosk),
     ];
 
     /// <summary>What names the other kiosk in its body: for the scoped account the same as its id in the route.</summary>
@@ -224,6 +242,11 @@ public sealed class PermissionMatrixTests
         new("POST", "api/kiosks/me/commands/{id:guid}/ack", "kiosk", Target.Nothing),
         new("GET", "api/kiosks/me/sessions", "kiosk"),
         new("POST", "api/incidents", "kiosk", Body: """{"type":"PaperJam"}"""),
+
+        // Step 7B, M16 (T-317).
+        new("GET", "api/kiosks/me/update", "kiosk"),
+        new("POST", "api/kiosks/me/update-status", "kiosk", Body: """{"component":"App","version":"1.0.0","status":"Downloading"}"""),
+        new("GET", "api/releases/{id:guid}/download", "kiosk", Target.Nothing),
     ];
 
     [DockerFact]
@@ -792,6 +815,10 @@ public sealed class PermissionMatrixTests
                 await payments.RefundStatusChangedAsync(Guid.NewGuid(), Guid.NewGuid(), "Succeeded", kioskId: kioskId);
                 await payments.FiscalStatusChangedAsync(Guid.NewGuid(), "Issued", kioskId: kioskId);
 
+                // Releases and the kiosks' versions: the whole service's (T-317).
+                await notifier.ReleasesChangedAsync();
+                await notifier.KioskUpdateReportedAsync(Make<Application.Releases.KioskVersionView>(new { kioskId }));
+
                 // Everybody hears this one: the end of what the test sent.
                 await notifier.PermissionsChangedAsync(Guid.Empty);
             }
@@ -816,6 +843,8 @@ public sealed class PermissionMatrixTests
                 ["PaymentSucceeded"] = [Permissions.PaymentsView],
                 ["RefundStatusChanged"] = [Permissions.RefundsView, Permissions.PaymentsView],
                 ["FiscalStatusChanged"] = [Permissions.FiscalView, Permissions.ReceiptsView, Permissions.PaymentsView],
+                ["ReleasesChanged"] = [Permissions.ReleasesView],
+                ["KioskUpdateReported"] = [Permissions.ReleasesView],
             };
 
             var wrong = new List<string>();

@@ -156,6 +156,9 @@ public enum AdminAudience
     /// <summary>Storage providers and syncs: the storage page, and the dashboard's storage tiles.</summary>
     Storage,
 
+    /// <summary>Releases, rollouts and the kiosks' versions: the releases page (T-317).</summary>
+    Releases,
+
     Features,
 }
 
@@ -180,6 +183,7 @@ public static class AdminAudiences
         (AdminAudience.Fiscal, [Permissions.FiscalView, Permissions.ReceiptsView, Permissions.PaymentsView]),
         (AdminAudience.Storage, [Permissions.StorageManage, Permissions.DashboardView]),
         (AdminAudience.Features, [Permissions.FeaturesManage]),
+        (AdminAudience.Releases, [Permissions.ReleasesView]),
     ];
 
     /// <summary>The audiences an account belongs to.</summary>
@@ -347,6 +351,12 @@ public sealed class SignalRAdminNotifier : IAdminNotifier
     public Task StorageSyncCompletedAsync(
         Application.Storage.StorageSyncProgress progress, CancellationToken cancellationToken = default)
         => Holders(AdminAudience.Storage).SendAsync("StorageSyncCompleted", progress, cancellationToken);
+
+    public Task ReleasesChangedAsync(CancellationToken cancellationToken = default)
+        => Holders(AdminAudience.Releases).SendAsync("ReleasesChanged", cancellationToken);
+
+    public Task KioskUpdateReportedAsync(Application.Releases.KioskVersionView kiosk, CancellationToken cancellationToken = default)
+        => Holders(AdminAudience.Releases).SendAsync("KioskUpdateReported", kiosk, cancellationToken);
 
     public Task StorageHealthChangedAsync(
         Application.Storage.StorageHealthChanged change, CancellationToken cancellationToken = default)

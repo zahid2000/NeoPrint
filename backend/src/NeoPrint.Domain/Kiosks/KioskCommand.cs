@@ -26,6 +26,23 @@ public enum KioskCommandType
 
     /// <summary>Restart the machine once the job at the printer is done; the agent does it.</summary>
     Reboot = 5,
+
+    // The agent's commands (plan section 7.12; M16 sends them, the agent carries them out from M17).
+
+    /// <summary>Ask for an update now, and install it at the next idle moment, even outside the update window.</summary>
+    UpdateNow = 6,
+
+    /// <summary>Go back to the version before the installed one (kept on the kiosk, <c>Update.KeepVersions</c>).</summary>
+    RollbackVersion = 7,
+
+    /// <summary>Upload the kiosk's compressed logs.</summary>
+    UploadLogs = 8,
+
+    /// <summary>Run the provisioning scripts again in repair mode.</summary>
+    ReapplyProvisioning = 9,
+
+    /// <summary>Restart the agent service.</summary>
+    RestartAgent = 10,
 }
 
 /// <summary>Where a command stands.</summary>

@@ -79,6 +79,7 @@ public sealed record GetKioskConfigQuery(Guid DeviceId) : IRequest<KioskConfigRe
 /// having to do anything.
 /// </remarks>
 /// <param name="SafeMode">The UI started in safe mode after a crash loop (plan section 7.12).</param>
+/// <param name="ProvisioningVersion">The provisioning scripts' version, once the agent reports it (T-317).</param>
 public sealed record KioskHeartbeatCommand(
     Guid DeviceId,
     string? AppVersion,
@@ -86,7 +87,8 @@ public sealed record KioskHeartbeatCommand(
     bool PrinterOnline,
     string? Ip,
     bool SafeMode = false,
-    string? PrinterProblem = null) : IRequest<KioskHeartbeatResult>;
+    string? PrinterProblem = null,
+    string? ProvisioningVersion = null) : IRequest<KioskHeartbeatResult>;
 
 /// <param name="NextInSeconds">
 /// When to send the next one, so the interval can be changed from the panel

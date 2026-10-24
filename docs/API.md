@@ -2269,6 +2269,35 @@ hadisəsi 7 gün gecikə bilər) və hadisələri hələ saxlanılan, sənədi o
 `action` prefiksdir (`kiosks.` — bütün kiosk əməliyyatları); `actorType`: `Admin` / `Kiosk` / `System` / `User`; `from` > `to` → `400 audit.rangeInvalid`; `pageSize` ən çox 200.
 Kiosk əhatəsi məhdud hesab yalnız öz kiosklarına aid sətirləri görür (`entityType = Kiosk`, `entityId` əhatədə) — hesablar, qiymətlər, tənzimləmələr haqqında sətirlər ona göstərilmir. `before` / `after` yazıldığı kimi qaytarılır (JSON və ya sadə dəyər); panel JSON-u sahə-sahə müqayisə edir.
 
+## Buraxılışlar və yayımlar (Addım 7B, M16 — T-317, plan 7.12)
+
+Hamısı **qlobal** resursdur: `releases.view` / `releases.manage` `Permissions.GlobalOnly`-dədir — kiosk əhatəsi məhdud hesab rolundan asılı olmayaraq `403` alır (T-311). Server yalnız öz açar dəstinin paketini qəbul edir: `Releases__KeySet` = `production` (standart) və ya `staging` (dev stack, test serveri); başqa dəyər API-ni başlatmır (`docs/RELEASE_SIGNING.md` §0).
+
+| Endpoint | İcazə | Nə edir |
+|---|---|---|
+| `GET /api/admin/releases` | `releases.view` | `{ keySet, trustedKeys, releases[], rollouts[] }` — serverin dəsti və açar sayı, buraxılışlar (komponent, platforma, dəst, versiya, kanal, ölçü, SHA-256, `keyId`, commit, geri çəkilmə, neçə kioskda quraşdırılıb), yayımlar (hədəf, status, əhatə) |
+| `POST /api/admin/releases` | `releases.manage` | `multipart/form-data`: `package`, `manifest` (`manifest.json`), `signature` (`.sig`), `channel` (`Pilot` standart / `Stable`). İmza kioskun yoxladığı kimi yoxlanılır (açar → imza → manifest → dəst); paket storage-a yazılarkən hash-lənir, ölçü / SHA-256 manifestə uyğun deyilsə silinir. Rədd: `400` — `errors.signature` (`releases.refused.UnknownKey` / `BadSignature` / `WrongTarget` / `MalformedSignature`), `errors.manifest` (`MalformedManifest`), `errors.package` (`PackageMismatch`, `fileNameMismatch`). Eyni paket təkrar — eyni buraxılış; eyni versiya, başqa paket — `409 releases.versionTaken`. Limit 250 MB (`Releases__MaxPackageMb`). Forma action-un içində oxunur ki, icazə content-type-dan əvvəl yoxlansın |
+| `POST /api/admin/releases/{id}/promote` | `releases.manage` | `Pilot → Stable` (təkrar — dəyişiklik yoxdur) |
+| `POST /api/admin/releases/{id}/withdraw` | `releases.manage` | `{ reason }` (3–500): heç bir kioska təklif olunmur, yayımları `RolledBack`, bütün kiosklara `UpdateAvailable` |
+| `POST /api/admin/rollouts` | `releases.manage` | `{ releaseId, target: All\|Kiosks\|Percent\|Channel, kioskIds?, percent?, channel? }`. Pilot buraxılışı yalnız `Kiosks` və ya `Channel=Pilot` — əks halda `409 rollouts.pilotOnly`. `Percent`: kiosk + yayım id-sinin SHA-256-sından 0–99 yer — eyni kiosk həmişə eyni yerdədir. Çatdığı kiosklara `UpdateAvailable` |
+| `POST /api/admin/rollouts/{id}/pause\|resume\|complete\|rollback` | `releases.manage` | `STATE_MACHINES.md` "Release rollout"; təkrar basış — dəyişiklik yoxdur; geri çəkilmiş buraxılışın yayımı davam etmir (`409`) |
+| `GET /api/admin/kiosks/versions` | `releases.view` | Hər kiosk: platforma (`win-x64` / `linux-x64`), kanal, UI / Agent / provisioning versiyası, hər komponentin son yeniləmə vəziyyəti (mesajı ilə), təklif olunanlar, son siqnal |
+| `PUT /api/admin/kiosks/{id}/update-channel` | `releases.manage` | `{ channel: Pilot\|Stable }` |
+| `POST /api/admin/kiosks/{id}/update-now` · `rollback-version` · `reapply-provisioning` | `kiosks.commands.update` | Agent əmrləri (`UpdateNow`, `RollbackVersion`, `ReapplyProvisioning`); kiosk əhatəsinə tabedir (başqa kiosk — `404`); açıq eyni əmr varsa o qaytarılır; audit. Agent onları M17-də icra edir, paneldə düymələri M18-də |
+| `POST /api/admin/kiosks/{id}/restart-agent` | `kiosks.commands.restart` | `RestartAgent`, eyni qayda |
+| `POST /api/admin/kiosks/{id}/upload-logs` | `kiosks.logs.download` | `UploadLogs`, eyni qayda (logların qəbulu — M17) |
+
+**Kiosk (Kiosk token):**
+
+| Endpoint | Nə edir |
+|---|---|
+| `GET /api/kiosks/me/update` | `{ platform, keySet, offers[], withdrawn[] }` — hər komponent üçün kioskun aktiv yayımla çatdığı ən yeni, geri çəkilməmiş, serverin dəstindən buraxılış: `manifest` və `signature` **imzalanmış baytların özü** (UTF-8 mətn), `size`, `download` (`api/releases/{id}/download`); `withdrawn` — platformanın geri çəkilmiş paketlərinin SHA-256-ları |
+| `GET /api/releases/{id}/download` | Paket — yalnız bu kioska indi təklif olunursa; əks halda `404 notFound.release` |
+| `POST /api/kiosks/me/update-status` | `{ component, version, status, messageKey? }` — `STATE_MACHINES.md` "Update"; versiya SemVer deyilsə `400`; kataloqda olmayan `messageKey` saxlanmır; `204` |
+| `POST /api/kiosks/heartbeat` | əlavə `provisioningVersion` sahəsi |
+
+**`/hubs/kiosk`:** `UpdateAvailable { kioskId }` (hamıya — `Guid.Empty`). **`/hubs/admin`** (`releases.view` olanlara): `ReleasesChanged`, `KioskUpdateReported` (kiosk versiyası görünüşü).
+
 ## Hələ mövcud olmayan endpoint-lər
 
 Planın Bölmə 6-dakı siyahısından bunlar sonrakı addımlardadır: skan və paylaşım (Addım 6), telemetriya, incident səhifəsi və operator paneli (Addım 7). Addım 4-ün ödəniş,

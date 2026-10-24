@@ -150,6 +150,7 @@ public static class Permissions
         UsersView, UsersBlock, UsersMarkTest, WalletsAdjust, ReferralsView, VouchersView,
         PromosManage, PricingManage, DevicesEnroll, InventoryManage,
         SettingsManage, FeaturesManage, FormatsManage, LegalManage,
+        ReleasesView, ReleasesManage,
     };
 
     /// <summary>Every permission in the catalogue.</summary>
