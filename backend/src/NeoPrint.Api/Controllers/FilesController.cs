@@ -138,7 +138,7 @@ public sealed class FilesController : ControllerBase
         [FromBody] LayoutRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
-            new CreateLayoutCommand(UserId, request?.Layout.GetRawText() ?? string.Empty, request?.FileName),
+            new CreateLayoutCommand(UserId, LayoutText(request?.Layout), request?.FileName),
             cancellationToken);
 
         return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
@@ -154,7 +154,11 @@ public sealed class FilesController : ControllerBase
     public async Task<ActionResult<UserFileResult>> UpdateLayout(
         Guid id, [FromBody] LayoutRequest request, CancellationToken cancellationToken)
         => Ok(await _sender.Send(
-            new UpdateLayoutCommand(UserId, id, request?.Layout.GetRawText() ?? string.Empty), cancellationToken));
+            new UpdateLayoutCommand(UserId, id, LayoutText(request?.Layout)), cancellationToken));
+
+    /// <summary>The layout as sent; empty when there is none - a missing layout is the validator's to refuse (400), not a crash (T-312).</summary>
+    private static string LayoutText(System.Text.Json.JsonElement? layout)
+        => layout is { ValueKind: not System.Text.Json.JsonValueKind.Undefined } present ? present.GetRawText() : string.Empty;
 
     /// <summary>A layout file's layout and its pictures, for "Tərtibatı redaktə et".</summary>
     [HttpGet("{id:guid}/layout")]

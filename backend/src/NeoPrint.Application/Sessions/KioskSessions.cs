@@ -271,11 +271,12 @@ public sealed class KioskSessionHandlers :
 
         var session = await _sessions.FindAsync(request.SessionId, cancellationToken).ConfigureAwait(false);
 
-        // Already over, or never this user's: nothing to end, and nothing to
-        // tell about a session of somebody else's.
+        // Already over, or never this user's: not found either way, so nothing
+        // is told about a session of somebody else's (T-312). The app takes
+        // "not found" on closing as "already over".
         if (session is null || session.UserId != request.UserId)
         {
-            return;
+            throw new NotFoundException("session");
         }
 
         await EndAsync(session, KioskSessionEnd.Closed, cancellationToken).ConfigureAwait(false);

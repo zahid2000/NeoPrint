@@ -25,11 +25,22 @@ class SessionRepository {
         json is Map<String, dynamic> ? KioskSessionInfo.fromJson(json) : null,
   );
 
-  Future<void> close(String sessionId) => _api.send(
-    method: 'DELETE',
-    path: 'api/sessions/$sessionId',
-    parse: (_) {},
-  );
+  /// Ends the session. One that is already over is not found (404) - the
+  /// server says the same of a session that is somebody else's (T-312) - and
+  /// for the app that simply means there is nothing left to end.
+  Future<void> close(String sessionId) async {
+    try {
+      await _api.send(
+        method: 'DELETE',
+        path: 'api/sessions/$sessionId',
+        parse: (_) {},
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode != 404) {
+        rethrow;
+      }
+    }
+  }
 
   /// The price of these options for [pages] selected pages at the kiosk.
   Future<OrderQuote> quote({

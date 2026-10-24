@@ -94,8 +94,10 @@ public sealed class SessionTests
         (await user.Client.DeleteAsync($"/api/sessions/{Id(b)}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await hubB.WaitForAsync("SessionClosed", HubWait)).GetProperty("reason").GetString().Should().Be("Closed");
 
-        // Already over: still no error, and nothing to tell twice.
-        (await user.Client.DeleteAsync($"/api/sessions/{Id(b)}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        // Already over: not found - the answer for a session of somebody else's too, so
+        // neither says whether it exists (T-312); the app takes it as "already over".
+        // Nothing is told twice.
+        (await user.Client.DeleteAsync($"/api/sessions/{Id(b)}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await user.Client.GetAsync("/api/sessions/current")).StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
