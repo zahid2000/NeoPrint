@@ -2,7 +2,6 @@ using MediatR;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
@@ -41,7 +40,6 @@ public sealed class DevicesController : ControllerBase
     [HttpPost("register")]
     [Idempotent]
     [AllowAnonymous]
-    [EnableRateLimiting("device-register")]
     [ProducesResponseType(typeof(RegisterDeviceResult), StatusCodes.Status200OK)]
     public async Task<ActionResult<RegisterDeviceResult>> Register(
         [FromBody] RegisterDeviceRequest request, CancellationToken cancellationToken)
@@ -61,7 +59,6 @@ public sealed class DevicesController : ControllerBase
     /// <summary>Issues a challenge for the device to sign.</summary>
     [HttpPost("challenge")]
     [AllowAnonymous]
-    [EnableRateLimiting("auth")]
     public async Task<ActionResult<DeviceChallengeResult>> Challenge(
         [FromBody] DeviceChallengeRequest request, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new CreateDeviceChallengeCommand(request.DeviceId), cancellationToken));
@@ -72,7 +69,6 @@ public sealed class DevicesController : ControllerBase
     /// </summary>
     [HttpPost("token")]
     [AllowAnonymous]
-    [EnableRateLimiting("auth")]
     public async Task<ActionResult<DeviceTokenResult>> Token(
         [FromBody] DeviceTokenRequest request, CancellationToken cancellationToken)
         => Ok(await _sender.Send(

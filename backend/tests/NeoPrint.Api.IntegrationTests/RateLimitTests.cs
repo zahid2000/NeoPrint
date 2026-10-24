@@ -87,7 +87,9 @@ public sealed class RateLimitTests
         refused.Headers.RetryAfter.Should().NotBeNull("the caller is told when to try again");
         var problem = await refused.Content.ReadFromJsonAsync<JsonElement>();
         problem.GetProperty("code").GetString().Should().Be("problem.tooManyRequests");
-        problem.GetProperty("detail").GetString().Should().NotBeNullOrWhiteSpace();
+        // The framework's limiter knows the window, not what is left of it: no number (T-310).
+        problem.GetProperty("detail").GetString().Should().NotBeNullOrWhiteSpace()
+            .And.NotMatchRegex(@"\d", "a whole window is not how long to wait");
 
         // Another account from the same address is not held up by the first.
         (await second.GetAsync("/api/admin/me")).StatusCode.Should().Be(HttpStatusCode.OK);
@@ -146,6 +148,104 @@ public sealed class RateLimitTests
             .Build();
 
         FluentActions.Invoking(() => RequestLimits.Networks(configuration)).Should().Throw<InvalidOperationException>();
+    }
+
+    // -----------------------------------------------------------------------
+    // A kiosk's own calls behind one router (T-309)
+    // -----------------------------------------------------------------------
+
+    [DockerFact]
+    public async Task Kiosks_behind_one_router_register_with_their_own_enrollment_tokens_and_sign_in_without_holding_each_other_up()
+    {
+        await using var limited = _fixture.WithHttpOnlyHost(builder => builder
+            .UseSetting("RateLimits:Disabled", "false")
+            .UseSetting("RateLimits:DeviceRegisterPerHour", "1")
+            .UseSetting("RateLimits:AuthPerMinute", "3")
+            .ConfigureServices(services => services.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, FromOneRouter>()));
+
+        using var admin = limited.CreateClient();
+        admin.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", await SignInAsync(admin, NeoPrintApiFixture.SeedAdminEmail, NeoPrintApiFixture.SeedAdminPassword));
+        using var kiosk = limited.CreateClient();
+
+        // Three kiosks of one place, one after another, each with its token: none is refused,
+        // though one registration an hour is all one address has.
+        var devices = new List<Guid>();
+        for (var i = 0; i < 3; i++)
+        {
+            var token = await admin.PostAsJsonAsync("/api/admin/enrollment-tokens", new
+            {
+                newKiosk = new { name = $"Router kiosk {Guid.NewGuid():N}"[..30], lat = 40.38, lng = 49.85, address = "Bakı", defaultLanguage = "az", paperCapacityA4 = 500, paperCapacityA3 = 250, adminPin = "135790" },
+                ttlHours = 1,
+            });
+            token.StatusCode.Should().Be(HttpStatusCode.OK, await token.Content.ReadAsStringAsync());
+            var registered = await RegisterAsync(kiosk, (await token.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString());
+            registered.StatusCode.Should().Be(HttpStatusCode.OK, $"kiosk {i + 1}: {await registered.Content.ReadAsStringAsync()}");
+            devices.Add((await registered.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("deviceId").GetGuid());
+        }
+
+        // Without a token the address counts: the second in the hour is refused, told to come back later.
+        (await RegisterAsync(kiosk, enrollmentToken: null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        var refused = await RegisterAsync(kiosk, enrollmentToken: null);
+        refused.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        refused.Headers.RetryAfter!.Delta!.Value.TotalSeconds.Should().BeInRange(1, 3600, "what is left of the hour");
+        (await refused.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString().Should().NotMatchRegex(@"\d", "an hour is not said in seconds");
+
+        // One kiosk asking too often is stopped, and told exactly when it may again; its neighbour is not.
+        for (var i = 0; i < 3; i++)
+        {
+            (await kiosk.PostAsJsonAsync("/api/devices/challenge", new { deviceId = devices[0] })).StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        var stopped = await kiosk.PostAsJsonAsync("/api/devices/challenge", new { deviceId = devices[0] });
+        stopped.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        (await stopped.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString().Should().MatchRegex(@"\d", "what is left of a minute is said");
+        (await kiosk.PostAsJsonAsync("/api/devices/challenge", new { deviceId = devices[1] })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // The counts live in Redis: a new instance of the API - a restart - still knows them.
+        await using var restarted = _fixture.WithHttpOnlyHost(builder => builder
+            .UseSetting("RateLimits:Disabled", "false")
+            .UseSetting("RateLimits:DeviceRegisterPerHour", "1")
+            .UseSetting("RateLimits:AuthPerMinute", "3")
+            .ConfigureServices(services => services.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, FromOneRouter>()));
+        using var again = restarted.CreateClient();
+        (await RegisterAsync(again, enrollmentToken: null)).StatusCode.Should().Be(HttpStatusCode.TooManyRequests, "a restart does not reset the limit");
+    }
+
+    private static Task<HttpResponseMessage> RegisterAsync(HttpClient client, string? enrollmentToken)
+    {
+        using var key = System.Security.Cryptography.ECDsa.Create(System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/devices/register")
+        {
+            Content = JsonContent.Create(new
+            {
+                publicKey = Convert.ToBase64String(key.ExportSubjectPublicKeyInfo()),
+                fingerprint = new { hostname = "router-kiosk", os = "Linux", osVersion = "6.1", machineId = Guid.NewGuid().ToString("n"), macAddresses = new[] { "aa:bb:cc:dd:ee:01" }, cpu = "Test", ramGb = 8, screenResolution = "1920x1080" },
+                platform = "Linux",
+                appVersion = "0.3.0",
+                agentVersion = "0.3.0",
+                enrollmentToken,
+                printers = Array.Empty<object>(),
+            }),
+        };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        return client.SendAsync(request);
+    }
+
+    /// <summary>Every request from one public address - a place's router - with an address of its own each run.</summary>
+    private sealed class FromOneRouter : Microsoft.AspNetCore.Hosting.IStartupFilter
+    {
+        private static readonly IPAddress Router = IPAddress.Parse($"198.51.100.{Random.Shared.Next(1, 250)}");
+
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, following) =>
+            {
+                context.Connection.RemoteIpAddress = Router;
+                return following(context);
+            });
+            next(app);
+        };
     }
 
     private static async Task<string> SignInAsync(HttpClient client, string email, string password)

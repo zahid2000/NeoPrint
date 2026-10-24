@@ -45,27 +45,45 @@ public static class RequestLimits
     }
 
     /// <summary>
-    /// A 429 that says what happened and when to try again, in the caller's
-    /// language, with <c>Retry-After</c> when the limiter knows it.
+    /// A 429 from the framework's limiters (T-310). They tell the length of the
+    /// window, not what is left of it - so the caller is told to try again a
+    /// little later, and `Retry-After` carries the window as an upper bound.
     /// </summary>
-    public static async ValueTask OnRejectedAsync(OnRejectedContext rejected, CancellationToken cancellationToken)
+    public static ValueTask OnRejectedAsync(OnRejectedContext rejected, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(rejected);
 
-        var response = rejected.HttpContext.Response;
         var seconds = rejected.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
             ? Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds))
             : 60;
 
+        return new ValueTask(WriteTooManyAsync(rejected.HttpContext, seconds, exact: false, cancellationToken));
+    }
+
+    /// <summary>
+    /// The 429 itself: `Retry-After`, a title and a detail in the caller's
+    /// language, `code: problem.tooManyRequests`. A number of seconds is said
+    /// only when it is what is really left and no more than a minute (T-310);
+    /// otherwise "a little later".
+    /// </summary>
+    public static async Task WriteTooManyAsync(HttpContext context, int seconds, bool exact, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var response = context.Response;
         response.StatusCode = StatusCodes.Status429TooManyRequests;
         response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
+
+        var detail = exact && seconds <= 60
+            ? Domain.Common.UserMessage.Of("problem.tooManyRequestsIn", ("seconds", seconds))
+            : new Domain.Common.UserMessage("problem.tooManyRequestsDetail");
 
         var problem = new ProblemDetails
         {
             Status = StatusCodes.Status429TooManyRequests,
             Title = Messages.Write(new Domain.Common.UserMessage("problem.tooManyRequests")),
-            Detail = Messages.Write(Domain.Common.UserMessage.Of("problem.tooManyRequestsDetail", ("seconds", seconds))),
-            Instance = rejected.HttpContext.Request.Path,
+            Detail = Messages.Write(detail),
+            Instance = context.Request.Path,
             Extensions = { ["code"] = "problem.tooManyRequests", ["retryAfter"] = seconds },
         };
 

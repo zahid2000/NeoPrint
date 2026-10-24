@@ -363,7 +363,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     'error.network': 'Şəbəkə xətası. Bağlantınızı yoxlayın.',
     'error.server': 'Serverdə xəta baş verdi.',
-    'error.tooManyRequests': 'Qısa müddətdə çox sorğu göndərildi. Bir dəqiqədən sonra yenidən cəhd edin — heç nə itməyib.',
+    'error.tooManyRequests': 'Qısa müddətdə çox sorğu göndərildi. Bir qədər sonra yenidən cəhd edin — heç nə itməyib.',
     'error.forbidden': 'Bu əməliyyat üçün icazəniz yoxdur.',
   },
 
@@ -701,7 +701,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     'error.network': 'Network error. Check your connection.',
     'error.server': 'Something went wrong on the server.',
-    'error.tooManyRequests': 'Too many requests in a short time. Try again in a minute — nothing was lost.',
+    'error.tooManyRequests': 'Too many requests in a short time. Try again a little later — nothing was lost.',
     'error.forbidden': 'You do not have permission for this.',
   },
 
@@ -1041,7 +1041,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     'error.network': 'Ошибка сети. Проверьте подключение.',
     'error.server': 'На сервере произошла ошибка.',
-    'error.tooManyRequests': 'Слишком много запросов за короткое время. Повторите через минуту — ничего не потеряно.',
+    'error.tooManyRequests': 'Слишком много запросов за короткое время. Повторите чуть позже — ничего не потеряно.',
     'error.forbidden': 'У вас нет прав на это действие.',
   },
 };

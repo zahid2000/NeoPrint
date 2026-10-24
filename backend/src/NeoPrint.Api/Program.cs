@@ -286,6 +286,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>
 
 // Rate limits from plan section 6, tunable through configuration.
 var rateLimits = RateLimitSettings.FromConfiguration(builder.Configuration);
+builder.Services.AddSingleton(rateLimits);
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -313,18 +314,6 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = rateLimits.RefreshPerMinute,
                 Window = TimeSpan.FromMinutes(1),
-            }));
-
-    options.AddPolicy("device-register", context => rateLimits.Disabled
-        ? RateLimitPartition.GetNoLimiter("all")
-        // Device registration is anonymous, so it is limited per IP per hour
-        // (plan section 7.11).
-        : RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = rateLimits.DeviceRegisterPerHour,
-                Window = TimeSpan.FromHours(1),
             }));
 
     // Anonymous support claims name a job by the short codes on a receipt:
@@ -596,6 +585,10 @@ app.UseStatusCodePages();
 // credentials nor a body, and answering it must not spend a request from the
 // sign-in limit.
 app.UseCors(CorsOrigins.PolicyName);
+
+// A kiosk's own anonymous calls - registering, signing in - are counted per
+// enrollment token and per device, in Redis (T-309; plan section 7.11).
+app.UseMiddleware<DeviceRequestLimits>();
 
 if (app.Environment.IsDevelopment())
 {

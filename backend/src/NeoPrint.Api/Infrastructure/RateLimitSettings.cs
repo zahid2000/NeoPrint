@@ -36,6 +36,12 @@ public sealed class RateLimitSettings
     /// </summary>
     public int SupportClaimPerHour { get; init; } = 10;
 
+    /// <summary>
+    /// Registrations with one enrollment token per hour (T-309): each kiosk has
+    /// a token of its own, so kiosks behind one router do not share this.
+    /// </summary>
+    public int EnrollmentTokenPerHour { get; init; } = 5;
+
     /// <summary>Everything else: 120 per minute per caller.</summary>
     public int GlobalPerMinute { get; init; } = 120;
 
@@ -58,6 +64,7 @@ public sealed class RateLimitSettings
             RefreshPerMinute = section.GetValue("RefreshPerMinute", 60),
             SupportClaimPerHour = section.GetValue("SupportClaimPerHour", 10),
             GlobalPerMinute = section.GetValue("GlobalPerMinute", 120),
+            EnrollmentTokenPerHour = section.GetValue("EnrollmentTokenPerHour", 5),
             Disabled = section.GetValue("Disabled", false),
         };
     }
