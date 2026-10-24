@@ -31,6 +31,7 @@ Ziddiyyət görünürsə: dayan, uyğunsuzluğu göstər, təhlükəsiz variant�
 | `MANUAL_TESTS.md` | Real printer / cihaz tələb edən əl ilə yoxlamalar (məs. çapın ortasında elektrik kəsilməsi): hazırlıq, addımlar, gözlənilən nəticə |
 | `UI_BUGS.md` | Layihə sahibinin bir sətirlə yazdığı xırda UI problemləri; hər M-dən sonra oxunur və bağlanır |
 | `TEST_SERVER.md` | İnternetdən əlçatan test serveri: GitHub Actions ilə deploy, GitHub-a yazılan məlumatlar, parolların yeri, test APK-sı |
+| `DEPLOY.md` | Staging və production runbook-u: etibarlı proksi (`X-Forwarded-For`), sorğu limitləri harada saxlanılır, deploy-dan sonrakı yoxlamalar |
 | `PILOT.md` | Pilot: pilot-bloklayıcılar, uğur meyarları (pilot hesabatından necə oxunur), gündəlik yoxlamalar, hüquqi suallar |
 | `STEP_7B_PLAN.md` | Addım 7B-nin M-lərə bölgüsü (M15…M27): asılılıq, layihə sahibindən gözlənilən giriş, həcm, ardıcıllıq; redizayn nümunələri; ad dəyişdirmə təklifi |
 | `audits/` | Ayrıca ölçmə və auditlər (məs. `T-292-mobile-apk-size.md` — APK ölçüsü və yüklənmə) |

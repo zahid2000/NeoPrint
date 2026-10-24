@@ -140,6 +140,32 @@ public sealed class RateLimitTests
         RequestLimits.CallerKey(context).Should().Be($"ip:{seen}");
     }
 
+    // No proxy configured (an empty or missing setting): only loopback is
+    // believed - a header from anyone else is ignored, never trusted (T-308).
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task Without_a_configured_proxy_nobody_s_header_is_believed(string? networks)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["ForwardedHeaders:KnownNetworks"] = networks })
+            .Build();
+        var options = new ForwardedHeadersOptions();
+        RequestLimits.ConfigureForwardedHeaders(options, configuration);
+
+        foreach (var from in new[] { "172.25.0.4", "192.168.65.3", "10.0.0.7", "8.8.8.8" })
+        {
+            var context = new DefaultHttpContext();
+            context.Connection.RemoteIpAddress = IPAddress.Parse(from);
+            context.Request.Headers["X-Forwarded-For"] = "203.0.113.7";
+            context.Request.Headers["X-Real-IP"] = "203.0.113.8";
+
+            await new ForwardedHeadersMiddleware(_ => Task.CompletedTask, NullLoggerFactory.Instance, Options.Create(options)).Invoke(context);
+
+            context.Connection.RemoteIpAddress!.ToString().Should().Be(from, "an unconfigured proxy is nobody's word");
+        }
+    }
+
     [Fact]
     public void A_misspelt_proxy_network_stops_the_start()
     {

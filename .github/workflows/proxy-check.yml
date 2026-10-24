@@ -1,0 +1,50 @@
+# The test server's trusted-proxy check (T-308, docs/DEPLOY.md): a caller on
+# the internet is counted by its own address, behind Caddy and the panel's
+# nginx, and cannot choose another by sending X-Forwarded-For.
+#
+# Run by hand: the runner is a second real address next to the person running
+# it. It spends its own minute of the anonymous limit (120 a minute), keeps
+# asking for one more minute and says how many it was refused - while the
+# person's own requests, from their address, keep being answered.
+name: Proxy check (test server)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Spend this address's minute, with a different forged address on every request
+        env:
+          TEST_SERVER_HOST: ${{ vars.TEST_SERVER_HOST }}
+        run: |
+          set -eu
+          host="$(printf '%s' "$TEST_SERVER_HOST" | tr '.' '-').sslip.io"
+          url="https://${host}/api/map/config"
+          ok=0; refused=0; first_refused=0
+          for i in $(seq 1 130); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -H "X-Forwarded-For: 203.0.113.$((i % 250 + 1))" -H "X-Real-IP: 198.51.100.$((i % 250 + 1))" "$url")
+            if [ "$code" = "429" ]; then refused=$((refused + 1)); [ "$first_refused" = 0 ] && first_refused=$i; else ok=$((ok + 1)); fi
+          done
+          echo "Forged addresses: $ok answered, $refused refused, the first refusal at request $first_refused." | tee -a "$GITHUB_STEP_SUMMARY"
+          # Forged headers are not believed: all 130 are one caller, so the limit is reached.
+          test "$refused" -gt 0
+
+      - name: Keep asking for a minute (the other address is checked meanwhile)
+        env:
+          TEST_SERVER_HOST: ${{ vars.TEST_SERVER_HOST }}
+        run: |
+          set -eu
+          host="$(printf '%s' "$TEST_SERVER_HOST" | tr '.' '-').sslip.io"
+          end=$(( $(date +%s) + 60 )); refused=0; total=0
+          while [ "$(date +%s)" -lt "$end" ]; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://${host}/api/map/config")
+            total=$((total + 1)); [ "$code" = "429" ] && refused=$((refused + 1))
+            sleep 1
+          done
+          echo "For the next minute: $refused of $total refused." | tee -a "$GITHUB_STEP_SUMMARY"
