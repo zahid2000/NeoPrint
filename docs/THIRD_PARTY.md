@@ -54,7 +54,7 @@ mənbə və səbəblə burada qeyd olunur.
 | `Microsoft.NET.Test.Sdk` | 17.14.1 | MIT | Microsoft | Test host |
 | `FluentAssertions` | **7.2.2** | Apache-2.0 | Dennis Doomen | Assertion-lar. **v8+ kommersiyadır — yüksəldilmir** |
 | `coverlet.collector` | 6.0.4 | MIT | coverlet | Coverage (Domain üçün ≥ 80% tələbi) |
-| `Testcontainers(.MongoDb/.Redis/.RabbitMq)` | 4.15.0 | MIT | Testcontainers | Integration testlər. Obyekt saxlaması üçün modul yoxdur: RustFS ümumi `ContainerBuilder` ilə qaldırılır. `Testcontainers.Minio` istinadı çıxarılıb (image-lər anonim çəkilmir) |
+| `Testcontainers(.Redis/.RabbitMq)` | 4.15.0 | MIT | Testcontainers | Integration testlər. Obyekt saxlaması üçün modul yoxdur: RustFS ümumi `ContainerBuilder` ilə qaldırılır. `Testcontainers.Minio` istinadı çıxarılıb (image-lər anonim çəkilmir). **`Testcontainers.MongoDb` 2026-10-24-də silindi (T-307):** onun replica set init mərhələsi arabir "Address already in use" ilə düşürdü (T-299); MongoDB indi ümumi `ContainerBuilder` ilə, init-siz qaldırılır |
 | `Microsoft.AspNetCore.Mvc.Testing` | 8.0.31 | MIT | Microsoft | API integration testləri |
 | `Avalonia.Headless.XUnit` | 11.3.22 | MIT | AvaloniaUI | Kiosk ViewModel / UI testləri |
 

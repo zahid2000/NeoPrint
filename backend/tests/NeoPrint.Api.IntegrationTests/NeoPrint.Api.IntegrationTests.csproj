@@ -42,7 +42,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Testcontainers" />
-    <PackageReference Include="Testcontainers.MongoDb" />
     <PackageReference Include="Testcontainers.Redis" />
     <PackageReference Include="Testcontainers.RabbitMq" />
   </ItemGroup>
