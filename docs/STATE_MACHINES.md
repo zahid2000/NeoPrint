@@ -225,15 +225,21 @@ sonra) → `CompleteSourcePurge`.
 
 ## Update (kiosk versiyası)
 
-`Idle → Downloading → Ready → Applying → HealthCheck → Succeeded`
+`Idle → Downloading → Ready → WaitingForIdle → Applying → HealthCheck → Succeeded`
+
+Boş an gözlənilir, amma `Update.MaxIdleWaitMinutes` keçib (T-321):
+
+`WaitingForIdle → Draining → Applying` — yeni müştəri qəbul edilmir, cari ödəniş və çap bitənə qədər gözlənilir.
 
 Failure:
 
-`Downloading | Ready | Applying | HealthCheck → Failed`
+`Downloading | Ready | WaitingForIdle | Draining | Applying | HealthCheck → Failed`
 
 Rollback:
 
 `HealthCheck | Failed → RolledBack`
+
+`Failed` və `RolledBack` → High incident `KioskUpdateFailed` (kiosk + komponent + versiya ilə bir dəfə); geri qaytarılmış versiya həmin kioska bir daha təklif olunmur. Axının ətraflı təsviri, elektrik kəsilməsində bərpa və Agent jurnalı (`Switching → HealthCheck → Done`): `docs/KIOSK_UPDATES.md`.
 
 Kiosk bu vəziyyətləri `POST kiosks/me/update-status` ilə bildirir (`KioskUpdateStatus`, T-317); `Idle` bildirilmir. Backend hər komponentin yalnız son bildirişini saxlayır, gec gələn köhnə bildiriş heç nəyi dəyişmir; `Succeeded`, `Failed`, `RolledBack` audit-ə yazılır.
 
