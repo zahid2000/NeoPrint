@@ -114,7 +114,7 @@ public sealed class ReleaseHandlers :
         }
         catch (FormatException)
         {
-            throw new ValidationException([new ValidationError("manifest", "releases.refused.MalformedManifest")]);
+            throw new ValidationException([new ValidationError("manifest", "releases.refused.malformedManifest")]);
         }
 
         var check = new ReleaseVerifier(accepted.Keys).CheckManifest(
@@ -127,7 +127,7 @@ public sealed class ReleaseHandlers :
             _logger.LogWarning("A release upload was refused: {Rejection}.", check.Rejection);
             throw new ValidationException([new ValidationError(
                 check.Rejection is ReleaseRejection.MalformedManifest ? "manifest" : "signature",
-                $"releases.refused.{check.Rejection}",
+                "releases.refused." + char.ToLowerInvariant(check.Rejection.ToString()[0]) + check.Rejection.ToString()[1..],
                 ("keySet", accepted.Name))]);
         }
 
@@ -180,13 +180,13 @@ public sealed class ReleaseHandlers :
         }
         catch (PackageTooLargeException)
         {
-            throw new ValidationException([new ValidationError("package", "releases.refused.PackageMismatch", ("keySet", accepted.Name))]);
+            throw new ValidationException([new ValidationError("package", "releases.refused.packageMismatch", ("keySet", accepted.Name))]);
         }
 
         if (counted.Length != manifest.Size || counted.Sha256 != manifest.Sha256)
         {
             await _storage.DeleteAsync(stored, StorageBucket.Files, cancellationToken).ConfigureAwait(false);
-            throw new ValidationException([new ValidationError("package", "releases.refused.PackageMismatch", ("keySet", accepted.Name))]);
+            throw new ValidationException([new ValidationError("package", "releases.refused.packageMismatch", ("keySet", accepted.Name))]);
         }
 
         release.Package = new ReleasePackage
