@@ -63,9 +63,9 @@ const call = async (method, path, body, anonymous = false) => {
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const releaseSign = (...args) => execFileSync('dotnet', [tool, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
-async function upload(dir, file, manifest = `${file}.manifest.json`, signature = `${manifest}.sig`) {
+async function upload(dir, file, manifest = `${file}.manifest.json`, signature = `${manifest}.sig`, sentAs = file) {
   const form = new FormData();
-  form.append('package', new Blob([readFileSync(join(dir, file))]), file);
+  form.append('package', new Blob([readFileSync(join(dir, file))]), sentAs);
   form.append('manifest', new Blob([readFileSync(join(dir, manifest))]), manifest);
   form.append('signature', new Blob([readFileSync(join(dir, signature))]), signature);
   form.append('channel', 'Pilot');
@@ -87,7 +87,8 @@ try {
   check(page.keySet === 'staging' && page.trustedKeys === 2, `the development stack takes staging packages (${page.keySet}, ${page.trustedKeys} keys)`);
 
   // ---- A package of this run's own version, signed with the staging key ----
-  const version = `0.0.${Math.floor(Date.now() / 1000)}`;
+  const seconds = Math.floor(Date.now() / 1000);
+  const version = `0.${Math.floor(seconds / 1_000_000)}.${seconds % 1_000_000}`;
   const file = `neoprint-kiosk-agent-${version}-linux-x64-staging.tar.gz`;
   writeFileSync(join(work, file), randomBytes(64 * 1024));
   releaseSign('manifest', '--package', join(work, file), '--component', 'Agent', '--platform', 'linux-x64', '--key-set', 'staging',
@@ -101,7 +102,8 @@ try {
   writeFileSync(join(work, changed), bytes);
   writeFileSync(join(work, `${changed}.manifest.json`), readFileSync(join(work, `${file}.manifest.json`)));
   writeFileSync(join(work, `${changed}.manifest.json.sig`), readFileSync(join(work, `${file}.manifest.json.sig`)));
-  const refusedChanged = await upload(work, changed, `${changed}.manifest.json`);
+  // Under the package's own name: only its bytes differ.
+  const refusedChanged = await upload(work, changed, `${changed}.manifest.json`, `${changed}.manifest.json.sig`, file);
   check(refusedChanged.status === 400, `a changed package is refused (${refusedChanged.status}): ${JSON.stringify(refusedChanged.body.errors ?? {}).slice(0, 160)}`);
 
   const production = file.replace('-staging', '-production');
