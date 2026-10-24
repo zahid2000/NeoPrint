@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The offline release signing tool (docs/RELEASE_SIGNING.md, T-313):
+    generates the release key pairs, writes the manifest CI publishes, signs it
+    on the owner's offline machine and verifies a package exactly as a kiosk
+    does. Uses only the BCL (ECDSA P-256) - no package.
+
+    CI runs only "manifest" and "verify"; it never holds a private key.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NeoPrint.ReleaseSign</RootNamespace>
+    <AssemblyName>release-sign</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\backend\shared\NeoPrint.Crypto\NeoPrint.Crypto.csproj" />
+  </ItemGroup>
+
+  <!-- The kiosk's own compiled-in keys, so "verify" with no key given answers as a kiosk would. -->
+  <ItemGroup>
+    <Compile Include="..\..\desktop\src\NeoPrint.Kiosk.Core\Updates\ReleaseKeys.cs" Link="ReleaseKeys.cs" />
+  </ItemGroup>
+
+</Project>

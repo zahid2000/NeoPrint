@@ -1,0 +1,144 @@
+# Kiosk release packages (T-313, docs/RELEASE_SIGNING.md).
+#
+# Builds, for each platform, the three packages a kiosk installs - the UI
+# (App), the Agent and the provisioning scripts - with a manifest each
+# (version, component, platform, size, SHA-256, MinAgentVersion) and a
+# SHA256SUMS file, and uploads them as one artifact.
+#
+# It does NOT sign. The release key never comes near CI (docs/DECISIONS.md,
+# 2026-10-11): the owner downloads the artifact, compares the SHA-256 with the
+# one this run printed, and signs the manifests offline with tools/release-sign.
+name: Release packages
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, e.g. 0.8.0 or 0.8.0-pilot.1'
+        required: true
+      min_agent_version:
+        description: 'Lowest agent that may install these packages (empty = this version)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  package:
+    name: package (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            provisioning: windows
+          - os: ubuntu-latest
+            rid: linux-x64
+            provisioning: linux
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_MIN_AGENT: ${{ inputs.min_agent_version }}
+        run: |
+          set -eu
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then version="${GITHUB_REF_NAME#v}"; else version="$INPUT_VERSION"; fi
+          min_agent="${INPUT_MIN_AGENT:-$version}"
+          # The tool refuses anything that is not plain SemVer; checked here too so a typo fails before the build.
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+          echo "$min_agent" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "MIN_AGENT=$min_agent" >> "$GITHUB_ENV"
+
+      - name: Build the signing tool (manifests only - CI has no key)
+        run: dotnet build tools/release-sign --configuration Release
+
+      - name: Publish the UI and the Agent
+        run: |
+          set -eu
+          for project in NeoPrint.Kiosk NeoPrint.Kiosk.Agent; do
+            dotnet publish "desktop/src/$project" \
+              --configuration Release \
+              --runtime ${{ matrix.rid }} \
+              --self-contained \
+              -p:Version="$VERSION" \
+              -p:SourceRevisionId="$GITHUB_SHA" \
+              --output "out/$project"
+          done
+          mkdir -p "out/provisioning"
+          cp -R "desktop/provisioning/${{ matrix.provisioning }}/." "out/provisioning/"
+
+      - name: Archive (zip on Windows, tar.gz on Linux - it keeps the execute bits)
+        run: |
+          set -eu
+          mkdir -p dist
+          pack() { # source-dir component
+            local name="neoprint-kiosk-$2-$VERSION-${{ matrix.rid }}"
+            if [ "${{ matrix.rid }}" = "win-x64" ]; then
+              pwsh -NoProfile -Command "Compress-Archive -Path 'out/$1/*' -DestinationPath 'dist/$name.zip'"
+              echo "$name.zip"
+            else
+              tar -czf "dist/$name.tar.gz" -C "out/$1" .
+              echo "$name.tar.gz"
+            fi
+          }
+          echo "App=$(pack NeoPrint.Kiosk app)" >> packages.txt
+          echo "Agent=$(pack NeoPrint.Kiosk.Agent agent)" >> packages.txt
+          echo "Provisioning=$(pack provisioning provisioning)" >> packages.txt
+          cat packages.txt
+
+      - name: Manifests and SHA-256
+        run: |
+          set -eu
+          while IFS='=' read -r component file; do
+            dotnet tools/release-sign/bin/Release/net8.0/release-sign.dll manifest \
+              --package "dist/$file" \
+              --component "$component" \
+              --platform ${{ matrix.rid }} \
+              --version "$VERSION" \
+              --min-agent-version "$MIN_AGENT" \
+              --commit "$GITHUB_SHA" \
+              --out "dist/$file.manifest.json"
+          done < packages.txt
+          (cd dist && sha256sum -- * > SHA256SUMS)
+          {
+            echo "### Kiosk packages $VERSION (${{ matrix.rid }}) - unsigned"
+            echo
+            echo "Compare these with the files you sign (docs/RELEASE_SIGNING.md, step 3):"
+            echo
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat dist/SHA256SUMS
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiosk-release-${{ env.VERSION }}-${{ matrix.rid }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30

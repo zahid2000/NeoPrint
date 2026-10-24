@@ -1984,3 +1984,20 @@ docker compose ps
 docker exec -it neoprint-mongo mongosh -u neoprint -p devMongoPassword \
   --authenticationDatabase admin neoprint --quiet --eval 'db.getCollectionNames()'
 ```
+
+### Buraxılış paketini lokal yığmaq və test açarı ilə yoxlamaq (T-313)
+
+Real açarlar yalnız layihə sahibinin oflayn kompüterindədir (`docs/RELEASE_SIGNING.md`). Lokal sınaq üçün **atılacaq** açar repodan kənarda (məs. `%TEMP%`) yaradılır:
+
+```bash
+dotnet build tools/release-sign
+T="dotnet tools/release-sign/bin/Debug/net8.0/release-sign.dll"
+dotnet publish desktop/src/NeoPrint.Kiosk.Agent -c Release -r linux-x64 --self-contained -p:Version=0.8.0-pilot.1 -o "$TEMP/rs/out"
+(cd "$TEMP/rs/out" && tar -czf ../agent.tar.gz .)
+$T keygen --name test --out "$TEMP/rs/keys"                     # parol iki dəfə soruşulur
+$T manifest --package "$TEMP/rs/agent.tar.gz" --component Agent --platform linux-x64   --version 0.8.0-pilot.1 --min-agent-version 0.8.0-pilot.1 --out "$TEMP/rs/agent.tar.gz.manifest.json"
+$T sign --manifest "$TEMP/rs/agent.tar.gz.manifest.json" --package "$TEMP/rs/agent.tar.gz" --key "$TEMP/rs/keys/test.private.pem"
+$T verify --manifest "$TEMP/rs/agent.tar.gz.manifest.json" --package "$TEMP/rs/agent.tar.gz" --public-key "$TEMP/rs/keys/test.public.pem"
+```
+
+`--public-key` verilməsə `verify` kioskun öz (`ReleaseKeys.cs`) açarları ilə yoxlayır.
