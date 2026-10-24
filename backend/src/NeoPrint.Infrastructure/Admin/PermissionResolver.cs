@@ -135,6 +135,13 @@ public sealed class CachedPermissionResolver : IPermissionResolver
             .SelectMany(role => role.EffectivePermissions)
             .ToHashSet(StringComparer.Ordinal);
 
+        // An account that looks after some kiosks has nothing of the whole
+        // service, whatever its roles hold (T-311).
+        if (!admin.KioskScope.All)
+        {
+            permissions.ExceptWith(Permissions.GlobalOnly);
+        }
+
         return new EffectivePermissions(
             permissions,
             admin.KioskScope.All,

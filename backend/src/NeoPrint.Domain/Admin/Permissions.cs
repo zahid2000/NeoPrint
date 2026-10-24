@@ -135,6 +135,23 @@ public static class Permissions
         new("system", "Sistem", [StorageManage, AdminsManage, RolesManage, AuditView, SystemJobsView]),
     ];
 
+    /// <summary>
+    /// What concerns no kiosk but the whole service (T-311, layihə sahibi 2026-10-24):
+    /// accounts and roles, customers and their money, promotions, prices, storage,
+    /// enrollment tokens, the warehouse's stock, configuration. An account that
+    /// looks after some kiosks never has these, whatever its roles say - its
+    /// effective permissions leave them out, so the server refuses (403) and the
+    /// panel does not offer them. Seeing the warehouse and taking from it stay:
+    /// an operator in the field needs them.
+    /// </summary>
+    public static readonly IReadOnlySet<string> GlobalOnly = new HashSet<string>(StringComparer.Ordinal)
+    {
+        RolesManage, AdminsManage, StorageManage, SystemJobsView,
+        UsersView, UsersBlock, UsersMarkTest, WalletsAdjust, ReferralsView, VouchersView,
+        PromosManage, PricingManage, DevicesEnroll, InventoryManage,
+        SettingsManage, FeaturesManage, FormatsManage, LegalManage,
+    };
+
     /// <summary>Every permission in the catalogue.</summary>
     public static readonly IReadOnlySet<string> All =
         Catalogue.SelectMany(group => group.Permissions).ToHashSet(StringComparer.Ordinal);

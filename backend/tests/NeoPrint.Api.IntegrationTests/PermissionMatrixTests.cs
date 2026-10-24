@@ -444,6 +444,80 @@ public sealed class PermissionMatrixTests
     }
 
     // -----------------------------------------------------------------------
+    // The whole service: none of it for an account of some kiosks (T-311)
+    // -----------------------------------------------------------------------
+
+    [DockerFact]
+    public async Task An_account_that_looks_after_one_kiosk_has_nothing_of_the_whole_service_whatever_its_role_holds()
+    {
+        if (Skip) { return; }
+
+        using var superAdmin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var mine = await ReadyKioskAsync(_fixture, "matrix-global");
+
+        // One role with every permission there is: given to an account of one kiosk and to one of every kiosk.
+        var roleName = $"Everything {Guid.NewGuid():N}";
+        (await superAdmin.PostAsJsonAsync("/api/admin/roles", new { name = roleName, description = "Matrix", permissions = Permissions.All }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        var scoped = await AccountAsync("one kiosk", roleName, KioskScope.Only(mine.KioskId));
+        var global = await AccountAsync("every kiosk", roleName, KioskScope.Everything());
+
+        // What the panel is told it may do.
+        var me = await scoped.Client.GetFromJsonAsync<JsonElement>("/api/admin/me");
+        var granted = me.GetProperty("permissions").EnumerateArray().Select(p => p.GetString()).ToList();
+        granted.Should().NotIntersectWith(Permissions.GlobalOnly, "the panel offers none of the whole service");
+        granted.Should().Contain([Permissions.InventoryView, Permissions.OperatorPanel], "the warehouse is still seen and taken from");
+
+        var tried = new List<string>();
+        var wrong = new List<string>();
+
+        foreach (var endpoint in Endpoints())
+        {
+            var needs = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().OfType<HasPermissionAttribute>().Select(a => a.Permission).ToList();
+            if (needs.Count == 0 || !needs.All(Permissions.GlobalOnly.Contains))
+            {
+                continue;
+            }
+
+            var template = endpoint.RoutePattern.RawText!.TrimStart('/');
+            var path = "/" + System.Text.RegularExpressions.Regex.Replace(template, @"\{[^}:]+(:[^}]+)?\}", match =>
+                match.Value.Contains("regex", StringComparison.Ordinal) ? "pause" : Guid.NewGuid().ToString());
+
+            foreach (var method in endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods ?? ["GET"])
+            {
+                async Task<int> SendAs(HttpClient client)
+                {
+                    using var request = new HttpRequestMessage(new HttpMethod(method), path);
+                    request.Headers.Add(IdempotencyFilter.HeaderName, Guid.NewGuid().ToString());
+                    if (method is "POST" or "PUT")
+                    {
+                        request.Content = Json("{}");
+                    }
+
+                    using var response = await client.SendAsync(request);
+                    return (int)response.StatusCode;
+                }
+
+                var asScoped = await SendAs(scoped.Client);
+                var asGlobal = method == "GET" ? await SendAs(global.Client) : 0;
+                tried.Add($"{method} {template} [{string.Join(", ", needs)}]: one kiosk {asScoped}{(method == "GET" ? $", every kiosk {asGlobal}" : string.Empty)}");
+
+                if (asScoped != 403 || asGlobal is 401 or 403)
+                {
+                    wrong.Add(tried[^1]);
+                }
+            }
+        }
+
+        // The warehouse stays: what an operator takes to the kiosk.
+        (await scoped.Client.GetAsync("/api/admin/inventory/items")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        Console.WriteLine(string.Join(Environment.NewLine, tried));
+        tried.Should().HaveCountGreaterThan(40, "every endpoint of the whole service is tried");
+        wrong.Should().BeEmpty(string.Join(Environment.NewLine, wrong));
+    }
+
+    // -----------------------------------------------------------------------
     // Every kiosk-bound record: another kiosk's (T-301)
     // -----------------------------------------------------------------------
 
