@@ -304,6 +304,7 @@ export class OperatorShellComponent {
             text('operator.tasks.notifyNew', { type: text('operator.taskType.' + task.type) }),
             `${task.kioskCode ?? ''} ${task.notes ?? ''}`.trim(),
             `task-${task.id}`,
+            '/operator/tasks',
           );
         }
       }),
@@ -313,6 +314,7 @@ export class OperatorShellComponent {
             text('operator.tasks.notifyAlert', { resource: text('operator.resource.' + alert.resource) }),
             alert.kioskCode ?? '',
             `alert-${alert.id}`,
+            '/operator/tasks',
           );
         }
       }),
@@ -321,6 +323,7 @@ export class OperatorShellComponent {
           text('operator.tasks.notifyIncident'),
           text('money.incidentSeverity.' + (incident.severity ?? 'High')),
           `incident-${incident.incidentId}`,
+          '/operator/incidents',
         );
       }),
     ];

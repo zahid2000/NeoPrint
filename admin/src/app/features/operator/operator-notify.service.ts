@@ -47,12 +47,41 @@ export class OperatorNotifyService {
    * Says it: the sound, and a notification when the operator allowed them.
    * The same `tag` twice replaces the first rather than stacking up.
    */
-  announce(title: string, body: string, tag: string): void {
+  announce(title: string, body: string, tag: string, url = '/operator'): void {
     if (this.state() !== 'granted') {
       return;
     }
 
     this.beep();
+    void this.show(title, body, tag, url);
+  }
+
+  /**
+   * Through the service worker first: Chrome on Android and an installed
+   * panel (an iPad's or a phone's home screen) have no `new Notification`,
+   * only `registration.showNotification` (T-322). A click opens the panel
+   * at `url`. The page's own notification is left for a browser without one.
+   */
+  private async show(title: string, body: string, tag: string, url: string): Promise<void> {
+    const options = {
+      body,
+      tag,
+      icon: '/icons/icon-192.png',
+      // What the Angular service worker does on a click: the panel, at that page.
+      data: { onActionClick: { default: { operation: 'focusLastFocusedOrOpen', url } } },
+    };
+
+    try {
+      const registration = await this.registration();
+
+      if (registration) {
+        await registration.showNotification(title, options);
+
+        return;
+      }
+    } catch {
+      // Fall through to the page's own notification.
+    }
 
     try {
       const api = this.view?.Notification;
@@ -61,9 +90,15 @@ export class OperatorNotifyService {
         new api(title, { body, tag });
       }
     } catch {
-      // Some mobile browsers only show notifications through a service
-      // worker; the sound has been played and the panel itself shows the rest.
+      // Nothing more to try; the sound has been played and the panel shows the rest.
     }
+  }
+
+  /** The panel's service worker, when one is running (not in a development build). */
+  private async registration(): Promise<ServiceWorkerRegistration | undefined> {
+    const workers = this.view?.navigator?.serviceWorker;
+
+    return workers ? workers.getRegistration() : undefined;
   }
 
   private read(): NotificationAccess {

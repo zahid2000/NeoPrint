@@ -297,6 +297,7 @@ export class IncidentsComponent {
           this.translate.instant(`ops.incidents.notify.${event.severity}`) as string,
           code,
           `incident:${event.incidentId}`,
+          '/incidents',
         );
       }
     });
