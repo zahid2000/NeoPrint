@@ -259,6 +259,12 @@ builder.Services.AddControllers(options =>
         // [RequireFeature] (plan section 2.16).
         options.Filters.Add<RequireFeatureFilter>();
     })
+    // A file parameter would otherwise add a multipart-only constraint to the
+    // route itself: a wrong content type then answers 415 while the route is
+    // chosen, before authentication - telling a stranger what the endpoint
+    // takes (T-318). Without it the caller is checked first; a missing file is
+    // the action's own 400.
+    .ConfigureApiBehaviorOptions(options => options.SuppressConsumesConstraintForFormFileParameters = true)
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;

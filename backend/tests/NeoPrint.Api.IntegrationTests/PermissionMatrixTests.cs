@@ -1027,6 +1027,62 @@ public sealed class PermissionMatrixTests
 
     private static T Make<T>(object properties) => JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(properties, Web), Web)!;
 
+    /// <summary>
+    /// A caller who may not call an endpoint learns nothing of it - not even
+    /// what body it takes (T-318). An action with a file parameter used to
+    /// answer a wrong content type with 415 while choosing the route, before
+    /// anybody was asked who they were; now every protected endpoint, whatever
+    /// the body, says 401 first, and a signed-in caller's wrong body is a 400.
+    /// </summary>
+    [DockerFact]
+    public async Task Nobody_learns_what_body_an_endpoint_takes_before_saying_who_they_are()
+    {
+        if (Skip) { return; }
+
+        var anonymous = _fixture.CreateApiClient();
+        var told = new List<string>();
+        var tried = 0;
+
+        foreach (var endpoint in Endpoints())
+        {
+            if (AnonymousOnPurpose.Contains(Name(endpoint)))
+            {
+                continue;
+            }
+
+            var path = "/" + System.Text.RegularExpressions.Regex.Replace(endpoint.RoutePattern.RawText!.TrimStart('/'), @"\{[^}:]+(:[^}]+)?\}", match =>
+                match.Value.Contains("regex", StringComparison.Ordinal) ? "pause" : Guid.NewGuid().ToString());
+
+            foreach (var method in (endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods ?? ["GET"]).Where(m => m is "POST" or "PUT" or "PATCH"))
+            {
+                foreach (var body in new HttpContent[] { new StringContent("{}", System.Text.Encoding.UTF8, "application/json"), new StringContent("x", System.Text.Encoding.UTF8, "text/plain") })
+                {
+                    using var request = new HttpRequestMessage(new HttpMethod(method), path) { Content = body };
+                    request.Headers.Add(IdempotencyFilter.HeaderName, Guid.NewGuid().ToString());
+                    using var response = await anonymous.SendAsync(request);
+                    tried++;
+
+                    if (response.StatusCode != HttpStatusCode.Unauthorized)
+                    {
+                        told.Add($"{method} {path} ({body.Headers.ContentType!.MediaType}): {(int)response.StatusCode}");
+                    }
+                }
+            }
+        }
+
+        tried.Should().BeGreaterThan(100);
+        told.Should().BeEmpty("a caller who has not said who they are gets 401 and nothing else");
+
+        // Signed in, the wrong body is the caller's mistake: 400, never a 415 that skipped a check.
+        var user = await TestUsers.ConfirmedAsync(_fixture);
+        var asUser = await user.Client.PostAsJsonAsync("/api/files", new { });
+        asUser.StatusCode.Should().Be(HttpStatusCode.BadRequest, await asUser.Content.ReadAsStringAsync());
+
+        using var kiosk = await ReadyKioskAsync(_fixture, "matrix-form");
+        var asKiosk = await kiosk.Client.PostAsJsonAsync($"/api/print-jobs/{Guid.NewGuid()}/flash-upload", new { });
+        asKiosk.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.NotFound);
+    }
+
     private IEnumerable<RouteEndpoint> Endpoints()
         => _fixture.Services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>()
             .Where(endpoint => endpoint.RoutePattern.RawText is { } raw
