@@ -177,6 +177,17 @@ public sealed class KioskAnalyticsTests : IDisposable
         kit.Backend.Payments[paid.Id] = paid with { Status = "Succeeded", PaidAt = DateTime.UtcNow };
         await flow.RefreshPaymentAsync();
 
+        // Paid with the app, so the flash file joins the account in the
+        // background (plan 9.2, step 5). The kit's folder is deleted only once
+        // that is done - deleting it under the upload failed now and then.
+        for (var i = 0; i < 400 && !(kit.Backend.Uploads.Count == 1 && kit.FlashUploads.Pending == 0); i++)
+        {
+            await Task.Delay(10);
+        }
+
+        kit.Backend.Uploads.Should().ContainSingle("the file reached the account");
+        kit.FlashUploads.Pending.Should().Be(0);
+
         recorder.Names.Should().ContainInOrder("order_placed", "payment_started", "payment_failed", "payment_started", "payment_succeeded");
         recorder.Names.Should().NotContain(["payment_method", "payment_ended"]);
         recorder.Events.First(recorded => recorded.Name == "payment_started").Props["method"].Should().Be("BankQr");
