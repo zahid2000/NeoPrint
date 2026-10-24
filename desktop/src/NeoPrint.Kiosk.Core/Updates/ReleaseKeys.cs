@@ -1,4 +1,5 @@
 using NeoPrint.Crypto.Releases;
+using NeoPrint.ReleaseKeySets;
 
 namespace NeoPrint.Kiosk.Core.Updates;
 

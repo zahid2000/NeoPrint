@@ -1,4 +1,6 @@
-namespace NeoPrint.Kiosk.Core.Updates;
+// Its own namespace: these files are compiled into the kiosk, tools/release-sign and the API,
+// and a NeoPrint.Kiosk namespace in the API would shadow its Kiosk type.
+namespace NeoPrint.ReleaseKeySets;
 
 /// <summary>
 /// The production release keys: the only ones a pilot kiosk build carries

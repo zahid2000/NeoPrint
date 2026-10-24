@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 using NeoPrint.Crypto.Releases;
-using NeoPrint.Kiosk.Core.Updates;
+using NeoPrint.ReleaseKeySets;
 
 namespace NeoPrint.ReleaseSign;
 
