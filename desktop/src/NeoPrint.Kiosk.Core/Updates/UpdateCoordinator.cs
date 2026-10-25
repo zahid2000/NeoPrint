@@ -156,6 +156,13 @@ public sealed class UpdateCoordinator
         await _running.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            // The agent is in the middle of a switch (this UI may be the version
+            // being checked): nothing new is asked for until it is done.
+            if (File.Exists(_paths.JournalFile))
+            {
+                return false;
+            }
+
             var offers = await _api.GetUpdateOffersAsync(cancellationToken).ConfigureAwait(false);
             _downloader.Forget(offers.Offers.Select(offer => offer.ReleaseId));
             var agent = Agent ?? new AgentState();
@@ -286,8 +293,9 @@ public sealed class UpdateCoordinator
 
     private int HealthSeconds => Math.Clamp(Settings.HealthTimeoutMinutes, 1, 30) * 60;
 
+    // The UI's own version is what runs, whatever the agent has written down yet.
     private string? Installed(AgentState agent, string component)
-        => agent.Installed.GetValueOrDefault(component) ?? (component == UpdateComponents.App ? _appVersion : null);
+        => component == UpdateComponents.App ? _appVersion : agent.Installed.GetValueOrDefault(component);
 
     private async Task ApplyAsync(
         KioskReleaseOffer offer, IReadOnlyList<string> withdrawn, AgentState agent, bool force, Guid? commandId, CancellationToken cancellationToken)
@@ -547,7 +555,9 @@ public sealed class UpdateCoordinator
             _refused.Add(refused);
         }
 
-        if (result.Component is { } component && result.Version is { } version && result.Kind != AgentRequestKind.RestartAgent)
+        // "Not newer" is the agent having it already - nothing went wrong, nothing to report.
+        var nothingToDo = result.Outcome == AgentOutcome.Refused && result.MessageKey == "updates.notNewer";
+        if (result.Component is { } component && result.Version is { } version && result.Kind != AgentRequestKind.RestartAgent && !nothingToDo)
         {
             var status = result.Outcome switch
             {

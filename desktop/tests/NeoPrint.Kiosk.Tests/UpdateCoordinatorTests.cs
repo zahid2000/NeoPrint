@@ -159,6 +159,25 @@ public sealed class UpdateCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task While_the_agent_is_switching_nothing_new_is_asked_for_and_its_not_newer_is_no_failure()
+    {
+        var coordinator = await CoordinatorAsync();
+        _backend.Offer(Package("1.0.0"));
+        AgentFiles.Write(_paths.JournalFile, new AgentJournal(Guid.NewGuid(), AgentRequestKind.Install, "App", "0.9.0", "1.0.0",
+            JournalPhase.HealthCheck, _clock.UtcNow, _clock.UtcNow.AddMinutes(5)));
+
+        (await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None)).Should().BeFalse();
+        _backend.Statuses.Should().BeEmpty();
+
+        File.Delete(_paths.JournalFile);
+        var id = Guid.NewGuid();
+        AgentFiles.Write(Path.Combine(_paths.Results, $"{id:N}.json"),
+            new AgentResult(id, AgentRequestKind.Install, AgentOutcome.Refused, _clock.UtcNow, null, "App", "1.0.0", "1.0.0", "updates.notNewer"));
+        await coordinator.ReportResultsAsync(CancellationToken.None);
+        _backend.Statuses.Should().BeEmpty("the agent having it already is not a failure");
+    }
+
+    [Fact]
     public async Task A_version_already_running_is_not_offered_again()
     {
         var coordinator = await CoordinatorAsync();
