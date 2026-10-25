@@ -1300,6 +1300,19 @@ node tools/dev-kiosk/setting.mjs Update.HealthTimeoutMinutes 2    # sınaqda gö
   bash tools/dev-kiosk/make-release.sh app 0.8.0-m17.54
   node tools/dev-kiosk/agent-forge.mjs /tmp/neoprint-releases/app-0.8.0-m17.54 /tmp/neoprint-releases/app-0.8.0-m17.52
   ```
+- **Uçdan-uca, panel ilə (M18, T-326):** yeni versiya "Buraxılışlar" səhifəsində yüklənir və pilot kanalına yayılır, kiosk
+  boş anda yenidən qeydiyyatsız yenilənir, xətalı versiya özü geri qayıdır və incident açılır; kioskun "Yeniləmə" tabı bunu
+  canlı izləyir, loglar səbəblə istənir və endirilir, masaüstü və telefon eni şəkilləri, konsol xətası 0. Skript işləyərkən
+  yeniləmə pəncərəsini bütün gün, sağlamlıq yoxlamasını 2 dəqiqə edir və sonda geri qaytarır. Hər qaçış **yeni versiyalar** istəyir
+  (bir versiya bir dəfə yüklənir):
+
+  ```bash
+  bash tools/dev-kiosk/make-release.sh app 0.8.0-m18.5
+  bash tools/dev-kiosk/make-release.sh app 0.8.0-m18.6 --broken
+  cd admin && node e2e/updates.mjs KSK-9007 "$(cygpath -m /tmp/neoprint-releases/app-0.8.0-m18.5)" \
+      "$(cygpath -m /tmp/neoprint-releases/app-0.8.0-m18.6)" ../docs/screenshots/step-7b/m18
+  ```
+- **Agent əmrləri səbəb istəyir (T-326):** `REASON="..." node tools/dev-kiosk/command.mjs update-now KSK-9007` (yoxdursa "Development check" göndərilir).
 - **`make-release.sh`-ni `MSYS_NO_PATHCONV=1` ilə işlətməyin** — MSBuild parametrlərini pozur. `tar: file changed as we read it` olarsa, əmri təkrarlayın (Windows indeksləyicisi / antivirus faylı oxuyurdu).
 
 **Kiosk və feature flag-lar (T-160).** Admin → Feature flag-lar → `mobile_payment_at_kiosk` / `promo_codes`-də
