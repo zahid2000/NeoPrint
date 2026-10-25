@@ -9,11 +9,18 @@ using NeoPrint.Kiosk.Core.Updates;
 
 namespace NeoPrint.Kiosk.Agent.Updates;
 
-/// <summary>Runs the provisioning scripts of a version folder in repair mode.</summary>
+/// <summary>
+/// The provisioning scripts, which run as root: installed and run by the
+/// root-owned helper (<see cref="RootProvisioning"/>), never by the agent itself.
+/// </summary>
 public interface IProvisioningRunner
 {
-    /// <returns>The scripts' exit code; 0 is success.</returns>
-    Task<int> RunAsync(string scriptsFolder, CancellationToken cancellationToken);
+    /// <summary>A checked package to install and run in repair mode; the helper checks it again.</summary>
+    /// <returns>0 done, 2 refused, anything else failed.</returns>
+    Task<int> InstallAsync(string package, string manifestPath, string signaturePath, CancellationToken cancellationToken);
+
+    /// <summary>The current scripts, again (<c>ReapplyProvisioning</c>).</summary>
+    Task<int> ReapplyAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -159,17 +166,6 @@ public sealed partial class UpdateApplier
         {
             case UpdateComponents.Agent:
                 await RecoverAgentAsync(journal, cancellationToken).ConfigureAwait(false);
-                return;
-
-            case UpdateComponents.Provisioning:
-                // Scripts that were cut short are not run again on their own: back to the version before.
-                var links = Links(UpdateComponents.Provisioning);
-                if (links.CurrentVersion() != journal.From && Directory.Exists(links.VersionFolder(journal.From)))
-                {
-                    links.SwitchTo(journal.From);
-                }
-
-                Finish(journal, AgentOutcome.Failed, journal.To, "updates.interrupted");
                 return;
 
             default:
@@ -371,6 +367,11 @@ public sealed partial class UpdateApplier
                 return Answer(request, AgentOutcome.Refused, component, version, installed, ReleasePackageCheck.MessageKey(check.Rejection));
             }
 
+            if (component == UpdateComponents.Provisioning)
+            {
+                return await InstallProvisioningAsync(request, copy, manifestBytes, signatureBytes, installed, version, cancellationToken).ConfigureAwait(false);
+            }
+
             var links = Links(component);
             if (!HasRoomFor(new FileInfo(copy).Length))
             {
@@ -393,12 +394,9 @@ public sealed partial class UpdateApplier
         }
 
         var from = installed ?? Links(component).CurrentVersion() ?? string.Empty;
-        return component switch
-        {
-            UpdateComponents.Agent => SwitchAgent(request, from, version),
-            UpdateComponents.Provisioning => await SwitchProvisioningAsync(request, from, version, cancellationToken).ConfigureAwait(false),
-            _ => await SwitchAppAsync(request, from, version, cancellationToken).ConfigureAwait(false),
-        };
+        return component == UpdateComponents.Agent
+            ? SwitchAgent(request, from, version)
+            : await SwitchAppAsync(request, from, version, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<AgentResult> RollbackAsync(AgentRequest request, CancellationToken cancellationToken)
@@ -416,15 +414,14 @@ public sealed partial class UpdateApplier
 
     private async Task<AgentResult> ReapplyProvisioningAsync(AgentRequest request, CancellationToken cancellationToken)
     {
-        var links = Links(UpdateComponents.Provisioning);
-        var current = links.CurrentVersion();
+        var current = Links(UpdateComponents.Provisioning).CurrentVersion();
         if (!_platformUpdatesItself || current is null)
         {
             return Answer(request, AgentOutcome.Failed, UpdateComponents.Provisioning, current, current,
                 _platformUpdatesItself ? "updates.nothingToRollBack" : "updates.notSupportedHere");
         }
 
-        var code = await _provisioning.RunAsync(links.VersionFolder(current), cancellationToken).ConfigureAwait(false);
+        var code = await _provisioning.ReapplyAsync(cancellationToken).ConfigureAwait(false);
         return code == 0
             ? Answer(request, AgentOutcome.Succeeded, UpdateComponents.Provisioning, current, current, null)
             : Answer(request, AgentOutcome.Failed, UpdateComponents.Provisioning, current, current, "updates.provisioningFailed");
@@ -521,31 +518,37 @@ public sealed partial class UpdateApplier
         return null;
     }
 
-    private async Task<AgentResult> SwitchProvisioningAsync(AgentRequest request, string from, string to, CancellationToken cancellationToken)
+    /// <summary>
+    /// Handed to the root-owned helper, which checks the package again with its
+    /// own keys, unpacks it, switches and runs it - and goes back if it fails.
+    /// </summary>
+    private async Task<AgentResult> InstallProvisioningAsync(
+        AgentRequest request, string copy, byte[] manifest, byte[] signature, string? from, string version, CancellationToken cancellationToken)
     {
-        var now = _clock.UtcNow;
-        var journal = new AgentJournal(request.Id, request.Kind, UpdateComponents.Provisioning, from, to, JournalPhase.Switching, now, now,
-            request.CommandId, Math.Clamp(request.KeepVersions, 2, 10));
-        AgentFiles.Write(_paths.JournalFile, journal);
+        var manifestPath = copy + ".manifest.json";
+        var signaturePath = copy + ".manifest.json.sig";
+        await File.WriteAllBytesAsync(manifestPath, manifest, cancellationToken).ConfigureAwait(false);
+        await File.WriteAllBytesAsync(signaturePath, signature, cancellationToken).ConfigureAwait(false);
 
-        var links = Links(UpdateComponents.Provisioning);
-        links.SwitchTo(to);
-
-        var code = await _provisioning.RunAsync(links.VersionFolder(to), cancellationToken).ConfigureAwait(false);
-        if (code == 0)
+        try
         {
-            SetInstalled(UpdateComponents.Provisioning, to, from);
-            links.Prune(KeepOf(journal), to, from);
-            return Finish(journal, AgentOutcome.Succeeded, to, null);
-        }
+            var code = await _provisioning.InstallAsync(copy, manifestPath, signaturePath, cancellationToken).ConfigureAwait(false);
+            if (code == 0 && Links(UpdateComponents.Provisioning).CurrentVersion() == version)
+            {
+                SetInstalled(UpdateComponents.Provisioning, version, from);
+                return Answer(request, AgentOutcome.Succeeded, UpdateComponents.Provisioning, version, from, null);
+            }
 
-        _logger.LogError("Provisioning {Version} ended with {Code}; going back to {From}.", to, code, from);
-        if (!string.IsNullOrEmpty(from) && Directory.Exists(links.VersionFolder(from)))
+            _logger.LogError("Provisioning {Version} ended with {Code}.", version, code);
+            return code == 2
+                ? Answer(request, AgentOutcome.Refused, UpdateComponents.Provisioning, version, from, "updates.signatureRefused")
+                : Answer(request, AgentOutcome.Failed, UpdateComponents.Provisioning, version, from, "updates.provisioningFailed");
+        }
+        finally
         {
-            links.SwitchTo(from);
+            File.Delete(manifestPath);
+            File.Delete(signaturePath);
         }
-
-        return Finish(journal, AgentOutcome.Failed, to, "updates.provisioningFailed");
     }
 
     // ---------------------------------------------------------------------

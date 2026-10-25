@@ -78,7 +78,40 @@ public sealed partial class PowerPermissionTests
         // Of systemctl, only these verbs - each with its one unit where it takes one.
         rules.Where(rule => rule.Contains("systemctl", StringComparison.Ordinal))
             .Select(rule => rule[(rule.IndexOf("systemctl", StringComparison.Ordinal) + "systemctl ".Length)..])
-            .Should().BeSubsetOf(["reboot", "restart neoprint-kiosk", "restart neoprint-agent", "start neoprint-maintenance.service"]);
+            .Should().BeSubsetOf([
+                "reboot", "restart neoprint-kiosk", "restart neoprint-agent", "start neoprint-maintenance.service",
+                // Around a version switch (T-321).
+                "stop neoprint-kiosk.service", "start neoprint-kiosk.service",
+            ]);
+    }
+
+    [Fact]
+    public void The_agent_may_restart_the_ui_and_itself_and_reach_the_provisioning_scripts_only_through_the_root_owned_helper()
+    {
+        var agent = SudoersRules().Where(rule => rule.StartsWith("$SERVICE_USER ", StringComparison.Ordinal)).ToList();
+
+        agent.Should().BeEquivalentTo(
+        [
+            "$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/systemctl reboot",
+            "$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/systemctl restart neoprint-kiosk",
+            "$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/systemctl restart neoprint-agent",
+            "$SERVICE_USER ALL=(root) NOPASSWD: /usr/sbin/lpadmin",
+            "$SERVICE_USER ALL=(root) NOPASSWD: /usr/sbin/cupsenable",
+            "$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/systemctl stop neoprint-kiosk.service",
+            "$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/systemctl start neoprint-kiosk.service",
+            "$SERVICE_USER ALL=(root) NOPASSWD: $LIB_ROOT/neoprint-reprovision",
+        ]);
+
+        // Nothing the agent can write is run as root: not the scripts under
+        // /opt/neoprint, and the helper passes the scripts nothing but --repair.
+        agent.Should().NotContain(rule => rule.Contains("/opt/neoprint", StringComparison.Ordinal) || rule.Contains("$INSTALL_ROOT", StringComparison.Ordinal));
+        var helper = File.ReadAllText(Path.Combine(Desktop, "provisioning", "linux", "neoprint-reprovision"));
+        helper.Should().Contain("exec /usr/local/lib/neoprint/agent/NeoPrint.Kiosk.Agent provisioning \"$@\" --repair");
+        helper.Should().Contain("install) [ $# -eq 4 ]").And.Contain("reapply) [ $# -eq 1 ]");
+
+        var script = File.ReadAllText(Path.Combine(Desktop, "provisioning", "linux", "provision.sh"));
+        script.Should().Contain("install -d -o root -g root -m 755 \"$INSTALL_ROOT/provisioning\"", "the provisioning scripts stay root's");
+        script.Should().Contain("if [ \"$REPAIR\" -eq 0 ] && [ -x \"$INSTALL_ROOT/agent/current/NeoPrint.Kiosk.Agent\" ]", "a repair never refreshes root's copy of the agent");
     }
 
     [Fact]

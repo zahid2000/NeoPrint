@@ -33,7 +33,7 @@ Environment=XDG_SESSION_TYPE=wayland
 UMask=0007
 
 # -s: a single application, with no compositor keybindings at all.
-ExecStart=/usr/bin/cage -s -- /opt/neoprint/current/NeoPrint.Kiosk
+ExecStart=/usr/bin/cage -s -- /opt/neoprint/app/current/NeoPrint.Kiosk
 
 Restart=always
 RestartSec=3

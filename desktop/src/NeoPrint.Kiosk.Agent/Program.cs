@@ -27,6 +27,14 @@ using NeoPrint.Kiosk.Core.Updates;
 // narrow sudoers rule.
 // ---------------------------------------------------------------------------
 
+// The root mode (T-321): the root-owned copy of this binary, run through the
+// one sudo rule, installs and runs the provisioning scripts - never the
+// unprivileged agent itself.
+if (args.Length > 0 && args[0] == "provisioning")
+{
+    return await RootProvisioning.RunAsync(args, UpdatePaths.ForThisMachine(), BuildVersion.Of(typeof(Program).Assembly), CancellationToken.None);
+}
+
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Configuration
@@ -88,6 +96,7 @@ host.Services.GetRequiredService<ILoggerFactory>()
     .LogInformation("The NeoPrint agent {Version} is starting.", BuildVersion.Of(typeof(Program).Assembly));
 
 await host.RunAsync();
+return 0;
 
 static string Or(string value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value;
 

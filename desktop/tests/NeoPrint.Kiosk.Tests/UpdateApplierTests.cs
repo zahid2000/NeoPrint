@@ -39,6 +39,7 @@ public sealed class UpdateApplierTests : IDisposable
     {
         _paths = new UpdatePaths(Path.Combine(_root, "opt"), Path.Combine(_root, "updates"), Path.Combine(_root, "agent"));
         _ui.Paths = _paths;
+        _provisioning.Paths = _paths;
 
         // A kiosk on 0.9.0: what provisioning left behind.
         var running = Path.Combine(_paths.Versions(UpdateComponents.App), Running);
@@ -283,20 +284,48 @@ public sealed class UpdateApplierTests : IDisposable
     }
 
     [Fact]
-    public async Task Provisioning_is_switched_and_run_in_repair_mode_and_taken_back_when_it_fails()
+    public async Task Provisioning_is_handed_to_the_root_helper_with_the_agents_checked_copy_and_its_answer_is_kept()
     {
         var agent = await StartedAsync();
         _provisioning.ExitCode = 0;
         (await agent.ProcessAsync(Request(Package("1.0.0", component: ReleaseComponent.Provisioning)), CancellationToken.None))!
             .Outcome.Should().Be(AgentOutcome.Succeeded);
-        _provisioning.Folders.Should().ContainSingle().Which.Should().EndWith("1.0.0");
+        _provisioning.Packages.Should().ContainSingle().Which.Should().StartWith(_paths.Incoming, "the helper gets the agent's own copy");
+        agent.State.Installed[UpdateComponents.Provisioning].Should().Be("1.0.0");
 
         _provisioning.ExitCode = 3;
         var failed = await agent.ProcessAsync(Request(Package("1.1.0", component: ReleaseComponent.Provisioning)), CancellationToken.None);
         failed!.Outcome.Should().Be(AgentOutcome.Failed);
         failed.MessageKey.Should().Be("updates.provisioningFailed");
-        new VersionLinks(_paths.Versions(UpdateComponents.Provisioning), _paths.Current(UpdateComponents.Provisioning)).CurrentVersion().Should().Be("1.0.0");
+        agent.State.Installed[UpdateComponents.Provisioning].Should().Be("1.0.0");
         _ui.Calls.Should().BeEmpty("provisioning does not stop the UI");
+
+        // Reapplied: the helper runs what is current.
+        (await agent.ProcessAsync(new AgentRequest(Guid.NewGuid(), AgentRequestKind.ReapplyProvisioning, _clock.UtcNow), CancellationToken.None))!
+            .Outcome.Should().Be(AgentOutcome.Failed, "the helper still answers 3");
+        _provisioning.Reapplied.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("--offline-package", "/tmp/x")]
+    [InlineData("--enrollment-token", "t")]
+    public async Task The_root_helper_takes_no_argument_for_the_scripts_but_repair_or_dry_run(string flag, string value)
+        => (await RootProvisioning.RunAsync(["provisioning", "reapply", flag, value], _paths, "1.0.0", CancellationToken.None)).Should().Be(64);
+
+    [Fact]
+    public async Task The_root_helper_checks_the_package_itself_and_refuses_one_signed_by_another_key()
+    {
+        // This build's own keys (staging or production) never signed the test key's package.
+        var package = Package("1.0.0", component: ReleaseComponent.Provisioning);
+        var file = Path.Combine(_paths.Downloads, package.File);
+        var manifest = Path.Combine(_root, "m.json");
+        var signature = Path.Combine(_root, "m.sig");
+        File.WriteAllText(manifest, package.Manifest);
+        File.WriteAllText(signature, package.Signature);
+
+        (await RootProvisioning.RunAsync(["provisioning", "install", file, manifest, signature, "--dry-run"], _paths, "1.0.0", CancellationToken.None))
+            .Should().Be(2);
+        Directory.Exists(_paths.Versions(UpdateComponents.Provisioning)).Should().BeFalse("nothing was unpacked");
     }
 
     [Fact]
@@ -460,15 +489,34 @@ public sealed class UpdateApplierTests : IDisposable
         }
     }
 
+    /// <summary>The root helper: on success it unpacks and switches, as the real one does.</summary>
     private sealed class FakeProvisioning : IProvisioningRunner
     {
+        public UpdatePaths? Paths { get; set; }
+
         public int ExitCode { get; set; }
 
-        public List<string> Folders { get; } = [];
+        public List<string> Packages { get; } = [];
 
-        public Task<int> RunAsync(string scriptsFolder, CancellationToken cancellationToken)
+        public int Reapplied { get; private set; }
+
+        public Task<int> InstallAsync(string package, string manifestPath, string signaturePath, CancellationToken cancellationToken)
         {
-            Folders.Add(scriptsFolder);
+            Packages.Add(package);
+            if (ExitCode == 0 && Paths is { } paths)
+            {
+                var version = ReleaseManifest.Parse(File.ReadAllBytes(manifestPath)).Version.ToString();
+                var links = new VersionLinks(paths.Versions(UpdateComponents.Provisioning), paths.Current(UpdateComponents.Provisioning));
+                Directory.CreateDirectory(links.VersionFolder(version));
+                links.SwitchTo(version);
+            }
+
+            return Task.FromResult(ExitCode);
+        }
+
+        public Task<int> ReapplyAsync(CancellationToken cancellationToken)
+        {
+            Reapplied++;
             return Task.FromResult(ExitCode);
         }
     }

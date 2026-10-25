@@ -44,33 +44,41 @@ public sealed class AgentWorker(UpdateApplier applier, ILogger<AgentWorker> logg
 }
 
 /// <summary>
-/// Runs <c>provision.sh --repair</c> of a version folder (Linux: the sudoers
-/// rule allows exactly that); <c>Agent:ProvisioningCommand</c> replaces the
-/// command where a real run cannot be made (the container kiosk).
+/// Asks the root-owned helper to install or run the provisioning scripts
+/// (<see cref="RootProvisioning"/>): on a provisioned Linux kiosk through its
+/// one sudo rule, <c>sudo -n /usr/local/lib/neoprint/neoprint-reprovision</c>.
+/// With <c>Agent:ProvisioningHelper</c> empty the agent is the helper itself -
+/// the container kiosk, where it runs as root and the scripts only dry-run.
 /// </summary>
-public sealed class ProvisioningRunner(IOptions<AgentOptions> options, ILogger<ProvisioningRunner> logger) : IProvisioningRunner
+public sealed class ProvisioningRunner(
+    IOptions<AgentOptions> options, NeoPrint.Kiosk.Core.Updates.UpdatePaths paths, ILogger<ProvisioningRunner> logger) : IProvisioningRunner
 {
-    private static readonly TimeSpan Limit = TimeSpan.FromMinutes(20);
+    private static readonly TimeSpan Limit = TimeSpan.FromMinutes(25);
 
-    public async Task<int> RunAsync(string scriptsFolder, CancellationToken cancellationToken)
+    public Task<int> InstallAsync(string package, string manifestPath, string signaturePath, CancellationToken cancellationToken)
+        => RunAsync(["install", package, manifestPath, signaturePath], cancellationToken);
+
+    public Task<int> ReapplyAsync(CancellationToken cancellationToken) => RunAsync(["reapply"], cancellationToken);
+
+    private async Task<int> RunAsync(string[] arguments, CancellationToken cancellationToken)
     {
-        var template = string.IsNullOrWhiteSpace(options.Value.ProvisioningCommand)
-            ? "sudo -n {folder}/provision.sh --repair"
-            : options.Value.ProvisioningCommand;
-        var parts = template.Replace("{folder}", scriptsFolder, StringComparison.Ordinal).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var scriptArgs = options.Value.ProvisioningScriptArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (string.IsNullOrWhiteSpace(options.Value.ProvisioningHelper))
+        {
+            return await RootProvisioning.RunAsync(["provisioning", .. arguments, .. scriptArgs], paths,
+                NeoPrint.Kiosk.Core.Updates.BuildVersion.Of(typeof(ProvisioningRunner).Assembly), cancellationToken).ConfigureAwait(false);
+        }
 
+        var helper = options.Value.ProvisioningHelper.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(Limit);
 
-        using var process = Process.Start(new ProcessStartInfo(parts[0], parts[1..])
+        using var process = Process.Start(new ProcessStartInfo(helper[0], [.. helper[1..], .. arguments])
         {
             UseShellExecute = false,
-            RedirectStandardOutput = true,
             RedirectStandardError = true,
-            WorkingDirectory = scriptsFolder,
-        }) ?? throw new InvalidOperationException("The provisioning scripts could not be started.");
+        }) ?? throw new InvalidOperationException("The provisioning helper could not be started.");
 
-        var output = process.StandardOutput.ReadToEndAsync(timeout.Token);
         var errors = process.StandardError.ReadToEndAsync(timeout.Token);
         try
         {
@@ -79,13 +87,15 @@ public sealed class ProvisioningRunner(IOptions<AgentOptions> options, ILogger<P
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             process.Kill(entireProcessTree: true);
-            logger.LogError("The provisioning scripts ran longer than {Minutes} minutes and were stopped.", Limit.TotalMinutes);
-            return -1;
+            logger.LogError("The provisioning helper ran longer than {Minutes} minutes and was stopped.", Limit.TotalMinutes);
+            return 3;
         }
 
-        // The scripts keep their own log (provision.log); only the tail is noted here.
-        var tail = string.Join(' ', ((await output.ConfigureAwait(false)) + (await errors.ConfigureAwait(false))).Split('\n').TakeLast(3));
-        logger.LogInformation("Provisioning ended with {Code}: {Tail}", process.ExitCode, tail.Trim());
+        if (process.ExitCode != 0)
+        {
+            logger.LogError("The provisioning helper ended with {Code}: {Errors}", process.ExitCode, (await errors.ConfigureAwait(false)).Trim());
+        }
+
         return process.ExitCode;
     }
 }

@@ -64,8 +64,8 @@ $InstallRoot = "C:\Program Files\NeoPrint"
 $DataRoot    = "C:\ProgramData\NeoPrint"
 $LogFile     = Join-Path $DataRoot "provision.log"
 $KioskUser   = "kiosk"
-$ShellPath   = Join-Path $InstallRoot "current\NeoPrint.Kiosk.exe"
-$AgentPath   = Join-Path $InstallRoot "current\NeoPrint.Kiosk.Agent.exe"
+$ShellPath   = Join-Path $InstallRoot "app\current\NeoPrint.Kiosk.exe"
+$AgentPath   = Join-Path $InstallRoot "agent\current\NeoPrint.Kiosk.Agent.exe"
 $AgentName   = "NeoPrintAgent"
 
 # Where network printers live: the kiosk prints and reads page counters on
@@ -299,12 +299,16 @@ Enable-Feature "Client-KeyboardFilter"
 # --- Directories -----------------------------------------------------------
 Write-Log "creating directories"
 
-foreach ($directory in @("device", "spool", "state", "logs")) {
+foreach ($directory in @("device", "spool", "state", "logs", "updates", "agent")) {
     New-Item -ItemType Directory -Path (Join-Path $DataRoot $directory) -Force | Out-Null
 }
 
 New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $InstallRoot "versions") -Force | Out-Null
+# Each component has its versions and a "current" junction (docs/KIOSK_UPDATES.md
+# section 2, T-321); the agent moves them. Not checked on a real Windows kiosk yet (T-093).
+foreach ($component in @("app", "agent", "provisioning")) {
+    New-Item -ItemType Directory -Path (Join-Path $InstallRoot "$component\versions") -Force | Out-Null
+}
 
 # --- Kiosk account and automatic sign-in -----------------------------------
 Write-Log "creating the kiosk account and its automatic sign-in"
@@ -481,9 +485,28 @@ if ($DependenciesPath) {
 
 # --- NeoPrint --------------------------------------------------------------
 #
-# The UI and the agent, published into one folder, go into versions\<version>,
-# and "current" is a junction to it; the data directory is outside it, so an
-# update never touches identity or spool (plan section 7.12).
+# The UI (app) and the agent, each in <component>\versions\<version> with a
+# "current" junction; the data directory is outside them, so an update never
+# touches identity or spool (plan section 7.12). -OfflinePackage is a folder
+# or .zip with app\, agent\ and VERSION; later versions come through the agent.
+function Install-Version([string]$Component, [string]$Version, [string]$Source) {
+    $target = Join-Path $InstallRoot "$Component\versions\$Version"
+    if (Test-Path $target) {
+        Remove-Item -Path $target -Recurse -Force
+    }
+
+    Copy-Item -Path $Source -Destination $target -Recurse -Force
+    Set-Content -Path (Join-Path $target ".neoprint-complete") -Value $Version -NoNewline
+
+    $current = Join-Path $InstallRoot "$Component\current"
+    if (Test-Path $current) {
+        (Get-Item $current).Delete()
+    }
+
+    & cmd /c mklink /J "`"$current`"" "`"$target`"" | Out-Null
+    Write-Log "NeoPrint $Component $Version is current"
+}
+
 if ($OfflinePackage) {
     Write-Log "installing NeoPrint from $OfflinePackage"
 
@@ -498,7 +521,7 @@ if ($OfflinePackage) {
             Expand-Archive -Path $OfflinePackage -DestinationPath $staging -Force
         }
 
-        foreach ($required in @("NeoPrint.Kiosk.exe", "NeoPrint.Kiosk.Agent.exe")) {
+        foreach ($required in @("app\NeoPrint.Kiosk.exe", "agent\NeoPrint.Kiosk.Agent.exe")) {
             if (-not (Test-Path (Join-Path $staging $required))) {
                 throw "The package has no $required; see docs/KIOSK_SETUP.md."
             }
@@ -506,33 +529,21 @@ if ($OfflinePackage) {
 
         $versionFile = Join-Path $staging "VERSION"
         $version = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim() } else { Get-Date -Format "yyyyMMddHHmmss" }
-        $target = Join-Path $InstallRoot "versions\$version"
 
-        # The agent runs from "current"; it stops while its files are swapped.
+        # The agent runs from its "current"; it stops while its files are swapped.
         if (Get-Service -Name $AgentName -ErrorAction SilentlyContinue) {
             Stop-Service -Name $AgentName -Force -ErrorAction SilentlyContinue
         }
 
-        if (Test-Path $target) {
-            Remove-Item -Path $target -Recurse -Force
-        }
-
-        Copy-Item -Path $staging -Destination $target -Recurse -Force
-
-        $current = Join-Path $InstallRoot "current"
-        if (Test-Path $current) {
-            (Get-Item $current).Delete()
-        }
-
-        & cmd /c mklink /J "`"$current`"" "`"$target`"" | Out-Null
-        Write-Log "NeoPrint $version is current"
+        Install-Version "app" $version (Join-Path $staging "app")
+        Install-Version "agent" $version (Join-Path $staging "agent")
     }
     finally {
         Remove-Item -Path $staging -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 elseif (-not (Test-Path $ShellPath)) {
-    Write-Log "NOTE: no -OfflinePackage and nothing installed yet; the signed download arrives with the updater (plan step 7)"
+    Write-Log "NOTE: no -OfflinePackage and nothing installed yet; install a first version with -OfflinePackage; later ones come through the agent (T-321)"
 }
 
 if ($ApiUrl) {

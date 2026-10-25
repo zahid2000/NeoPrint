@@ -1,0 +1,22 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+# NeoPrint provisioning helper (docs/KIOSK_UPDATES.md section 4, T-321)
+#
+# The agent's one sudo rule for the provisioning scripts. Root-owned, as is
+# the copy of the agent it runs: that copy checks a provisioning package with
+# its own release keys before anything of it runs as root, so the
+# unprivileged agent can ask for a signed package to be installed and run,
+# and for nothing else.
+#
+#   sudo -n /usr/local/lib/neoprint/neoprint-reprovision install <package> <manifest> <signature>
+#   sudo -n /usr/local/lib/neoprint/neoprint-reprovision reapply
+# ---------------------------------------------------------------------------
+set -euo pipefail
+
+case "${1:-}" in
+    install) [ $# -eq 4 ] || { echo "install <package> <manifest> <signature>" >&2; exit 64; } ;;
+    reapply) [ $# -eq 1 ] || { echo "reapply" >&2; exit 64; } ;;
+    *) echo "install <package> <manifest> <signature> | reapply" >&2; exit 64 ;;
+esac
+
+exec /usr/local/lib/neoprint/agent/NeoPrint.Kiosk.Agent provisioning "$@" --repair

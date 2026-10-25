@@ -49,10 +49,14 @@ public sealed class AgentOptions
     public string UiHost { get; set; } = string.Empty;
 
     /// <summary>
-    /// The repair run of the provisioning scripts, <c>{folder}</c> being the
-    /// version folder; empty means <c>sudo -n {folder}/provision.sh --repair</c>.
+    /// The root-owned helper that installs and runs the provisioning scripts
+    /// (<c>RootProvisioning</c>); empty means this agent does it itself - only
+    /// where it runs as root, as in the container kiosk.
     /// </summary>
-    public string ProvisioningCommand { get; set; } = string.Empty;
+    public string ProvisioningHelper { get; set; } = "sudo -n /usr/local/lib/neoprint/neoprint-reprovision";
+
+    /// <summary>What the scripts are run with: <c>--repair</c>, or <c>--dry-run</c> where they must change nothing.</summary>
+    public string ProvisioningScriptArgs { get; set; } = "--repair";
 
     /// <summary>Overrides of the provisioned folders (docs/KIOSK_UPDATES.md section 2); empty means the platform's.</summary>
     public string InstallRoot { get; set; } = string.Empty;

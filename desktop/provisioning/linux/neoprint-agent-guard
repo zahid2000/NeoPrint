@@ -1,0 +1,37 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+# NeoPrint agent guard (docs/KIOSK_UPDATES.md section 4, T-321)
+#
+# Runs before every start of the agent (systemd ExecStartPre) and lives
+# outside the agent package, so a new agent that cannot start cannot break it.
+# While a new agent proves itself the agent leaves
+#   /var/lib/neoprint/agent/agent-pending   "<from> <to> <starts>"
+# Each start is counted; after three starts that did not end the wait, the
+# previous agent is put back. The old agent then finds its journal and reports
+# the new version as rolled back.
+#
+#   neoprint-agent-guard [install-root] [agent-root]   (defaults: /opt/neoprint /var/lib/neoprint/agent)
+# ---------------------------------------------------------------------------
+set -u
+
+install_root="${1:-/opt/neoprint}"
+agent_root="${2:-/var/lib/neoprint/agent}"
+pending="$agent_root/agent-pending"
+
+[ -f "$pending" ] || exit 0
+
+read -r from to starts <"$pending" || exit 0
+case "$starts" in ''|*[!0-9]*) starts=0 ;; esac
+starts=$((starts + 1))
+
+if [ "$starts" -le 3 ] || [ -z "$from" ] || [ ! -d "$install_root/agent/versions/$from" ]; then
+    printf '%s %s %s\n' "$from" "$to" "$starts" >"$pending.tmp" && mv -f "$pending.tmp" "$pending"
+    exit 0
+fi
+
+# The new agent did not get going: the previous one again, atomically.
+ln -sfn "versions/$from" "$install_root/agent/current.next"
+mv -Tf "$install_root/agent/current.next" "$install_root/agent/current"
+printf '%s %s %s\n' "$from" "$to" "$starts" >"$pending.tmp" && mv -f "$pending.tmp" "$pending"
+echo "neoprint-agent-guard: agent $to did not start in 3 attempts; $from is current again" >&2
+exit 0

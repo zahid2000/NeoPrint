@@ -12,6 +12,10 @@
 #
 #   sudo ./provision.sh [--api-url URL] [--enrollment-token TOKEN]
 #                       [--channel pilot|stable] [--offline-package PATH]
+#   sudo ./provision.sh --repair      # the agent's ReapplyProvisioning / a new
+#                                     # provisioning version: everything but
+#                                     # installing NeoPrint itself
+#   ./provision.sh --dry-run          # what would be done; changes nothing
 #
 # Nothing here identifies a kiosk. --enrollment-token is the one optional
 # per-kiosk input, it is single use, and the kiosk's own parameters all come
@@ -21,12 +25,14 @@
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
-PROVISIONING_VERSION="0.3.0"
+PROVISIONING_VERSION="0.4.0"
 
 API_URL=""
 ENROLLMENT_TOKEN=""
 CHANNEL="stable"
 OFFLINE_PACKAGE=""
+REPAIR=0
+DRY_RUN=0
 
 INSTALL_ROOT="/opt/neoprint"
 DATA_ROOT="/var/lib/neoprint"
@@ -51,6 +57,8 @@ while [ $# -gt 0 ]; do
         --enrollment-token)  ENROLLMENT_TOKEN="${2:?--enrollment-token needs a value}"; shift 2 ;;
         --channel)           CHANNEL="${2:?--channel needs a value}"; shift 2 ;;
         --offline-package)   OFFLINE_PACKAGE="${2:?--offline-package needs a value}"; shift 2 ;;
+        --repair)            REPAIR=1; shift ;;
+        --dry-run)           DRY_RUN=1; shift ;;
         -h|--help)
             sed -n '2,20p' "$0"
             exit 0 ;;
@@ -65,19 +73,29 @@ case "$CHANNEL" in
     *) echo "--channel must be pilot or stable" >&2; exit 2 ;;
 esac
 
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+
+# --dry-run (the container kiosk's ReapplyProvisioning, T-321): the scripts are
+# all here and readable, and nothing on the machine is changed.
+if [ "$DRY_RUN" -eq 1 ]; then
+    for file in systemd/neoprint-agent.service systemd/neoprint-kiosk.service neoprint-agent-guard neoprint-convert/neoprint-convert; do
+        [ -r "$script_dir/$file" ] || { echo "[provision dry-run] missing: $file" >&2; exit 1; }
+    done
+    echo "[provision dry-run] NeoPrint kiosk provisioning $PROVISIONING_VERSION (repair: $REPAIR): every script is in place; nothing was changed"
+    exit 0
+fi
+
 if [ "$(id -u)" -ne 0 ]; then
     echo "This script must run as root." >&2
     exit 1
 fi
-
-script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 mkdir -p "$LOG_ROOT"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 log() { printf '[provision %s] %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
-log "NeoPrint kiosk provisioning $PROVISIONING_VERSION starting (channel: $CHANNEL)"
+log "NeoPrint kiosk provisioning $PROVISIONING_VERSION starting (channel: $CHANNEL, repair: $REPAIR)"
 
 # ---------------------------------------------------------------------------
 # 1. Dependencies
@@ -157,7 +175,21 @@ install -d -o "$KIOSK_USER" -g "$CONVERT_USER" -m 710 "$DATA_ROOT/spool"
 install -d -o "$KIOSK_USER" -g "$CONVERT_USER" -m 2770 "$DATA_ROOT/spool/work"
 install -d -o "$KIOSK_USER" -g "$SERVICE_USER" -m 750 "$DATA_ROOT/state"
 install -d -o "$KIOSK_USER" -g "$SERVICE_USER" -m 770 "$LOG_ROOT"
-install -d -m 755 "$INSTALL_ROOT" "$INSTALL_ROOT/versions" "$LIB_ROOT"
+install -d -m 755 "$INSTALL_ROOT" "$LIB_ROOT"
+
+# Updates (docs/KIOSK_UPDATES.md section 2, T-321): each component has its
+# versions and a "current" link. The agent moves the UI's and its own; the
+# provisioning scripts run as root and stay root's - only the root-owned
+# helper below installs them.
+for component in app agent; do
+    install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 755 "$INSTALL_ROOT/$component" "$INSTALL_ROOT/$component/versions"
+done
+install -d -o root -g root -m 755 "$INSTALL_ROOT/provisioning" "$INSTALL_ROOT/provisioning/versions"
+# What the UI writes for the agent (downloads, requests, health), and what the
+# agent writes for the UI (state, results); the agent's own copy stays its own.
+install -d -o "$KIOSK_USER" -g "$SERVICE_USER" -m 2770 "$DATA_ROOT/updates"
+install -d -o "$SERVICE_USER" -g "$KIOSK_USER" -m 750 "$DATA_ROOT/agent"
+install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 700 "$DATA_ROOT/agent/incoming"
 
 # A second run corrects what drifted underneath, too.
 chown -R "$KIOSK_USER:$KIOSK_USER" "$DATA_ROOT/device"
@@ -169,7 +201,7 @@ chmod -R go-rwx "$DATA_ROOT/device"
 # Optional, single use, and read by the UI, which does the enrollment
 # (plan section 7.11).
 # ---------------------------------------------------------------------------
-if [ -n "$ENROLLMENT_TOKEN" ]; then
+if [ -n "$ENROLLMENT_TOKEN" ] && [ "$REPAIR" -eq 0 ]; then
     log "writing the enrollment token for zero-touch activation"
     printf '%s' "$ENROLLMENT_TOKEN" >"$DATA_ROOT/device/enrollment-token"
     chown "$KIOSK_USER:$KIOSK_USER" "$DATA_ROOT/device/enrollment-token"
@@ -276,6 +308,12 @@ cat >/etc/sudoers.d/neoprint <<CONF
 $SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/systemctl reboot
 $SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/systemctl restart neoprint-kiosk
 $SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/systemctl restart neoprint-agent
+# Updates (T-321): the UI is stopped and started around a version switch; the
+# provisioning scripts only through the root-owned helper, which checks a
+# package's signature itself before anything of it runs as root.
+$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/systemctl stop neoprint-kiosk.service
+$SERVICE_USER ALL=(root) NOPASSWD: /usr/bin/systemctl start neoprint-kiosk.service
+$SERVICE_USER ALL=(root) NOPASSWD: $LIB_ROOT/neoprint-reprovision
 $SERVICE_USER ALL=(root) NOPASSWD: /usr/sbin/lpadmin
 $SERVICE_USER ALL=(root) NOPASSWD: /usr/sbin/cupsenable
 
@@ -343,43 +381,75 @@ systemctl enable --now chrony >/dev/null 2>&1 || true
 # ---------------------------------------------------------------------------
 # 12. NeoPrint
 #
-# The package - the UI and the agent, published into one folder - goes into
-# versions/<version>, and "current" points at it; the data directories above
-# are outside it, so an update never touches identity or spool
-# (plan section 7.12). Downloading a signed release is the updater's job
-# (plan step 7); here the package comes from --offline-package.
+# Three components, each in versions/<version> with "current" pointing at one
+# (docs/KIOSK_UPDATES.md section 2): the UI (app), the agent and these scripts.
+# The data directories are outside them, so an update never touches identity
+# or spool (plan section 7.12). After this, new versions come from the backend
+# through the agent; --offline-package is the first installation:
+#
+#   --offline-package DIR   DIR/app and DIR/agent are the published UI and agent,
+#                           DIR/VERSION their version.
 # ---------------------------------------------------------------------------
-if [ -n "$OFFLINE_PACKAGE" ]; then
+switch_current() { # component version
+    ln -sfn "versions/$2" "$INSTALL_ROOT/$1/current.next"
+    mv -Tf "$INSTALL_ROOT/$1/current.next" "$INSTALL_ROOT/$1/current"
+}
+
+install_version() { # component version source-dir
+    local target="$INSTALL_ROOT/$1/versions/$2"
+    rm -rf "$target.partial"
+    install -d -m 755 "$target.partial"
+    cp -a "$3/." "$target.partial/"
+    printf '%s' "$2" >"$target.partial/.neoprint-complete"
+    rm -rf "$target"
+    mv "$target.partial" "$target"
+    if [ "$1" = provisioning ]; then
+        chown -R root:root "$target"
+    else
+        chown -R "$SERVICE_USER:$SERVICE_USER" "$target"
+    fi
+    chmod -R go-w "$target"
+    switch_current "$1" "$2"
+    log "NeoPrint $1 $2 is current"
+}
+
+if [ "$REPAIR" -eq 0 ] && [ -n "$OFFLINE_PACKAGE" ]; then
     log "installing NeoPrint from $OFFLINE_PACKAGE"
 
-    staging="$(mktemp -d)"
-    trap 'rm -rf "$staging"' EXIT
-
-    if [ -d "$OFFLINE_PACKAGE" ]; then
-        cp -a "$OFFLINE_PACKAGE/." "$staging/"
-    else
-        tar -xzf "$OFFLINE_PACKAGE" -C "$staging"
-    fi
-
-    if [ ! -f "$staging/NeoPrint.Kiosk" ] || [ ! -f "$staging/NeoPrint.Kiosk.Agent" ]; then
-        log "ERROR: the package has no NeoPrint.Kiosk or NeoPrint.Kiosk.Agent; see docs/KIOSK_SETUP.md"
+    if [ ! -f "$OFFLINE_PACKAGE/app/NeoPrint.Kiosk" ] || [ ! -f "$OFFLINE_PACKAGE/agent/NeoPrint.Kiosk.Agent" ]; then
+        log "ERROR: the package has no app/NeoPrint.Kiosk or agent/NeoPrint.Kiosk.Agent; see docs/KIOSK_SETUP.md"
         exit 1
     fi
 
-    version="$(cat "$staging/VERSION" 2>/dev/null || date -u +%Y%m%d%H%M%S)"
-    target="$INSTALL_ROOT/versions/$version"
+    version="$(cat "$OFFLINE_PACKAGE/VERSION" 2>/dev/null || date -u +%Y%m%d%H%M%S)"
+    install_version app "$version" "$OFFLINE_PACKAGE/app"
+    install_version agent "$version" "$OFFLINE_PACKAGE/agent"
+    chmod 755 "$INSTALL_ROOT/app/current/NeoPrint.Kiosk" "$INSTALL_ROOT/agent/current/NeoPrint.Kiosk.Agent"
+elif [ ! -e "$INSTALL_ROOT/app/current" ]; then
+    log "NOTE: no --offline-package and nothing installed yet; install a first version with --offline-package"
+fi
 
-    rm -rf "$target"
-    install -d -m 755 "$target"
-    cp -a "$staging/." "$target/"
-    chown -R root:root "$target"
-    chmod -R go-w "$target"
-    chmod 755 "$target/NeoPrint.Kiosk" "$target/NeoPrint.Kiosk.Agent"
+# These scripts themselves: what --repair and a new provisioning version run.
+if [ "$script_dir" != "$(readlink -f "$INSTALL_ROOT/provisioning/current" 2>/dev/null || true)" ]; then
+    install_version provisioning "$PROVISIONING_VERSION" "$script_dir"
+fi
 
-    ln -sfn "versions/$version" "$INSTALL_ROOT/current"
-    log "NeoPrint $version is current"
-elif [ ! -e "$INSTALL_ROOT/current" ]; then
-    log "NOTE: no --offline-package and nothing installed yet; the signed download arrives with the updater (plan step 7)"
+# The guard outside the agent package: three failed starts of a new agent and
+# the previous one is put back (T-321).
+install -o root -g root -m 755 "$script_dir/neoprint-agent-guard" "$LIB_ROOT/neoprint-agent-guard"
+
+# The provisioning helper and the root-owned copy of the agent it runs, which
+# checks a provisioning package with its own keys (T-321). Refreshed only when
+# a technician runs this script - never by a repair the agent asked for, so
+# the agent cannot put its own binary in root's hands.
+install -o root -g root -m 755 "$script_dir/neoprint-reprovision" "$LIB_ROOT/neoprint-reprovision"
+if [ "$REPAIR" -eq 0 ] && [ -x "$INSTALL_ROOT/agent/current/NeoPrint.Kiosk.Agent" ]; then
+    rm -rf "$LIB_ROOT/agent.new"
+    cp -a "$(readlink -f "$INSTALL_ROOT/agent/current")/." "$LIB_ROOT/agent.new/"
+    chown -R root:root "$LIB_ROOT/agent.new"
+    chmod -R go-w "$LIB_ROOT/agent.new"
+    rm -rf "$LIB_ROOT/agent"
+    mv "$LIB_ROOT/agent.new" "$LIB_ROOT/agent"
 fi
 
 log "installing the systemd units"

@@ -13,17 +13,21 @@ Wants=network-online.target
 Type=notify
 User=neoprint
 Group=neoprint
-WorkingDirectory=/opt/neoprint/current
-ExecStart=/opt/neoprint/current/NeoPrint.Kiosk.Agent
+WorkingDirectory=/opt/neoprint/agent/current
+# Outside the agent package: three failed starts of a new agent bring back the
+# previous one (docs/KIOSK_UPDATES.md section 4).
+ExecStartPre=/usr/local/lib/neoprint/neoprint-agent-guard
+ExecStart=/opt/neoprint/agent/current/NeoPrint.Kiosk.Agent
 Restart=always
 RestartSec=5
 
-# The agent has no business anywhere but its own data.
+# The agent has no business anywhere but its own data and the versions it
+# switches (the UI's and its own; never the provisioning scripts).
 NoNewPrivileges=false
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/var/lib/neoprint /var/log/neoprint
+ReadWritePaths=/var/lib/neoprint /var/log/neoprint /opt/neoprint/app /opt/neoprint/agent
 
 [Install]
 WantedBy=multi-user.target
