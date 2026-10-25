@@ -397,6 +397,31 @@ public sealed class ReleaseTests : IDisposable
     }
 
     [DockerFact]
+    public async Task An_update_window_moved_in_the_panel_reaches_the_connected_kiosks_at_once()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await ReadyKioskAsync(_fixture, "release-window");
+        await using var hub = await RawHubConnection.ConnectAsync(_fixture, "kiosk", kiosk.AccessToken);
+        var before = (await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("update").GetProperty("window").GetString();
+        var moved = before == "01:00-04:00" ? "02:00-05:00" : "01:00-04:00";
+
+        try
+        {
+            // T-326: found in the end-to-end check - the kiosk went on with the old window until its next poll.
+            (await admin.PutAsJsonAsync("/api/admin/settings", new { values = new Dictionary<string, string> { ["Kiosk.UpdateWindow"] = moved } }))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
+            await hub.WaitForAsync("KioskConfigChanged", TimeSpan.FromSeconds(10));
+            (await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("update").GetProperty("window").GetString().Should().Be(moved);
+        }
+        finally
+        {
+            await admin.PutAsJsonAsync("/api/admin/settings", new { values = new Dictionary<string, string> { ["Kiosk.UpdateWindow"] = before! } });
+        }
+    }
+
+    [DockerFact]
     public async Task A_package_a_kiosk_rejects_is_a_security_incident_counted_not_reopened_and_not_offered_again()
     {
         if (Skip) { return; }

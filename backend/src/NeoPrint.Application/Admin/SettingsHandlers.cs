@@ -25,11 +25,13 @@ public sealed class UpdateSettingsHandler
 {
     private readonly ISettingsStore _settings;
     private readonly IAuditWriter _audit;
+    private readonly PrintJobs.IKioskNotifier _kiosks;
 
-    public UpdateSettingsHandler(ISettingsStore settings, IAuditWriter audit)
+    public UpdateSettingsHandler(ISettingsStore settings, IAuditWriter audit, PrintJobs.IKioskNotifier kiosks)
     {
         _settings = settings;
         _audit = audit;
+        _kiosks = kiosks;
     }
 
     public async Task<IReadOnlyList<SettingResponse>> Handle(
@@ -63,6 +65,12 @@ public sealed class UpdateSettingsHandler
                         Domain.Common.ActorType.Admin),
                     cancellationToken)
                 .ConfigureAwait(false);
+        }
+
+        // A setting the kiosks' configuration is made of: they read it again now (T-326).
+        if (changed.Any(pair => Devices.KioskConfigSettings.Keys.Contains(pair.Key) && !string.Equals(pair.Value, request.Values[pair.Key], StringComparison.Ordinal)))
+        {
+            await _kiosks.AllKiosksConfigChangedAsync(cancellationToken).ConfigureAwait(false);
         }
 
         return SettingsMapping.ToResponses(after);

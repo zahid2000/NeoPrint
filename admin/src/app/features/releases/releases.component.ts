@@ -116,7 +116,7 @@ const rolloutActions: Record<Rollout['status'], readonly RolloutAction[]> = {
                 <app-empty-state icon="deployed_code" [message]="'releases.empty' | translate" [hint]="'releases.emptyHint' | translate" />
               } @else {
                 <div class="neo-table-wrapper">
-                  <table mat-table class="neo-table" [dataSource]="p.releases">
+                  <table mat-table class="neo-table" [dataSource]="p.releases" [trackBy]="byId">
                     <ng-container matColumnDef="component">
                       <th mat-header-cell *matHeaderCellDef>{{ 'releases.col.component' | translate }}</th>
                       <td mat-cell *matCellDef="let r">{{ 'releases.component.' + r.component | translate }}</td>
@@ -200,7 +200,7 @@ const rolloutActions: Record<Rollout['status'], readonly RolloutAction[]> = {
                 <app-empty-state icon="rocket_launch" [message]="'releases.rolloutsEmpty' | translate" [hint]="'releases.rolloutsEmptyHint' | translate" />
               } @else {
                 <div class="neo-table-wrapper">
-                  <table mat-table class="neo-table" [dataSource]="p.rollouts">
+                  <table mat-table class="neo-table" [dataSource]="p.rollouts" [trackBy]="byId">
                     <ng-container matColumnDef="release">
                       <th mat-header-cell *matHeaderCellDef>{{ 'releases.col.release' | translate }}</th>
                       <td mat-cell *matCellDef="let o">
@@ -295,7 +295,7 @@ const rolloutActions: Record<Rollout['status'], readonly RolloutAction[]> = {
                 <app-empty-state icon="devices" [message]="'releases.kiosksEmpty' | translate" [hint]="'releases.kiosksEmptyHint' | translate" />
               } @else {
                 <div class="neo-table-wrapper">
-                  <table mat-table class="neo-table" [dataSource]="kiosks()">
+                  <table mat-table class="neo-table" [dataSource]="kiosks()" [trackBy]="byKiosk">
                     <ng-container matColumnDef="kiosk">
                       <th mat-header-cell *matHeaderCellDef>{{ 'releases.col.kiosk' | translate }}</th>
                       <td mat-cell *matCellDef="let k" [attr.data-kiosk]="k.kioskId">
@@ -446,6 +446,14 @@ export class ReleasesComponent implements OnInit {
   rolloutChip(rollout: Rollout): Chip {
     return rolloutChips[rollout.status];
   }
+
+  /**
+   * Rows are kept by id across a live reload: an open "more" menu is not
+   * closed under the reader's pointer when the list is read again (T-326).
+   */
+  readonly byId = (_: number, row: { readonly id: string }): string => row.id;
+
+  readonly byKiosk = (_: number, row: { readonly kioskId: string }): string => row.kioskId;
 
   /** The kiosks a rollout reaches that run its version, of all it reaches. */
   installedPercent(rollout: Rollout): number {

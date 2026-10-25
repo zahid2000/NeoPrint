@@ -13,6 +13,34 @@ using NeoPrint.Domain.Settings;
 namespace NeoPrint.Application.Devices;
 
 /// <inheritdoc cref="GetKioskConfigQuery" />
+/// <summary>
+/// The platform settings a kiosk's configuration is made of: when one of them
+/// changes, every kiosk is told to read its configuration again (T-326) - an
+/// update window moved in the panel reaches the kiosks now, not at their next
+/// poll.
+/// </summary>
+public static class KioskConfigSettings
+{
+    public static readonly IReadOnlySet<string> Keys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        SettingKeys.FilesAllowedFormats,
+        SettingKeys.FilesDefaultMaxPages,
+        SettingKeys.FilesDefaultMaxSizeMb,
+        SettingKeys.KioskConfigCacheTtlHours,
+        SettingKeys.KioskHeartbeatSeconds,
+        SettingKeys.KioskIdleResetSeconds,
+        SettingKeys.KioskTelemetrySeconds,
+        SettingKeys.KioskUpdateWindow,
+        SettingKeys.LogsMaxUploadMb,
+        SettingKeys.PaperBlockWhenInsufficient,
+        SettingKeys.QueueDisplayLimit,
+        SettingKeys.UpdateCheckIntervalMinutes,
+        SettingKeys.UpdateHealthTimeoutMinutes,
+        SettingKeys.UpdateKeepVersions,
+        SettingKeys.UpdateMaxIdleWaitMinutes,
+    };
+}
+
 public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery, KioskConfigResponse?>
 {
     private readonly IKioskDeviceRepository _devices;
