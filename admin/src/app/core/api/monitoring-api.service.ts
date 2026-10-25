@@ -16,7 +16,10 @@ import {
 import { ServiceTask, SupplyAlert } from '../../features/operator/operator.models';
 
 /** The commands a kiosk takes from its "Əmrlər" tab, by their endpoint. */
-export type KioskCommandPath = 'pause' | 'resume' | 'restart-app' | 'reboot';
+export type KioskCommandPath = 'pause' | 'resume' | 'restart-app' | 'reboot' | AgentCommandPath;
+
+/** The agent's commands (T-326): each is sent with a reason. */
+export type AgentCommandPath = 'update-now' | 'rollback-version' | 'reapply-provisioning' | 'restart-agent' | 'upload-logs';
 
 /**
  * What the kiosk and printer pages ask the server (step 7A, M8): a kiosk's
@@ -69,8 +72,9 @@ export class MonitoringApiService {
 
   // --- commands (plan section 7.8) -----------------------------------------
 
-  command(kioskId: string, command: KioskCommandPath): Observable<KioskCommand> {
-    return this.http.post<KioskCommand>(`/api/admin/kiosks/${kioskId}/${command}`, {});
+  /** @param reason Required for the agent's commands (3-500 characters), kept in the audit log. */
+  command(kioskId: string, command: KioskCommandPath, reason?: string): Observable<KioskCommand> {
+    return this.http.post<KioskCommand>(`/api/admin/kiosks/${kioskId}/${command}`, reason === undefined ? {} : { reason });
   }
 
   // --- what is open for the kiosk ------------------------------------------

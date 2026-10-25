@@ -565,6 +565,15 @@ a {
   }
 }
 
+/* The same, when it is a warning: a release key set with no keys, an update taken back. */
+.neo-notice--warning {
+  background: var(--warning-bg);
+
+  > mat-icon {
+    color: var(--warning-500);
+  }
+}
+
 /*
  * A kiosk on the map (T-217): MapLibre places the element outside any
  * component, so its look is here. The fill is a status token, set inline.

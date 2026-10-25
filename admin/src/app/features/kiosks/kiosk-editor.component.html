@@ -579,6 +579,14 @@
         </mat-tab>
       }
 
+      <mat-tab [label]="'kiosks.tabUpdates' | translate">
+        <ng-template matTabContent>
+          <section class="editor__tab">
+            <app-kiosk-updates [kioskId]="current.id" [kioskCode]="current.code" />
+          </section>
+        </ng-template>
+      </mat-tab>
+
       <mat-tab [label]="'kiosks.tabCommands' | translate">
         <ng-template matTabContent>
           <section class="editor__tab">

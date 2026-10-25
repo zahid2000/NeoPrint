@@ -212,7 +212,7 @@ export class KioskCommandsComponent implements OnInit {
   }
 
   /** Pause, restart and reboot are asked about first: each stops the kiosk serving for a while. */
-  async ask(command: Exclude<KioskCommandPath, 'resume'>): Promise<void> {
+  async ask(command: 'pause' | 'restart-app' | 'reboot'): Promise<void> {
     const name = { pause: 'pause', 'restart-app': 'restart', reboot: 'reboot' }[command];
     const text = (key: string): string => this.translate.instant(key) as string;
 

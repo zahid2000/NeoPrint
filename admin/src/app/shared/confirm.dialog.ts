@@ -37,6 +37,15 @@ export interface ConfirmRequest {
    * for instance, is audited but destroys nothing.
    */
   readonly requireReason?: boolean;
+
+  /** The shortest reason the server takes (default 1 character). */
+  readonly minReasonLength?: number;
+
+  /** The longest reason the server takes; the box stops there. */
+  readonly maxReasonLength?: number;
+
+  /** A line under the reason box, e.g. what the reason is kept for. */
+  readonly reasonHint?: string;
 }
 
 /** Nothing when it was cancelled; the reason (possibly empty) when confirmed. */
@@ -65,9 +74,13 @@ export type ConfirmResult = { readonly reason: string } | undefined;
             matInput
             rows="3"
             required
+            [attr.maxlength]="data.maxReasonLength ?? null"
             [ngModel]="reason()"
             (ngModelChange)="reason.set($event)"
           ></textarea>
+          @if (data.reasonHint) {
+            <mat-hint>{{ data.reasonHint }}</mat-hint>
+          }
         </mat-form-field>
       }
     </mat-dialog-content>
@@ -106,7 +119,12 @@ export class ConfirmDialogComponent {
 
   /** A destructive action needs its reason before it can be confirmed. */
   canConfirm(): boolean {
-    return !(this.data.destructive || this.data.requireReason) || this.reason().trim().length > 0;
+    const length = this.reason().trim().length;
+    return (
+      !(this.data.destructive || this.data.requireReason) ||
+      (length >= (this.data.minReasonLength ?? 1) &&
+        length <= (this.data.maxReasonLength ?? Number.MAX_SAFE_INTEGER))
+    );
   }
 
   confirm(): void {

@@ -258,6 +258,26 @@ describe('Buraxılışlar', () => {
     expect(text(fixture, '[data-tab="releases"] app-empty-state')).toContain('Hələ paket yüklənməyib');
   });
 
+  it('shows how far a rollout has got: installed of reached, a bar, and only the counts that are not zero (T-326)', async () => {
+    const fixture = await open({
+      ...page(),
+      rollouts: [rollout({ progress: { installed: 1, ready: 1, updating: 0, rolledBack: 1, failed: 0 } })],
+    });
+    await tab(fixture, 1);
+
+    const cell = text(fixture, '[data-progress="o-1"]');
+    expect(cell).toContain('1 / 3 kiosk quraşdırıb');
+    expect(cell).toContain('Hazırdır: 1');
+    expect(cell).toContain('Geri qaytarılıb: 1');
+    expect(cell).not.toContain('Yenilənir');
+    expect(cell).not.toContain('Alınmadı');
+
+    const bar = (fixture.nativeElement as HTMLElement).querySelector('[data-progress="o-1"] [role="progressbar"]')!;
+    expect(bar.getAttribute('aria-valuenow')).toBe('1');
+    expect(bar.getAttribute('aria-valuemax')).toBe('3');
+    expect(fixture.componentInstance.installedPercent(rollout({ progress: { installed: 1, ready: 0, updating: 0, rolledBack: 0, failed: 0 } }))).toBeCloseTo(33.33, 1);
+  });
+
   it('marks an urgent rollout, and shows a kiosk waiting for an idle moment or turning customers away (T-321)', async () => {
     const fixture = await open(
       { ...page(), rollouts: [rollout({ urgent: true })] },

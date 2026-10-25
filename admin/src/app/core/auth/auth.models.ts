@@ -97,6 +97,10 @@ export const Permissions = {
   kioskCommandsPause: 'kiosks.commands.pause',
   kioskCommandsRestart: 'kiosks.commands.restart',
   kioskCommandsReboot: 'kiosks.commands.reboot',
+  /** The agent's update commands: update now, roll back, reapply provisioning (T-326). */
+  kioskCommandsUpdate: 'kiosks.commands.update',
+  /** Ask a kiosk for its logs and download them (T-326). */
+  kioskLogsDownload: 'kiosks.logs.download',
 
   // Step 4: money and customers (plan section 8A.2).
   reportsView: 'reports.view',

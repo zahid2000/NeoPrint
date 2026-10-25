@@ -131,7 +131,14 @@ const loud = new Set(['Critical', 'High']);
             </ng-container>
             <ng-container matColumnDef="details">
               <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.incidents.colDetails' | translate }}</th>
-              <td mat-cell *matCellDef="let incident">{{ incident.details }}</td>
+              <td mat-cell *matCellDef="let incident">
+                {{ incident.details }}
+                @if ((incident.occurrences ?? 1) > 1) {
+                  <span class="neo-caption incidents__seen" data-occurrences>{{
+                    'monitoring.incidents.seen' | translate: { count: incident.occurrences, time: (incident.lastSeenAt | dateTime) }
+                  }}</span>
+                }
+              </td>
             </ng-container>
             <ng-container matColumnDef="kiosk">
               <th mat-header-cell *matHeaderCellDef>{{ 'ops.kiosk' | translate }}</th>

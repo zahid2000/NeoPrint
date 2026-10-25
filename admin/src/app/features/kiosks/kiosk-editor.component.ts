@@ -36,6 +36,7 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
 import { PrintJobsComponent } from '../print-jobs/print-jobs.component';
 import { KioskPrintersComponent } from './kiosk-printers.component';
 import { KioskCommandsComponent } from './kiosk-commands.component';
+import { KioskUpdatesComponent } from './kiosk-updates.component';
 import { KioskIncidentsComponent } from './kiosk-incidents.component';
 import { KioskQueueComponent } from './kiosk-queue.component';
 import { KioskStatusComponent } from './kiosk-status.component';
@@ -84,6 +85,7 @@ const pinPattern = /^[0-9]{4,12}$/;
     KioskTasksComponent,
     KioskIncidentsComponent,
     KioskCommandsComponent,
+    KioskUpdatesComponent,
     PrintJobsComponent,
   ],
   templateUrl: './kiosk-editor.component.html',

@@ -35,6 +35,8 @@ export const HubEvents = {
   // Releases and the kiosks' versions (T-317)
   releasesChanged: 'ReleasesChanged',
   kioskUpdateReported: 'KioskUpdateReported',
+  /** One kiosk's update state, history or logs changed - to whoever sees that kiosk (T-326). */
+  kioskUpdateChanged: 'KioskUpdateChanged',
 
   // Storage
   storageSyncProgress: 'StorageSyncProgress',

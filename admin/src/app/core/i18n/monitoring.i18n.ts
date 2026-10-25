@@ -14,6 +14,7 @@ export const monitoringTranslations: PageTranslations = {
     'kiosks.tabIncidents': 'Incident-lər',
     'kiosks.tabCommands': 'Əmrlər',
 
+    'kiosks.tabUpdates': "Yeniləmə",
     'monitoring.notReported': 'Kiosk bu məlumatı vermir',
     'monitoring.printerNotReported': 'Printer bu məlumatı vermir',
     'monitoring.filter': 'Süzgəc',
@@ -165,6 +166,7 @@ export const monitoringTranslations: PageTranslations = {
     'monitoring.incidents.loadFailedEffect': 'Incident-lər göstərilə bilmir. Incident-lərin açılıb-bağlanmasına təsir etmir.',
     'monitoring.incidents.colSeverity': 'Ciddilik',
     'monitoring.incidents.colDetails': 'Nə baş verib',
+    'monitoring.incidents.seen': "{{count}} dəfə · son: {{time}}",
     'monitoring.incidents.colStatus': 'Vəziyyət',
     'monitoring.incidents.colOpened': 'Açılıb',
     'monitoring.incidents.colClosed': 'Bağlanıb',
@@ -328,6 +330,7 @@ export const monitoringTranslations: PageTranslations = {
     'kiosks.tabIncidents': 'Incidents',
     'kiosks.tabCommands': 'Commands',
 
+    'kiosks.tabUpdates': "Updates",
     'monitoring.notReported': 'The kiosk does not report this',
     'monitoring.printerNotReported': 'The printer does not report this',
     'monitoring.filter': 'Filter',
@@ -479,6 +482,7 @@ export const monitoringTranslations: PageTranslations = {
     'monitoring.incidents.loadFailedEffect': 'The incidents cannot be shown. Opening and closing them is not affected.',
     'monitoring.incidents.colSeverity': 'Severity',
     'monitoring.incidents.colDetails': 'What happened',
+    'monitoring.incidents.seen': "{{count}} times · last: {{time}}",
     'monitoring.incidents.colStatus': 'State',
     'monitoring.incidents.colOpened': 'Opened',
     'monitoring.incidents.colClosed': 'Closed',
@@ -643,6 +647,7 @@ export const monitoringTranslations: PageTranslations = {
     'kiosks.tabIncidents': 'Инциденты',
     'kiosks.tabCommands': 'Команды',
 
+    'kiosks.tabUpdates': "Обновления",
     'monitoring.notReported': 'Киоск не передаёт эти данные',
     'monitoring.printerNotReported': 'Принтер не передаёт эти данные',
     'monitoring.filter': 'Фильтр',
@@ -794,6 +799,7 @@ export const monitoringTranslations: PageTranslations = {
     'monitoring.incidents.loadFailedEffect': 'Инциденты не удаётся показать. На их открытие и закрытие это не влияет.',
     'monitoring.incidents.colSeverity': 'Серьёзность',
     'monitoring.incidents.colDetails': 'Что произошло',
+    'monitoring.incidents.seen': "{{count}} раз · последний: {{time}}",
     'monitoring.incidents.colStatus': 'Состояние',
     'monitoring.incidents.colOpened': 'Открыт',
     'monitoring.incidents.colClosed': 'Закрыт',

@@ -223,6 +223,9 @@ export interface IncidentRow {
   readonly createdAt: string;
   readonly resolvedAt?: string;
   readonly resolution?: string;
+  /** How many times the cause was seen while it was open (T-326); 1 when once. */
+  readonly occurrences?: number;
+  readonly lastSeenAt?: string;
 }
 
 export interface ReceiptRow {

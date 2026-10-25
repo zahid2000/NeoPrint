@@ -3,6 +3,7 @@ admin_panel_settings
 arrow_back
 assignment
 block
+build
 calculate
 cancel
 card_giftcard
@@ -11,6 +12,7 @@ chevron_left
 chevron_right
 cloud
 cloud_off
+cloud_upload
 confirmation_number
 content_copy
 crisis_alert
@@ -91,6 +93,7 @@ storefront
 support_agent
 sync
 sync_alt
+system_update_alt
 task_alt
 terminal
 timer_off

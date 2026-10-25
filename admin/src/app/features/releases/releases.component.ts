@@ -32,13 +32,10 @@ import { DateTimePipe } from '../../shared/format.pipes';
 import { NotifyService } from '../../shared/notify.service';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
-import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
+import { StatusChipComponent } from '../../shared/status-chip.component';
 import { openRolloutDialog, openUploadDialog } from './release-dialogs';
+import { Chip, updateChips } from './update-chips';
 
-interface Chip {
-  readonly tone: StatusTone;
-  readonly icon: string;
-}
 
 const rolloutChips: Record<Rollout['status'], Chip> = {
   Active: { tone: 'success', icon: 'play_arrow' },
@@ -47,17 +44,6 @@ const rolloutChips: Record<Rollout['status'], Chip> = {
   RolledBack: { tone: 'danger', icon: 'undo' },
 };
 
-const updateChips: Record<KioskUpdateState['status'], Chip> = {
-  Downloading: { tone: 'info', icon: 'download' },
-  Ready: { tone: 'info', icon: 'schedule' },
-  WaitingForIdle: { tone: 'info', icon: 'hourglass_empty' },
-  Draining: { tone: 'warning', icon: 'do_not_disturb_on' },
-  Applying: { tone: 'info', icon: 'progress_activity' },
-  HealthCheck: { tone: 'info', icon: 'progress_activity' },
-  Succeeded: { tone: 'success', icon: 'check_circle' },
-  Failed: { tone: 'danger', icon: 'error' },
-  RolledBack: { tone: 'warning', icon: 'undo' },
-};
 
 /** What can be done with a rollout in each state (backend ReleaseRollout.Transitions). */
 const rolloutActions: Record<Rollout['status'], readonly RolloutAction[]> = {
@@ -246,8 +232,32 @@ const rolloutActions: Record<Rollout['status'], readonly RolloutAction[]> = {
                       </td>
                     </ng-container>
                     <ng-container matColumnDef="reaches">
-                      <th mat-header-cell *matHeaderCellDef>{{ 'releases.col.reaches' | translate }}</th>
-                      <td mat-cell *matCellDef="let o">{{ 'releases.installedOn' | translate: { count: o.reaches } }}</td>
+                      <th mat-header-cell *matHeaderCellDef>{{ 'releases.col.progress' | translate }}</th>
+                      <td mat-cell *matCellDef="let o" class="releases__progress" [attr.data-progress]="o.id">
+                        <span>{{ 'releases.progress.of' | translate: { installed: o.progress?.installed ?? 0, reaches: o.reaches } }}</span>
+                        <div
+                          class="releases__bar"
+                          role="progressbar"
+                          aria-valuemin="0"
+                          [attr.aria-valuemax]="o.reaches"
+                          [attr.aria-valuenow]="o.progress?.installed ?? 0"
+                          [attr.aria-label]="'releases.col.progress' | translate"
+                        >
+                          <span [style.width.%]="installedPercent(o)"></span>
+                        </div>
+                        @if (progressOf(o).length > 0) {
+                          <div class="releases__counts">
+                            @for (part of progressOf(o); track part.key) {
+                              <app-status-chip
+                                [status]="part.key"
+                                [toneOverride]="part.chip.tone"
+                                [iconOverride]="part.chip.icon"
+                                [text]="'releases.progress.' + part.key | translate: { count: part.count }"
+                              />
+                            }
+                          </div>
+                        }
+                      </td>
                     </ng-container>
                     <ng-container matColumnDef="started">
                       <th mat-header-cell *matHeaderCellDef>{{ 'releases.col.started' | translate }}</th>
@@ -435,6 +445,28 @@ export class ReleasesComponent implements OnInit {
 
   rolloutChip(rollout: Rollout): Chip {
     return rolloutChips[rollout.status];
+  }
+
+  /** The kiosks a rollout reaches that run its version, of all it reaches. */
+  installedPercent(rollout: Rollout): number {
+    return rollout.reaches > 0 ? Math.min(100, ((rollout.progress?.installed ?? 0) * 100) / rollout.reaches) : 0;
+  }
+
+  /** The non-zero counts beside the bar (docs/DESIGN_SYSTEM.md, T-326). */
+  progressOf(rollout: Rollout): readonly { key: string; count: number; chip: Chip }[] {
+    const progress = rollout.progress;
+    if (!progress) {
+      return [];
+    }
+
+    const parts: { key: string; count: number; chip: Chip }[] = [
+      { key: 'ready', count: progress.ready, chip: updateChips.Ready },
+      { key: 'updating', count: progress.updating, chip: updateChips.Applying },
+      { key: 'installed', count: progress.installed, chip: updateChips.Succeeded },
+      { key: 'rolledBack', count: progress.rolledBack, chip: updateChips.RolledBack },
+      { key: 'failed', count: progress.failed, chip: updateChips.Failed },
+    ];
+    return parts.filter((part) => part.count > 0);
   }
 
   updateChip(update: KioskUpdateState): Chip {

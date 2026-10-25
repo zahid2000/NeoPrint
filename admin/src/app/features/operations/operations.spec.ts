@@ -118,7 +118,7 @@ afterEach(() => {
 });
 
 describe('Incident-lər', () => {
-  async function open(permissions: string[], options = {}) {
+  async function open(permissions: string[], options = {}, listed?: ReturnType<typeof incident>[]) {
     setUp(permissions, options);
     const fixture = TestBed.createComponent(IncidentsComponent);
     fixture.detectChanges();
@@ -127,7 +127,7 @@ describe('Incident-lər', () => {
     backend.match((request) => request.url === '/api/admin/incidents' && request.params.get('pageSize') === '5').forEach((r) => r.flush(page([incident()])));
     const list = backend.expectOne((request) => request.url === '/api/admin/incidents' && request.params.get('pageSize') === '20');
     expect(list.request.params.getAll('status')).toEqual(['Open', 'Acknowledged']);
-    list.flush(page([incident(), incident({ id: 'i-2', severity: 'Medium', status: 'Acknowledged', details: 'Disk azdır' })]));
+    list.flush(page(listed ?? [incident(), incident({ id: 'i-2', severity: 'Medium', status: 'Acknowledged', details: 'Disk azdır' })]));
     await settle(fixture);
 
     return fixture;
@@ -154,6 +154,17 @@ describe('Incident-lər', () => {
     await closing;
     // The count every page shows is asked for again too.
     backend.match((request) => request.url === '/api/admin/incidents').forEach((r) => r.flush(page([])));
+  });
+
+  it('says how often an open incident was seen again, and nothing for one seen once (T-326)', async () => {
+    const fixture = await open([Permissions.incidentsView], {}, [
+      incident({ id: 'i-3', type: 'UpdatePackageRejected', details: 'Paket yoxlamadan keçmədi', occurrences: 4, lastSeenAt: '2026-10-16T10:00:00Z' }),
+      incident(),
+    ]);
+
+    const seen = (fixture.nativeElement as HTMLElement).querySelectorAll('[data-occurrences]');
+    expect(seen).toHaveLength(1);
+    expect(seen[0].textContent).toContain('monitoring.incidents.seen');
   });
 
   it('offers no action to an account that may only look', async () => {

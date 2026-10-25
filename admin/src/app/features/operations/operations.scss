@@ -144,3 +144,9 @@ app-filter-bar {
 code {
   overflow-wrap: anywhere;
 }
+
+/* How often an open incident was seen again (T-326): under its text. */
+.incidents__seen {
+  display: block;
+  margin-top: var(--space-1);
+}

@@ -46,6 +46,8 @@ export interface KioskCommand {
   readonly result: string | null;
   readonly createdAt: string;
   readonly completedAt: string | null;
+  /** Why an administrator sent it (T-326); the agent's commands always have one. */
+  readonly reason?: string | null;
 }
 
 export interface QueueEntry {

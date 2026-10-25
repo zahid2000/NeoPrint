@@ -77,6 +77,10 @@ const SERVER_VALUES = {
   'releases.rolloutTarget.': { values: ['kiosks', 'pilot', 'stable', 'percent', 'all'] },
   'releases.rolloutAction.': { values: ['pause', 'resume', 'complete', 'rollback'] },
   'releases.file.': { values: ['package', 'manifest', 'signature'] },
+  'releases.progress.': { values: ['ready', 'updating', 'installed', 'rolledBack', 'failed'] },
+  'kioskUpdate.notice.': {
+    values: ['waiting.title', 'waiting.body', 'draining.title', 'draining.body', 'updating.title', 'updating.body', 'rolledBack.title', 'rolledBack.body'],
+  },
   'storage.progress.stage.': { enum: 'StorageSyncStatus' },
   'printers.command.': { enum: 'KioskCommandType' },
   'printers.commandStatus.': { enum: 'KioskCommandStatus' },
