@@ -178,6 +178,17 @@ public sealed class UpdateCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task A_version_rolled_back_here_is_not_asked_for_again_unless_an_administrator_says_so()
+    {
+        AgentFiles.Write(_paths.StateFile, new AgentState { AgentVersion = "1.0.0", FailedHere = ["App@1.0.0"] });
+        var coordinator = await CoordinatorAsync();
+        _backend.Offer(Package("1.0.0"));
+
+        (await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None)).Should().BeFalse();
+        _backend.Statuses.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task A_version_already_running_is_not_offered_again()
     {
         var coordinator = await CoordinatorAsync();

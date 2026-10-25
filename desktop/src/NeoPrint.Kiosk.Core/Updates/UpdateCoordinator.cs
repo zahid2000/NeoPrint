@@ -126,6 +126,18 @@ public sealed class UpdateCoordinator
     /// <summary>Asks, at start and then every <c>Update.CheckIntervalMinutes</c> or when woken.</summary>
     public async Task RunAsync(CancellationToken cancellationToken)
     {
+        // What the agent answered while this UI was down - a rollback above all -
+        // reaches the backend before anything is asked: else the version just
+        // taken back would still be offered.
+        try
+        {
+            await ReportResultsAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException and not DeviceRevokedException)
+        {
+            _logger.LogWarning(exception, "The agent's answers could not be passed on yet.");
+        }
+
         // The agent answers a switch of the UI only after this process says it
         // is healthy: its answers are looked for on their own clock.
         _ = Task.Run(() => ReportResultsLoopAsync(cancellationToken), cancellationToken);
@@ -181,7 +193,8 @@ public sealed class UpdateCoordinator
                     continue;
                 }
 
-                if (!force && _refused.Contains(offer.ReleaseId))
+                // Refused here, or failed its health check here: not again unless an administrator asks.
+                if (!force && (_refused.Contains(offer.ReleaseId) || agent.FailedHere.Contains($"{component}@{offer.Version}")))
                 {
                     continue;
                 }
@@ -556,7 +569,8 @@ public sealed class UpdateCoordinator
         }
 
         // "Not newer" is the agent having it already - nothing went wrong, nothing to report.
-        var nothingToDo = result.Outcome == AgentOutcome.Refused && result.MessageKey == "updates.notNewer";
+        // Nor is a version it took back before: the backend heard that with the rollback.
+        var nothingToDo = result.Outcome == AgentOutcome.Refused && result.MessageKey is "updates.notNewer" or "updates.refused.failedHere";
         if (result.Component is { } component && result.Version is { } version && result.Kind != AgentRequestKind.RestartAgent && !nothingToDo)
         {
             var status = result.Outcome switch
