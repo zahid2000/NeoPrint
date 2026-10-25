@@ -43,6 +43,19 @@ public sealed class LogRedactorTests
     }
 
     [Theory]
+    [InlineData("login password=Sup3rS3cret ok")]
+    [InlineData("Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwcm9iZSJ9.c2lnbmF0dXJl phone +994501234567")]
+    [InlineData("{\"token\":\"abc\",\"email\":\"probe.user@example.com\"}")]
+    public void A_line_already_redacted_comes_out_the_same_and_counts_nothing(string line)
+    {
+        var once = LogRedactor.Redact(line);
+
+        LogRedactor.Redact(once, out var replaced).Should().Be(once);
+        replaced.Should().Be(0, "the kiosk and the backend both redact; the second pass finds nothing new");
+        once.Should().NotContain("]]");
+    }
+
+    [Theory]
     [InlineData("Heartbeat answered in 42 ms; next in 15 s.")]
     [InlineData("2026-10-25T02:14:07.123Z Applying App 0.8.0-pilot.2 (from 0.8.0-pilot.1)")]
     [InlineData("Package sha256 9fa8f1290eaced3aba98bbf842d7da2355f0fadbfa55f88c680c6ef6ad3f8996 verified")]

@@ -28,8 +28,10 @@ public static partial class LogRedactor
     [GeneratedRegex(@"\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]*", RegexOptions.CultureInvariant)]
     private static partial Regex Jwt();
 
+    // A value already replaced is left alone: a line passes here up to three
+    // times (kiosk write, kiosk upload, backend) and must come out the same.
     [GeneratedRegex(
-        @"(?i)(""?\b(?:access_?token|refresh_?token|id_?token|token|password|passwd|pwd|secret|client_?secret|api_?key|authorization|passphrase|private_?key|pin|pin_?hash|otp|code_?verifier)""?\s*[:=]\s*)(""(?:[^""\\]|\\.)*""|[^\s,;&}\]]+)",
+        @"(?i)(""?\b(?:access_?token|refresh_?token|id_?token|token|password|passwd|pwd|secret|client_?secret|api_?key|authorization|passphrase|private_?key|pin|pin_?hash|otp|code_?verifier)""?\s*[:=]\s*)(?!\[redacted\])(""(?:[^""\\]|\\.)*""|[^\s,;&}\]]+)",
         RegexOptions.CultureInvariant)]
     private static partial Regex SecretValue();
 
