@@ -36,6 +36,9 @@ public sealed class UpdateCoordinator
     private static readonly TimeSpan MomentPoll = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan ResultPoll = TimeSpan.FromSeconds(2);
 
+    /// <summary>How often a package waiting for its moment is asked about again: withdrawn, or made urgent.</summary>
+    private static readonly TimeSpan OfferRecheck = TimeSpan.FromMinutes(5);
+
     private readonly KioskApiClient _api;
     private readonly UpdatePaths _paths;
     private readonly ReleasePackageCheck _check;
@@ -51,6 +54,12 @@ public sealed class UpdateCoordinator
     private readonly SemaphoreSlim _running = new(1, 1);
     private readonly HashSet<Guid> _refused = [];
     private TaskCompletionSource _wake = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    // "İndi yenilə" while a package already waits for its moment: that wait
+    // stops waiting for the window, and the command goes with its request.
+    private volatile bool _hurry;
+    private Guid? _hurryCommand;
+    private volatile bool _recheck;
 
     public UpdateCoordinator(
         KioskApiClient api,
@@ -86,7 +95,11 @@ public sealed class UpdateCoordinator
     private KioskUpdateSettings Settings => _configuration()?.Update ?? new KioskUpdateSettings();
 
     /// <summary>Ask the backend now (the hub said a rollout reaches this kiosk).</summary>
-    public void Wake() => _wake.TrySetResult();
+    public void Wake()
+    {
+        _recheck = true;
+        _wake.TrySetResult();
+    }
 
     /// <summary>
     /// The UI is up and working: connected, a heartbeat answered, the printers
@@ -208,6 +221,15 @@ public sealed class UpdateCoordinator
             switch (type)
             {
                 case "UpdateNow":
+                    if (_running.CurrentCount == 0)
+                    {
+                        // A package is waiting for its moment already: it goes now, with this command.
+                        _hurryCommand = commandId;
+                        _hurry = true;
+                        _recheck = true;
+                        break;
+                    }
+
                     if (!await CheckAsync(force: true, commandId, cancellationToken).ConfigureAwait(false))
                     {
                         await _api.CompleteCommandAsync(commandId, true, "updates.result.nothing", 0, cancellationToken).ConfigureAwait(false);
@@ -326,9 +348,16 @@ public sealed class UpdateCoordinator
     /// </summary>
     private async Task AskAgentAsync(AgentRequest request, bool moment, KioskReleaseOffer? offer, CancellationToken cancellationToken, bool windowFree = true)
     {
-        if (moment)
+        if (moment && !await WaitForMomentAsync(offer, windowFree, cancellationToken).ConfigureAwait(false))
         {
-            await WaitForMomentAsync(offer, windowFree, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (_hurry && offer is not null)
+        {
+            request = request with { CommandId = request.CommandId ?? _hurryCommand, Retry = true };
+            _hurry = false;
+            _hurryCommand = null;
         }
 
         var stopsUi = request.Kind is AgentRequestKind.Rollback || offer?.Component == UpdateComponents.App;
@@ -370,15 +399,44 @@ public sealed class UpdateCoordinator
     /// customers are turned away and the one there finishes (layihə sahibinin
     /// qərarı, DECISIONS.md 2026-10-25).
     /// </summary>
-    private async Task WaitForMomentAsync(KioskReleaseOffer? offer, bool windowFree, CancellationToken cancellationToken)
+    /// <returns>False when the package is not offered any more: nothing is applied.</returns>
+    private async Task<bool> WaitForMomentAsync(KioskReleaseOffer? offer, bool windowFree, CancellationToken cancellationToken)
     {
         DateTime? waitingSince = null;
         var draining = false;
+        var asked = _clock.UtcNow;
 
         while (true)
         {
             var now = _clock.UtcNow;
             var settings = Settings;
+            windowFree |= _hurry;
+
+            // Asked again now and then, and when the hub says something changed:
+            // a withdrawn package is not applied, one made urgent stops waiting for the window.
+            if (offer is not null && (_recheck || now - asked > OfferRecheck))
+            {
+                _recheck = false;
+                asked = now;
+                if (await StillOfferedAsync(offer, cancellationToken).ConfigureAwait(false) is { } still)
+                {
+                    if (still is false)
+                    {
+                        _logger.LogInformation("{Component} {Version} is not offered any more; it is not applied.", offer.Component, offer.Version);
+                        _host.SetDraining(false);
+                        if (_hurryCommand is { } command)
+                        {
+                            _hurry = false;
+                            _hurryCommand = null;
+                            await _api.CompleteCommandAsync(command, true, "updates.result.nothing", 0, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        return false;
+                    }
+
+                    windowFree |= _urgentNow;
+                }
+            }
 
             if (windowFree || UpdateWindow.Parse(settings.Window).Contains(_localTime(now)))
             {
@@ -393,7 +451,7 @@ public sealed class UpdateCoordinator
 
                 if (_host.IsIdle)
                 {
-                    return;
+                    return true;
                 }
 
                 if (!draining && now - waitingSince > TimeSpan.FromMinutes(Math.Clamp(settings.MaxIdleWaitMinutes, 1, 24 * 60)))
@@ -416,6 +474,25 @@ public sealed class UpdateCoordinator
             }
 
             await _delay(MomentPoll, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private bool _urgentNow;
+
+    /// <returns>Whether the package is still offered; null when the backend could not be asked.</returns>
+    private async Task<bool?> StillOfferedAsync(KioskReleaseOffer offer, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var offers = await _api.GetUpdateOffersAsync(cancellationToken).ConfigureAwait(false);
+            var same = offers.Offers.FirstOrDefault(item => item.ReleaseId == offer.ReleaseId);
+            _urgentNow = same?.Urgent ?? false;
+            return same is not null;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException and not DeviceRevokedException)
+        {
+            _logger.LogWarning(exception, "Whether {Component} {Version} is still offered could not be asked.", offer.Component, offer.Version);
+            return null;
         }
     }
 

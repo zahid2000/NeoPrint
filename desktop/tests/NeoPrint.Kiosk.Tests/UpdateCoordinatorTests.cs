@@ -114,6 +114,51 @@ public sealed class UpdateCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task A_package_withdrawn_while_it_waits_for_its_moment_is_not_applied()
+    {
+        var coordinator = await CoordinatorAsync(start: new DateTime(2026, 10, 25, 12, 0, 0, DateTimeKind.Utc));
+        _backend.Offer(Package("1.0.0"));
+        _screen.Idle = true;
+        _onDelay = count =>
+        {
+            if (count == 3)
+            {
+                _backend.Withdraw();
+                coordinator.Wake();
+            }
+        };
+
+        await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None);
+
+        _backend.Statuses.Select(s => s.Status).Should().Equal("Downloading", "Ready");
+        Directory.Exists(_paths.Requests).Should().BeFalse("nothing was handed to the agent");
+    }
+
+    [Fact]
+    public async Task Update_now_while_a_package_waits_for_the_window_applies_it_at_once_and_answers_with_it()
+    {
+        var coordinator = await CoordinatorAsync(start: new DateTime(2026, 10, 25, 12, 0, 0, DateTimeKind.Utc));
+        _backend.Offer(Package("1.0.0"));
+        _screen.Idle = true;
+        AnswerAs(AgentOutcome.Succeeded, "1.0.0");
+        var commandId = Guid.NewGuid();
+        _onDelay = count =>
+        {
+            if (count == 3)
+            {
+                _ = coordinator.HandleCommandAsync(commandId, "UpdateNow", acknowledged: false, CancellationToken.None);
+            }
+        };
+
+        await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None);
+
+        _clock.UtcNow.Should().BeBefore(new DateTime(2026, 10, 25, 12, 10, 0, DateTimeKind.Utc), "the window was not waited for");
+        _backend.Statuses.Select(s => s.Status).Should().Equal("Downloading", "Ready", "WaitingForIdle", "Applying", "Succeeded");
+        await Eventually(() => _backend.Answers.Count == 1);
+        _backend.Answers.Single().Should().Be((commandId.ToString(), true, "updates.installed"));
+    }
+
+    [Fact]
     public async Task A_version_already_running_is_not_offered_again()
     {
         var coordinator = await CoordinatorAsync();
@@ -216,12 +261,15 @@ public sealed class UpdateCoordinatorTests : IDisposable
 
                 _clock.UtcNow += wait;
                 _screen.Tick(_clock.UtcNow);
+                _onDelay?.Invoke(_delays);
                 _agentAnswer?.Invoke();
                 return Task.CompletedTask;
             });
     }
 
     private Action? _agentAnswer;
+
+    private Action<int>? _onDelay;
 
     /// <summary>The agent: whatever request appears is answered so.</summary>
     private void AnswerAs(AgentOutcome outcome, string version)
@@ -338,6 +386,8 @@ public sealed class UpdateCoordinatorTests : IDisposable
         public byte[]? Logs { get; private set; }
 
         public string? LogCommand { get; private set; }
+
+        public void Withdraw() => Offered = null;
 
         public void Offer(TestPackage package, bool urgent = false)
         {
