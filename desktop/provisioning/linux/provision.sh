@@ -25,7 +25,7 @@
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
-PROVISIONING_VERSION="0.4.0"
+PROVISIONING_VERSION="0.4.1"
 
 API_URL=""
 ENROLLMENT_TOKEN=""
@@ -78,7 +78,7 @@ script_dir="$(cd "$(dirname "$0")" && pwd)"
 # --dry-run (the container kiosk's ReapplyProvisioning, T-321): the scripts are
 # all here and readable, and nothing on the machine is changed.
 if [ "$DRY_RUN" -eq 1 ]; then
-    for file in systemd/neoprint-agent.service systemd/neoprint-kiosk.service neoprint-agent-guard neoprint-convert/neoprint-convert; do
+    for file in systemd/neoprint-agent.service systemd/neoprint-kiosk.service neoprint-agent-guard neoprint-reprovision neoprint-convert; do
         [ -r "$script_dir/$file" ] || { echo "[provision dry-run] missing: $file" >&2; exit 1; }
     done
     echo "[provision dry-run] NeoPrint kiosk provisioning $PROVISIONING_VERSION (repair: $REPAIR): every script is in place; nothing was changed"

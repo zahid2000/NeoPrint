@@ -233,6 +233,17 @@ public sealed class UpdateCoordinator
             await _api.AcknowledgeCommandAsync(commandId, cancellationToken).ConfigureAwait(false);
         }
 
+        // Asked by the UI the switch replaced, and the agent is still at it - its
+        // health check, or the request not taken yet: the answer comes with its
+        // result. Carried out again, "İndi yenilə" found nothing new and said so
+        // over the update it had just made (T-321).
+        if (File.Exists(Path.Combine(_paths.Requests, $"{commandId:N}.json"))
+            || AgentFiles.Read<AgentJournal>(_paths.JournalFile)?.CommandId == commandId)
+        {
+            _logger.LogInformation("Command {CommandId} ({Type}) is with the agent already; its answer comes with the agent's.", commandId, type);
+            return null;
+        }
+
         _ = Task.Run(() => CarryOutAsync(commandId, type, cancellationToken), cancellationToken);
         return null;
     }

@@ -215,6 +215,27 @@ public sealed class UpdateCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task A_command_the_agent_is_still_carrying_out_after_the_switch_is_not_carried_out_again()
+    {
+        var commandId = Guid.NewGuid();
+        AgentFiles.Write(_paths.StateFile, new AgentState { AgentVersion = "1.0.0", Installed = { ["App"] = "1.0.0" } });
+        AgentFiles.Write(_paths.JournalFile, new AgentJournal(commandId, AgentRequestKind.Install, "App", "0.9.0", "1.0.0",
+            JournalPhase.HealthCheck, _clock.UtcNow, _clock.UtcNow.AddMinutes(5), commandId));
+        var coordinator = await CoordinatorAsync();
+
+        (await coordinator.HandleCommandAsync(commandId, "UpdateNow", acknowledged: true, CancellationToken.None)).Should().BeNull();
+        await Task.Delay(300);
+        _backend.Answers.Should().BeEmpty("the update is the answer, not \"nothing new\"");
+
+        File.Delete(_paths.JournalFile);
+        AgentFiles.Write(Path.Combine(_paths.Results, $"{commandId:N}.json"), new AgentResult(commandId, AgentRequestKind.Install, AgentOutcome.Succeeded,
+            _clock.UtcNow, commandId, "App", "1.0.0", "0.9.0"));
+        await coordinator.ReportResultsAsync(CancellationToken.None);
+
+        _backend.Answers.Should().ContainSingle().Which.Should().Be((commandId.ToString(), true, "updates.installed"));
+    }
+
+    [Fact]
     public async Task Restarting_the_agent_is_asked_at_once_and_answered_when_the_agent_says_so()
     {
         var coordinator = await CoordinatorAsync();

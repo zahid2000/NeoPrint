@@ -65,8 +65,14 @@ public sealed class ProvisioningRunner(
         var scriptArgs = options.Value.ProvisioningScriptArgs.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (string.IsNullOrWhiteSpace(options.Value.ProvisioningHelper))
         {
-            return await RootProvisioning.RunAsync(["provisioning", .. arguments, .. scriptArgs], paths,
+            var code = await RootProvisioning.RunAsync(["provisioning", .. arguments, .. scriptArgs], paths,
                 NeoPrint.Kiosk.Core.Updates.BuildVersion.Of(typeof(ProvisioningRunner).Assembly), cancellationToken).ConfigureAwait(false);
+            if (code != 0)
+            {
+                logger.LogError("The provisioning scripts ended with {Code}; what they said is on the agent's standard error.", code);
+            }
+
+            return code;
         }
 
         var helper = options.Value.ProvisioningHelper.Split(' ', StringSplitOptions.RemoveEmptyEntries);

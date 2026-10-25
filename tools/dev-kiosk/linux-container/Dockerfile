@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 ARG VERSION=0.0.0-dev
-ARG PROVISIONING_VERSION=0.4.0
+ARG PROVISIONING_VERSION=0.4.1
 
 COPY app /opt/neoprint/app/versions/${VERSION}
 COPY agent /opt/neoprint/agent/versions/${VERSION}

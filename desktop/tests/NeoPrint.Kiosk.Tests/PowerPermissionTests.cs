@@ -29,6 +29,9 @@ public sealed partial class PowerPermissionTests
     [GeneratedRegex(@"poweroff|halt|shutdown|suspend|hibernate|kexec|init\s+[06]", RegexOptions.IgnoreCase)]
     private static partial Regex OtherPowerCommands();
 
+    [GeneratedRegex(@"if \[ ""\$DRY_RUN"" -eq 1 \]; then\s+for file in ([^;]+); do")]
+    private static partial Regex DryRunFiles();
+
     /// <summary>The rules the provisioning script writes to <c>/etc/sudoers.d/neoprint</c>, without comments.</summary>
     private static List<string> SudoersRules()
     {
@@ -112,6 +115,20 @@ public sealed partial class PowerPermissionTests
         var script = File.ReadAllText(Path.Combine(Desktop, "provisioning", "linux", "provision.sh"));
         script.Should().Contain("install -d -o root -g root -m 755 \"$INSTALL_ROOT/provisioning\"", "the provisioning scripts stay root's");
         script.Should().Contain("if [ \"$REPAIR\" -eq 0 ] && [ -x \"$INSTALL_ROOT/agent/current/NeoPrint.Kiosk.Agent\" ]", "a repair never refreshes root's copy of the agent");
+    }
+
+    [Fact]
+    public void Every_file_the_dry_run_looks_for_is_a_file_of_the_provisioning_package()
+    {
+        // The container kiosk's ReapplyProvisioning is the dry run; a wrong name
+        // in its list made it fail on every kiosk that could run it (T-321).
+        var script = File.ReadAllText(Path.Combine(Desktop, "provisioning", "linux", "provision.sh"));
+        var list = DryRunFiles().Match(script);
+        list.Success.Should().BeTrue("provision.sh --dry-run checks its files");
+
+        var files = list.Groups[1].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        files.Should().Contain(["neoprint-agent-guard", "neoprint-reprovision", "neoprint-convert"]);
+        files.Should().OnlyContain(file => File.Exists(Path.Combine(Desktop, "provisioning", "linux", file)));
     }
 
     [Fact]
