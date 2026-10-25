@@ -114,7 +114,8 @@ internal static class Program
             provider.GetRequiredService<ILogger<Core.Updates.UpdateCoordinator>>(),
             KioskRuntime.AppVersion,
             provider.GetRequiredService<IAppPaths>().LogDirectory,
-            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value.UpdateDownloadKBps));
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value.UpdateDownloadKBps,
+            leavingOnPurpose: () => provider.GetRequiredService<CrashLoopGuard>().Stop()));
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<DeviceEnrollmentService>();

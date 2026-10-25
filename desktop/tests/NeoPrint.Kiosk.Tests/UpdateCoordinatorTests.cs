@@ -63,6 +63,7 @@ public sealed class UpdateCoordinatorTests : IDisposable
         _backend.Statuses.Select(s => s.Status).Should().Equal("Downloading", "Ready", "WaitingForIdle", "Applying", "Succeeded");
         _screen.Updating.Should().Equal(true, false);
         _screen.Draining.Should().Equal(false);
+        _leftOnPurpose.Should().Be(1, "the agent ending this UI for an update is not a crash");
         File.ReadAllBytes(Path.Combine(_paths.Downloads, $"{_backend.Offered!.ReleaseId:N}.pkg")).Should().Equal(_backend.Package);
     }
 
@@ -281,6 +282,7 @@ public sealed class UpdateCoordinatorTests : IDisposable
 
         return new UpdateCoordinator(
             api, _paths, Check(), _screen, () => null, _clock, NullLogger.Instance, "0.9.0", _app.LogDirectory,
+            leavingOnPurpose: () => _leftOnPurpose++,
             localTime: utc => TimeOnly.FromDateTime(utc),
             delay: (wait, cancellationToken) =>
             {
@@ -300,6 +302,8 @@ public sealed class UpdateCoordinatorTests : IDisposable
     private Action? _agentAnswer;
 
     private Action<int>? _onDelay;
+
+    private int _leftOnPurpose;
 
     /// <summary>The agent: whatever request appears is answered so.</summary>
     private void AnswerAs(AgentOutcome outcome, string version)

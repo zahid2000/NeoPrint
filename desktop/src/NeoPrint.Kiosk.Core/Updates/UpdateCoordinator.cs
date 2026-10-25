@@ -53,6 +53,7 @@ public sealed class UpdateCoordinator
     private readonly ReleaseDownloader _downloader;
     private readonly SemaphoreSlim _running = new(1, 1);
     private readonly HashSet<Guid> _refused = [];
+    private readonly Action _leavingOnPurpose;
     private TaskCompletionSource _wake = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     // "İndi yenilə" while a package already waits for its moment: that wait
@@ -73,8 +74,10 @@ public sealed class UpdateCoordinator
         string logDirectory,
         int downloadKilobytesPerSecond = 0,
         Func<DateTime, TimeOnly>? localTime = null,
-        Func<TimeSpan, CancellationToken, Task>? delay = null)
+        Func<TimeSpan, CancellationToken, Task>? delay = null,
+        Action? leavingOnPurpose = null)
     {
+        _leavingOnPurpose = leavingOnPurpose ?? (() => { });
         _api = api;
         _paths = paths;
         _check = check;
@@ -383,6 +386,12 @@ public sealed class UpdateCoordinator
 
         var stopsUi = request.Kind is AgentRequestKind.Rollback || offer?.Component == UpdateComponents.App;
         _host.SetUpdating(stopsUi);
+        if (stopsUi)
+        {
+            // The agent is about to end this process on purpose: not a crash,
+            // or a few updates would put the kiosk into safe mode (T-321).
+            _leavingOnPurpose();
+        }
 
         Directory.CreateDirectory(_paths.Requests);
         AgentFiles.Write(Path.Combine(_paths.Requests, $"{request.Id:N}.json"), request);
