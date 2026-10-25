@@ -23,7 +23,7 @@ Agent-in imtiyazı artmır: o əvvəlki kimi `neoprint` istifadəçisidir; yeni 
 |---|---|---|---|
 | `/opt/neoprint/app/versions/<v>/`, `app/current` → symlink | `C:\Program Files\NeoPrint\app\versions\<v>\`, `current` junction | `neoprint`, `755` | UI |
 | `/opt/neoprint/agent/versions/<v>/`, `agent/current` | eyni | `neoprint`, `755` | Agent |
-| `/opt/neoprint/provisioning/versions/<v>/`, `provisioning/current` | eyni | `neoprint`, `755` | Provisioning skriptləri |
+| `/opt/neoprint/provisioning/versions/<v>/`, `provisioning/current` | eyni | **`root`**, `755` | Provisioning skriptləri — root kimi işləyir, ona görə Agent-in yaza bildiyi yerdə deyil |
 | `/var/lib/neoprint/updates/` | `C:\ProgramData\NeoPrint\updates\` | `kiosk:neoprint`, `2770` | UI-nın yazdığı: `downloads/`, `requests/`, `health/` |
 | `/var/lib/neoprint/agent/` | `C:\ProgramData\NeoPrint\agent\` | `neoprint:kiosk`, `750` | Agent-in yazdığı, UI-ın oxuduğu: `state.json`, `journal.json`, `results/` |
 | `/var/lib/neoprint/agent/incoming/` | eyni | `neoprint`, `700` | Agent-in paket nüsxəsi — yoxlama yalnız burada |
@@ -50,7 +50,7 @@ Cihaz kimliyi, spool, sayğac, konfiqurasiya keşi və loglar `/var/lib/neoprint
 ## 4. Agent-in özünü yeniləməsi və provisioning
 
 - **Agent** paketi eyni yoxlamadan keçir, `agent/versions/<v>`-ə açılır, `agent/current` keçirilir, jurnal `HealthCheck`, Agent çıxır; xidmət meneceri (systemd `Restart=always`) yenisini başladır. Yeni Agent jurnalda özünü görüb 30 saniyə işlədikdən sonra təsdiqləyir. Yeni Agent başlaya bilmirsə: **Agent paketindən kənar** qoruyucu skript (`neoprint-agent-guard`, provisioning quraşdırır, systemd `ExecStartPre`) hər başlanğıcı sayır; 3 uğursuz başlanğıcdan sonra `agent/current`-i əvvəlkinə qaytarır, köhnə Agent nəticəni `RolledBack` yazır. Windows-da Agent-in özünü yeniləməsi real cihaz olmadan yoxlana bilmir — orada Agent bu sorğunu `updates.notSupportedHere` ilə rədd edir (T-093).
-- **Provisioning** paketi `provisioning/versions/<v>`-ə açılır, `current` keçirilir və `provision.sh --repair` işə salınır (sudoers-də yalnız bu əmr). Uğursuz olsa `current` geri qaytarılır, nəticə `Failed`. `ReapplyProvisioning` əmri cari skripti `--repair` ilə işə salır. `--repair` proqram paketini quraşdırmır, qalanını idempotent düzəldir.
+- **Provisioning** skriptləri root kimi işləyir, ona görə Agent (`neoprint`) onları özü quraşdırmır və işlətmir: bu, Agent-in imtiyazını root-a qaldırardı. Agent paketi öz yoxlamasından keçirir və root-a məxsus köməkçiyə verir: `sudo -n /usr/local/lib/neoprint/neoprint-reprovision install <paket> <manifest> <imza>` (sudoers-də Agent üçün yeganə provisioning qaydası). Köməkçi Agent-in **root-a məxsus nüsxəsini** (`/usr/local/lib/neoprint/agent`) işlədir. Bu nüsxə paketi build-ə yazılmış açarlarla **özü yenidən yoxlayır**, root-a məxsus `provisioning/versions/<v>`-ə açır, `current`-i keçirir və `provision.sh --repair`-i işlədir. Skriptlərə yalnız `--repair` və ya `--dry-run` ötürülə bilər. Uğursuz olsa `current` geri qaytarılır, nəticə `Failed`. `ReapplyProvisioning` → `neoprint-reprovision reapply`. Root-un Agent nüsxəsini yalnız texniki işçinin işlətdiyi provisioning yeniləyir, Agent-in istədiyi `--repair` heç vaxt yeniləmir — Agent öz binary-sini root-un əlinə verə bilməz. `--repair` NeoPrint-in özünü quraşdırmır, qalanını idempotent düzəldir; `--dry-run` heç nə dəyişmir (konteyner kiosku).
 
 ## 5. Uzaq əmrlər (`KioskCommand`, M16 endpoint-ləri)
 

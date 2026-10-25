@@ -7,6 +7,9 @@
 //   node tools/dev-kiosk/command.mjs restart-app        # once the printer is free
 //   node tools/dev-kiosk/command.mjs reboot             # restarts the machine; the Linux container kiosk cannot, and says so
 //   node tools/dev-kiosk/command.mjs list               # the last commands and their results
+//   node tools/dev-kiosk/command.mjs test-print KSK-9007   # a test page; a kiosk with no printer chosen yet goes Online
+//   node tools/dev-kiosk/command.mjs update-now KSK-9007   # the agent's commands (T-321): update-now, rollback-version,
+//                                                        # upload-logs, reapply-provisioning, restart-agent
 //   node tools/dev-kiosk/command.mjs pause KSK-0001     # another kiosk, by its code
 //
 // Needs the compose stack up and the development admin of
@@ -17,7 +20,7 @@ const email = process.env.NEOPRINT_DEV_ADMIN_EMAIL ?? 'dev-admin@neoprint.local'
 const password = process.env.NEOPRINT_DEV_PASSWORD ?? 'DevTest!2026';
 const command = process.argv[2] ?? 'list';
 const code = process.argv[3] ?? 'KSK-9002';
-const known = ['pause', 'resume', 'restart-app', 'reboot', 'list'];
+const known = ['pause', 'resume', 'restart-app', 'reboot', 'test-print', 'update-now', 'rollback-version', 'upload-logs', 'reapply-provisioning', 'restart-agent', 'list'];
 
 if (!known.includes(command)) {
   console.error(`Unknown command "${command}". One of: ${known.join(', ')}.`);

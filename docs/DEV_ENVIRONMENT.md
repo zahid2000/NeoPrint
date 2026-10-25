@@ -1255,8 +1255,52 @@ bash tools/dev-kiosk/build-linux-kiosk.sh                                # mövc
 bash tools/dev-kiosk/build-linux-kiosk.sh --enrollment-token <TOKEN>     # ilk aktivləşdirmə
 ```
 
-Skript sonda `soffice` və `gs` versiyalarını və "kiosk running" yazır. Konteynerdə konvertorlar tətbiqin öz
+Skript sonda `soffice` və `gs` versiyalarını, `current`-in versiyasını, "agent running" və "kiosk running" yazır. Konteynerdə konvertorlar tətbiqin öz
 hesabı ilə `prlimit` altında işləyir; ayrıca şəbəkəsiz `neoprint-convert` hesabı yalnız provisioning-dədir (real cihaz — T-094).
+
+**Quruluş (M17, T-321).** Konteyner provisioning olunmuş kiosk kimidir: `/opt/neoprint/{app,agent,provisioning}/versions/<versiya>`
+və hər birinin `current` linki. Əsas proses **Agent**-dir, UI-ı o başladır; `run.sh` Agent-i çıxanda yenidən başladır və hər
+başlanğıcdan əvvəl `neoprint-agent-guard`-ı işlədir (systemd kimi). Provisioning konteynerdə yalnız `--dry-run` işləyir.
+Mühit dəyişənləri: `CONTAINER` (standart `neoprint-kshot`), `VOLUME` (`<konteyner>-data`), `VERSION` (standart `0.0.0-dev` — kioskun
+bildirdiyi və yeniləmələrin müqayisə etdiyi versiya), `KBPS` (paket endirməsinin sürət limiti, KB/s; 0 — yoxdur).
+
+### 7j-1. Yeniləməni konteyner kioskunda yoxlamaq (M17, T-321)
+
+KSK-9002-yə toxunmamaq üçün ayrıca, atılacaq kiosk istifadə olunur (`neoprint-kupd`). Panel → Kiosklar → enrollment token
+(yeni kiosk) və ya `POST /api/admin/enrollment-tokens`, sonra:
+
+```bash
+CONTAINER=neoprint-kupd VERSION=0.8.0-m17.40 bash tools/dev-kiosk/build-linux-kiosk.sh --enrollment-token <TOKEN>
+
+# İmzalı staging paketi (staging açarı bu kompüterdə, docs/RELEASE_SIGNING.md "Staging: sürətli başlanğıc"):
+bash tools/dev-kiosk/make-release.sh app 0.8.0-m17.41             # yaxşı versiya
+bash tools/dev-kiosk/make-release.sh app 0.8.0-m17.42 --broken    # başlaya bilməyən versiya — rollback üçün
+bash tools/dev-kiosk/make-release.sh agent 0.8.0-m17.43           # Agent-in özünü yeniləməsi
+bash tools/dev-kiosk/make-release.sh provisioning 0.5.0           # provisioning (konteynerdə --dry-run)
+
+node tools/dev-kiosk/updates.mjs upload <qovluq>                  # buraxılış id-sini yazır
+node tools/dev-kiosk/updates.mjs rollout <releaseId> KSK-9007 urgent   # urgent — pəncərəni gözləmir
+node tools/dev-kiosk/updates.mjs wait KSK-9007 App 0.8.0-m17.41 Succeeded
+node tools/dev-kiosk/updates.mjs status KSK-9007
+node tools/dev-kiosk/updates.mjs incidents KSK-9007               # UpdateFailed incident-ləri
+node tools/dev-kiosk/command.mjs upload-logs KSK-9007 && node tools/dev-kiosk/updates.mjs logs KSK-9007
+node tools/dev-kiosk/setting.mjs Update.HealthTimeoutMinutes 2    # sınaqda gözləməni qısaltmaq (sonra 5)
+```
+
+- **Çap gedərkən:** `docker exec neoprint-kupd sh -c 'echo 120 > /var/lib/neoprint/spool/printed/printer-slow.txt'` — saxta
+  printer hər işi 120 saniyə "çap edir"; `node tools/dev-kiosk/app-order.mjs order KSK-9007` ilə iş verin, sonra yayım.
+  Printer seçilməmiş kiosk əvvəl `node tools/dev-kiosk/command.mjs test-print KSK-9007` ilə `Online` olur.
+- **Yarımçıq endirmə:** `KBPS=200` ilə qurun, endirmə başlayandan sonra `docker restart neoprint-kupd`.
+- **Agent jurnalı, nəticələr, vəziyyət:** `docker exec neoprint-kupd sh -c 'cat /var/lib/neoprint/agent/state.json; ls /var/lib/neoprint/agent/results; tail /var/log/neoprint/agent-*.log'`.
+- **Kiosk "təhlükəsiz rejim"də qalıbsa** (məs. köhnə sınaqlardan): `docker exec neoprint-kupd rm /var/lib/neoprint/state/runs.json && docker restart neoprint-kupd` — real kioskda bunu texniki işçi admin menyusundan edir.
+- **Qeydiyyat limiti (`429`):** UI hər başlanğıcda cihazı qeydiyyatdan keçirir. Aktivləşdirilmiş kiosk cihaz + ünvan üzrə saatda 10 dəfə (T-325), yeni cihaz ünvan üzrə saatda 10 dəfə. Sınaqda konteyneri (yeni data volume ilə) çox yenidən qursanız, bir saat gözləyin.
+- **Etibarsız UI-ı yoxlamaq (Agent UI-a inanmır):** backend-ə **yüklənməyən**, işləyəndən yeni versiya hazırlayın və Agent-ə saxta sorğular göndərin — dəyişdirilmiş paket, başqa açarla imza, yenidən yazılmış manifest, naməlum açar, geri çəkilmiş paket, qovluqdan kənar ad, köhnə versiya. Hamısı `Refused` olmalı, `current` dəyişməməlidir:
+
+  ```bash
+  bash tools/dev-kiosk/make-release.sh app 0.8.0-m17.54
+  node tools/dev-kiosk/agent-forge.mjs /tmp/neoprint-releases/app-0.8.0-m17.54 /tmp/neoprint-releases/app-0.8.0-m17.52
+  ```
+- **`make-release.sh`-ni `MSYS_NO_PATHCONV=1` ilə işlətməyin** — MSBuild parametrlərini pozur. `tar: file changed as we read it` olarsa, əmri təkrarlayın (Windows indeksləyicisi / antivirus faylı oxuyurdu).
 
 **Kiosk və feature flag-lar (T-160).** Admin → Feature flag-lar → `mobile_payment_at_kiosk` / `promo_codes`-də
 KSK-9002 üçün override "söndürülüb" — kioskun açıq ekranı dərhal dəyişir (ödəniş ekranında yalnız bank QR-ı,

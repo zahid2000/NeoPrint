@@ -1158,14 +1158,14 @@ Mənbələr:
 
 **Provisioning skripti — Linux (`provision.sh`, root kimi, Ubuntu 24.04 Server)**
 - Paketlər: `cage`, `cups`, `cups-ipp-utils`, `udisks2`, `libreoffice-core/-writer/-calc/-impress` (GUI-siz), `ghostscript`, fontlar, `chrony`; masaüstü mühiti və bildiriş servisi **quraşdırılmır** (ekranda başqa pəncərə yaranası heç nə yoxdur).
-- İstifadəçilər: `neoprint` (Agent), `kiosk` (UI); `tty1`-də `kiosk` üçün avtomatik giriş → `cage -s -- /opt/neoprint/current/NeoPrint.Kiosk`; UI çıxarsa yenidən başladılır.
+- İstifadəçilər: `neoprint` (Agent), `kiosk` (UI); `tty1`-də `kiosk` üçün avtomatik giriş → `cage -s -- /opt/neoprint/app/current/NeoPrint.Kiosk`; UI çıxarsa yenidən başladılır.
 - `logind`: `NAutoVTs=0`, `ReserveVT=0`, güc düyməsi ignore; `ctrl-alt-del.target` mask; SysRq söndürülür.
 - Boot: GRUB timeout 0, `quiet splash`, konsol mesajları gizli, ekranın boşalması (blanking) söndürülür.
 - `unattended-upgrades`: yalnız təhlükəsizlik yeniləmələri, **avtomatik reboot yoxdur** (Agent `Kiosk.UpdateWindow`-da edir); `apport` söndürülür.
 - udisks2 + polkit qaydası: yalnız `kiosk` istifadəçisi üçün flash avtomatik mount (`/media/kiosk`), icra icazəsi olmadan (`noexec`).
 - sudoers: `neoprint` yalnız `systemctl reboot`, `systemctl restart neoprint-*`, `lpadmin` / `cupsenable` icra edə bilər.
 - `ufw`: daxil olan bağlantılar bloklanır; çıxış backend-ə.
-- NeoPrint: `/opt/neoprint/versions/{ver}/`, `current` symlink; `/var/lib/neoprint/` (kimlik, keş, spool), `/var/log/neoprint/`.
+- NeoPrint: `/opt/neoprint/{app,agent,provisioning}/versions/{ver}/`, hər birinin `current` symlink-i (T-321, `docs/KIOSK_UPDATES.md`); `/var/lib/neoprint/` (kimlik, keş, spool, `updates`, `agent`), `/var/log/neoprint/`.
 - Saat qurşağı `Asia/Baku`.
 
 **Skript parametrləri (hər iki OS):** `--api-url` (məcburi deyil — default Production), `--enrollment-token` (istəyə görə, Bölmə 7.11), `--channel pilot|stable`, `--offline-package <yol>` (internet olmadan quraşdırma üçün). Skript NeoPrint paketini backend-dən (`GET releases/latest`) və ya lokal paketdən götürür və **imzasını yoxlayır**.
