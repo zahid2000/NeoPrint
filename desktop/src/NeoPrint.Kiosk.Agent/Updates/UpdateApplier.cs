@@ -451,8 +451,24 @@ public sealed partial class UpdateApplier
         _logger.LogInformation("Switching the kiosk UI {From} -> {To}.", from, to);
         await _ui.StopAsync(cancellationToken).ConfigureAwait(false);
 
-        File.Delete(_paths.HealthMarker(UpdateComponents.App, to));
-        Links(UpdateComponents.App).SwitchTo(to);
+        try
+        {
+            File.Delete(_paths.HealthMarker(UpdateComponents.App, to));
+            Links(UpdateComponents.App).SwitchTo(to);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // The switch did not happen: the old version runs on, and the kiosk is never left without a UI.
+            _logger.LogError(exception, "The kiosk UI could not be switched to {To}; {From} runs on.", to, from);
+            var links = Links(UpdateComponents.App);
+            if (links.CurrentVersion() != from && Directory.Exists(links.VersionFolder(from)))
+            {
+                links.SwitchTo(from);
+            }
+
+            await _ui.StartAsync(cancellationToken).ConfigureAwait(false);
+            return Finish(journal, AgentOutcome.Failed, to, "updates.reasonUnknown");
+        }
 
         journal = journal with { Phase = JournalPhase.HealthCheck, HealthDeadline = _clock.UtcNow + timeout };
         AgentFiles.Write(_paths.JournalFile, journal);
@@ -585,6 +601,20 @@ public sealed partial class UpdateApplier
             // Nothing half-unpacked is left behind.
             Directory.Delete(partial, recursive: true);
             throw;
+        }
+
+        // The program itself runs whatever bits the archive carried: a package
+        // packed where files have no execute bit would otherwise never start.
+        if (!OperatingSystem.IsWindows())
+        {
+            foreach (var program in new[] { "NeoPrint.Kiosk", "NeoPrint.Kiosk.Agent", "createdump" })
+            {
+                var path = Path.Combine(partial, program);
+                if (File.Exists(path))
+                {
+                    File.SetUnixFileMode(path, File.GetUnixFileMode(path) | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
+                }
+            }
         }
 
         await File.WriteAllTextAsync(Path.Combine(partial, VersionLinks.CompleteMarker), version, cancellationToken).ConfigureAwait(false);

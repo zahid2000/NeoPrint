@@ -486,6 +486,30 @@ public sealed class KioskConfigTests
     }
 
     [DockerFact]
+    public async Task A_heartbeat_brings_back_an_offline_kiosk_that_has_no_printer_yet()
+    {
+        if (Skip) { return; }
+
+        // T-324: a kiosk being set up, or updated, goes quiet before a printer is chosen.
+        var (kiosk, _, kioskId, _) = await ActivatedKioskAsync("heartbeat-unconfigured");
+        using var _client = kiosk;
+
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            var kiosks = scope.ServiceProvider.GetRequiredService<IKioskRepository>();
+            var stored = await kiosks.FindByIdAsync(kioskId);
+            stored!.Status.Should().Be(KioskStatus.NotConfigured);
+            stored.MoveTo(KioskStatus.Offline, ActorContext.System("Heartbeat stopped"), DateTime.UtcNow);
+            await kiosks.UpdateAsync(stored);
+        }
+
+        var response = await kiosk.PostAsJsonAsync("/api/kiosks/heartbeat", new { appVersion = "0.1.0", agentVersion = "0.1.0", printerOnline = false });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString().Should().Be("NotConfigured");
+    }
+
+    [DockerFact]
     public async Task A_heartbeat_does_not_undo_a_pause_somebody_decided_on()
     {
         if (Skip) { return; }

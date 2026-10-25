@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+
 using NeoPrint.Crypto.Releases;
 
 namespace NeoPrint.Kiosk.Agent.Updates;
@@ -68,14 +71,23 @@ public sealed class VersionLinks
 
         // Relative, so the tree can be moved or mounted elsewhere (a container, a test).
         var next = _current + ".next";
-        if (File.Exists(next) || Directory.Exists(next) || new FileInfo(next).LinkTarget is not null)
+        if (new FileInfo(next).LinkTarget is not null || File.Exists(next))
         {
             File.Delete(next);
         }
 
         File.CreateSymbolicLink(next, Path.Combine("versions", version));
-        File.Move(next, _current, overwrite: true);
+
+        // rename(2) itself: File.Move does not take a link to a folder for a
+        // file, and anything else would leave a moment with no "current".
+        if (Rename(next, _current) != 0)
+        {
+            throw new IOException($"current could not be pointed at {version}.", new Win32Exception(Marshal.GetLastWin32Error()));
+        }
     }
+
+    [DllImport("libc", EntryPoint = "rename", SetLastError = true, CharSet = CharSet.Ansi, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+    private static extern int Rename(string from, string to);
 
     /// <summary>Unpacked versions, newest first.</summary>
     public IReadOnlyList<string> Installed()

@@ -208,6 +208,15 @@ public sealed class DeviceTransitionTests
     }
 
     [Fact]
+    public void A_kiosk_that_went_quiet_before_a_printer_was_chosen_comes_back_as_it_was()
+    {
+        // T-324: NotConfigured -> Offline was allowed, the way back was not, and
+        // every heartbeat of such a kiosk was refused (409) - for good.
+        Kiosk.Transitions.IsAllowed(KioskStatus.NotConfigured, KioskStatus.Offline).Should().BeTrue();
+        Kiosk.Transitions.IsAllowed(KioskStatus.Offline, KioskStatus.NotConfigured).Should().BeTrue();
+    }
+
+    [Fact]
     public void Losing_its_device_returns_a_kiosk_to_not_activated_from_anywhere()
     {
         foreach (var status in new[]

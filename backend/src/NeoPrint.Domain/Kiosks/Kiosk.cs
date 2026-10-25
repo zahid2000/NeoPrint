@@ -303,7 +303,8 @@ public sealed class Kiosk : Entity
                 KioskStatus.NotConfigured,
                 KioskStatus.NotActivated)
             .Allow(KioskStatus.Paused, KioskStatus.Online, KioskStatus.Offline, KioskStatus.NotActivated, KioskStatus.Maintenance)
-            .Allow(KioskStatus.Offline, KioskStatus.Online, KioskStatus.Paused, KioskStatus.NotActivated, KioskStatus.Maintenance)
+            // NotConfigured: a kiosk with no printer chosen yet that went quiet comes back as it was (T-324).
+            .Allow(KioskStatus.Offline, KioskStatus.Online, KioskStatus.Paused, KioskStatus.NotActivated, KioskStatus.Maintenance, KioskStatus.NotConfigured)
             .Allow(KioskStatus.Maintenance, KioskStatus.Online, KioskStatus.NotActivated, KioskStatus.NotConfigured, KioskStatus.Paused)
             .Allow(KioskStatus.Disabled, KioskStatus.NotActivated)
             .AllowFromAny(KioskStatus.Disabled);

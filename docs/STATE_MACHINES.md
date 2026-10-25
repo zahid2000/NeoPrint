@@ -120,7 +120,7 @@ Refund nəticəsi:
 
 `NotActivated → NotConfigured → Online`
 
-`Online ↔ Paused`, `Online ↔ Offline`, `Online → Maintenance`, `* → Disabled`
+`Online ↔ Paused`, `Online ↔ Offline`, `NotConfigured ↔ Offline` (printer hələ seçilməmiş kiosk susub qayıdanda, T-324), `Online → Maintenance`, `* → Disabled`
 
 `Maintenance → Paused`, `Offline → Paused`, `NotConfigured → Paused` — yalnız printerin nasazlığı hələ
 davam edəndə (aşağıda).
