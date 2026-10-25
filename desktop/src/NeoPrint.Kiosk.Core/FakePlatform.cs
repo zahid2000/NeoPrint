@@ -314,6 +314,15 @@ public sealed class FakePrinterService : IPrinterService, IPrinterFormatSupport,
             return PrintOutcome.Failed(PrinterErrors.For(failure));
         }
 
+        // printer-slow.txt: each job takes that many seconds at the printer - a
+        // job that is "being printed" for long enough to watch an update wait for it (T-321).
+        var slow = _outputDirectory is null ? null : Path.Combine(_outputDirectory, "printer-slow.txt");
+        if (slow is not null && File.Exists(slow) && int.TryParse(File.ReadAllText(slow).Trim(), out var seconds) && seconds > 0)
+        {
+            request.Submitted?.Invoke(request.JobName);
+            await Task.Delay(TimeSpan.FromSeconds(Math.Min(seconds, 600)), cancellationToken).ConfigureAwait(false);
+        }
+
         if (_outputDirectory is not null)
         {
             Directory.CreateDirectory(_outputDirectory);
