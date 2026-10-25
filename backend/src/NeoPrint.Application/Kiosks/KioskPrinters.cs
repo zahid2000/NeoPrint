@@ -68,7 +68,8 @@ public sealed record SetCapabilityOverridesCommand(Guid AdminUserId, Guid KioskI
 
 /// <summary>Sends a printer command: refresh the list, or print the test page.</summary>
 /// <param name="Ip">Where the administrator's request came from, for the audit log.</param>
-public sealed record SendKioskCommandCommand(Guid AdminUserId, Guid KioskId, KioskCommandType Type, string? Ip = null)
+/// <param name="Reason">Why - required for the agent's commands (T-326), on the record with the command and in the audit log.</param>
+public sealed record SendKioskCommandCommand(Guid AdminUserId, Guid KioskId, KioskCommandType Type, string? Ip = null, string? Reason = null)
     : IRequest<KioskCommandView>, Behaviors.ITransactionalRequest;
 
 /// <summary>
@@ -82,8 +83,9 @@ public sealed record AcknowledgeKioskCommandCommand(Guid DeviceId, Guid CommandI
 public sealed record ListKioskCommandsQuery(Guid AdminUserId, Guid KioskId) : IRequest<IReadOnlyList<KioskCommandView>>;
 
 /// <summary>A command as the kiosk and the panel see it.</summary>
+/// <param name="Reason">The administrator's reason; only ever in the panel - never sent to the kiosk.</param>
 public sealed record KioskCommandView(
-    Guid Id, Guid KioskId, string Type, string Status, string? Result, DateTime CreatedAt, DateTime? CompletedAt);
+    Guid Id, Guid KioskId, string Type, string Status, string? Result, DateTime CreatedAt, DateTime? CompletedAt, string? Reason = null);
 
 /// <summary>The printers tab: what was found, what is chosen, what may be offered.</summary>
 public sealed record KioskPrintersView(
@@ -295,7 +297,7 @@ public sealed class KioskPrinterHandlers :
             await ApplyTestPrintAsync(kiosk, request, actor, now, cancellationToken).ConfigureAwait(false);
         }
 
-        await _admins.CommandResultAsync(kiosk.Id, View(command), cancellationToken).ConfigureAwait(false);
+        await _admins.CommandResultAsync(kiosk.Id, AdminView(command), cancellationToken).ConfigureAwait(false);
 
         return View(command);
     }
@@ -323,7 +325,7 @@ public sealed class KioskPrinterHandlers :
         await _commands.UpdateAsync(command, cancellationToken).ConfigureAwait(false);
         await AuditOutcomeAsync(command, kiosk.Id, ActorType.Kiosk, request.Ip, cancellationToken).ConfigureAwait(false);
 
-        await _admins.CommandResultAsync(kiosk.Id, View(command), cancellationToken).ConfigureAwait(false);
+        await _admins.CommandResultAsync(kiosk.Id, AdminView(command), cancellationToken).ConfigureAwait(false);
 
         return View(command);
     }
@@ -441,6 +443,19 @@ public sealed class KioskPrinterHandlers :
 
         var kiosk = await VisibleKioskAsync(request.AdminUserId, request.KioskId, cancellationToken).ConfigureAwait(false);
 
+        // After the scope: an account that cannot see the kiosk learns nothing more.
+        // The agent's commands change what runs on the kiosk: somebody says why (T-326).
+        var reason = request.Reason?.Trim();
+        if (KioskCommand.NeedsReason(request.Type) && reason is not { Length: >= 3 and <= 500 })
+        {
+            throw new ValidationException([new ValidationError("reason", "kioskCommands.reasonRequired")]);
+        }
+
+        if (reason is { Length: > 500 })
+        {
+            reason = reason[..500];
+        }
+
         if (kiosk.ActiveDeviceId is null)
         {
             throw new DomainException("kioskCommands.noDevice");
@@ -493,11 +508,11 @@ public sealed class KioskPrinterHandlers :
                         null,
                         pending.Id.ToString(),
                         request.Ip,
-                        "kioskCommands.reason.alreadyOpen"),
+                        reason is null ? "kioskCommands.reason.alreadyOpen" : $"kioskCommands.reason.alreadyOpen: {reason}"),
                     cancellationToken)
                 .ConfigureAwait(false);
 
-            return View(pending);
+            return AdminView(pending);
         }
 
         var command = new KioskCommand
@@ -506,13 +521,14 @@ public sealed class KioskPrinterHandlers :
             Type = request.Type,
             CreatedBy = request.AdminUserId,
             CreatedAt = now,
+            Reason = reason,
         };
 
         // Stored first: a kiosk that is offline now reads it when it is back.
         await _commands.AddAsync(command, cancellationToken).ConfigureAwait(false);
 
         await _audit.WriteAsync(
-                new AuditEntry(request.AdminUserId, $"kiosks.command.{request.Type}", nameof(Kiosk), kiosk.Id.ToString(), null, command.Id.ToString(), request.Ip, null),
+                new AuditEntry(request.AdminUserId, $"kiosks.command.{request.Type}", nameof(Kiosk), kiosk.Id.ToString(), null, command.Id.ToString(), request.Ip, reason),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -520,7 +536,7 @@ public sealed class KioskPrinterHandlers :
                 kiosk.Id, new KioskCommandMessage(command.Id, command.Type.ToString(), null), cancellationToken)
             .ConfigureAwait(false);
 
-        return View(command);
+        return AdminView(command);
     }
 
     /// <inheritdoc cref="ListKioskCommandsQuery" />
@@ -530,7 +546,7 @@ public sealed class KioskPrinterHandlers :
 
         var kiosk = await VisibleKioskAsync(request.AdminUserId, request.KioskId, cancellationToken).ConfigureAwait(false);
 
-        return [.. (await _commands.ListRecentAsync(kiosk.Id, 20, cancellationToken).ConfigureAwait(false)).Select(View)];
+        return [.. (await _commands.ListRecentAsync(kiosk.Id, 20, cancellationToken).ConfigureAwait(false)).Select(AdminView)];
     }
 
     /// <summary>
@@ -624,6 +640,10 @@ public sealed class KioskPrinterHandlers :
                 by),
             cancellationToken);
 
+    /// <summary>As the panel sees it: with the reason.</summary>
+    private static KioskCommandView AdminView(KioskCommand command) => View(command) with { Reason = command.Reason };
+
+    /// <summary>As the kiosk sees it: no reason - that is the administrators' own note.</summary>
     private static KioskCommandView View(KioskCommand command) => new(
         command.Id,
         command.KioskId,

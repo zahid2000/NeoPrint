@@ -358,6 +358,10 @@ public sealed class SignalRAdminNotifier : IAdminNotifier
     public Task KioskUpdateReportedAsync(Application.Releases.KioskVersionView kiosk, CancellationToken cancellationToken = default)
         => Holders(AdminAudience.Releases).SendAsync("KioskUpdateReported", kiosk, cancellationToken);
 
+    /// <summary>To whoever sees this kiosk - its own scope included, unlike the releases page.</summary>
+    public Task KioskUpdateChangedAsync(Guid kioskId, CancellationToken cancellationToken = default)
+        => About(AdminAudience.Kiosks, kioskId).SendAsync("KioskUpdateChanged", new { kioskId }, cancellationToken);
+
     public Task StorageHealthChangedAsync(
         Application.Storage.StorageHealthChanged change, CancellationToken cancellationToken = default)
         => Holders(AdminAudience.Storage).SendAsync("StorageHealthChanged", change, cancellationToken);

@@ -229,19 +229,36 @@ public sealed class ReleaseTests : IDisposable
                      ("reapply-provisioning", "ReapplyProvisioning"), ("restart-agent", "RestartAgent"),
                  })
         {
-            var first = await admin.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/{path}", null);
+            // They change what runs on the kiosk: not without a reason (T-326).
+            var without = await admin.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/{path}", null);
+            without.StatusCode.Should().Be(HttpStatusCode.BadRequest, path);
+            (await without.Content.ReadAsStringAsync()).Should().Contain("reason");
+            (await admin.PostAsJsonAsync($"/api/admin/kiosks/{kiosk.KioskId}/{path}", new { reason = "ok" })).StatusCode.Should().Be(HttpStatusCode.BadRequest, "too short");
+
+            var first = await admin.PostAsJsonAsync($"/api/admin/kiosks/{kiosk.KioskId}/{path}", Because);
             first.StatusCode.Should().Be(HttpStatusCode.OK, await first.Content.ReadAsStringAsync());
             var command = await first.Content.ReadFromJsonAsync<JsonElement>();
             command.GetProperty("type").GetString().Should().Be(type);
+            command.GetProperty("reason").GetString().Should().Be(BecauseText);
 
             // Pressed twice: the open command is the answer, not a second one.
-            var second = await (await admin.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/{path}", null)).Content.ReadFromJsonAsync<JsonElement>();
+            var second = await (await admin.PostAsJsonAsync($"/api/admin/kiosks/{kiosk.KioskId}/{path}", Because)).Content.ReadFromJsonAsync<JsonElement>();
             second.GetProperty("id").GetGuid().Should().Be(command.GetProperty("id").GetGuid());
         }
 
         var open = await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/commands");
         open.EnumerateArray().Select(c => c.GetProperty("type").GetString())
             .Should().Contain(["UpdateNow", "RollbackVersion", "UploadLogs", "ReapplyProvisioning", "RestartAgent"]);
+
+        // The reason is the administrators' note: the kiosk is never told it.
+        open.EnumerateArray().Select(c => c.TryGetProperty("reason", out var reason) ? reason.ValueKind : JsonValueKind.Null)
+            .Should().OnlyContain(kind => kind == JsonValueKind.Null);
+
+        // And it is on the record.
+        using var scope = _fixture.Services.CreateScope();
+        var audit = await scope.ServiceProvider.GetRequiredService<MongoContext>().AuditLogs
+            .Find(entry => entry.EntityId == kiosk.KioskId.ToString() && entry.Action == "kiosks.command.RollbackVersion").ToListAsync();
+        audit.Should().Contain(entry => entry.Reason == BecauseText);
     }
 
     [DockerFact]
@@ -329,7 +346,7 @@ public sealed class ReleaseTests : IDisposable
         (await api.GetAsync($"/api/releases/{releaseId}/download")).StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         // "İndi yenilə": an administrator asks for it again on purpose.
-        (await admin.PostAsync($"/api/admin/kiosks/{kiosk.KioskId}/update-now", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await admin.PostAsJsonAsync($"/api/admin/kiosks/{kiosk.KioskId}/update-now", Because)).StatusCode.Should().Be(HttpStatusCode.OK);
         (await OffersAsync(api)).Should().Contain(o => o.GetProperty("releaseId").GetGuid() == releaseId);
 
         // Taken back by an administrator ("Əvvəlki versiyaya qaytar"): not an incident.
@@ -377,6 +394,160 @@ public sealed class ReleaseTests : IDisposable
         update.GetProperty("maxIdleWaitMinutes").GetInt32().Should().BePositive();
         update.GetProperty("healthTimeoutMinutes").GetInt32().Should().BePositive();
         update.GetProperty("keepVersions").GetInt32().Should().BePositive();
+    }
+
+    [DockerFact]
+    public async Task A_package_a_kiosk_rejects_is_a_security_incident_counted_not_reopened_and_not_offered_again()
+    {
+        if (Skip) { return; }
+
+        await using var host = Host();
+        using var admin = await AdminAsync(host);
+        using var kiosk = await ReadyKioskAsync(_fixture, "release-rejected");
+        using var api = KioskClient(host, kiosk);
+
+        var package = Package(NewVersion(major: 5), seed: 11);
+        var version = ReleaseVersionOf(package);
+        var releaseId = (await (await UploadAsync(admin, package, Sign(_current, package.Manifest))).Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+        (await admin.PostAsJsonAsync("/api/admin/rollouts", new { releaseId, target = "Kiosks", kioskIds = new[] { kiosk.KioskId } }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        Task<HttpResponseMessage> Report(string reported, string messageKey)
+            => api.PostAsJsonAsync("/api/kiosks/me/update-status", new { component = "App", version = reported, status = "Failed", messageKey });
+
+        // The signature did not check out - twice: one incident, seen twice.
+        (await Report(version, "updates.signatureRefused")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await Task.Delay(10);
+        (await Report(version, "updates.signatureRefused")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var rejected = (await IncidentsAsync(kiosk.KioskId)).Where(i => i.Type == Domain.Incidents.IncidentType.UpdatePackageRejected).ToList();
+        rejected.Should().ContainSingle();
+        rejected[0].Severity.Should().Be(Domain.Incidents.IncidentSeverity.High);
+        rejected[0].Occurrences.Should().Be(2);
+        rejected[0].Quiet.Should().BeFalse("the first of the hour is e-mailed");
+        rejected[0].EntityId.Should().Be(releaseId);
+        var text = Application.Localization.Messages.Write(Domain.Common.UserMessage.Decode(rejected[0].Details));
+        text.Should().Contain(version).And.Contain("bir daha təklif olunmur").And.NotContain("növbəti yoxlamada").And.NotContain("{");
+        (await IncidentsAsync(kiosk.KioskId)).Should().NotContain(i => i.Type == Domain.Incidents.IncidentType.UpdateFailed, "a security matter, not a failed update");
+
+        // Not offered again - it would only be refused again - until "İndi yenilə".
+        (await OffersAsync(api)).Should().NotContain(o => o.GetProperty("releaseId").GetGuid() == releaseId);
+
+        // Another reason: its own incident, shown in the panel but not e-mailed within the hour.
+        (await Report(version, "updates.packageMismatch")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var mismatch = (await IncidentsAsync(kiosk.KioskId)).Single(i => i.DedupKey.EndsWith(":updates.packageMismatch", StringComparison.Ordinal));
+        mismatch.Quiet.Should().BeTrue();
+        using (var notify = _fixture.Services.CreateScope())
+        {
+            (await notify.ServiceProvider.GetRequiredService<MediatR.ISender>().Send(new Application.Incidents.NotifyIncidentCommand(mismatch.Id)))
+                .Should().Be(0, "a quiet incident is e-mailed to nobody");
+        }
+
+        // Versions made up on the kiosk are no release here: one "unknown" incident, however many names.
+        foreach (var madeUp in new[] { "9.9.1", "9.9.2", "9.9.3" })
+        {
+            (await Report(madeUp, "updates.signatureRefused")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        }
+
+        var unknown = (await IncidentsAsync(kiosk.KioskId))
+            .Where(i => i.Type == Domain.Incidents.IncidentType.UpdatePackageRejected && i.DedupKey.Contains(":unknown:", StringComparison.Ordinal)).ToList();
+        unknown.Should().ContainSingle();
+        unknown[0].Occurrences.Should().Be(3);
+        unknown[0].Details.Should().Contain("incidents.kiosk.updatePackageRejectedUnknown");
+
+        (await admin.PostAsJsonAsync($"/api/admin/kiosks/{kiosk.KioskId}/update-now", Because)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await OffersAsync(api)).Should().Contain(o => o.GetProperty("releaseId").GetGuid() == releaseId);
+    }
+
+    [DockerFact]
+    public async Task A_kiosks_update_tab_shows_its_versions_offers_and_history_to_whoever_sees_the_kiosk_and_the_rollout_its_progress()
+    {
+        if (Skip) { return; }
+
+        await using var host = Host();
+        using var admin = await AdminAsync(host);
+        using var kiosk = await ReadyKioskAsync(_fixture, "release-detail");
+        using var other = await ReadyKioskAsync(_fixture, "release-detail-other");
+        using var api = KioskClient(host, kiosk);
+
+        var package = Package(NewVersion(major: 6), seed: 13);
+        var version = ReleaseVersionOf(package);
+        var releaseId = (await (await UploadAsync(admin, package, Sign(_current, package.Manifest))).Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+        var rolloutId = (await (await admin.PostAsJsonAsync("/api/admin/rollouts", new { releaseId, target = "Kiosks", kioskIds = new[] { kiosk.KioskId, other.KioskId } }))
+            .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        foreach (var status in new[] { "Downloading", "Ready" })
+        {
+            (await api.PostAsJsonAsync("/api/kiosks/me/update-status", new { component = "App", version, status })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+            await Task.Delay(10);
+        }
+
+        var detail = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kiosk.KioskId}/update");
+        detail.GetProperty("hasDevice").GetBoolean().Should().BeTrue();
+        detail.GetProperty("maxIdleWaitMinutes").GetInt32().Should().BePositive();
+        var app = detail.GetProperty("components").EnumerateArray().Single(c => c.GetProperty("component").GetString() == "App");
+        app.GetProperty("target").GetString().Should().Be(version);
+        app.GetProperty("state").GetProperty("status").GetString().Should().Be("Ready");
+        detail.GetProperty("components").GetArrayLength().Should().Be(3);
+        detail.GetProperty("history").EnumerateArray().Select(h => h.GetProperty("status").GetString()).Should().StartWith(["Ready", "Downloading"]);
+
+        // The rollout: one of its two kiosks is ready, none runs it yet.
+        var page = await admin.GetFromJsonAsync<JsonElement>("/api/admin/releases");
+        var progress = page.GetProperty("rollouts").EnumerateArray().Single(o => o.GetProperty("id").GetGuid() == rolloutId).GetProperty("progress");
+        progress.GetProperty("ready").GetInt32().Should().Be(1);
+        progress.GetProperty("installed").GetInt32().Should().Be(0);
+
+        // An account that sees only this kiosk sees its tab - not another kiosk's, nor the releases page.
+        using var scoped = await ScopedAsync(host, Domain.Admin.KioskScope.Only(kiosk.KioskId), Domain.Admin.Permissions.KiosksView);
+        (await scoped.GetAsync($"/api/admin/kiosks/{kiosk.KioskId}/update")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await scoped.GetAsync($"/api/admin/kiosks/{other.KioskId}/update")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await scoped.GetAsync("/api/admin/releases")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await scoped.PostAsJsonAsync($"/api/admin/kiosks/{kiosk.KioskId}/update-now", Because)).StatusCode.Should().Be(HttpStatusCode.Forbidden, "seeing is not commanding");
+
+        // With the update permission it may command its own kiosk - not another.
+        using var commander = await ScopedAsync(
+            host, Domain.Admin.KioskScope.Only(kiosk.KioskId), Domain.Admin.Permissions.KiosksView, Domain.Admin.Permissions.KioskCommandsUpdate);
+        (await commander.PostAsJsonAsync($"/api/admin/kiosks/{kiosk.KioskId}/update-now", Because)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await commander.PostAsJsonAsync($"/api/admin/kiosks/{other.KioskId}/update-now", Because)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    private const string BecauseText = "Integration test: checking the command";
+
+    private static object Because => new { reason = BecauseText };
+
+    private async Task<HttpClient> ScopedAsync(WebApplicationFactory<Program> host, Domain.Admin.KioskScope scope, params string[] permissions)
+    {
+        const string password = "ReleaseScope!2026";
+        using var superAdmin = await AdminAsync(host);
+        var role = await superAdmin.PostAsJsonAsync("/api/admin/roles", new
+        {
+            name = $"Release scope {Guid.NewGuid():N}",
+            description = "Created by the integration tests.",
+            permissions,
+        });
+        role.StatusCode.Should().Be(HttpStatusCode.OK, await role.Content.ReadAsStringAsync());
+
+        using var services = _fixture.Services.CreateScope();
+        var hasher = services.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.IPasswordHasher<Domain.Admin.AdminUser>>();
+        var account = new Domain.Admin.AdminUser
+        {
+            Email = $"release.{Guid.NewGuid():N}@neoprint.test",
+            FullName = "Release scope",
+            RoleIds = [(await role.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid()],
+            KioskScope = scope,
+            IsActive = true,
+        };
+        account.PasswordHash = hasher.HashPassword(account, password);
+        await services.ServiceProvider.GetRequiredService<MongoContext>().AdminUsers.InsertOneAsync(account);
+
+        var client = host.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var login = await client.PostAsJsonAsync("/api/auth/admin/login", new { email = account.Email, password });
+        login.StatusCode.Should().Be(HttpStatusCode.OK, await login.Content.ReadAsStringAsync());
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", (await login.Content.ReadFromJsonAsync<JsonElement>(Web)).GetProperty("accessToken").GetString());
+        return client;
     }
 
     private async Task<List<Domain.Incidents.Incident>> IncidentsAsync(Guid kioskId)

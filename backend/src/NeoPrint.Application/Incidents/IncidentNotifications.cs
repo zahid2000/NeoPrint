@@ -92,7 +92,8 @@ public sealed class IncidentNotificationHandler : IRequestHandler<NotifyIncident
         var incident = await _incidents.FindByIdAsync(request.IncidentId, cancellationToken).ConfigureAwait(false);
 
         // Over before anybody could be told (a printer that blinked): no mail about nothing.
-        if (incident is null || !incident.Open)
+        // Quiet: one like it went out a moment ago - the panel shows it (T-326).
+        if (incident is null || !incident.Open || incident.Quiet)
         {
             return 0;
         }

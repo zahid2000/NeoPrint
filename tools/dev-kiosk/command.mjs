@@ -11,6 +11,8 @@
 //   node tools/dev-kiosk/command.mjs update-now KSK-9007   # the agent's commands (T-321): update-now, rollback-version,
 //                                                        # upload-logs, reapply-provisioning, restart-agent
 //   node tools/dev-kiosk/command.mjs pause KSK-0001     # another kiosk, by its code
+//   REASON="why" node tools/dev-kiosk/command.mjs update-now KSK-9007   # the agent's commands need a reason (T-326);
+//                                                        # without REASON a dev-check one is sent
 //
 // Needs the compose stack up and the development admin of
 // docs/DEV_ENVIRONMENT.md section 4. No dependencies: Node 20 or later.
@@ -47,7 +49,11 @@ if (!kiosk) {
 }
 
 if (command !== 'list') {
-  const sent = await fetch(`${api}/api/admin/kiosks/${kiosk.id}/${command}`, { method: 'POST', headers });
+  // The agent's commands are sent with a reason (T-326); the others take none.
+  const agent = ['update-now', 'rollback-version', 'upload-logs', 'reapply-provisioning', 'restart-agent'].includes(command);
+  const sent = await fetch(`${api}/api/admin/kiosks/${kiosk.id}/${command}`, agent
+    ? { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: process.env.REASON ?? 'Development check (tools/dev-kiosk)' }) }
+    : { method: 'POST', headers });
   const body = await sent.json().catch(() => ({}));
 
   if (!sent.ok) {

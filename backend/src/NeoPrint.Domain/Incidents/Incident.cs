@@ -43,6 +43,13 @@ public enum IncidentType
     /// its health check (plan section 7.12, step 5; T-321).
     /// </summary>
     UpdateFailed = 19,
+
+    /// <summary>
+    /// A kiosk refused a package at its signature, hash, key set or manifest
+    /// check: changed on the way, signed by another key, or a request on the
+    /// kiosk nobody should have made - a security matter (T-326).
+    /// </summary>
+    UpdatePackageRejected = 20,
 }
 
 public enum IncidentSeverity
@@ -100,6 +107,18 @@ public sealed class Incident : Entity
 
     public string? Resolution { get; private set; }
 
+    /// <summary>How many times the cause was seen while this incident was open (T-326); 1 when raised.</summary>
+    public int Occurrences { get; private set; } = 1;
+
+    /// <summary>When the cause was seen last; the raise time until it is seen again.</summary>
+    public DateTime? LastSeenAt { get; private set; }
+
+    /// <summary>
+    /// Shown in the panel, not sent by e-mail or Telegram: one of its kind went
+    /// out a moment ago (T-326, at most one an hour per kiosk).
+    /// </summary>
+    public bool Quiet { get; private set; }
+
 
     public static Incident Raise(
         IncidentType type,
@@ -109,7 +128,8 @@ public sealed class Incident : Entity
         DateTime now,
         Guid? kioskId = null,
         string? entityType = null,
-        Guid? entityId = null)
+        Guid? entityId = null,
+        bool quiet = false)
     {
         ArgumentNullException.ThrowIfNull(details);
         ArgumentException.ThrowIfNullOrWhiteSpace(dedupKey);
@@ -124,6 +144,8 @@ public sealed class Incident : Entity
             EntityType = entityType,
             EntityId = entityId,
             CreatedAt = now,
+            LastSeenAt = now,
+            Quiet = quiet,
         };
     }
 

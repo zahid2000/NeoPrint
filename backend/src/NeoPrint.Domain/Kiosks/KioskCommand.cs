@@ -80,6 +80,13 @@ public sealed class KioskCommand : Entity
 
     public Guid? CreatedBy { get; set; }
 
+    /// <summary>Why the administrator sent it (T-326); required for the agent's commands.</summary>
+    public string? Reason { get; set; }
+
+    /// <summary>The agent's commands: they change what runs on the kiosk, so a reason is asked for.</summary>
+    public static bool NeedsReason(KioskCommandType type) => type is KioskCommandType.UpdateNow or KioskCommandType.RollbackVersion
+        or KioskCommandType.ReapplyProvisioning or KioskCommandType.RestartAgent or KioskCommandType.UploadLogs;
+
     public KioskCommandStatus Status { get; private set; } = KioskCommandStatus.Sent;
 
     /// <summary>What the kiosk said, as a stored message (<see cref="UserMessage.Encode"/>).</summary>

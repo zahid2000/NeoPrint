@@ -119,5 +119,8 @@ public interface IAdminNotifier
     /// <summary>A kiosk reported where an update stands (<c>POST kiosks/me/update-status</c>).</summary>
     Task KioskUpdateReportedAsync(Releases.KioskVersionView kiosk, CancellationToken cancellationToken = default);
 
+    /// <summary>A kiosk's update state, history or logs changed: its detail page reads them again (T-326).</summary>
+    Task KioskUpdateChangedAsync(Guid kioskId, CancellationToken cancellationToken = default);
+
     Task StorageHealthChangedAsync(Storage.StorageHealthChanged change, CancellationToken cancellationToken = default);
 }

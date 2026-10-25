@@ -100,6 +100,13 @@ public interface IIncidentRepository
 
     Task<Incident?> FindOpenByDedupKeyAsync(string dedupKey, CancellationToken cancellationToken = default);
 
+    /// <summary>The cause of the open incident with this key was seen again: one more on its count (T-326).</summary>
+    /// <returns>False when none is open.</returns>
+    Task<bool> RepeatOpenAsync(string dedupKey, DateTime now, CancellationToken cancellationToken = default);
+
+    /// <summary>Whether an incident of this type about this kiosk went out to people (not quiet) since then.</summary>
+    Task<bool> AnyToldSinceAsync(IncidentType type, Guid kioskId, DateTime since, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Writes down that the incident was sent to a recipient - in a row of its
     /// own, so nothing written to the incident in the same moment (it is being
@@ -175,7 +182,8 @@ public sealed class IncidentReporter
         _logger = logger;
     }
 
-    /// <returns>The incident opened now; null when one with this key is open already.</returns>
+    /// <param name="quiet">Shown in the panel only - not sent by e-mail or Telegram.</param>
+    /// <returns>The incident opened now; null when one with this key is open already (its count goes up).</returns>
     public async Task<Incident?> RaiseAsync(
         IncidentType type,
         IncidentSeverity severity,
@@ -184,12 +192,15 @@ public sealed class IncidentReporter
         CancellationToken cancellationToken,
         Guid? kioskId = null,
         string? entityType = null,
-        Guid? entityId = null)
+        Guid? entityId = null,
+        bool quiet = false)
     {
-        var incident = Incident.Raise(type, severity, details, dedupKey, _clock.UtcNow, kioskId, entityType, entityId);
+        var incident = Incident.Raise(type, severity, details, dedupKey, _clock.UtcNow, kioskId, entityType, entityId, quiet);
 
         if (!await _incidents.TryAddAsync(incident, cancellationToken).ConfigureAwait(false))
         {
+            // Seen again while somebody looks at it: counted, not opened twice (T-326).
+            await _incidents.RepeatOpenAsync(dedupKey, _clock.UtcNow, cancellationToken).ConfigureAwait(false);
             return null;
         }
 

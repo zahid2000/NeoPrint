@@ -221,6 +221,23 @@ public sealed class IncidentRepository : IIncidentRepository
     public Task<Incident?> FindOpenByDedupKeyAsync(string dedupKey, CancellationToken cancellationToken = default)
         => _context.Incidents.Find(i => i.DedupKey == dedupKey && i.Open).FirstOrDefaultAsync(cancellationToken)!;
 
+    public async Task<bool> RepeatOpenAsync(string dedupKey, DateTime now, CancellationToken cancellationToken = default)
+    {
+        // One update, so two reports at once both count; the row version moves
+        // with it, so an acknowledgement read before does not write the count back.
+        var result = await _context.Incidents
+            .UpdateOneAsync(
+                i => i.DedupKey == dedupKey && i.Open,
+                Builders<Incident>.Update.Inc(i => i.Occurrences, 1).Set(i => i.LastSeenAt, now).Inc(i => i.RowVersion, 1),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.ModifiedCount > 0;
+    }
+
+    public Task<bool> AnyToldSinceAsync(IncidentType type, Guid kioskId, DateTime since, CancellationToken cancellationToken = default)
+        => _context.Incidents.Find(i => i.Type == type && i.KioskId == kioskId && !i.Quiet && i.CreatedAt >= since).AnyAsync(cancellationToken);
+
     public async Task<bool> NoteNotifiedAsync(IncidentNotification mark, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(mark);

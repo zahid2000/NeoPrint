@@ -1,6 +1,7 @@
 using MediatR;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
@@ -276,38 +277,42 @@ public sealed class AdminKiosksController : ControllerBase
     public async Task<ActionResult<KioskCommandView>> Reboot(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Reboot, _currentUser.Ip), cancellationToken));
 
-    // The agent's commands (plan section 7.12; T-317). Sent and recorded here;
-    // the agent carries them out from M17, the panel shows their buttons in M18.
+    // The agent's commands (plan section 7.12; T-317, T-321, T-326): a reason is required.
 
     /// <summary>Asks for an update now and installs it at the next idle moment.</summary>
     [HttpPost("{id:guid}/update-now")]
     [HasPermission(Permissions.KioskCommandsUpdate)]
-    public async Task<ActionResult<KioskCommandView>> UpdateNow(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.UpdateNow, _currentUser.Ip), cancellationToken));
+    public async Task<ActionResult<KioskCommandView>> UpdateNow(
+        Guid id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] KioskCommandReasonRequest? request, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.UpdateNow, _currentUser.Ip, request?.Reason), cancellationToken));
 
     /// <summary>Goes back to the version before the installed one.</summary>
     [HttpPost("{id:guid}/rollback-version")]
     [HasPermission(Permissions.KioskCommandsUpdate)]
-    public async Task<ActionResult<KioskCommandView>> RollbackVersion(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RollbackVersion, _currentUser.Ip), cancellationToken));
+    public async Task<ActionResult<KioskCommandView>> RollbackVersion(
+        Guid id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] KioskCommandReasonRequest? request, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RollbackVersion, _currentUser.Ip, request?.Reason), cancellationToken));
 
     /// <summary>Runs the provisioning scripts again in repair mode.</summary>
     [HttpPost("{id:guid}/reapply-provisioning")]
     [HasPermission(Permissions.KioskCommandsUpdate)]
-    public async Task<ActionResult<KioskCommandView>> ReapplyProvisioning(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.ReapplyProvisioning, _currentUser.Ip), cancellationToken));
+    public async Task<ActionResult<KioskCommandView>> ReapplyProvisioning(
+        Guid id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] KioskCommandReasonRequest? request, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.ReapplyProvisioning, _currentUser.Ip, request?.Reason), cancellationToken));
 
     /// <summary>Restarts the agent service.</summary>
     [HttpPost("{id:guid}/restart-agent")]
     [HasPermission(Permissions.KioskCommandsRestart)]
-    public async Task<ActionResult<KioskCommandView>> RestartAgent(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RestartAgent, _currentUser.Ip), cancellationToken));
+    public async Task<ActionResult<KioskCommandView>> RestartAgent(
+        Guid id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] KioskCommandReasonRequest? request, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.RestartAgent, _currentUser.Ip, request?.Reason), cancellationToken));
 
     /// <summary>Asks the kiosk to upload its compressed logs.</summary>
     [HttpPost("{id:guid}/upload-logs")]
     [HasPermission(Permissions.KioskLogsDownload)]
-    public async Task<ActionResult<KioskCommandView>> UploadLogs(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.UploadLogs, _currentUser.Ip), cancellationToken));
+    public async Task<ActionResult<KioskCommandView>> UploadLogs(
+        Guid id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] KioskCommandReasonRequest? request, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.UploadLogs, _currentUser.Ip, request?.Reason), cancellationToken));
 
     /// <summary>The logs this kiosk uploaded, newest first (T-321).</summary>
     [HttpGet("{id:guid}/logs")]
@@ -324,6 +329,12 @@ public sealed class AdminKiosksController : ControllerBase
         return File(log.Content, "application/gzip", log.FileName);
     }
 
+    /// <summary>The kiosk's "Yeniləmə" tab: versions, what it is offered, where updates stand and went (T-326).</summary>
+    [HttpGet("{id:guid}/update")]
+    [HasPermission(Permissions.KiosksView)]
+    public async Task<ActionResult<Application.Releases.KioskUpdateDetailView>> Update(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new Application.Releases.GetKioskUpdateDetailQuery(AdminId, id), cancellationToken));
+
     [HttpGet("{id:guid}/commands")]
     [HasPermission(Permissions.KiosksView)]
     public async Task<ActionResult<IReadOnlyList<KioskCommandView>>> Commands(Guid id, CancellationToken cancellationToken)
@@ -331,6 +342,9 @@ public sealed class AdminKiosksController : ControllerBase
 }
 
 public sealed record SelectPrinterRequest(string? Name);
+
+/// <summary>Why an agent command is sent (T-326): 3-500 characters, on the record.</summary>
+public sealed record KioskCommandReasonRequest(string? Reason);
 
 
 public sealed record KioskLimitsRequest(int? MaxFileSizeMb, int? MaxPages);

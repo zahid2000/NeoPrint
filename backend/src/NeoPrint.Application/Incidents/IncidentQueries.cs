@@ -63,7 +63,9 @@ public sealed record IncidentView(
     string? KioskCode = null,
     DateTime? AcknowledgedAt = null,
     Guid? AcknowledgedBy = null,
-    Guid? ResolvedBy = null)
+    Guid? ResolvedBy = null,
+    int Occurrences = 1,
+    DateTime? LastSeenAt = null)
 {
     public static IncidentView From(Incident incident, string? kioskCode = null)
     {
@@ -84,7 +86,9 @@ public sealed record IncidentView(
             kioskCode,
             incident.AcknowledgedAt,
             incident.AcknowledgedBy,
-            incident.ResolvedBy);
+            incident.ResolvedBy,
+            incident.Occurrences,
+            incident.LastSeenAt);
     }
 }
 

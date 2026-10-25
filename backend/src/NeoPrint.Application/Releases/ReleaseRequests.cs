@@ -130,6 +130,9 @@ public sealed record SetKioskUpdateChannelCommand(Guid AdminUserId, Guid KioskId
 /// <summary>Every kiosk the account can see, with its versions and update state.</summary>
 public sealed record ListKioskVersionsQuery(Guid AdminUserId) : IRequest<IReadOnlyList<KioskVersionView>>;
 
+/// <summary>A kiosk's detail page, "Yeniləmə" tab (T-326): within the account's kiosk scope.</summary>
+public sealed record GetKioskUpdateDetailQuery(Guid AdminUserId, Guid KioskId) : IRequest<KioskUpdateDetailView>;
+
 /// <summary>What the kiosk asking should run (<c>GET kiosks/me/update</c>).</summary>
 public sealed record GetKioskUpdateQuery(Guid DeviceId) : IRequest<KioskUpdateView>;
 
@@ -183,7 +186,14 @@ public sealed record RolloutView(
     DateTime CreatedAt,
     DateTime? EndedAt,
     int Reaches,
-    bool Urgent = false);
+    bool Urgent = false,
+    RolloutProgressView? Progress = null);
+
+/// <summary>
+/// Where the kiosks a rollout reaches stand with its version (T-326):
+/// running it, waiting for their moment, on the way, taken back, refused.
+/// </summary>
+public sealed record RolloutProgressView(int Installed, int Ready, int Updating, int RolledBack, int Failed);
 
 /// <summary>The releases page: the key set this server accepts, the releases and the rollouts.</summary>
 public sealed record ReleasesPageView(
@@ -208,6 +218,24 @@ public sealed record KioskVersionView(
     DateTime? LastHeartbeatAt);
 
 public sealed record KioskOfferView(string Component, string Version);
+
+/// <summary>One component on a kiosk: what runs, what it is offered, where its last update stands.</summary>
+public sealed record KioskComponentView(string Component, string? Running, string? Target, KioskUpdateStateView? State);
+
+public sealed record KioskSkippedView(string Component, string Version, DateTime At);
+
+/// <param name="HasDevice">Whether a device is bound: without one no command can be sent.</param>
+/// <param name="MaxIdleWaitMinutes">How long a kiosk waits for nobody at it before it turns customers away.</param>
+public sealed record KioskUpdateDetailView(
+    Guid KioskId,
+    string? Platform,
+    string Channel,
+    bool HasDevice,
+    DateTime? LastHeartbeatAt,
+    int MaxIdleWaitMinutes,
+    IReadOnlyList<KioskComponentView> Components,
+    IReadOnlyList<KioskUpdateStateView> History,
+    IReadOnlyList<KioskSkippedView> Skipped);
 
 /// <summary>One package a kiosk should run, with what it needs to check it.</summary>
 /// <param name="Manifest">The signed manifest, exactly as signed.</param>

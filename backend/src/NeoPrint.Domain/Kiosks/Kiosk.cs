@@ -164,6 +164,11 @@ public sealed class Kiosk : Entity
     /// <summary>The last update report of each component (<c>POST kiosks/me/update-status</c>).</summary>
     public List<KioskUpdateState> UpdateStates { get; set; } = [];
 
+    /// <summary>Every update report, newest last; the last <see cref="UpdateHistoryLength"/> are kept (T-326).</summary>
+    public List<KioskUpdateState> UpdateHistory { get; set; } = [];
+
+    public const int UpdateHistoryLength = 50;
+
     /// <summary>
     /// Versions this kiosk took back after installing them (T-321): never
     /// offered to it again, until an administrator presses "İndi yenilə".
@@ -647,8 +652,14 @@ public sealed class Kiosk : Entity
     /// report of each component is kept; a report older than the one kept -
     /// one that arrived late - changes nothing.
     /// </summary>
+    /// <param name="packageRejected">
+    /// The kiosk refused the package at its signature, hash, key set or
+    /// manifest check (T-326): not offered to it again either - it would only
+    /// be refused again - until an administrator presses "İndi yenilə".
+    /// </param>
     /// <returns>Whether anything changed.</returns>
-    public bool ReportUpdate(ReleaseComponent component, string version, KioskUpdateStatus status, string? messageKey, DateTime reportedAt)
+    public bool ReportUpdate(
+        ReleaseComponent component, string version, KioskUpdateStatus status, string? messageKey, DateTime reportedAt, bool packageRejected = false)
     {
         var current = UpdateStates.FirstOrDefault(state => state.Component == component);
         if (current is not null && (current.ReportedAt > reportedAt
@@ -657,8 +668,18 @@ public sealed class Kiosk : Entity
             return false;
         }
 
+        var report = new KioskUpdateState
+        {
+            Component = component,
+            Version = version,
+            Status = status,
+            MessageKey = messageKey,
+            ReportedAt = reportedAt,
+        };
         UpdateStates.RemoveAll(state => state.Component == component);
-        UpdateStates.Add(new KioskUpdateState
+        UpdateStates.Add(report);
+
+        UpdateHistory.Add(new KioskUpdateState
         {
             Component = component,
             Version = version,
@@ -666,10 +687,15 @@ public sealed class Kiosk : Entity
             MessageKey = messageKey,
             ReportedAt = reportedAt,
         });
+        if (UpdateHistory.Count > UpdateHistoryLength)
+        {
+            UpdateHistory.RemoveRange(0, UpdateHistory.Count - UpdateHistoryLength);
+        }
 
         // A version that failed its health check here is not tried here again
-        // (docs/KIOSK_UPDATES.md, step 11) - the kiosk would roll it back again.
-        if (status == KioskUpdateStatus.RolledBack && !Skips(component, version))
+        // (docs/KIOSK_UPDATES.md, step 11) - the kiosk would roll it back again;
+        // nor one it refused as not checking out.
+        if ((status == KioskUpdateStatus.RolledBack || (status == KioskUpdateStatus.Failed && packageRejected)) && !Skips(component, version))
         {
             SkippedReleases.Add(new KioskSkippedRelease { Component = component, Version = version, At = reportedAt });
         }
