@@ -21,7 +21,8 @@ namespace NeoPrint.Api.Infrastructure;
 /// </para>
 /// <list type="bullet">
 /// <item>a registration with an enrollment token that is good counts against
-/// that token (each kiosk has its own), one without - against the address;</item>
+/// that token (each kiosk has its own), one from a key already registered -
+/// against that device and the address (T-325), any other - against the address;</item>
 /// <item>a challenge and a token count against the device and the address
 /// together, so kiosks behind one router do not hold each other up and nobody
 /// elsewhere can use up a kiosk's quota by knowing its id.</item>
@@ -93,6 +94,20 @@ public sealed class DeviceRequestLimits
             {
                 return ($"device-register:enroll:{found.Id:N}", _settings.EnrollmentTokenPerHour, TimeSpan.FromHours(1));
             }
+        }
+
+        // A kiosk that is registered already says so again on every start - after
+        // an update, a power cut (T-325). Counted by the address, the eleventh kiosk
+        // of one place coming back in the update window was refused, failed its
+        // health check and was rolled back. Like signing in, it counts against
+        // the device and the address together; an unknown key still against the address.
+        if (body is { } registration
+            && Property(registration, "publicKey") is { ValueKind: JsonValueKind.String } key
+            && key.GetString() is { Length: > 0 and <= 4096 } publicKey
+            && await context.RequestServices.GetRequiredService<IKioskDeviceRepository>()
+                .FindByPublicKeyAsync(publicKey, context.RequestAborted).ConfigureAwait(false) is { } device)
+        {
+            return ($"device-register:device:{device.Id:N}:{address}", _settings.DeviceRegisterPerHour, TimeSpan.FromHours(1));
         }
 
         return ($"device-register:ip:{address}", _settings.DeviceRegisterPerHour, TimeSpan.FromHours(1));

@@ -238,14 +238,62 @@ public sealed class RateLimitTests
         (await RegisterAsync(again, enrollmentToken: null)).StatusCode.Should().Be(HttpStatusCode.TooManyRequests, "a restart does not reset the limit");
     }
 
-    private static Task<HttpResponseMessage> RegisterAsync(HttpClient client, string? enrollmentToken)
+    [DockerFact]
+    public async Task Registered_kiosks_behind_one_router_coming_back_at_once_do_not_use_up_the_address()
+    {
+        await using var limited = _fixture.WithHttpOnlyHost(builder => builder
+            .UseSetting("RateLimits:Disabled", "false")
+            .UseSetting("RateLimits:DeviceRegisterPerHour", "1")
+            .ConfigureServices(services => services.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, FromAnotherRouter>()));
+
+        using var admin = limited.CreateClient();
+        admin.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", await SignInAsync(admin, NeoPrintApiFixture.SeedAdminEmail, NeoPrintApiFixture.SeedAdminPassword));
+        using var kiosk = limited.CreateClient();
+
+        // Three kiosks of one place, registered with their tokens.
+        var keys = new List<string>();
+        for (var i = 0; i < 3; i++)
+        {
+            var token = await admin.PostAsJsonAsync("/api/admin/enrollment-tokens", new
+            {
+                newKiosk = new { name = $"Back kiosk {Guid.NewGuid():N}"[..30], lat = 40.38, lng = 49.85, address = "Bakı", defaultLanguage = "az", paperCapacityA4 = 500, paperCapacityA3 = 250, adminPin = "135790" },
+                ttlHours = 1,
+            });
+            token.StatusCode.Should().Be(HttpStatusCode.OK, await token.Content.ReadAsStringAsync());
+            var publicKey = NewPublicKey();
+            keys.Add(publicKey);
+            (await RegisterAsync(kiosk, (await token.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString(), publicKey))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        // The address's one registration of the hour goes to a stranger; the next stranger is refused.
+        (await RegisterAsync(kiosk, enrollmentToken: null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await RegisterAsync(kiosk, enrollmentToken: null)).StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+
+        // The update window, or the power back: all three start again and say who they are - none is refused.
+        foreach (var publicKey in keys)
+        {
+            (await RegisterAsync(kiosk, enrollmentToken: null, publicKey)).StatusCode.Should().Be(HttpStatusCode.OK, "a registered kiosk counts against itself");
+        }
+
+        // Still a limit: one kiosk starting over and over is stopped.
+        (await RegisterAsync(kiosk, enrollmentToken: null, keys[0])).StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+    }
+
+    private static string NewPublicKey()
     {
         using var key = System.Security.Cryptography.ECDsa.Create(System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+        return Convert.ToBase64String(key.ExportSubjectPublicKeyInfo());
+    }
+
+    private static Task<HttpResponseMessage> RegisterAsync(HttpClient client, string? enrollmentToken, string? publicKey = null)
+    {
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/devices/register")
         {
             Content = JsonContent.Create(new
             {
-                publicKey = Convert.ToBase64String(key.ExportSubjectPublicKeyInfo()),
+                publicKey = publicKey ?? NewPublicKey(),
                 fingerprint = new { hostname = "router-kiosk", os = "Linux", osVersion = "6.1", machineId = Guid.NewGuid().ToString("n"), macAddresses = new[] { "aa:bb:cc:dd:ee:01" }, cpu = "Test", ramGb = 8, screenResolution = "1920x1080" },
                 platform = "Linux",
                 appVersion = "0.3.0",
@@ -262,6 +310,22 @@ public sealed class RateLimitTests
     private sealed class FromOneRouter : Microsoft.AspNetCore.Hosting.IStartupFilter
     {
         private static readonly IPAddress Router = IPAddress.Parse($"198.51.100.{Random.Shared.Next(1, 250)}");
+
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, following) =>
+            {
+                context.Connection.RemoteIpAddress = Router;
+                return following(context);
+            });
+            next(app);
+        };
+    }
+
+    /// <summary>Another place's router: its address's count is not the one the test above uses up.</summary>
+    private sealed class FromAnotherRouter : Microsoft.AspNetCore.Hosting.IStartupFilter
+    {
+        private static readonly IPAddress Router = IPAddress.Parse($"203.0.113.{Random.Shared.Next(1, 250)}");
 
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
         {
