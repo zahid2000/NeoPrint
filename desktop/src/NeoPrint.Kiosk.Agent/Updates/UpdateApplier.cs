@@ -126,11 +126,13 @@ public sealed partial class UpdateApplier
             File.SetUnixFileMode(_paths.Incoming, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         }
 
+        // What runs is what "current" points at - the state file may be older
+        // than the folders (a machine set up again, a technician's install).
         var state = AgentFiles.Read<AgentState>(_paths.StateFile) ?? new AgentState();
         var installed = new Dictionary<string, string>(state.Installed);
         foreach (var component in new[] { UpdateComponents.App, UpdateComponents.Provisioning })
         {
-            if (!installed.ContainsKey(component) && Links(component).CurrentVersion() is { } current)
+            if (Links(component).CurrentVersion() is { } current)
             {
                 installed[component] = current;
             }
@@ -151,8 +153,8 @@ public sealed partial class UpdateApplier
     {
         if (AgentFiles.Read<AgentJournal>(_paths.JournalFile) is not { } journal)
         {
-            // An agent that had never got as far as its journal: this one is whatever is running.
-            if (!_state.Installed.ContainsKey(UpdateComponents.Agent))
+            // Nothing half done: the agent is whatever is running.
+            if (_state.Installed.GetValueOrDefault(UpdateComponents.Agent) != _agentVersion)
             {
                 SetInstalled(UpdateComponents.Agent, _agentVersion, previous: null);
             }

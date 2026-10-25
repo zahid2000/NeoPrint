@@ -341,6 +341,18 @@ public sealed class UpdateApplierTests : IDisposable
     }
 
     [Fact]
+    public async Task At_start_what_runs_is_what_current_points_at_whatever_an_older_state_file_says()
+    {
+        Directory.CreateDirectory(_paths.AgentRoot);
+        AgentFiles.Write(_paths.StateFile, new AgentState { Installed = new() { ["App"] = "0.1.0", ["Agent"] = "0.1.0" } });
+
+        var agent = await StartedAsync(agentVersion: "1.2.0");
+
+        agent.State.Installed["App"].Should().Be(Running);
+        agent.State.Installed["Agent"].Should().Be("1.2.0");
+    }
+
+    [Fact]
     public async Task A_request_is_answered_once_and_cleared_away()
     {
         var agent = await StartedAsync();
