@@ -78,6 +78,44 @@ public sealed class UpdateApplierTests : IDisposable
     }
 
     [Fact]
+    public async Task Updates_rollbacks_and_cleaning_up_versions_leave_the_identity_the_spool_and_the_counters_as_they_were()
+    {
+        // What the kiosk keeps beside the agent's and the UI's folders
+        // (/var/lib/neoprint): an update never re-registers it, loses a job or
+        // resets a count (plan 7B, M17).
+        var kept = new Dictionary<string, byte[]>
+        {
+            [Path.Combine(_root, "identity", "device.key")] = RandomNumberGenerator.GetBytes(121),
+            [Path.Combine(_root, "spool", "jobs", "4f1c.pdf.enc")] = RandomNumberGenerator.GetBytes(4096),
+            [Path.Combine(_root, "state", "counters.json")] = Encoding.UTF8.GetBytes("{\"pages\":1234}"),
+            [Path.Combine(_root, "state", "runs.json")] = Encoding.UTF8.GetBytes("{\"crashes\":[]}"),
+        };
+        foreach (var (path, bytes) in kept)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllBytes(path, bytes);
+        }
+
+        var agent = await StartedAsync();
+        _ui.HealthyOnStart = true;
+        (await agent.ProcessAsync(Request(Package("1.0.0")) with { KeepVersions = 1 }, CancellationToken.None))!.Outcome.Should().Be(AgentOutcome.Succeeded);
+        (await agent.ProcessAsync(Request(Package("1.1.0")) with { KeepVersions = 1 }, CancellationToken.None))!.Outcome.Should().Be(AgentOutcome.Succeeded);
+        _ui.HealthyOnStart = false;
+        (await agent.ProcessAsync(Request(Package("1.2.0")) with { KeepVersions = 1 }, CancellationToken.None))!.Outcome.Should().Be(AgentOutcome.RolledBack);
+        _ui.HealthyOnStart = true;
+        (await agent.ProcessAsync(new AgentRequest(Guid.NewGuid(), AgentRequestKind.Rollback, _clock.UtcNow, HealthTimeoutSeconds: 60), CancellationToken.None))!
+            .Outcome.Should().Be(AgentOutcome.RolledBack);
+
+        foreach (var (path, bytes) in kept)
+        {
+            File.ReadAllBytes(path).Should().Equal(bytes, path);
+        }
+
+        Directory.GetFiles(Path.Combine(_root, "identity")).Should().ContainSingle();
+        Directory.GetFiles(Path.Combine(_root, "spool"), "*", SearchOption.AllDirectories).Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task A_version_that_does_not_pass_its_health_check_is_rolled_back_and_not_taken_again()
     {
         var agent = await StartedAsync();
