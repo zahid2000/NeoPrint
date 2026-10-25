@@ -149,6 +149,14 @@ public sealed class UpdateCoordinatorTests : IDisposable
             {
                 _ = coordinator.HandleCommandAsync(commandId, "UpdateNow", acknowledged: false, CancellationToken.None);
             }
+
+            // The command is carried out on a thread of its own; the test's clock
+            // waits for nobody, so a few of its steps take real time - else a slow
+            // machine sees the window open before the command is read.
+            if (count is > 3 and < 40)
+            {
+                Thread.Sleep(25);
+            }
         };
 
         await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None);
