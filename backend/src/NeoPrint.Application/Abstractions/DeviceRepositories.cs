@@ -43,6 +43,13 @@ public interface IEnrollmentTokenRepository
     Task AddAsync(EnrollmentToken token, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(EnrollmentToken token, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Takes one use of a token for a device, atomically: two devices racing
+    /// for the last use of a token cannot both have it (T-327).
+    /// </summary>
+    /// <returns>Whether this device has it.</returns>
+    Task<bool> TryClaimAsync(Guid tokenId, Guid deviceId, DateTime now, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Persistence for kiosks.</summary>

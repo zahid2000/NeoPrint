@@ -174,13 +174,18 @@ public sealed record ActivateDeviceResult(Guid DeviceId, Guid KioskId, string Ki
 public sealed record RevokeDeviceCommand(Guid DeviceId, string? Reason, Guid RevokedBy, string? Ip)
     : IRequest<Unit>, ITransactionalRequest;
 
-/// <summary>Creates a single-use enrollment token for zero-touch activation.</summary>
+/// <summary>
+/// Creates an enrollment token for zero-touch activation: single use for a
+/// kiosk that exists, or up to <see cref="EnrollmentToken.MaxUsesLimit"/> new
+/// kiosks made from a template (T-327).
+/// </summary>
 public sealed record CreateEnrollmentTokenCommand(
     Guid? KioskId,
     NewKioskParameters? NewKiosk,
     int? TtlHours,
     Guid CreatedBy,
-    string? Ip = null) : IRequest<EnrollmentTokenResult>;
+    string? Ip = null,
+    int? MaxUses = null) : IRequest<EnrollmentTokenResult>;
 
 public sealed record EnrollmentTokenResult(
     Guid Id,
@@ -189,7 +194,8 @@ public sealed record EnrollmentTokenResult(
     Guid? KioskId,
     string? KioskCode,
     string WindowsCommand,
-    string LinuxCommand);
+    string LinuxCommand,
+    int MaxUses = 1);
 
 /// <summary>Revokes an enrollment token that has not been used.</summary>
 public sealed record RevokeEnrollmentTokenCommand(Guid Id, Guid RevokedBy, string? Ip = null) : IRequest<Unit>;
@@ -248,8 +254,15 @@ public sealed class ActivateDeviceCommandValidator : IValidator<ActivateDeviceCo
             yield break;
         }
 
-        var kiosk = request.NewKiosk;
+        foreach (var error in NewKiosk(request.NewKiosk))
+        {
+            yield return error;
+        }
+    }
 
+    /// <summary>A new kiosk's parameters: the activation wizard's and an enrollment token's template (T-327).</summary>
+    public static IEnumerable<ValidationError> NewKiosk(NewKioskParameters kiosk)
+    {
         if (string.IsNullOrWhiteSpace(kiosk.Name))
         {
             yield return new ValidationError("newKiosk.name", "kiosks.nameRequired");
@@ -304,6 +317,15 @@ public sealed class ActivateDeviceCommandValidator : IValidator<ActivateDeviceCo
             yield return new ValidationError(field, "kiosks.paperCapacityRange", ("max", 100000));
         }
     }
+}
+
+/// <summary>A token for new kiosks carries what the activation wizard would ask for (T-327).</summary>
+public sealed class CreateEnrollmentTokenCommandValidator : IValidator<CreateEnrollmentTokenCommand>
+{
+    public IEnumerable<ValidationError> Validate(CreateEnrollmentTokenCommand request)
+        => request.NewKiosk is null || request.KioskId is not null
+            ? []
+            : ActivateDeviceCommandValidator.NewKiosk(request.NewKiosk);
 }
 
 public sealed class LookupDeviceCommandValidator : IValidator<LookupDeviceCommand>

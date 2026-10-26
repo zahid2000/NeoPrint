@@ -155,7 +155,7 @@ public sealed class AdminDevicesController : ControllerBase
 
         var result = await _sender.Send(
             new CreateEnrollmentTokenCommand(
-                request.KioskId, request.NewKiosk, request.TtlHours, adminId.Value, _currentUser.Ip),
+                request.KioskId, request.NewKiosk, request.TtlHours, adminId.Value, _currentUser.Ip, request.MaxUses),
             cancellationToken);
 
         // The only time the raw token is ever returned; only its hash is stored.
@@ -203,5 +203,5 @@ public sealed class AdminDevicesController : ControllerBase
     public sealed record RevokeRequest(string? Reason);
 
     public sealed record CreateEnrollmentTokenRequest(
-        Guid? KioskId, NewKioskParameters? NewKiosk, int? TtlHours);
+        Guid? KioskId, NewKioskParameters? NewKiosk, int? TtlHours, int? MaxUses = null);
 }

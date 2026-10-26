@@ -32,6 +32,7 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly IAdminNotifier _panels;
+    private readonly IAuditWriter _audit;
     private readonly ILogger<RegisterDeviceHandler> _logger;
 
     public RegisterDeviceHandler(
@@ -42,9 +43,11 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
         ICorrelationContext correlation,
         IClock clock,
         IAdminNotifier panels,
+        IAuditWriter audit,
         ILogger<RegisterDeviceHandler> logger)
     {
         _panels = panels;
+        _audit = audit;
         _devices = devices;
         _enrollmentTokens = enrollmentTokens;
         _kiosks = kiosks;
@@ -170,16 +173,32 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
             return null;
         }
 
-        Kiosk kiosk;
+        Kiosk? existing = null;
 
         if (token.KioskId is not null)
         {
-            var existing = await _kiosks.FindByIdAsync(token.KioskId.Value, cancellationToken).ConfigureAwait(false);
+            existing = await _kiosks.FindByIdAsync(token.KioskId.Value, cancellationToken).ConfigureAwait(false);
             if (existing is null)
             {
                 return null;
             }
+        }
+        else if (token.NewKioskTemplate is null)
+        {
+            return null;
+        }
 
+        // The use is taken before anything is made of it: the last use of a
+        // token goes to one device, however many present it at once (T-327).
+        if (!await _enrollmentTokens.TryClaimAsync(token.Id, device.Id, now, cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        Kiosk kiosk;
+
+        if (existing is not null)
+        {
             kiosk = existing;
 
             // Replacing the hardware: the kiosk's previous device is revoked.
@@ -188,14 +207,10 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
                 await RevokePreviousDeviceAsync(previousId, now, cancellationToken).ConfigureAwait(false);
             }
         }
-        else if (token.NewKioskTemplate is not null)
-        {
-            kiosk = await CreateKioskFromTemplateAsync(token.NewKioskTemplate, now, cancellationToken)
-                .ConfigureAwait(false);
-        }
         else
         {
-            return null;
+            kiosk = await CreateKioskFromTemplateAsync(token.NewKioskTemplate!, now, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         // The administrator who issued the token is the actor: they decided
@@ -210,8 +225,20 @@ public sealed class RegisterDeviceHandler : IRequestHandler<RegisterDeviceComman
         kiosk.BindDevice(device.Id, device.Platform, device.AppVersion, actor, now);
         await _kiosks.UpdateAsync(kiosk, cancellationToken).ConfigureAwait(false);
 
-        token.UsedByDeviceId = device.Id;
-        await _enrollmentTokens.UpdateAsync(token, cancellationToken).ConfigureAwait(false);
+        // Nobody pressed "activate": the token's issuer did, ahead of time, and
+        // the audit says which token and which of its uses (T-327).
+        await _audit.WriteAsync(
+                new AuditEntry(
+                    token.CreatedBy,
+                    "devices.enrollmentToken.use",
+                    "EnrollmentToken",
+                    token.Id.ToString(),
+                    Before: null,
+                    After: FormattableString.Invariant($"device {device.Id} -> {kiosk.Code}, use {token.Uses + 1} of {token.MaxUses}"),
+                    device.LastIp,
+                    Reason: null),
+                cancellationToken)
+            .ConfigureAwait(false);
 
         _logger.LogInformation(
             "Device {DeviceId} activated against kiosk {KioskCode} with an enrollment token.", device.Id, kiosk.Code);

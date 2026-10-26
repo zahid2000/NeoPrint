@@ -288,7 +288,9 @@ public sealed class KioskDevice : Entity
 }
 
 /// <summary>
-/// A single-use enrollment token for zero-touch activation (plan section 7.11).
+/// An enrollment token for zero-touch activation (plan section 7.11): single
+/// use for a kiosk that exists, or good for a number of new kiosks - the clones
+/// of one golden image (T-327).
 /// </summary>
 /// <remarks>
 /// An admin creates the token up front and hands the provisioning script the
@@ -305,18 +307,35 @@ public sealed class EnrollmentToken : Entity
     /// <summary>Parameters for a kiosk to be created on first use, when KioskId is null.</summary>
     public NewKioskTemplate? NewKioskTemplate { get; set; }
 
+    /// <summary>The most new kiosks one token may make (T-327).</summary>
+    public const int MaxUsesLimit = 50;
+
+    /// <summary>The longest a token may live, in hours: thirty days.</summary>
+    public const int MaxTtlHours = 720;
+
     public DateTime ExpiresAt { get; set; }
 
+    /// <summary>How many devices it may activate: always one for a kiosk that exists.</summary>
     public int MaxUses { get; set; } = 1;
 
+    /// <summary>How many it has activated; counted up atomically as each one does.</summary>
+    public int UsedCount { get; set; }
+
+    /// <summary>The first device it activated (kept for tokens made before T-327).</summary>
     public Guid? UsedByDeviceId { get; set; }
+
+    /// <summary>Every device it activated.</summary>
+    public List<Guid> UsedByDeviceIds { get; set; } = [];
 
     public Guid? CreatedBy { get; set; }
 
     public DateTime? RevokedAt { get; set; }
 
+    /// <summary>The uses so far: a token made before T-327 had one when its device was written.</summary>
+    public int Uses => Math.Max(UsedCount, UsedByDeviceId is null ? 0 : 1);
+
     public bool IsUsable(DateTime utcNow)
-        => RevokedAt is null && UsedByDeviceId is null && ExpiresAt > utcNow;
+        => RevokedAt is null && Uses < MaxUses && ExpiresAt > utcNow;
 
     /// <summary>Generates the token itself; only its hash is stored.</summary>
     public static string NewToken() => Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();

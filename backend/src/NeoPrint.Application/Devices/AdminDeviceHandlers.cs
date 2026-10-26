@@ -389,8 +389,8 @@ public sealed class RevokeDeviceHandler : IRequestHandler<RevokeDeviceCommand, U
 }
 
 /// <summary>
-/// Creates a single-use enrollment token for zero-touch activation
-/// (plan section 7.11).
+/// Creates an enrollment token for zero-touch activation (plan section 7.11,
+/// T-327).
 /// </summary>
 public sealed class CreateEnrollmentTokenHandler
     : IRequestHandler<CreateEnrollmentTokenCommand, EnrollmentTokenResult>
@@ -424,6 +424,26 @@ public sealed class CreateEnrollmentTokenHandler
         if (request.KioskId is null && request.NewKiosk is null)
         {
             throw new DomainException("devices.enrollmentTargetRequired");
+        }
+
+        var maxUses = request.MaxUses ?? 1;
+
+        // A kiosk that exists has one device; a token for it is used once.
+        // Several new kiosks get a code each, so they cannot share one written here.
+        if (maxUses is < 1 or > EnrollmentToken.MaxUsesLimit
+            || (request.KioskId is not null && maxUses != 1))
+        {
+            throw new DomainException(UserMessage.Of("devices.enrollmentUsesInvalid", ("max", EnrollmentToken.MaxUsesLimit)));
+        }
+
+        if (maxUses > 1 && !string.IsNullOrWhiteSpace(request.NewKiosk?.Code))
+        {
+            throw new DomainException("devices.enrollmentCodeForOne");
+        }
+
+        if (request.TtlHours is < 1 or > EnrollmentToken.MaxTtlHours)
+        {
+            throw new DomainException(UserMessage.Of("devices.enrollmentTtlInvalid", ("max", EnrollmentToken.MaxTtlHours)));
         }
 
         Kiosk? kiosk = null;
@@ -473,6 +493,7 @@ public sealed class CreateEnrollmentTokenHandler
             KioskId = kiosk?.Id,
             NewKioskTemplate = template,
             ExpiresAt = _clock.UtcNow.AddHours(ttlHours),
+            MaxUses = maxUses,
             CreatedBy = request.CreatedBy,
             CreatedAt = _clock.UtcNow,
         };
@@ -489,7 +510,7 @@ public sealed class CreateEnrollmentTokenHandler
                     "EnrollmentToken",
                     token.Id.ToString(),
                     Before: null,
-                    After: $"{kiosk?.Code ?? $"new kiosk {template!.Name}"} until {token.ExpiresAt:O}",
+                    After: FormattableString.Invariant($"{kiosk?.Code ?? $"new kiosk {template!.Name}"} until {token.ExpiresAt:O}, uses {maxUses}"),
                     request.Ip,
                     Reason: null),
                 cancellationToken)
@@ -503,7 +524,8 @@ public sealed class CreateEnrollmentTokenHandler
             kiosk?.Id,
             kiosk?.Code,
             $"provision.ps1 -EnrollmentToken {raw}",
-            $"sudo ./provision.sh --enrollment-token {raw}");
+            $"sudo ./provision.sh --enrollment-token {raw}",
+            maxUses);
     }
 }
 

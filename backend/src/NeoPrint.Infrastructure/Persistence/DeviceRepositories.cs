@@ -85,6 +85,38 @@ public sealed class EnrollmentTokenRepository : IEnrollmentTokenRepository
     public Task UpdateAsync(EnrollmentToken token, CancellationToken cancellationToken = default)
         => _context.EnrollmentTokens.ReplaceOneAsync(
             existing => existing.Id == token.Id, token, cancellationToken: cancellationToken);
+
+    public async Task<bool> TryClaimAsync(Guid tokenId, Guid deviceId, DateTime now, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<EnrollmentToken>.Filter;
+
+        // One use left, still on: counted and taken in one write. A token made
+        // before T-327 carries its one device without a count, and is used.
+        var claimed = await _context.EnrollmentTokens.UpdateOneAsync(
+                filter.Eq(token => token.Id, tokenId)
+                & filter.Eq(token => token.RevokedAt, null)
+                & filter.Gt(token => token.ExpiresAt, now)
+                & filter.Where(token => token.UsedCount < token.MaxUses)
+                & (filter.Eq(token => token.UsedByDeviceId, null) | filter.Gte(token => token.UsedCount, 1)),
+                Builders<EnrollmentToken>.Update
+                    .Inc(token => token.UsedCount, 1)
+                    .Push(token => token.UsedByDeviceIds, deviceId),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        if (claimed.ModifiedCount == 0)
+        {
+            return false;
+        }
+
+        await _context.EnrollmentTokens.UpdateOneAsync(
+                filter.Eq(token => token.Id, tokenId) & filter.Eq(token => token.UsedByDeviceId, null),
+                Builders<EnrollmentToken>.Update.Set(token => token.UsedByDeviceId, deviceId),
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        return true;
+    }
 }
 
 /// <inheritdoc cref="IKioskRepository" />

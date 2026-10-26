@@ -94,7 +94,9 @@ public sealed class ListEnrollmentTokensHandler
             token.ExpiresAt,
             token.UsedByDeviceId,
             token.RevokedAt,
-            token.IsUsable(now))).ToList();
+            token.IsUsable(now),
+            token.MaxUses,
+            token.Uses)).ToList();
     }
 }
 

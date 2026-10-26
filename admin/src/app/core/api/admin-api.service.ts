@@ -249,6 +249,8 @@ export interface EnrollmentTokenResult {
   readonly kioskCode: string | null;
   readonly windowsCommand: string;
   readonly linuxCommand: string;
+  /** How many kiosks it may activate (T-327). */
+  readonly maxUses: number;
 }
 
 export interface EnrollmentTokenListItem {
@@ -261,6 +263,8 @@ export interface EnrollmentTokenListItem {
   readonly usedByDeviceId: string | null;
   readonly revokedAt: string | null;
   readonly isUsable: boolean;
+  readonly maxUses: number;
+  readonly uses: number;
 }
 
 /** A role with its permissions (plan section 8A.2). */
@@ -439,6 +443,7 @@ export class AdminApiService {
     kioskId?: string | null;
     newKiosk?: NewKioskParameters | null;
     ttlHours?: number | null;
+    maxUses?: number | null;
   }): Observable<EnrollmentTokenResult> {
     return this.http.post<EnrollmentTokenResult>('/api/admin/enrollment-tokens', body);
   }

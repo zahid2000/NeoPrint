@@ -46,7 +46,9 @@ public sealed record EnrollmentTokenListItem(
     DateTime ExpiresAt,
     Guid? UsedByDeviceId,
     DateTime? RevokedAt,
-    bool IsUsable);
+    bool IsUsable,
+    int MaxUses = 1,
+    int Uses = 0);
 
 public sealed record ListEnrollmentTokensQuery : IRequest<IReadOnlyList<EnrollmentTokenListItem>>;
 

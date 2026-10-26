@@ -1,6 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatTabGroup } from '@angular/material/tabs';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
 import { describe, beforeEach, afterEach, expect, it, vi } from 'vitest';
@@ -40,6 +42,8 @@ function token(overrides: Partial<EnrollmentTokenListItem> = {}): EnrollmentToke
     usedByDeviceId: null,
     revokedAt: null,
     isUsable: true,
+    maxUses: 1,
+    uses: 0,
     ...overrides,
   };
 }
@@ -141,14 +145,33 @@ describe('DevicesComponent', () => {
   it('describes each token by what can still be done with it', async () => {
     await load({});
 
-    expect(component.tokenStatusKey(token())).toBe('tokens.usable');
-    expect(
-      component.tokenStatusKey(token({ usedByDeviceId: '55555555-5555-5555-5555-555555555555' })),
-    ).toBe('tokens.used');
-    expect(
-      component.tokenStatusKey(token({ revokedAt: new Date().toISOString(), isUsable: false })),
-    ).toBe('tokens.revoked');
-    expect(component.tokenStatusKey(token({ isUsable: false }))).toBe('tokens.expired');
+    expect(component.tokenStateKey(token())).toBe('tokens.usable');
+    expect(component.tokenStateKey(token({ uses: 1, usedByDeviceId: '55555555-5555-5555-5555-555555555555', isUsable: false }))).toBe('tokens.used');
+    expect(component.tokenStateKey(token({ maxUses: 3, uses: 1 })), 'a token for three kiosks used once still works').toBe('tokens.usable');
+    expect(component.tokenStateKey(token({ revokedAt: new Date().toISOString(), isUsable: false }))).toBe('tokens.revoked');
+    expect(component.tokenStateKey(token({ isUsable: false }))).toBe('tokens.expired');
+    expect(component.tokenTone(token({ revokedAt: new Date().toISOString(), isUsable: false }))).toBe('danger');
+  });
+
+  it('lists each token with its uses, its state as a chip, and a revoke only while it works (T-327)', async () => {
+    await load({
+      tokens: [
+        token({ id: 'a', newKioskName: 'Pilot', maxUses: 3, uses: 1 }),
+        token({ id: 'b', kioskId: 'k', kioskCode: 'KSK-9007', uses: 1, isUsable: false }),
+      ],
+    });
+    // The third tab: the tokens.
+    fixture.debugElement.query(By.directive(MatTabGroup)).componentInstance.selectedIndex = 2;
+    // The tab's body is drawn once its slide has ended.
+    for (let i = 0; i < 5 && !fixture.nativeElement.querySelector('[data-cell="uses"]'); i++) {
+      fixture.detectChanges();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    const rows = [...fixture.nativeElement.querySelectorAll('[data-cell="uses"]')].map((cell: Element) => cell.textContent!.trim());
+    expect(rows).toEqual(['1 / 3', '1 / 1']);
+    expect(fixture.nativeElement.querySelectorAll('[data-revoke]').length, 'only the one that still works').toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('[data-cell="status"] app-status-chip').length).toBe(2);
   });
 
   it('looks a device up by the code shown on the kiosk', async () => {

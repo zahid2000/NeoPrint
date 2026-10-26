@@ -92,7 +92,9 @@ public sealed class DeviceRequestLimits
 
             if (found is not null && found.IsUsable(DateTime.UtcNow))
             {
-                return ($"device-register:enroll:{found.Id:N}", _settings.EnrollmentTokenPerHour, TimeSpan.FromHours(1));
+                // A token for several new kiosks - a golden image's clones - gets
+                // room for each of them to try twice; a single one keeps the plain limit (T-327).
+                return ($"device-register:enroll:{found.Id:N}", Math.Max(_settings.EnrollmentTokenPerHour, found.MaxUses * 2), TimeSpan.FromHours(1));
             }
         }
 

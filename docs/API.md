@@ -930,9 +930,11 @@ növbəti sorğuda 403 alır. Kiosk `NotActivated` olur, hər şeyini saxlayır.
 | `POST` | `/api/admin/enrollment-tokens` (`Idempotency-Key`) |
 | `DELETE` | `/api/admin/enrollment-tokens/{id}` |
 
-`POST` gövdəsi: `{ "kioskId", "newKiosk", "ttlHours" }`
+`POST` gövdəsi: `{ "kioskId", "newKiosk", "ttlHours", "maxUses" }` — ya `kioskId` (mövcud, cihazı olmayan kiosk; `maxUses` yalnız 1), ya `newKiosk` (aktivləşdirmə sihirbazının sahələri, kod boş — hər kiosk növbəti `KSK-nnnn`-i alır; `maxUses` 1–50, golden image-in klonları üçün, T-327). `ttlHours` 1–720 (verilməsə `EnrollmentTokenTtlHours`). Pozuntular: `devices.enrollmentUsesInvalid`, `devices.enrollmentCodeForOne`, `devices.enrollmentTtlInvalid`, şablon sahələri sihirbazdakı kimi (`kiosks.pinTooShort` …).
 
-→ `{ "id", "token", "expiresAt", "kioskId", "kioskCode", "windowsCommand", "linuxCommand" }`
+→ `{ "id", "token", "expiresAt", "kioskId", "kioskCode", "windowsCommand", "linuxCommand", "maxUses" }`
+
+`GET` sətri: `{ …, "maxUses", "uses", "isUsable" }`. Hər istifadə atomikdir (eyni anda təqdim edən cihazlardan son istifadəni yalnız biri alır) və `devices.enrollmentToken.use` kimi audit-ə yazılır (açarı verən admin adına: cihaz, kiosk kodu, "use N of M"). Qeydiyyat limiti (T-309) bu açar üzrə saatda `max(EnrollmentTokenPerHour, 2 × maxUses)`.
 
 **`token` yalnız bu bir dəfə qaytarılır** — serverdə yalnız hash-i saxlanılır.
 Yaratma və ləğv `audit_logs`-a düşür (`devices.enrollmentToken.create` — hədəf kiosk və bitmə vaxtı; `devices.enrollmentToken.revoke`), tokenin özü heç vaxt yazılmır (T-165).

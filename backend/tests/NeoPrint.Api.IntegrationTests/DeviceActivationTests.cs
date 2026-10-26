@@ -395,6 +395,109 @@ public sealed class DeviceActivationTests
     }
 
     [DockerFact]
+    public async Task A_token_for_several_new_kiosks_makes_one_kiosk_for_each_clone_up_to_its_count_and_audits_each_use()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SignedInSuperAdminAsync();
+
+        // T-327: the clones of one golden image, each its own kiosk with its own code.
+        var created = await admin.PostAsJsonAsync("/api/admin/enrollment-tokens", new
+        {
+            newKiosk = NewKiosk("Golden image clone", "Bakı"),
+            ttlHours = 2,
+            maxUses = 2,
+        });
+        created.StatusCode.Should().Be(HttpStatusCode.OK, await created.Content.ReadAsStringAsync());
+        var body = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var id = body.GetProperty("id").GetGuid();
+        var token = body.GetProperty("token").GetString();
+        body.GetProperty("maxUses").GetInt32().Should().Be(2);
+
+        using var client = _fixture.CreateApiClient();
+        using var first = new FakeKioskDevice();
+        using var second = new FakeKioskDevice();
+        using var third = new FakeKioskDevice();
+
+        var one = await RegisterAsync(client, first, "clone-1", token);
+        var two = await RegisterAsync(client, second, "clone-2", token);
+        one.Activated.Should().BeTrue();
+        two.Activated.Should().BeTrue();
+
+        // The count is spent: the third falls back to the code on its screen.
+        var three = await RegisterAsync(client, third, "clone-3", token);
+        three.Activated.Should().BeFalse();
+        three.PairingCode.Should().NotBeNull();
+
+        using var scope = _fixture.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+        var devices = await context.KioskDevices.Find(device => device.Id == one.DeviceId || device.Id == two.DeviceId).ToListAsync();
+        devices.Select(device => device.KioskId).Distinct().Should().HaveCount(2, "each clone is a kiosk of its own");
+        var kioskIds = devices.Select(device => device.KioskId!.Value).ToList();
+        var codes = await context.Kiosks.Find(kiosk => kioskIds.Contains(kiosk.Id)).Project(kiosk => kiosk.Code).ToListAsync();
+        codes.Should().OnlyHaveUniqueItems().And.OnlyContain(code => code.StartsWith("KSK-"));
+
+        var listed = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/enrollment-tokens")).EnumerateArray()
+            .Single(row => row.GetProperty("id").GetGuid() == id);
+        listed.GetProperty("uses").GetInt32().Should().Be(2);
+        listed.GetProperty("maxUses").GetInt32().Should().Be(2);
+        listed.GetProperty("isUsable").GetBoolean().Should().BeFalse();
+
+        var audits = await context.AuditLogs.Find(entry => entry.EntityType == "EnrollmentToken" && entry.EntityId == id.ToString()).ToListAsync();
+        audits.Count(entry => entry.Action == "devices.enrollmentToken.use").Should().Be(2);
+        audits.Should().OnlyContain(entry => !(entry.After ?? "").Contains(token!));
+    }
+
+    [DockerFact]
+    public async Task The_last_use_of_a_token_goes_to_one_device_however_many_present_it_at_once()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SignedInSuperAdminAsync();
+        var created = await admin.PostAsJsonAsync("/api/admin/enrollment-tokens", new { newKiosk = NewKiosk("Raced enrollment", "Bakı") });
+        var token = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString();
+
+        var devices = Enumerable.Range(0, 5).Select(_ => new FakeKioskDevice()).ToList();
+        try
+        {
+            var results = await Task.WhenAll(devices.Select(async (device, index) =>
+            {
+                using var client = _fixture.CreateApiClient();
+                return await RegisterAsync(client, device, $"race-{index}", token);
+            }));
+
+            results.Count(result => result.Activated).Should().Be(1, "a single-use token activates one device");
+        }
+        finally
+        {
+            devices.ForEach(device => device.Dispose());
+        }
+    }
+
+    [DockerFact]
+    public async Task A_token_says_what_it_cannot_be()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SignedInSuperAdminAsync();
+        var kiosk = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/kiosks")).EnumerateArray().First().GetProperty("id").GetGuid();
+
+        async Task<string> RefusedAsync(object body)
+        {
+            var response = await admin.PostAsJsonAsync("/api/admin/enrollment-tokens", body);
+            ((int)response.StatusCode).Should().BeOneOf(400, 409);
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        (await RefusedAsync(new { kioskId = kiosk, maxUses = 2 })).Should().Contain("devices.enrollmentUsesInvalid", "a kiosk that exists has one device");
+        (await RefusedAsync(new { newKiosk = NewKiosk("Many", "Bakı"), maxUses = 51 })).Should().Contain("devices.enrollmentUsesInvalid");
+        (await RefusedAsync(new { newKiosk = new { name = "Coded", lat = 40.4, lng = 49.8, address = "Bakı", defaultLanguage = "az", paperCapacityA4 = 500, paperCapacityA3 = 0, adminPin = "135790", code = "KSK-7777" }, maxUses = 3 }))
+            .Should().Contain("devices.enrollmentCodeForOne", "several kiosks cannot share one code");
+        (await RefusedAsync(new { newKiosk = NewKiosk("Long", "Bakı"), ttlHours = 721 })).Should().Contain("devices.enrollmentTtlInvalid");
+        (await RefusedAsync(new { newKiosk = NewKiosk("No pin", "Bakı", adminPin: "") })).Should().Contain("kiosks.pinTooShort", "the template is checked like the wizard's");
+    }
+
+    [DockerFact]
     public async Task Issuing_and_revoking_an_enrollment_token_is_audited_without_the_token()
     {
         if (Skip) { return; }

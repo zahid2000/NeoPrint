@@ -144,6 +144,8 @@ const SERVER_VALUES = {
   // The operations pages (T-213).
   'ops.inventory.movement.': { enum: 'InventoryMovementType' },
   'ops.inventory.quantityHint.': { enum: 'InventoryMovementType' },
+  // An enrollment token's lifetimes (T-327, tokenLifetimes in enrollment-token.dialog.ts).
+  'tokens.lifetime.': { values: ['1', '24', '72', '168', '720'] },
   // The warehouse's units (T-323, InventoryUnits on the server).
   'ops.inventory.units.': { values: ['ream', 'piece', 'box', 'pack', 'roll'] },
   'ops.tasks.source.': { enum: 'ServiceTaskSource' },

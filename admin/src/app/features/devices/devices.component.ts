@@ -28,6 +28,9 @@ import { liveRefresh } from '../../core/realtime/live-refresh';
 import { describeError } from '../login/login.component';
 import { ActivateDeviceDialogComponent } from './activate-device.dialog';
 import { EnrollmentTokenDialogComponent } from './enrollment-token.dialog';
+import { confirmAction } from '../../shared/confirm.dialog';
+import { EmptyStateComponent } from '../../shared/empty-state.component';
+import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { HubEvents } from '../../core/realtime/hub-events';
 
@@ -41,6 +44,8 @@ import { HubEvents } from '../../core/realtime/hub-events';
 @Component({
   selector: 'app-devices',
   imports: [
+    EmptyStateComponent,
+    StatusChipComponent,
     ReactiveFormsModule,
     DateTimePipe,
     MatCardModule,
@@ -96,7 +101,7 @@ export class DevicesComponent {
     'actions',
   ] as const;
 
-  readonly tokenColumns = ['target', 'createdAt', 'expiresAt', 'status', 'actions'] as const;
+  readonly tokenColumns = ['target', 'uses', 'createdAt', 'expiresAt', 'status', 'actions'] as const;
 
   /** The pairing code an administrator types in from the kiosk screen. */
   readonly lookupForm = this.formBuilder.nonNullable.group({
@@ -250,6 +255,18 @@ export class DevicesComponent {
   }
 
   async revokeToken(token: EnrollmentTokenListItem): Promise<void> {
+    const confirmed = await confirmAction(this.dialog, {
+      title: this.translate.instant('tokens.revokeTitle') as string,
+      explanation: this.translate.instant('tokens.revokeExplanation') as string,
+      confirmLabel: this.translate.instant('tokens.revoke') as string,
+      cancelLabel: this.translate.instant('common.cancel') as string,
+      destructive: true,
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     try {
       await firstValueFrom(this.api.revokeEnrollmentToken(token.id));
       await this.reloadTokens();
@@ -258,16 +275,25 @@ export class DevicesComponent {
     }
   }
 
-  tokenStatusKey(token: EnrollmentTokenListItem): string {
-    if (token.usedByDeviceId) {
-      return 'tokens.used';
-    }
-
+  /** Where a token stands: revoked first, then spent, then out of time (T-327). */
+  tokenState(token: EnrollmentTokenListItem): 'usable' | 'used' | 'expired' | 'revoked' {
     if (token.revokedAt) {
-      return 'tokens.revoked';
+      return 'revoked';
     }
 
-    return token.isUsable ? 'tokens.usable' : 'tokens.expired';
+    if (token.uses >= token.maxUses) {
+      return 'used';
+    }
+
+    return token.isUsable ? 'usable' : 'expired';
+  }
+
+  tokenStateKey(token: EnrollmentTokenListItem): string {
+    return ({ usable: 'tokens.usable', used: 'tokens.used', expired: 'tokens.expired', revoked: 'tokens.revoked' } as const)[this.tokenState(token)];
+  }
+
+  tokenTone(token: EnrollmentTokenListItem): StatusTone {
+    return ({ usable: 'success', used: 'neutral', expired: 'warning', revoked: 'danger' } as const)[this.tokenState(token)];
   }
 
   private notify(messageKey: string): void {

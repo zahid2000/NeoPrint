@@ -9,10 +9,13 @@
   }
 
   @if (created(); as token) {
-    <p class="activate__hint">{{ 'tokens.onceOnly' | translate }}</p>
+    <div class="neo-notice neo-notice--warning" role="status" data-once-only>
+      <mat-icon>warning</mat-icon>
+      <span>{{ 'tokens.onceOnly' | translate }}</span>
+    </div>
 
     <div class="token">
-      <code class="token__value">{{ token.token }}</code>
+      <code class="token__value" data-token>{{ token.token }}</code>
       <button
         mat-icon-button
         type="button"
@@ -22,6 +25,10 @@
         <mat-icon>content_copy</mat-icon>
       </button>
     </div>
+
+    <p class="activate__hint" data-token-reach>
+      {{ 'tokens.reach' | translate: { count: token.maxUses, until: (token.expiresAt | dateTime) } }}
+    </p>
 
     <p class="activate__hint">{{ 'tokens.commandHint' | translate }}</p>
 
@@ -57,31 +64,103 @@
   } @else {
     <form [formGroup]="form" class="activate__form">
       <mat-radio-group formControlName="mode" class="activate__modes">
-        <mat-radio-button value="new">
+        <mat-radio-button value="new" data-mode="new">
           {{ 'tokens.forNewKiosk' | translate }}
         </mat-radio-button>
-        <mat-radio-button value="existing" [disabled]="bindableKiosks().length === 0">
+        <mat-radio-button value="existing" data-mode="existing" [disabled]="bindableKiosks().length === 0">
           {{ 'tokens.forExistingKiosk' | translate }}
         </mat-radio-button>
       </mat-radio-group>
 
       @if (!isNewKiosk) {
-        <mat-form-field class="activate__field activate__field--wide">
+        <mat-form-field class="activate__field activate__field--wide" subscriptSizing="dynamic">
           <mat-label>{{ 'activate.kiosk' | translate }}</mat-label>
-          <mat-select formControlName="kioskId">
+          <mat-select formControlName="kioskId" data-field="kiosk">
             @for (kiosk of bindableKiosks(); track kiosk.id) {
               <mat-option [value]="kiosk.id"> {{ kiosk.code }} — {{ kiosk.name }} </mat-option>
             }
           </mat-select>
+          <mat-hint>{{ 'tokens.existingHint' | translate }}</mat-hint>
         </mat-form-field>
       }
 
-      <mat-form-field class="activate__field">
-        <mat-label>{{ 'tokens.ttlHours' | translate }}</mat-label>
-        <input matInput type="number" min="1" max="720" formControlName="ttlHours" required />
-        <mat-hint>{{ 'tokens.ttlHint' | translate }}</mat-hint>
+      <mat-form-field class="activate__field" subscriptSizing="dynamic">
+        <mat-label>{{ 'tokens.lifetime' | translate }}</mat-label>
+        <mat-select formControlName="ttlHours" data-field="lifetime">
+          @for (hours of lifetimes; track hours) {
+            <mat-option [value]="hours">{{ 'tokens.lifetime.' + hours | translate }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>{{ 'tokens.lifetimeHint' | translate }}</mat-hint>
       </mat-form-field>
     </form>
+
+    @if (isNewKiosk) {
+      <form [formGroup]="newKioskForm" class="activate__form" data-new-kiosk>
+        <mat-form-field class="activate__field" subscriptSizing="dynamic">
+          <mat-label>{{ 'tokens.uses' | translate }}</mat-label>
+          <input matInput type="number" min="1" [max]="maxUses" formControlName="uses" data-field="uses" required />
+          <mat-hint>{{ 'tokens.usesHint' | translate: { max: maxUses } }}</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field class="activate__field" subscriptSizing="dynamic">
+          <mat-label>{{ 'activate.name' | translate }}</mat-label>
+          <input matInput formControlName="name" data-field="name" required />
+          <mat-hint>{{ 'tokens.nameHint' | translate }}</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field class="activate__field activate__field--wide" subscriptSizing="dynamic">
+          <mat-label>{{ 'activate.address' | translate }}</mat-label>
+          <input matInput formControlName="address" data-field="address" required />
+        </mat-form-field>
+
+        <mat-form-field class="activate__field" subscriptSizing="dynamic">
+          <mat-label>{{ 'activate.lat' | translate }}</mat-label>
+          <input matInput type="number" step="0.000001" formControlName="lat" required />
+        </mat-form-field>
+
+        <mat-form-field class="activate__field" subscriptSizing="dynamic">
+          <mat-label>{{ 'activate.lng' | translate }}</mat-label>
+          <input matInput type="number" step="0.000001" formControlName="lng" required />
+        </mat-form-field>
+
+        <mat-form-field class="activate__field" subscriptSizing="dynamic">
+          <mat-label>{{ 'activate.language' | translate }}</mat-label>
+          <mat-select formControlName="defaultLanguage">
+            @for (language of languages; track language) {
+              <mat-option [value]="language">{{ 'language.' + language | translate }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field class="activate__field" subscriptSizing="dynamic">
+          <mat-label>{{ 'activate.paperA4' | translate }}</mat-label>
+          <input matInput type="number" formControlName="paperCapacityA4" required />
+        </mat-form-field>
+
+        <mat-form-field class="activate__field" subscriptSizing="dynamic">
+          <mat-label>{{ 'activate.paperA3' | translate }}</mat-label>
+          <input matInput type="number" formControlName="paperCapacityA3" required />
+        </mat-form-field>
+
+        <mat-form-field class="activate__field" subscriptSizing="dynamic">
+          <mat-label>{{ 'activate.adminPin' | translate }}</mat-label>
+          <input
+            matInput
+            type="password"
+            inputmode="numeric"
+            autocomplete="off"
+            formControlName="adminPin"
+            data-field="pin"
+            required
+          />
+          <mat-hint>{{ 'activate.adminPinHint' | translate: { length: pinLength } }}</mat-hint>
+          @if (newKioskForm.controls.adminPin.touched && newKioskForm.controls.adminPin.invalid) {
+            <mat-error>{{ 'activate.adminPinInvalid' | translate: { length: pinLength } }}</mat-error>
+          }
+        </mat-form-field>
+      </form>
+    }
   }
 </mat-dialog-content>
 
@@ -94,13 +173,7 @@
     <button mat-button type="button" (click)="close()">
       {{ 'common.cancel' | translate }}
     </button>
-    <button
-      mat-flat-button
-      color="primary"
-      type="button"
-      [disabled]="form.invalid || busy()"
-      (click)="submit()"
-    >
+    <button mat-flat-button color="primary" type="button" data-submit [disabled]="invalid || busy()" (click)="submit()">
       @if (busy()) {
         <mat-spinner diameter="20" />
       } @else {
