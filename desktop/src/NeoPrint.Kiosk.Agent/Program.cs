@@ -35,6 +35,13 @@ if (args.Length > 0 && args[0] == "provisioning")
     return await RootProvisioning.RunAsync(args, UpdatePaths.ForThisMachine(), BuildVersion.Of(typeof(Program).Assembly), CancellationToken.None);
 }
 
+// The checker (T-327): a provisioning script asks whether a package it
+// downloaded was signed with the keys compiled into this build.
+if (args.Length > 0 && args[0] == "verify-package")
+{
+    return await PackageVerification.RunAsync(args, BuildVersion.Of(typeof(Program).Assembly), Console.Out, Console.Error, CancellationToken.None);
+}
+
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Configuration
