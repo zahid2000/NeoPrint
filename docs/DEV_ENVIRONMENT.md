@@ -1722,6 +1722,47 @@ Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını
   (masaüstü), ikon zolağı → tam menyu (planşet 820 px), drawer (telefon 390 px) hər kadrda ölçülür; ilk yükləmədə
   hərəkət yoxdur, `prefers-reduced-motion`-da heç nə hərəkət etmir, klaviatura bağlı qrupa girmir; kadrlar şəkil kimi.
 
+## 7x. Addım 7B — M19a: qeydiyyat açarları, golden image, provisioning (T-327, T-329)
+
+Hamısı compose stack qalxmış halda, repo kökündən (Git Bash). Heç biri açarı və tokeni ekrana çıxarmır.
+
+```bash
+# Panel ilə: açar yarat (bir dəfə göstərilir) → yeni konteyner kiosk ilk açılışda özü aktivləşir → panel "1 / 1";
+# başqa açar səbəb ilə ləğv olunur; 390 px; konsol 0. Kiosk konteyneri sonda silinir, cihazı ləğv olunur.
+cd admin && node e2e/enrollment.mjs ../docs/screenshots/step-7b/m19a && cd ..
+
+# Golden image: master kiosk qeydiyyatdan keçir → prepare-image.sh (+ --check) → iki klon → hər biri öz cihaz açarı,
+# öz machine-id-si (neoprint-firstboot), bir açarla (2 istifadəlik, neoprint-enroll) iki ayrı kiosk. Sonda təmizlənir.
+node tools/dev-kiosk/golden-image.mjs                      # açarı API ilə özü yaradır
+node tools/dev-kiosk/golden-image.mjs --token-file <fayl>  # paneldə yaradılmış açar
+
+# provision.sh bütöv: Ubuntu 24.04 + systemd konteynerində 13 addım, ikinci qaçış heç nəyi dəyişmir, qəsdən xəta →
+# "step 13/13 failed" + "what to do" + fayllar geri qaytarılır, --download (staging açarı varsa), golden image, 2 klon.
+# Paketləri quraşdırdığı üçün ~10 dəqiqə; konteyner privileged işləyir. CI-da: "Provisioning (Linux, container)".
+bash tools/provision-test/check.sh
+```
+
+```powershell
+# Windows: provision.ps1-in -Download funksiyası bu maşında (staging imzalı win-x64 paketlər, yerli server; heç nə quraşdırmır)
+pwsh -NoProfile -File tools\provision-test\windows-download.ps1
+
+# Windows nüsxə qərarı (CI-da da): Pro rədd, LTSC 2021 / Enterprise / Education qəbul
+pwsh -NoProfile -File desktop\provisioning\windows\tests\edition.tests.ps1
+
+# Bu kompüter kiosk ola bilərmi? (yalnız oxuyur; cihaz gələndə layihə sahibi işlədir — KIOSK_SETUP.md §1)
+powershell -ExecutionPolicy Bypass -File desktop\provisioning\windows\check-windows.ps1
+
+# Production build real paketi qəbul edirmi (T-315): açarlardan əvvəl öz-özünə sınaq; açarlar gələndən sonra -Package ...
+pwsh -NoProfile -File tools\release-sign\production-check.ps1 -SelfTest
+```
+
+- **Anonim ən son buraxılış:** `curl http://localhost:5080/api/releases/latest/agent/linux-x64` — development staging açarı
+  ilə işlədiyi üçün **həmişə `404`** (yalnız production imzalı, dərc olunmuş buraxılış göstərilir; `docs/API.md`).
+- **Kiosk ekranları 1280×1024-də** (pilot cihazı): `dotnet test desktop/tests/NeoPrint.Kiosk.ScreenTests` — şəkillər
+  `bin/Debug/net8.0-windows/screens/1280x1024-*.png`; sənəddə `docs/screenshots/step-7b/t329/`.
+- **Tələ:** `tools/dev-kiosk/build-linux-kiosk.sh`-i `MSYS_NO_PATHCONV=1` ilə işlətməyin (`make-release.sh` kimi) —
+  yollarını özü çevirir.
+
 ## 7w. Addım 7A — M13-ün davamı (T-287…T-292)
 
 - **Admin paneli: bir dəfə yenidən daxil olun (T-288).** Panel açılışda sessiyanı yalnız brauzerdə onun izi
