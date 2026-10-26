@@ -12,16 +12,27 @@
     also generalizes the installation, which is what gives each clone its own
     machine GUID.
 
+    Left out of the image (T-327): the device and spool keys, the enrollment
+    token, the cached configuration, the spool, the logs. A saved Wi-Fi network
+    stops the check: its password would go to every clone. Each clone makes
+    its own device key when the kiosk starts and is given its token afterwards
+    with enroll.ps1. Not yet run on a real Windows kiosk (T-093, M19b).
+
 .PARAMETER RunSysprep
     Runs sysprep /generalize /oobe /shutdown at the end. The machine shuts down
     and must not be booted again before capture.
 
+.PARAMETER Check
+    Verifies only: says what is left, changes nothing.
+
 .EXAMPLE
     .\prepare-image.ps1 -RunSysprep
+    .\prepare-image.ps1 -Check
 #>
 [CmdletBinding()]
 param(
-    [switch] $RunSysprep
+    [switch] $RunSysprep,
+    [switch] $Check
 )
 
 $ErrorActionPreference = "Stop"
@@ -55,6 +66,8 @@ Assert-Administrator
 Write-Log "taking access to the data directory for the cleanup"
 & takeown /f $DataRoot /r /d y | Out-Null
 & icacls $DataRoot /grant "Administrators:(OI)(CI)F" /T /C /Q | Out-Null
+
+if (-not $Check) {
 
 # ---------------------------------------------------------------------------
 # The device key
@@ -118,6 +131,8 @@ foreach ($log in @("Application", "System")) {
     & wevtutil cl $log 2>$null
 }
 
+}
+
 # ---------------------------------------------------------------------------
 # Verification
 # ---------------------------------------------------------------------------
@@ -133,7 +148,7 @@ foreach ($provider in @("Microsoft Platform Crypto Provider", "Microsoft Softwar
                 "NeoPrint.Device", $providerObject,
                 [System.Security.Cryptography.CngKeyOpenOptions]::MachineKey)) {
 
-            Write-Error "  STILL PRESENT: the device key in $provider"
+            Write-Warning "STILL PRESENT: the device key in $provider"
             $failed = $true
         }
     }
@@ -142,14 +157,31 @@ foreach ($provider in @("Microsoft Platform Crypto Provider", "Microsoft Softwar
 }
 
 if ([System.Security.Cryptography.CngKey]::Exists("NeoPrint.Spool", $software, [System.Security.Cryptography.CngKeyOpenOptions]::MachineKey)) {
-    Write-Error "  STILL PRESENT: the spool key"
+    Write-Warning "STILL PRESENT: the spool key"
+    $failed = $true
+}
+
+# A saved Wi-Fi network carries its password to every clone.
+# Read from the profile files, not from netsh, whose words follow the display language.
+$wifi = Get-ChildItem -Path (Join-Path $env:ProgramData "Microsoft\Wlansvc\Profiles\Interfaces") -Filter *.xml -Recurse -ErrorAction SilentlyContinue |
+    ForEach-Object { ([xml](Get-Content -Path $_.FullName -Raw)).WLANProfile.name }
+foreach ($network in @($wifi)) {
+    if ($network) {
+        Write-Warning "STILL PRESENT: the saved Wi-Fi network '$network' - remove it: netsh wlan delete profile name=`"$network`""
+        $failed = $true
+    }
+}
+
+$logs = Join-Path $DataRoot "logs"
+if ((Test-Path $logs) -and (Get-ChildItem -Path $logs -File -Recurse -ErrorAction SilentlyContinue)) {
+    Write-Warning "STILL PRESENT: logs in $logs"
     $failed = $true
 }
 
 foreach ($leftover in @("device\key.json", "device\enrollment-token", "device\spool.key.wrapped")) {
     $path = Join-Path $DataRoot $leftover
     if (Test-Path $path) {
-        Write-Error "  STILL PRESENT: $path"
+        Write-Warning "STILL PRESENT: $path"
         $failed = $true
     }
 }
@@ -163,6 +195,10 @@ if ($failed) {
 
 Write-Log "clean: this machine can be captured as a golden image"
 Write-Log "each clone will generate its own device key and register separately"
+
+if ($Check) {
+    return
+}
 
 if ($RunSysprep) {
     # Generalizing is what gives each clone its own machine GUID, which the

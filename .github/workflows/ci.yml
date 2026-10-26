@@ -175,6 +175,18 @@ jobs:
         env:
           NEOPRINT_SCREENS_DIR: ${{ github.workspace }}/artifacts/test-results/kiosk-screens
 
+      # T-327 / T-329: which Windows editions can be a kiosk (edition.ps1, as
+      # provision.ps1 and check-windows.ps1 decide it), and every Linux script
+      # parses. The whole Linux provisioning runs in provision-test.yml.
+      - name: Provisioning scripts
+        shell: bash
+        run: |
+          set -eu
+          pwsh -NoProfile -File desktop/provisioning/windows/tests/edition.tests.ps1
+          for script in desktop/provisioning/linux/provision.sh desktop/provisioning/linux/prepare-image.sh desktop/provisioning/linux/neoprint-*; do
+            bash -n "$script"
+          done
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

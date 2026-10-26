@@ -3,7 +3,8 @@
     NeoPrint kiosk provisioning for Windows (plan section 7.12).
 
 .DESCRIPTION
-    Turns a Windows 11 IoT Enterprise LTSC (or Enterprise) install into a
+    Turns a Windows 10 IoT Enterprise LTSC 2021 (the pilot's target, T-329),
+    Windows 11 IoT Enterprise LTSC or an Enterprise / Education install into a
     kiosk: creates the kiosk account with automatic sign-in, makes the NeoPrint
     UI its shell through Shell Launcher v2, blocks the escape keys with
     Keyboard Filter, silences every notification source, installs the
@@ -16,6 +17,12 @@
     Enabling Shell Launcher and Keyboard Filter the first time needs a restart
     before they can be configured: run the script, restart, run it again. The
     script says so when it happens.
+
+    A step that fails says which of the thirteen it was and what to do
+    (docs/KIOSK_SETUP.md has the same steps in Azerbaijani); the registry
+    values it had changed in this run are put back, and the firewall's
+    defaults too. Every step can run again: remove the cause and start the
+    script once more (T-327). Run check-windows.ps1 first on a new computer.
 
     Nothing here identifies a kiosk. -EnrollmentToken is the one optional
     per-kiosk input, it is single use, and the kiosk's own parameters all come
@@ -34,9 +41,18 @@
     Release channel: pilot or stable.
 
 .PARAMETER OfflinePackage
-    The NeoPrint package: a folder or a .zip with NeoPrint.Kiosk.exe and
-    NeoPrint.Kiosk.Agent.exe published into it (docs/KIOSK_SETUP.md). The signed
-    download from the backend arrives with the updater (plan step 7).
+    The NeoPrint package: a folder or a .zip with app\ and agent\ (the UI and
+    the agent, published) and VERSION, on the setup stick (docs/KIOSK_SETUP.md).
+
+.PARAMETER Download
+    Instead of -OfflinePackage: the newest published UI and agent from the
+    backend (GET api/releases/latest, needs -ApiUrl), each checked by the agent
+    on the setup stick (-Verifier, default ..\verifier\NeoPrint.Kiosk.Agent.exe)
+    with the release keys built into it before anything is installed (T-327).
+    The backend is a place to fetch from, not a source of trust.
+
+.PARAMETER Verifier
+    The checker for -Download: an agent build carrying the production release keys.
 
 .PARAMETER DependenciesPath
     A folder with the converter installers: LibreOffice_*_x64.msi and
@@ -52,13 +68,15 @@ param(
     [ValidateSet("pilot", "stable")]
     [string] $Channel = "stable",
     [string] $OfflinePackage = "",
+    [switch] $Download,
+    [string] $Verifier = "",
     [string] $DependenciesPath = ""
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$ProvisioningVersion = "0.3.0"
+$ProvisioningVersion = "0.5.0"
 
 $InstallRoot = "C:\Program Files\NeoPrint"
 $DataRoot    = "C:\ProgramData\NeoPrint"
@@ -98,26 +116,57 @@ function Assert-Administrator {
 }
 
 # ---------------------------------------------------------------------------
-# Edition check
+# Edition check (edition.ps1, T-329)
 #
-# Shell Launcher and Keyboard Filter exist only on IoT Enterprise and
-# Enterprise. Without them the screen cannot be locked down, so Pro is refused
-# outright rather than producing a kiosk that a customer can escape from
-# (plan section 2.1).
+# Shell Launcher and Keyboard Filter exist only on the Enterprise, Education
+# and IoT Enterprise editions. Without them the screen cannot be locked down,
+# so Pro is refused outright rather than producing a kiosk that a customer
+# can escape from (plan section 2.1) - with what to do instead.
 # ---------------------------------------------------------------------------
+. (Join-Path $PSScriptRoot "edition.ps1")
+
 function Assert-SupportedEdition {
-    $edition = (Get-ComputerInfo).WindowsProductName
+    $verdict = Get-NeoPrintEditionOfThisMachine
 
-    Write-Log "Windows edition: $edition"
+    Write-Log ("Windows edition: {0}, build {1}{2}" -f $verdict.Edition, $verdict.Build, $(if ($verdict.Ltsc) { " (LTSC)" } else { "" }))
 
-    if ($edition -notmatch "Enterprise|IoT") {
-        throw @"
-This Windows edition ($edition) is not supported.
+    if (-not $verdict.Supported) {
+        throw "This Windows cannot be a NeoPrint kiosk. $($verdict.Reason) $($verdict.Advice)"
+    }
+}
 
-NeoPrint needs Shell Launcher and Keyboard Filter, which are only available on
-Windows 11 IoT Enterprise LTSC and Windows 11 Enterprise. Windows Pro cannot
-lock the screen down and is not supported (plan section 2.1).
-"@
+# ---------------------------------------------------------------------------
+# Steps, and what to do when one fails
+# ---------------------------------------------------------------------------
+$script:Steps = 13
+$script:Step = 0
+$script:StepName = "starting"
+$script:RegistryUndo = New-Object System.Collections.Generic.List[object]
+$script:FirewallBefore = $null
+
+function Set-Step([int] $Number, [string] $Name) {
+    $script:Step = $Number
+    $script:StepName = $Name
+    Write-Log "step $Number/$($script:Steps): $Name"
+}
+
+# Whatever to do, said for each step (the same as the setup errors table in docs/KIOSK_SETUP.md).
+function Get-StepHint([int] $Number) {
+    switch ($Number) {
+        1  { "this Windows cannot be a kiosk: see the reason above; check-windows.ps1 says the same." }
+        2  { "a Windows feature could not be enabled: check the edition with check-windows.ps1 and that Windows Update is not installing something right now, then try again." }
+        3  { "a folder could not be made: the disk may be full - see 'Get-PSDrive C'." }
+        4  { "the kiosk account or its automatic sign-in could not be set up: the line above says which." }
+        5  { "the data folder's access could not be set: another program may hold a file in it; restart and try again." }
+        6  { "the enrollment token could not be written: the disk may be full." }
+        7  { "a lockdown setting could not be written: the line above names it." }
+        8  { "an update, printing or time setting could not be written: the line above names it." }
+        9  { "a converter could not be installed: check the installers in the dependencies folder on the stick (docs/KIOSK_SETUP.md)." }
+        10 { "NeoPrint could not be installed: the package is incomplete, could not be downloaded, or did not pass its signature check - check the network, or prepare the stick again (docs/KIOSK_SETUP.md)." }
+        11 { "the agent service could not be set up: see 'Get-Service NeoPrintAgent'." }
+        12 { "the firewall could not be set up: its defaults from before were put back; see 'Get-NetFirewallProfile'." }
+        13 { "Shell Launcher or Keyboard Filter could not be configured: restart, then run the script again." }
+        default { "see the lines above." }
     }
 }
 
@@ -131,6 +180,16 @@ function Set-RegistryValue {
         [Parameter(Mandatory)] $Value,
         [string] $Type = "DWord"
     )
+
+    # What was there, to be put back if a step of this run fails.
+    $before = if (Test-Path $Path) { Get-ItemProperty -Path $Path -Name $Name -ErrorAction SilentlyContinue } else { $null }
+    $script:RegistryUndo.Add([pscustomobject]@{
+        Path    = $Path
+        Name    = $Name
+        Existed = $null -ne $before
+        Value   = if ($null -ne $before) { $before.$Name } else { $null }
+        Kind    = if ($null -ne $before) { (Get-Item -Path $Path).GetValueKind($Name).ToString() } else { $null }
+    })
 
     if (-not (Test-Path $Path)) {
         New-Item -Path $Path -Force | Out-Null
@@ -290,14 +349,18 @@ New-Item -ItemType Directory -Path $DataRoot -Force | Out-Null
 
 Write-Log "NeoPrint kiosk provisioning $ProvisioningVersion starting (channel: $Channel)"
 
+try {
+
+Set-Step 1 "Windows edition"
 Assert-SupportedEdition
 
 # --- Features --------------------------------------------------------------
+Set-Step 2 "Windows features"
 Enable-Feature "Client-EmbeddedShellLauncher"
 Enable-Feature "Client-KeyboardFilter"
 
 # --- Directories -----------------------------------------------------------
-Write-Log "creating directories"
+Set-Step 3 "directories"
 
 foreach ($directory in @("device", "spool", "state", "logs", "updates", "agent")) {
     New-Item -ItemType Directory -Path (Join-Path $DataRoot $directory) -Force | Out-Null
@@ -311,7 +374,7 @@ foreach ($component in @("app", "agent", "provisioning")) {
 }
 
 # --- Kiosk account and automatic sign-in -----------------------------------
-Write-Log "creating the kiosk account and its automatic sign-in"
+Set-Step 4 "kiosk account and automatic sign-in"
 
 # A random password nobody needs to know, renewed on every run: the account
 # signs in automatically, and the password lives only as an LSA secret.
@@ -346,6 +409,7 @@ Set-RegistryValue $winlogon "DefaultDomainName" $env:COMPUTERNAME "String"
 Remove-ItemProperty -Path $winlogon -Name "DefaultPassword" -ErrorAction SilentlyContinue
 
 # --- Data directory access -------------------------------------------------
+Set-Step 5 "data folder access"
 #
 # The spool holds customer documents and the device folder the kiosk's
 # identity: SYSTEM and the kiosk account only (plan section 7.12).
@@ -354,6 +418,7 @@ Write-Log "restricting access to the data directory to SYSTEM and the kiosk acco
 & icacls $DataRoot /remove:g "Administrators" "Users" "Authenticated Users" /T /C /Q | Out-Null
 
 # --- Enrollment token ------------------------------------------------------
+Set-Step 6 "enrollment token"
 if ($EnrollmentToken) {
     Write-Log "writing the enrollment token for zero-touch activation"
 
@@ -363,6 +428,7 @@ if ($EnrollmentToken) {
 }
 
 # --- Notifications ---------------------------------------------------------
+Set-Step 7 "screen lockdown"
 #
 # Everything that could put something on the screen in front of a customer.
 # Defender protection stays on; only its notifications are hidden.
@@ -426,6 +492,7 @@ Set-RegistryValue "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Control Panel\Deskt
 & powercfg /hibernate off | Out-Null
 
 # --- Windows Update --------------------------------------------------------
+Set-Step 8 "updates, printing and time"
 #
 # Updates install, but the reboot is the agent's decision: it waits for the
 # update window and an empty queue (plan section 7.12). No update prompts.
@@ -449,6 +516,7 @@ Write-Log "setting the time zone to Azerbaijan Standard Time"
 & w32tm /resync | Out-Null
 
 # --- Converters (LibreOffice, Ghostscript) ---------------------------------
+Set-Step 9 "converters"
 if ($DependenciesPath) {
     Write-Log "installing the converters from $DependenciesPath"
 
@@ -484,6 +552,7 @@ if ($DependenciesPath) {
 }
 
 # --- NeoPrint --------------------------------------------------------------
+Set-Step 10 "NeoPrint"
 #
 # The UI (app) and the agent, each in <component>\versions\<version> with a
 # "current" junction; the data directory is outside them, so an update never
@@ -507,7 +576,56 @@ function Install-Version([string]$Component, [string]$Version, [string]$Source) 
     Write-Log "NeoPrint $Component $Version is current"
 }
 
-if ($OfflinePackage) {
+# The newest published release of a component, checked on the stick (T-327).
+function Get-LatestRelease([string] $Component) {
+    $work = Join-Path $env:TEMP ("neoprint-download-$Component-" + [Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $work -Force | Out-Null
+
+    Write-Log "asking $ApiUrl for the newest $Component for win-x64 ($Channel)"
+    $meta = Invoke-RestMethod -Uri "$ApiUrl/api/releases/latest/$Component/win-x64?channel=$Channel" -TimeoutSec 30
+    $base = $meta.packagePath.Substring(0, $meta.packagePath.Length - "/package".Length)
+
+    Invoke-WebRequest -Uri "$ApiUrl/$base/manifest" -OutFile (Join-Path $work "manifest.json") -UseBasicParsing -TimeoutSec 30
+    Invoke-WebRequest -Uri "$ApiUrl/$base/signature" -OutFile (Join-Path $work "manifest.json.sig") -UseBasicParsing -TimeoutSec 30
+    Invoke-WebRequest -Uri "$ApiUrl/$base/package" -OutFile (Join-Path $work "package.zip") -UseBasicParsing -TimeoutSec 1800
+
+    $checker = if ($Verifier) { $Verifier } else { Join-Path $PSScriptRoot "..\verifier\NeoPrint.Kiosk.Agent.exe" }
+    if (-not (Test-Path $checker)) {
+        throw "The checker is not on the stick: $checker"
+    }
+
+    $checked = & $checker verify-package (Join-Path $work "package.zip") (Join-Path $work "manifest.json") (Join-Path $work "manifest.json.sig") $Component
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Component $($meta.version) did NOT pass the signature check; nothing of it is installed"
+    }
+    if ("$checked".Trim() -ne $meta.version) {
+        throw "The signed version ($checked) is not the one the backend named ($($meta.version)); nothing of it is installed"
+    }
+    Write-Log "$Component $($meta.version): signature checked with the keys on the stick"
+
+    Expand-Archive -Path (Join-Path $work "package.zip") -DestinationPath (Join-Path $work "files") -Force
+    return [pscustomobject]@{ Version = $meta.version; Folder = (Join-Path $work "files"); Work = $work }
+}
+
+if ($Download) {
+    if ($OfflinePackage) { throw "-Download and -OfflinePackage are two ways to get NeoPrint: choose one" }
+    if (-not $ApiUrl) { throw "-Download needs -ApiUrl: the backend it downloads from" }
+
+    $app = Get-LatestRelease "app"
+    $agent = Get-LatestRelease "agent"
+    try {
+        if (Get-Service -Name $AgentName -ErrorAction SilentlyContinue) {
+            Stop-Service -Name $AgentName -Force -ErrorAction SilentlyContinue
+        }
+
+        Install-Version "app" $app.Version $app.Folder
+        Install-Version "agent" $agent.Version $agent.Folder
+    }
+    finally {
+        Remove-Item -Path $app.Work, $agent.Work -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+elseif ($OfflinePackage) {
     Write-Log "installing NeoPrint from $OfflinePackage"
 
     $staging = Join-Path $env:TEMP ("neoprint-" + [Guid]::NewGuid().ToString("N"))
@@ -552,6 +670,7 @@ if ($ApiUrl) {
 }
 
 # --- The agent service -----------------------------------------------------
+Set-Step 11 "agent service"
 if (Test-Path $AgentPath) {
     Write-Log "installing the agent service"
 
@@ -573,7 +692,9 @@ if (Test-Path $AgentPath) {
 # Nothing reaches a kiosk from outside. Out: DNS, time, the backend and
 # updates (HTTP/HTTPS), and the printers on the local network (IPP, raw, LPD,
 # SNMP, mDNS). The document converters: nothing at all (docs/TASKS.md T-075).
-Write-Log "configuring the firewall"
+Set-Step 12 "firewall"
+$script:FirewallBefore = Get-NetFirewallProfile -Profile Domain, Private, Public |
+    Select-Object Name, Enabled, DefaultInboundAction, DefaultOutboundAction
 
 Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -DefaultInboundAction Block -DefaultOutboundAction Block
 
@@ -619,6 +740,7 @@ foreach ($converter in $converters) {
 Write-Log ("  {0} converter program(s) cut off from the network" -f $converters.Count)
 
 # --- Shell Launcher v2 and Keyboard Filter ---------------------------------
+Set-Step 13 "Shell Launcher and Keyboard Filter"
 if ($script:RestartNeeded) {
     Write-Log "NOTE: Shell Launcher and Keyboard Filter were just enabled; RESTART and run this script again to configure them"
 }
@@ -714,3 +836,41 @@ else {
 }
 
 Write-Log "log written to $LogFile"
+
+}
+catch {
+    Write-Log "ERROR: step $($script:Step)/$($script:Steps) ($($script:StepName)) failed: $($_.Exception.Message)"
+    Write-Log "what to do: $(Get-StepHint $script:Step)"
+
+    # Back as they were: the registry values this run had changed, newest first.
+    for ($i = $script:RegistryUndo.Count - 1; $i -ge 0; $i--) {
+        $undo = $script:RegistryUndo[$i]
+        try {
+            if ($undo.Existed) {
+                New-ItemProperty -Path $undo.Path -Name $undo.Name -Value $undo.Value -PropertyType $undo.Kind -Force | Out-Null
+            }
+            else {
+                Remove-ItemProperty -Path $undo.Path -Name $undo.Name -ErrorAction SilentlyContinue
+            }
+        }
+        catch {
+            Write-Log "  could not put back $($undo.Path)\$($undo.Name): $($_.Exception.Message)"
+        }
+    }
+    if ($script:RegistryUndo.Count -gt 0) {
+        Write-Log "put back as they were: $($script:RegistryUndo.Count) registry value(s)"
+    }
+
+    if ($script:Step -eq 12 -and $script:FirewallBefore) {
+        foreach ($saved in $script:FirewallBefore) {
+            Set-NetFirewallProfile -Profile $saved.Name -Enabled $saved.Enabled `
+                -DefaultInboundAction $saved.DefaultInboundAction -DefaultOutboundAction $saved.DefaultOutboundAction -ErrorAction SilentlyContinue
+        }
+        Write-Log "the firewall's defaults are as they were"
+    }
+
+    Write-Log "nothing else needs undoing: every step can run again - remove the cause and run this script once more"
+    Write-Log "log written to $LogFile"
+    exit 1
+}
+

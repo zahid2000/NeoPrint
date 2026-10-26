@@ -6,17 +6,34 @@ bəndi və səbəbi (plan 7.12). Skriptlər **idempotentdir**: təkrar işə sal
 yalnız fərqləri düzəldir, ona görə uzaqdan `ReapplyProvisioning` (Addım 7)
 təhlükəsizdir. Quraşdırma addımları: `docs/KIOSK_SETUP.md`.
 
-Hər iki skript: parametrlər `ApiUrl`, `EnrollmentToken` (istəyə görə, tək
-istifadəlik), `Channel` (`pilot`/`stable`), `OfflinePackage`; log —
-`C:\ProgramData\NeoPrint\provision.log` / `/var/log/neoprint/provision.log`;
-sonda `state/provisioning-version`. İmzalı paketin backend-dən endirilməsi —
-yeniləmə sistemi ilə (Addım 7).
+Hər iki skript: parametrlər `ApiUrl`, `EnrollmentToken` (istəyə görə), `Channel` (`pilot`/`stable`),
+`OfflinePackage` **və ya** `Download` (T-327); log — `C:\ProgramData\NeoPrint\provision.log` /
+`/var/log/neoprint/provision.log`; sonda `state/provisioning-version` (**0.5.0**).
+
+**Addımlar və xəta (T-327):** hər skript 13 addımdır və hər addımın adını yazır (`step N/13: ...`). Addım uğursuz
+olanda: `ERROR: step N/13 (ad) failed`, `what to do: ...` (addıma görə; Azərbaycanca cədvəl — `docs/KIOSK_SETUP.md`
+§6) və **bu qaçışda dəyişdirilən sistem ayarları əvvəlki kimi qaytarılır** — Linux-da dəyişdirilən hər fayl
+(`/etc/sudoers.d`, `ufw` qaydaları, systemd unit-ləri, `logind`, `sysctl`, `grub`, `apt`, `udisks2`, polkit)
+dəyişməzdən əvvəl kənara saxlanılır və geri yazılır, firewall addımında `ufw`-nin əvvəlki vəziyyəti; Windows-da
+yazılan hər registr dəyəri (əvvəlki dəyər və növü ilə) və firewall profillərinin əvvəlki defoltları. Paketlər, hesablar
+və qovluqlar qalır — onlar zərərsizdir və növbəti qaçış onları eynilə istifadə edir. `sudoers` faylı kənarda yazılır,
+`visudo -c` ilə yoxlanır və yalnız sonra yerinə qoyulur (pozuq fayl sudo-nu bağlamasın).
+
+**`Download` (T-327):** `OfflinePackage` əvəzinə ən son **dərc olunmuş production** UI və Agent `GET
+api/releases/latest/{component}/{platform}`-dən endirilir (`docs/API.md`); hər paketin imzası flaşdakı `verifier`
+(production açarlı Agent, `NeoPrint.Kiosk.Agent verify-package`) ilə yoxlanır — keçməyən paket quraşdırılmır, imzalı
+versiya backend-in dediyi versiya deyilsə də. Skript internetdən endirilib işlədilmir: flaşdan gəlir
+(`docs/KIOSK_SETUP.md` §2).
+
+**Nüsxə yoxlaması (Windows, T-329):** `edition.ps1` — `EditionID` (ProductName yox: Windows 11 orada "Windows 10"
+yazır) + build (≥ 17763, Shell Launcher v2) + komponentlərin mövcudluğu; Pro / Home aydın səbəb və tövsiyə ilə rədd
+edilir. Cihaz gələndə yalnız-oxu yoxlaması: `check-windows.ps1`. Testi: `tests/edition.tests.ps1` (CI-da).
 
 ## Windows (`provision.ps1`, administrator kimi)
 
 | Sahə | Dəyişiklik | Niyə |
 |---|---|---|
-| Edition | IoT Enterprise / Enterprise deyilsə dayanır | Shell Launcher və Keyboard Filter yalnız bunlarda var |
+| Edition | Enterprise / Education / IoT Enterprise (LTSC daxil), build ≥ 17763 deyilsə və ya komponentlər tapılmırsa dayanır; Pro üçün səbəb və tövsiyə (LTSC 2021; Assigned Access ehtiyat variantı — qərar layihə sahibinin) | Shell Launcher və Keyboard Filter yalnız bunlarda var |
 | Komponentlər | `Client-EmbeddedShellLauncher`, `Client-KeyboardFilter` yandırılır; ilk dəfə restart tələb olunur, sonra skript təkrar işə salınır | Kiosk rejiminin OS qatı |
 | Hesab | Lokal `kiosk` (yalnız `Users`, heç vaxt `Administrators`), təsadüfi parol hər qaçışda yenilənir | UI-ın minimal hüquqlu hesabı |
 | Avtomatik giriş | `Winlogon`: `AutoAdminLogon=1`, `DefaultUserName=kiosk`; parol **LSA secret** (`DefaultPassword`), registry-də açıq mətn yoxdur | Plan 7.12 |
@@ -54,10 +71,21 @@ yeniləmə sistemi ilə (Addım 7).
 
 ## Golden image
 
+**İlk açılış və açar (T-327):** Linux-da `neoprint-firstboot` (`neoprint-firstboot.service`, hər açılışda, agent-dən
+əvvəl) `machine-id` boşdursa yaradır, SSH host açarları yoxdursa `ssh-keygen -A`; kimliyi olan maşında heç nə etmir.
+Klona qeydiyyat açarı: Linux — `sudo neoprint-enroll` (soruşur, görünmür; və ya `--from-file`), Windows —
+`enroll.ps1` (soruşur); açar heç vaxt əmr arqumenti deyil (shell tarixçəsi). UI aktivləşəndən sonra açar faylını silir.
+Bir açar bir neçə klon üçün: panel → "Neçə kiosk" (T-327).
+
+**`--check` / `-Check`:** heç nə dəyişmədən nəyin qaldığını deyir. Yoxlananlar (Linux): cihaz və spool açarları,
+qeydiyyat açarı, `machine-id`, D-Bus `machine-id`, SSH host açarları, shell tarixçəsi, loglar, spool faylları,
+netplan / NetworkManager-də **Wi-Fi parolu**; Windows: CNG açarları, `device\` faylları, loglar, **saxlanmış Wi-Fi
+profilləri** (fayldan, ekran dilindən asılı olmayaraq).
+
 `prepare-image.ps1` / `prepare-image.sh` cihaz kimliyini silir: cihaz açarı
 (Windows — CNG konteyneri `NeoPrint.Device`, Linux — `key.pem`), **spool
 açarı** (Windows — `NeoPrint.Spool` + `spool.key.wrapped`, Linux —
 `spool.key`), enrollment token, keş, spool (iş qovluğunun özü icazələri ilə
-qalır), loglar; Linux-da `machine-id` və SSH açarları, Windows-da
-`sysprep /generalize`. `provisioning-version` saxlanılır. Sonda nəticə
+qalır), loglar və jurnal, yeniləmə qovluqlarının məzmunu; Linux-da `machine-id`, SSH açarları,
+shell tarixçəsi və `cloud-init` qeydi, Windows-da `sysprep /generalize`. `provisioning-version` saxlanılır. Sonda nəticə
 yoxlanılır — nəsə qalıbsa image çıxarılmamalıdır.

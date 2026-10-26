@@ -36,7 +36,8 @@ public sealed partial class PowerPermissionTests
     private static List<string> SudoersRules()
     {
         var script = File.ReadAllText(Path.Combine(Desktop, "provisioning", "linux", "provision.sh"));
-        var start = script.IndexOf("cat >/etc/sudoers.d/neoprint <<CONF", StringComparison.Ordinal);
+        // Written beside the file, checked with visudo, then installed (T-327).
+        var start = script.IndexOf("cat >\"$sudoers_new\" <<CONF", StringComparison.Ordinal);
         var end = script.IndexOf("\nCONF", start, StringComparison.Ordinal);
 
         start.Should().BeGreaterThan(0, "the sudoers rules are written by provision.sh");

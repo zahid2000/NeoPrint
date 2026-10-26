@@ -11,7 +11,11 @@
 # makes the remote ReapplyProvisioning command safe.
 #
 #   sudo ./provision.sh [--api-url URL] [--enrollment-token TOKEN]
-#                       [--channel pilot|stable] [--offline-package PATH]
+#                       [--channel pilot|stable] [--offline-package PATH | --download]
+#   --download: the newest published UI and agent from the backend
+#               (GET api/releases/latest), each checked by the agent on the
+#               setup stick (--verifier, default ../verifier/NeoPrint.Kiosk.Agent)
+#               with the release keys built into it before anything is installed
 #   sudo ./provision.sh --repair      # the agent's ReapplyProvisioning / a new
 #                                     # provisioning version: everything but
 #                                     # installing NeoPrint itself
@@ -22,15 +26,22 @@
 # from the backend after activation (plan section 7.11).
 #
 # Every change this script makes is listed in docs/KIOSK_PROVISIONING.md.
+#
+# A step that fails says which step it was and what to do (docs/KIOSK_SETUP.md
+# has the same steps in Azerbaijani); the system files it had changed in this
+# run are put back as they were, and since every step can run again, the cure
+# is to remove the cause and start the script once more (T-327).
 # ---------------------------------------------------------------------------
-set -euo pipefail
+set -Eeuo pipefail
 
-PROVISIONING_VERSION="0.4.1"
+PROVISIONING_VERSION="0.5.0"
 
 API_URL=""
 ENROLLMENT_TOKEN=""
 CHANNEL="stable"
 OFFLINE_PACKAGE=""
+DOWNLOAD=0
+VERIFIER=""
 REPAIR=0
 DRY_RUN=0
 
@@ -57,6 +68,8 @@ while [ $# -gt 0 ]; do
         --enrollment-token)  ENROLLMENT_TOKEN="${2:?--enrollment-token needs a value}"; shift 2 ;;
         --channel)           CHANNEL="${2:?--channel needs a value}"; shift 2 ;;
         --offline-package)   OFFLINE_PACKAGE="${2:?--offline-package needs a value}"; shift 2 ;;
+        --download)          DOWNLOAD=1; shift ;;
+        --verifier)          VERIFIER="${2:?--verifier needs a value}"; shift 2 ;;
         --repair)            REPAIR=1; shift ;;
         --dry-run)           DRY_RUN=1; shift ;;
         -h|--help)
@@ -74,11 +87,21 @@ case "$CHANNEL" in
 esac
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
+VERIFIER="${VERIFIER:-$script_dir/../verifier/NeoPrint.Kiosk.Agent}"
+
+if [ "$DOWNLOAD" -eq 1 ] && [ -n "$OFFLINE_PACKAGE" ]; then
+    echo "--download and --offline-package are two ways to get NeoPrint: choose one" >&2
+    exit 2
+fi
+if [ "$DOWNLOAD" -eq 1 ] && [ -z "$API_URL" ]; then
+    echo "--download needs --api-url: the backend it downloads from" >&2
+    exit 2
+fi
 
 # --dry-run (the container kiosk's ReapplyProvisioning, T-321): the scripts are
 # all here and readable, and nothing on the machine is changed.
 if [ "$DRY_RUN" -eq 1 ]; then
-    for file in systemd/neoprint-agent.service systemd/neoprint-kiosk.service neoprint-agent-guard neoprint-reprovision neoprint-convert; do
+    for file in systemd/neoprint-agent.service systemd/neoprint-kiosk.service systemd/neoprint-firstboot.service neoprint-agent-guard neoprint-reprovision neoprint-convert neoprint-firstboot neoprint-enroll prepare-image.sh; do
         [ -r "$script_dir/$file" ] || { echo "[provision dry-run] missing: $file" >&2; exit 1; }
     done
     echo "[provision dry-run] NeoPrint kiosk provisioning $PROVISIONING_VERSION (repair: $REPAIR): every script is in place; nothing was changed"
@@ -95,6 +118,87 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 
 log() { printf '[provision %s] %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
+# ---------------------------------------------------------------------------
+# Steps, and what to do when one fails
+# ---------------------------------------------------------------------------
+STEPS=13
+STEP=0
+STEP_NAME="starting"
+BACKUP_DIR="$(mktemp -d /var/tmp/neoprint-provision.XXXXXX)"
+KEPT=()
+UFW_WAS_ACTIVE=0
+if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+    UFW_WAS_ACTIVE=1
+fi
+
+step() { # number name
+    STEP="$1"
+    STEP_NAME="$2"
+    log "step $STEP/$STEPS: $STEP_NAME"
+}
+
+# A system file this run is about to change: kept, to be put back if a step fails.
+keep() {
+    local file="$1"
+    local copy
+    copy="$BACKUP_DIR/$(printf '%s' "$file" | tr '/' '_')"
+    [ -e "$copy" ] || [ -e "$copy.absent" ] && return 0
+    if [ -e "$file" ]; then
+        cp -a "$file" "$copy"
+    else
+        : >"$copy.absent"
+    fi
+    KEPT+=("$file")
+}
+
+# Whatever to do, said for each step (the same as docs/KIOSK_SETUP.md, "Quraşdırma xətaları").
+hint() {
+    case "$1" in
+        1)  echo "the packages could not be installed: check the network cable or Wi-Fi and the date and time, then run 'sudo apt-get update' to see what the package server says." ;;
+        2)  echo "an account could not be made: the line above names it; another user with that name is the usual cause." ;;
+        3)  echo "a folder could not be made: the disk may be full or read-only - see 'df -h'." ;;
+        4)  echo "the enrollment token could not be written: the disk may be full; the kiosk can also be given it later with 'sudo neoprint-enroll'." ;;
+        5|6) echo "a system file could not be written: the line above names it." ;;
+        7|8) echo "a file is missing from the setup stick: copy the whole provisioning folder onto the stick again." ;;
+        9)  echo "the sudo rules did not pass their check and were not installed: send the lines above to the NeoPrint team." ;;
+        10) echo "the firewall could not be set up: the rules from before were put back; see 'sudo ufw status verbose'." ;;
+        11) echo "the time zone could not be set: the kiosk works; set it later with 'sudo timedatectl set-timezone Asia/Baku'." ;;
+        12) echo "NeoPrint could not be installed: the package is incomplete, could not be downloaded, or did not pass its signature check - check the network, or prepare the stick again (docs/KIOSK_SETUP.md)." ;;
+        13) echo "the services could not be set up: see 'systemctl status neoprint-agent neoprint-kiosk'." ;;
+        *)  echo "see the lines above." ;;
+    esac
+}
+
+on_error() {
+    local code=$?
+    trap - ERR
+    log "ERROR: step $STEP/$STEPS ($STEP_NAME) failed (exit code $code)"
+    log "what to do: $(hint "$STEP")"
+
+    # Back as they were: the system files this run had changed.
+    local file copy
+    for file in "${KEPT[@]}"; do
+        copy="$BACKUP_DIR/$(printf '%s' "$file" | tr '/' '_')"
+        if [ -e "$copy.absent" ]; then
+            rm -f "$file"
+        elif [ -e "$copy" ]; then
+            cp -a "$copy" "$file"
+        fi
+    done
+    if [ "${#KEPT[@]}" -gt 0 ]; then
+        log "put back as they were: ${KEPT[*]}"
+        systemctl daemon-reload >/dev/null 2>&1 || true
+    fi
+    if [ "$STEP" -eq 10 ] && command -v ufw >/dev/null 2>&1; then
+        if [ "$UFW_WAS_ACTIVE" -eq 1 ]; then ufw --force enable >/dev/null 2>&1 || true; else ufw --force disable >/dev/null 2>&1 || true; fi
+    fi
+    log "nothing else needs undoing: every step can run again - remove the cause and run this script once more"
+    log "log written to $LOG_FILE"
+    exit "$code"
+}
+trap on_error ERR
+trap 'rm -rf "$BACKUP_DIR"' EXIT
+
 log "NeoPrint kiosk provisioning $PROVISIONING_VERSION starting (channel: $CHANNEL, repair: $REPAIR)"
 
 # ---------------------------------------------------------------------------
@@ -103,7 +207,7 @@ log "NeoPrint kiosk provisioning $PROVISIONING_VERSION starting (channel: $CHANN
 # No desktop environment and no notification daemon: nothing must be able to
 # put a window on the screen except the kiosk itself.
 # ---------------------------------------------------------------------------
-log "installing packages"
+step 1 "packages"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -136,7 +240,7 @@ cupsctl --no-share-printers >/dev/null 2>&1 || true
 # things, the UI as little as possible, and the converters none at all - not
 # even the network (docs/TASKS.md T-075).
 # ---------------------------------------------------------------------------
-log "creating accounts"
+step 2 "accounts"
 
 if ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
     useradd --system --create-home --shell /usr/sbin/nologin "$SERVICE_USER"
@@ -165,7 +269,7 @@ usermod -aG "$CONVERT_USER" "$KIOSK_USER" || true
 # account may only pass through the spool into the work folder, where the
 # UI puts one document at a time (docs/TASKS.md T-078, T-075).
 # ---------------------------------------------------------------------------
-log "creating directories"
+step 3 "directories"
 
 # 751: the converter account must pass through to spool/work; it can list
 # nothing, and device (700) and state (750) stay closed to it.
@@ -201,6 +305,7 @@ chmod -R go-rwx "$DATA_ROOT/device"
 # Optional, single use, and read by the UI, which does the enrollment
 # (plan section 7.11).
 # ---------------------------------------------------------------------------
+step 4 "enrollment token"
 if [ -n "$ENROLLMENT_TOKEN" ] && [ "$REPAIR" -eq 0 ]; then
     log "writing the enrollment token for zero-touch activation"
     printf '%s' "$ENROLLMENT_TOKEN" >"$DATA_ROOT/device/enrollment-token"
@@ -214,8 +319,11 @@ fi
 # No virtual terminals to switch to, no reboot from the keyboard, no SysRq and
 # no kernel messages on the screen the customer is looking at.
 # ---------------------------------------------------------------------------
-log "locking down the console"
+step 5 "console lockdown"
 
+keep /etc/systemd/logind.conf.d/neoprint-kiosk.conf
+keep /etc/sysctl.d/99-neoprint-kiosk.conf
+keep /etc/default/grub
 install -d -m 755 /etc/systemd/logind.conf.d
 install -m 644 "$script_dir/logind.conf.d/neoprint-kiosk.conf" /etc/systemd/logind.conf.d/neoprint-kiosk.conf
 
@@ -243,7 +351,9 @@ fi
 # Security updates yes, automatic reboots no: the agent reboots inside the
 # update window when the queue is empty (plan section 7.12).
 # ---------------------------------------------------------------------------
-log "configuring unattended upgrades"
+step 6 "automatic updates"
+keep /etc/apt/apt.conf.d/52neoprint-kiosk
+keep /etc/apt/apt.conf.d/20auto-upgrades
 
 cat >/etc/apt/apt.conf.d/52neoprint-kiosk <<'CONF'
 // NeoPrint kiosk (plan section 7.12): security updates only, and never an
@@ -271,7 +381,9 @@ systemctl disable --now apport.service >/dev/null 2>&1 || true
 # without a desktop); only the kiosk account may, and never with exec rights:
 # the kiosk reads documents off it, it never runs anything from it.
 # ---------------------------------------------------------------------------
-log "installing the udisks2 polkit rule"
+step 7 "removable media"
+keep /etc/polkit-1/rules.d/50-neoprint-udisks.rules
+keep /etc/udisks2/mount_options.conf
 
 install -d -m 755 /etc/polkit-1/rules.d
 install -m 644 "$script_dir/polkit/50-neoprint-udisks.rules" /etc/polkit-1/rules.d/50-neoprint-udisks.rules
@@ -290,7 +402,7 @@ CONF
 # timeout and resource limits. The firewall (section 10) rejects every packet
 # of that account.
 # ---------------------------------------------------------------------------
-log "installing the converter sandbox"
+step 8 "converter sandbox"
 
 install -o root -g root -m 755 "$script_dir/neoprint-convert" "$LIB_ROOT/neoprint-convert"
 
@@ -299,9 +411,12 @@ install -o root -g root -m 755 "$script_dir/neoprint-convert" "$LIB_ROOT/neoprin
 #
 # Exactly the commands each account needs, and nothing else.
 # ---------------------------------------------------------------------------
-log "installing the sudoers rules"
+step 9 "sudo rules"
 
-cat >/etc/sudoers.d/neoprint <<CONF
+# Written beside, checked, and only then put in place: a broken sudoers file
+# would lock every account out of sudo.
+sudoers_new="$BACKUP_DIR/sudoers.neoprint"
+cat >"$sudoers_new" <<CONF
 # NeoPrint (plan section 7.12): only these commands, no password.
 
 # The agent.
@@ -322,8 +437,9 @@ $KIOSK_USER ALL=(root) NOPASSWD: /usr/bin/systemctl start neoprint-maintenance.s
 $KIOSK_USER ALL=(root) NOPASSWD: /usr/bin/systemctl reboot
 $KIOSK_USER ALL=($CONVERT_USER) NOPASSWD: $LIB_ROOT/neoprint-convert
 CONF
-chmod 440 /etc/sudoers.d/neoprint
-visudo -c -f /etc/sudoers.d/neoprint >/dev/null
+visudo -c -f "$sudoers_new" >/dev/null
+keep /etc/sudoers.d/neoprint
+install -o root -g root -m 440 "$sudoers_new" /etc/sudoers.d/neoprint
 
 # ---------------------------------------------------------------------------
 # 10. Firewall
@@ -332,7 +448,9 @@ visudo -c -f /etc/sudoers.d/neoprint >/dev/null
 # updates (HTTP/HTTPS), and the printers on the local network (IPP, raw,
 # LPD, SNMP, mDNS). The converter account: nothing at all, loopback included.
 # ---------------------------------------------------------------------------
-log "configuring the firewall"
+step 10 "firewall"
+keep /etc/ufw/before.rules
+keep /etc/ufw/before6.rules
 
 ufw --force reset >/dev/null
 ufw default deny incoming >/dev/null
@@ -374,7 +492,7 @@ ufw --force enable >/dev/null
 # ---------------------------------------------------------------------------
 # 11. Time
 # ---------------------------------------------------------------------------
-log "setting the time zone to Asia/Baku"
+step 11 "time"
 timedatectl set-timezone Asia/Baku || ln -sf /usr/share/zoneinfo/Asia/Baku /etc/localtime
 systemctl enable --now chrony >/dev/null 2>&1 || true
 
@@ -390,6 +508,8 @@ systemctl enable --now chrony >/dev/null 2>&1 || true
 #   --offline-package DIR   DIR/app and DIR/agent are the published UI and agent,
 #                           DIR/VERSION their version.
 # ---------------------------------------------------------------------------
+step 12 "NeoPrint"
+
 switch_current() { # component version
     ln -sfn "versions/$2" "$INSTALL_ROOT/$1/current.next"
     mv -Tf "$INSTALL_ROOT/$1/current.next" "$INSTALL_ROOT/$1/current"
@@ -413,7 +533,65 @@ install_version() { # component version source-dir
     log "NeoPrint $1 $2 is current"
 }
 
-if [ "$REPAIR" -eq 0 ] && [ -n "$OFFLINE_PACKAGE" ]; then
+# The newest published release of a component, from the backend - which is
+# not trusted for it: the agent on the stick checks the signature with the
+# keys built into it, and nothing that fails is installed (T-327).
+download_release() { # component; sets DOWNLOADED_DIR and DOWNLOADED_VERSION
+    local component="$1" work meta version path base verifier checked
+    work="$BACKUP_DIR/download-$component"
+    mkdir -p "$work/files"
+
+    log "asking $API_URL for the newest $component for linux-x64 ($CHANNEL)"
+    meta="$(curl -fsS --max-time 30 "$API_URL/api/releases/latest/$component/linux-x64?channel=$CHANNEL")" || {
+        log "the backend has no published $component for linux-x64, or cannot be reached"
+        return 1
+    }
+    version="$(printf '%s' "$meta" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p')"
+    path="$(printf '%s' "$meta" | sed -n 's/.*"packagePath":"\([^"]*\)".*/\1/p')"
+    base="${path%/package}"
+    if [ -z "$version" ] || [ -z "$path" ]; then
+        log "the backend's answer about $component was not understood"
+        return 1
+    fi
+
+    curl -fsS --max-time 30 -o "$work/manifest.json" "$API_URL/$base/manifest"
+    curl -fsS --max-time 30 -o "$work/manifest.json.sig" "$API_URL/$base/signature"
+    curl -fS --max-time 1800 --retry 3 -o "$work/package.tar.gz" "$API_URL/$base/package"
+
+    # A stick may carry no execute bits (FAT): the checker runs from a copy.
+    if [ ! -f "$VERIFIER" ]; then
+        log "the checker is not on the stick: $VERIFIER"
+        return 1
+    fi
+    verifier="$BACKUP_DIR/verifier"
+    if [ ! -d "$verifier" ]; then
+        cp -a "$(dirname "$VERIFIER")" "$verifier"
+        chmod +x "$verifier/$(basename "$VERIFIER")"
+    fi
+    if ! checked="$("$verifier/$(basename "$VERIFIER")" verify-package "$work/package.tar.gz" "$work/manifest.json" "$work/manifest.json.sig" "$component")"; then
+        log "$component $version did NOT pass the signature check; nothing of it is installed"
+        return 1
+    fi
+    if [ "$checked" != "$version" ]; then
+        log "the signed version ($checked) is not the one the backend named ($version); nothing of it is installed"
+        return 1
+    fi
+    log "$component $version: signature checked with the keys on the stick"
+
+    tar -xzf "$work/package.tar.gz" -C "$work/files"
+    DOWNLOADED_DIR="$work/files"
+    DOWNLOADED_VERSION="$version"
+}
+
+if [ "$REPAIR" -eq 0 ] && [ "$DOWNLOAD" -eq 1 ]; then
+    download_release app
+    app_dir="$DOWNLOADED_DIR"
+    app_version="$DOWNLOADED_VERSION"
+    download_release agent
+    install_version app "$app_version" "$app_dir"
+    install_version agent "$DOWNLOADED_VERSION" "$DOWNLOADED_DIR"
+    chmod 755 "$INSTALL_ROOT/app/current/NeoPrint.Kiosk" "$INSTALL_ROOT/agent/current/NeoPrint.Kiosk.Agent"
+elif [ "$REPAIR" -eq 0 ] && [ -n "$OFFLINE_PACKAGE" ]; then
     log "installing NeoPrint from $OFFLINE_PACKAGE"
 
     if [ ! -f "$OFFLINE_PACKAGE/app/NeoPrint.Kiosk" ] || [ ! -f "$OFFLINE_PACKAGE/agent/NeoPrint.Kiosk.Agent" ]; then
@@ -452,9 +630,16 @@ if [ "$REPAIR" -eq 0 ] && [ -x "$INSTALL_ROOT/agent/current/NeoPrint.Kiosk.Agent
     mv "$LIB_ROOT/agent.new" "$LIB_ROOT/agent"
 fi
 
-log "installing the systemd units"
+step 13 "services"
 
-for unit in neoprint-agent.service neoprint-kiosk.service neoprint-maintenance.service; do
+# A golden image's clone makes its own identity on its first boot, and is
+# given its enrollment token afterwards (T-327).
+install -o root -g root -m 755 "$script_dir/neoprint-firstboot" "$LIB_ROOT/neoprint-firstboot"
+install -o root -g root -m 755 "$script_dir/neoprint-enroll" "$LIB_ROOT/neoprint-enroll"
+ln -sfn "$LIB_ROOT/neoprint-enroll" /usr/local/sbin/neoprint-enroll
+
+for unit in neoprint-agent.service neoprint-kiosk.service neoprint-maintenance.service neoprint-firstboot.service; do
+    keep "/etc/systemd/system/$unit"
     install -m 644 "$script_dir/systemd/$unit" "/etc/systemd/system/$unit"
 done
 
@@ -476,6 +661,7 @@ rm -f /etc/systemd/system/neoprint-kiosk.service.d/10-api-url.conf
 systemctl disable getty@tty1.service >/dev/null 2>&1 || true
 
 systemctl daemon-reload
+systemctl enable neoprint-firstboot.service >/dev/null 2>&1 || true
 systemctl enable neoprint-agent.service >/dev/null 2>&1 || true
 systemctl enable neoprint-kiosk.service >/dev/null 2>&1 || true
 
@@ -483,5 +669,6 @@ printf '%s' "$PROVISIONING_VERSION" >"$DATA_ROOT/state/provisioning-version"
 chown "$KIOSK_USER:$SERVICE_USER" "$DATA_ROOT/state/provisioning-version"
 chmod 640 "$DATA_ROOT/state/provisioning-version"
 
-log "provisioning finished; a reboot is required to enter kiosk mode"
+trap - ERR
+log "provisioning finished: $STEPS of $STEPS steps; a reboot is required to enter kiosk mode"
 log "log written to $LOG_FILE"

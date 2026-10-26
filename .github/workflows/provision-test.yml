@@ -1,0 +1,37 @@
+# The Linux kiosk provisioning script, whole, on Ubuntu 24.04 with systemd
+# (T-327): thirteen steps, a second run that changes nothing, a failing step
+# that says what to do and puts back what it changed, and a golden image whose
+# two clones have identities of their own - tools/provision-test/check.sh.
+# The --download check needs the staging release key and runs only on the
+# owner's machine (docs/DEV_ENVIRONMENT.md); the cage screen, the flash drive
+# and a reboot into kiosk mode are checked on the real device (M19b).
+name: Provisioning (Linux, container)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/provisioning/linux/**'
+      - 'tools/provision-test/**'
+      - '.github/workflows/provision-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    name: provision.sh on Ubuntu 24.04
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Run the provisioning check
+        run: bash tools/provision-test/check.sh

@@ -1,0 +1,31 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+# NeoPrint first-boot identity (T-327, docs/KIOSK_SETUP.md "Golden image")
+#
+# A kiosk copied from a golden image arrives with no machine id and no SSH
+# host keys - prepare-image.sh took them away so that no two clones share
+# them. This gives the machine its own, before the agent and the UI start.
+# The device key needs nothing here: the UI makes one on its first start when
+# there is none.
+#
+# Runs on every boot (neoprint-firstboot.service) and does nothing on a
+# machine that already has its identity.
+# ---------------------------------------------------------------------------
+set -euo pipefail
+
+log() { printf '[neoprint-firstboot] %s\n' "$*"; }
+
+if [ ! -s /etc/machine-id ]; then
+    if command -v systemd-machine-id-setup >/dev/null 2>&1; then
+        systemd-machine-id-setup >/dev/null
+    else
+        od -An -N16 -tx1 /dev/urandom | tr -d ' \n' >/etc/machine-id
+        printf '\n' >>/etc/machine-id
+    fi
+    log "made a machine id of its own"
+fi
+
+if [ -d /etc/ssh ] && ! compgen -G '/etc/ssh/ssh_host_*_key' >/dev/null; then
+    ssh-keygen -A >/dev/null
+    log "made SSH host keys of its own"
+fi

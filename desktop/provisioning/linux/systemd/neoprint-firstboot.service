@@ -1,0 +1,17 @@
+# NeoPrint first-boot identity (T-327): a clone of a golden image makes its
+# own machine id and SSH host keys before anything else of NeoPrint starts.
+# A machine that has them already is left as it is.
+
+[Unit]
+Description=NeoPrint first-boot identity
+DefaultDependencies=no
+After=local-fs.target
+Before=neoprint-agent.service neoprint-kiosk.service ssh.service sshd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/lib/neoprint/neoprint-firstboot
+
+[Install]
+WantedBy=multi-user.target
