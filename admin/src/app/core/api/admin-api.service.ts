@@ -448,8 +448,8 @@ export class AdminApiService {
     return this.http.post<EnrollmentTokenResult>('/api/admin/enrollment-tokens', body);
   }
 
-  revokeEnrollmentToken(id: string): Observable<void> {
-    return this.http.delete<void>(`/api/admin/enrollment-tokens/${id}`);
+  revokeEnrollmentToken(id: string, reason: string): Observable<void> {
+    return this.http.delete<void>(`/api/admin/enrollment-tokens/${id}`, { body: { reason } });
   }
 
   // ---------------------------------------------------------------------

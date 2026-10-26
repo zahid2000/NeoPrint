@@ -563,7 +563,7 @@ public sealed class RevokeEnrollmentTokenHandler : IRequestHandler<RevokeEnrollm
                         Before: null,
                         After: null,
                         request.Ip,
-                        Reason: null),
+                        Reason: string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim()[..Math.Min(request.Reason.Trim().Length, 500)]),
                     cancellationToken)
                 .ConfigureAwait(false);
         }

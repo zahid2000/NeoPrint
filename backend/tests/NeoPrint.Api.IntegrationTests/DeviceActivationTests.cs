@@ -513,7 +513,11 @@ public sealed class DeviceActivationTests
         var id = body.GetProperty("id").GetGuid().ToString();
         var token = body.GetProperty("token").GetString()!;
 
-        (await admin.DeleteAsync($"/api/admin/enrollment-tokens/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        // The reason the panel asks for goes to the audit log (T-327).
+        using (var revoke = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/enrollment-tokens/{id}") { Content = JsonContent.Create(new { reason = "Made for a kiosk that was cancelled" }) })
+        {
+            (await admin.SendAsync(revoke)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        }
         // Revoking twice changes nothing, and writes nothing more.
         (await admin.DeleteAsync($"/api/admin/enrollment-tokens/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -523,6 +527,7 @@ public sealed class DeviceActivationTests
 
         audits.Select(entry => entry.Action).Should().BeEquivalentTo(["devices.enrollmentToken.create", "devices.enrollmentToken.revoke"]);
         audits.Single(entry => entry.Action == "devices.enrollmentToken.create").After.Should().Contain("Audited enrollment");
+        audits.Single(entry => entry.Action == "devices.enrollmentToken.revoke").Reason.Should().Be("Made for a kiosk that was cancelled");
 
         // The token activates a kiosk on its own: it never reaches the audit log (T-165).
         audits.Should().OnlyContain(entry => !(entry.After ?? "").Contains(token) && !(entry.Before ?? "").Contains(token));

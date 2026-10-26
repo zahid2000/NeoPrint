@@ -172,7 +172,8 @@ public sealed class AdminDevicesController : ControllerBase
     /// <summary>Revokes an enrollment token that has not been used.</summary>
     [HttpDelete("/api/admin/enrollment-tokens/{id:guid}")]
     [HasPermission(Permissions.DevicesEnroll)]
-    public async Task<IActionResult> RevokeEnrollmentToken(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> RevokeEnrollmentToken(
+        Guid id, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] KioskCommandReasonRequest? request, CancellationToken cancellationToken)
     {
         var adminId = _currentUser.AdminUserId;
         if (adminId is null)
@@ -180,7 +181,7 @@ public sealed class AdminDevicesController : ControllerBase
             return Forbid();
         }
 
-        await _sender.Send(new RevokeEnrollmentTokenCommand(id, adminId.Value, _currentUser.Ip), cancellationToken);
+        await _sender.Send(new RevokeEnrollmentTokenCommand(id, adminId.Value, _currentUser.Ip, request?.Reason), cancellationToken);
 
         return NoContent();
     }

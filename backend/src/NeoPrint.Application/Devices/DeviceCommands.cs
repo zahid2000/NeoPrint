@@ -198,7 +198,8 @@ public sealed record EnrollmentTokenResult(
     int MaxUses = 1);
 
 /// <summary>Revokes an enrollment token that has not been used.</summary>
-public sealed record RevokeEnrollmentTokenCommand(Guid Id, Guid RevokedBy, string? Ip = null) : IRequest<Unit>;
+/// <param name="Reason">Why, for the audit log (T-327): the panel asks for it, like for every destructive action.</param>
+public sealed record RevokeEnrollmentTokenCommand(Guid Id, Guid RevokedBy, string? Ip = null, string? Reason = null) : IRequest<Unit>;
 
 // ---------------------------------------------------------------------------
 // Validators

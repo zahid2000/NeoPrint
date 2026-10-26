@@ -370,6 +370,8 @@ a {
 
 .neo-dialog__explanation {
   color: var(--neutral-600);
+  /* The reason field's outlined label sits above the field: room for it (T-327). */
+  margin-block-end: var(--space-4);
 }
 
 /* Material puts the confirm button last, which is the right-hand side. */

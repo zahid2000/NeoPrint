@@ -947,7 +947,7 @@ skript imzanı flaşdakı Agent ilə özü yoxlayır (`docs/KIOSK_PROVISIONING.m
 |---|---|
 | `GET` | `/api/admin/enrollment-tokens` |
 | `POST` | `/api/admin/enrollment-tokens` (`Idempotency-Key`) |
-| `DELETE` | `/api/admin/enrollment-tokens/{id}` |
+| `DELETE` | `/api/admin/enrollment-tokens/{id}` — gövdə `{ "reason" }` (istəyə görə, ≤ 500; panel soruşur), audit-in `reason`-una yazılır (T-327) |
 
 `POST` gövdəsi: `{ "kioskId", "newKiosk", "ttlHours", "maxUses" }` — ya `kioskId` (mövcud, cihazı olmayan kiosk; `maxUses` yalnız 1), ya `newKiosk` (aktivləşdirmə sihirbazının sahələri, kod boş — hər kiosk növbəti `KSK-nnnn`-i alır; `maxUses` 1–50, golden image-in klonları üçün, T-327). `ttlHours` 1–720 (verilməsə `EnrollmentTokenTtlHours`). Pozuntular: `devices.enrollmentUsesInvalid`, `devices.enrollmentCodeForOne`, `devices.enrollmentTtlInvalid`, şablon sahələri sihirbazdakı kimi (`kiosks.pinTooShort` …).
 

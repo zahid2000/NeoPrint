@@ -4,7 +4,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatTabGroup } from '@angular/material/tabs';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
 import { provideTranslateService } from '@ngx-translate/core';
+import { of } from 'rxjs';
 import { describe, beforeEach, afterEach, expect, it, vi } from 'vitest';
 
 import { DeviceListItem, EnrollmentTokenListItem } from '../../core/api/admin-api.service';
@@ -172,6 +174,28 @@ describe('DevicesComponent', () => {
     expect(rows).toEqual(['1 / 3', '1 / 1']);
     expect(fixture.nativeElement.querySelectorAll('[data-revoke]').length, 'only the one that still works').toBe(1);
     expect(fixture.nativeElement.querySelectorAll('[data-cell="status"] app-status-chip').length).toBe(2);
+  });
+
+  it('revokes a token only after a question, with the reason for the audit log (T-327)', async () => {
+    await load({ tokens: [token()] });
+    const asked: unknown[] = [];
+    // The component's own: it imports MatDialogModule.
+    vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open').mockImplementation(((_component: unknown, config: { data: unknown }) => {
+      asked.push(config.data);
+      return { afterClosed: () => of({ reason: 'Köhnə kiosk üçün idi' }) };
+    }) as never);
+
+    const revoking = component.revokeToken(component.tokens()[0]);
+    await flushMicrotasks();
+    const request = backend.expectOne('99999999-9999-9999-9999-999999999999'.replace(/^/, '/api/admin/enrollment-tokens/'));
+    expect(request.request.method).toBe('DELETE');
+    expect(request.request.body).toEqual({ reason: 'Köhnə kiosk üçün idi' });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await flushMicrotasks();
+    backend.expectOne('/api/admin/enrollment-tokens').flush([]);
+    await revoking;
+
+    expect(asked[0]).toMatchObject({ destructive: true, confirmLabel: 'tokens.revokeConfirm', cancelLabel: 'common.cancel', minReasonLength: 3 });
   });
 
   it('looks a device up by the code shown on the kiosk', async () => {

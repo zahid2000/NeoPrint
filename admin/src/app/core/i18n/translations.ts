@@ -205,6 +205,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.lifetime.720': '30 gün',
     'tokens.reach': '{{count}} kiosku aktivləşdirə bilər · {{until}}-ə qədər',
     'tokens.revokeTitle': 'Qeydiyyat açarını ləğv edək?',
+    'tokens.revokeConfirm': 'Açarı ləğv et',
+    'tokens.revokeReason': 'Səbəb (audit jurnalına yazılır)',
     'tokens.revokeExplanation': 'Bu açarla hələ aktivləşməyən kiosklar onu istifadə edə bilməyəcək. Artıq aktivləşmiş kiosklara təsiri yoxdur.',
 
     'roles.title': 'Rollar',
@@ -560,6 +562,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.lifetime.720': '30 days',
     'tokens.reach': 'Can activate {{count}} kiosk(s) · until {{until}}',
     'tokens.revokeTitle': 'Revoke the enrollment token?',
+    'tokens.revokeConfirm': 'Revoke the token',
+    'tokens.revokeReason': 'Reason (written to the audit log)',
     'tokens.revokeExplanation': 'Kiosks not yet activated with it will not be able to use it. Kiosks already activated are not affected.',
 
     'roles.title': 'Roles',
@@ -916,6 +920,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.lifetime.720': '30 дней',
     'tokens.reach': 'Может активировать киосков: {{count}} · до {{until}}',
     'tokens.revokeTitle': 'Отозвать ключ регистрации?',
+    'tokens.revokeConfirm': 'Отозвать ключ',
+    'tokens.revokeReason': 'Причина (записывается в журнал аудита)',
     'tokens.revokeExplanation': 'Киоски, ещё не активированные этим ключом, не смогут его использовать. На уже активированные это не влияет.',
 
     'roles.title': 'Роли',

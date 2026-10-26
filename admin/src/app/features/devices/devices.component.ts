@@ -258,9 +258,13 @@ export class DevicesComponent {
     const confirmed = await confirmAction(this.dialog, {
       title: this.translate.instant('tokens.revokeTitle') as string,
       explanation: this.translate.instant('tokens.revokeExplanation') as string,
-      confirmLabel: this.translate.instant('tokens.revoke') as string,
+      // Not the same words as the way out of the question (T-327).
+      confirmLabel: this.translate.instant('tokens.revokeConfirm') as string,
       cancelLabel: this.translate.instant('common.cancel') as string,
       destructive: true,
+      reasonLabel: this.translate.instant('tokens.revokeReason') as string,
+      minReasonLength: 3,
+      maxReasonLength: 500,
     });
 
     if (!confirmed) {
@@ -268,7 +272,7 @@ export class DevicesComponent {
     }
 
     try {
-      await firstValueFrom(this.api.revokeEnrollmentToken(token.id));
+      await firstValueFrom(this.api.revokeEnrollmentToken(token.id, confirmed.reason));
       await this.reloadTokens();
     } catch (error) {
       this.notify(describeError(error));
