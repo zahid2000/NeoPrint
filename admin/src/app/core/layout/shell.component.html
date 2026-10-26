@@ -1,4 +1,4 @@
-<mat-sidenav-container class="shell">
+<mat-sidenav-container class="shell" [class.shell--rail]="layout() === 'rail'">
   <mat-sidenav
     class="shell__sidenav"
     [class.shell__sidenav--rail]="iconsOnly()"
@@ -25,6 +25,7 @@
               type="button"
               class="shell__group"
               [attr.aria-expanded]="isOpen(section)"
+              [attr.aria-controls]="'nav-group-' + section.group"
               [attr.data-nav-group]="section.group"
               (click)="toggleGroup(section)"
             >
@@ -34,7 +35,25 @@
           }
         }
 
-        @if (iconsOnly() || isOpen(section)) {
+        @if (iconsOnly() || !section.group) {
+          <ng-container *ngTemplateOutlet="items; context: { $implicit: section }" />
+        } @else {
+          <!-- A shut group stays on the page to open and shut with motion; inert, nobody reaches it (T-328). -->
+          <div
+            class="shell__group-body"
+            [class.shell__group-body--open]="isOpen(section)"
+            [id]="'nav-group-' + section.group"
+            [attr.inert]="isOpen(section) ? null : ''"
+          >
+            <div class="shell__group-clip">
+              <ng-container *ngTemplateOutlet="items; context: { $implicit: section }" />
+            </div>
+          </div>
+        }
+      }
+    </nav>
+
+    <ng-template #items let-section>
           <mat-nav-list class="shell__group-items" [attr.data-nav-items]="section.group ?? 'top'">
             @for (item of section.items; track item.path) {
               <a
@@ -54,9 +73,7 @@
               </a>
             }
           </mat-nav-list>
-        }
-      }
-    </nav>
+    </ng-template>
   </mat-sidenav>
 
   <mat-sidenav-content>

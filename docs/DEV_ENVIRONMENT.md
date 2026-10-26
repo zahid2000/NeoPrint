@@ -1718,6 +1718,9 @@ Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını
   (`localStorage`: `neoprint.admin.navGroups`; silsəniz hamısı açılır). Planşet enində yalnız ikonlar, telefonda ☰.
 - Yoxlama skriptləri (`admin/`): `node e2e/nav.mjs` (menyu — hər rol, üç en), `node e2e/operations.mjs` (indi hər run öz
   admin hesabı ilə işləyir və sonda onu söndürür).
+- Menyunun hərəkəti (T-328): `node e2e/nav-motion.mjs ../docs/screenshots/step-7b/t328` — qrupun açılıb-yığılması
+  (masaüstü), ikon zolağı → tam menyu (planşet 820 px), drawer (telefon 390 px) hər kadrda ölçülür; ilk yükləmədə
+  hərəkət yoxdur, `prefers-reduced-motion`-da heç nə hərəkət etmir, klaviatura bağlı qrupa girmir; kadrlar şəkil kimi.
 
 ## 7w. Addım 7A — M13-ün davamı (T-287…T-292)
 

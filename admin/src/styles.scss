@@ -449,6 +449,54 @@ a {
   }
 }
 
+/* --- The side menu's motion (T-328, docs/DESIGN_SYSTEM.md 5.3) ---------- */
+
+// On a tablet the page always keeps the icon strip's room: the full menu
+// opens over it and folds back into the strip. Material measures the margin
+// once, while the menu is still changing width, and would leave the page
+// 220 px to the right (or jump it under the menu on opening) - hence the
+// override of its inline margin.
+.shell.shell--rail > .mat-drawer-content {
+  margin-left: var(--sidebar-rail-width) !important;
+}
+
+.shell.mat-drawer-transition {
+  .mat-drawer.shell__sidenav {
+    transition:
+      transform var(--motion-base) var(--motion-easing),
+      width var(--motion-base) var(--motion-easing);
+  }
+
+  .mat-drawer-backdrop,
+  .mat-drawer-content {
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--motion-easing);
+  }
+
+  .shell__group-body {
+    transition:
+      grid-template-rows var(--motion-base) var(--motion-easing),
+      visibility 0s linear var(--motion-base);
+  }
+
+  .shell__group-body--open {
+    transition:
+      grid-template-rows var(--motion-base) var(--motion-easing),
+      visibility 0s;
+  }
+
+  // The names that come with the full menu fade in rather than appear.
+  .shell__nav-label,
+  .shell__brand span,
+  .shell__group {
+    transition: opacity var(--motion-base) var(--motion-easing);
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .neo-skeleton {
     animation: none;

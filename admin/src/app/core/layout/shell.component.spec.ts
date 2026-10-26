@@ -89,10 +89,11 @@ describe('ShellComponent menu (T-304)', () => {
     [...fixture.nativeElement.querySelectorAll('[data-nav-group]')].map((element: Element) =>
       element.getAttribute('data-nav-group'),
     );
+  // What can be reached: a shut group stays on the page, inert, to open with motion (T-328).
   const links = () =>
-    [...fixture.nativeElement.querySelectorAll('a.shell__nav-item')].map((element: Element) =>
-      element.getAttribute('href'),
-    );
+    [...fixture.nativeElement.querySelectorAll('a.shell__nav-item')]
+      .filter((element: Element) => !element.closest('[inert]'))
+      .map((element: Element) => element.getAttribute('href'));
 
   it('shows the groups in their order, and none this account has nothing in', async () => {
     await open('full', ['kiosks.view', 'incidents.view', 'payments.view', 'refunds.view', 'audit.view']);
@@ -136,6 +137,32 @@ describe('ShellComponent menu (T-304)', () => {
     expect(links()).toEqual(['/', '/payments']);
   });
 
+  it('keeps a shut group on the page but out of reach, named by its heading, so it can open and shut with motion (T-328)', async () => {
+    await open('full', ['kiosks.view', 'payments.view']);
+    const heading = fixture.nativeElement.querySelector('[data-nav-group="finance"]') as HTMLButtonElement;
+    const body = () => fixture.nativeElement.querySelector(`#${heading.getAttribute('aria-controls')}`) as HTMLElement;
+
+    expect(body(), 'the heading names what it opens').not.toBeNull();
+    expect(body().querySelector('a[href="/payments"]'), 'the items are there to grow from nothing').not.toBeNull();
+    expect(body().hasAttribute('inert'), 'shut: no tab stop, nothing read aloud').toBe(true);
+    expect(body().classList).not.toContain('shell__group-body--open');
+
+    heading.click();
+    fixture.detectChanges();
+
+    expect(body().hasAttribute('inert')).toBe(false);
+    expect(body().classList).toContain('shell__group-body--open');
+    expect(heading.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('starts with nothing in motion: the container is not yet in its transition state on the first paint (T-328)', async () => {
+    await open('full', ['kiosks.view']);
+
+    // The menu's motion rules (styles.scss) all wait for this class, which
+    // Material adds a moment after the first paint - never with reduced motion.
+    expect(fixture.nativeElement.querySelector('.shell').classList).not.toContain('mat-drawer-transition');
+  });
+
   it('on a tablet shows the icons only, with the names in tooltips and no group headings', async () => {
     await open('rail', ['kiosks.view', 'payments.view']);
 
@@ -167,6 +194,18 @@ describe('ShellComponent menu (T-304)', () => {
     // And ☰ opens it in full again.
     shell.toggleSidenav();
     fixture.detectChanges();
+    expect(shell.iconsOnly()).toBe(false);
+  });
+
+  it('on a tablet keeps the full menu open when the drawer says "open" at the end of its own widening (T-328)', async () => {
+    await open('rail', ['kiosks.view']);
+    const shell = fixture.componentInstance;
+
+    shell.toggleSidenav();
+    fixture.detectChanges();
+    // Material says "open" at the end of any transition of the drawer, the width's too.
+    shell.sidenavChanged(true);
+
     expect(shell.iconsOnly()).toBe(false);
   });
 

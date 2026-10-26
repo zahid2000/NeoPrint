@@ -43,7 +43,7 @@
     font-size: var(--icon-size);
     width: var(--icon-size);
     height: var(--icon-size);
-    transition: transform var(--motion-fast);
+    transition: transform var(--motion-base) var(--motion-easing);
 
     &--open {
       transform: rotate(90deg);
@@ -52,6 +52,25 @@
 
   & &__group-items {
     padding-top: 0;
+  }
+
+  // A group opens and shuts by its height (T-328, docs/DESIGN_SYSTEM.md 5.3):
+  // the rows grow from nothing to what the items need. Shut, it is hidden
+  // from the keyboard and screen readers as well as the eye.
+  &__group-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    visibility: hidden;
+
+    &--open {
+      grid-template-rows: 1fr;
+      visibility: visible;
+    }
+  }
+
+  &__group-clip {
+    min-height: 0;
+    overflow: hidden;
   }
 
   &__group-divider {

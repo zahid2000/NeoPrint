@@ -91,12 +91,13 @@ const menu = (page) =>
       open: g.getAttribute('aria-expanded') === 'true',
       label: g.querySelector('span')?.textContent.trim() ?? '',
     })),
-    sections: [...document.querySelectorAll('[data-nav-items]')].map((s) => ({
+    // A shut group stays on the page, inert, to open with motion (T-328): what can be reached counts.
+    sections: [...document.querySelectorAll('[data-nav-items]')].filter((s) => !s.closest('[inert]')).map((s) => ({
       id: s.getAttribute('data-nav-items'),
       items: s.querySelectorAll('a.shell__nav-item').length,
     })),
-    links: document.querySelectorAll('a.shell__nav-item').length,
-    labels: document.querySelectorAll('.shell__nav-label').length,
+    links: [...document.querySelectorAll('a.shell__nav-item')].filter((a) => !a.closest('[inert]')).length,
+    labels: [...document.querySelectorAll('.shell__nav-label')].filter((l) => !l.closest('[inert]')).length,
     sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   }));
 

@@ -1,6 +1,7 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -45,6 +46,7 @@ import {
 @Component({
   selector: 'app-shell',
   imports: [
+    NgTemplateOutlet,
     RouterOutlet,
     RouterLink,
     MatSidenavModule,
@@ -409,11 +411,15 @@ export class ShellComponent {
       return;
     }
 
-    this.railExpanded.set(false);
-
-    if (!open) {
-      void this.sidenav().open();
+    // Only a shut means anything here: the drawer also says "open" at the end
+    // of any transition of its own - the strip widening into the full menu
+    // (T-328) - and that must not fold the menu it has just opened.
+    if (open) {
+      return;
     }
+
+    this.railExpanded.set(false);
+    void this.sidenav().open();
   }
 
   toggleTheme(): void {
