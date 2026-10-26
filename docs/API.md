@@ -920,6 +920,25 @@ avtomatik verilir. `adminPin` ən azı 4 rəqəm; kioska yalnız PBKDF2 hash-i g
 Səbəb audit log-a yazılır. Cihaz **dərhal** etibarsız olur: mövcud token-i
 növbəti sorğuda 403 alır. Kiosk `NotActivated` olur, hər şeyini saxlayır.
 
+### Ən son buraxılış — anonim (T-327)
+
+Provisioning skripti (kimliyi olmayan yeni kiosk) üçün. Giriş yoxdur; ünvan üzrə saatda `RateLimits:ReleaseDownloadPerHour`
+(60) sorğu, artıq olsa `429`.
+
+| Metod | Yol |
+|---|---|
+| `GET` | `/api/releases/latest/{component}/{platform}?channel=stable\|pilot` |
+| `GET` | `/api/releases/{component}/{platform}/{version}/{file}` — `file`: `manifest`, `signature`, `package` |
+
+`component`: `app`, `agent`, `provisioning`; `platform`: `win-x64`, `linux-x64`. Göstərilən yalnız: açar dəsti
+**production** olan, serverin production açarları ilə imzası yoxlanan (hər sorğuda yenidən), **dərc olunmuş**
+(`channel=stable` — Stabil kanalda; `pilot` — Pilot və Stabil), geri çəkilməmiş və heç bir yayımı geri qaytarılmamış
+(`RolledBack`) buraxılış; ən yüksək versiya. Staging açarı qəbul edən server (test serveri, development) heç nə
+göstərmir (`404`). Cavab: `{ component, platform, version, channel, keySet, keyId, minAgentVersion, fileName, size,
+sha256, builtAt, manifestPath, signaturePath, packagePath }` — kimin yüklədiyi, yayımlar, saxlama yeri yoxdur. Fayllar
+manifest və imzanın **imzalanmış baytlarıdır**; şərtə uyğun gəlməyən versiyanın faylı `404`. Etibar mənbəyi deyil:
+skript imzanı flaşdakı Agent ilə özü yoxlayır (`docs/KIOSK_PROVISIONING.md`). `400 releases.channelInvalid`.
+
 ### Enrollment token-lər
 
 `devices.enroll`.

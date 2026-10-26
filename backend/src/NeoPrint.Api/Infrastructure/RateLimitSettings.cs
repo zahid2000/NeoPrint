@@ -42,6 +42,12 @@ public sealed class RateLimitSettings
     /// </summary>
     public int EnrollmentTokenPerHour { get; init; } = 5;
 
+    /// <summary>
+    /// The anonymous newest release and its files, per address per hour
+    /// (T-327): a provisioning run asks for at most nine things.
+    /// </summary>
+    public int ReleaseDownloadPerHour { get; init; } = 60;
+
     /// <summary>Everything else: 120 per minute per caller.</summary>
     public int GlobalPerMinute { get; init; } = 120;
 
@@ -65,6 +71,7 @@ public sealed class RateLimitSettings
             SupportClaimPerHour = section.GetValue("SupportClaimPerHour", 10),
             GlobalPerMinute = section.GetValue("GlobalPerMinute", 120),
             EnrollmentTokenPerHour = section.GetValue("EnrollmentTokenPerHour", 5),
+            ReleaseDownloadPerHour = section.GetValue("ReleaseDownloadPerHour", 60),
             Disabled = section.GetValue("Disabled", false),
         };
     }

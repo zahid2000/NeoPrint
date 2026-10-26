@@ -334,6 +334,17 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromHours(1),
             }));
 
+    // The anonymous newest release (T-327): a package is large, and nobody signs in to fetch it.
+    options.AddPolicy("release-download", context => rateLimits.Disabled
+        ? RateLimitPartition.GetNoLimiter("all")
+        : RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = rateLimits.ReleaseDownloadPerHour,
+                Window = TimeSpan.FromHours(1),
+            }));
+
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => rateLimits.Disabled
         ? RateLimitPartition.GetNoLimiter("all")
         : RateLimitPartition.GetFixedWindowLimiter(

@@ -581,6 +581,108 @@ public sealed class ReleaseTests : IDisposable
         return await scope.ServiceProvider.GetRequiredService<MongoContext>().Incidents.Find(i => i.KioskId == kioskId).ToListAsync();
     }
 
+    [DockerFact]
+    public async Task The_newest_release_is_given_to_anybody_only_when_it_is_published_production_and_never_taken_back()
+    {
+        if (Skip) { return; }
+
+        // T-327: a provisioning script on a kiosk with no identity yet fetches from here.
+        await using var production = Host("production");
+        using var admin = await AdminAsync(production);
+        using var anybody = production.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var older = Package(NewVersion(3), seed: 31, keySet: "production");
+        var newer = Package(ReleaseManifest.Parse(older.Manifest).Version.Major + "." + (ReleaseManifest.Parse(older.Manifest).Version.Minor + 1) + ".0", seed: 32, keySet: "production");
+        var olderId = (await (await UploadAsync(admin, older, Sign(_current, older.Manifest))).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var newerId = (await (await UploadAsync(admin, newer, Sign(_current, newer.Manifest))).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        async Task<string?> LatestAsync(string? channel = null)
+        {
+            var response = await anybody.GetAsync($"/api/releases/latest/app/linux-x64{(channel is null ? "" : $"?channel={channel}")}");
+            return response.StatusCode == HttpStatusCode.NotFound
+                ? null
+                : (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("version").GetString();
+        }
+
+        // Both are on the pilot channel: published to nobody who asks for stable.
+        (await LatestAsync()).Should().NotBe(ReleaseVersionOf(older)).And.NotBe(ReleaseVersionOf(newer));
+        (await LatestAsync("pilot")).Should().Be(ReleaseVersionOf(newer));
+
+        (await admin.PostAsync($"/api/admin/releases/{olderId}/promote", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await LatestAsync()).Should().Be(ReleaseVersionOf(older));
+
+        var latest = await anybody.GetFromJsonAsync<JsonElement>("/api/releases/latest/app/linux-x64?channel=pilot");
+        latest.GetProperty("keySet").GetString().Should().Be("production");
+        latest.GetProperty("sha256").GetString().Should().Be(newer.Sha256);
+        latest.TryGetProperty("uploadedBy", out _).Should().BeFalse("nothing of who uploaded it");
+        latest.TryGetProperty("rollouts", out _).Should().BeFalse("nor where it went");
+
+        // The three files, byte for byte what was signed.
+        var path = latest.GetProperty("manifestPath").GetString()![..^"/manifest".Length];
+        (await anybody.GetByteArrayAsync($"/{path}/manifest")).Should().Equal(newer.Manifest);
+        (await anybody.GetByteArrayAsync($"/{path}/signature")).Should().NotBeEmpty();
+        (await anybody.GetByteArrayAsync($"/{path}/package")).Should().Equal(newer.Bytes);
+        (await anybody.GetAsync($"/{path}/secrets")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var check = await new ReleaseVerifier([ReleasePublicKey.FromKey(_current), ReleasePublicKey.FromKey(_next)]).CheckAsync(
+            await anybody.GetByteArrayAsync($"/{path}/manifest"),
+            await anybody.GetByteArrayAsync($"/{path}/signature"),
+            new MemoryStream(await anybody.GetByteArrayAsync($"/{path}/package")),
+            new ReleaseExpectation(ReleaseComponent.App, "linux-x64", "production", null, ReleaseVersion.Parse("9.0.0"), []));
+        check.Accepted.Should().BeTrue("what is fetched passes the script's own check: {0}", check.Detail);
+
+        // Withdrawn: gone, files and all.
+        (await admin.PostAsJsonAsync($"/api/admin/releases/{newerId}/withdraw", new { reason = "Broken on the pilot" })).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await LatestAsync("pilot")).Should().Be(ReleaseVersionOf(older));
+        (await anybody.GetAsync($"/{path}/package")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // A rollout of it taken back: not given to a new kiosk either.
+        var kiosk = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/kiosks")).EnumerateArray().First().GetProperty("id").GetGuid();
+        var rollout = await admin.PostAsJsonAsync("/api/admin/rollouts", new { releaseId = olderId, target = "Kiosks", kioskIds = new[] { kiosk } });
+        rollout.StatusCode.Should().Be(HttpStatusCode.OK, await rollout.Content.ReadAsStringAsync());
+        var rolloutId = (await rollout.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        (await admin.PostAsync($"/api/admin/rollouts/{rolloutId}/rollback", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await LatestAsync()).Should().NotBe(ReleaseVersionOf(older));
+
+        (await anybody.GetAsync("/api/releases/latest/app/linux-x64?channel=nightly")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await anybody.GetAsync("/api/releases/latest/kernel/linux-x64")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [DockerFact]
+    public async Task A_server_that_takes_staging_packages_gives_nobody_a_release()
+    {
+        if (Skip) { return; }
+
+        await using var staging = Host();
+        using var admin = await AdminAsync(staging);
+        var package = Package(NewVersion(4), seed: 41);
+        var id = (await (await UploadAsync(admin, package, Sign(_current, package.Manifest))).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        (await admin.PostAsync($"/api/admin/releases/{id}/promote", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var anybody = staging.CreateClient();
+        (await anybody.GetAsync("/api/releases/latest/app/linux-x64")).StatusCode.Should().Be(HttpStatusCode.NotFound, "a staging package goes to no new kiosk");
+        (await anybody.GetAsync($"/api/releases/app/linux-x64/{ReleaseVersionOf(package)}/package")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [DockerFact]
+    public async Task Fetching_releases_without_signing_in_is_limited_per_address()
+    {
+        if (Skip) { return; }
+
+        await using var limited = Host("production", builder => builder
+            .UseSetting("RateLimits:Disabled", "false")
+            .UseSetting("RateLimits:ReleaseDownloadPerHour", "3"));
+        using var anybody = limited.CreateClient();
+
+        var codes = new List<HttpStatusCode>();
+        for (var i = 0; i < 4; i++)
+        {
+            codes.Add((await anybody.GetAsync("/api/releases/latest/agent/win-x64")).StatusCode);
+        }
+
+        codes.Take(3).Should().NotContain(HttpStatusCode.TooManyRequests);
+        codes[3].Should().Be(HttpStatusCode.TooManyRequests);
+    }
+
     private sealed record TestPackage(byte[] Bytes, byte[] Manifest, string FileName, string Sha256);
 
     private static string ReleaseVersionOf(TestPackage package) => ReleaseManifest.Parse(package.Manifest).Version.ToString();
@@ -614,15 +716,19 @@ public sealed class ReleaseTests : IDisposable
     private static async Task<List<JsonElement>> OffersAsync(HttpClient kiosk)
         => [.. (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/update")).GetProperty("offers").EnumerateArray()];
 
-    /// <summary>A second API that takes the test's key set as "staging".</summary>
-    private WebApplicationFactory<Program> Host()
+    /// <summary>A second API that takes the test's key set under a name: "staging" unless told otherwise.</summary>
+    private WebApplicationFactory<Program> Host(string keySet = "staging", Action<IWebHostBuilder>? configure = null)
     {
-        var keys = new TestReleaseKeys(new ReleaseKeySet("staging", [ReleasePublicKey.FromKey(_current), ReleasePublicKey.FromKey(_next)]));
-        return _fixture.WithHttpOnlyHost(builder => builder.ConfigureTestServices(services =>
+        var keys = new TestReleaseKeys(new ReleaseKeySet(keySet, [ReleasePublicKey.FromKey(_current), ReleasePublicKey.FromKey(_next)]));
+        return _fixture.WithHttpOnlyHost(builder =>
         {
-            services.RemoveAll<IReleaseKeys>();
-            services.AddSingleton<IReleaseKeys>(keys);
-        }));
+            configure?.Invoke(builder);
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IReleaseKeys>();
+                services.AddSingleton<IReleaseKeys>(keys);
+            });
+        });
     }
 
     private static async Task<HttpClient> AdminAsync(WebApplicationFactory<Program> host)

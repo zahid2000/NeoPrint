@@ -817,6 +817,7 @@
   "releases.withdrawn": "Buraxılış geri çəkilib; onu yaymaq və ya kanalını dəyişmək olmaz.",
   "releases.reasonRequired": "Geri çəkmənin səbəbini yazın (3–500 simvol).",
   "releases.reason.withdrawn": "Buraxılış geri çəkildi",
+  "releases.channelInvalid": "Kanal \"stable\" və ya \"pilot\" olmalıdır.",
   "releases.versionInvalid": "Versiya SemVer formatında deyil.",
   "rollouts.kiosksRequired": "Ən azı bir, ən çoxu {max} kiosk seçin.",
   "rollouts.unknownKiosk": "Seçilmiş kiosklardan biri tapılmadı. Siyahını yeniləyin.",

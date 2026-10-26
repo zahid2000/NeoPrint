@@ -817,6 +817,7 @@
   "releases.withdrawn": "Выпуск отозван: его нельзя развернуть или перевести в другой канал.",
   "releases.reasonRequired": "Укажите причину отзыва (3–500 символов).",
   "releases.reason.withdrawn": "Выпуск отозван",
+  "releases.channelInvalid": "Канал — «stable» или «pilot».",
   "releases.versionInvalid": "Версия не в формате SemVer.",
   "rollouts.kiosksRequired": "Выберите хотя бы один киоск, но не более {max}.",
   "rollouts.unknownKiosk": "Один из выбранных киосков не найден. Обновите список.",

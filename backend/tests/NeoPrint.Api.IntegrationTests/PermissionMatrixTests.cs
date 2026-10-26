@@ -78,6 +78,9 @@ public sealed class PermissionMatrixTests
         "POST api/support/claims", "POST api/refunds/{id:guid}/claim",
         // The data export: the signed link stands in for the session (plan section 2.13).
         "GET api/exports/download",
+        // The newest published production release for a provisioning script with no identity yet,
+        // limited per address; the script checks the signature with its own keys (T-327).
+        "GET api/releases/latest/{component}/{platform}", "GET api/releases/{component}/{platform}/{version}/{file}",
         // Development only ([DevelopmentOnly]: 404 everywhere else).
         "POST api/dev/storage/orphan", "POST api/dev/payments/{id:guid}/simulate-success", "POST api/dev/payments/{id:guid}/simulate-fail",
         "POST api/dev/mock-bank/create-fails", "POST api/dev/mock-bank/refunds-fail", "POST api/dev/mock-card/outcome",

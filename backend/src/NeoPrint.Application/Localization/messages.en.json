@@ -817,6 +817,7 @@
   "releases.withdrawn": "The release was withdrawn; it cannot be rolled out or promoted.",
   "releases.reasonRequired": "Give the reason for withdrawing it (3-500 characters).",
   "releases.reason.withdrawn": "The release was withdrawn",
+  "releases.channelInvalid": "The channel is \"stable\" or \"pilot\".",
   "releases.versionInvalid": "The version is not in SemVer form.",
   "rollouts.kiosksRequired": "Choose at least one kiosk and at most {max}.",
   "rollouts.unknownKiosk": "One of the chosen kiosks was not found. Refresh the list.",
