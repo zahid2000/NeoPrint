@@ -31,6 +31,32 @@ public enum InventoryMovementType
 }
 
 /// <summary>
+/// How a warehouse item is counted (T-323): one of a few known units, kept as
+/// a code the panel writes out in the reader's language, or the warehouse's own
+/// word. Never a number - "500" in the unit field is a quantity typed in the
+/// wrong place, and the table then read "0 500" as if it were "0.500".
+/// </summary>
+public static class InventoryUnits
+{
+    public const string Ream = "ream";
+    public const string Piece = "piece";
+    public const string Box = "box";
+    public const string Pack = "pack";
+    public const string Roll = "roll";
+
+    public const int MaxLength = 30;
+
+    public static readonly IReadOnlyList<string> Known = [Ream, Piece, Box, Pack, Roll];
+
+    /// <summary>A unit is a word: it has a letter and no digit.</summary>
+    public static bool IsValid(string unit)
+        => !string.IsNullOrWhiteSpace(unit)
+           && unit.Length <= MaxLength
+           && unit.Any(char.IsLetter)
+           && !unit.Any(char.IsDigit);
+}
+
+/// <summary>
 /// Something kept in the warehouse for the kiosks (plan section 2.15,
 /// <c>inventory_items</c>): reams of paper, toner cartridges, drums.
 /// </summary>
@@ -51,7 +77,7 @@ public sealed class InventoryItem : Entity
     /// <summary>The printer models a cartridge or a drum fits; empty for what fits any.</summary>
     public List<string> CompatiblePrinterModels { get; set; } = [];
 
-    /// <summary>What one of it is called: "bağlama", "ədəd".</summary>
+    /// <summary>What one of it is called: a code of <see cref="InventoryUnits"/>, or the warehouse's own word.</summary>
     public string Unit { get; set; } = string.Empty;
 
     /// <summary>How many sheets one unit holds, for paper: a ream is 500.</summary>
@@ -144,7 +170,7 @@ public sealed class InventoryItem : Entity
             throw new DomainException("inventory.nameInvalid");
         }
 
-        if (string.IsNullOrWhiteSpace(Unit) || Unit.Trim().Length > 30)
+        if (!InventoryUnits.IsValid(Unit))
         {
             throw new DomainException("inventory.unitInvalid");
         }

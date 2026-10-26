@@ -9,8 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 using MongoDB.Driver;
 
+using NeoPrint.Application.Localization;
 using NeoPrint.Application.Supplies;
 using NeoPrint.Domain.Admin;
+using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Incidents;
 using NeoPrint.Domain.Kiosks;
 using NeoPrint.Domain.Supplies;
@@ -972,6 +974,53 @@ public sealed class SupplyFlowTests
         // An operator reads the warehouse and moves nothing by hand.
         (await operatorClient.GetAsync("/api/admin/inventory/items")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await MoveAsync(operatorClient, "Purchase", 1)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [DockerFact]
+    public async Task An_item_is_made_with_what_is_on_the_shelf_as_its_first_purchase_and_a_unit_that_is_a_word()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+
+        // T-323: the quantity was typed into the unit and the table read "0 20".
+        var numeric = new { sku = $"U-{Guid.NewGuid():N}"[..16], name = "Twenty", type = "PaperA4Ream", compatiblePrinterModels = Array.Empty<string>(), unit = "20", sheetsPerUnit = 500, minStock = 1, location = "Anbar", isActive = true };
+        var refused = await SendAsync(admin, HttpMethod.Post, "/api/admin/inventory/items", numeric);
+        refused.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await refused.Content.ReadAsStringAsync()).Should().Contain("rəqəm yox");
+
+        var sku = $"I-{Guid.NewGuid():N}"[..16];
+        var created = await SendAsync(
+            admin,
+            HttpMethod.Post,
+            "/api/admin/inventory/items",
+            new { sku, name = "A4, 500", type = "PaperA4Ream", compatiblePrinterModels = Array.Empty<string>(), unit = "bağlama", sheetsPerUnit = 500, minStock = 1, location = "Anbar", isActive = true, initialStock = 20 });
+        created.StatusCode.Should().Be(HttpStatusCode.OK, await created.Content.ReadAsStringAsync());
+
+        var item = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var itemId = item.GetProperty("id").GetGuid();
+        item.GetProperty("stock").GetDecimal().Should().Be(20);
+        item.GetProperty("unit").GetString().Should().Be(InventoryUnits.Ream, "a known unit is kept as its code and read in the reader's language");
+        item.GetProperty("isLow").GetBoolean().Should().BeFalse();
+
+        var movement = (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/inventory/movements?itemId={itemId}")).GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
+        movement.GetProperty("type").GetString().Should().Be("Purchase");
+        movement.GetProperty("quantity").GetDecimal().Should().Be(20);
+        movement.GetProperty("note").GetString().Should().Be(Messages.Write(new UserMessage(InventoryHandlers.InitialStockNote), "az"), "the note the system wrote reads in the reader's language");
+
+        using var scope = _fixture.Services.CreateScope();
+        var actions = await scope.ServiceProvider.GetRequiredService<MongoContext>().AuditLogs
+            .Find(entry => entry.EntityId == itemId.ToString()).Project(entry => entry.Action).ToListAsync();
+        actions.Should().BeEquivalentTo(["inventory.items.create", "inventory.movements.create"]);
+
+        // Below the minimum from the first moment: said at once.
+        var empty = await SendAsync(
+            admin,
+            HttpMethod.Post,
+            "/api/admin/inventory/items",
+            new { sku = $"E-{Guid.NewGuid():N}"[..16], name = "Toner", type = "Toner", compatiblePrinterModels = Array.Empty<string>(), unit = "ədəd", sheetsPerUnit = (int?)null, minStock = 1, location = "", isActive = true, initialStock = 0 });
+        var emptyId = (await empty.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        (await LowStockAsync(emptyId)).Should().ContainSingle().Which.Open.Should().BeTrue();
     }
 
     // -----------------------------------------------------------------------

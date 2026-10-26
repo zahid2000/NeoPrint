@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { InventoryItem } from './operator.models';
+import { InventoryUnitPipe } from '../operations/inventory-units';
 
 export interface TakeDialogResult {
   readonly quantity: number;
@@ -21,7 +22,7 @@ export interface TakeDialogResult {
  */
 @Component({
   selector: 'app-operator-take-dialog',
-  imports: [
+  imports: [InventoryUnitPipe, 
     FormsModule,
     MatButtonModule,
     MatDialogModule,
@@ -37,7 +38,7 @@ export interface TakeDialogResult {
       <p class="neo-caption">{{ 'operator.inventory.takeExplanation' | translate }}</p>
 
       <mat-form-field>
-        <mat-label>{{ 'operator.inventory.quantity' | translate: { unit: item.unit } }}</mat-label>
+        <mat-label>{{ 'operator.inventory.quantity' | translate: { unit: (item.unit | inventoryUnit) } }}</mat-label>
         <input
           matInput
           type="number"
@@ -52,7 +53,7 @@ export interface TakeDialogResult {
       @if (!valid()) {
         <p class="neo-field-error" role="alert">
           <mat-icon aria-hidden="true">error</mat-icon>
-          {{ 'operator.inventory.tooMany' | translate: { stock: item.stock, unit: item.unit } }}
+          {{ 'operator.inventory.tooMany' | translate: { stock: item.stock, unit: (item.unit | inventoryUnit) } }}
         </p>
       }
 

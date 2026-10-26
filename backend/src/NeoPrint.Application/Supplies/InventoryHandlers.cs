@@ -3,6 +3,7 @@ using MediatR;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Admin;
 using NeoPrint.Application.Behaviors;
+using NeoPrint.Application.Localization;
 using NeoPrint.Application.Refunds;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.Incidents;
@@ -27,9 +28,11 @@ public sealed record InventoryItemInput(
     int? SheetsPerUnit,
     decimal MinStock,
     string? Location,
-    bool IsActive);
+    bool IsActive,
+    decimal? InitialStock = null);
 
-public sealed record CreateInventoryItemCommand(Guid AdminUserId, InventoryItemInput Item, string? Ip) : IRequest<InventoryItemView>;
+/// <summary>A new item; what is already on the shelf (<c>InitialStock</c>) comes in as its first purchase (T-323).</summary>
+public sealed record CreateInventoryItemCommand(Guid AdminUserId, InventoryItemInput Item, string? Ip) : IRequest<InventoryItemView>, ITransactionalRequest;
 
 public sealed record UpdateInventoryItemCommand(Guid AdminUserId, Guid ItemId, InventoryItemInput Item, string? Ip) : IRequest<InventoryItemView>;
 
@@ -85,6 +88,9 @@ public sealed class InventoryHandlers :
 
     public static string LowStockKey(Guid itemId) => $"inventory-low:{itemId:N}";
 
+    /// <summary>The note of the purchase an item is made with: a code the panel writes out (T-323).</summary>
+    public const string InitialStockNote = "inventory.initialStock";
+
     /// <inheritdoc cref="ListInventoryItemsQuery" />
     public async Task<IReadOnlyList<InventoryItemView>> Handle(ListInventoryItemsQuery request, CancellationToken cancellationToken)
     {
@@ -127,10 +133,38 @@ public sealed class InventoryHandlers :
             throw new DomainException(UserMessage.Of("inventory.skuTaken", ("sku", item.Sku)));
         }
 
+        // The count only moves through a movement, so what is already on the
+        // shelf is the item's first purchase - in the movements and the audit
+        // like any other (T-323).
+        var initial = request.Item.InitialStock is > 0 and var stock
+            ? item.Move(InventoryMovementType.Purchase, stock, request.AdminUserId, _clock.UtcNow, note: InitialStockNote)
+            : null;
+
         await _inventory.AddAsync(item, cancellationToken).ConfigureAwait(false);
         await _audit
             .WriteAsync(new AuditEntry(request.AdminUserId, "inventory.items.create", nameof(InventoryItem), item.Id.ToString(), null, Describe(item), request.Ip, null), cancellationToken)
             .ConfigureAwait(false);
+
+        if (initial is not null)
+        {
+            await _inventory.AddMovementAsync(initial, cancellationToken).ConfigureAwait(false);
+            await _audit
+                .WriteAsync(
+                    new AuditEntry(
+                        request.AdminUserId,
+                        "inventory.movements.create",
+                        nameof(InventoryItem),
+                        item.Id.ToString(),
+                        FormattableString.Invariant($"{item.Sku}: 0"),
+                        FormattableString.Invariant($"{item.Sku}: {item.Stock} ({InventoryMovementType.Purchase} {initial.Quantity})"),
+                        request.Ip,
+                        initial.Note),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        // An item made with less than its minimum is low from the start.
+        await TellAsync(item, cancellationToken).ConfigureAwait(false);
 
         return InventoryItemView.Of(item);
     }
@@ -244,7 +278,7 @@ public sealed class InventoryHandlers :
                     movement.TaskId,
                     movement.By,
                     movement.At,
-                    movement.Note)),
+                    movement.Note is { } note && Messages.Has(note) ? Messages.Write(new UserMessage(note)) : movement.Note)),
             ],
             total,
             page,
@@ -293,7 +327,7 @@ public sealed class InventoryHandlers :
                 IncidentType.Other,
                 IncidentSeverity.High,
                 UserMessage.Of(
-                    "incidents.inventory.low", ("item", item.Name), ("sku", item.Sku), ("stock", item.Stock), ("min", item.MinStock), ("unit", item.Unit)),
+                    "incidents.inventory.low", ("item", item.Name), ("sku", item.Sku), ("stock", item.Stock), ("min", item.MinStock), ("unit", InventoryUnitNames.Normalize(item.Unit))),
                 LowStockKey(item.Id),
                 cancellationToken,
                 kioskId: null,
@@ -326,15 +360,53 @@ public sealed class InventoryHandlers :
                 .Select(model => model.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase),
         ];
-        item.Unit = (input.Unit ?? string.Empty).Trim();
+        item.Unit = InventoryUnitNames.Normalize(input.Unit);
         item.SheetsPerUnit = input.SheetsPerUnit;
         item.MinStock = input.MinStock;
         item.Location = (input.Location ?? string.Empty).Trim();
         item.IsActive = input.IsActive;
+
+        if (input.InitialStock is < 0)
+        {
+            throw new DomainException("inventory.initialStockInvalid");
+        }
 
         item.EnsureValid();
     }
 
     private static string Describe(InventoryItem item)
         => FormattableString.Invariant($"{item.Sku} {item.Name} ({item.Type}) min={item.MinStock} stock={item.Stock} active={item.IsActive}");
+}
+
+/// <summary>
+/// The code of a known warehouse unit, whatever it was written as (T-323):
+/// "bağlama", "ream" and "пачка" are all <see cref="InventoryUnits.Ream"/>. The
+/// words are the message catalog's own, so an item written before the units had
+/// codes reads like a new one; any other word is the warehouse's own.
+/// </summary>
+public static class InventoryUnitNames
+{
+    private static readonly Lazy<Dictionary<string, string>> Words = new(() =>
+    {
+        var words = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var code in InventoryUnits.Known)
+        {
+            words[code] = code;
+
+            foreach (var language in Messages.Languages)
+            {
+                words[Messages.Write(new UserMessage($"inventory.unit.{code}"), language).TrimEnd('.')] = code;
+            }
+        }
+
+        return words;
+    });
+
+    public static string Normalize(string? unit)
+    {
+        var trimmed = (unit ?? string.Empty).Trim();
+
+        return Words.Value.TryGetValue(trimmed.TrimEnd('.'), out var code) ? code : trimmed;
+    }
 }

@@ -269,7 +269,9 @@ public sealed record InventoryItemView(
             item.Name,
             item.Type.ToString(),
             item.CompatiblePrinterModels,
-            item.Unit,
+
+            // Items written before the units had codes read as the code (T-323).
+            InventoryUnitNames.Normalize(item.Unit),
             item.SheetsPerUnit,
             item.MinStock,
             item.Stock,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatBytes, formatCount, formatDateTime, formatMoney, formatTime } from './format.pipes';
+import { formatBytes, formatCount, formatDateTime, formatMoney, formatQuantity, formatTime } from './format.pipes';
 
 /** docs/DESIGN_SYSTEM.md section 6, as it is written there. */
 describe('format pipes', () => {
@@ -52,5 +52,18 @@ describe('format pipes', () => {
     expect(formatCount(12480)).toBe('12\u00a0480');
     expect(formatCount(12480, 'en')).toBe('12,480');
     expect(formatCount(7)).toBe('7');
+  });
+});
+
+describe('formatQuantity (T-323)', () => {
+  it('groups the whole part and keeps a fraction, in the reader\'s separators', () => {
+    expect(formatQuantity(1500, 'az')).toBe('1\u00a0500');
+    expect(formatQuantity(1500, 'en')).toBe('1,500');
+    expect(formatQuantity(2.5, 'az')).toBe('2,5');
+    expect(formatQuantity(2.5, 'en')).toBe('2.5');
+    expect(formatQuantity(0, 'az')).toBe('0');
+    expect(formatQuantity(100, 'ru')).toBe('100');
+    expect(formatQuantity(-3, 'az')).toBe('−3');
+    expect(formatQuantity(null)).toBe('—');
   });
 });

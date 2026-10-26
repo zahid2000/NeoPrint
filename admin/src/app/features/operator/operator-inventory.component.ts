@@ -15,6 +15,7 @@ import { OperatorFreshnessComponent } from './operator-freshness.component';
 import { InventoryItem } from './operator.models';
 import { operatorScreen } from './operator-screen';
 import { TakeDialogComponent, TakeDialogResult } from './take.dialog';
+import { InventoryUnitPipe } from '../operations/inventory-units';
 
 /**
  * "Anbar" (plan section 8B): what the warehouse holds, what is running low,
@@ -22,7 +23,7 @@ import { TakeDialogComponent, TakeDialogResult } from './take.dialog';
  */
 @Component({
   selector: 'app-operator-inventory',
-  imports: [
+  imports: [InventoryUnitPipe, 
     MatButtonModule,
     MatIconModule,
     TranslatePipe,
@@ -57,7 +58,7 @@ import { TakeDialogComponent, TakeDialogResult } from './take.dialog';
                 <span class="op-card__sub">{{ 'operator.itemType.' + item.type | translate }} · {{ item.sku }}</span>
               </span>
               <strong class="neo-nowrap">
-                {{ 'operator.inventory.stock' | translate: { stock: item.stock, unit: item.unit } }}
+                {{ 'operator.inventory.stock' | translate: { stock: item.stock, unit: (item.unit | inventoryUnit) } }}
               </strong>
             </div>
 

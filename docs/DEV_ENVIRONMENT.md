@@ -1695,6 +1695,8 @@ node e2e/supply-flow.mjs        # plan 9.9 başdan sona: kağız 150 → Warning
 node e2e/operations.mjs         # beş səhifə: incident canlı gəlir → Baxıram → Bağla; tapşırıq yarat / prioritet / ləğv;
                                 # anbar məhsulu + hərəkət; kiosk qaydası yarat / sil; audit süzgəci; 390 px
 node e2e/operations.mjs ../docs/screenshots/step-7/t213   # ekran görüntüləri ilə
+node e2e/warehouse.mjs ../docs/screenshots/step-7b/t323    # T-323: vahid siyahıdan / söz, rəqəm rədd olunur, başlanğıc qalıq = alış,
+                                # cədvəldə "20 bağlama" + "Az qalıb" izahı, en / ru, 390 px; yaratdığını sonda söndürür
 ```
 
 Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını silir (T-266).

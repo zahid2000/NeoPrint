@@ -306,6 +306,20 @@ public sealed class SupplyModuleTests
         CreatedAt = Now,
     };
 
+    [Theory]
+    [InlineData("20")]
+    [InlineData("1.500")]
+    [InlineData("500 vərəq")]
+    [InlineData("  ")]
+    public void A_quantity_typed_as_the_unit_is_refused(string unit)
+    {
+        // T-323: "500" in the unit field made the table read "0 500" as "0.500".
+        var item = Reams();
+        item.Unit = unit;
+
+        item.Invoking(i => i.EnsureValid()).Should().Throw<DomainException>().Which.Text.Key.Should().Be("inventory.unitInvalid");
+    }
+
     [Fact]
     public void The_count_moves_only_through_a_movement_and_each_says_what_was_left()
     {

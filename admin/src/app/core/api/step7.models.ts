@@ -315,6 +315,8 @@ export interface InventoryItemInput {
   readonly minStock: number;
   readonly location?: string | null;
   readonly isActive: boolean;
+  /** A new item only: what is on the shelf, recorded as its first purchase (T-323). */
+  readonly initialStock?: number;
 }
 
 export interface InventoryMovement {

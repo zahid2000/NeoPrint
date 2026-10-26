@@ -30,6 +30,7 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
 import { PagerComponent } from '../money/money-shared';
 import { InventoryItem } from '../operator/operator.models';
 import { InventoryItemDialogComponent, InventoryMovementDialogComponent } from './inventory.dialogs';
+import { InventoryAmountPipe, isUnitWord } from './inventory-units';
 
 const pageSize = 30;
 
@@ -53,6 +54,7 @@ const pageSize = 30;
     MatTabsModule,
     TranslatePipe,
     DateTimePipe,
+    InventoryAmountPipe,
     EmptyStateComponent,
     ErrorBannerComponent,
     FilterBarComponent,
@@ -102,18 +104,24 @@ const pageSize = 30;
                   </ng-container>
                   <ng-container matColumnDef="stock">
                     <th mat-header-cell *matHeaderCellDef class="ops__number">{{ 'ops.inventory.stock' | translate }}</th>
-                    <td mat-cell *matCellDef="let item" class="ops__number">
-                      {{ item.stock }} {{ item.unit }}
+                    <td mat-cell *matCellDef="let item" class="ops__number" data-cell="stock">
+                      <span class="neo-nowrap">{{ item.stock | inventoryAmount: item.unit }}</span>
+                      @if (!unitWord(item.unit)) {
+                        <span class="neo-caption ops__block ops__invalid" data-unit-broken>{{ 'ops.inventory.unitBroken' | translate }}</span>
+                      }
                       @if (item.isLow) {
                         <span class="ops__block">
                           <app-status-chip status="Low" toneOverride="warning" [text]="'ops.inventory.low' | translate" />
+                        </span>
+                        <span class="neo-caption ops__block" data-low-why>
+                          {{ 'ops.inventory.lowWhy' | translate: { stock: item.stock | inventoryAmount: null, min: item.minStock | inventoryAmount: null } }}
                         </span>
                       }
                     </td>
                   </ng-container>
                   <ng-container matColumnDef="min">
                     <th mat-header-cell *matHeaderCellDef class="ops__number">{{ 'ops.inventory.minStock' | translate }}</th>
-                    <td mat-cell *matCellDef="let item" class="ops__number">{{ item.minStock }}</td>
+                    <td mat-cell *matCellDef="let item" class="ops__number neo-nowrap">{{ item.minStock | inventoryAmount: item.unit }}</td>
                   </ng-container>
                   <ng-container matColumnDef="models">
                     <th mat-header-cell *matHeaderCellDef>{{ 'ops.inventory.models' | translate }}</th>
@@ -265,6 +273,11 @@ export class InventoryComponent {
     void this.loadMovements();
   }
 
+  /** An item kept before T-323 may have a number for its unit: it is not written, and the row asks for a fix. */
+  unitWord(unit: string): boolean {
+    return isUnitWord(unit);
+  }
+
   codeOf(kioskId: string): string {
     return this.kiosks().find((kiosk) => kiosk.id === kioskId)?.code ?? '';
   }
@@ -326,6 +339,8 @@ export class InventoryComponent {
         if (saved) {
           this.toast.success('ops.inventory.saved');
           void this.loadItems(true);
+          // A new item's initial stock is its first purchase (T-323).
+          void this.loadMovements(true);
         }
       });
   }

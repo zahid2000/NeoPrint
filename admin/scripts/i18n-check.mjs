@@ -144,6 +144,8 @@ const SERVER_VALUES = {
   // The operations pages (T-213).
   'ops.inventory.movement.': { enum: 'InventoryMovementType' },
   'ops.inventory.quantityHint.': { enum: 'InventoryMovementType' },
+  // The warehouse's units (T-323, InventoryUnits on the server).
+  'ops.inventory.units.': { values: ['ream', 'piece', 'box', 'pack', 'roll'] },
   'ops.tasks.source.': { enum: 'ServiceTaskSource' },
   // The background jobs page (T-215): the jobs the server keeps runs of, and what the money check finds.
   'bgjobs.name.': { values: ['dead-letters', 'file-cleanup', 'wallet-ledger', 'payment-consistency'] },

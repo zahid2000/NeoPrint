@@ -133,6 +133,21 @@ export function formatBytes(bytes: number | null | undefined, language?: string)
   return `${text.replace('.', separatorsFor(language).decimal)}\u00a0${units[unit]}`;
 }
 
+/**
+ * A counted quantity that may have a fraction - a warehouse's stock (T-323):
+ * `12 480`, `2,5` (az, ru) or `12,480`, `2.5` (en); never rounded away.
+ */
+export function formatQuantity(value: number | null | undefined, language?: string): string {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return '—';
+  }
+
+  const { decimal, group: thousands } = separatorsFor(language);
+  const [whole, fraction] = Math.abs(value).toFixed(3).replace(/\.?0+$/, '').split('.');
+
+  return `${value < 0 ? '−' : ''}${group(whole, thousands)}${fraction ? decimal + fraction : ''}`;
+}
+
 /** A plain number with grouped thousands: `12 480` (az, ru) or `12,480` (en). */
 export function formatCount(value: number | null | undefined, language?: string): string {
   if (value === null || value === undefined) {

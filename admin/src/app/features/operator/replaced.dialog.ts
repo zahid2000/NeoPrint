@@ -9,6 +9,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { InventoryItem, SupplyLevel } from './operator.models';
+import { InventoryUnitPipe } from '../operations/inventory-units';
 
 /** What can be recorded as replaced; paper is filled, not replaced. */
 export const replaceableResources = ['Toner', 'Drum', 'WasteToner', 'Other'] as const;
@@ -59,7 +60,7 @@ export interface ReplacedDialogResult {
  */
 @Component({
   selector: 'app-operator-replaced-dialog',
-  imports: [
+  imports: [InventoryUnitPipe, 
     FormsModule,
     MatButtonModule,
     MatDialogModule,
@@ -116,14 +117,14 @@ export interface ReplacedDialogResult {
           <!-- Under the field, where a long name cannot cut it off: how many the shelf holds. -->
           @if (item(); as chosen) {
             <mat-hint>
-              {{ 'operator.refill.itemStock' | translate: { stock: chosen.stock, unit: chosen.unit } }}
+              {{ 'operator.refill.itemStock' | translate: { stock: chosen.stock, unit: (chosen.unit | inventoryUnit) } }}
             </mat-hint>
           }
         </mat-form-field>
 
         @if (item(); as chosen) {
           <mat-form-field>
-            <mat-label>{{ 'operator.refill.quantity' | translate: { unit: chosen.unit } }}</mat-label>
+            <mat-label>{{ 'operator.refill.quantity' | translate: { unit: (chosen.unit | inventoryUnit) } }}</mat-label>
             <input
               matInput
               type="number"
@@ -138,7 +139,7 @@ export interface ReplacedDialogResult {
           @if (!quantityValid()) {
             <p class="neo-field-error" role="alert">
               <mat-icon aria-hidden="true">error</mat-icon>
-              {{ 'operator.inventory.tooMany' | translate: { stock: chosen.stock, unit: chosen.unit } }}
+              {{ 'operator.inventory.tooMany' | translate: { stock: chosen.stock, unit: (chosen.unit | inventoryUnit) } }}
             </p>
           }
         }

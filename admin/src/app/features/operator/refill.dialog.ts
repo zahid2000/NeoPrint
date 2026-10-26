@@ -11,6 +11,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 
 import { PaperRefillMode } from '../../core/api/step3.models';
 import { InventoryItem, OperatorPaper, RefillRequest, paperItemType } from './operator.models';
+import { InventoryUnitPipe } from '../operations/inventory-units';
 
 export interface RefillDialogData {
   /** The kiosk's code, for the title. */
@@ -36,7 +37,7 @@ export interface RefillDialogData {
  */
 @Component({
   selector: 'app-operator-refill-dialog',
-  imports: [
+  imports: [InventoryUnitPipe, 
     FormsModule,
     MatButtonModule,
     MatButtonToggleModule,
@@ -109,14 +110,14 @@ export interface RefillDialogData {
           <!-- Under the field, where a long name cannot cut it off: how many the shelf holds. -->
           @if (item(); as chosen) {
             <mat-hint>
-              {{ 'operator.refill.itemStock' | translate: { stock: chosen.stock, unit: chosen.unit } }}
+              {{ 'operator.refill.itemStock' | translate: { stock: chosen.stock, unit: (chosen.unit | inventoryUnit) } }}
             </mat-hint>
           }
         </mat-form-field>
 
         @if (item(); as chosen) {
           <mat-form-field>
-            <mat-label>{{ 'operator.refill.quantity' | translate: { unit: chosen.unit } }}</mat-label>
+            <mat-label>{{ 'operator.refill.quantity' | translate: { unit: (chosen.unit | inventoryUnit) } }}</mat-label>
             <input
               matInput
               type="number"
@@ -131,7 +132,7 @@ export interface RefillDialogData {
           @if (!quantityValid()) {
             <p class="neo-field-error" role="alert">
               <mat-icon aria-hidden="true">error</mat-icon>
-              {{ 'operator.inventory.tooMany' | translate: { stock: chosen.stock, unit: chosen.unit } }}
+              {{ 'operator.inventory.tooMany' | translate: { stock: chosen.stock, unit: (chosen.unit | inventoryUnit) } }}
             </p>
           }
         }

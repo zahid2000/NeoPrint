@@ -1,6 +1,8 @@
 using MediatR;
 
+using NeoPrint.Application.Localization;
 using NeoPrint.Domain.Audit;
+using NeoPrint.Domain.Common;
 
 namespace NeoPrint.Application.Admin;
 
@@ -120,7 +122,10 @@ public sealed class AuditLogQueryHandlers : IRequestHandler<ListAuditLogsQuery, 
                     entry.Before,
                     entry.After,
                     entry.Ip,
-                    entry.Reason,
+
+                    // A reason the system wrote is a catalog key ("inventory.initialStock",
+                    // T-323): read in the reader's language. A person's own words stay as written.
+                    entry.Reason is { } reason && Messages.Has(reason) ? Messages.Write(new UserMessage(reason)) : entry.Reason,
                     entry.CorrelationId)),
             ],
             total,

@@ -237,7 +237,8 @@ try {
   await inputs.nth(0).fill(`E2E toner ${stamp}`);
   await inputs.nth(1).fill(`E2E-T-${stamp}`);
   await pick(dialog().locator('mat-select').first(), 'Toner');
-  await dialog().locator('input[maxlength="30"]').fill('ədəd');
+  // The unit is a list now and follows the type: a toner by the piece (T-323).
+  check((await dialog().locator('[data-field="unit"]').innerText()).includes('ədəd'), 'warehouse: a toner is counted by the piece');
   await dialog().locator('mat-dialog-actions button').last().click();
   const itemRow = page.locator('.mat-mdc-tab-body-active tr.mat-mdc-row', { hasText: `E2E toner ${stamp}` }).first();
   await itemRow.waitFor({ timeout: 15_000 });

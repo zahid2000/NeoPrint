@@ -18,7 +18,7 @@ import { OperatorNotifyService } from '../operator/operator-notify.service';
 import { AuditLogComponent, diff } from './audit-log.component';
 import { IncidentsComponent } from './incidents.component';
 import { InventoryComponent } from './inventory.component';
-import { InventoryMovementDialogComponent } from './inventory.dialogs';
+import { InventoryItemDialogComponent, InventoryMovementDialogComponent } from './inventory.dialogs';
 import { ServiceTasksComponent } from './service-tasks.component';
 import { SupplyRulesComponent } from './supply-rules.component';
 import { TaskDialogComponent } from './task.dialogs';
@@ -320,6 +320,92 @@ describe('Anbar', () => {
 
     expect(text(fixture)).toContain('ops.inventory.low');
     expect(text(fixture), 'nothing to change without the permission').not.toContain('ops.inventory.move');
+  });
+
+  it('writes the stock and the minimum as a quantity and a unit word, and says why an item is low (T-323)', async () => {
+    setUp([Permissions.inventoryView]);
+    const fixture = TestBed.createComponent(InventoryComponent);
+    fixture.detectChanges();
+
+    backend.expectOne('/api/admin/kiosks').flush([kiosk]);
+    backend.expectOne((request) => request.url === '/api/admin/inventory/items').flush([
+      { id: 'e', sku: '122', name: 'tet', type: 'PaperA4Ream', compatiblePrinterModels: [], unit: 'ream', minStock: 1, stock: 0, location: '', isActive: true, isLow: true },
+      { id: 'f', sku: 'A4', name: 'Kağız', type: 'PaperA4Ream', compatiblePrinterModels: [], unit: 'ream', minStock: 1, stock: 1500, location: '', isActive: true, isLow: false },
+      { id: 'k', sku: 'K1', name: 'Kartric', type: 'Toner', compatiblePrinterModels: [], unit: 'kartric', minStock: 0, stock: 2.5, location: '', isActive: true, isLow: false },
+      { id: 'o', sku: 'O1', name: 'Köhnə', type: 'PaperA4Ream', compatiblePrinterModels: [], unit: '1.500', minStock: 0, stock: 0, location: '', isActive: true, isLow: false },
+    ]);
+    backend.expectOne((request) => request.url === '/api/admin/inventory/movements').flush(
+      page([{ id: 'm', itemId: 'f', itemName: 'Kağız', type: 'Purchase', quantity: 1500, stockAfter: 1500, at: '2026-10-26T09:00:00Z', note: 'inventory.initialStock' }]),
+    );
+    await settle(fixture);
+
+    const cells = [...fixture.nativeElement.querySelectorAll('[data-cell="stock"]')].map((cell: HTMLElement) => cell.textContent!.replace(/[ \n]+/g, ' ').trim());
+    expect(cells[0]).toContain('0\u00a0ops.inventory.units.ream');
+    expect(cells[1], 'the quantity is grouped, the unit is a word - not "0 1.500"').toContain('1\u00a0500\u00a0ops.inventory.units.ream');
+    expect(cells[2], "the warehouse's own word stays as written").toContain('2,5\u00a0kartric');
+    expect(cells[3], 'a number kept as the unit before T-323 is not written next to the stock').not.toContain('1.500');
+    expect(fixture.nativeElement.querySelectorAll('[data-unit-broken]').length, 'and the row asks for the unit to be chosen').toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('[data-low-why]').length, 'only the low one explains itself').toBe(1);
+    expect(fixture.nativeElement.querySelector('[data-low-why]').textContent).toContain('ops.inventory.lowWhy');
+  });
+
+  it('takes the unit from a list or as a word, never a number, and sends a new item its initial stock (T-323)', async () => {
+    let sent: unknown = null;
+    setUp([Permissions.inventoryManage], {
+      extra: [
+        { provide: MAT_DIALOG_DATA, useValue: { item: null } },
+        { provide: MatDialogRef, useValue: { close: () => undefined } },
+      ],
+    });
+    const fixture = TestBed.createComponent(InventoryItemDialogComponent);
+    const dialog = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(dialog.unit(), 'paper is counted in reams').toBe('ream');
+    dialog.chooseType('Toner');
+    expect(dialog.unit(), 'a toner by the piece, until a unit is chosen').toBe('piece');
+    dialog.chooseType('PaperA4Ream');
+    expect(fixture.nativeElement.querySelector('[data-field="initialStock"]'), 'a new item says what is on the shelf').not.toBeNull();
+
+    dialog.name.set('A4');
+    dialog.sku.set('A4-1');
+    dialog.chooseUnit('other');
+    dialog.customUnit.set('20');
+    fixture.detectChanges();
+    expect(dialog.valid(), '"20" is a quantity, not a unit').toBe(false);
+    expect(fixture.nativeElement.querySelector('[data-error="unit"]')).not.toBeNull();
+
+    dialog.customUnit.set('1.500');
+    expect(dialog.valid()).toBe(false);
+    dialog.customUnit.set('kartric');
+    expect(dialog.valid()).toBe(true);
+
+    dialog.chooseUnit('ream');
+    dialog.chooseType('Toner');
+    expect(dialog.unit(), 'a unit once chosen stays').toBe('ream');
+    dialog.initialStock.set(20);
+    const saving = dialog.save();
+    const request = backend.expectOne('/api/admin/inventory/items');
+    sent = request.request.body;
+    request.flush({});
+    await saving;
+
+    expect(sent).toMatchObject({ unit: 'ream', initialStock: 20 });
+  });
+
+  it('keeps no initial stock on an item being edited - the count moves only by a movement', () => {
+    setUp([Permissions.inventoryManage], {
+      extra: [
+        { provide: MAT_DIALOG_DATA, useValue: { item: { id: 'p', sku: 'X', name: 'X', type: 'Toner', compatiblePrinterModels: [], unit: 'kartric', minStock: 1, stock: 3, location: '', isActive: true, isLow: false } } },
+        { provide: MatDialogRef, useValue: { close: () => undefined } },
+      ],
+    });
+    const fixture = TestBed.createComponent(InventoryItemDialogComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.unitChoice(), 'a word of its own is "other"').toBe('other');
+    expect(fixture.componentInstance.customUnit()).toBe('kartric');
+    expect(fixture.nativeElement.querySelector('[data-field="initialStock"]')).toBeNull();
   });
 
   it('records a movement only when it makes sense', () => {

@@ -51,6 +51,10 @@ app-filter-bar {
   font-variant-numeric: tabular-nums;
 }
 
+.ops__invalid {
+  color: var(--danger-500);
+}
+
 .ops__stat--danger .ops__stat-value {
   color: var(--danger-500);
 }
@@ -116,6 +120,8 @@ app-filter-bar {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-2) var(--space-4);
+  // The first row's outlined labels sit above the field; the dialog's content would cut them off (T-323).
+  padding-block-start: var(--space-2);
 }
 
 .ops__wide {
