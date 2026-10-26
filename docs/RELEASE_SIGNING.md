@@ -162,6 +162,58 @@ dotnet publish tools/release-sign -c Release -r win-x64 --self-contained -p:Publ
 
 **Qadağandır:** özəl açarı OneDrive / Google Drive / Dropbox qovluğunda saxlamaq, e-poçt və ya mesajla göndərmək, ekran şəkli çəkmək, repoya qoymaq (`*.pem` `.gitignore`-dadır, amma buna güvənməyin), Claude-a göstərmək.
 
+## 3a. Pilot üçün sadələşdirilmiş mərasim (T-315, T-327)
+
+Bölmə 3 tam variantdır (ayrıca oflayn noutbuk, iki USB, iki bina). **Pilot üçün** daha sadə variant qəbul olunur; tam
+variant pilotdan sonra, kiosk sayı artanda edilir (açarları dəyişmək lazım gəlmir — eyni açarlar ikinci USB-yə köçürülür).
+
+**Nə dəyişir:** ayrıca oflayn kompüter əvəzinə **şəxsi kompüteriniz** (korporativ / domenə qoşulmuş yox), imzalama
+vaxtı internet söndürülür; ehtiyat nüsxə — **bir şifrəli USB** və ya **parol menecerinin fayl seyfi** (məs. Bitwarden /
+1Password "Secure file"), USB isə evdə. **Nə dəyişmir:** özəl açar heç vaxt repoya, buluda (OneDrive / Google Drive),
+e-poçta, mesajlaşmaya və Claude-a getmir; parol ≥ 16 simvol, parol menecerində; göndərilən yalnız public açarlardır.
+
+**Addımlar (≈ 20 dəqiqə):**
+
+1. Aləti hazırlayın (bir dəfə, internet varkən): `dotnet publish tools/release-sign -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o C:\neoprint-sign` (bölmə 2).
+2. Şifrəli USB-ni taxın (BitLocker — bölmə 3; məs. `E:`). **İnterneti söndürün** (Wi-Fi off).
+3. İki açar, **iki fərqli parolla**:
+   ```powershell
+   C:\neoprint-sign\release-sign.exe keygen --name current --out E:\neoprint-keys
+   C:\neoprint-sign\release-sign.exe keygen --name next --out E:\neoprint-keys
+   ```
+   Parolları parol menecerinə yazın ("NeoPrint release current" / "next"), çıxışdakı `Key id`-ləri də.
+4. Yoxlayın: `release-sign.exe check-key --key E:\neoprint-keys\current.private.pem` (və `next`) — `OK: key ... opens`.
+5. Ehtiyat: `E:\neoprint-keys` qovluğunu parol menecerinin fayl seyfinə yükləyin **və ya** ikinci şifrəli USB-yə
+   köçürün (o, başqa yerdə saxlanılır). Kompüterin diskində açar qalmır.
+6. `current.public.pem` və `next.public.pem` fayllarının **mətnini** göndərin (`-----BEGIN PUBLIC KEY-----` ilə
+   başlayan sətirlər). `*.private.pem` və parolları **heç vaxt** göndərməyin.
+7. USB-ni çıxarın, interneti açın.
+
+**Açarlar gələndən sonra (Claude):** public açarlar `ReleaseKeys.production.cs`-ə yazılır, CI production build-ini
+yığır; `release-sign check-build` production build-də yalnız production dəstini tapır.
+
+### İlk production buraxılışın imzalanması və yoxlanması
+
+1. Teq (`v0.9.0` və ya növbəti) → **"Release packages"** production artefaktlarını yığır (bölmə 4, addım 1–2).
+2. Bölmə 4, addım 3–4: hər manifest `sign` ilə imzalanır, `verify --key-set production` ilə yoxlanır.
+3. **Production build-in real paketi qəbul etdiyinin sübutu** (repoda, PowerShell 7):
+   ```powershell
+   pwsh -NoProfile -File tools\release-sign\production-check.ps1 `
+       -Package   D:\rel\neoprint-kiosk-agent-0.9.0-win-x64-production.zip `
+       -Manifest  D:\rel\neoprint-kiosk-agent-0.9.0-win-x64-production.zip.manifest.json `
+       -Signature D:\rel\neoprint-kiosk-agent-0.9.0-win-x64-production.zip.manifest.json.sig
+   ```
+   Skript repodan production Agent-i yığır (`-p:ReleaseKeySet=production`), `check-build` ilə dəsti yoxlayır, sonra
+   **kioskun və quraşdırma flaşının işlətdiyi eyni yoxlama** ilə (`NeoPrint.Kiosk.Agent verify-package`) paketi qəbul
+   etdiyini və bir baytı dəyişdirilmiş surətini rədd etdiyini göstərir. Sonda `Every check passed.`
+4. Bu paket quraşdırma flaşının `verifier\` qovluğuna da gedir (`docs/KIOSK_SETUP.md` §2).
+
+**Açarlardan əvvəl sübut (öz-özünə sınaq):** `production-check.ps1 -SelfTest` repo-nun müvəqqəti surətində iki atılacaq
+açar cütü yaradır (`release-sign keygen`), public açarları surətin `ReleaseKeys.production.cs`-inə yazır, production
+build yığır, paketi `release-sign sign` ilə imzalayır və eyni üç yoxlamanı edir; üstəlik **bugünkü repodan** yığılan
+production build-in (açarları hələ boşdur) həmin paketi `UnknownKey` ilə rədd etdiyini göstərir. Surət və açarlar
+silinir. Nəticə (2026-10-26): 6/6 keçdi — `docs/TASKS.md` T-327.
+
 ## 4. Hər buraxılışda imzalama
 
 1. Teq qoyulur (`vX.Y.Z`) → GitHub **Actions → "Release packages"** avtomatik işləyir (və ya **Run workflow** ilə versiya verilir). Run-ın xülasəsində `SHA256SUMS` çap olunur.
@@ -215,4 +267,4 @@ Hər rotasiya `docs/DECISIONS.md`-yə yazılır (tarix, köhnə və yeni `keyId`
 
 - M16: paketin admin panelə yüklənməsi, `releases` kolleksiyası, geri çəkmə (`IsWithdrawn`) — siyahını kiosk serverdən alır.
 - M17: Agent-in updater-i `ReleasePackageCheck`-i işlədir (endir → yoxla → quraşdır).
-- `ReleaseKeys.production.cs` hələ boşdur — layihə sahibi açarları yaradıb public açarları göndərənə qədər **heç bir production kiosku paket qəbul etmir** (T-315, M19-dan əvvəl). M16–M18 staging dəsti ilə işləyir.
+- `ReleaseKeys.production.cs` hələ boşdur — layihə sahibi açarları yaradıb public açarları göndərənə qədər **heç bir production kiosku paket qəbul etmir** (T-315; pilot üçün sadələşdirilmiş mərasim — bölmə 3a). M16–M18 staging dəsti ilə işləyir.
