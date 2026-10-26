@@ -42,7 +42,8 @@
             <Border Classes="usb" HorizontalAlignment="Left" IsVisible="{Binding IsFromDrive}">
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
                     <PathIcon Data="{StaticResource IconUsb}" Width="24" Height="24" Foreground="{DynamicResource Info500}" />
-                    <TextBlock Text="{Binding UsbText}" FontWeight="SemiBold" Foreground="{DynamicResource Info500}" VerticalAlignment="Center" />
+                    <!-- The colour is the icon's; the word is dark, to be read on a dim screen (T-329). -->
+                    <TextBlock Text="{Binding UsbText}" FontWeight="SemiBold" Foreground="{DynamicResource Neutral900}" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding UsbHint}" Classes="body-small" VerticalAlignment="Center" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
@@ -247,14 +248,20 @@
             </Grid>
 
             <!-- ============ Screen 4a: place on a page (plan 2.11; docs/DESIGN_SYSTEM.md, "Səhifədə yerləşdir") ============ -->
-            <Grid ColumnDefinitions="560,*" RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsLayout}}">
+            <!-- The page gives way to the tools: as on 1920 when there is room, narrower on the
+                 1600-wide surface of a 5:4 screen, so the tools never need scrolling (T-329). -->
+            <Grid RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsLayout}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="{StaticResource LayoutPreviewMinWidth}" MaxWidth="{StaticResource LayoutPreviewMaxWidth}" />
+                    <ColumnDefinition Width="*" MinWidth="{StaticResource LayoutToolsMinWidth}" />
+                </Grid.ColumnDefinitions>
                 <Grid.Styles>
                     <Style Selector="WrapPanel.tools > Button">
                         <Setter Property="Margin" Value="{DynamicResource KeyGap}" />
                     </Style>
                 </Grid.Styles>
 
-                <TextBlock Text="{Binding LayoutTitle}" Classes="h1" Margin="{DynamicResource GapBelow4}" />
+                <TextBlock Text="{Binding LayoutTitle}" Classes="h1" TextWrapping="Wrap" Margin="{DynamicResource GapBelow4}" />
                 <TextBlock Grid.Row="1" Text="{Binding LayoutHint}" Classes="muted" TextWrapping="Wrap" Margin="{DynamicResource GapBelow4}" />
 
                 <Border Grid.Row="2" Classes="card" Margin="{DynamicResource GapBelow4}">

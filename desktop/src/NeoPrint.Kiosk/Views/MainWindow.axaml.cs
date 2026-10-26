@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -84,6 +85,33 @@ public partial class MainWindow : Window
         e.Cancel = !AllowClose;
 
         base.OnClosing(e);
+    }
+
+    /// <summary>The surface for a screen of this shape (docs/DESIGN_SYSTEM.md 5.1, T-329).</summary>
+    /// <remarks>
+    /// Wide screens (16:9, 16:10) are drawn on 1920x1080. A 4:3 or 5:4 screen -
+    /// the pilot's 19" 1280x1024 - on a surface 1600 wide and of its own shape
+    /// (1600x1280): scaled by 0.8 it fills the screen with no bands, and a
+    /// button is as large under the finger as on a 21" 1080p screen. Drawn on
+    /// 1920x1080 it would be scaled by two thirds, with bands above and below.
+    /// </remarks>
+    public static Size SurfaceFor(Size screen)
+    {
+        if (screen.Width <= 0 || screen.Height <= 0 || screen.Width / screen.Height >= 1.5)
+        {
+            return new Size(1920, 1080);
+        }
+
+        return new Size(1600, Math.Round(1600 * screen.Height / screen.Width));
+    }
+
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+
+        var surface = SurfaceFor(e.NewSize);
+        Surface.Width = surface.Width;
+        Surface.Height = surface.Height;
     }
 
     private void OnClockTick(object? sender, EventArgs e)

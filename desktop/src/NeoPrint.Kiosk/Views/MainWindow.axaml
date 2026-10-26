@@ -26,9 +26,11 @@
     <!-- Every screen is laid out for 1920x1080. A smaller screen, or Windows
          scaling (125 % makes a 1080p screen 1536x864), would cut off whatever
          does not fit - the bottom rows of a keypad (T-097). The whole surface
-         is scaled instead, so nothing is ever cut and nothing needs scrolling. -->
+         is scaled instead, so nothing is ever cut and nothing needs scrolling.
+         A 4:3 or 5:4 screen gets a 1600-wide surface of its own shape instead
+         (MainWindow.SurfaceFor, T-329). -->
     <Viewbox Stretch="Uniform">
-    <Grid RowDefinitions="88,*,96" ColumnDefinitions="*,280"
+    <Grid x:Name="Surface" RowDefinitions="88,*,96" ColumnDefinitions="*,280"
           Width="{StaticResource DesignWidth}" Height="{StaticResource DesignHeight}">
 
         <!-- HEADER: logo, kiosk name, language, clock -->
@@ -77,7 +79,7 @@
                                       Foreground="{DynamicResource Info500}"
                                       VerticalAlignment="Center" />
                             <TextBlock Text="{Binding ConnectedPhonesText}"
-                                       Foreground="{DynamicResource Info500}"
+                                       Foreground="{DynamicResource Neutral900}"
                                        FontSize="{DynamicResource FontSizeCaption}"
                                        VerticalAlignment="Center" />
                         </StackPanel>

@@ -128,6 +128,11 @@
     <sys:Double x:Key="DesignWidth">1920</sys:Double>
     <sys:Double x:Key="DesignHeight">1080</sys:Double>
     <sys:Double x:Key="TouchTarget">64</sys:Double>
+    <!-- The layout editor (FlowStage.Layout): the page takes up to 560 and gives way
+         to the tools on the 1600-wide surface of a 5:4 screen (T-329). -->
+    <sys:Double x:Key="LayoutPreviewMinWidth">400</sys:Double>
+    <sys:Double x:Key="LayoutPreviewMaxWidth">560</sys:Double>
+    <sys:Double x:Key="LayoutToolsMinWidth">880</sys:Double>
     <sys:Double x:Key="ButtonHeight">72</sys:Double>
     <sys:Double x:Key="HeaderHeight">88</sys:Double>
 

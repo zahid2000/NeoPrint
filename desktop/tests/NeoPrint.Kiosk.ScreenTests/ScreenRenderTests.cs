@@ -2,6 +2,8 @@ using System.Text.RegularExpressions;
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
@@ -33,10 +35,13 @@ public static class ScreenTestApp
 }
 
 /// <summary>
-/// Every kiosk screen, drawn at 1920×1080 in Azerbaijani, English and Russian
-/// (docs/DESIGN_SYSTEM.md section 6): no text is a raw translation key, none
-/// is wider or taller than the place it was given, and none lies outside the
-/// window. The pictures are kept next to the test results.
+/// Every kiosk screen, drawn at 1920×1080 and at the pilot's 1280×1024
+/// (T-329) in Azerbaijani, English and Russian (docs/DESIGN_SYSTEM.md 5.1, 6):
+/// no text is a raw translation key, none is wider or taller than the place it
+/// was given, none lies outside the window; every button is at least a finger
+/// (64 × 64 on the surface) and every text stands out from its background by
+/// at least 4.5 : 1, for a 250-nit screen. The pictures are kept next to the
+/// test results.
 /// </summary>
 /// <remarks>
 /// What this catches is what review does not: a key missing from the
@@ -45,8 +50,11 @@ public static class ScreenTestApp
 /// </remarks>
 public sealed partial class ScreenRenderTests : IDisposable
 {
-    private const int Width = 1920;
-    private const int Height = 1080;
+    /// <summary>The design system's kiosk minimum for anything a finger presses (Tokens.axaml, TouchTarget).</summary>
+    private const double TouchTarget = 64;
+
+    /// <summary>WCAG AA for text: what a dim (250 nit) screen still shows clearly.</summary>
+    private const double MinimumContrast = 4.5;
 
     private readonly string _drive = Directory.CreateTempSubdirectory("neoprint-screens-usb-").FullName;
     private readonly List<OrderTestKit> _kits = [];
@@ -78,17 +86,22 @@ public sealed partial class ScreenRenderTests : IDisposable
     private static partial Regex RawKey();
 
     [AvaloniaTheory]
-    [InlineData("az")]
-    [InlineData("en")]
-    [InlineData("ru")]
-    public async Task Every_screen_shows_words_that_fit(string language)
+    [InlineData("az", 1920, 1080)]
+    [InlineData("en", 1920, 1080)]
+    [InlineData("ru", 1920, 1080)]
+    [InlineData("az", 1280, 1024)]
+    [InlineData("en", 1280, 1024)]
+    [InlineData("ru", 1280, 1024)]
+    public async Task Every_screen_shows_words_that_fit(string language, int width, int height)
     {
         var problems = new List<string>();
         var drawn = 0;
+        // The 1920 pictures keep their names; the pilot's screen is named by its size.
+        var prefix = width == 1920 ? language : $"{width}x{height}-{language}";
 
         foreach (var (name, model) in await ScreensAsync(language))
         {
-            var window = new MainWindow { DataContext = model, Width = Width, Height = Height };
+            var window = new MainWindow { DataContext = model, Width = width, Height = height };
 
             try
             {
@@ -97,10 +110,10 @@ public sealed partial class ScreenRenderTests : IDisposable
 
                 var frame = window.CaptureRenderedFrame();
                 frame.Should().NotBeNull($"{name} draws");
-                frame!.Save(Path.Combine(Pictures, $"{language}-{name}.png"));
+                frame!.Save(Path.Combine(Pictures, $"{prefix}-{name}.png"));
                 drawn++;
 
-                problems.AddRange(Inspect(window).Select(problem => $"{language} / {name}: {problem}"));
+                problems.AddRange(Inspect(window, width, height).Select(problem => $"{prefix} / {name}: {problem}"));
             }
             finally
             {
@@ -118,8 +131,85 @@ public sealed partial class ScreenRenderTests : IDisposable
     // What is wrong with a drawn window, without anybody looking at it
     // -----------------------------------------------------------------------
 
-    private static IEnumerable<string> Inspect(Window window)
+    [AvaloniaFact]
+    public void A_wide_screen_is_drawn_on_1920_by_1080_and_the_pilot_s_19_inch_on_1600_by_1280()
     {
+        MainWindow.SurfaceFor(new Size(1920, 1080)).Should().Be(new Size(1920, 1080));
+        MainWindow.SurfaceFor(new Size(1920, 1200)).Should().Be(new Size(1920, 1080), "16:10 is wide");
+        MainWindow.SurfaceFor(new Size(1280, 1024)).Should().Be(new Size(1600, 1280), "5:4 fills the screen at 0.8");
+        MainWindow.SurfaceFor(new Size(1024, 768)).Should().Be(new Size(1600, 1200), "4:3");
+    }
+
+    [Fact]
+    public void Nothing_on_a_kiosk_screen_shows_only_under_a_hovering_mouse()
+    {
+        // A finger does not hover (T-329): no tooltip, and :pointerover changes a colour, never what is there.
+        var views = Path.Combine(Repository(), "desktop", "src", "NeoPrint.Kiosk");
+        var offenders = new List<string>();
+
+        foreach (var file in Directory.EnumerateFiles(views, "*.axaml", SearchOption.AllDirectories)
+                     .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)))
+        {
+            var text = File.ReadAllText(file);
+            if (text.Contains("ToolTip.Tip", StringComparison.Ordinal))
+            {
+                offenders.Add($"{Path.GetFileName(file)}: a tooltip");
+            }
+
+            foreach (Match style in PointerOverStyle().Matches(text))
+            {
+                if (style.Value.Contains("Property=\"IsVisible\"", StringComparison.Ordinal)
+                    || style.Value.Contains("Property=\"Opacity\"", StringComparison.Ordinal))
+                {
+                    offenders.Add($"{Path.GetFileName(file)}: something appears only on hover");
+                }
+            }
+        }
+
+        offenders.Should().BeEmpty();
+    }
+
+    [GeneratedRegex(@"<Style Selector=""[^""]*:pointerover[^""]*"">.*?</Style>", RegexOptions.Singleline)]
+    private static partial Regex PointerOverStyle();
+
+    private static string Repository()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "CLAUDE.md")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("The repository root was not found.");
+    }
+
+    private static IEnumerable<string> Inspect(Window window, int width, int height)
+    {
+        // A finger, not a mouse: on the surface, before it is scaled to the screen.
+        // A scroll bar's own arrows are not what a finger presses: it moves the content itself.
+        foreach (var control in window.GetVisualDescendants().OfType<Control>()
+                     .Where(control => control is Button or ToggleButton or RadioButton or CheckBox or ComboBox
+                                       && control.IsEffectivelyVisible && control.Bounds.Width > 0
+                                       && control.FindAncestorOfType<ScrollBar>() is null))
+        {
+            if (control.Bounds.Width + 0.5 < TouchTarget || control.Bounds.Height + 0.5 < TouchTarget)
+            {
+                var label = control is ContentControl { Content: string content } ? content : control.Name ?? control.GetType().Name;
+                yield return $"the button \"{label}\" is {control.Bounds.Width:0}×{control.Bounds.Height:0}: smaller than a finger ({TouchTarget:0}×{TouchTarget:0})";
+            }
+        }
+
+        // On the pilot's screen nothing needs scrolling: a customer does not know to (T-097, T-329).
+        if (width == 1280)
+        {
+            foreach (var scroller in window.GetVisualDescendants().OfType<ScrollViewer>()
+                         .Where(scroller => scroller.IsEffectivelyVisible && scroller.Viewport.Height > 0
+                                            && scroller.Extent.Height > scroller.Viewport.Height + 1))
+            {
+                yield return $"a part of the screen needs scrolling: {scroller.Extent.Height:0} px of content in {scroller.Viewport.Height:0}";
+            }
+        }
+
         foreach (var text in window.GetVisualDescendants().OfType<TextBlock>())
         {
             var words = text.Text;
@@ -165,14 +255,66 @@ public sealed partial class ScreenRenderTests : IDisposable
                 yield return $"\"{shown}\" needs {free.DesiredSize.Height:0} px of height and has {text.Bounds.Height:0}: its last line is cut off";
             }
 
-            // Scrolled content is allowed to be outside; anything else is not.
+            // Scrolled content is allowed to be outside; anything else is not. Both
+            // corners on the window: the surface may be scaled to fit the screen.
             if (text.FindAncestorOfType<ScrollViewer>() is null
                 && text.TranslatePoint(default, window) is { } origin
-                && (origin.X < -1 || origin.Y < -1 || origin.X + text.Bounds.Width > Width + 1 || origin.Y + text.Bounds.Height > Height + 1))
+                && text.TranslatePoint(new Point(text.Bounds.Width, text.Bounds.Height), window) is { } end
+                && (origin.X < -1 || origin.Y < -1 || end.X > width + 1 || end.Y > height + 1))
             {
-                yield return $"\"{shown}\" lies outside the window (at {origin.X:0},{origin.Y:0}, {text.Bounds.Width:0}×{text.Bounds.Height:0})";
+                yield return $"\"{shown}\" lies outside the window (at {origin.X:0},{origin.Y:0} to {end.X:0},{end.Y:0})";
+            }
+
+            // Readable on a 250-nit screen; a control that is switched off is exempt (WCAG 1.4.3).
+            if (text.IsEffectivelyEnabled
+                && text.Foreground is ISolidColorBrush { Color.A: 255 } foreground
+                && Background(text) is { } background
+                && Contrast(foreground.Color, background) is var contrast and < MinimumContrast)
+            {
+                yield return $"\"{shown}\" stands out from its background by {contrast:0.00} : 1 ({foreground.Color} on {background}); a 250-nit screen needs {MinimumContrast} : 1";
             }
         }
+    }
+
+    /// <summary>The colour a text is drawn on: the nearest opaque background under it.</summary>
+    private static Color? Background(Visual text)
+    {
+        foreach (var ancestor in text.GetVisualAncestors())
+        {
+            var brush = ancestor switch
+            {
+                Border border => border.Background,
+                Panel panel => panel.Background,
+                Avalonia.Controls.Primitives.TemplatedControl control => control.Background,
+                ContentPresenter presenter => presenter.Background,
+                _ => null,
+            };
+
+            if (brush is ISolidColorBrush { Color.A: > 0 } solid)
+            {
+                return solid.Color;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>WCAG 2 contrast ratio.</summary>
+    private static double Contrast(Color a, Color b)
+    {
+        static double Luminance(Color color)
+        {
+            static double Channel(byte value)
+            {
+                var c = value / 255.0;
+                return c <= 0.03928 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+            }
+
+            return (0.2126 * Channel(color.R)) + (0.7152 * Channel(color.G)) + (0.0722 * Channel(color.B));
+        }
+
+        var (lighter, darker) = (Math.Max(Luminance(a), Luminance(b)), Math.Min(Luminance(a), Luminance(b)));
+        return (lighter + 0.05) / (darker + 0.05);
     }
 
     /// <summary>"report.pdf" has the shape of a key and is a file's name.</summary>
