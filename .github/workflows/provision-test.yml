@@ -1,5 +1,5 @@
-# The Linux kiosk provisioning script, whole, on Ubuntu 24.04 with systemd
-# (T-327): thirteen steps, a second run that changes nothing, a failing step
+# The Linux kiosk provisioning script, whole, on Ubuntu 24.04 (a server) and
+# 26.04 made like a desktop install (T-333), with systemd (T-327): thirteen steps, a second run that changes nothing, a failing step
 # that says what to do and puts back what it changed, and a golden image whose
 # two clones have identities of their own - tools/provision-test/check.sh.
 # The --download check needs the staging release key and runs only on the
@@ -21,8 +21,16 @@ permissions:
 
 jobs:
   provision:
-    name: provision.sh on Ubuntu 24.04
+    name: provision.sh on Ubuntu ${{ matrix.ubuntu }}${{ matrix.desktop == '1' && ' (desktop)' || '' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ubuntu: '24.04'
+            desktop: '0'
+          - ubuntu: '26.04'
+            desktop: '1'
     timeout-minutes: 40
 
     steps:
@@ -34,4 +42,7 @@ jobs:
           global-json-file: global.json
 
       - name: Run the provisioning check
+        env:
+          UBUNTU: ${{ matrix.ubuntu }}
+          DESKTOP: ${{ matrix.desktop }}
         run: bash tools/provision-test/check.sh

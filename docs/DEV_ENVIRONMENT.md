@@ -1722,6 +1722,18 @@ Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını
   (masaüstü), ikon zolağı → tam menyu (planşet 820 px), drawer (telefon 390 px) hər kadrda ölçülür; ilk yükləmədə
   hərəkət yoxdur, `prefers-reduced-motion`-da heç nə hərəkət etmir, klaviatura bağlı qrupa girmir; kadrlar şəkil kimi.
 
+## 7y. Addım 7B — real Linux kiosku test serverinə (T-333)
+
+```bash
+# Pilot cihazı üçün flaş (Ubuntu 24.04 / 26.04, Server və ya Desktop): staging açarlı, self-contained linux-x64 UI və
+# Agent, provisioning skriptləri, install.sh. <HOST> — test serverinin adı (docs/TEST_SERVER.md), repoya yazılmır.
+bash tools/dev-kiosk/make-stick.sh --api-url https://<HOST> --out "$USERPROFILE/Desktop/neoprint-stick"
+# Qovluğun içindəkiləri FAT32 / exFAT flaşın kökünə köçürün. Cihazda: sudo bash /media/$USER/*/install.sh
+
+# Skriptin bütöv sınağı başqa Ubuntu-da və "Desktop kimi" (GDM əvəzi, graphical.target, 26.04-də sudo-rs):
+UBUNTU=26.04 DESKTOP=1 bash tools/provision-test/check.sh
+```
+
 ## 7x. Addım 7B — M19a: qeydiyyat açarları, golden image, provisioning (T-327, T-329)
 
 Hamısı compose stack qalxmış halda, repo kökündən (Git Bash). Heç biri açarı və tokeni ekrana çıxarmır.

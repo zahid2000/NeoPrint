@@ -235,11 +235,42 @@ klaviaturası → kioskun admin PIN-i. Menyu:
   hesabı ilə daxil olun, skripti düzgün parametrlə yenidən işə salın;
 - Linux: açılışda **Esc** ilə GRUB menyusu → *Advanced options* → *recovery mode* → root shell, `provision.sh`-i yenidən.
 
-## 11. Linux (Ubuntu 24.04 Server) — pilot cihazı (T-332)
+## 11. Linux (Ubuntu) — pilot cihazı (T-332, T-333)
 
-Bu bölmə Linux kioskunu sıfırdan qurmaq üçündür, əvvəldən sona ardıcıl. Təxminən **1 saat**.
+Bu bölmə Linux kioskunu qurmaq üçündür, əvvəldən sona ardıcıl. Skript **Ubuntu 24.04 və 26.04**-də, **Server və
+Desktop** nüsxəsində işləyir. Desktop-da qrafik giriş söndürülür (masaüstü silinmir) və kompüter kiosk kimi açılır.
 
-**Real Linux cihazında hələ yoxlanmayıb** — skript Ubuntu 24.04 konteynerində tam sınanıb (`tools/provision-test`),
+### 11.0. Ən qısa yol: cihazdakı Ubuntu Desktop (pilot cihazı, T-333)
+
+Ubuntu yenidən quraşdırılmır. Təxminən **20 dəqiqə**.
+
+1. **Kabeli taxın** (Ethernet) — quraşdırma paketləri internetdən endirir.
+2. **Flaş** — NeoPrint komandası hazırlayır (test serveri üçün: `tools/dev-kiosk/make-stick.sh`, `docs/DEV_ENVIRONMENT.md` §7y).
+   Flaşda gizli məlumat yoxdur.
+3. **Qeydiyyat açarı** (istəyə görə) — §4 kimi: admin panel → **Cihazlar** → **"Qeydiyyat açarı yarat"** → **Yeni kiosk
+   üçün** → açarı kopyalayın. Açar olmasa kiosk ekranda aktivləşdirmə kodu göstərir və onu paneldə daxil edirsiniz (§7).
+4. Flaşı cihaza taxın (Ubuntu onu özü açır), **Terminal**-ı açın (`Ctrl+Alt+T`) və yazın:
+
+   ```bash
+   sudo bash /media/$USER/*/install.sh
+   ```
+
+   Öz parolunuzu soruşur (`sudo`), sonra qeydiyyat açarını — yapışdırın (görünmür) və **Enter**; açar yoxdursa sadəcə
+   **Enter**. Skript `step 1/13` … `step 13/13` yazır (10–15 dəqiqə). Sonda
+   **`provisioning finished: 13 of 13 steps`** və **`Done`**.
+5. Flaşı çıxarın və `sudo reboot`. Kompüter masaüstü əvəzinə **yalnız NeoPrint**-lə açılır.
+6. §7 və §8-dəki yoxlamalar (+ §11.6).
+
+**Xəta olsa** — ekranın şəklini göndərin (cədvəl §11.5-də). **Masaüstünü qaytarmaq** (sınaq uğursuz olsa): kioskun admin
+menyusundan **"Texniki giriş"** (§10) və ya açılışda **Esc** → *Advanced options* → *recovery mode* → *root*, sonra:
+
+```bash
+systemctl disable neoprint-kiosk && systemctl enable gdm && systemctl set-default graphical.target && reboot
+```
+
+Aşağıdakı §11.1–§11.7 — Ubuntu Server-in sıfırdan quraşdırılması (Desktop-da problem olsa).
+
+**Real Linux cihazında hələ yoxlanmayıb** — skript Ubuntu 24.04 və 26.04 (+ "Desktop kimi") konteynerində tam sınanıb (`tools/provision-test`),
 cihazda ilk quraşdırma M19b-də NeoPrint komandası ilə birgə edilir (T-331). Gözlənilməz bir şey görsəniz — ekranın
 şəklini çəkib göndərin.
 

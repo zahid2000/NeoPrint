@@ -1,8 +1,9 @@
 #!/bin/bash
 # ---------------------------------------------------------------------------
-# NeoPrint kiosk provisioning — Ubuntu 24.04 LTS Server (plan section 7.12)
+# NeoPrint kiosk provisioning — Ubuntu 24.04 / 26.04 LTS (plan section 7.12)
 #
-# Turns a minimal server install into a kiosk: installs the dependencies,
+# Turns a minimal server install - or a desktop install, whose graphical login
+# is switched off (T-333) - into a kiosk: installs the dependencies,
 # creates the accounts, sets up cage as the display session, locks down the
 # console, the network and the converters, and installs the NeoPrint agent
 # and UI.
@@ -34,7 +35,7 @@
 # ---------------------------------------------------------------------------
 set -Eeuo pipefail
 
-PROVISIONING_VERSION="0.5.0"
+PROVISIONING_VERSION="0.6.0"
 
 API_URL=""
 ENROLLMENT_TOKEN=""
@@ -127,6 +128,10 @@ STEP_NAME="starting"
 BACKUP_DIR="$(mktemp -d /var/tmp/neoprint-provision.XXXXXX)"
 KEPT=()
 UFW_WAS_ACTIVE=0
+# A desktop install's graphical login, as it was before step 13 switched it off (T-333).
+DESKTOP_SWITCHED=0
+DEFAULT_TARGET_WAS=""
+DISPLAY_MANAGER_WAS=""
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
     UFW_WAS_ACTIVE=1
 fi
@@ -189,6 +194,11 @@ on_error() {
         log "put back as they were: ${KEPT[*]}"
         systemctl daemon-reload >/dev/null 2>&1 || true
     fi
+    if [ "$DESKTOP_SWITCHED" -eq 1 ]; then
+        systemctl set-default "$DEFAULT_TARGET_WAS" >/dev/null 2>&1 || true
+        [ -z "$DISPLAY_MANAGER_WAS" ] || systemctl enable "$DISPLAY_MANAGER_WAS" >/dev/null 2>&1 || true
+        log "put back as it was: the desktop's graphical login ($DEFAULT_TARGET_WAS${DISPLAY_MANAGER_WAS:+, $DISPLAY_MANAGER_WAS})"
+    fi
     if [ "$STEP" -eq 10 ] && command -v ufw >/dev/null 2>&1; then
         if [ "$UFW_WAS_ACTIVE" -eq 1 ]; then ufw --force enable >/dev/null 2>&1 || true; else ufw --force disable >/dev/null 2>&1 || true; fi
     fi
@@ -205,15 +215,20 @@ log "NeoPrint kiosk provisioning $PROVISIONING_VERSION starting (channel: $CHANN
 # 1. Dependencies
 #
 # No desktop environment and no notification daemon: nothing must be able to
-# put a window on the screen except the kiosk itself.
+# put a window on the screen except the kiosk itself. xwayland: the kiosk UI
+# (Avalonia 11) draws through X11, which cage gives it through Xwayland - a
+# server install does not have it, and cage is installed without what it only
+# recommends (T-333).
 # ---------------------------------------------------------------------------
 step 1 "packages"
 
 export DEBIAN_FRONTEND=noninteractive
 
-apt-get update
-apt-get install -y --no-install-recommends \
-    cage \
+# A desktop install updates itself in the background: wait for its lock
+# rather than fail on it.
+apt-get -o DPkg::Lock::Timeout=600 update
+apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends \
+    cage xwayland \
     cups cups-ipp-utils printer-driver-cups-pdf \
     udisks2 \
     libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress \
@@ -664,6 +679,23 @@ systemctl daemon-reload
 systemctl enable neoprint-firstboot.service >/dev/null 2>&1 || true
 systemctl enable neoprint-agent.service >/dev/null 2>&1 || true
 systemctl enable neoprint-kiosk.service >/dev/null 2>&1 || true
+
+# A desktop install (Ubuntu Desktop, T-333): its graphical login owns tty1 and
+# would bring the desktop back - its windows, notifications, its own handling of
+# a stick - in front of the kiosk. The machine boots to multi-user.target, where
+# the kiosk is; the desktop stays installed, unused. Put back if a step fails.
+DEFAULT_TARGET_WAS="$(systemctl get-default 2>/dev/null || echo multi-user.target)"
+if [ -L /etc/systemd/system/display-manager.service ]; then
+    DISPLAY_MANAGER_WAS="$(basename "$(readlink -f /etc/systemd/system/display-manager.service)")"
+fi
+if [ "$DEFAULT_TARGET_WAS" != multi-user.target ] || [ -n "$DISPLAY_MANAGER_WAS" ]; then
+    DESKTOP_SWITCHED=1
+    systemctl set-default multi-user.target >/dev/null 2>&1
+    if [ -n "$DISPLAY_MANAGER_WAS" ]; then
+        systemctl disable "$DISPLAY_MANAGER_WAS" >/dev/null 2>&1
+    fi
+    log "a desktop install: its graphical login (${DISPLAY_MANAGER_WAS:-none}, $DEFAULT_TARGET_WAS) is switched off; after the reboot the screen is the kiosk's"
+fi
 
 printf '%s' "$PROVISIONING_VERSION" >"$DATA_ROOT/state/provisioning-version"
 chown "$KIOSK_USER:$SERVICE_USER" "$DATA_ROOT/state/provisioning-version"

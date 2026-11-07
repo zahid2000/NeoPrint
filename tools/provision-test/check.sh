@@ -19,6 +19,11 @@
 # 5. prepare-image.sh cleans the machine and its --check agrees; two clones
 #    of the image boot with a machine id and SSH host keys each of their own.
 #
+# UBUNTU=26.04 (default 24.04): that release. DESKTOP=1: the machine is made
+# like a desktop install first - a graphical login (a stand-in display manager
+# aliased display-manager.service), graphical.target as the default and, on
+# 26.04, sudo-rs as its sudo - and provision.sh must switch the login off (T-333).
+#
 # What a container cannot show - cage on a screen, the flash drive, a reboot
 # into kiosk mode - is checked on the real device (M19b, T-331).
 # ---------------------------------------------------------------------------
@@ -28,6 +33,10 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 image="neoprint-provision-test"
 machine="neoprint-provision-machine"
 version="${VERSION:-0.9.0-m19a}"
+ubuntu="${UBUNTU:-24.04}"
+desktop="${DESKTOP:-0}"
+sudo_package=sudo
+if [ "$desktop" = 1 ] && [ "$ubuntu" != 24.04 ]; then sudo_package=sudo-rs; fi
 work="$(mktemp -d)"
 failures=0
 
@@ -57,10 +66,24 @@ boot() { # name image
     return 1
 }
 
-echo "== the machine"
-MSYS_NO_PATHCONV=1 docker build -q -t "$image" "$(win "$root/tools/provision-test")" >/dev/null
+# systemd 258 and later (Ubuntu 26.04) refuse to run on cgroup v1, which Docker
+# Desktop on an older WSL 2 still has; GitHub's runners have v2.
+if [ "$ubuntu" != 24.04 ] && [ "$(docker info --format '{{.CgroupVersion}}' 2>/dev/null)" = 1 ]; then
+    echo "Ubuntu $ubuntu's systemd does not run on this Docker's cgroup v1: run it on a cgroup v2 host (the CI workflow does), or UBUNTU=24.04" >&2
+    exit 2
+fi
+
+echo "== the machine: Ubuntu $ubuntu$([ "$desktop" = 1 ] && echo ", made like a desktop install")"
+MSYS_NO_PATHCONV=1 docker build -q --build-arg UBUNTU="$ubuntu" --build-arg SUDO="$sudo_package" -t "$image" "$(win "$root/tools/provision-test")" >/dev/null
 docker rm -f "$machine" >/dev/null 2>&1 || true
 boot "$machine" "$image"
+check "$(is "$(on "$machine" '. /etc/os-release; echo "$VERSION_ID"')" "$ubuntu")" "the machine is Ubuntu $ubuntu"
+if [ "$desktop" = 1 ]; then
+    # A desktop's graphical login, as GDM is: a unit aliased display-manager.service, graphical.target the default.
+    on "$machine" 'printf "[Unit]\nDescription=stand-in display manager\n[Service]\nExecStart=/bin/sleep infinity\n[Install]\nAlias=display-manager.service\nWantedBy=graphical.target\n" >/etc/systemd/system/gdm3.service && systemctl daemon-reload && systemctl enable gdm3.service && systemctl set-default graphical.target' >/dev/null 2>&1
+    check "$(is "$(on "$machine" 'systemctl get-default; readlink -f /etc/systemd/system/display-manager.service')" "graphical.target
+/etc/systemd/system/gdm3.service")" "it boots to a graphical login, as a desktop install does"
+fi
 
 echo "== the setup stick"
 mkdir -p "$work/stick/package"
@@ -92,12 +115,18 @@ check "$(is "$(on "$machine" 'systemctl is-enabled neoprint-agent neoprint-kiosk
 check "$(is "$(on "$machine" 'stat -c %U:%a /var/lib/neoprint/device')" kiosk:700)" "the device folder is the kiosk account's alone"
 check "$(is "$(on "$machine" 'stat -c %U:%a /var/lib/neoprint/device/enrollment-token')" kiosk:600)" "the enrollment token is the kiosk account's, read by nobody else"
 check "$(is "$(on "$machine" 'readlink /opt/neoprint/app/current')" "versions/$version")" "the kiosk from the stick is the current version"
-check "$(is "$(on "$machine" 'cat /var/lib/neoprint/state/provisioning-version')" 0.5.0)" "the provisioning version is written"
+check "$(is "$(on "$machine" 'cat /var/lib/neoprint/state/provisioning-version')" 0.6.0)" "the provisioning version is written"
 check "$(on "$machine" 'visudo -c >/dev/null && echo ok')" "the sudo rules pass their check"
 check "$(on "$machine" 'test -x /usr/local/sbin/neoprint-enroll && test -x /usr/local/lib/neoprint/neoprint-firstboot && echo ok')" "neoprint-enroll and neoprint-firstboot are installed"
 check "$(is "$(on "$machine" 'grep -c "uid-owner neoprint-convert" /etc/ufw/before.rules')" 1)" "the converters have no network (one rule)"
 ufw="$(on "$machine" 'ufw status | head -1')"
 check "$(is "$ufw" "Status: active")" "the firewall is on ($ufw)"
+check "$(on "$machine" 'command -v cage >/dev/null && command -v Xwayland >/dev/null && echo ok')" "cage is there, and Xwayland for the kiosk UI (X11) under it"
+check "$(is "$(on "$machine" 'systemctl get-default')" multi-user.target)" "the machine boots to multi-user.target, where the kiosk is"
+if [ "$desktop" = 1 ]; then
+    check "$(on "$machine" 'test ! -e /etc/systemd/system/display-manager.service && [ "$(systemctl is-enabled gdm3.service)" = disabled ] && echo ok')" "the desktop's graphical login is switched off"
+    check "$(echo "$first" | grep -q "a desktop install: its graphical login (gdm3.service, graphical.target) is switched off" && echo ok)" "and the script says so"
+fi
 
 echo "== provision.sh, a second time"
 sums='md5sum /etc/sudoers.d/neoprint /etc/ufw/before.rules /etc/udisks2/mount_options.conf /etc/sysctl.d/99-neoprint-kiosk.conf /etc/systemd/system/neoprint-*.service /etc/polkit-1/rules.d/50-neoprint-udisks.rules'

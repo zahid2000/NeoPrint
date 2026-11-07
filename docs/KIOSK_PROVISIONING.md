@@ -8,7 +8,7 @@ təhlükəsizdir. Quraşdırma addımları: `docs/KIOSK_SETUP.md`.
 
 Hər iki skript: parametrlər `ApiUrl`, `EnrollmentToken` (istəyə görə), `Channel` (`pilot`/`stable`),
 `OfflinePackage` **və ya** `Download` (T-327); log — `C:\ProgramData\NeoPrint\provision.log` /
-`/var/log/neoprint/provision.log`; sonda `state/provisioning-version` (**0.5.0**).
+`/var/log/neoprint/provision.log`; sonda `state/provisioning-version` (Linux **0.6.0**, Windows **0.5.0**).
 
 **Addımlar və xəta (T-327):** hər skript 13 addımdır və hər addımın adını yazır (`step N/13: ...`). Addım uğursuz
 olanda: `ERROR: step N/13 (ad) failed`, `what to do: ...` (addıma görə; Azərbaycanca cədvəl — `docs/KIOSK_SETUP.md`
@@ -51,15 +51,16 @@ edilir. Cihaz gələndə yalnız-oxu yoxlaması: `check-windows.ps1`. Testi: `te
 | NeoPrint | Paket → `C:\Program Files\NeoPrint\versions\<VERSION>`, `current` junction; `NeoPrintAgent` servisi (LocalSystem, avtomatik, dayanarsa 5 san-də yenidən başlayır); `NEOPRINT_KIOSK_Kiosk__ApiBaseUrl` maşın mühit dəyişəni | Yeniləmə kimliyə və spool-a toxunmur |
 | Firewall | Daxil olan hər şey bloklanır. Çıxan: yalnız DNS (53), NTP (123), HTTP (80), HTTPS (443) və yerli şəbəkədəki printerlər — IPP 631, raw 9100, LPD 515, SNMP 161, mDNS 5353. Konvertor proqramlarına (`soffice.exe`, `soffice.bin`, `gswin64c.exe`, `gswin64.exe`, `gpcl6win64.exe`, `gxpswin64.exe`) çıxış **tam bloklanır** (blok qaydası icazəni üstələyir) | Kiosk untrusted edge device-dır; konvertor untrusted fayl açır (T-075) |
 
-## Linux (`provision.sh`, root kimi, Ubuntu 24.04 Server)
+## Linux (`provision.sh`, root kimi, Ubuntu 24.04 / 26.04 — Server və ya Desktop, T-333)
 
 | Sahə | Dəyişiklik | Niyə |
 |---|---|---|
-| Paketlər | `cage`, `cups`, `cups-ipp-utils` (native formatlar üçün `ipptool`), `printer-driver-cups-pdf` (test printeri), `udisks2`, LibreOffice (GUI-siz: core/writer/calc/impress), `ghostscript`, fontlar (DejaVu, Liberation, Carlito, Caladea), `chrony`, `sudo`, `unattended-upgrades`, `ufw`; masaüstü mühiti və bildiriş servisi **yoxdur** | Ekranda başqa pəncərə yarana bilməz |
+| Paketlər | `cage`, `xwayland` (kiosk UI-ı — Avalonia 11 — X11 ilə çəkir, `cage` onu Xwayland ilə verir; Server-də yoxdur, `cage`-in tövsiyəsi isə quraşdırılmır — T-333), `cups`, `cups-ipp-utils` (native formatlar üçün `ipptool`), `printer-driver-cups-pdf` (test printeri), `udisks2`, LibreOffice (GUI-siz: core/writer/calc/impress), `ghostscript`, fontlar (DejaVu, Liberation, Carlito, Caladea), `chrony`, `sudo`, `unattended-upgrades`, `ufw`; masaüstü mühiti və bildiriş servisi **yoxdur** | Ekranda başqa pəncərə yarana bilməz |
 | CUPS | Açıq, printerlər paylaşılmır; iş tarixçəsi (default) saxlanır | Restart-dan sonra "çap olubmu?" (T-066) |
 | Hesablar | `neoprint` (Agent, sistem hesabı, `lpadmin`), `kiosk` (UI; `video`, `input`, `render`, `neoprint-convert` — konvertorun nəticəsini oxumaq üçün), `neoprint-convert` (konvertor, sistem hesabı, evsiz, login yoxdur) | Minimal hüquq; konvertorun şəbəkəsi yoxdur |
 | Qovluqlar | `/var/lib/neoprint` `kiosk:neoprint 751` (konvertor yalnız keçə bilir); `device` `kiosk 700`; `spool` `kiosk:neoprint-convert 710`; `spool/work` `kiosk:neoprint-convert 2770` (setgid); `state` `kiosk:neoprint 750`; `/var/log/neoprint` `kiosk:neoprint 770`; `updates` `kiosk:neoprint 2770` (UI yazır: endirmələr, sorğular, sağlamlıq), `agent` `neoprint:kiosk 750` (Agent yazır: vəziyyət, jurnal, nəticələr), `agent/incoming` `neoprint 700` (Agent-in paket nüsxəsi); `/opt/neoprint/{app,agent}` `neoprint`, `/opt/neoprint/provisioning` `root` (T-321) | UI öz məlumatının sahibidir; Agent vəziyyəti oxuyur; konvertor yalnız iş qovluğuna keçə bilir (T-078, T-075) |
 | Konsol | `logind`: `NAutoVTs=0`, `ReserveVT=0`, güc / yuxu düymələri ignore; `ctrl-alt-del.target` mask; SysRq söndürülür; kernel mesajları ekrana çıxmır | Klaviaturadan konsola, rebootа yol yoxdur |
+| Desktop nüsxəsi (T-333) | Qrafik giriş (`display-manager.service` — GDM) söndürülür, default target `multi-user.target` olur (Server-də onsuz da belədir — heç nə dəyişmir); masaüstü silinmir, sadəcə işə düşmür. Addım 13-dən sonra xəta olsa hər ikisi əvvəlki kimi qaytarılır. `apt` masaüstünün fon yeniləməsinin kilidini 10 dəqiqəyə qədər gözləyir | Desktop-un girişi `tty1`-i tutur, pəncərələri, bildirişləri və flaşı özü açması kioskun qarşısına çıxardı |
 | Boot | GRUB timeout 0, `quiet splash loglevel=3 consoleblank=0 vt.global_cursor_default=0` | Ekranda yalnız NeoPrint |
 | Yeniləmələr | Yalnız təhlükəsizlik yeniləmələri, avtomatik reboot yox; `apport` söndürülür | Reboot Agent-in qərarıdır |
 | Flaş | polkit: yalnız `kiosk` mount / unmount / eject edə bilir, başqa blok cihaz əməliyyatı yoxdur; udisks2 mount seçimləri `noexec,nosuid,nodev`. Mount-u kiosk tətbiqi özü edir (avtomounter yoxdur) | Flaşdan heç nə icra olunmur |
