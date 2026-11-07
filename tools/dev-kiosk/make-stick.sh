@@ -14,8 +14,8 @@
 #   sudo bash /media/*/*/install.sh
 #
 # install.sh asks for an enrollment token (Enter for none: the kiosk then shows
-# an activation code) and runs provisioning/provision.sh with the package on
-# the stick. Nothing secret is on the stick: no token, no key, no password.
+# an activation code), runs provisioning/provision.sh with the package on the
+# stick, then asks for the machine's service PIN (neoprint-service-pin, T-334). Nothing secret is on the stick: no token, no key, no password.
 # Self-contained linux-x64 builds, as the release workflow makes them.
 # ---------------------------------------------------------------------------
 set -euo pipefail
@@ -66,6 +66,10 @@ echo
 args=(--api-url "$api_url" --offline-package "\$here/package" --channel pilot)
 if [ -n "\$token" ]; then args+=(--enrollment-token "\$token"); fi
 bash "\$here/provisioning/provision.sh" "\${args[@]}"
+echo
+echo "Now the service PIN: with it, five taps on the NeoPrint logo open the service menu - even before"
+echo "the kiosk is activated and with no server. Write it down somewhere safe."
+until /usr/local/sbin/neoprint-service-pin; do :; done
 echo
 echo "Done. Take the stick out and restart the computer: sudo reboot"
 SCRIPT

@@ -42,6 +42,13 @@ if (args.Length > 0 && args[0] == "verify-package")
     return await PackageVerification.RunAsync(args, BuildVersion.Of(typeof(Program).Assembly), Console.Out, Console.Error, CancellationToken.None);
 }
 
+// The service PIN (T-334): a provisioning script sets the machine's own way
+// into the admin menu, the PIN read from standard input.
+if (args.Length > 0 && args[0] == "set-service-pin")
+{
+    return await ServicePinCommand.RunAsync(args, Console.In, Console.Out, Console.Error);
+}
+
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Configuration

@@ -1,0 +1,24 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+# Service access (plan section 7.12): started from the kiosk's hidden admin
+# menu after a PIN, through neoprint-maintenance.service.
+#
+# On a desktop install whose graphical login provision.sh switched off
+# (T-333), that login comes back - a touch screen with no keyboard can sign in
+# there with the on-screen keyboard (T-334); a server install gets a console
+# login on tty1. Either way the kiosk session goes; a reboot brings it back,
+# since the graphical login stays switched off at boot.
+# ---------------------------------------------------------------------------
+set -u
+
+login=""
+if [ -r /etc/neoprint/desktop-login ]; then
+    login="$(head -n1 /etc/neoprint/desktop-login)"
+fi
+
+if [ -n "$login" ] && systemctl cat "$login" >/dev/null 2>&1; then
+    systemctl stop neoprint-kiosk.service
+    exec systemctl start "$login"
+fi
+
+exec systemctl start getty@tty1.service

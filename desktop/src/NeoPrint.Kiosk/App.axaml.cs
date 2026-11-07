@@ -129,7 +129,7 @@ public sealed partial class App : Application
                 return Task.CompletedTask;
             };
 
-        var admin = new AdminMenuViewModel(() => runtime.Configuration?.AdminPinHash) { Language = _model!.Language };
+        var admin = new AdminMenuViewModel(() => runtime.Configuration?.AdminPinHash, () => ServicePin.ReadHash(ServicePin.DefaultPath)) { Language = _model!.Language };
 
         async void Leave(string what, Func<Task> action)
         {

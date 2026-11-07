@@ -1,4 +1,5 @@
 using NeoPrint.Crypto;
+using NeoPrint.Kiosk.Core;
 using NeoPrint.Kiosk.Platform.Abstractions;
 using NeoPrint.Kiosk.Platform.Linux;
 using NeoPrint.Kiosk.ViewModels;
@@ -16,7 +17,7 @@ public sealed class LockdownTests
 
     private static DateTime _now = new(2026, 9, 28, 12, 0, 0, DateTimeKind.Utc);
 
-    private static AdminMenuViewModel Admin(string? hash = null) => new(() => hash ?? PinHash, () => _now) { Language = "az" };
+    private static AdminMenuViewModel Admin(string? hash = null) => new(() => hash ?? PinHash, now: () => _now) { Language = "az" };
 
     private static void Type(AdminMenuViewModel admin, string pin)
     {
@@ -131,6 +132,125 @@ public sealed class LockdownTests
         admin.DigitCommand.Execute("1");
         admin.EnterCommand.Execute(null);
         admin.Stage.Should().Be(AdminStage.NoPin);
+    }
+
+    [Fact]
+    public void Before_activation_the_machines_service_pin_is_the_way_in()
+    {
+        // T-334: no admin PIN from the server yet, the service PIN set while provisioning.
+        var service = SecretHash.Hash("24681357");
+        var admin = new AdminMenuViewModel(() => null, () => service, () => _now) { Language = "az" };
+
+        admin.Open(safeMode: false);
+        admin.Stage.Should().Be(AdminStage.Pin);
+
+        Type(admin, "135790");
+        admin.Stage.Should().Be(AdminStage.Pin, "a PIN that is neither");
+        admin.Error.Should().NotBeNull();
+
+        Type(admin, "24681357");
+        admin.Stage.Should().Be(AdminStage.Menu);
+    }
+
+    [Fact]
+    public void After_activation_the_admin_pin_and_the_service_pin_both_open_the_menu()
+    {
+        var service = SecretHash.Hash("24681357");
+
+        foreach (var pin in new[] { "135790", "24681357" })
+        {
+            var admin = new AdminMenuViewModel(() => PinHash, () => service, () => _now) { Language = "az" };
+            admin.Open(safeMode: false);
+            Type(admin, pin);
+            admin.Stage.Should().Be(AdminStage.Menu, pin);
+        }
+    }
+
+    [Fact]
+    public void Wrong_pins_lock_the_menu_whichever_pin_is_tried()
+    {
+        var admin = new AdminMenuViewModel(() => null, () => SecretHash.Hash("24681357"), () => _now) { Language = "az" };
+        admin.Open(safeMode: false);
+
+        for (var i = 0; i < AdminMenuViewModel.MaxAttempts; i++)
+        {
+            Type(admin, "000000");
+        }
+
+        admin.Stage.Should().Be(AdminStage.Locked);
+        Type(admin, "24681357");
+        admin.Stage.Should().Be(AdminStage.Locked, "the service PIN is no way round the lock");
+    }
+
+    [Fact]
+    public void The_service_pin_is_six_to_twelve_digits_and_kept_only_as_its_hash()
+    {
+        ServicePin.IsValid("123456").Should().BeTrue();
+        ServicePin.IsValid("123456789012").Should().BeTrue();
+        ServicePin.IsValid("12345").Should().BeFalse();
+        ServicePin.IsValid("1234567890123").Should().BeFalse();
+        ServicePin.IsValid("12345a").Should().BeFalse();
+        ServicePin.IsValid(" 123456").Should().BeFalse();
+        ServicePin.IsValid(null).Should().BeFalse();
+
+        var folder = Path.Combine(Path.GetTempPath(), "neoprint-service-pin-" + Guid.NewGuid().ToString("N"));
+        var file = Path.Combine(folder, "service-pin");
+        try
+        {
+            ServicePin.ReadHash(file).Should().BeNull("there is none yet");
+
+            ServicePin.Write(file, "24681357");
+            var stored = File.ReadAllText(file);
+            stored.Should().StartWith("pbkdf2$").And.NotContain("24681357");
+            SecretHash.Verify("24681357", ServicePin.ReadHash(file)).Should().BeTrue();
+            File.Exists(file + ".partial").Should().BeFalse();
+
+            var invalid = () => ServicePin.Write(file, "12345");
+            invalid.Should().Throw<ArgumentException>();
+            ServicePin.ReadHash(file).Should().Be(stored.Trim(), "a refused PIN changes nothing");
+
+            File.WriteAllText(file, "not a hash");
+            ServicePin.ReadHash(file).Should().BeNull();
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void The_agent_sets_the_service_pin_from_standard_input_never_an_argument()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "neoprint-service-pin-" + Guid.NewGuid().ToString("N"));
+        var file = Path.Combine(folder, "service-pin");
+        try
+        {
+            static (int Code, string Output, string Error) Run(string[] args, string input)
+            {
+                var output = new StringWriter();
+                var error = new StringWriter();
+                var code = NeoPrint.Kiosk.Agent.ServicePinCommand.RunAsync(args, new StringReader(input), output, error).GetAwaiter().GetResult();
+                return (code, output.ToString(), error.ToString());
+            }
+
+            var refused = Run(["set-service-pin", file], "1234\n");
+            refused.Code.Should().Be(2);
+            File.Exists(file).Should().BeFalse();
+
+            Run(["set-service-pin", file, "extra"], "24681357\n").Code.Should().Be(64);
+
+            var set = Run(["set-service-pin", file], "24681357\n");
+            set.Code.Should().Be(0);
+            (set.Output + set.Error).Should().NotContain("24681357", "the digits are never printed");
+            SecretHash.Verify("24681357", ServicePin.ReadHash(file)).Should().BeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(folder))
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+        }
     }
 
     [Fact]

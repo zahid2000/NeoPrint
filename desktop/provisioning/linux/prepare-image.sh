@@ -11,14 +11,15 @@
 #   sudo ./prepare-image.sh --check   # verify only: says what is left, changes nothing
 #
 # Left out of the image: the device key and the spool key, the enrollment
-# token, the cached configuration and the spool, the logs and the journal, the
+# token, the service PIN (T-334), the cached configuration and the spool, the logs and the journal, the
 # machine id, the SSH host keys, shell histories and cloud-init's record of
 # this machine. A Wi-Fi password in the network configuration stops the
 # check: it would go to every clone, and is removed by hand (docs/KIOSK_SETUP.md).
 #
 # Each clone makes its own machine id and SSH host keys on its first boot
 # (neoprint-firstboot) and its own device key when the kiosk starts; it gets
-# its enrollment token afterwards with neoprint-enroll.
+# its enrollment token afterwards with neoprint-enroll, and its service PIN
+# with neoprint-service-pin.
 #
 # Run this LAST, immediately before capturing the image. The machine must not
 # be booted again before capture: booting generates a new identity.
@@ -47,6 +48,8 @@ if [ "$CHECK_ONLY" -eq 0 ]; then
     rm -f "$DATA_ROOT/device/key.pem"
     rm -f "$DATA_ROOT/device/spool.key"
     rm -f "$DATA_ROOT/device/enrollment-token" "$DATA_ROOT/device/enrollment-token.new"
+    # Each machine's own: a clone is given its own with neoprint-service-pin (T-334).
+    rm -f /etc/neoprint/service-pin
     rm -f "$DATA_ROOT/device/"*.json
 
     # The work folder itself stays: provisioning gave it the setgid group the
@@ -111,6 +114,7 @@ check_absent() {
 check_absent "$DATA_ROOT/device/key.pem"
 check_absent "$DATA_ROOT/device/spool.key"
 check_absent "$DATA_ROOT/device/enrollment-token"
+check_absent /etc/neoprint/service-pin
 check_absent /etc/machine-id
 check_absent /var/lib/dbus/machine-id
 

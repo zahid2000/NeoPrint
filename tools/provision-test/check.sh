@@ -87,10 +87,13 @@ fi
 
 echo "== the setup stick"
 mkdir -p "$work/stick/package"
+# The agent self-contained, as a release's is: the machine has no .NET, and
+# neoprint-service-pin runs it (T-334).
 for project in NeoPrint.Kiosk NeoPrint.Kiosk.Agent; do
     out="$work/stick/package/app"
-    [ "$project" = NeoPrint.Kiosk.Agent ] && out="$work/stick/package/agent"
-    dotnet publish "$(win "$root/desktop/src/$project/$project.csproj")" -c Release -r linux-x64 --self-contained false \
+    contained=false
+    if [ "$project" = NeoPrint.Kiosk.Agent ]; then out="$work/stick/package/agent"; contained=true; fi
+    dotnet publish "$(win "$root/desktop/src/$project/$project.csproj")" -c Release -r linux-x64 --self-contained "$contained" \
         -p:EnableWindowsTargeting=true -p:ReleaseKeySet=staging -p:Version="$version" -o "$(win "$out")" -v q >/dev/null
 done
 printf '%s' "$version" >"$work/stick/package/VERSION"
@@ -140,7 +143,7 @@ check "$(is "$(on "$machine" 'systemctl is-enabled neoprint-agent neoprint-kiosk
 check "$(is "$(on "$machine" 'stat -c %U:%a /var/lib/neoprint/device')" kiosk:700)" "the device folder is the kiosk account's alone"
 check "$(is "$(on "$machine" 'stat -c %U:%a /var/lib/neoprint/device/enrollment-token')" kiosk:600)" "the enrollment token is the kiosk account's, read by nobody else"
 check "$(is "$(on "$machine" 'readlink /opt/neoprint/app/current')" "versions/$version")" "the kiosk from the stick is the current version"
-check "$(is "$(on "$machine" 'cat /var/lib/neoprint/state/provisioning-version')" 0.6.0)" "the provisioning version is written"
+check "$(is "$(on "$machine" 'cat /var/lib/neoprint/state/provisioning-version')" 0.7.0)" "the provisioning version is written"
 check "$(on "$machine" 'visudo -c >/dev/null && echo ok')" "the sudo rules pass their check"
 check "$(on "$machine" 'test -x /usr/local/sbin/neoprint-enroll && test -x /usr/local/lib/neoprint/neoprint-firstboot && echo ok')" "neoprint-enroll and neoprint-firstboot are installed"
 check "$(is "$(on "$machine" 'grep -c "uid-owner neoprint-convert" /etc/ufw/before.rules')" 1)" "the converters have no network (one rule)"
@@ -149,7 +152,21 @@ check "$(is "$ufw" "Status: active")" "the firewall is on ($ufw)"
 check "$(on "$machine" 'command -v cage >/dev/null && command -v Xwayland >/dev/null && echo ok')" "cage is there, and Xwayland for the kiosk UI (X11) under it"
 check "$(on "$machine" 'for lib in libX11.so.6 libICE.so.6 libSM.so.6 libfontconfig.so.1 libXrandr.so.2 libXi.so.6 libXcursor.so.1 libicuuc.so; do ldconfig -p | grep -q "$lib" || exit 1; done; echo ok')" "and the libraries the kiosk UI and the agent load: X11, fontconfig, ICU"
 check "$(is "$(on "$machine" 'systemctl get-default')" multi-user.target)" "the machine boots to multi-user.target, where the kiosk is"
+echo "== the service PIN (T-334)"
+pinned="$(on "$machine" 'printf "24681357\n24681357\n" | neoprint-service-pin' 2>&1)" && code=0 || code=$?
+check "$(is "$code" 0)" "neoprint-service-pin sets it, asked twice (exit $code)"
+check "$(is "$(on "$machine" 'stat -c %U:%G:%a /etc/neoprint/service-pin')" root:kiosk:640)" "root's, read by the kiosk account and nobody else"
+check "$(on "$machine" 'grep -q "^pbkdf2.sha256.[0-9][0-9]*." /etc/neoprint/service-pin && ! grep -q 24681357 /etc/neoprint/service-pin && echo ok')" "kept only as its hash"
+check "$(grep -q 24681357 <<<"$pinned" || echo ok)" "and the digits are printed nowhere"
+mismatch="$(on "$machine" 'printf "24681357\n11111111\n1234\n1234\n12345678\n87654321\n" | neoprint-service-pin' 2>&1)" && code=0 || code=$?
+check "$([ "$code" -ne 0 ] && on "$machine" 'grep -q "^pbkdf2" /etc/neoprint/service-pin && echo ok')" "three wrong tries set nothing and keep the PIN there was (exit $code)"
+check "$(on "$machine" 'neoprint-service-pin 24681357 >/dev/null 2>&1 || echo ok')" "it is never an argument"
+
 if [ "$desktop" = 1 ]; then
+    check "$(is "$(on "$machine" 'cat /etc/neoprint/desktop-login')" gdm3.service)" "the desktop's login is written down for the service menu"
+    on "$machine" 'systemctl start neoprint-maintenance.service' >/dev/null 2>&1 || true
+    check "$(is "$(on "$machine" 'systemctl is-active gdm3.service')" active)" "the service menu's way out brings the desktop's login back (T-334)"
+    on "$machine" 'systemctl stop gdm3.service' >/dev/null 2>&1 || true
     check "$(on "$machine" 'test ! -e /etc/systemd/system/display-manager.service && [ "$(systemctl is-enabled gdm3.service)" = disabled ] && echo ok')" "the desktop's graphical login is switched off"
     check "$(echo "$first" | grep -q "a desktop install: its graphical login (gdm3.service, graphical.target) is switched off" && echo ok)" "and the script says so"
     # A here-string, not a pipe: grep -q stops at a match this early in the output and, with pipefail, the echo it cut short would fail the check.
@@ -233,6 +250,7 @@ prepared="$(on "$machine" 'bash /media/stick/provisioning/prepare-image.sh' 2>&1
 check "$(is "$code" 0)" "prepare-image.sh cleans the machine"
 check "$(on "$machine" 'bash /media/stick/provisioning/prepare-image.sh --check >/dev/null 2>&1 && echo ok')" "and its --check finds nothing left"
 check "$(on "$machine" 'test ! -s /etc/machine-id && test ! -e /var/lib/neoprint/device/enrollment-token && ! ls /etc/ssh/ssh_host_* >/dev/null 2>&1 && echo ok')" "no machine id, no token, no SSH host keys in the image"
+check "$(on "$machine" 'test ! -e /etc/neoprint/service-pin && echo ok')" "and no service PIN: each clone is given its own"
 on "$machine" 'echo "secret" > /root/.bash_history'
 check "$(on "$machine" 'bash /media/stick/provisioning/prepare-image.sh --check >/dev/null 2>&1 || echo ok')" "--check stops on a history left behind"
 on "$machine" 'rm -f /root/.bash_history'

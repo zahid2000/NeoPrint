@@ -208,6 +208,7 @@ Bir kioskun quraşdırılmasını (§3–§5) bir dəfə edib qalanlarını **di
 
    ```powershell
    D:\provisioning\enroll.ps1          # açarı soruşur (yazılan görünmür)
+   D:\provisioning\service-pin.ps1     # bu klonun öz servis PIN-i (T-334; image-də yoxdur)
    ```
 
    sonra kompüteri restart edin. Klon öz cihaz açarını yaradır, açarla **ayrıca kiosk** kimi aktivləşir (hər birinin
@@ -216,24 +217,40 @@ Bir kioskun quraşdırılmasını (§3–§5) bir dəfə edib qalanlarını **di
 Imicdə **qalmır**: cihaz açarı, spool açarı, qeydiyyat açarı, parol (kiosk hesabının parolu hər quraşdırmada təsadüfi
 yaranır və yalnız Windows-un gizli yaddaşındadır), loglar, Wi-Fi parolu. Windows tərəfi real cihazda M19b-də yoxlanacaq (T-331).
 
-## 10. Texniki giriş (admin PIN)
+## 10. Texniki giriş (admin PIN və servis PIN-i)
 
 Müştəri üçün görünən çıxış yoxdur. Başlıqdakı **NeoPrint loqosuna 3 saniyə ərzində 5 dəfə** toxunun → PIN
-klaviaturası → kioskun admin PIN-i. Menyu:
+klaviaturası → iki PIN-dən biri:
+
+- **Admin PIN** — paneldə kiosk üçün təyin olunur, aktivləşdirmədən sonra kioska gəlir və internetsiz də işləyir;
+- **Servis PIN-i** (T-334) — **bu cihazın öz PIN-i**, quraşdırma vaxtı təyin olunur (Linux: `install.sh` sonda soruşur
+  və ya `sudo neoprint-service-pin`; Windows: `service-pin.ps1`). **Həmişə işləyir** — kiosk aktivləşməyibsə, serverə
+  qoşula bilmirsə də. Cihazda yalnız hash-i saxlanır; hər cihazın öz PIN-i var (golden image-ə düşmür). **Parol
+  menecerinə yazın** — unudulsa `sudo neoprint-service-pin` ilə yenisi təyin olunur (bunun üçün masaüstünə giriş lazımdır).
+
+Menyu:
 
 - **Təhlükəsiz rejimdən çıx və yenidən başlat** — yalnız kiosk "Texniki xidmət" ekranındadırsa (10 dəqiqədə 3 çöküş);
 - **Tətbiqi yenidən başlat**;
-- **Texniki giriş: kiosk rejimindən çıx** — Windows-da `kiosk` hesabından çıxılır, giriş ekranında **öz administrator
-  hesabınızla** daxil olun; Linux-da kiosk sessiyası dayanır, `tty1`-də konsol girişi çıxır. Kiosku qaytarmaq:
-  Windows-da restart; Linux-da `sudo systemctl start neoprint-kiosk` və ya restart.
+- **Texniki giriş: kiosk rejimindən çıx** — kiosk bağlanır və giriş ekranı çıxır, **öz hesabınızla** daxil olun:
+  - Windows — Windows-un giriş ekranı (toxunma klaviaturası ilə də);
+  - Linux, **Desktop** nüsxəsi (pilot cihazı) — **Ubuntu-nun qrafik giriş ekranı**: barmaqla və ekran klaviaturası ilə
+    daxil olub Wi-Fi-ı, ayarları dəyişə bilərsiniz;
+  - Linux, Server nüsxəsi — `tty1`-də konsol girişi (klaviatura lazımdır).
 
-5 səhv PIN menyunu 5 dəqiqəlik bağlayır.
+  **Kiosku qaytarmaq: kompüteri yenidən başladın** (Ubuntu-da sağ yuxarı künc → ⏻ → *Restart*).
 
-**Aktivləşdirilməmiş kioskda PIN yoxdur**, ekrandan çıxış da yoxdur. Belə halda (məs. `-ApiUrl` səhv yazılıb):
+5 səhv PIN menyunu 5 dəqiqəlik bağlayır — hansı PIN yoxlanırsa yoxlansın.
+
+**Nə admin PIN-i, nə servis PIN-i yoxdursa** (aktivləşməyib və quraşdırmada servis PIN-i təyin olunmayıb), ekrandan çıxış
+yoxdur:
 
 - Windows: kompüteri restart edin, açılışda **Shift** düyməsini basılı saxlayın — avtomatik giriş keçilir, administrator
   hesabı ilə daxil olun, skripti düzgün parametrlə yenidən işə salın;
-- Linux: açılışda **Esc** ilə GRUB menyusu → *Advanced options* → *recovery mode* → root shell, `provision.sh`-i yenidən.
+- Linux: açılışda **Esc** ilə GRUB menyusu → *Advanced options* → *recovery mode* → root shell (klaviatura lazımdır).
+
+Kompüteri söndürmək həmişə mümkündür: güc düyməsini **5 saniyə** basılı saxlayın (qısa basma qəsdən işləmir). Yandıranda
+kiosk yenə özü açılır.
 
 ## 11. Linux (Ubuntu) — pilot cihazı (T-332, T-333)
 
@@ -268,6 +285,8 @@ Ubuntu yenidən quraşdırılmır, **klaviatura lazım deyil** — hər şey bar
 5. **Parol:** öz Ubuntu parolunuzu yazın (yazılanlar görünmür — normaldır) → ↵.
 6. **Qeydiyyat açarı** soruşulanda — sadəcə ↵ (açarsız). Skript `step 1/13` … `step 13/13` yazır (10–15 dəqiqə,
    ekrana toxunmayın). Sonda **`provisioning finished: 13 of 13 steps`** və **`Done`** — **şəklini çəkin**.
+6a. **Servis PIN-i** (T-334) soruşulanda — 6–12 rəqəm yazın → ↵, **eynisini təkrar** → ↵ (yazılanlar görünmür). Bu,
+   bu kioskun menyusuna **hər halda** girmək üçündür (§10) — **yadda saxlayın / parol menecerinə yazın**.
 7. Flaşı çıxarın, yazın `sudo reboot` → ↵ (parol soruşsa — yazın). Kompüter masaüstü əvəzinə **yalnız NeoPrint**-lə
    açılır və ekranda **aktivləşdirmə kodu** göstərir — **şəklini çəkin**.
 
@@ -405,6 +424,7 @@ digər cihazlara yazın. Paneldə **bir** açar: **Yeni kiosk(lar) üçün**, **
 
 ```bash
 sudo neoprint-enroll        # açarı soruşur (yazılan görünmür)
+sudo neoprint-service-pin   # bu klonun öz servis PIN-i (T-334; image-də yoxdur)
 sudo reboot
 ```
 

@@ -35,7 +35,7 @@
 # ---------------------------------------------------------------------------
 set -Eeuo pipefail
 
-PROVISIONING_VERSION="0.6.0"
+PROVISIONING_VERSION="0.7.0"
 
 API_URL=""
 ENROLLMENT_TOKEN=""
@@ -102,7 +102,7 @@ fi
 # --dry-run (the container kiosk's ReapplyProvisioning, T-321): the scripts are
 # all here and readable, and nothing on the machine is changed.
 if [ "$DRY_RUN" -eq 1 ]; then
-    for file in systemd/neoprint-agent.service systemd/neoprint-kiosk.service systemd/neoprint-firstboot.service neoprint-agent-guard neoprint-reprovision neoprint-convert neoprint-firstboot neoprint-enroll prepare-image.sh; do
+    for file in systemd/neoprint-agent.service systemd/neoprint-kiosk.service systemd/neoprint-firstboot.service neoprint-agent-guard neoprint-reprovision neoprint-convert neoprint-firstboot neoprint-enroll neoprint-service-pin neoprint-maintenance prepare-image.sh; do
         [ -r "$script_dir/$file" ] || { echo "[provision dry-run] missing: $file" >&2; exit 1; }
     done
     echo "[provision dry-run] NeoPrint kiosk provisioning $PROVISIONING_VERSION (repair: $REPAIR): every script is in place; nothing was changed"
@@ -684,6 +684,12 @@ step 13 "services"
 install -o root -g root -m 755 "$script_dir/neoprint-firstboot" "$LIB_ROOT/neoprint-firstboot"
 install -o root -g root -m 755 "$script_dir/neoprint-enroll" "$LIB_ROOT/neoprint-enroll"
 ln -sfn "$LIB_ROOT/neoprint-enroll" /usr/local/sbin/neoprint-enroll
+# The machine's own service PIN (T-334) and the service access the admin
+# menu starts: the desktop's login on a desktop install, else a console.
+install -o root -g root -m 755 "$script_dir/neoprint-service-pin" "$LIB_ROOT/neoprint-service-pin"
+install -o root -g root -m 755 "$script_dir/neoprint-maintenance" "$LIB_ROOT/neoprint-maintenance"
+ln -sfn "$LIB_ROOT/neoprint-service-pin" /usr/local/sbin/neoprint-service-pin
+install -d -o root -g root -m 755 /etc/neoprint
 
 for unit in neoprint-agent.service neoprint-kiosk.service neoprint-maintenance.service neoprint-firstboot.service; do
     keep "/etc/systemd/system/$unit"
@@ -722,6 +728,11 @@ if [ -L /etc/systemd/system/display-manager.service ]; then
 fi
 if [ "$DEFAULT_TARGET_WAS" != multi-user.target ] || [ -n "$DISPLAY_MANAGER_WAS" ]; then
     DESKTOP_SWITCHED=1
+    # What the admin menu's service access starts instead of the kiosk (T-334).
+    if [ -n "$DISPLAY_MANAGER_WAS" ]; then
+        keep /etc/neoprint/desktop-login
+        printf '%s\n' "$DISPLAY_MANAGER_WAS" >/etc/neoprint/desktop-login
+    fi
     systemctl set-default multi-user.target >/dev/null 2>&1
     if [ -n "$DISPLAY_MANAGER_WAS" ]; then
         systemctl disable "$DISPLAY_MANAGER_WAS" >/dev/null 2>&1

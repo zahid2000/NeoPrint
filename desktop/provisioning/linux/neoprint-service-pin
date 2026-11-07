@@ -1,0 +1,56 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+# Sets this kiosk's service PIN (T-334, docs/KIOSK_SETUP.md): the way into the
+# kiosk's hidden admin menu - five taps on the logo - that works before the
+# kiosk is activated and while it cannot reach the server.
+#
+#   sudo neoprint-service-pin       # asks twice; the digits are not shown
+#
+# Never an argument and never written down: the agent keeps only a PBKDF2
+# hash, in /etc/neoprint/service-pin, root's and readable by the kiosk group.
+# Each machine has its own; a golden image leaves it out (prepare-image.sh).
+# ---------------------------------------------------------------------------
+set -euo pipefail
+
+AGENT="/opt/neoprint/agent/current/NeoPrint.Kiosk.Agent"
+PIN_FILE="/etc/neoprint/service-pin"
+KIOSK_USER="$(stat -c %U /var/lib/neoprint/device 2>/dev/null || echo kiosk)"
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "neoprint-service-pin: run it with sudo." >&2
+    exit 1
+fi
+if [ $# -ne 0 ]; then
+    echo "usage: neoprint-service-pin  (the PIN is asked for, never an argument)" >&2
+    exit 64
+fi
+if [ ! -x "$AGENT" ]; then
+    echo "neoprint-service-pin: NeoPrint is not installed here yet - run provision.sh first." >&2
+    exit 69
+fi
+
+for attempt in 1 2 3; do
+    read -r -s -p "Service PIN for this kiosk (6-12 digits): " pin
+    echo
+    read -r -s -p "The same again: " again
+    echo
+    if [ "$pin" != "$again" ]; then
+        echo "The two were not the same; again." >&2
+        continue
+    fi
+    if ! [[ "$pin" =~ ^[0-9]{6,12}$ ]]; then
+        echo "6 to 12 digits, nothing else; again." >&2
+        continue
+    fi
+
+    install -d -o root -g root -m 755 "$(dirname "$PIN_FILE")"
+    printf '%s\n' "$pin" | "$AGENT" set-service-pin "$PIN_FILE" >/dev/null
+    chown "root:$KIOSK_USER" "$PIN_FILE"
+    chmod 640 "$PIN_FILE"
+    unset pin again
+    echo "neoprint-service-pin: set. Keep it somewhere safe: five taps on the NeoPrint logo, then this PIN, opens the service menu."
+    exit 0
+done
+
+echo "neoprint-service-pin: not set. Run 'sudo neoprint-service-pin' again." >&2
+exit 65

@@ -17,7 +17,7 @@ public enum AdminStage
     /// <summary>Too many wrong PINs: nothing is accepted for a while.</summary>
     Locked = 2,
 
-    /// <summary>The kiosk has no PIN yet (not activated): there is no way in from the screen.</summary>
+    /// <summary>Neither an admin PIN (not activated) nor a service PIN (T-334): there is no way in from the screen.</summary>
     NoPin = 3,
 }
 
@@ -29,7 +29,9 @@ public enum AdminStage
 /// <remarks>
 /// <para>
 /// The PIN is checked against the PBKDF2 hash the backend sends in the
-/// configuration; the PIN itself never leaves the admin panel. Five wrong ones
+/// configuration; the PIN itself never leaves the admin panel. The machine's
+/// own service PIN, set while it was provisioned, is accepted as well - before
+/// activation and with no server it is the only way in (T-334). Five wrong ones
 /// lock the menu for five minutes, and the digits are never logged.
 /// </para>
 /// <para>
@@ -46,6 +48,7 @@ public sealed partial class AdminMenuViewModel : ViewModelBase
     public static readonly TimeSpan LockTime = TimeSpan.FromMinutes(5);
 
     private readonly Func<string?> _pinHash;
+    private readonly Func<string?> _servicePinHash;
     private readonly Func<DateTime> _now;
 
     private int _failures;
@@ -64,9 +67,11 @@ public sealed partial class AdminMenuViewModel : ViewModelBase
     private bool _isSafeMode;
 
     /// <param name="pinHash">The admin PIN hash from the kiosk's configuration; null before activation.</param>
-    public AdminMenuViewModel(Func<string?> pinHash, Func<DateTime>? now = null)
+    /// <param name="servicePinHash">The machine's service PIN hash (<c>ServicePin</c>); null when none was set.</param>
+    public AdminMenuViewModel(Func<string?> pinHash, Func<string?>? servicePinHash = null, Func<DateTime>? now = null)
     {
         _pinHash = pinHash;
+        _servicePinHash = servicePinHash ?? (() => null);
         _now = now ?? (() => DateTime.UtcNow);
     }
 
@@ -113,7 +118,7 @@ public sealed partial class AdminMenuViewModel : ViewModelBase
         Error = null;
 
         Stage = _lockedUntil is { } until && until > _now() ? AdminStage.Locked
-            : string.IsNullOrWhiteSpace(_pinHash()) ? AdminStage.NoPin
+            : string.IsNullOrWhiteSpace(_pinHash()) && string.IsNullOrWhiteSpace(_servicePinHash()) ? AdminStage.NoPin
             : AdminStage.Pin;
     }
 
@@ -145,7 +150,7 @@ public sealed partial class AdminMenuViewModel : ViewModelBase
             return;
         }
 
-        var right = SecretHash.Verify(PinInput, _pinHash());
+        var right = SecretHash.Verify(PinInput, _pinHash()) || SecretHash.Verify(PinInput, _servicePinHash());
         PinInput = string.Empty;
 
         if (right)

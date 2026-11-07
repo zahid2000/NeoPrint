@@ -122,6 +122,9 @@ foreach ($directory in @("device", "spool", "state")) {
     }
 }
 
+# Each machine's own service PIN (T-334): a clone is given its own with service-pin.ps1.
+Remove-Item -Path (Join-Path $DataRoot "service-pin") -Force -ErrorAction SilentlyContinue
+
 Write-Log "removing the logs"
 
 Remove-Item -Path (Join-Path $DataRoot "logs\*") -Recurse -Force -ErrorAction SilentlyContinue
@@ -178,7 +181,7 @@ if ((Test-Path $logs) -and (Get-ChildItem -Path $logs -File -Recurse -ErrorActio
     $failed = $true
 }
 
-foreach ($leftover in @("device\key.json", "device\enrollment-token", "device\spool.key.wrapped")) {
+foreach ($leftover in @("device\key.json", "device\enrollment-token", "device\spool.key.wrapped", "service-pin")) {
     $path = Join-Path $DataRoot $leftover
     if (Test-Path $path) {
         Write-Warning "STILL PRESENT: $path"
