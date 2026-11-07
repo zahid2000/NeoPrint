@@ -5,6 +5,8 @@
 .env.*
 !.env.*.example
 .openbao/
+# The staging stack's (tools/staging/staging.sh, M20): its root token and unseal key.
+.openbao-staging/
 # Written on the test server by deploy/test-server/deploy.sh.
 .test-server/
 *.pem

@@ -82,7 +82,40 @@ internet → Caddy (TLS) → API                      (/refund/* — ictimai ref
 - Admin panelə (M16) paket yüklənəndə manifestdəki `keySet` görünür; production serverinə staging paketi yükləmək mənasızdır — kiosklar onu qəbul etmir.
 - Pilot kiosku golden image-dən (M19) qurulmazdan əvvəl production açarları (T-315) `ReleaseKeys.production.cs`-də olmalıdır.
 
-## 4. Hələ yazılmalı olanlar (M20–M21)
+## 3a. Staging (M20, T-335)
 
-Staging compose; OpenBao (production açarları, T-169); domen və TLS; SMTP (SPF / DKIM / DMARC); **production
-bazası təmiz başlayır — yalnız seed** (T-300); ehtiyat nüsxə və bərpa; monitorinq.
+Bütün stack **Production** rejimində, development-in yanında, eyni maşında ikinci compose layihəsi kimi
+(`neoprint-staging`). Ayrıca compose faylı yoxdur: development-in `docker-compose.yml`-i
+`deploy/staging/staging.env`-dəki `NEOPRINT_*` dəyərləri ilə işləyir — ikisi bir-birindən ayrıla bilməz.
+Dəyərlər verilməyəndə hər şey development-dəki kimidir (`docker compose config` bayt-bayt eynidir).
+
+| | Development | Staging |
+|---|---|---|
+| Rejim | `Development` | **`Production`** — məcburi secret yoxdursa API başlamır; Development seed-i və dev endpoint-ləri yoxdur |
+| OpenBao | `neoprint-openbao`, `.openbao/` | **öz** `neoprint-staging-openbao`, `.openbao-staging/` (gitignore) |
+| Seed faylı | `.env.openbao-seed` | `.env.staging-seed` — **təsadüfi** parollar, skript özü yaradır (gitignore, `600`) |
+| Baza | dev məlumatı | **təmiz**: yalnız production seed-i — rollar, tənzimləmələr, hüquqi sənədlər, standart qiymət profili, ilk SuperAdmin (T-300) |
+| Panel / API | `:8080` / `:5080` | `:28080` / `:25080` (digər portlar `staging.env`-də) |
+| Kiosk paketləri | staging | staging (§3) |
+
+```bash
+bash tools/staging/staging.sh up            # ilk dəfə seed faylı; build, başlat, sağlam olana qədər gözlə
+bash tools/staging/staging.sh check         # baza təmizdir: seed və başqa heç nə; Production; dev endpoint-ləri 404
+bash tools/staging/staging.sh t169          # T-169: məcburi açar silinir → API başlamır və açarın adını deyir → geri
+bash tools/staging/staging.sh down          # dayandır, məlumat qalır
+bash tools/staging/staging.sh reset --yes   # məlumat, seed faylı və OpenBao qovluğu ilə birlikdə sil
+```
+
+İlk giriş: `.env.staging-seed`-dəki `NEOPRINT_SEED_ADMIN_EMAIL` / `NEOPRINT_SEED_ADMIN_PASSWORD` (skript parolu çap
+etmir). Docker yenidən başlayanda OpenBao möhürlənir — `docker compose -p neoprint-staging --env-file
+deploy/staging/staging.env up -d openbao-init` (development-də olduğu kimi).
+
+**T-169 sübutu (2026-11-07):** staging-in öz OpenBao-sunda `neoprint/backend/core`-dan `NEOPRINT_JWT_SIGNING_KEY` silindi,
+API yenidən başladıldı → sağlam olmadı, log: `MissingSecretsException: The following mandatory secrets are missing from
+OpenBao: NEOPRINT_JWT_SIGNING_KEY` — açarın dəyəri log-da yoxdur; `kv rollback` ilə açar qaytarıldı → API yenidən
+sağlam. Development-in paylaşılan OpenBao-suna toxunulmadı.
+
+## 4. Hələ yazılmalı olanlar (M21)
+
+Domen və TLS; SMTP (SPF / DKIM / DMARC); production serverinin özü (staging-in eyni `NEOPRINT_*` dəyişənləri ilə);
+ehtiyat nüsxə və bərpa; monitorinq.

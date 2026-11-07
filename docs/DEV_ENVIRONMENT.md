@@ -1722,6 +1722,23 @@ Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını
   (masaüstü), ikon zolağı → tam menyu (planşet 820 px), drawer (telefon 390 px) hər kadrda ölçülür; ilk yükləmədə
   hərəkət yoxdur, `prefers-reduced-motion`-da heç nə hərəkət etmir, klaviatura bağlı qrupa girmir; kadrlar şəkil kimi.
 
+## 7z. Addım 7B — M20: staging bu maşında (T-335, T-169)
+
+Development-in yanında, ona toxunmadan (`docs/DEPLOY.md` §3a):
+
+```bash
+bash tools/staging/staging.sh up       # panel http://localhost:28080, API http://localhost:25080 (Production)
+bash tools/staging/staging.sh check    # təmiz baza
+bash tools/staging/staging.sh t169     # məcburi açar silinəndə API başlamır
+bash tools/staging/staging.sh down     # dayandır
+```
+
+- **Docker yenidən başlayandan sonra API-lər `503` / "mandatory secret is not configured" ilə dönür:** OpenBao
+  möhürlənib. Development: `docker compose up -d openbao-init`; staging:
+  `docker compose -p neoprint-staging --env-file deploy/staging/staging.env up -d openbao-init`.
+- `docker-compose.yml`-də `NEOPRINT_*` dəyişənləri (konteyner adı, portlar, seed faylı, OpenBao qovluğu, rejim) yalnız
+  staging üçündür; development-də heç birini verməyin.
+
 ## 7y. Addım 7B — real Linux kiosku test serverinə (T-333)
 
 ```bash
