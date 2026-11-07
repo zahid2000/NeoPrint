@@ -15,8 +15,8 @@ Pilot aşağıdakıların hamısı bağlanmadan başlamır. Hər sətrin mənbə
 |---|---|---|---|---|---|---|
 | 1 | Mobil tətbiqin real telefonda əl ilə yoxlanması: kamera ilə QR, push bildirişi, sənəd skanı | Layihə sahibi | Samsung S24 (USB) | T-186, T-225 | MT-07, MT-08 — "Harada yoxlanır" sütununda **"Yalnız real telefonda"** yazılmış sətirlər (MT-07: №6, 11–13, 19–25 və bir neçəsinin push / kamera hissəsi; MT-08: №5–7, 16–19, 22, 25 və bir neçəsinin kamera hissəsi) | Açıq — Addım 7-nin sonunda |
 | 2 | Real printer: aşkarlama, imkanlar, test çap, hər format qrupu, printer telemetriyası (SNMP / WMI) | Layihə sahibi + Claude | Pilot printeri (model və qoşulma növü layihə sahibindən) | T-092 | MT-02 | Açıq — printer lazımdır |
-| 3 | **Windows kiosk provisioning-i (pilot cihazı — T-329):** nüsxə yoxlaması (`check-windows.ps1`), Shell Launcher, Keyboard Filter, autologon, Agent servisi, Firewall, golden image (`sysprep`), klona `enroll.ps1` ilə açar; 1280×1024 ekranda toxunma ilə sifariş axını | Layihə sahibi + Claude | Touch-pie 19" monoblok, Windows 10 IoT Enterprise LTSC 2021 lisenziyası | T-093, T-329, T-331 (M19b) | MT-03 | Açıq — cihaz lazımdır |
-| 4 | Linux kiosk cihazı və real flaş: avtomount, fayl siyahısı, reboot-dan sonra cage | Layihə sahibi + Claude | Ubuntu 24.04 kiosk cihazı, USB flaş | T-094 | MT-04 | **Pilot üçün tələb deyil** — pilot cihazı Windows-dur (T-329); Linux provisioning konteynerdə sınanır (`tools/provision-test`), real Linux cihazı Faza 2-də |
+| 3 | **Windows kiosk provisioning-i (Windows dəstəyi — T-329; pilot cihazı Linux-dur, T-332):** nüsxə yoxlaması (`check-windows.ps1`), Shell Launcher, Keyboard Filter, autologon, Agent servisi, Firewall, golden image (`sysprep`), klona `enroll.ps1` ilə açar; 1280×1024 ekranda toxunma ilə sifariş axını | Layihə sahibi + Claude | Touch-pie 19" monoblok, Windows 10 IoT Enterprise LTSC 2021 lisenziyası | T-093, T-329, T-331 (M19b) | MT-03 | Açıq — Windows cihazı lazımdır. **Pilotu bloklamır** (pilot cihazı Linux-dur, T-332), amma kiosk Windows-da da işləməlidir: Windows cihazı olanda yoxlanır |
+| 4 | **Linux kiosk cihazı (pilot cihazı — T-332)** və real flaş: `provision.sh`, avtomount, fayl siyahısı, reboot-dan sonra `cage`, toxunma, 1280×1024 ekranda sifariş axını, golden image (`prepare-image.sh`), klona `neoprint-enroll` ilə açar | Layihə sahibi + Claude | Ubuntu 24.04 kiosk cihazı, USB flaş | T-094, T-331 (M19b), T-332 | MT-04 | Açıq — **pilot üçün tələb olunur** (pilot cihazı Ubuntu-dur, T-332); skript indiyə qədər yalnız Ubuntu 24.04 + systemd konteynerində sınanıb (`tools/provision-test`) |
 | 5 | Çapın ortasında elektrik kəsilməsi | Layihə sahibi | Real kiosk + printer | T-089 | MT-01 | Açıq — cihaz lazımdır |
 | 6 | Real ödəniş və e-kassa provayderləri (sandbox), telefonla ödəniş | Layihə sahibi + Claude | Provayder seçimi və sandbox sənədi (layihə sahibində) | T-099, T-219 | MT-06 | Açıq — Addım 7B |
 | 7 | Admin test dəstinin başqa kompüterdə işlədilməsi (bu maşında `vitest` forks işə düşmür; CI yaşıldır) | Layihə sahibi | Başqa Windows / Linux kompüteri | T-171 | `docs/DEV_ENVIRONMENT.md` — admin testləri | Açıq |
@@ -25,7 +25,7 @@ Pilot aşağıdakıların hamısı bağlanmadan başlamır. Hər sətrin mənbə
 | 10 | Production SMTP: göndərən domen, SPF / DKIM (və DMARC) — istifadəçi emaili (qeydiyyat kodu, qəbz) və incident emaili (Critical / High, kioskun əhatəsindəki hesablara) spam-a düşmədən çatmalıdır | Layihə sahibi (domen, SMTP provayderi) + Claude | Domen, SMTP hesabı; OpenBao-da SMTP açarları | T-219, T-241 | MT-06 №8 (email hissəsi) | Açıq — Addım 7B |
 | 11 | iOS: test build-i iPhone-da (PIN, Face ID, Keychain, giriş, sifariş, ödəniş — MT-09-un iOS hissəsi), pilot üçün TestFlight və APNs push | Layihə sahibi (Apple Developer hesabı, iPhone) + Claude | Apple Developer Program ($99/il), iPhone | T-273 | MT-09 (iOS sətirləri) | Təxirə salındı — pilotdan əvvəl |
 | 12 | **Production buraxılış açarları** (oflayn açar mərasimi): `current` + `next` cütləri oflayn kompüterdə, iki şifrəli USB iki ayrı yerdə, public açarlar `ReleaseKeys.production.cs`-də. Onsuz pilot kiosku heç bir yeniləməni qəbul etmir. **M19-dan (golden image) əvvəl bitməlidir** | Layihə sahibi | Oflayn noutbuk, 2 USB (`docs/RELEASE_SIGNING.md` §3) | T-315 | — | Açıq — M19-dan əvvəl |
-| 13 | **Windows kioskunda yeniləmə (M17)**: UI-ın `app\current` junction-ı ilə keçidi, Shell Launcher-in köhnə / yeni versiyanı yenidən başlatması, sağlamlıq yoxlaması və rollback, `RestartAgent`, logların yüklənməsi — kodu var, real Windows cihazı olmadan **yoxlanmayıb**. Agent-in özünü yeniləməsi və provisioning yeniləməsi Windows-da hələ yoxdur: Agent bu sorğuları `updates.notSupportedHere` ilə rədd edir (`docs/KIOSK_UPDATES.md` §4) | Layihə sahibi (cihaz) + Claude | Windows IoT Enterprise cihazı / VM | T-093, T-321 | — | Açıq — cihaz lazımdır |
+| 13 | **Windows kioskunda yeniləmə (M17)**: UI-ın `app\current` junction-ı ilə keçidi, Shell Launcher-in köhnə / yeni versiyanı yenidən başlatması, sağlamlıq yoxlaması və rollback, `RestartAgent`, logların yüklənməsi — kodu var, real Windows cihazı olmadan **yoxlanmayıb**. Agent-in özünü yeniləməsi və provisioning yeniləməsi Windows-da hələ yoxdur: Agent bu sorğuları `updates.notSupportedHere` ilə rədd edir (`docs/KIOSK_UPDATES.md` §4) | Layihə sahibi (cihaz) + Claude | Windows IoT Enterprise cihazı / VM | T-093, T-321 | — | Açıq — Windows cihazı lazımdır; **pilotu bloklamır** (pilot cihazı Linux-dur, T-332). Linux-da yeniləmə (`current` symlink, Agent-in özünü yeniləməsi) M19b-də real cihazda yoxlanır |
 
 **Xəritə və məxfilik (T-286, qeyd):** kiosklar xəritəsi OpenFreeMap-dən yüklənir — xəritəni açan
 istifadəçinin IP ünvanı OpenFreeMap-ə və Cloudflare-ə çatır. Məxfilik siyasəti qaralamasında yazılıb
@@ -48,9 +48,22 @@ Incident-lər pilotda panel (canlı) və email ilə bildirilir.
   yalnız real müştərilərin rəqəmlərini göstərir. Pilot zamanı yoxlama üçün işlədilən hesablar admin paneldə
   "Test hesabı" kimi işarələnir (səbəb məcburidir, audit-ə yazılır).
 
-## Pilot kiosk cihazı (qərar 2026-10-26, T-329)
+## Pilot kiosk cihazı (qərar 2026-10-26, T-329; dəqiqləşdirmə 2026-11-07, T-332)
 
-**Cihaz Windows-dur:** Touch-pie 19" monoblok (daxili kiosk dizaynı) — Intel Core i5 6-cı nəsil, 8 GB RAM, 128 GB SSD,
+**Pilot cihazı Linux Ubuntu-dur (T-332).** NeoPrint kiosku **həm Windows, həm Linux**-da işləyir — ikisi də dəstəklənir,
+heç biri çıxarılmır (universal build, iki provisioning skripti). Pilotda isə cihaz Ubuntu ilə işləyəcək:
+
+- **Əməliyyat sistemi — Ubuntu 24.04 LTS Server** (minimal; dəstək 2029-cu ilin aprelinə qədər, Ubuntu Pro ilə 2034).
+  **Desktop yox, Server:** Desktop nüsxəsinin öz qrafik girişi (GDM) və bildirişləri var — ekran yalnız NeoPrint-ə
+  verilməlidir, skript (`provision.sh`) Server nüsxəsi üçün yazılıb və sınanıb. Cihazda Ubuntu Desktop və ya başqa
+  versiya varsa, Server 24.04 yenidən quraşdırılır (`docs/KIOSK_SETUP.md` §11). Lisenziya lazım deyil.
+- 6-cı nəsil i5, 8 GB, 128 GB SSD Ubuntu Server üçün kifayətdir (Windows 11 məhdudiyyəti burada yoxdur).
+- Toxunma paneli Linux-da adətən sürücüsüz (HID) işləyir — cihaz gələndə yoxlanır (§11, addım 1).
+- Real cihazda yoxlanmayıb: `provision.sh`, `cage` tty1-də, flaş, toxunma, golden image — M19b (T-331, bloklayıcı №4).
+
+Aşağıdakı Windows bölməsi Windows kioskları üçün qüvvədədir (T-329).
+
+**Windows cihazı:** Touch-pie 19" monoblok (daxili kiosk dizaynı) — Intel Core i5 6-cı nəsil, 8 GB RAM, 128 GB SSD,
 PCAP toxunma, ekran 1280×1024 (4:3, 250 nit), 2× RS232, RJ45, Wi-Fi / Bluetooth, 2× USB 2.0 + 3× USB 3.0.
 
 **Əməliyyat sistemi — Windows 10 IoT Enterprise LTSC 2021** (versiya 21H2, build 19044; dəstək **2032-ci ilin yanvarına

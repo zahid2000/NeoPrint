@@ -4,7 +4,9 @@ Bu sənəd yeni NeoPrint kioskunu sıfırdan işə salmaq üçündür və **texn
 nə etmək, ekranda nə görmək və səhv olsa nə etmək yazılıb. Skriptlərin Windows / Linux-da etdiyi hər dəyişiklik ayrıca
 `docs/KIOSK_PROVISIONING.md`-dədir.
 
-**Pilot cihazı Windows-dur** (Touch-pie 19", T-329) — əsas yol Windows-dur (§1–§9). Linux yolu §11-dədir.
+Kiosk **həm Windows, həm Linux**-da işləyir. **Pilot cihazı Linux Ubuntu-dur** (T-332) — onu quraşdırırsınızsa
+birbaşa **§11**-ə keçin (orada hər şey ardıcıl yazılıb; §4, §7, §8 iki platformada eynidir). Windows kompüteri üçün
+yol §1–§9-dadır.
 
 Kiosk **universal build**-dir: heç bir kiosk üçün ayrıca proqram, fayl və ya açar hazırlanmır. Kioskun adı, printeri,
 qiymətləri, admin PIN-i — hamısı aktivləşdirmədən sonra serverdən gəlir (plan 7.11).
@@ -233,28 +235,129 @@ klaviaturası → kioskun admin PIN-i. Menyu:
   hesabı ilə daxil olun, skripti düzgün parametrlə yenidən işə salın;
 - Linux: açılışda **Esc** ilə GRUB menyusu → *Advanced options* → *recovery mode* → root shell, `provision.sh`-i yenidən.
 
-## 11. Linux (Ubuntu 24.04 Server) — alternativ yol
+## 11. Linux (Ubuntu 24.04 Server) — pilot cihazı (T-332)
 
-Pilot üçün tələb deyil (cihaz Windows-dur); Linux skripti konteynerdə tam sınanır (`tools/provision-test`).
+Bu bölmə Linux kioskunu sıfırdan qurmaq üçündür, əvvəldən sona ardıcıl. Təxminən **1 saat**.
 
-1. Ubuntu 24.04 LTS **Server** (minimal) quraşdırın, öz admin hesabınızı yaradın. Wi-Fi saxlamayın.
-2. Flaşı qoşun (`sudo mount /dev/sdb1 /mnt`) və:
+**Real Linux cihazında hələ yoxlanmayıb** — skript Ubuntu 24.04 konteynerində tam sınanıb (`tools/provision-test`),
+cihazda ilk quraşdırma M19b-də NeoPrint komandası ilə birgə edilir (T-331). Gözlənilməz bir şey görsəniz — ekranın
+şəklini çəkib göndərin.
+
+### 11.1. Cihaz gələndə — nə quraşdırılıb? (5 dəqiqə)
+
+Cihazı yandırın, klaviatura qoşun, daxil olun (satıcının verdiyi istifadəçi və parol). Qrafik masaüstü (Desktop)
+açılıbsa — **Terminal** proqramını açın (`Ctrl+Alt+T`). Bu əmrləri bir-bir yazın, cavabların şəklini çəkin:
+
+```bash
+lsb_release -ds                      # Ubuntu versiyası
+systemctl get-default                # graphical.target = Desktop, multi-user.target = Server
+lscpu | grep "Model name"            # prosessor
+free -h | grep Mem                   # yaddaş
+df -h /                              # diskdə boş yer
+ip -br link                          # şəbəkə kartları (en... = kabel)
+grep -i "name=" /proc/bus/input/devices   # giriş qurğuları (toxunma paneli "Touch" sözü ilə)
+```
+
+| Nəyə baxırıq | Nə olmalıdır | Olmasa |
+|---|---|---|
+| Versiya | `Ubuntu 24.04.x LTS` | Başqa versiya — §11.2 ilə 24.04 Server quraşdırılır |
+| Növ | `multi-user.target` (Server) | `graphical.target` (Desktop) — §11.2 ilə **Server** quraşdırılır: Desktop-un öz qrafik girişi və bildirişləri kiosk ekranına çıxa bilər |
+| Yaddaş / disk | ≥ 8 GB / ≥ 40 GB boş | NeoPrint komandasına deyin |
+| Şəbəkə | `en...` adlı kart var | Kabel kartı yoxdursa — NeoPrint komandasına deyin |
+| Toxunma | Siyahıda "Touch" / "Touchscreen" sözü olan qurğu | Yoxdursa — satıcıdan soruşun (toxunma paneli Linux-da HID kimi işləyirmi?) |
+
+Cihazda artıq **Ubuntu 24.04 Server** varsa §11.2-ni keçin.
+
+### 11.2. Ubuntu 24.04 Server-in quraşdırılması (30 dəqiqə)
+
+Cihazdakı hər şey silinir — satıcının bərpa (recovery) image-i lazımdırsa əvvəl soruşun.
+
+1. Başqa kompüterdə **ubuntu.com/download/server** → **Ubuntu Server 24.04 LTS** ISO-nu endirin və onu boş flaşa
+   **balenaEtcher** və ya **Rufus** ilə yazın (bu, quraşdırma flaşı deyil — ayrıca flaş).
+2. Cihaza flaşı taxın, yandırın, açılış menyusundan (adətən **F7**, **F11** və ya **F12**; satıcıdan soruşun) flaşı
+   seçin.
+3. Quraşdırıcıda: dil **English**, klaviatura **English (US)**, növ **Ubuntu Server (minimized)**, şəbəkə — **kabel**
+   (avtomatik), disk — **Use an entire disk**, adınız və **öz admin istifadəçiniz** (məs. `neoprint-admin`; parolu
+   parol menecerinə yazın), **Install OpenSSH server** — işarələməyin, əlavə paketlər — heç biri.
+4. Bitəndə flaşı çıxarın, **Reboot**. Qara ekranda istifadəçi və parolunuzla daxil olun.
+5. Yeniləmələr: `sudo apt update && sudo apt full-upgrade -y`, sonra `sudo reboot`.
+
+**Wi-Fi saxlamayın** — kabel istifadə edin (golden image üçün vacibdir, §11.7).
+
+### 11.3. Quraşdırma flaşı (NeoPrint komandası)
+
+§2 kimi, amma **linux-x64** artefaktları ilə (`kiosk-release-<versiya>-linux-x64-production`); hər paket
+`release-sign verify ... --key-set production` ilə yoxlanır. Flaşda:
+
+```
+NEOPRINT (flaş)
+├─ provisioning/   provision.sh, prepare-image.sh, neoprint-firstboot, neoprint-enroll, ...
+├─ package/        app/, agent/, VERSION   (imzalı, yoxlanmış)
+└─ verifier/       yalnız --download üçün: production açarlı Agent
+```
+
+`deps` lazım deyil — LibreOffice və Ghostscript Ubuntu-nun öz paketlərindən quraşdırılır. Flaşda gizli məlumat yoxdur.
+
+### 11.4. Qeydiyyat açarı
+
+§4 kimi: admin panel → **Cihazlar** → **"Qeydiyyat açarı yarat"** → **Yeni kiosk üçün**, 24 saat → açarı kopyalayın.
+
+### 11.5. Quraşdırma skripti (15–20 dəqiqə)
+
+1. Quraşdırma flaşını taxın və bu əmrləri yazın (flaş adətən `/dev/sdb1`-dir; `lsblk` göstərir):
 
    ```bash
+   sudo mount /dev/sdb1 /mnt
    sudo bash /mnt/provisioning/provision.sh --api-url https://api.neoprint.az \
        --offline-package /mnt/package --channel pilot --enrollment-token <AÇAR>
    ```
 
-   və ya paketsiz: `--download` (imzanı flaşdakı `verifier/NeoPrint.Kiosk.Agent` yoxlayır).
-3. Skript `step 1/13` … `step 13/13` yazır, sonda `provisioning finished: 13 of 13 steps`. Səhvdə: `ERROR: step N/13 (...)`,
-   `what to do: ...` və dəyişdirdiyi sistem fayllarının qaytarıldığını deyir (`put back as they were`). Jurnal:
-   `/var/log/neoprint/provision.log`. Addımlar: 1 paketlər, 2 hesablar, 3 qovluqlar, 4 qeydiyyat açarı, 5 konsolun
-   bağlanması, 6 avtomatik yeniləmələr, 7 çıxarılan daşıyıcılar, 8 çevirici qutusu, 9 sudo qaydaları, 10 firewall,
-   11 vaxt, 12 NeoPrint, 13 xidmətlər.
-4. `sudo reboot` — `tty1`-də `cage` NeoPrint-i bütün ekrana verir.
+   `<AÇAR>` — §11.4-dəki açar. Flaşda paket yoxdursa `--offline-package /mnt/package` əvəzinə `--download` yazın
+   (skript ən son imzalı buraxılışı endirir və imzanı flaşdakı `verifier/` ilə özü yoxlayır).
+2. Skript `step 1/13` … `step 13/13` yazır (paketlər endirildiyi üçün 10–15 dəqiqə). Uğurlu son:
+   **`provisioning finished: 13 of 13 steps`**.
+3. `sudo umount /mnt`, flaşı çıxarın, `sudo reboot`.
+4. Cihaz açılanda ekranda **yalnız NeoPrint** görünür (`cage`). Kiosk açarla özü aktivləşir — §7 kimi yoxlayın.
 
-**Golden image (Linux):** `sudo bash /mnt/provisioning/prepare-image.sh --check`, sonra `sudo bash
-/mnt/provisioning/prepare-image.sh` — cihaz və spool açarları, qeydiyyat açarı, keş, loglar, jurnal, `machine-id`,
-SSH host açarları, shell tarixçəsi silinir, yoxlanır (Wi-Fi parolu varsa dayanır); söndürüb surət çıxarın. Klon ilk
-açılışda öz `machine-id`-ni və SSH açarlarını yaradır (`neoprint-firstboot`), kiosk açılanda öz cihaz açarını. Açar:
-`sudo neoprint-enroll` (soruşur, görünmür) və ya `sudo neoprint-enroll --from-file /mnt/token.txt`.
+**Xəta olsa:** skript `ERROR: step N/13 (...)` və `what to do: ...` yazır, bu qaçışda dəyişdirdiyi sistem fayllarını
+geri qaytarır (`put back as they were`). Səbəbi aradan qaldırıb **eyni əmri** yenidən işə salın.
+
+| Addım | Nədir | Səbəb (adətən) | Nə etməli |
+|---|---|---|---|
+| 1 | Paketlər | İnternet yoxdur, tarix və saat səhvdir | Kabeli yoxlayın; `sudo apt-get update` nə deyir — ekranın şəklini göndərin |
+| 2–3 | Hesablar, qovluqlar | Disk dolub | Yer açın |
+| 4 | Qeydiyyat açarı | Açar səhv yazılıb | Açar 64 simvoldur (`0-9`, `a-f`); sonra `sudo neoprint-enroll` ilə də vermək olar |
+| 5–11 | Konsol, yeniləmələr, flaş, çevirici, sudo, firewall, vaxt | Sətirdə yazılıb | Ekranın şəklini göndərin |
+| 12 | NeoPrint | Paket natamamdır, endirilmədi və ya **imza yoxlamasından keçmədi** | İnterneti yoxlayın; flaşı yenidən hazırlayın |
+| 13 | Xidmətlər | Sətirdə yazılıb | `sudo reboot`, eyni əmri yenidən |
+
+Tam jurnal: `/var/log/neoprint/provision.log` (içində parol və açar yoxdur).
+
+### 11.6. Son yoxlama
+
+§8-dəki siyahı; Windows-a aid sətirlər əvəzinə:
+
+- [ ] **Ctrl+Alt+Del**, **Ctrl+Alt+F2…F6**, **Alt+Tab** — heç nə açılmır, kompüter yenidən başlamır.
+- [ ] Müştəri flaşını ön yuvaya taxın: kiosk faylları göstərir; flaşı çıxarın — kiosk bunu görür.
+- [ ] Söndürüb yandırın: açılış mətnsizdir, ekranda yenə yalnız NeoPrint.
+
+### 11.7. Golden image (bir neçə eyni kiosk)
+
+§9-un Linux variantı. Bir cihazı §11.2–§11.5 kimi qurun, amma **`--enrollment-token` yazmadan**, sonra:
+
+```bash
+sudo bash /mnt/provisioning/prepare-image.sh --check   # nəyin qaldığını deyir, heç nə dəyişmir
+sudo bash /mnt/provisioning/prepare-image.sh           # təmizləyir və yoxlayır
+sudo poweroff
+```
+
+Cihaz açarı, spool açarı, qeydiyyat açarı, keş, loglar, jurnal, `machine-id`, SSH host açarları, shell tarixçəsi
+silinir; saxlanmış Wi-Fi varsa skript dayanır. Söndükdən sonra **yandırmadan** disk surətini çıxarın (Clonezilla) və
+digər cihazlara yazın. Paneldə **bir** açar: **Yeni kiosk(lar) üçün**, **neçə kiosk** = klonların sayı. Hər klonda:
+
+```bash
+sudo neoprint-enroll        # açarı soruşur (yazılan görünmür)
+sudo reboot
+```
+
+Klon ilk açılışda öz `machine-id`-sini və cihaz açarını yaradır (`neoprint-firstboot`), ayrıca kiosk kimi aktivləşir.
