@@ -206,6 +206,28 @@ on_error() {
     log "log written to $LOG_FILE"
     exit "$code"
 }
+# Before anything changes: the network must come up with nobody signed in
+# (T-333). A desktop's Wi-Fi is often its user's alone - the connection limited
+# to that user, or its password kept in that user's keyring - and once the
+# graphical login is off nobody signs in: the kiosk would boot with no network.
+# Root cannot read that password, so the script stops and says what to do.
+if [ "$DRY_RUN" -eq 0 ] && command -v nmcli >/dev/null 2>&1 \
+    && [ "$(nmcli -t -f RUNNING general 2>/dev/null)" = running ]; then
+    while IFS=: read -r uuid type; do
+        [ "$type" = 802-11-wireless ] || continue
+        name="$(nmcli -g connection.id connection show "$uuid" 2>/dev/null || echo "$uuid")"
+        permissions="$(nmcli -g connection.permissions connection show "$uuid" 2>/dev/null || true)"
+        flags="$(nmcli -g 802-11-wireless-security.psk-flags connection show "$uuid" 2>/dev/null || true)"
+        if [ -n "$permissions" ] || { [ -n "$flags" ] && [ "${flags%% *}" != 0 ]; }; then
+            log "ERROR: the Wi-Fi network \"$name\" is this user's alone (users: ${permissions:-all}; password flags: ${flags:-none}) - after the reboot nobody signs in, and the kiosk would have no network"
+            log "what to do: Settings -> Wi-Fi -> the gear next to \"$name\" -> Details: tick \"Make available to other users\", Apply, type the Wi-Fi password if asked; or plug in a network cable. Then run this script again. Nothing was changed."
+            rm -rf "$BACKUP_DIR"
+            exit 1
+        fi
+        log "the Wi-Fi network \"$name\" comes up with nobody signed in"
+    done < <(nmcli -t -f UUID,TYPE connection show --active 2>/dev/null)
+fi
+
 trap on_error ERR
 trap 'rm -rf "$BACKUP_DIR"' EXIT
 

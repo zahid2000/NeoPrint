@@ -240,29 +240,46 @@ klaviaturası → kioskun admin PIN-i. Menyu:
 Bu bölmə Linux kioskunu qurmaq üçündür, əvvəldən sona ardıcıl. Skript **Ubuntu 24.04 və 26.04**-də, **Server və
 Desktop** nüsxəsində işləyir. Desktop-da qrafik giriş söndürülür (masaüstü silinmir) və kompüter kiosk kimi açılır.
 
-### 11.0. Ən qısa yol: cihazdakı Ubuntu Desktop (pilot cihazı, T-333)
+### 11.0. Ən qısa yol: cihazdakı Ubuntu Desktop, yalnız toxunma ilə (pilot cihazı, T-333)
 
-Ubuntu yenidən quraşdırılmır. Təxminən **20 dəqiqə**.
+Ubuntu yenidən quraşdırılmır, **klaviatura lazım deyil** — hər şey barmaqla və ekran klaviaturası ilə. Təxminən **25 dəqiqə**.
 
-1. **Kabeli taxın** (Ethernet) — quraşdırma paketləri internetdən endirir.
-2. **Flaş** — NeoPrint komandası hazırlayır (test serveri üçün: `tools/dev-kiosk/make-stick.sh`, `docs/DEV_ENVIRONMENT.md` §7y).
-   Flaşda gizli məlumat yoxdur.
-3. **Qeydiyyat açarı** (istəyə görə) — §4 kimi: admin panel → **Cihazlar** → **"Qeydiyyat açarı yarat"** → **Yeni kiosk
-   üçün** → açarı kopyalayın. Açar olmasa kiosk ekranda aktivləşdirmə kodu göstərir və onu paneldə daxil edirsiniz (§7).
-4. Flaşı cihaza taxın (Ubuntu onu özü açır), **Terminal**-ı açın (`Ctrl+Alt+T`) və yazın:
+**A. Kompüterdə (klaviatura ilə):** NeoPrint komandasının hazırladığı qovluğun **içindəkiləri** (`install.sh`,
+`package`, `provisioning`) boş flaşın kökünə köçürün (test serveri üçün: `tools/dev-kiosk/make-stick.sh`,
+`docs/DEV_ENVIRONMENT.md` §7y). Flaşda gizli məlumat yoxdur.
+
+**B. Kiosk cihazında (barmaqla):**
+
+1. **Ekran klaviaturasını yandırın:** ekranın sağ yuxarı küncünə toxunun → ⚙ (**Settings**) → **Accessibility** →
+   **Typing** → **Screen Keyboard** — yandırın. Bundan sonra yazı sahəsinə toxunanda ekranın aşağısında klaviatura çıxır
+   (`/`, `*` kimi işarələr — klaviaturadakı **?123** düyməsi ilə).
+2. **Wi-Fi hamı üçün olsun** (masaüstü söndürüləndən sonra heç kim daxil olmur — Wi-Fi özü qoşulmalıdır): **Settings →
+   Wi-Fi** → qoşulduğunuz şəbəkənin yanındakı ⚙ → **Details** → **"Make available to other users"** işarələyin →
+   **Apply** (Wi-Fi parolunu soruşsa — yazın). Unutsanız, skript heç nəyi dəyişmədən dayanır və bunu deyir
+   (`the Wi-Fi network "..." is this user's alone`). Kabel varsa — bu addım lazım deyil.
+3. **Flaşı taxın** (Ubuntu onu açıb pəncərə göstərsə — bağlayın).
+4. **Terminal:** ekranın sol aşağısındakı **⋮⋮⋮** (bütün proqramlar) → **Terminal**. Qara pəncərəyə toxunun (klaviatura
+   çıxır) və yazın, sonra **Enter** (klaviaturada ↵):
 
    ```bash
-   sudo bash /media/$USER/*/install.sh
+   sudo bash /media/*/*/install.sh
    ```
 
-   Öz parolunuzu soruşur (`sudo`), sonra qeydiyyat açarını — yapışdırın (görünmür) və **Enter**; açar yoxdursa sadəcə
-   **Enter**. Skript `step 1/13` … `step 13/13` yazır (10–15 dəqiqə). Sonda
-   **`provisioning finished: 13 of 13 steps`** və **`Done`**.
-5. Flaşı çıxarın və `sudo reboot`. Kompüter masaüstü əvəzinə **yalnız NeoPrint**-lə açılır.
-6. §7 və §8-dəki yoxlamalar (+ §11.6).
+5. **Parol:** öz Ubuntu parolunuzu yazın (yazılanlar görünmür — normaldır) → ↵.
+6. **Qeydiyyat açarı** soruşulanda — sadəcə ↵ (açarsız). Skript `step 1/13` … `step 13/13` yazır (10–15 dəqiqə,
+   ekrana toxunmayın). Sonda **`provisioning finished: 13 of 13 steps`** və **`Done`** — **şəklini çəkin**.
+7. Flaşı çıxarın, yazın `sudo reboot` → ↵ (parol soruşsa — yazın). Kompüter masaüstü əvəzinə **yalnız NeoPrint**-lə
+   açılır və ekranda **aktivləşdirmə kodu** göstərir — **şəklini çəkin**.
 
-**Xəta olsa** — ekranın şəklini göndərin (cədvəl §11.5-də). **Masaüstünü qaytarmaq** (sınaq uğursuz olsa): kioskun admin
-menyusundan **"Texniki giriş"** (§10) və ya açılışda **Esc** → *Advanced options* → *recovery mode* → *root*, sonra:
+**C. Kompüterdə, admin paneldə:** **Cihazlar** → ekrandakı kodu daxil edin → **yeni kiosk** (ad, ünvan, admin PIN) — §7.
+Kiosk bir neçə saniyəyə aktivləşir. Sonra §8-dəki yoxlamalar.
+
+(Klaviatura varsa, B-6-da qeydiyyat açarını yapışdırmaq olar — §4: kiosk kodsuz, özü aktivləşir.)
+
+**Xəta olsa** — `ERROR: step N/13` və `what to do` sətirlərinin şəklini göndərin (cədvəl §11.5-də).
+
+**Masaüstünü qaytarmaq** (sınaq uğursuz olsa) — bunun üçün bir anlıq **USB klaviatura** lazımdır (konsolda parol və
+əmr yazılır): açılışda **Esc** → *Advanced options* → *recovery mode* → *root*, sonra:
 
 ```bash
 systemctl disable neoprint-kiosk && systemctl enable gdm && systemctl set-default graphical.target && reboot

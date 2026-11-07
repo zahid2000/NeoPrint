@@ -103,7 +103,7 @@ toxunma, şəbəkə, TPM, Secure Boot, aktivləşdirmə; sonda `RESULT: SUITABLE
 
 **Yoxlanmayıb (cihazsız):** Windows-da yeniləmə (junction, xidmət, Agent-in özünü yeniləməsi), provisioning, Shell
 Launcher, Keyboard Filter, autologon, Firewall, golden image (`sysprep`) — M19b-də real cihazda (T-331, bloklayıcı №3
-və №13). Cihazsız heç biri "yoxlanılıb" yazılmır. **Wi-Fi telemetriyası** (T-220) cihaz Ethernet ilə qoşulacaqsa aşağı
+və №13). Cihazsız heç biri "yoxlanılıb" yazılmır. **Pilot cihazı Wi-Fi ilə qoşulur (layihə sahibi, 2026-11-07, T-333)** — Wi-Fi telemetriyası (T-220) bununla prioritet qazanır (siqnal səviyyəsi panelə gəlməlidir). **Wi-Fi telemetriyası** (T-220) cihaz Ethernet ilə qoşulacaqsa aşağı
 prioritetdir.
 
 ## Pilot üçün avadanlıq tələbləri (alış siyahısı, T-327)

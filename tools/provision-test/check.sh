@@ -106,6 +106,31 @@ provision() { # stick
     on "$machine" "bash /media/$1/provisioning/provision.sh --offline-package /media/$1/package --api-url http://neoprint.invalid --channel pilot --enrollment-token $token"
 }
 
+if [ "$desktop" = 1 ]; then
+    echo "== a desktop's Wi-Fi that is its user's alone"
+    # A stand-in nmcli: NetworkManager running, one Wi-Fi connection, the user's
+    # alone or everyone's as /etc/nmcli-stub says (the container has no Wi-Fi).
+    on "$machine" 'cat >/usr/local/bin/nmcli <<"STUB"
+#!/bin/sh
+mode="$(cat /etc/nmcli-stub)"
+case "$*" in
+    "-t -f RUNNING general") echo running ;;
+    "-t -f UUID,TYPE connection show --active") echo "5b3c0f4e-0000-4000-8000-000000000001:802-11-wireless" ;;
+    "-g connection.id "*) echo "Ofis WiFi" ;;
+    "-g connection.permissions "*) [ "$mode" = user ] && echo "user:user" || echo "" ;;
+    "-g 802-11-wireless-security.psk-flags "*) [ "$mode" = user ] && echo "1 (agent-owned)" || echo "0 (none)" ;;
+esac
+STUB
+chmod 755 /usr/local/bin/nmcli && echo user >/etc/nmcli-stub'
+    wifi="$(provision stick 2>&1)" && code=0 || code=$?
+    echo "$wifi" | grep -E "ERROR|what to do" || true
+    check "$([ "$code" -ne 0 ] && echo "$wifi" | grep -q 'the Wi-Fi network "Ofis WiFi" is this user.s alone' && echo ok)" "the script stops before anything (exit $code)"
+    check "$(echo "$wifi" | grep -q 'Make available to other users' && echo ok)" "and says what to do"
+    check "$(echo "$wifi" | grep -q 'step 1/13' || echo ok)" "no step ran"
+    check "$(is "$(on "$machine" 'systemctl get-default')" graphical.target)" "the desktop's login is untouched"
+    on "$machine" 'echo system >/etc/nmcli-stub'
+fi
+
 echo "== provision.sh, the first time (packages take a few minutes)"
 first="$(provision stick 2>&1)" && code=0 || code=$?
 echo "$first" | grep -E "step [0-9]+/13|ERROR|what to do" || true
@@ -127,6 +152,8 @@ check "$(is "$(on "$machine" 'systemctl get-default')" multi-user.target)" "the 
 if [ "$desktop" = 1 ]; then
     check "$(on "$machine" 'test ! -e /etc/systemd/system/display-manager.service && [ "$(systemctl is-enabled gdm3.service)" = disabled ] && echo ok')" "the desktop's graphical login is switched off"
     check "$(echo "$first" | grep -q "a desktop install: its graphical login (gdm3.service, graphical.target) is switched off" && echo ok)" "and the script says so"
+    # A here-string, not a pipe: grep -q stops at a match this early in the output and, with pipefail, the echo it cut short would fail the check.
+    check "$(grep -q 'the Wi-Fi network "Ofis WiFi" comes up with nobody signed in' <<<"$first" && echo ok)" "an everyone's Wi-Fi is let through"
 fi
 
 echo "== provision.sh, a second time"
