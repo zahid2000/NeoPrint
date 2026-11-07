@@ -122,6 +122,7 @@ check "$(is "$(on "$machine" 'grep -c "uid-owner neoprint-convert" /etc/ufw/befo
 ufw="$(on "$machine" 'ufw status | head -1')"
 check "$(is "$ufw" "Status: active")" "the firewall is on ($ufw)"
 check "$(on "$machine" 'command -v cage >/dev/null && command -v Xwayland >/dev/null && echo ok')" "cage is there, and Xwayland for the kiosk UI (X11) under it"
+check "$(on "$machine" 'for lib in libX11.so.6 libICE.so.6 libSM.so.6 libfontconfig.so.1 libXrandr.so.2 libXi.so.6 libXcursor.so.1 libicuuc.so; do ldconfig -p | grep -q "$lib" || exit 1; done; echo ok')" "and the libraries the kiosk UI and the agent load: X11, fontconfig, ICU"
 check "$(is "$(on "$machine" 'systemctl get-default')" multi-user.target)" "the machine boots to multi-user.target, where the kiosk is"
 if [ "$desktop" = 1 ]; then
     check "$(on "$machine" 'test ! -e /etc/systemd/system/display-manager.service && [ "$(systemctl is-enabled gdm3.service)" = disabled ] && echo ok')" "the desktop's graphical login is switched off"

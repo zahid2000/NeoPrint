@@ -227,8 +227,18 @@ export DEBIAN_FRONTEND=noninteractive
 # A desktop install updates itself in the background: wait for its lock
 # rather than fail on it.
 apt-get -o DPkg::Lock::Timeout=600 update
+
+# What the kiosk UI and the agent (self-contained .NET 8, Avalonia over X11)
+# load from the system: a desktop install has all of it, a server install
+# does not (T-333). ICU is versioned by release: the newest there is.
+icu_package="$(apt-cache pkgnames libicu | grep -E '^libicu[0-9]+$' | sort -V | tail -1)"
+if [ -z "$icu_package" ]; then
+    log "no libicu package found"
+    false
+fi
 apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends \
     cage xwayland \
+    libx11-6 libice6 libsm6 libfontconfig1 libxrandr2 libxi6 libxcursor1 "$icu_package" \
     cups cups-ipp-utils printer-driver-cups-pdf \
     udisks2 \
     libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress \
