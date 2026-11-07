@@ -38,12 +38,17 @@ namespace NeoPrint.Infrastructure.Persistence;
 /// MongoDB can abort a transaction with a transient error when two of them
 /// touch the same document, and the documented remedy is to run it again. That
 /// retry lives here so no handler has to think about it; an aborted attempt's
-/// events go with its scope.
+/// events go with its scope. Like the driver's own WithTransaction it retries
+/// for a while rather than a fixed number of times, after a short random wait:
+/// five devices presenting one enrollment token at once all write its use
+/// count, and with three immediate retries the losers kept colliding until one
+/// of them gave up with a 500 (T-335).
 /// </para>
 /// </remarks>
 public sealed class MongoTransactionRunner : ITransactionRunner
 {
-    private const int MaxAttempts = 3;
+    /// <summary>How long a command keeps retrying a transient conflict before the error stands.</summary>
+    private static readonly TimeSpan RetryBudget = TimeSpan.FromSeconds(10);
 
     private readonly MongoContext _context;
     private readonly IServiceScopeFactory _scopes;
@@ -59,6 +64,8 @@ public sealed class MongoTransactionRunner : ITransactionRunner
     public async Task<TResult> RunAsync<TResult>(Func<Task<TResult>> operation, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(operation);
+
+        var started = System.Diagnostics.Stopwatch.StartNew();
 
         for (var attempt = 1; ; attempt++)
         {
@@ -88,11 +95,16 @@ public sealed class MongoTransactionRunner : ITransactionRunner
                 return result;
             }
             catch (MongoException exception)
-                when (attempt < MaxAttempts && exception.HasErrorLabel("TransientTransactionError"))
+                when (started.Elapsed < RetryBudget && exception.HasErrorLabel("TransientTransactionError"))
             {
                 await SafeAbortAsync(outbox, cancellationToken).ConfigureAwait(false);
                 _logger.LogWarning(
                     "A transaction hit a transient conflict on attempt {Attempt}; retrying.", attempt);
+
+                // Apart, so the transactions that collided do not collide again
+                // at once: a random wait that grows with the attempts, capped.
+                var ceiling = Math.Min(10 * attempt * attempt, 250);
+                await Task.Delay(Random.Shared.Next(5, ceiling + 5), cancellationToken).ConfigureAwait(false);
             }
             catch
             {
