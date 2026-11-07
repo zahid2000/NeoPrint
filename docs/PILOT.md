@@ -59,6 +59,11 @@ heç biri çıxarılmır (universal build, iki provisioning skripti). Pilotda is
   versiya varsa, Server 24.04 yenidən quraşdırılır (`docs/KIOSK_SETUP.md` §11). Lisenziya lazım deyil.
 - 6-cı nəsil i5, 8 GB, 128 GB SSD Ubuntu Server üçün kifayətdir (Windows 11 məhdudiyyəti burada yoxdur).
 - Toxunma paneli Linux-da adətən sürücüsüz (HID) işləyir — cihaz gələndə yoxlanır (§11, addım 1).
+- **Cihazın yoxlanması (2026-11-07, `KIOSK_SETUP.md` §11.1, layihə sahibinin ekran şəkilləri):** Ubuntu **26.04.1 LTS
+  Desktop** (`graphical.target`), Intel Core i5-6300U, 7,2 GiB yaddaş, disk 117 GB (101 GB boş), kabel kartı `enp1s0`
+  (kabel taxılmayıb) və Wi-Fi `wlp2s0`, toxunma **ILITEK-TOUCH** — sürücüsüz (HID) tanınır. Nəticə: aparat uyğundur;
+  **Desktop olduğu üçün Server yenidən quraşdırılır**. Versiya — 24.04 LTS Server (skript onda sınanıb) və ya 26.04 LTS
+  Server (daha uzun dəstək, amma skript hələ sınanmayıb) — layihə sahibinin seçimi (T-332).
 - Real cihazda yoxlanmayıb: `provision.sh`, `cage` tty1-də, flaş, toxunma, golden image — M19b (T-331, bloklayıcı №4).
 
 Aşağıdakı Windows bölməsi Windows kioskları üçün qüvvədədir (T-329).
