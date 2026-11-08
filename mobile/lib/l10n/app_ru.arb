@@ -800,5 +800,7 @@
   "printHubPickKioskHint": "Список и карта",
   "printHubMyQrHint": "Заберите подготовленный файл в киоске",
   "printHubPreparedHint": "Файлы, подготовленные для киоска",
-  "printHubScheduledHint": "Запланируйте печать на нужное время"
+  "printHubScheduledHint": "Запланируйте печать на нужное время",
+  "scanOtherCamera": "Другая камера",
+  "scanTapToFocus": "Если код размыт, коснитесь экрана — камера сфокусируется."
 }

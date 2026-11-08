@@ -800,5 +800,7 @@
   "printHubPickKioskHint": "List and map",
   "printHubMyQrHint": "Collect a prepared file at the kiosk",
   "printHubPreparedHint": "Files you prepared for a kiosk",
-  "printHubScheduledHint": "Plan a print for later"
+  "printHubScheduledHint": "Plan a print for later",
+  "scanOtherCamera": "Another camera",
+  "scanTapToFocus": "If the code is blurred, tap the screen to focus there."
 }

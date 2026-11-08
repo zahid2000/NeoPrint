@@ -11,6 +11,7 @@ import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
 import '../../core/l10n/language_controller.dart';
 import '../../core/router/app_router.dart';
+import '../../core/router/back_stack.dart';
 import '../../l10n/app_localizations.dart';
 import 'language_sheet.dart';
 
@@ -110,7 +111,7 @@ class ProfileScreen extends ConsumerWidget {
               leading: const Icon(Icons.schedule_outlined),
               title: Text(l10n.navScheduled),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.go(Routes.scheduled),
+              onTap: () => context.goTab(Routes.scheduled),
             ),
 
           // The referral code, its link and what it earned (plan section 2.6).

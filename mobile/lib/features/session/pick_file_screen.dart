@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_router.dart';
+import '../../core/router/back_stack.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/neo_empty_state.dart';
@@ -34,7 +35,7 @@ class PickFileScreen extends ConsumerWidget {
               message: l10n.pickFileEmpty,
               hint: l10n.pickFileEmptyHint,
               action: OutlinedButton(
-                onPressed: () => context.go(Routes.files),
+                onPressed: () => context.goTab(Routes.files),
                 child: Text(l10n.pickFileUpload),
               ),
             )

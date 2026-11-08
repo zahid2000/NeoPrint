@@ -118,7 +118,7 @@ class PrintHubScreen extends ConsumerWidget {
           tone: IconTileTone.info,
           title: l10n.printHubPickKiosk,
           hint: l10n.printHubPickKioskHint,
-          onTap: () => context.go(Routes.kiosks),
+          onTap: () => context.push(Routes.kiosks),
         ),
       if (personalQr) ...[
         NeoNavRow(
@@ -141,7 +141,7 @@ class PrintHubScreen extends ConsumerWidget {
           tone: IconTileTone.warning,
           title: l10n.homeScheduled,
           hint: l10n.printHubScheduledHint,
-          onTap: () => context.go(Routes.scheduled),
+          onTap: () => context.push(Routes.scheduled),
         ),
     ];
 

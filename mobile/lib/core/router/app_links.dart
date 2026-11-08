@@ -1,8 +1,10 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/readiness.dart';
 import 'app_router.dart';
+import 'back_stack.dart';
 
 final _code = RegExp(r'^[A-Za-z0-9-]{1,40}$');
 
@@ -83,7 +85,8 @@ const _tabs = {
 };
 
 /// Opens a route from [appLinkLocation]: a tab is switched to, any other
-/// screen goes on top of where the user is, so back returns there.
+/// screen goes on top of where the user is. Either way back returns to where
+/// the link was opened - the notifications list, say (T-348).
 void openAppLocation(BuildContext context, String location) {
   final router = GoRouter.of(context);
 
@@ -94,7 +97,10 @@ void openAppLocation(BuildContext context, String location) {
   }
 
   if (_tabs.contains(Uri.parse(location).path)) {
-    router.go(location);
+    ProviderScope.containerOf(
+      context,
+      listen: false,
+    ).read(backStackProvider).go(router, location);
   } else {
     router.push(location);
   }

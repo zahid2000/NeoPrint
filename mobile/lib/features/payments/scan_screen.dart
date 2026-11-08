@@ -9,6 +9,7 @@ import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart
 
 import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
+import '../../core/platform/camera_choice.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
@@ -46,8 +47,14 @@ class ScanScreen extends ConsumerStatefulWidget {
 class _ScanScreenState extends ConsumerState<ScanScreen> {
   final _scanner = BarcodeScanner(formats: [BarcodeFormat.qrCode]);
 
+  /// Which back camera, as an index into [_backs]: the main one unless the
+  /// user stepped to another. Kept while the app runs, so the next scan
+  /// opens the one that worked.
+  static int _lens = 0;
+
   CameraController? _controller;
   CameraDescription? _camera;
+  List<CameraDescription> _backs = const [];
   _ScanProblem? _problem;
 
   /// A frame is with ML Kit; the next ones are dropped until it answers.
@@ -95,15 +102,18 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         return;
       }
 
-      final back = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.back,
-        orElse: () => cameras.first,
-      );
+      // The main back camera, not the ultra-wide or macro one that some
+      // phones list first (T-346); "another camera" steps through the rest.
+      final backs = backCamerasMainFirst(cameras);
+      _backs = backs.isEmpty ? [cameras.first] : backs;
+      final back = _backs[_lens % _backs.length];
 
-      // The formats ML Kit reads straight from memory on each platform.
+      // 720p: sharp enough for a QR on a kiosk screen an arm's length away,
+      // light enough for ML Kit on every frame. The formats are the ones ML
+      // Kit reads straight from memory on each platform.
       final controller = CameraController(
         back,
-        ResolutionPreset.medium,
+        ResolutionPreset.high,
         enableAudio: false,
         imageFormatGroup: defaultTargetPlatform == TargetPlatform.iOS
             ? ImageFormatGroup.bgra8888
@@ -115,6 +125,14 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       if (!mounted) {
         await controller.dispose();
         return;
+      }
+
+      // Continuous focus and exposure; a phone that cannot is fine as it is.
+      try {
+        await controller.setFocusMode(FocusMode.auto);
+        await controller.setExposureMode(ExposureMode.auto);
+      } on CameraException {
+        // Fixed-focus camera.
       }
 
       _camera = back;
@@ -133,6 +151,18 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
         );
       }
     }
+  }
+
+  /// The next back camera: a phone whose main camera still does not focus
+  /// on a screen can try its others (T-346).
+  Future<void> _nextLens() async {
+    final controller = _controller;
+    setState(() => _controller = null);
+    if (controller != null) {
+      await _close(controller);
+    }
+    _lens = (_lens + 1) % _backs.length;
+    await _open();
   }
 
   Future<void> _onFrame(CameraImage image) async {
@@ -233,7 +263,17 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     final controller = _controller;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.scanTitle)),
+      appBar: AppBar(
+        title: Text(l10n.scanTitle),
+        actions: [
+          if (_backs.length > 1 && controller != null)
+            IconButton(
+              tooltip: l10n.scanOtherCamera,
+              onPressed: _nextLens,
+              icon: const Icon(Icons.cameraswitch_outlined),
+            ),
+        ],
+      ),
       body: switch (_problem) {
         _ScanProblem.noCamera => NeoEmptyState(
           icon: Icons.no_photography_outlined,
@@ -273,6 +313,23 @@ class _Viewfinder extends StatelessWidget {
   final String instruction;
   final String? warning;
 
+  static Size _upright(Size sensor, Orientation orientation) {
+    final long = sensor.longestSide;
+    final short = sensor.shortestSide;
+    return orientation == Orientation.portrait
+        ? Size(short, long)
+        : Size(long, short);
+  }
+
+  Future<void> _focusAt(Offset point) async {
+    try {
+      await controller.setFocusPoint(point);
+      await controller.setExposurePoint(point);
+    } on CameraException {
+      // A camera without focus points.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -285,12 +342,28 @@ class _Viewfinder extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              FittedBox(
-                fit: BoxFit.cover,
-                clipBehavior: Clip.hardEdge,
-                child: SizedBox.fromSize(
-                  size: controller.value.previewSize ?? const Size.square(1),
-                  child: CameraPreview(controller),
+              // The sensor reports its size lying down; the phone is held
+              // upright, so the box is turned to match - otherwise the
+              // picture was stretched (T-346). A tap focuses there.
+              LayoutBuilder(
+                builder: (context, constraints) => GestureDetector(
+                  onTapUp: (details) => _focusAt(
+                    Offset(
+                      details.localPosition.dx / constraints.maxWidth,
+                      details.localPosition.dy / constraints.maxHeight,
+                    ),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    clipBehavior: Clip.hardEdge,
+                    child: SizedBox.fromSize(
+                      size: _upright(
+                        controller.value.previewSize ?? const Size.square(1),
+                        MediaQuery.orientationOf(context),
+                      ),
+                      child: CameraPreview(controller),
+                    ),
+                  ),
                 ),
               ),
               // The square the code goes into.
@@ -320,6 +393,14 @@ class _Viewfinder extends StatelessWidget {
                 instruction,
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: Spacing.x1),
+              Text(
+                AppLocalizations.of(context).scanTapToFocus,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: tokens.neutral600,
+                ),
               ),
               if (warning != null) ...[
                 const SizedBox(height: Spacing.x3),

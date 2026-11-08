@@ -1,6 +1,8 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/platform/camera_choice.dart';
+
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/neo_empty_state.dart';
@@ -66,10 +68,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
         return;
       }
 
-      final back = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.back,
-        orElse: () => cameras.first,
-      );
+      // The main back camera, not an ultra-wide or macro one listed first (T-346).
+      final backs = backCamerasMainFirst(cameras);
+      final back = backs.isEmpty ? cameras.first : backs.first;
 
       final controller = CameraController(
         back,

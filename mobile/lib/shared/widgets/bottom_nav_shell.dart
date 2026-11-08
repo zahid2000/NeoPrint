@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/features/readiness.dart';
+import '../../core/router/back_stack.dart';
 import '../../features/notices/hub_notices.dart';
 import '../../features/notifications/notification_host.dart';
 import '../../features/schedule/schedule_due_prompt.dart';
@@ -40,38 +42,61 @@ class BottomNavShell extends ConsumerWidget {
       l10n.navProfile,
     ];
 
-    return Scaffold(
-      // Inside the scaffold, so a notice sits above the navigation bar.
-      body: HubNotices(
-        child: NotificationHost(
-          child: Readiness.scheduledPrint
-              ? ScheduleDuePrompt(child: shell)
-              : shell,
-        ),
-      ),
-      // The open session sits just above the bar, on every tab.
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (Readiness.mobileSession) const SessionBanner(),
-          NavigationBar(
-            selectedIndex: shell.currentIndex,
-            // goBranch with initialLocation restores a tab to its root when it is
-            // tapped again, which is what people expect from a tab bar.
-            onDestinationSelected: (index) => shell.goBranch(
-              index,
-              initialLocation: index == shell.currentIndex,
-            ),
-            destinations: [
-              for (var i = 0; i < destinations.length; i++)
-                NavigationDestination(
-                  icon: Icon(destinations[i].$1),
-                  selectedIcon: Icon(destinations[i].$2),
-                  label: labels[i],
-                ),
-            ],
+    // Back on a tab's first screen (T-348): to the screen a button came from,
+    // else to Home, and only from Home out of the app. Inside a tab the
+    // tab's own navigator pops first and this is not asked.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) {
+          return;
+        }
+        if (ref.read(backStackProvider).back(GoRouter.of(context))) {
+          return;
+        }
+        if (shell.currentIndex != 0) {
+          shell.goBranch(0);
+          return;
+        }
+        SystemNavigator.pop();
+      },
+      child: Scaffold(
+        // Inside the scaffold, so a notice sits above the navigation bar.
+        body: HubNotices(
+          child: NotificationHost(
+            child: Readiness.scheduledPrint
+                ? ScheduleDuePrompt(child: shell)
+                : shell,
           ),
-        ],
+        ),
+        // The open session sits just above the bar, on every tab.
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (Readiness.mobileSession) const SessionBanner(),
+            NavigationBar(
+              selectedIndex: shell.currentIndex,
+              // goBranch with initialLocation restores a tab to its root when it is
+              // tapped again, which is what people expect from a tab bar.
+              onDestinationSelected: (index) {
+                // The tab bar is a move sideways: nothing to go back to.
+                ref.read(backStackProvider).clear();
+                shell.goBranch(
+                  index,
+                  initialLocation: index == shell.currentIndex,
+                );
+              },
+              destinations: [
+                for (var i = 0; i < destinations.length; i++)
+                  NavigationDestination(
+                    icon: Icon(destinations[i].$1),
+                    selectedIcon: Icon(destinations[i].$2),
+                    label: labels[i],
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/router/app_router.dart';
+import '../../core/router/back_stack.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
@@ -368,7 +369,7 @@ class _ReadyFileSheet extends ConsumerWidget {
             if (ready.isEmpty && !state.loading) ...[
               const SizedBox(height: Spacing.x3),
               OutlinedButton(
-                onPressed: () => context.go(Routes.files),
+                onPressed: () => context.goTab(Routes.files),
                 child: Text(l10n.pickFileUpload),
               ),
             ],

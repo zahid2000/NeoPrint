@@ -1322,5 +1322,7 @@
   "printHubPickKioskHint": "Siyahı və xəritə",
   "printHubMyQrHint": "Hazırladığınız faylı kioskda götürün",
   "printHubPreparedHint": "Kiosk üçün hazırladığınız fayllar",
-  "printHubScheduledHint": "Çapı vaxtına planlayın"
+  "printHubScheduledHint": "Çapı vaxtına planlayın",
+  "scanOtherCamera": "Başqa kamera",
+  "scanTapToFocus": "Kod bulanıqdırsa, ekrana toxunun — kamera ora fokuslanır."
 }

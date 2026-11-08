@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/format/formats.dart';
 import '../../core/network/api_client.dart';
 import '../../core/router/app_router.dart';
+import '../../core/router/back_stack.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
@@ -102,7 +103,7 @@ class _ShareDetailScreenState extends ConsumerState<ShareDetailScreen> {
     if (file != null && file.canPreview) {
       context.push(Routes.filePreview(file.id), extra: file);
     } else {
-      context.go(Routes.files);
+      context.goTab(Routes.files);
     }
   }
 
