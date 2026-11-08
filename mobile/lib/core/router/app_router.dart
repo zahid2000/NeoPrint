@@ -13,6 +13,10 @@ import '../../features/security/pin_screen.dart';
 import '../../features/security/security_settings_screen.dart';
 import '../../features/files/file_models.dart';
 import '../../features/files/file_preview_screen.dart';
+import '../../features/files/files_controller.dart';
+import '../../features/jobs/my_jobs_screen.dart';
+import '../../features/print_hub/choose_file_screen.dart';
+import '../../features/print_hub/print_upload_screen.dart';
 import '../../features/files/files_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/jobs/claims_screen.dart';
@@ -66,9 +70,20 @@ abstract final class Routes {
   static const sessionFiles = '/session/files';
   static const sessionPrint = '/session/print';
   static const files = '/files';
-  static const filesCamera = '/files/camera';
-  static const filesScanner = '/files/scanner';
-  static String filePreview(String id) => '/files/$id';
+
+  /// Above the tabs (T-347): the Print tab opens them too, and inside the
+  /// files tab they switched the user to it.
+  static const filesCamera = '/camera';
+  static const filesScanner = '/scanner';
+  static String filePreview(String id) => '/file/$id';
+
+  /// "Fayllarımdan seç" inside the Print tab, and a file chosen there on its
+  /// way up (T-347).
+  static const printChoose = '/print/choose';
+  static const printUpload = '/print-upload';
+
+  /// "Sifarişlərim": every order, the home screen's "Hamısına bax" (T-342).
+  static const jobs = '/jobs';
   static const scheduled = '/print/scheduled';
   static const profile = '/profile';
 
@@ -354,6 +369,38 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ],
 
+      // A file's pages and the ways to add one: full screen, from the files
+      // tab and from the Print tab alike (T-347).
+      GoRoute(
+        path: Routes.filesCamera,
+        builder: (_, __) => const CameraCaptureScreen(),
+      ),
+      GoRoute(
+        path: Routes.filesScanner,
+        builder: (_, __) => const DocumentScanScreen(),
+      ),
+      GoRoute(
+        path: '/file/:id',
+        // The list hands over the file it already has. Without it - a link
+        // from outside - there is nothing to show yet, so the list is where
+        // the user lands.
+        redirect: (_, state) => state.extra is UserFile ? null : Routes.files,
+        builder: (_, state) => switch (state.extra) {
+          final UserFile file => FilePreviewScreen(file: file),
+          _ => const RedirectTo(Routes.files),
+        },
+      ),
+      GoRoute(
+        path: Routes.printUpload,
+        redirect: (_, state) => state.extra is PickedFile ? null : Routes.print,
+        builder: (_, state) => switch (state.extra) {
+          final PickedFile file => PrintUploadScreen(file: file),
+          _ => const RedirectTo(Routes.print),
+        },
+      ),
+      if (Readiness.printJobs)
+        GoRoute(path: Routes.jobs, builder: (_, __) => const MyJobsScreen()),
+
       // The five bottom-nav destinations (T-338; docs/DECISIONS.md 2026-11-08), in a shell so
       // the bar keeps its state as the tabs change.
       StatefulShellRoute.indexedStack(
@@ -372,29 +419,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: Routes.files,
                 builder: (_, __) => const FilesScreen(),
-                routes: [
-                  // Before ':id', which would otherwise take "camera" for an id.
-                  GoRoute(
-                    path: 'camera',
-                    builder: (_, __) => const CameraCaptureScreen(),
-                  ),
-                  GoRoute(
-                    path: 'scanner',
-                    builder: (_, __) => const DocumentScanScreen(),
-                  ),
-                  GoRoute(
-                    path: ':id',
-                    // The list hands over the file it already has. Without
-                    // it - a link from outside - there is nothing to show
-                    // yet, so the list is where the user lands.
-                    redirect: (_, state) =>
-                        state.extra is UserFile ? null : Routes.files,
-                    builder: (_, state) => switch (state.extra) {
-                      final UserFile file => FilePreviewScreen(file: file),
-                      _ => const RedirectTo(Routes.files),
-                    },
-                  ),
-                ],
               ),
             ],
           ),
@@ -406,6 +430,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: Routes.print,
                 builder: (_, __) => const PrintHubScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'choose',
+                    builder: (_, __) => const ChooseFileScreen(),
+                  ),
                   if (Readiness.kioskSearch)
                     GoRoute(
                       path: 'kiosks',

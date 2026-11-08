@@ -3,21 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
-import '../../core/features/entry_points.dart';
+import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
 import '../../core/format/formats.dart';
 import '../../core/network/api_client.dart';
 import '../../core/router/app_router.dart';
+import '../../core/router/back_stack.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
-import '../../shared/widgets/neo_empty_state.dart';
+import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_icon_tile.dart';
 import '../files/file_sources.dart';
 import '../jobs/job_card.dart';
 import '../jobs/jobs_controller.dart';
-import '../jobs/jobs_repository.dart';
 import '../kiosk_search/kiosk_models.dart';
 import '../kiosk_search/kiosk_photo.dart';
 import '../kiosk_search/kiosk_status_view.dart';
@@ -28,26 +28,44 @@ import '../scanner/document_scanner.dart';
 import '../wallet/wallet_controller.dart';
 import 'near_kiosks.dart';
 
-/// The home tab (docs/DESIGN_SYSTEM.md, "Mobil: yeni vizual dil", T-338):
-/// a greeting; the jobs on their way, or the nearest kiosk when there are
-/// none; the shortcuts; the money; the kiosks around; the recent jobs.
+/// The home tab, as the design draws it (T-342; docs/DESIGN_SYSTEM.md,
+/// "Mobil: yeni vizual dil"): the greeting; the nearest kiosk; four
+/// shortcuts; the order on its way; the balance and the bonus; the other
+/// kiosks around.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final personalQr = ref.watch(personalQrVisibleProvider);
+    final theme = Theme.of(context);
+    final tokens = context.tokens;
+    final canScanQr = Readiness.kioskPayment && ref.watch(canScanProvider);
     final jobs = Readiness.printJobs ? ref.watch(myJobsProvider) : null;
     final active = [...?jobs?.valueOrNull?.where((job) => job.isActive)];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.appTitle),
-        actions: const [
-          NotificationBell(),
-          _Avatar(),
-          SizedBox(width: Spacing.x4),
+        centerTitle: false,
+        titleSpacing: Spacing.x4,
+        title: Text(
+          l10n.appTitle,
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: tokens.brand500,
+            fontWeight: FontWeights.semibold,
+          ),
+        ),
+        actions: [
+          // The kiosk's QR is read from here and from the Print tab.
+          if (canScanQr)
+            IconButton(
+              tooltip: l10n.homeScanQr,
+              onPressed: () => context.push(Routes.scan),
+              icon: const Icon(Icons.qr_code_scanner),
+            ),
+          const NotificationBell(),
+          const _Avatar(),
+          const SizedBox(width: Spacing.x2),
         ],
       ),
       body: RefreshIndicator(
@@ -60,49 +78,58 @@ class HomeScreen extends ConsumerWidget {
           ]);
         },
         child: ListView(
-          padding: const EdgeInsets.all(Spacing.x4),
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.x4,
+            Spacing.x2,
+            Spacing.x4,
+            Spacing.x6,
+          ),
           children: [
             const _Greeting(),
-            const SizedBox(height: Spacing.x4),
-
-            // The jobs on their way come first; with none, the kiosk nearby.
-            if (active.isNotEmpty)
-              _Section(
-                title: l10n.homeActiveJobs,
-                children: [for (final job in active) JobCard(job: job)],
-              )
-            else if (Readiness.kioskSearch)
+            if (Readiness.kioskSearch) ...[
+              const SizedBox(height: Spacing.x4),
               const _NearKioskCard(),
-
+            ],
             const SizedBox(height: Spacing.x4),
             const _Shortcuts(),
-
+            if (active.isNotEmpty) ...[
+              const SizedBox(height: Spacing.x6),
+              NeoSectionHeader(
+                title: l10n.homeActiveOrder,
+                actionLabel: l10n.homeSeeAll,
+                onAction: () => context.push(Routes.jobs),
+              ),
+              for (final job in active.take(2)) ...[
+                JobCard(job: job),
+                const SizedBox(height: Spacing.x2),
+              ],
+            ] else if (jobs case AsyncError(:final error)) ...[
+              const SizedBox(height: Spacing.x4),
+              NeoBanner.error(
+                message: l10n.homeJobsFailed(
+                  error is ApiException
+                      ? apiErrorText(l10n, error)
+                      : l10n.errorServer,
+                ),
+              ),
+            ],
             if (Readiness.wallet) ...[
               const SizedBox(height: Spacing.x4),
               const _MoneyRow(),
             ],
-
-            // Printing with the personal QR (plan section 9.4).
-            if (personalQr) ...[
+            if (Readiness.kioskSearch) const _NearbyKiosks(),
+            // Every order, also the finished ones, one tap away when none is
+            // on its way.
+            if (Readiness.printJobs && active.isEmpty) ...[
               const SizedBox(height: Spacing.x4),
               NeoNavRow(
-                icon: Icons.qr_code_2,
-                title: l10n.myQrTitle,
-                onTap: () => context.push(Routes.myQr),
-              ),
-              const SizedBox(height: Spacing.x2),
-              NeoNavRow(
-                icon: Icons.inventory_2_outlined,
-                tone: IconTileTone.success,
-                title: l10n.preparedTitle,
-                onTap: () => context.push(Routes.prepared),
+                icon: Icons.receipt_long_outlined,
+                tone: IconTileTone.info,
+                title: l10n.jobsTitle,
+                hint: l10n.jobsHint,
+                onTap: () => context.push(Routes.jobs),
               ),
             ],
-
-            if (Readiness.kioskSearch)
-              _NearbyKiosks(skipNearest: active.isEmpty),
-
-            if (jobs != null) _RecentJobs(jobs: jobs),
           ],
         ),
       ),
@@ -119,30 +146,21 @@ class _Avatar extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
     final tokens = context.tokens;
-    final name = (user?.fullName?.trim().isNotEmpty ?? false)
-        ? user!.fullName!.trim()
-        : (user?.email ?? '');
-    final initials = name
-        .split(RegExp(r'[\s@.]+'))
-        .where((part) => part.isNotEmpty)
-        .take(2)
-        .map((part) => part.characters.first.toUpperCase())
-        .join();
 
     return Semantics(
       button: true,
       label: l10n.navProfile,
       child: InkWell(
         customBorder: const CircleBorder(),
-        onTap: () => context.go(Routes.profile),
+        onTap: () => context.goTab(Routes.profile),
         child: SizedBox.square(
           dimension: Sizes.touchTarget,
           child: Center(
             child: CircleAvatar(
-              radius: Spacing.x4,
-              backgroundColor: tokens.brand50,
+              radius: Spacing.x4 + 2,
+              backgroundColor: tokens.brand100,
               child: Text(
-                initials,
+                initialsOf(user?.fullName, user?.email),
                 style: TextStyle(
                   color: tokens.brand500,
                   fontSize: FontSizes.caption,
@@ -157,6 +175,19 @@ class _Avatar extends ConsumerWidget {
   }
 }
 
+/// "ZM" from "Zahid Mamedov", "DU" from "dev-user@...".
+String initialsOf(String? fullName, String? email) {
+  final name = (fullName?.trim().isNotEmpty ?? false)
+      ? fullName!.trim()
+      : (email ?? '');
+  return name
+      .split(RegExp(r'[\s@.\-_]+'))
+      .where((part) => part.isNotEmpty)
+      .take(2)
+      .map((part) => part.characters.first.toUpperCase())
+      .join();
+}
+
 class _Greeting extends ConsumerWidget {
   const _Greeting();
 
@@ -166,49 +197,36 @@ class _Greeting extends ConsumerWidget {
     final theme = Theme.of(context);
     final user = ref.watch(currentUserProvider);
     final muted = context.tokens.neutral600;
-    final name = (user?.fullName?.trim().isNotEmpty ?? false)
-        ? user!.fullName!.trim()
-        : null;
+    // The first name, as people are greeted.
+    final first = user?.fullName?.trim().split(RegExp(r'\s+')).first;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           l10n.homeHello,
-          style: theme.textTheme.bodySmall?.copyWith(color: muted),
+          style: theme.textTheme.bodyMedium?.copyWith(color: muted),
         ),
-        if (name != null) Text(name, style: theme.textTheme.headlineSmall),
+        Text(
+          (first?.isNotEmpty ?? false)
+              ? l10n.homeGreetingName(first!)
+              : l10n.homeGreetingNoName,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeights.semibold,
+          ),
+        ),
         const SizedBox(height: Spacing.x1),
         Text(
           l10n.homeHelloHint,
-          style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+          style: theme.textTheme.bodySmall?.copyWith(color: muted),
         ),
       ],
     );
   }
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.children});
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text(title, style: Theme.of(context).textTheme.titleMedium),
-      const SizedBox(height: Spacing.x2),
-      for (final child in children) ...[
-        child,
-        const SizedBox(height: Spacing.x2),
-      ],
-    ],
-  );
-}
-
-/// The nearest kiosk, or what to do to see it.
+/// The nearest kiosk on the brand's soft card, its picture on the right;
+/// or what to do to see it.
 class _NearKioskCard extends ConsumerWidget {
   const _NearKioskCard();
 
@@ -218,7 +236,7 @@ class _NearKioskCard extends ConsumerWidget {
     final near = ref.watch(nearKiosksProvider);
 
     return switch (near) {
-      AsyncData(:final value) when value.kiosks.isNotEmpty => _KioskCard(
+      AsyncData(:final value) when value.kiosks.isNotEmpty => _KioskHero(
         kiosk: value.kiosks.first,
       ),
       AsyncData(:final value) => _NoNearKiosk(
@@ -230,11 +248,11 @@ class _NearKioskCard extends ConsumerWidget {
         canAsk: value.problem == LocationProblem.notAsked,
       ),
       AsyncError() => _NoNearKiosk(message: l10n.homeNoLocation, canAsk: false),
-      _ => const Card(
-        child: Padding(
-          padding: EdgeInsets.all(Spacing.x4),
-          child: LinearProgressIndicator(),
-        ),
+      _ => Container(
+        height: 132,
+        decoration: neoHeroDecoration(context),
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(),
       ),
     };
   }
@@ -252,51 +270,61 @@ class _NoNearKiosk extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.x4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const NeoIconTile(icon: Icons.place_outlined),
-                const SizedBox(width: Spacing.x3),
-                Expanded(
-                  child: Text(
-                    l10n.homeFindNearTitle,
-                    style: theme.textTheme.titleMedium,
+    return Container(
+      decoration: neoHeroDecoration(context),
+      padding: const EdgeInsets.all(Spacing.x4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.place_outlined, size: 18, color: tokens.brand500),
+              const SizedBox(width: Spacing.x1),
+              Expanded(
+                child: Text(
+                  l10n.homeFindNearTitle,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeights.semibold,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: Spacing.x2),
-            Text(message, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: Spacing.x3),
-            if (canAsk) ...[
-              OutlinedButton.icon(
-                onPressed: () => ref.read(nearKiosksProvider.notifier).find(),
-                icon: const Icon(Icons.my_location),
-                label: Text(l10n.homeShowNear),
               ),
-              const SizedBox(height: Spacing.x1),
             ],
-            TextButton(
-              onPressed: () => context.go(Routes.kiosks),
-              child: Text(l10n.homeAllKiosks),
+          ),
+          const SizedBox(height: Spacing.x1),
+          Text(
+            message,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: tokens.neutral600,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: Spacing.x3),
+          Wrap(
+            spacing: Spacing.x2,
+            runSpacing: Spacing.x2,
+            children: [
+              if (canAsk)
+                OutlinedButton.icon(
+                  onPressed: () => ref.read(nearKiosksProvider.notifier).find(),
+                  icon: const Icon(Icons.my_location),
+                  label: Text(l10n.homeShowNear),
+                ),
+              TextButton(
+                onPressed: () => context.goTab(Routes.kiosks),
+                child: Text(l10n.homeAllKiosks),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-/// The nearest kiosk: its picture, name, code and address, status and
-/// distance; the card opens the kiosk.
-class _KioskCard extends StatelessWidget {
-  const _KioskCard({required this.kiosk});
+/// "Yaxın kiosk · Central Mall · KSK-024 · 1-ci mərtəbə · Hazırdır · Növbə".
+class _KioskHero extends StatelessWidget {
+  const _KioskHero({required this.kiosk});
 
   final KioskSummary kiosk;
 
@@ -306,71 +334,80 @@ class _KioskCard extends StatelessWidget {
     final theme = Theme.of(context);
     final tokens = context.tokens;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push(Routes.kiosk(kiosk.code), extra: kiosk),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.x3),
-          child: Row(
-            children: [
-              const KioskPhoto(),
-              const SizedBox(width: Spacing.x3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.place_outlined,
-                          size: 14,
-                          color: tokens.brand500,
-                        ),
-                        const SizedBox(width: Spacing.x1),
-                        Flexible(
-                          child: Text(
-                            l10n.homeNearKiosk,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: tokens.neutral600,
+    return Material(
+      color: tokens.brand50.withAlpha(0),
+      child: Ink(
+        decoration: neoHeroDecoration(context),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Radii.lg),
+          onTap: () => context.push(Routes.kiosk(kiosk.code), extra: kiosk),
+          child: Padding(
+            padding: const EdgeInsets.all(Spacing.x4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.place_outlined,
+                            size: 16,
+                            color: tokens.brand500,
+                          ),
+                          const SizedBox(width: Spacing.x1),
+                          Flexible(
+                            child: Text(
+                              kiosk.distanceKm == null
+                                  ? l10n.homeNearKiosk
+                                  : '${l10n.homeNearKiosk} · '
+                                        '${distanceText(context, kiosk.distanceKm!)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: tokens.neutral600,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Text(kiosk.name, style: theme.textTheme.titleMedium),
-                    Text(
-                      [
-                        kiosk.code,
-                        if (kiosk.address.isNotEmpty) kiosk.address,
-                      ].join(' · '),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: tokens.neutral600,
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: Spacing.x2),
-                    Wrap(
-                      spacing: Spacing.x2,
-                      runSpacing: Spacing.x1,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        KioskStatusChip(status: kiosk.status),
-                        if (kiosk.distanceKm case final km?)
-                          Text(
-                            distanceText(context, km),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+                      const SizedBox(height: Spacing.x1),
+                      Text(
+                        kiosk.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeights.semibold,
+                        ),
+                      ),
+                      Text(
+                        [
+                          kiosk.code,
+                          if (kiosk.address.isNotEmpty) kiosk.address,
+                        ].join(' · '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: tokens.neutral600,
+                        ),
+                      ),
+                      const SizedBox(height: Spacing.x2),
+                      Wrap(
+                        spacing: Spacing.x2,
+                        runSpacing: Spacing.x1,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          KioskStatusChip(status: kiosk.status),
+                          if (kiosk.queueLength case final queue?)
+                            _QueueText(queue: queue),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right, color: tokens.neutral400),
-            ],
+                const SizedBox(width: Spacing.x3),
+                KioskPhoto(url: kiosk.photoUrl, size: 96),
+              ],
+            ),
           ),
         ),
       ),
@@ -378,43 +415,71 @@ class _KioskCard extends StatelessWidget {
   }
 }
 
-/// Up to four shortcuts in one row; the screen's one main action is filled.
+/// "Növbə: 3" with a people icon - how busy a kiosk is.
+class _QueueText extends StatelessWidget {
+  const _QueueText({required this.queue});
+
+  final int queue;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.groups_outlined, size: 16, color: tokens.neutral600),
+        const SizedBox(width: Spacing.x1),
+        Text(
+          queue == 0
+              ? AppLocalizations.of(context).homeQueueEmpty
+              : AppLocalizations.of(context).homeQueue(queue),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: tokens.neutral600),
+        ),
+      ],
+    );
+  }
+}
+
+/// Four shortcuts in one row, equal cards: "Fayldan çap et", "Skan et",
+/// "Tərtibat yarat", "Fayl paylaş" - each goes on to printing.
 class _Shortcuts extends ConsumerWidget {
   const _Shortcuts();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final canScanQr = Readiness.kioskPayment && ref.watch(canScanProvider);
-    final scheduled = ref.watch(scheduledVisibleProvider);
+    final sharing =
+        Readiness.fileSharing &&
+        ref.watch(featureOnProvider(FeatureKey.fileSharing));
 
     final tiles = [
-      if (canScanQr)
-        _Shortcut(
-          icon: Icons.qr_code_scanner,
-          label: l10n.homeScanQr,
-          primary: true,
-          onTap: () => context.push(Routes.scan),
-        ),
       _Shortcut(
-        icon: Icons.upload_file_outlined,
-        label: l10n.homeAddFile,
-        // Without a scanner, adding a file is the main action.
-        primary: !canScanQr,
-        onTap: () => context.go(Routes.print),
+        icon: Icons.print_outlined,
+        label: l10n.homePrintFromFile,
+        onTap: () => context.goTab(Routes.printChoose),
       ),
       if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
         _Shortcut(
           icon: Icons.document_scanner_outlined,
           label: l10n.homeScanDocument,
-          onTap: () => addFileFrom(context, ref, FileSource.scan),
+          tone: IconTileTone.accent,
+          onTap: () =>
+              addFileFrom(context, ref, FileSource.scan, thenPrint: true),
         ),
-      if (scheduled)
+      _Shortcut(
+        icon: Icons.dashboard_customize_outlined,
+        label: l10n.homeNewLayout,
+        tone: IconTileTone.success,
+        onTap: () => addFileFrom(context, ref, FileSource.layout),
+      ),
+      if (sharing)
         _Shortcut(
-          icon: Icons.schedule_outlined,
-          label: l10n.homeScheduled,
+          icon: Icons.share_outlined,
+          label: l10n.homeShareFile,
           tone: IconTileTone.warning,
-          onTap: () => context.go(Routes.scheduled),
+          onTap: () => context.push(Routes.shares),
         ),
     ];
 
@@ -437,23 +502,18 @@ class _Shortcut extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.primary = false,
     this.tone = IconTileTone.brand,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final bool primary;
   final IconTileTone tone;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme.labelMedium;
-
     return Card(
-      color: primary ? scheme.primary : null,
+      margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -464,16 +524,13 @@ class _Shortcut extends StatelessWidget {
           ),
           child: Column(
             children: [
-              if (primary)
-                Icon(icon, size: 28, color: scheme.onPrimary)
-              else
-                NeoIconTile(icon: icon, tone: tone),
+              NeoIconTile(icon: icon, tone: tone),
               const SizedBox(height: Spacing.x2),
               Text(
                 label,
                 textAlign: TextAlign.center,
                 maxLines: 2,
-                style: text?.copyWith(color: primary ? scheme.onPrimary : null),
+                style: Theme.of(context).textTheme.labelMedium,
               ),
             ],
           ),
@@ -493,15 +550,12 @@ class _MoneyRow extends ConsumerWidget {
     final wallet = ref.watch(walletProvider);
     final language = Localizations.localeOf(context).languageCode;
 
-    String? failure;
     if (wallet case AsyncError(:final error)) {
-      failure = l10n.walletLoadFailed(
-        error is ApiException ? apiErrorText(l10n, error) : l10n.errorServer,
+      return NeoBanner.error(
+        message: l10n.walletLoadFailed(
+          error is ApiException ? apiErrorText(l10n, error) : l10n.errorServer,
+        ),
       );
-    }
-
-    if (failure != null) {
-      return NeoBanner.error(message: failure);
     }
 
     final value = wallet.valueOrNull?.wallet;
@@ -554,16 +608,20 @@ class _MoneyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tokens = context.tokens;
+    final colours = iconTileColours(context, tone);
 
     return Card(
+      margin: EdgeInsets.zero,
+      color: colours.background,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.go(Routes.wallet),
+        onTap: () => context.goTab(Routes.wallet),
         child: Padding(
           padding: const EdgeInsets.all(Spacing.x3),
           child: Row(
             children: [
-              NeoIconTile(icon: icon, tone: tone),
+              Icon(icon, color: colours.foreground),
               const SizedBox(width: Spacing.x2),
               Expanded(
                 child: Column(
@@ -573,7 +631,7 @@ class _MoneyCard extends StatelessWidget {
                     Text(
                       label,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: context.tokens.neutral600,
+                        color: tokens.neutral600,
                       ),
                     ),
                     if (value == null)
@@ -584,7 +642,7 @@ class _MoneyCard extends StatelessWidget {
                     else
                       Text(
                         value!,
-                        style: theme.textTheme.titleLarge?.copyWith(
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeights.semibold,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
@@ -592,6 +650,7 @@ class _MoneyCard extends StatelessWidget {
                   ],
                 ),
               ),
+              Icon(Icons.chevron_right, color: tokens.neutral400),
             ],
           ),
         ),
@@ -600,19 +659,17 @@ class _MoneyCard extends StatelessWidget {
   }
 }
 
-/// The other kiosks around, sideways; only with a location.
+/// "Yaxınlıqdakı digər kiosklar": the kiosks after the nearest, sideways.
 class _NearbyKiosks extends ConsumerWidget {
-  const _NearbyKiosks({required this.skipNearest});
-
-  /// The nearest is already the card at the top.
-  final bool skipNearest;
+  const _NearbyKiosks();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final tokens = context.tokens;
     final all = ref.watch(nearKiosksProvider).valueOrNull?.kiosks ?? const [];
-    final kiosks = skipNearest ? all.skip(1).toList() : all;
+    final kiosks = all.skip(1).toList();
 
     if (kiosks.isEmpty) {
       return const SizedBox.shrink();
@@ -622,8 +679,11 @@ class _NearbyKiosks extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: Spacing.x6),
-        Text(l10n.homeNearbyKiosks, style: theme.textTheme.titleMedium),
-        const SizedBox(height: Spacing.x2),
+        NeoSectionHeader(
+          title: l10n.homeNearbyKiosks,
+          actionLabel: l10n.homeSeeAll,
+          onAction: () => context.goTab(Routes.kiosks),
+        ),
         SizedBox(
           height: 96,
           child: ListView.separated(
@@ -634,8 +694,9 @@ class _NearbyKiosks extends ConsumerWidget {
               final kiosk = kiosks[index];
 
               return SizedBox(
-                width: 232,
+                width: 240,
                 child: Card(
+                  margin: EdgeInsets.zero,
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
                     onTap: () =>
@@ -644,7 +705,7 @@ class _NearbyKiosks extends ConsumerWidget {
                       padding: const EdgeInsets.all(Spacing.x2),
                       child: Row(
                         children: [
-                          const KioskPhoto(size: 64),
+                          KioskPhoto(url: kiosk.photoUrl, size: 72),
                           const SizedBox(width: Spacing.x2),
                           Expanded(
                             child: Column(
@@ -660,7 +721,9 @@ class _NearbyKiosks extends ConsumerWidget {
                                 if (kiosk.distanceKm case final km?)
                                   Text(
                                     distanceText(context, km),
-                                    style: theme.textTheme.bodySmall,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: tokens.neutral600,
+                                    ),
                                   ),
                                 const SizedBox(height: Spacing.x1),
                                 KioskStatusChip(status: kiosk.status),
@@ -678,50 +741,5 @@ class _NearbyKiosks extends ConsumerWidget {
         ),
       ],
     );
-  }
-}
-
-/// The finished jobs, or the empty state when there are none at all.
-class _RecentJobs extends StatelessWidget {
-  const _RecentJobs({required this.jobs});
-
-  final AsyncValue<List<MyJob>> jobs;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-
-    return switch (jobs) {
-      AsyncData(:final value) when value.isEmpty => NeoEmptyState(
-        icon: Icons.receipt_long_outlined,
-        message: l10n.homeNoJobs,
-        hint: l10n.homeNoJobsHint,
-      ),
-      AsyncData(:final value) when value.any((job) => !job.isActive) => Padding(
-        padding: const EdgeInsets.only(top: Spacing.x6),
-        child: _Section(
-          title: l10n.homeRecentJobs,
-          children: [
-            for (final job in value.where((job) => !job.isActive).take(10))
-              JobCard(job: job),
-          ],
-        ),
-      ),
-      AsyncData() => const SizedBox.shrink(),
-      AsyncError(:final error) => Padding(
-        padding: const EdgeInsets.only(top: Spacing.x6),
-        child: NeoBanner.error(
-          message: l10n.homeJobsFailed(
-            error is ApiException
-                ? apiErrorText(l10n, error)
-                : l10n.errorServer,
-          ),
-        ),
-      ),
-      _ => const Padding(
-        padding: EdgeInsets.only(top: Spacing.x6),
-        child: Center(child: CircularProgressIndicator()),
-      ),
-    };
   }
 }

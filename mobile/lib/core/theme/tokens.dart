@@ -35,6 +35,8 @@ abstract final class LightPalette {
   static const dangerBg = Color(0xFFFDECEC);
   static const info500 = Color(0xFF0284C7);
   static const infoBg = Color(0xFFE6F4FB);
+  static const accent500 = Color(0xFF7C3AED);
+  static const accentBg = Color(0xFFF1EBFE);
 }
 
 /// The same scale, dark theme.
@@ -63,6 +65,8 @@ abstract final class DarkPalette {
   static const dangerBg = Color(0xFF2E1414);
   static const info500 = Color(0xFF38BDF8);
   static const infoBg = Color(0xFF0E2430);
+  static const accent500 = Color(0xFFA78BFA);
+  static const accentBg = Color(0xFF221A35);
 }
 
 /// The 4-based spacing scale. Constant across both themes.
@@ -163,6 +167,8 @@ class NeoPrintTokens extends ThemeExtension<NeoPrintTokens> {
     required this.dangerBackground,
     required this.info,
     required this.infoBackground,
+    required this.accent,
+    required this.accentBackground,
   });
 
   final Color brand50;
@@ -187,6 +193,10 @@ class NeoPrintTokens extends ThemeExtension<NeoPrintTokens> {
   final Color info;
   final Color infoBackground;
 
+  /// Decoration only - an icon square (T-342), never a status.
+  final Color accent;
+  final Color accentBackground;
+
   static const light = NeoPrintTokens(
     brand50: LightPalette.brand50,
     brand100: LightPalette.brand100,
@@ -207,6 +217,8 @@ class NeoPrintTokens extends ThemeExtension<NeoPrintTokens> {
     dangerBackground: LightPalette.dangerBg,
     info: LightPalette.info500,
     infoBackground: LightPalette.infoBg,
+    accent: LightPalette.accent500,
+    accentBackground: LightPalette.accentBg,
   );
 
   static const dark = NeoPrintTokens(
@@ -229,6 +241,8 @@ class NeoPrintTokens extends ThemeExtension<NeoPrintTokens> {
     dangerBackground: DarkPalette.dangerBg,
     info: DarkPalette.info500,
     infoBackground: DarkPalette.infoBg,
+    accent: DarkPalette.accent500,
+    accentBackground: DarkPalette.accentBg,
   );
 
   /// The pair a status is drawn with: the foreground and its background.
@@ -263,6 +277,8 @@ class NeoPrintTokens extends ThemeExtension<NeoPrintTokens> {
     Color? dangerBackground,
     Color? info,
     Color? infoBackground,
+    Color? accent,
+    Color? accentBackground,
   }) {
     return NeoPrintTokens(
       brand50: brand50 ?? this.brand50,
@@ -284,6 +300,8 @@ class NeoPrintTokens extends ThemeExtension<NeoPrintTokens> {
       dangerBackground: dangerBackground ?? this.dangerBackground,
       info: info ?? this.info,
       infoBackground: infoBackground ?? this.infoBackground,
+      accent: accent ?? this.accent,
+      accentBackground: accentBackground ?? this.accentBackground,
     );
   }
 
@@ -315,6 +333,8 @@ class NeoPrintTokens extends ThemeExtension<NeoPrintTokens> {
       dangerBackground: mix(dangerBackground, other.dangerBackground),
       info: mix(info, other.info),
       infoBackground: mix(infoBackground, other.infoBackground),
+      accent: mix(accent, other.accent),
+      accentBackground: mix(accentBackground, other.accentBackground),
     );
   }
 }

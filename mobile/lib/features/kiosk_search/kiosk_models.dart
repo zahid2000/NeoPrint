@@ -29,6 +29,8 @@ final class KioskSummary {
     required this.lng,
     required this.status,
     this.distanceKm,
+    this.photoUrl,
+    this.queueLength,
   });
 
   factory KioskSummary.fromJson(Map<String, dynamic> json) => KioskSummary(
@@ -40,6 +42,8 @@ final class KioskSummary {
     lng: (json['lng'] as num).toDouble(),
     status: KioskStatus.parse(json['status'] as String?),
     distanceKm: (json['distanceKm'] as num?)?.toDouble(),
+    photoUrl: json['photoUrl'] as String?,
+    queueLength: (json['queueLength'] as num?)?.toInt(),
   );
 
   final String id;
@@ -54,6 +58,12 @@ final class KioskSummary {
 
   /// From where the search was made; null without a location.
   final double? distanceKm;
+
+  /// The kiosk's picture, as the panel uploaded it (T-340); null without one.
+  final String? photoUrl;
+
+  /// Orders waiting or printing there now; null when the server did not say.
+  final int? queueLength;
 }
 
 /// How much of one paper size is left for new orders.

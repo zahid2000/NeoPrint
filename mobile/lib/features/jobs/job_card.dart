@@ -8,7 +8,9 @@ import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_primary_button.dart';
+import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_status_chip.dart';
+import '../files/file_models.dart';
 import 'jobs_controller.dart';
 import 'jobs_repository.dart';
 
@@ -70,7 +72,17 @@ import 'jobs_repository.dart';
   ),
 };
 
-/// One of the user's jobs on the home tab.
+/// How far an active order is, 0..1, by its stage; null when it has none
+/// (stopped, or being looked into).
+double? jobStage(String status) => switch (status) {
+  'PendingPayment' => 0.15,
+  'Paid' => 0.35,
+  'Queued' => 0.55,
+  'Printing' => 0.8,
+  _ => null,
+};
+
+/// One of the user's jobs: on the home tab and in "Sifarişlərim".
 class JobCard extends ConsumerWidget {
   const JobCard({super.key, required this.job});
 
@@ -147,30 +159,75 @@ class JobCard extends ConsumerWidget {
       if (job.kioskName?.isNotEmpty ?? false) job.kioskName!,
       if (job.kioskCode?.isNotEmpty ?? false) job.kioskCode!,
     ].join(' · ');
+    final details = [
+      l10n.filesPageCount(job.pages),
+      if (job.copies > 1) l10n.jobCopies(job.copies),
+      job.paper,
+      job.color ? l10n.optColorful : l10n.optBlackWhite,
+    ].join(' · ');
+    final name = job.fileName ?? job.jobCode;
 
     return Card(
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(Spacing.x4),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // The design's order card (T-342): the file's square, its name
+            // and what is printed, the amount on the right.
+            Row(
+              children: [
+                FileTypeTile(extension: extensionOf(name)),
+                const SizedBox(width: Spacing.x3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: theme.textTheme.titleSmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: Spacing.x1),
+                      Text(
+                        details,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: tokens.neutral600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: Spacing.x2),
+                Text(
+                  formatMoney(job.amount, language: language),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+            // How far along an active order is, by its stage - not a
+            // percentage the server does not send.
+            if (jobStage(job.status) case final stage?) ...[
+              const SizedBox(height: Spacing.x3),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(Radii.full),
+                child: LinearProgressIndicator(
+                  value: stage,
+                  minHeight: Spacing.x1 + 2,
+                  backgroundColor: tokens.neutral100,
+                ),
+              ),
+            ],
+            const SizedBox(height: Spacing.x3),
             // The status takes what it needs, up to a little over half the
-            // card; the name always keeps the rest. Without the limit a long
-            // status ("waiting for its time", in Russian) pushed past the
-            // card's edge on a narrow phone.
+            // card; where it is or when it was keeps the rest.
             LayoutBuilder(
               builder: (context, box) => Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      job.fileName ?? job.jobCode,
-                      style: theme.textTheme.titleMedium,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: Spacing.x2),
                   ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: box.maxWidth * 0.6),
                     child: NeoStatusChip(
@@ -179,45 +236,25 @@ class JobCard extends ConsumerWidget {
                       icon: look.icon,
                     ),
                   ),
+                  const SizedBox(width: Spacing.x2),
+                  Expanded(
+                    child: Text(
+                      job.isActive && kiosk.isNotEmpty
+                          ? kiosk
+                          : formatDateTime(
+                              job.createdAt,
+                              today: l10n.commonToday,
+                              yesterday: l10n.commonYesterday,
+                            ),
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: tokens.neutral600,
+                      ),
+                    ),
+                  ),
                 ],
-              ),
-            ),
-            if (kiosk.isNotEmpty) ...[
-              const SizedBox(height: Spacing.x1),
-              Text(
-                kiosk,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: tokens.neutral600,
-                ),
-              ),
-            ],
-            const SizedBox(height: Spacing.x2),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.jobPagesCopies(job.pages, job.copies),
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ),
-                Text(
-                  formatMoney(job.amount, language: language),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeights.medium,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: Spacing.x1),
-            Text(
-              formatDateTime(
-                job.createdAt,
-                today: l10n.commonToday,
-                yesterday: l10n.commonYesterday,
-              ),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: tokens.neutral600,
               ),
             ),
             if (job.status == 'Suspected') ...[

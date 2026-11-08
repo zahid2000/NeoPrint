@@ -44,6 +44,8 @@
   --danger-bg: #fdecec;
   --info-500: #0284c7;
   --info-bg: #e6f4fb;
+  --accent-500: #7c3aed;
+  --accent-bg: #f1ebfe;
   --focus-ring: #2b5fd9;
 
   /* --- Typography ------------------------------------------------------ */
@@ -138,6 +140,8 @@
     --danger-bg: #2e1414;
     --info-500: #38bdf8;
     --info-bg: #0e2430;
+    --accent-500: #a78bfa;
+    --accent-bg: #221a35;
     --focus-ring: #7ba4ff;
 
     /*
@@ -177,6 +181,8 @@
   --danger-bg: #2e1414;
   --info-500: #38bdf8;
   --info-bg: #0e2430;
+  --accent-500: #a78bfa;
+  --accent-bg: #221a35;
   --focus-ring: #7ba4ff;
 
   --shadow-1: none;

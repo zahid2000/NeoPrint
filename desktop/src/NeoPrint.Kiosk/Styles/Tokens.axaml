@@ -61,6 +61,9 @@
     <SolidColorBrush x:Key="DangerBg" Color="#FDECEC" />
     <SolidColorBrush x:Key="Info500" Color="#0284C7" />
     <SolidColorBrush x:Key="InfoBg" Color="#E6F4FB" />
+    <!-- Decoration only (icon squares, T-342): never a status. -->
+    <SolidColorBrush x:Key="Accent500" Color="#7C3AED" />
+    <SolidColorBrush x:Key="AccentBg" Color="#F1EBFE" />
 
     <!-- ===== Typography ================================================
          The kiosk column of the design system's table: a 21" screen viewed

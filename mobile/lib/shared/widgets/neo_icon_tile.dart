@@ -4,7 +4,7 @@ import '../../core/theme/tokens.dart';
 
 /// The colour family of a [NeoIconTile]. Decoration only: what a row means is
 /// in its text (docs/DESIGN_SYSTEM.md principle 6).
-enum IconTileTone { brand, success, warning, info, danger }
+enum IconTileTone { brand, success, warning, info, danger, accent }
 
 /// A coloured square with an icon: the start of a list row and of a home
 /// shortcut (docs/DESIGN_SYSTEM.md, "Mobil: yeni vizual dil").
@@ -51,6 +51,10 @@ class NeoIconTile extends StatelessWidget {
     IconTileTone.warning => tokens.forTone(StatusTone.warning),
     IconTileTone.info => tokens.forTone(StatusTone.info),
     IconTileTone.danger => tokens.forTone(StatusTone.danger),
+    IconTileTone.accent => (
+      foreground: tokens.accent,
+      background: tokens.accentBackground,
+    ),
   };
 }
 

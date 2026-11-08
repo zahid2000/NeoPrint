@@ -194,17 +194,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('hesabat.pdf'), findsOneWidget);
-    expect(find.textContaining('1,5 KB · 3 səhifə · Bu gün'), findsOneWidget);
+    expect(find.textContaining('3 səhifə · 1,5 KB'), findsOneWidget);
+    // The type tabs above the list (T-342); a scan is found under "Skan".
     expect(find.text('Skan'), findsOneWidget);
     expect(find.text('Həssas'), findsOneWidget);
     expect(find.text('Hazırlanır'), findsOneWidget);
     expect(find.text('Fayl şifrələnib, açmaq mümkün deyil.'), findsOneWidget);
 
-    // One primary action on the screen: the upload button.
-    expect(
-      find.widgetWithText(FloatingActionButton, 'Fayl yüklə'),
-      findsOneWidget,
-    );
+    // One primary action on the screen: the round upload button.
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byTooltip('Fayl yüklə'), findsOneWidget);
 
     // The list keeps polling while a file is being prepared; stop it.
     await tester.pumpWidget(const SizedBox());

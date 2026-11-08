@@ -57,7 +57,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expectNothingUnfinished(tester);
-    expect(find.text('Fayl əlavə et'), findsOneWidget);
+    expect(find.text('Fayldan çap et'), findsOneWidget);
 
     // A new account's balance is a real value, so it is shown (Readiness);
     // the scanner is there on a phone that can scan.
@@ -66,7 +66,7 @@ void main() {
       Readiness.wallet ? findsOneWidget : findsNothing,
     );
     expect(
-      find.text('QR oxut'),
+      find.byTooltip('QR oxut'),
       Readiness.kioskPayment ? findsOneWidget : findsNothing,
     );
   });

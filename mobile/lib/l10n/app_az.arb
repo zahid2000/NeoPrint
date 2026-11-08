@@ -1324,5 +1324,52 @@
   "printHubPreparedHint": "Kiosk üçün hazırladığınız fayllar",
   "printHubScheduledHint": "Çapı vaxtına planlayın",
   "scanOtherCamera": "Başqa kamera",
-  "scanTapToFocus": "Kod bulanıqdırsa, ekrana toxunun — kamera ora fokuslanır."
+  "scanTapToFocus": "Kod bulanıqdırsa, ekrana toxunun — kamera ora fokuslanır.",
+  "filePreviewTitle": "Fayla baxış",
+  "filePreviewPreparing": "Fayl çapa hazırlanır",
+  "filePreviewPreparingHint": "Bu, adətən bir neçə saniyə çəkir. Hazır olanda səhifələr burada görünəcək.",
+  "filePreviewPrintSettings": "Çap parametrləri",
+  "filePreviewZoom": "Böyüt",
+  "filePreviewRotate": "Döndür",
+  "filePreviewShare": "Paylaş",
+  "filesFilterAll": "Hamısı",
+  "filesFilterPdf": "PDF",
+  "filesFilterImage": "Şəkil",
+  "filesFilterDocument": "Sənəd",
+  "filesFilterScan": "Skan",
+  "filesSearchHint": "Fayl axtar...",
+  "filesSearchEmpty": "Belə fayl tapılmadı",
+  "homeActiveOrder": "Aktiv sifariş",
+  "homeSeeAll": "Hamısına bax",
+  "homeGreetingName": "{name} 👋",
+  "@homeGreetingName": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "homeGreetingNoName": "Xoş gəlmisiniz 👋",
+  "homePrintFromFile": "Fayldan çap et",
+  "homeNewLayout": "Tərtibat yarat",
+  "homeShareFile": "Fayl paylaş",
+  "homeQueue": "Növbə: {count}",
+  "@homeQueue": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "homeQueueEmpty": "Növbə yoxdur",
+  "jobsTitle": "Sifarişlərim",
+  "jobsHint": "Bütün çaplarınız və onların vəziyyəti",
+  "jobsTabActive": "Aktiv",
+  "jobsTabPast": "Keçmiş",
+  "jobsNoActive": "İndi gedən sifarişiniz yoxdur",
+  "jobCopies": "{count} nüsxə",
+  "@jobCopies": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "printUploadThen": "Yüklənəndən sonra faylın səhifələri və çap parametrləri açılacaq.",
+  "navTabHome": "Ana",
+  "navTabFiles": "Fayllar"
 }

@@ -155,13 +155,27 @@ abstract final class AppTheme {
 
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: tokens.neutral0,
-        indicatorColor: tokens.brand100,
+        // The chosen tab is its colour, not a pill behind it (T-342): the
+        // icon fills and the icon and label turn brand blue.
+        indicatorColor: tokens.neutral0,
+        surfaceTintColor: tokens.neutral0,
         height: 68,
-        labelTextStyle: WidgetStatePropertyAll(
-          TextStyle(
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected)
+                ? tokens.brand500
+                : tokens.neutral600,
+          ),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(
             fontSize: FontSizes.caption,
-            fontWeight: FontWeights.medium,
-            color: tokens.neutral600,
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeights.semibold
+                : FontWeights.medium,
+            color: states.contains(WidgetState.selected)
+                ? tokens.brand500
+                : tokens.neutral600,
             // A tab's label never takes a second line.
             overflow: TextOverflow.ellipsis,
           ),

@@ -7,13 +7,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
-import '../../core/format/formats.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_empty_state.dart';
-import '../../shared/widgets/neo_status_chip.dart';
+import '../../shared/widgets/neo_design.dart';
+import 'file_row.dart';
 import 'file_models.dart';
 import 'files_controller.dart';
 import 'file_sources.dart';
@@ -35,17 +35,19 @@ class FilesScreen extends ConsumerWidget {
     final controller = ref.read(filesControllerProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.navFiles),
+      appBar: neoTabAppBar(
+        context,
+        title: l10n.navFiles,
         actions: [if (Readiness.fileSharing) const _SharesButton()],
       ),
       // The screen's one primary action (docs/DESIGN_SYSTEM.md section 4).
       floatingActionButton: state.files.isEmpty && state.uploads.isEmpty
           ? null
-          : FloatingActionButton.extended(
+          : FloatingActionButton(
+              tooltip: l10n.filesUpload,
+              shape: const CircleBorder(),
               onPressed: () => _chooseSource(context, ref),
-              icon: const Icon(Icons.upload_file),
-              label: Text(l10n.filesUpload),
+              child: const Icon(Icons.add),
             ),
       body: RefreshIndicator(
         onRefresh: controller.load,
@@ -96,25 +98,7 @@ class FilesScreen extends ConsumerWidget {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        Spacing.x4,
-        Spacing.x4,
-        Spacing.x4,
-        // Room for the floating button over the last row.
-        Spacing.x16 + Spacing.x8,
-      ),
-      children: [
-        for (final upload in state.uploads) ...[
-          _UploadCard(upload: upload),
-          const SizedBox(height: Spacing.x3),
-        ],
-        for (final file in state.files) ...[
-          _FileCard(file: file),
-          const SizedBox(height: Spacing.x3),
-        ],
-      ],
-    );
+    return _FileList(state: state);
   }
 
   Future<void> _chooseSource(BuildContext context, WidgetRef ref) async {
@@ -203,217 +187,110 @@ class _FileCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final text = Theme.of(context).textTheme;
     final tokens = context.tokens;
     final flags = ref.watch(featureFlagsProvider);
 
-    final details = [
-      formatBytes(
-        file.sizeBytes,
-        language: Localizations.localeOf(context).languageCode,
-      ),
-      if (file.pageCount > 0) l10n.filesPageCount(file.pageCount),
-      formatDateTime(
-        file.createdAt,
-        today: l10n.commonToday,
-        yesterday: l10n.commonYesterday,
-      ),
-    ].join(' · ');
-
-    return Card(
-      margin: EdgeInsets.zero,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Radii.md),
-        onTap: () => _open(context),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.x4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(_iconFor(file.extension), color: tokens.brand500),
-              const SizedBox(width: Spacing.x3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      file.fileName,
-                      style: text.titleMedium,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: Spacing.x1),
-                    Text(
-                      details,
-                      style: text.bodySmall?.copyWith(color: tokens.neutral600),
-                    ),
-                    const SizedBox(height: Spacing.x2),
-                    Wrap(
-                      spacing: Spacing.x2,
-                      runSpacing: Spacing.x2,
-                      children: [
-                        NeoStatusChip(
-                          label: _sourceLabel(l10n, file.source),
-                          tone: StatusTone.neutral,
-                          icon: _sourceIcon(file.source),
-                        ),
-                        if (file.isSensitive)
-                          NeoStatusChip(
-                            label: l10n.filesSensitive,
-                            tone: StatusTone.warning,
-                            icon: Icons.lock_outline,
-                          ),
-                        if (autoDeleteChipLabel(l10n, file.autoDelete)
-                            case final label?)
-                          NeoStatusChip(
-                            label: label,
-                            tone: StatusTone.neutral,
-                            icon: Icons.auto_delete_outlined,
-                          ),
-                        if (file.status != FileStatus.ready)
-                          NeoStatusChip(
-                            label: switch (file.status) {
-                              FileStatus.pending => l10n.filesStatusPending,
-                              FileStatus.converting =>
-                                l10n.filesStatusConverting,
-                              _ => l10n.filesStatusFailed,
-                            },
-                            tone: file.status == FileStatus.failed
-                                ? StatusTone.danger
-                                : StatusTone.info,
-                          ),
-                      ],
-                    ),
-                    if (file.status == FileStatus.failed &&
-                        file.failureReason != null) ...[
-                      const SizedBox(height: Spacing.x2),
-                      Text(
-                        file.failureReason!,
-                        style: text.bodySmall?.copyWith(color: tokens.danger),
-                      ),
-                    ],
-                  ],
+    return FileRow(
+      file: file,
+      onTap: () => _open(context),
+      trailing: PopupMenuButton<String>(
+        tooltip: l10n.commonMore,
+        icon: Icon(Icons.more_vert, color: tokens.neutral600),
+        onSelected: (choice) => switch (choice) {
+          'prepare' => context.push(Routes.prepare, extra: file),
+          'schedule' => context.push(Routes.scheduleNew, extra: file),
+          'placeOnPage' => openNewLayout(context, ref, [LayoutSource(file)]),
+          'editLayout' => openLayoutFile(context, ref, file),
+          'share' => context.push(Routes.shareSend, extra: file),
+          'autoDelete' => showAutoDeleteSheet(context, file),
+          _ => _delete(context, ref),
+        },
+        itemBuilder: (_) => [
+          if (file.hasLayout && file.status == FileStatus.ready)
+            PopupMenuItem(
+              value: 'editLayout',
+              child: ListTile(
+                leading: Icon(Icons.edit_outlined, color: tokens.brand500),
+                title: Text(l10n.filesEditLayout),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (canUseInLayout(file) &&
+              layoutImageExtensions.contains(file.extension))
+            PopupMenuItem(
+              value: 'placeOnPage',
+              child: ListTile(
+                leading: Icon(
+                  Icons.dashboard_customize_outlined,
+                  color: tokens.brand500,
                 ),
+                title: Text(l10n.filesPlaceOnPage),
+                contentPadding: EdgeInsets.zero,
               ),
-              PopupMenuButton<String>(
-                tooltip: l10n.commonMore,
-                onSelected: (choice) => switch (choice) {
-                  'prepare' => context.push(Routes.prepare, extra: file),
-                  'schedule' => context.push(Routes.scheduleNew, extra: file),
-                  'placeOnPage' => openNewLayout(context, ref, [
-                    LayoutSource(file),
-                  ]),
-                  'editLayout' => openLayoutFile(context, ref, file),
-                  'share' => context.push(Routes.shareSend, extra: file),
-                  'autoDelete' => showAutoDeleteSheet(context, file),
-                  _ => _delete(context, ref),
-                },
-                itemBuilder: (_) => [
-                  if (file.hasLayout && file.status == FileStatus.ready)
-                    PopupMenuItem(
-                      value: 'editLayout',
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.edit_outlined,
-                          color: tokens.brand500,
-                        ),
-                        title: Text(l10n.filesEditLayout),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  if (canUseInLayout(file) &&
-                      layoutImageExtensions.contains(file.extension))
-                    PopupMenuItem(
-                      value: 'placeOnPage',
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.dashboard_customize_outlined,
-                          color: tokens.brand500,
-                        ),
-                        title: Text(l10n.filesPlaceOnPage),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  if (Readiness.personalQr &&
-                      flags.isOn(FeatureKey.userQrPrint) &&
-                      file.status == FileStatus.ready)
-                    PopupMenuItem(
-                      value: 'prepare',
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.storefront_outlined,
-                          color: tokens.brand500,
-                        ),
-                        title: Text(l10n.prepareMenu),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  if (Readiness.scheduledPrint &&
-                      flags.isOn(FeatureKey.scheduledPrint) &&
-                      file.status == FileStatus.ready)
-                    PopupMenuItem(
-                      value: 'schedule',
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.event_outlined,
-                          color: tokens.brand500,
-                        ),
-                        title: Text(l10n.schedMenu),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  if (Readiness.fileSharing &&
-                      flags.isOn(FeatureKey.fileSharing) &&
-                      file.status == FileStatus.ready)
-                    PopupMenuItem(
-                      value: 'share',
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.share_outlined,
-                          color: tokens.brand500,
-                        ),
-                        title: Text(l10n.shareMenu),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  PopupMenuItem(
-                    value: 'autoDelete',
-                    child: ListTile(
-                      leading: Icon(
-                        Icons.auto_delete_outlined,
-                        color: tokens.brand500,
-                      ),
-                      title: Text(l10n.filesAutoDeleteMenu),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: ListTile(
-                      leading: Icon(Icons.delete_outline, color: tokens.danger),
-                      title: Text(l10n.commonDelete),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
+            ),
+          if (Readiness.personalQr &&
+              flags.isOn(FeatureKey.userQrPrint) &&
+              file.status == FileStatus.ready)
+            PopupMenuItem(
+              value: 'prepare',
+              child: ListTile(
+                leading: Icon(
+                  Icons.storefront_outlined,
+                  color: tokens.brand500,
+                ),
+                title: Text(l10n.prepareMenu),
+                contentPadding: EdgeInsets.zero,
               ),
-            ],
+            ),
+          if (Readiness.scheduledPrint &&
+              flags.isOn(FeatureKey.scheduledPrint) &&
+              file.status == FileStatus.ready)
+            PopupMenuItem(
+              value: 'schedule',
+              child: ListTile(
+                leading: Icon(Icons.event_outlined, color: tokens.brand500),
+                title: Text(l10n.schedMenu),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (Readiness.fileSharing &&
+              flags.isOn(FeatureKey.fileSharing) &&
+              file.status == FileStatus.ready)
+            PopupMenuItem(
+              value: 'share',
+              child: ListTile(
+                leading: Icon(Icons.share_outlined, color: tokens.brand500),
+                title: Text(l10n.shareMenu),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          PopupMenuItem(
+            value: 'autoDelete',
+            child: ListTile(
+              leading: Icon(Icons.auto_delete_outlined, color: tokens.brand500),
+              title: Text(l10n.filesAutoDeleteMenu),
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
-        ),
+          PopupMenuItem(
+            value: 'delete',
+            child: ListTile(
+              leading: Icon(Icons.delete_outline, color: tokens.danger),
+              title: Text(l10n.commonDelete),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        ],
       ),
     );
   }
 
+  /// The preview, also while the file is being prepared - it shows that
+  /// and turns into the pages when ready (T-347). A failed one has its reason
+  /// on the row already.
   void _open(BuildContext context) {
-    if (file.canPreview) {
+    if (file.status != FileStatus.failed) {
       context.push(Routes.filePreview(file.id), extra: file);
-      return;
-    }
-
-    if (!file.status.isSettled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context).filesNotReady)),
-      );
     }
   }
 
@@ -461,46 +338,90 @@ class _FileCard extends ConsumerWidget {
       );
     }
   }
+}
 
-  static IconData _iconFor(String extension) => switch (extension) {
-    'pdf' => Icons.picture_as_pdf_outlined,
-    'jpg' ||
-    'jpeg' ||
-    'png' ||
-    'bmp' ||
-    'gif' ||
-    'webp' => Icons.image_outlined,
-    'xls' ||
-    'xlsx' ||
-    'xlsm' ||
-    'xltx' ||
-    'ods' ||
-    'csv' => Icons.table_chart_outlined,
-    'ppt' ||
-    'pptx' ||
-    'pps' ||
-    'ppsx' ||
-    'potx' ||
-    'odp' => Icons.slideshow_outlined,
-    _ => Icons.description_outlined,
-  };
+/// Which files the tabs above the list show (T-342).
+enum _FileFilter { all, pdf, image, document, scan }
 
-  static String _sourceLabel(AppLocalizations l10n, FileSourceKind source) =>
-      switch (source) {
-        FileSourceKind.uploaded => l10n.filesSourceUploaded,
-        FileSourceKind.scan => l10n.filesSourceScan,
-        FileSourceKind.layout => l10n.filesSourceLayout,
-        FileSourceKind.usb => l10n.filesSourceUsb,
-        FileSourceKind.shared => l10n.filesSourceShared,
-      };
+/// The list with its search field and type tabs.
+class _FileList extends StatefulWidget {
+  const _FileList({required this.state});
 
-  static IconData _sourceIcon(FileSourceKind source) => switch (source) {
-    FileSourceKind.uploaded => Icons.upload_outlined,
-    FileSourceKind.scan => Icons.document_scanner_outlined,
-    FileSourceKind.layout => Icons.dashboard_customize_outlined,
-    FileSourceKind.usb => Icons.usb,
-    FileSourceKind.shared => Icons.share_outlined,
-  };
+  final FilesState state;
+
+  @override
+  State<_FileList> createState() => _FileListState();
+}
+
+class _FileListState extends State<_FileList> {
+  String _query = '';
+  _FileFilter _filter = _FileFilter.all;
+
+  bool _matches(UserFile file) {
+    final query = _query.trim().toLowerCase();
+    if (query.isNotEmpty && !file.fileName.toLowerCase().contains(query)) {
+      return false;
+    }
+
+    final kind = fileKindOf(file.extension);
+    return switch (_filter) {
+      _FileFilter.all => true,
+      _FileFilter.pdf => kind == FileKind.pdf,
+      _FileFilter.image => kind == FileKind.image,
+      _FileFilter.document => kind != FileKind.pdf && kind != FileKind.image,
+      _FileFilter.scan => file.source == FileSourceKind.scan,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final files = widget.state.files.where(_matches).toList();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        Spacing.x4,
+        Spacing.x2,
+        Spacing.x4,
+        // Room for the floating button over the last row.
+        Spacing.x16 + Spacing.x8,
+      ),
+      children: [
+        NeoSearchField(
+          hint: l10n.filesSearchHint,
+          onChanged: (value) => setState(() => _query = value),
+        ),
+        const SizedBox(height: Spacing.x3),
+        NeoPillTabs<_FileFilter>(
+          values: _FileFilter.values,
+          selected: _filter,
+          label: (filter) => switch (filter) {
+            _FileFilter.all => l10n.filesFilterAll,
+            _FileFilter.pdf => l10n.filesFilterPdf,
+            _FileFilter.image => l10n.filesFilterImage,
+            _FileFilter.document => l10n.filesFilterDocument,
+            _FileFilter.scan => l10n.filesFilterScan,
+          },
+          onSelected: (filter) => setState(() => _filter = filter),
+        ),
+        const SizedBox(height: Spacing.x3),
+        for (final upload in widget.state.uploads) ...[
+          _UploadCard(upload: upload),
+          const SizedBox(height: Spacing.x2),
+        ],
+        if (files.isEmpty)
+          NeoEmptyState(
+            icon: Icons.search_off_outlined,
+            message: l10n.filesSearchEmpty,
+          )
+        else
+          for (final file in files) ...[
+            _FileCard(file: file),
+            const SizedBox(height: Spacing.x2),
+          ],
+      ],
+    );
+  }
 }
 
 /// An upload on its way, or one that failed with the reason and a way out.

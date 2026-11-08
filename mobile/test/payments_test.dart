@@ -330,25 +330,8 @@ void main() {
   });
 
   group('home', () {
-    // The one filled shortcut - the screen's main action (T-338).
-    String primaryShortcut(WidgetTester tester) {
-      final primary = Theme.of(tester.element(find.byType(HomeScreen)))
-          .colorScheme
-          .primary;
-      final filled = find.byWidgetPredicate(
-        (widget) => widget is Card && widget.color == primary,
-      );
-      expect(filled, findsOneWidget);
-
-      return tester
-          .widget<Text>(
-            find.descendant(of: filled, matching: find.byType(Text)).first,
-          )
-          .data!;
-    }
-
-    testWidgets('scanning is the filled shortcut, balance and bonus side by '
-        'side, and the nearest kiosk is offered without asking', (
+    testWidgets('as the design draws it: the nearest kiosk offered without '
+        'asking, four shortcuts, balance and bonus side by side (T-342)', (
       tester,
     ) async {
       final location = CountingLocation();
@@ -363,10 +346,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('5,00 ₼'), findsOneWidget);
-      expect(find.text('3 səhifə'), findsOneWidget);
-      expect(primaryShortcut(tester), 'QR oxut');
-      expect(find.text('Fayl əlavə et'), findsOneWidget);
+      expect(find.text('Salam,'), findsOneWidget);
+      // The four shortcuts, none of them filled: no one main action here.
+      expect(find.text('Fayldan çap et'), findsOneWidget);
+      expect(find.text('Tərtibat yarat'), findsOneWidget);
+      expect(find.text('Fayl paylaş'), findsOneWidget);
+      expect(find.byType(FilledButton), findsNothing);
+      // The kiosk's QR is read from the bar.
+      expect(find.byTooltip('QR oxut'), findsOneWidget);
 
       // The screen looked without asking; the button is what asks.
       expect(find.text('Yaxın kiosku tapın'), findsOneWidget);
@@ -375,23 +362,22 @@ void main() {
       await tester.pumpAndSettle();
       expect(location.asks, [false, true]);
 
-      await tester.scrollUntilVisible(
-        find.text('Hələ sifarişiniz yoxdur'),
-        200,
-      );
-      expect(find.text('Hələ sifarişiniz yoxdur'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('5,00 ₼'), 200);
+      expect(find.text('5,00 ₼'), findsOneWidget);
+      expect(find.text('3 səhifə'), findsOneWidget);
+      // No order on its way: every order is one row away.
+      await tester.scrollUntilVisible(find.text('Sifarişlərim'), 200);
+      expect(find.text('Sifarişlərim'), findsOneWidget);
     });
 
-    testWidgets('without a scanner adding a file is the main action', (
-      tester,
-    ) async {
+    testWidgets('without a scanner there is no QR button', (tester) async {
       await tester.pumpWidget(
         step4App(const HomeScreen(), overrides: step4Overrides(canScan: false)),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('QR oxut'), findsNothing);
-      expect(primaryShortcut(tester), 'Fayl əlavə et');
+      expect(find.byTooltip('QR oxut'), findsNothing);
+      expect(find.text('Fayldan çap et'), findsOneWidget);
     });
 
     testWidgets('a job whose result is being checked says the money is safe', (
@@ -410,16 +396,17 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // The job on its way takes the nearest kiosk's place at the top.
-      expect(find.text('Aktiv çaplar'), findsOneWidget);
-      expect(find.text('Yaxın kiosku tapın'), findsNothing);
+      // The order on its way, under the kiosk and the shortcuts, with the
+      // way to every order; the finished one is there, not here.
+      await tester.scrollUntilVisible(find.text('Aktiv sifariş'), 200);
+      expect(find.text('Hamısına bax'), findsWidgets);
       expect(find.text('Nəticə dəqiqləşdirilir'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.textContaining('Pulunuz itməyib'),
+        100,
+      );
       expect(find.textContaining('Pulunuz itməyib'), findsOneWidget);
-      expect(find.text('Problem barədə bildir'), findsWidgets);
-
-      await tester.scrollUntilVisible(find.text('Tamamlandı'), 200);
-      expect(find.text('Son sifarişlər'), findsOneWidget);
-      expect(find.text('Tamamlandı'), findsOneWidget);
+      expect(find.text('Tamamlandı'), findsNothing);
     });
   });
 

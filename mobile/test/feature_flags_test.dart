@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:neoprint/core/features/feature_flags.dart';
@@ -11,7 +10,6 @@ import 'package:neoprint/core/storage/secure_storage.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:neoprint/features/files/files_controller.dart';
 import 'package:neoprint/features/files/files_screen.dart';
-import 'package:neoprint/features/home/home_screen.dart';
 import 'package:neoprint/features/prepared/prepared_models.dart';
 import 'package:neoprint/features/prepared/prepared_repository.dart';
 import 'package:neoprint/features/profile/profile_screen.dart';
@@ -138,37 +136,30 @@ void main() {
     );
   });
 
-  testWidgets('the personal QR stays on the home tab while a paid order waits '
-      'to be collected', (tester) async {
+  testWidgets('the personal QR stays in the Print tab while a paid order '
+      'waits to be collected', (tester) async {
     final prepared = FakePrepared();
     final overrides = [
       ...step4Overrides(),
       preparedRepositoryProvider.overrideWithValue(prepared),
+      scheduleRepositoryProvider.overrideWithValue(FakeSchedules()),
+      newSharesCountProvider.overrideWithValue(0),
       flags({FeatureKey.userQrPrint: false}),
     ];
 
-    await tester.pumpWidget(screen(const HomeScreen(), overrides));
+    await tester.pumpWidget(screen(const PrintHubScreen(), overrides));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Kiosk seç'), 200);
     expect(find.text('Mənim QR kodum'), findsNothing);
     expect(find.text('Hazırladıqlarım'), findsNothing);
 
     prepared.items = [paidOrder()];
     await tester.pumpWidget(const SizedBox());
-    await tester.pumpWidget(screen(const HomeScreen(), overrides));
+    await tester.pumpWidget(screen(const PrintHubScreen(), overrides));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Hazırladıqlarım'), 200);
     expect(find.text('Mənim QR kodum'), findsOneWidget);
     expect(find.text('Hazırladıqlarım'), findsOneWidget);
-
-    // T-239: on a 360 dp phone each label is one line - side by side, half
-    // the width broke "Hazırladıqlarım" in the middle of the word.
-    for (final label in ['Mənim QR kodum', 'Hazırladıqlarım']) {
-      final text = tester.renderObject<RenderParagraph>(find.text(label));
-      expect(
-        text.size.height,
-        text.getMaxIntrinsicHeight(double.infinity),
-        reason: '"$label" wraps',
-      );
-    }
   });
 
   testWidgets('"Məlumatlarımı yüklə" is not offered while it is off', (

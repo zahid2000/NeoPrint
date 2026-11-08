@@ -162,7 +162,9 @@ class FilesController extends Notifier<FilesState> {
     _schedulePoll();
   }
 
-  Future<void> upload(PickedFile file) async {
+  /// Uploads [file]; the saved file, or null when it failed or was
+  /// cancelled (the reason is on its row in [FilesState.uploads]).
+  Future<UserFile?> upload(PickedFile file) async {
     final item = UploadItem(
       id: 'upload-${_nextUploadId++}',
       fileName: file.name,
@@ -189,7 +191,7 @@ class FilesController extends Notifier<FilesState> {
         bytes = await file.readBytes();
       }
 
-      await _repository.upload(
+      final saved = await _repository.upload(
         path: path,
         bytes: bytes,
         fileName: name,
@@ -206,6 +208,7 @@ class FilesController extends Notifier<FilesState> {
 
       _removeUpload(item.id);
       await load();
+      return state.files.where((f) => f.id == saved.id).firstOrNull ?? saved;
     } on HeicConversionException catch (error) {
       _updateUpload(
         item.id,
@@ -225,6 +228,7 @@ class FilesController extends Notifier<FilesState> {
         );
       }
     }
+    return null;
   }
 
   void cancelUpload(String id) {

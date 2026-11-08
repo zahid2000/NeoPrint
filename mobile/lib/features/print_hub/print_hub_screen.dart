@@ -8,6 +8,7 @@ import '../../core/features/readiness.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_icon_tile.dart';
 import '../files/file_sources.dart';
 import '../payments/scan_screen.dart';
@@ -31,17 +32,19 @@ class PrintHubScreen extends ConsumerWidget {
         ? ref.watch(newSharesCountProvider)
         : 0;
 
-    // A file picked here uploads in the files tab, where its progress shows.
-    Future<void> add(FileSource source) => addFileFrom(
-      context,
-      ref,
-      source,
-      beforeUpload: () => context.go(Routes.files),
-    );
+    // A file chosen here goes on to its preview and print settings
+    // (T-347), not to the files tab.
+    Future<void> add(FileSource source) =>
+        addFileFrom(context, ref, source, thenPrint: true);
 
     Widget section(String title) => Padding(
       padding: const EdgeInsets.only(top: Spacing.x6, bottom: Spacing.x2),
-      child: Text(title, style: theme.textTheme.titleMedium),
+      child: Text(
+        title,
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeights.semibold,
+        ),
+      ),
     );
 
     final rows = <Widget>[
@@ -56,8 +59,16 @@ class PrintHubScreen extends ConsumerWidget {
         icon: Icons.folder_outlined,
         title: l10n.printHubFromFiles,
         hint: l10n.printHubFromFilesHint,
-        onTap: () => context.go(Routes.files),
+        onTap: () => context.push(Routes.printChoose),
       ),
+      if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
+        NeoNavRow(
+          icon: Icons.document_scanner_outlined,
+          tone: IconTileTone.accent,
+          title: l10n.filesScanDocument,
+          hint: l10n.filesScanDocumentHint,
+          onTap: () => add(FileSource.scan),
+        ),
       NeoNavRow(
         icon: Icons.smartphone_outlined,
         title: l10n.printHubFromPhone,
@@ -80,13 +91,6 @@ class PrintHubScreen extends ConsumerWidget {
           title: l10n.filesTakePhoto,
           hint: l10n.filesTakePhotoHint,
           onTap: () => add(FileSource.camera),
-        ),
-      if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
-        NeoNavRow(
-          icon: Icons.document_scanner_outlined,
-          title: l10n.filesScanDocument,
-          hint: l10n.filesScanDocumentHint,
-          onTap: () => add(FileSource.scan),
         ),
       NeoNavRow(
         icon: Icons.dashboard_customize_outlined,
@@ -146,7 +150,7 @@ class PrintHubScreen extends ConsumerWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.printHubTitle)),
+      appBar: neoTabAppBar(context, title: l10n.printHubTitle),
       body: ListView.separated(
         padding: const EdgeInsets.all(Spacing.x4),
         itemCount: rows.length,

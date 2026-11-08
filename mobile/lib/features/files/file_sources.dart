@@ -27,18 +27,29 @@ enum FileSource {
   layout,
 }
 
-/// Adds a file from [source]. The upload runs in [filesControllerProvider],
-/// so whichever screen started it, the files tab shows how it goes;
-/// [beforeUpload] runs once a file is chosen and before it is sent - the
-/// Print tab switches to the files tab there, and not when the user cancels.
+/// Adds a file from [source].
+///
+/// From the files tab ([thenPrint] false) the upload runs in
+/// [filesControllerProvider] and shows on the list. From the Print tab
+/// ([thenPrint] true) the user is printing (T-347): the chosen file uploads
+/// on its own screen, which opens the file's preview - and from there its
+/// print settings - once it is ready; a saved scan opens its preview at once.
 Future<void> addFileFrom(
   BuildContext context,
   WidgetRef ref,
   FileSource source, {
-  VoidCallback? beforeUpload,
+  bool thenPrint = false,
 }) async {
   final l10n = AppLocalizations.of(context);
   final controller = ref.read(filesControllerProvider.notifier);
+
+  Future<void> send(PickedFile picked) async {
+    if (thenPrint) {
+      await context.push(Routes.printUpload, extra: picked);
+    } else {
+      await controller.upload(picked);
+    }
+  }
 
   switch (source) {
     case FileSource.layout:
@@ -55,38 +66,57 @@ Future<void> addFileFrom(
         return;
       }
       if (outcome == ScanOutcome.saved) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(l10n.docScanSaved)));
+        if (thenPrint) {
+          await _openNewestScan(context, ref);
+        } else {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(l10n.docScanSaved)));
+        }
       } else if (outcome == ScanOutcome.useCamera) {
-        await _photo(context, controller, beforeUpload);
+        final photo = await _photo(context);
+        if (photo != null && context.mounted) {
+          await send(photo);
+        }
       }
     case FileSource.device || FileSource.cloud:
       final picked = await _pickFile(ref);
-      if (picked != null) {
-        beforeUpload?.call();
-        await controller.upload(picked);
+      if (picked != null && context.mounted) {
+        await send(picked);
       }
     case FileSource.camera:
-      await _photo(context, controller, beforeUpload);
+      final photo = await _photo(context);
+      if (photo != null && context.mounted) {
+        await send(photo);
+      }
   }
 }
 
-Future<void> _photo(
-  BuildContext context,
-  FilesController controller,
-  VoidCallback? beforeUpload,
-) async {
-  final path = await context.push<String>(Routes.filesCamera);
-  if (path != null) {
-    beforeUpload?.call();
-    await controller.upload(
-      PickedFile(
-        name: 'photo-${DateTime.now().millisecondsSinceEpoch}.jpg',
-        path: path,
-        readBytes: () => throw UnsupportedError('Camera photos have a path.'),
-      ),
-    );
+/// The scan just saved: the newest scan on the list, opened for printing.
+Future<void> _openNewestScan(BuildContext context, WidgetRef ref) async {
+  final controller = ref.read(filesControllerProvider.notifier);
+  await controller.load();
+
+  final scans = [
+    for (final file in ref.read(filesControllerProvider).files)
+      if (file.source == FileSourceKind.scan) file,
+  ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+  if (scans.isNotEmpty && context.mounted) {
+    await context.push(Routes.filePreview(scans.first.id), extra: scans.first);
   }
+}
+
+Future<PickedFile?> _photo(BuildContext context) async {
+  final path = await context.push<String>(Routes.filesCamera);
+  if (path == null) {
+    return null;
+  }
+
+  return PickedFile(
+    name: 'photo-${DateTime.now().millisecondsSinceEpoch}.jpg',
+    path: path,
+    readBytes: () => throw UnsupportedError('Camera photos have a path.'),
+  );
 }
 
 /// The system picker, filtered to the formats the installation accepts

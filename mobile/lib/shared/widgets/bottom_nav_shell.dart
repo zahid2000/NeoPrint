@@ -35,8 +35,8 @@ class BottomNavShell extends ConsumerWidget {
       (Icons.person_outline, Icons.person),
     ];
     final labels = [
-      l10n.navHome,
-      l10n.navFiles,
+      l10n.navTabHome,
+      l10n.navTabFiles,
       l10n.navPrint,
       l10n.navWallet,
       l10n.navProfile,
