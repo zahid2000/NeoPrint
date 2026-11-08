@@ -314,6 +314,11 @@ Klaviatura taxılı qalırsa, B addımlarını onunla etmək daha rahatdır (ekr
 7. Flaşı çıxarın, yazın `sudo reboot` → ↵ (parol soruşsa — yazın). Kompüter masaüstü əvəzinə **yalnız NeoPrint**-lə
    açılır və ekranda **aktivləşdirmə kodu** göstərir — **şəklini çəkin**.
 
+   `Operation inhibited by "APT" ... "unattended-upgr"` yazılsa — Ubuntu arxa planda yeniləmə quraşdırır və yenidən
+   başlamağa imkan vermir. **5–15 dəqiqə gözləyin**, sonra `sudo reboot` yenidən. `systemctl reboot -i` və ya güc düyməsi
+   ilə məcburi söndürmə **yox** — yarımçıq yeniləmə sistemi poza bilər. Gözləyib-gözləmədiyinizi bilmək üçün:
+   `pgrep -a unattended` (heç nə çıxmırsa — bitib).
+
 **C. Kompüterdə, admin paneldə:** **Cihazlar** → ekrandakı kodu daxil edin → **yeni kiosk** (ad, ünvan, admin PIN) — §7.
 Kiosk bir neçə saniyəyə aktivləşir. Sonra §8-dəki yoxlamalar.
 
