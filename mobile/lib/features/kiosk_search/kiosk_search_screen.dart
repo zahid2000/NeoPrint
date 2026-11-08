@@ -10,12 +10,17 @@ import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
+import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_empty_state.dart';
 import 'kiosk_map_view.dart';
 import 'kiosk_models.dart';
+import 'kiosk_photo.dart';
 import 'kiosk_search_controller.dart';
 import 'kiosk_status_view.dart';
 import 'user_location.dart';
+
+/// "Yaxınlıqdakı · Hamısı · Xəritə" (T-342).
+enum _KioskTab { near, all, map }
 
 /// The kiosks tab (plan section 8.2, step 5): search by name, code or
 /// address, "near me" with a radius, and the same result as a list or a map
@@ -76,7 +81,11 @@ class _KioskSearchScreenState extends ConsumerState<KioskSearchScreen> {
     final view = search.view;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.navKiosks)),
+      appBar: neoTabAppBar(
+        context,
+        title: l10n.printHubPickKiosk,
+        showBack: Navigator.of(context).canPop(),
+      ),
       body: Column(
         children: [
           Padding(
@@ -86,21 +95,10 @@ class _KioskSearchScreenState extends ConsumerState<KioskSearchScreen> {
               Spacing.x4,
               0,
             ),
-            child: TextField(
+            child: NeoSearchField(
               controller: _text,
+              hint: l10n.kioskSearchHint,
               onChanged: _typed,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: l10n.kioskSearchHint,
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _text.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: l10n.kioskSearchClear,
-                        icon: const Icon(Icons.close),
-                        onPressed: _clear,
-                      ),
-              ),
             ),
           ),
           Padding(
@@ -110,44 +108,31 @@ class _KioskSearchScreenState extends ConsumerState<KioskSearchScreen> {
               Spacing.x4,
               0,
             ),
-            // The whole width, so both rows start at the content's left edge:
-            // shrunk to its widest row the block sat in the middle with the
-            // second row hanging under the first one's left end.
-            child: SizedBox(
-              width: double.infinity,
-              child: Wrap(
-                spacing: Spacing.x2,
-                runSpacing: Spacing.x2,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  SegmentedButton<KioskView>(
-                    segments: [
-                      ButtonSegment(
-                        value: KioskView.list,
-                        icon: const Icon(Icons.view_list_outlined),
-                        label: Text(l10n.kioskViewList),
-                      ),
-                      ButtonSegment(
-                        value: KioskView.map,
-                        icon: const Icon(Icons.map_outlined),
-                        label: Text(l10n.kioskViewMap),
-                      ),
-                    ],
-                    selected: {view},
-                    onSelectionChanged: (selected) =>
-                        controller.setView(selected.single),
-                  ),
-                  FilterChip(
-                    // Chosen, the chip shows its tick instead of the icon.
-                    avatar: search.nearMe
-                        ? null
-                        : const Icon(Icons.near_me_outlined),
-                    label: Text(l10n.kioskNearMe),
-                    selected: search.nearMe,
-                    onSelected: (on) => unawaited(controller.setNearMe(on)),
-                  ),
-                ],
-              ),
+            child: NeoPillTabs<_KioskTab>(
+              values: _KioskTab.values,
+              selected: view == KioskView.map
+                  ? _KioskTab.map
+                  : search.nearMe
+                  ? _KioskTab.near
+                  : _KioskTab.all,
+              expand: true,
+              label: (tab) => switch (tab) {
+                _KioskTab.near => l10n.kioskTabNear,
+                _KioskTab.all => l10n.kioskTabAll,
+                _KioskTab.map => l10n.kioskTabMap,
+              },
+              onSelected: (tab) {
+                switch (tab) {
+                  case _KioskTab.near:
+                    controller.setView(KioskView.list);
+                    unawaited(controller.setNearMe(true));
+                  case _KioskTab.all:
+                    controller.setView(KioskView.list);
+                    unawaited(controller.setNearMe(false));
+                  case _KioskTab.map:
+                    controller.setView(KioskView.map);
+                }
+              },
             ),
           ),
           if (search.nearMe) _NearMeBar(search: search),
@@ -323,7 +308,8 @@ class _Empty extends ConsumerWidget {
   }
 }
 
-/// One kiosk in the list: name, code and address, status and distance.
+/// One kiosk in the list (T-342): its picture, name and address, code,
+/// status and queue; the distance on the right.
 class KioskCard extends StatelessWidget {
   const KioskCard({super.key, required this.kiosk, required this.onTap});
 
@@ -332,6 +318,7 @@ class KioskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final tokens = context.tokens;
 
@@ -341,44 +328,79 @@ class KioskCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(Spacing.x4),
+          padding: const EdgeInsets.all(Spacing.x3),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              KioskPhoto(url: kiosk.photoUrl, size: 88),
+              const SizedBox(width: Spacing.x3),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(kiosk.name, style: theme.textTheme.titleMedium),
-                    const SizedBox(height: Spacing.x1),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            kiosk.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeights.semibold,
+                            ),
+                          ),
+                        ),
+                        if (kiosk.distanceKm case final km?) ...[
+                          const SizedBox(width: Spacing.x2),
+                          Text(
+                            distanceText(context, km),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: tokens.neutral600,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (kiosk.address.isNotEmpty)
+                      Text(
+                        kiosk.address,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: tokens.neutral600,
+                        ),
+                      ),
                     Text(
-                      [
-                        kiosk.code,
-                        if (kiosk.address.isNotEmpty) kiosk.address,
-                      ].join(' · '),
+                      kiosk.code,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: tokens.neutral600,
                       ),
                     ),
+                    const SizedBox(height: Spacing.x2),
+                    Wrap(
+                      spacing: Spacing.x2,
+                      runSpacing: Spacing.x1,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        KioskStatusChip(status: kiosk.status),
+                        if (kiosk.queueLength case final queue?)
+                          Text(
+                            queue == 0
+                                ? l10n.homeQueueEmpty
+                                : l10n.homeQueue(queue),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: tokens.neutral600,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: Spacing.x2),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  KioskStatusChip(status: kiosk.status),
-                  if (kiosk.distanceKm case final km?) ...[
-                    const SizedBox(height: Spacing.x1),
-                    Text(
-                      distanceText(context, km),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+              Icon(Icons.chevron_right, color: tokens.neutral400),
             ],
           ),
         ),

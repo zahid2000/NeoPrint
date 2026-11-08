@@ -175,19 +175,6 @@ class _Avatar extends ConsumerWidget {
   }
 }
 
-/// "ZM" from "Zahid Mamedov", "DU" from "dev-user@...".
-String initialsOf(String? fullName, String? email) {
-  final name = (fullName?.trim().isNotEmpty ?? false)
-      ? fullName!.trim()
-      : (email ?? '');
-  return name
-      .split(RegExp(r'[\s@.\-_]+'))
-      .where((part) => part.isNotEmpty)
-      .take(2)
-      .map((part) => part.characters.first.toUpperCase())
-      .join();
-}
-
 class _Greeting extends ConsumerWidget {
   const _Greeting();
 
@@ -306,11 +293,18 @@ class _NoNearKiosk extends ConsumerWidget {
             children: [
               if (canAsk)
                 OutlinedButton.icon(
+                  // As wide as its words: the two buttons share a line.
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, Sizes.touchTarget),
+                  ),
                   onPressed: () => ref.read(nearKiosksProvider.notifier).find(),
                   icon: const Icon(Icons.my_location),
                   label: Text(l10n.homeShowNear),
                 ),
               TextButton(
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, Sizes.touchTarget),
+                ),
                 onPressed: () => context.goTab(Routes.kiosks),
                 child: Text(l10n.homeAllKiosks),
               ),

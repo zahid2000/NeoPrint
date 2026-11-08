@@ -263,3 +263,16 @@ BoxDecoration neoHeroDecoration(BuildContext context) {
     borderRadius: BorderRadius.circular(Radii.lg),
   );
 }
+
+/// "ZM" from "Zahid Mamedov", "DU" from "dev-user@...".
+String initialsOf(String? fullName, String? email) {
+  final name = (fullName?.trim().isNotEmpty ?? false)
+      ? fullName!.trim()
+      : (email ?? '');
+  return name
+      .split(RegExp(r'[\s@.\-_]+'))
+      .where((part) => part.isNotEmpty)
+      .take(2)
+      .map((part) => part.characters.first.toUpperCase())
+      .join();
+}

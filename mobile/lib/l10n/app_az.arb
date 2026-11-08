@@ -600,7 +600,7 @@
   "walletVoucherRedeem": "Balansa köçür",
   "walletVoucherDone": "Voucher balansınıza köçürüldü.",
   "walletVoucherEmpty": "Kodu yazın.",
-  "walletHistory": "Hərəkətlər",
+  "walletHistory": "Son əməliyyatlar",
   "walletNoHistory": "Hələ hərəkət yoxdur",
   "walletNoHistoryHint": "Balans artırma, ödəniş və qaytarmalar burada görünəcək.",
   "walletBalanceAfter": "Sonra: {amount}",
@@ -1371,5 +1371,15 @@
   },
   "printUploadThen": "Yüklənəndən sonra faylın səhifələri və çap parametrləri açılacaq.",
   "navTabHome": "Ana",
-  "navTabFiles": "Fayllar"
+  "navTabFiles": "Fayllar",
+  "kioskTabNear": "Yaxınlıqdakı",
+  "kioskTabAll": "Hamısı",
+  "kioskTabMap": "Xəritə",
+  "walletAvailable": "Mövcud balans",
+  "walletBonusAvailable": "Mövcud bonus",
+  "walletTopUpShort": "Artır",
+  "profileCopy": "Kopyala",
+  "schedTabUpcoming": "Planlılar",
+  "schedTabPast": "Keçmiş",
+  "schedPastEmpty": "Hələ bitmiş planlı çap yoxdur"
 }

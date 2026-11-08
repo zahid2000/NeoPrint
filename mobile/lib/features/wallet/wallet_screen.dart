@@ -8,6 +8,8 @@ import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
+import '../../shared/widgets/neo_design.dart';
+import '../../shared/widgets/neo_icon_tile.dart';
 import '../../shared/widgets/neo_empty_state.dart';
 import '../../shared/widgets/neo_primary_button.dart';
 import 'wallet_controller.dart';
@@ -46,7 +48,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     final wallet = ref.watch(walletProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.walletTitle)),
+      appBar: neoTabAppBar(context, title: l10n.walletTitle),
       body: switch (wallet) {
         AsyncData(:final value) => RefreshIndicator(
           onRefresh: () => ref.read(walletProvider.notifier).refresh(),
@@ -84,28 +86,90 @@ class _WalletBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(Spacing.x4),
       children: [
+        // The balance on the brand's own blue, with adding money on it - the
+        // screen's one main action (T-342; the design's screen 12).
+        Container(
+          padding: const EdgeInsets.all(Spacing.x4),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary,
+            borderRadius: BorderRadius.circular(Radii.lg),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      formatMoney(state.wallet.balance, language: language),
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: theme.colorScheme.onPrimary,
+                        fontWeight: FontWeights.semibold,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    Text(
+                      l10n.walletAvailable,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Spacing.x2),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.onPrimary,
+                  foregroundColor: theme.colorScheme.primary,
+                  minimumSize: const Size(0, Sizes.touchTarget),
+                ),
+                onPressed: () => showTopUpSheet(context),
+                icon: const Icon(Icons.add),
+                label: Text(l10n.walletTopUpShort),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: Spacing.x3),
+        // The bonus pages on their own card, as on the home screen.
         Card(
-          color: theme.colorScheme.primaryContainer,
+          margin: EdgeInsets.zero,
+          color: context.tokens.successBackground,
           child: Padding(
             padding: const EdgeInsets.all(Spacing.x4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  formatMoney(state.wallet.balance, language: language),
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeights.semibold,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+                Icon(
+                  Icons.card_giftcard_outlined,
+                  color: context.tokens.success,
+                ),
+                const SizedBox(width: Spacing.x3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.homeBonus,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: context.tokens.neutral600,
+                        ),
+                      ),
+                      Text(
+                        l10n.homeBonusPagesShort(state.wallet.bonusPages),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeights.semibold,
+                        ),
+                      ),
+                      Text(
+                        l10n.walletBonusAvailable,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: context.tokens.neutral600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                if (state.wallet.bonusPages > 0)
-                  Text(
-                    l10n.homeBonusPagesCount(state.wallet.bonusPages),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
-                    ),
-                  ),
               ],
             ),
           ),
@@ -114,21 +178,14 @@ class _WalletBody extends StatelessWidget {
         // Always on screen, not only at top-up: the rule the user agreed to
         // at registration (plan section 2.14).
         NeoBanner(message: l10n.walletNoRefundNote, tone: StatusTone.warning),
-        const SizedBox(height: Spacing.x4),
-        NeoPrimaryButton(
-          label: l10n.walletTopUp,
-          icon: Icons.add,
-          onPressed: () => showTopUpSheet(context),
-        ),
-        const SizedBox(height: Spacing.x2),
+        const SizedBox(height: Spacing.x3),
         OutlinedButton.icon(
           onPressed: () => showVoucherDialog(context),
           icon: const Icon(Icons.confirmation_number_outlined),
           label: Text(l10n.walletVoucher),
         ),
         const SizedBox(height: Spacing.x6),
-        Text(l10n.walletHistory, style: theme.textTheme.titleMedium),
-        const SizedBox(height: Spacing.x2),
+        NeoSectionHeader(title: l10n.walletHistory),
         if (state.entries.isEmpty)
           NeoEmptyState(
             icon: Icons.receipt_long_outlined,
@@ -155,16 +212,25 @@ class _EntryTile extends StatelessWidget {
     final language = Localizations.localeOf(context).languageCode;
     final incoming = entry.amount > 0;
 
-    final (label, icon) = switch (entry.type) {
-      'TopUp' => (l10n.walletTypeTopUp, Icons.add_card),
-      'Payment' => (l10n.walletTypePayment, Icons.print_outlined),
-      'Refund' => (l10n.walletTypeRefund, Icons.undo),
-      'Bonus' => (l10n.walletTypeBonus, Icons.card_giftcard),
+    final (label, icon, tone) = switch (entry.type) {
+      'TopUp' => (l10n.walletTypeTopUp, Icons.add_card, IconTileTone.brand),
+      'Payment' => (
+        l10n.walletTypePayment,
+        Icons.print_outlined,
+        IconTileTone.danger,
+      ),
+      'Refund' => (l10n.walletTypeRefund, Icons.undo, IconTileTone.info),
+      'Bonus' => (
+        l10n.walletTypeBonus,
+        Icons.card_giftcard,
+        IconTileTone.success,
+      ),
       'VoucherRedeem' => (
         l10n.walletTypeVoucherRedeem,
         Icons.confirmation_number_outlined,
+        IconTileTone.success,
       ),
-      _ => (l10n.walletTypeAdminAdjust, Icons.tune),
+      _ => (l10n.walletTypeAdminAdjust, Icons.tune, IconTileTone.warning),
     };
 
     final details = [
@@ -179,7 +245,7 @@ class _EntryTile extends StatelessWidget {
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon),
+      leading: NeoIconTile(icon: icon, tone: tone),
       title: Text(label),
       subtitle: Text(details.join('\n')),
       isThreeLine: details.length > 1,

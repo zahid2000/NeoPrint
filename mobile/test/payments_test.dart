@@ -420,7 +420,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('geri qaytarılmır'), findsOneWidget);
-      expect(find.text('Balansı artır'), findsOneWidget);
+      expect(find.text('Artır'), findsOneWidget);
       expect(find.text('Hələ hərəkət yoxdur'), findsOneWidget);
     });
 

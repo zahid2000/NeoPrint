@@ -122,6 +122,7 @@ Widget app(
       routes: [
         GoRoute(path: '/', builder: (_, __) => home),
         GoRoute(path: '/home', builder: (_, __) => const Text('home tab')),
+        GoRoute(path: '/jobs', builder: (_, __) => const Text('jobs screen')),
         GoRoute(
           path: '/print/scheduled',
           builder: (_, __) => const Text('scheduled tab'),
@@ -145,7 +146,7 @@ void main() {
         'neoprint://voucher/rf-ab12-cd34': '/wallet?voucher=RF-AB12-CD34',
         'https://neoprint.az/r/np7k2m9q': '/register?ref=NP7K2M9Q',
         '/r/NP7K2M9Q': '/register?ref=NP7K2M9Q',
-        'neoprint://jobs/1b2c': '/home',
+        'neoprint://jobs/1b2c': '/jobs',
         'neoprint://schedules/9a8b': '/print/scheduled',
         'neoprint://wallet': '/wallet',
         'neoprint://files': '/files',
@@ -214,7 +215,7 @@ void main() {
       'a tab it opens is switched to, not pushed over the list (the tab shell stays whole)',
       (tester) async {
         final notifications = FakeNotifications()
-          ..items = [note('n1', 'JobCompleted', link: 'neoprint://jobs/j1')];
+          ..items = [note('n1', 'TopUpSucceeded', link: 'neoprint://wallet')];
         final router = GoRouter(
           initialLocation: '/notifications',
           routes: [
@@ -224,8 +225,8 @@ void main() {
                 StatefulShellBranch(
                   routes: [
                     GoRoute(
-                      path: '/home',
-                      builder: (_, __) => const Text('home tab'),
+                      path: '/wallet',
+                      builder: (_, __) => const Text('wallet tab'),
                     ),
                   ],
                 ),
@@ -261,10 +262,10 @@ void main() {
         await tester.tap(find.text('Çap hazırdır'));
         await tester.pumpAndSettle();
 
-        expect(find.text('home tab'), findsOneWidget);
+        expect(find.text('wallet tab'), findsOneWidget);
         expect(
           router.routerDelegate.currentConfiguration.uri.toString(),
-          '/home',
+          '/wallet',
         );
       },
     );
@@ -361,7 +362,7 @@ void main() {
 
         await tester.tap(find.text('Aç'));
         await tester.pumpAndSettle();
-        expect(find.text('home tab'), findsOneWidget);
+        expect(find.text('jobs screen'), findsOneWidget);
         expect(notifications.read, ['done']);
 
         // It goes by itself; the timer must not outlive the test.

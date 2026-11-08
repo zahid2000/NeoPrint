@@ -834,5 +834,15 @@
   "jobCopies": "{count} коп.",
   "printUploadThen": "После загрузки откроются страницы файла и параметры печати.",
   "navTabHome": "Главная",
-  "navTabFiles": "Файлы"
+  "navTabFiles": "Файлы",
+  "kioskTabNear": "Рядом",
+  "kioskTabAll": "Все",
+  "kioskTabMap": "Карта",
+  "walletAvailable": "Доступный баланс",
+  "walletBonusAvailable": "Доступный бонус",
+  "walletTopUpShort": "Пополнить",
+  "profileCopy": "Копировать",
+  "schedTabUpcoming": "Запланированные",
+  "schedTabPast": "Прошлые",
+  "schedPastEmpty": "Завершённых запланированных печатей пока нет"
 }

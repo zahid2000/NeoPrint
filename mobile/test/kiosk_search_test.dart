@@ -145,10 +145,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Elmlər'), findsOneWidget);
-      expect(
-        find.text('KSK-9002 · Bakı, Elmlər Akademiyası metro'),
-        findsOneWidget,
-      );
+      // The address and the code on lines of their own (T-342).
+      expect(find.text('Bakı, Elmlər Akademiyası metro'), findsOneWidget);
+      expect(find.text('KSK-9002'), findsOneWidget);
       expect(find.text('İşləyir'), findsOneWidget);
       expect(find.text('Əlaqə yoxdur'), findsOneWidget);
       expect(find.text('530 m'), findsOneWidget);
@@ -192,7 +191,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Yaxınımda'));
+      await tester.tap(find.text('Yaxınlıqdakı'));
       await tester.pumpAndSettle();
 
       expect(kiosks.searches.last.near, (lat: 40.377, lng: 49.84));
@@ -202,8 +201,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(kiosks.searches.last.radiusKm, 10);
 
-      // Off again: no place, no radius.
-      await tester.tap(find.text('Yaxınımda'));
+      // "Hamısı" again: no place, no radius.
+      await tester.tap(find.text('Hamısı'));
       await tester.pumpAndSettle();
       expect(kiosks.searches.last.near, isNull);
       expect(kiosks.searches.last.radiusKm, isNull);
@@ -221,7 +220,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Yaxınımda'));
+      await tester.tap(find.text('Yaxınlıqdakı'));
       await tester.pumpAndSettle();
 
       expect(
@@ -241,7 +240,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Yaxınımda'));
+      await tester.tap(find.text('Yaxınlıqdakı'));
       await tester.pumpAndSettle();
 
       expect(find.text('3 km radiusda kiosk yoxdur'), findsOneWidget);

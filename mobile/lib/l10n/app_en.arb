@@ -834,5 +834,15 @@
   "jobCopies": "{count} copies",
   "printUploadThen": "Once it is up, the file's pages and print settings open.",
   "navTabHome": "Home",
-  "navTabFiles": "Files"
+  "navTabFiles": "Files",
+  "kioskTabNear": "Nearby",
+  "kioskTabAll": "All",
+  "kioskTabMap": "Map",
+  "walletAvailable": "Available balance",
+  "walletBonusAvailable": "Available bonus",
+  "walletTopUpShort": "Top up",
+  "profileCopy": "Copy",
+  "schedTabUpcoming": "Upcoming",
+  "schedTabPast": "Past",
+  "schedPastEmpty": "No finished scheduled prints yet"
 }

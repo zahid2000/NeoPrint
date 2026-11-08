@@ -11,20 +11,35 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
+import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_empty_state.dart';
-import '../../shared/widgets/neo_primary_button.dart';
+import '../files/file_models.dart';
 import '../../shared/widgets/neo_status_chip.dart';
 import 'schedule_actions.dart';
 import 'schedule_models.dart';
 import 'schedule_repository.dart';
 
-/// The scheduled prints tab (plan sections 8.2 and 9.5; docs/DESIGN_SYSTEM.md
-/// "Mobil: planlanmış çap").
-class ScheduleScreen extends ConsumerWidget {
+/// "Planlılar · Keçmiş" (T-342; the design's screen 13).
+enum _ScheduleTab { upcoming, past }
+
+/// "Planlı çap" (plan sections 8.2 and 9.5; docs/DESIGN_SYSTEM.md "Mobil:
+/// planlanmış çap"): the ones still to print - unpaid, waiting, due - and
+/// the ones done, a tab each; a new one from the round "+".
+class ScheduleScreen extends ConsumerStatefulWidget {
   const ScheduleScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ScheduleScreen> createState() => _ScheduleScreenState();
+}
+
+class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
+  _ScheduleTab _tab = _ScheduleTab.upcoming;
+
+  static bool _upcoming(ScheduledPrint item) =>
+      item.status.isActive || item.status == ScheduleStatus.pendingPayment;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final items = ref.watch(schedulesProvider);
     void create() => unawaited(context.push(Routes.scheduleNew));
@@ -32,7 +47,21 @@ class ScheduleScreen extends ConsumerWidget {
     final canCreate = ref.watch(featureOnProvider(FeatureKey.scheduledPrint));
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.navScheduled)),
+      appBar: neoTabAppBar(
+        context,
+        title: l10n.homeScheduled,
+        showBack: Navigator.of(context).canPop(),
+      ),
+      floatingActionButton: switch (items) {
+        AsyncData(:final value) when value.isNotEmpty && canCreate =>
+          FloatingActionButton(
+            tooltip: l10n.schedNew,
+            shape: const CircleBorder(),
+            onPressed: create,
+            child: const Icon(Icons.add),
+          ),
+        _ => null,
+      },
       body: RefreshIndicator(
         onRefresh: () => ref.read(schedulesProvider.notifier).refresh(),
         child: switch (items) {
@@ -52,12 +81,46 @@ class ScheduleScreen extends ConsumerWidget {
               ),
             ],
           ),
-          AsyncData(:final value) => ListView.separated(
-            padding: const EdgeInsets.all(Spacing.x4),
-            itemCount: value.length,
-            separatorBuilder: (_, __) => const SizedBox(height: Spacing.x3),
-            itemBuilder: (_, index) => _ScheduleCard(item: value[index]),
-          ),
+          AsyncData(:final value) => () {
+            final shown = [
+              for (final item in value)
+                if (_upcoming(item) == (_tab == _ScheduleTab.upcoming)) item,
+            ];
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(
+                Spacing.x4,
+                Spacing.x2,
+                Spacing.x4,
+                // Room for the round button over the last card.
+                Spacing.x16 + Spacing.x8,
+              ),
+              children: [
+                NeoPillTabs<_ScheduleTab>(
+                  values: _ScheduleTab.values,
+                  selected: _tab,
+                  expand: true,
+                  label: (tab) => switch (tab) {
+                    _ScheduleTab.upcoming => l10n.schedTabUpcoming,
+                    _ScheduleTab.past => l10n.schedTabPast,
+                  },
+                  onSelected: (tab) => setState(() => _tab = tab),
+                ),
+                const SizedBox(height: Spacing.x3),
+                if (shown.isEmpty)
+                  NeoEmptyState(
+                    icon: Icons.event_outlined,
+                    message: _tab == _ScheduleTab.upcoming
+                        ? l10n.schedEmpty
+                        : l10n.schedPastEmpty,
+                  )
+                else
+                  for (final item in shown) ...[
+                    _ScheduleCard(item: item),
+                    const SizedBox(height: Spacing.x3),
+                  ],
+              ],
+            );
+          }(),
           AsyncError(:final error) => ListView(
             children: [
               NeoEmptyState(
@@ -77,24 +140,6 @@ class ScheduleScreen extends ConsumerWidget {
           _ => const Center(child: CircularProgressIndicator()),
         },
       ),
-      bottomNavigationBar: switch (items) {
-        AsyncData(:final value) when value.isNotEmpty && canCreate => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Spacing.x4,
-              Spacing.x2,
-              Spacing.x4,
-              Spacing.x4,
-            ),
-            child: NeoPrimaryButton(
-              label: l10n.schedNew,
-              icon: Icons.add,
-              onPressed: create,
-            ),
-          ),
-        ),
-        _ => null,
-      },
     );
   }
 }
@@ -169,7 +214,7 @@ class _ScheduleCard extends ConsumerWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.event_outlined, color: tokens.brand500),
+                FileTypeTile(extension: extensionOf(item.fileName)),
                 const SizedBox(width: Spacing.x3),
                 Expanded(
                   child: Column(

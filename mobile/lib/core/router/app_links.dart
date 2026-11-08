@@ -18,7 +18,7 @@ final _code = RegExp(r'^[A-Za-z0-9-]{1,40}$');
 /// | `neoprint://kiosk/{code}` | the kiosk's detail |
 /// | `neoprint://voucher/{code}` | Balance, with the voucher filled in |
 /// | `https://neoprint.az/r/{code}` (or `/r/{code}`) | registration, with the referral code |
-/// | `neoprint://jobs/{id}` | home, where the orders are |
+/// | `neoprint://jobs/{id}` | "Sifarişlərim" |
 /// | `neoprint://schedules/{id}` | the scheduled prints |
 /// | `neoprint://wallet` | Balance |
 /// | `neoprint://files` | My files |
@@ -57,7 +57,8 @@ String? appLinkLocation(Uri uri) {
     'kiosk' when one != null => '/kiosk/${one.toUpperCase()}',
     'voucher' when one != null =>
       '${Routes.wallet}?voucher=${one.toUpperCase()}',
-    'jobs' => Routes.home,
+    // Every order, on a screen of its own (T-342).
+    'jobs' => Readiness.printJobs ? Routes.jobs : Routes.home,
     'schedules' => Routes.scheduled,
     'wallet' => Routes.wallet,
     'files' => Routes.files,
@@ -90,9 +91,14 @@ const _tabs = {
 void openAppLocation(BuildContext context, String location) {
   final router = GoRouter.of(context);
 
-  // Already there - the banner's "Aç" on the screen it points to.
-  if (router.routerDelegate.currentConfiguration.uri.path ==
-      Uri.parse(location).path) {
+  // Already there - the banner's "Aç" on the screen it points to. Asked of
+  // the screen the link is opened from: a pushed screen (the notifications)
+  // is not in the router's own location, which still names the tab under
+  // it - so a link to Home from the notifications did nothing (T-348).
+  final here =
+      _locationOf(context) ??
+      router.routerDelegate.currentConfiguration.uri.path;
+  if (here == Uri.parse(location).path) {
     return;
   }
 
@@ -103,5 +109,13 @@ void openAppLocation(BuildContext context, String location) {
     ).read(backStackProvider).go(router, location);
   } else {
     router.push(location);
+  }
+}
+
+String? _locationOf(BuildContext context) {
+  try {
+    return GoRouterState.of(context).uri.path;
+  } on Object {
+    return null;
   }
 }

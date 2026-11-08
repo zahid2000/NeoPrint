@@ -165,12 +165,19 @@ void main() {
         await tester.pumpWidget(app(const ScheduleScreen(), schedules));
         await tester.pumpAndSettle();
 
-        expect(find.text('Vaxtı çatıb'), findsOneWidget);
-        expect(find.text('Planlanıb'), findsOneWidget);
+        // The ones done are under "Keçmiş" (T-342).
+        await tester.tap(find.text('Keçmiş'));
+        await tester.pumpAndSettle();
         expect(find.text('Çap olunub'), findsOneWidget);
         expect(find.text('Vaxtı keçdi'), findsOneWidget);
         expect(find.text('Pul balansa qaytarıldı.'), findsOneWidget);
-        expect(find.text('KSK-9002 · 14.03.2030 09:00'), findsNWidgets(4));
+        expect(find.byType(PopupMenuButton<String>), findsNothing);
+
+        await tester.tap(find.text('Planlılar'));
+        await tester.pumpAndSettle();
+        expect(find.text('Vaxtı çatıb'), findsOneWidget);
+        expect(find.text('Planlanıb'), findsOneWidget);
+        expect(find.text('KSK-9002 · 14.03.2030 09:00'), findsNWidgets(2));
         expect(
           find.text(
             '15.03.2030 09:00-dək cavab verməsəniz ləğv olunacaq, pul balansa qayıdacaq.',
