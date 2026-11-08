@@ -1,6 +1,6 @@
 # Ad dəyişikliyi: NeoPrint → PrintPoint (M22, T-336) — plan
 
-**Vəziyyət: təsdiq gözləyir.** Layihə sahibi təsdiqləyənə qədər heç nə dəyişdirilmir. Çərçivə — `STEP_7B_PLAN.md` §4.
+**Vəziyyət: təxirə salınıb (2026-11-08).** Layihə sahibi PrintPoint adını ləğv etdi; heç nə dəyişdirilməyib. Yeni ad qərarı gələndə bu plan həmin adla yenilənir və yenidən təsdiqə təqdim olunur. Çərçivə — `STEP_7B_PLAN.md` §4.
 
 **Prinsip:** istifadəçinin gördüyü hər şey və xarici identifikatorlar (mağaza, domen, link) dəyişir; daxili
 identifikatorlar (kod adları, baza, secret yolları, kiosk cihazındakı yollar) **qalır** — onları dəyişmək data və
