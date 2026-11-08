@@ -73,6 +73,9 @@ public sealed class KioskSearchTests
         var within3 = await ItemsAsync(user, $"?{point}&radiusKm=3");
         within3.Select(Id).Should().Equal(near.KioskId);
         within3[0].GetProperty("distanceKm").GetDouble().Should().BeApproximately(1.11, 0.02);
+        // How busy it is, for the home screen's card (T-342); no picture yet.
+        within3[0].GetProperty("queueLength").GetInt32().Should().Be(0);
+        within3[0].TryGetProperty("photoUrl", out _).Should().BeFalse();
 
         var within10 = await ItemsAsync(user, $"?{point}&radiusKm=10");
         within10.Select(Id).Should().Equal(near.KioskId, far.KioskId);
@@ -81,8 +84,10 @@ public sealed class KioskSearchTests
         // Text and place together: only what matches both, still by distance.
         (await IdsAsync(user, $"?{point}&radiusKm=10&search=uzaq")).Should().Equal(far.KioskId);
 
-        // Without a location there is no distance.
-        (await ItemsAsync(user, $"?search={near.KioskCode}")).Single().TryGetProperty("distanceKm", out _).Should().BeFalse();
+        // Without a location there is no distance, and no queue is counted.
+        var byCode = (await ItemsAsync(user, $"?search={near.KioskCode}")).Single();
+        byCode.TryGetProperty("distanceKm", out _).Should().BeFalse();
+        byCode.TryGetProperty("queueLength", out _).Should().BeFalse();
     }
 
     [DockerFact]

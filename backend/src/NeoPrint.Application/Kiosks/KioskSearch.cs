@@ -51,8 +51,22 @@ public sealed record KioskSearchResult(IReadOnlyList<PublicKioskListItem> Items)
 /// <c>Offline</c> whatever its stored status says.
 /// </param>
 /// <param name="DistanceKm">From the point searched near, rounded to 10 m; null without one.</param>
+/// <param name="PhotoUrl">The kiosk's picture, relative to the API (T-340); null without one.</param>
+/// <param name="QueueLength">
+/// Jobs queued or printing now, for the nearest few of a search made near a
+/// point (T-342); null for the rest - counting the whole city costs a query each.
+/// </param>
 public sealed record PublicKioskListItem(
-    Guid Id, string Code, string Name, string Address, double Lat, double Lng, string Status, double? DistanceKm);
+    Guid Id,
+    string Code,
+    string Name,
+    string Address,
+    double Lat,
+    double Lng,
+    string Status,
+    double? DistanceKm,
+    string? PhotoUrl = null,
+    int? QueueLength = null);
 
 /// <param name="Paper">Each paper size the kiosk has a tray for.</param>
 /// <param name="QueueLength">Jobs queued or printing now.</param>
@@ -68,7 +82,8 @@ public sealed record PublicKioskDetail(
     PrinterCapabilitiesDto Capabilities,
     IReadOnlyList<PublicPaperView> Paper,
     int QueueLength,
-    KioskPricesDto? Prices);
+    KioskPricesDto? Prices,
+    string? PhotoUrl = null);
 
 /// <param name="Size">A4 or A3.</param>
 /// <param name="AvailableSheets">
@@ -136,6 +151,9 @@ public sealed class KioskSearchHandlers :
     /// <summary>The most kiosks one search returns: a city's worth, nearest or by code first.</summary>
     public const int MaxResults = 100;
 
+    /// <summary>How many of the nearest kiosks a search near a point counts the queue of (T-342).</summary>
+    public const int QueueCountLimit = 10;
+
     /// <summary>
     /// Fewer sheets than this left for new orders is "kağız azdır" - the
     /// plan's seed Warning level for A4 (plan section 2.15). The admin-made
@@ -187,10 +205,15 @@ public sealed class KioskSearchHandlers :
             .ConfigureAwait(false);
 
         var silentAfter = await SilentAfterAsync(cancellationToken).ConfigureAwait(false);
+        var items = new List<PublicKioskListItem>(hits.Count);
 
-        return new KioskSearchResult(
-        [
-            .. hits.Select(hit => new PublicKioskListItem(
+        foreach (var (hit, index) in hits.Select((hit, index) => (hit, index)))
+        {
+            int? queue = near is not null && index < QueueCountLimit
+                ? (await _jobs.ListQueueAsync(hit.Kiosk.Id, cancellationToken).ConfigureAwait(false)).Count
+                : null;
+
+            items.Add(new PublicKioskListItem(
                 hit.Kiosk.Id,
                 hit.Kiosk.Code,
                 hit.Kiosk.Name,
@@ -198,8 +221,12 @@ public sealed class KioskSearchHandlers :
                 hit.Kiosk.Location.Lat,
                 hit.Kiosk.Location.Lng,
                 ShownStatus(hit.Kiosk, silentAfter),
-                hit.DistanceMeters is { } meters ? Math.Round(meters / 1000, 2) : null)),
-        ]);
+                hit.DistanceMeters is { } meters ? Math.Round(meters / 1000, 2) : null,
+                KioskPhotoUrls.For(hit.Kiosk),
+                queue));
+        }
+
+        return new KioskSearchResult(items);
     }
 
     /// <inheritdoc cref="GetPublicKioskQuery" />
@@ -249,7 +276,8 @@ public sealed class KioskSearchHandlers :
                     table.PaperMultipliers,
                     table.MinOrder,
                     [.. table.Tiers.Select(tier => new KioskPriceTierDto(tier.MinSides, tier.DiscountPercent))],
-                    table.Currency));
+                    table.Currency),
+            KioskPhotoUrls.For(kiosk));
     }
 
     /// <inheritdoc cref="GetPublicKioskQueueQuery" />

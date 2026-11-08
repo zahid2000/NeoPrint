@@ -26,6 +26,9 @@ namespace NeoPrint.Api.Controllers;
 [Route("api/admin/kiosks")]
 public sealed class AdminKiosksController : ControllerBase
 {
+    /// <summary>The picture's limit plus room for the form around it.</summary>
+    private const long PhotoRequestBytes = KioskPhotoHandlers.MaxBytes + (64 * 1024);
+
     private readonly ISender _sender;
     private readonly ICurrentUser _currentUser;
 
@@ -69,6 +72,42 @@ public sealed class AdminKiosksController : ControllerBase
     public async Task<ActionResult<KioskDetail>> Update(
         Guid id, [FromBody] UpdateKioskInput input, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new UpdateKioskCommand(id, input, AdminId, _currentUser.Ip), cancellationToken));
+
+    /// <summary>
+    /// The kiosk's picture for the app (T-340), one file field <c>photo</c>.
+    /// The panel sends it re-encoded; the bytes are still checked here.
+    /// </summary>
+    [HttpPut("{id:guid}/photo")]
+    [HasPermission(Permissions.KiosksEdit)]
+    [RequestSizeLimit(PhotoRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = PhotoRequestBytes)]
+    public async Task<ActionResult<KioskPhotoInfo>> SetPhoto(Guid id, IFormFile? photo, CancellationToken cancellationToken)
+    {
+        byte[] bytes = [];
+        if (photo is not null)
+        {
+            await using var stream = photo.OpenReadStream();
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            bytes = buffer.ToArray();
+        }
+
+        return Ok(await _sender.Send(new SetKioskPhotoCommand(id, bytes, AdminId, _currentUser.Ip), cancellationToken));
+    }
+
+    [HttpDelete("{id:guid}/photo")]
+    [HasPermission(Permissions.KiosksEdit)]
+    public async Task<IActionResult> RemovePhoto(Guid id, CancellationToken cancellationToken)
+    {
+        await _sender.Send(new RemoveKioskPhotoCommand(id, AdminId, _currentUser.Ip), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>The picture as the app shows it; 404 without one.</summary>
+    [HttpGet("{id:guid}/photo")]
+    [HasPermission(Permissions.KiosksView)]
+    public async Task<IActionResult> Photo(Guid id, CancellationToken cancellationToken)
+        => KioskPhotoResults.Of(this, await _sender.Send(new GetKioskPhotoQuery(id, ListedOnly: false), cancellationToken));
 
     /// <summary>Only a kiosk that never had a device can be deleted.</summary>
     [HttpDelete("{id:guid}")]

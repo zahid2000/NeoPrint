@@ -37,6 +37,11 @@ public sealed class KioskSearchController : ControllerBase
     public async Task<ActionResult<PublicKioskDetail>> Get(string idOrCode, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new GetPublicKioskQuery(idOrCode), cancellationToken));
 
+    /// <summary>The kiosk's picture (T-340); 404 without one. The URL carries its version, so it is cached.</summary>
+    [HttpGet("{id:guid}/photo")]
+    public async Task<IActionResult> Photo(Guid id, CancellationToken cancellationToken)
+        => KioskPhotoResults.Of(this, await _sender.Send(new GetKioskPhotoQuery(id, ListedOnly: true), cancellationToken));
+
     /// <summary>How many jobs are ahead - a count, never whose.</summary>
     [HttpGet("{id:guid}/queue")]
     public async Task<ActionResult<PublicKioskQueue>> Queue(Guid id, CancellationToken cancellationToken)

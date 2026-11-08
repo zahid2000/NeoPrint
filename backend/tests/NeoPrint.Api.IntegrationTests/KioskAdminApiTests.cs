@@ -79,6 +79,64 @@ public sealed class KioskAdminApiTests
     // Create
     // -----------------------------------------------------------------------
 
+    // -----------------------------------------------------------------------
+    // Photo (T-340)
+    // -----------------------------------------------------------------------
+
+    private static readonly byte[] OnePixelPng =
+    [
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+        0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+        0x00, 0x05, 0xFE, 0x02, 0xFE, 0xA7, 0x35, 0x81, 0x84, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+        0x44, 0xAE, 0x42, 0x60, 0x82,
+    ];
+
+    private static MultipartFormDataContent PhotoForm(byte[] bytes, string fileName, string type)
+    {
+        var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(bytes);
+        file.Headers.ContentType = new MediaTypeHeaderValue(type);
+        form.Add(file, "photo", fileName);
+        return form;
+    }
+
+    [DockerFact]
+    public async Task A_photo_is_kept_by_its_bytes_served_unsniffed_and_taken_away()
+    {
+        using var admin = await SuperAdminAsync();
+        var kiosk = await CreateAsync(admin);
+        var id = kiosk.GetProperty("id").GetString();
+        Absent(kiosk, "photoUrl").Should().BeTrue();
+
+        // A page that calls itself a JPEG is not a picture.
+        var fake = await admin.PutAsync(
+            $"/api/admin/kiosks/{id}/photo",
+            PhotoForm("<html><script>alert(1)</script>"u8.ToArray(), "x.jpg", "image/jpeg"));
+        fake.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // Sent as a JPEG, kept as what it is.
+        var saved = await admin.PutAsync(
+            $"/api/admin/kiosks/{id}/photo", PhotoForm(OnePixelPng, "x.jpg", "image/jpeg"));
+        saved.StatusCode.Should().Be(HttpStatusCode.OK, await saved.Content.ReadAsStringAsync());
+        (await saved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("contentType").GetString()
+            .Should().Be("image/png");
+
+        var detail = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{id}");
+        detail.GetProperty("photoUrl").GetString().Should().StartWith($"api/admin/kiosks/{id}/photo?v=");
+
+        var photo = await admin.GetAsync($"/api/admin/kiosks/{id}/photo");
+        photo.StatusCode.Should().Be(HttpStatusCode.OK);
+        photo.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
+        photo.Headers.GetValues("X-Content-Type-Options").Should().Contain("nosniff");
+        (await photo.Content.ReadAsByteArrayAsync()).Should().Equal(OnePixelPng);
+
+        (await admin.DeleteAsync($"/api/admin/kiosks/{id}/photo")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await admin.GetAsync($"/api/admin/kiosks/{id}/photo")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        // Twice is the same end.
+        (await admin.DeleteAsync($"/api/admin/kiosks/{id}/photo")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
     [DockerFact]
     public async Task A_kiosk_is_created_without_a_device_and_gets_the_next_code()
     {

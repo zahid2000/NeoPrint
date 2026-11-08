@@ -783,6 +783,17 @@ sifariş zamanı qiymət serverdə yenidən hesablanır.
 
 → `{ "kioskId", "length" }` — növbədə və çapda olan sifarişlərin **sayı**; kimin olduğu heç vaxt verilmir.
 
+### `GET /api/kiosks/{id}/photo` (T-340)
+
+Kioskun şəkli (tətbiq istifadəçisi; müştərinin tapa bildiyi kiosk). Şəkil yoxdursa `404`.
+Cavab şəklin öz tipi ilə gəlir (`image/jpeg` | `image/png` | `image/webp` — tip baytlardan təyin olunur).
+Başlıqlar: `X-Content-Type-Options: nosniff`, `ETag` = versiya, `Cache-Control: private, max-age=604800`.
+Yeni şəkil URL-də yeni `v` deməkdir.
+
+Siyahıda və detalda `photoUrl` gəlir: API-yə nisbi yol (`api/kiosks/{id}/photo?v={versiya}`). Şəkil yoxdursa bu sahə də yoxdur.
+
+Axtarış bir nöqtənin ətrafında edilibsə, ən yaxın 10 kiosk üçün `queueLength` da gəlir (T-342). Qalanlarında bu sahə yoxdur.
+
 ---
 
 ## Kiosklar
@@ -820,6 +831,9 @@ konfiqurasiyasını yenidən alır.
 | `PUT` | `admin/kiosks/{id}/fiscal-terminal` | `fiscal.manage` | `{ fiscalTerminalId? }` |
 | `PUT` | `admin/kiosks/{id}/paper/capacity` | `kiosks.edit` | `{ a4, a3 }` (0–100000 vərəq). Kapasitet azaldılanda sayğac ona endirilir |
 | `POST` | `admin/kiosks/{id}/admin-pin` | `kiosks.edit` | `{ pin }` — 4–12 rəqəm; yalnız hash saxlanılır |
+| `PUT` | `admin/kiosks/{id}/photo` | `kiosks.edit` | Multipart, fayl sahəsi `photo` (T-340). Panel şəkli brauzerdə kiçildib JPEG kimi göndərir. Server yenə yalnız baytlara baxır: JPEG / PNG / WebP imzası, ≤ 2 MB, tip baytlardan. → `{ version, contentType, updatedAt }`. Şəkil şifrəli saxlanılır, köhnəsi silinir. Audit: `kiosks.photo` |
+| `DELETE` | `admin/kiosks/{id}/photo` | `kiosks.edit` | → `204` (şəkil yoxdursa da). Audit: `kiosks.photo-removed` |
+| `GET` | `admin/kiosks/{id}/photo` | `kiosks.view` | Şəkil (tətbiqdəki cavab kimi). Detalda `photoUrl` |
 | `GET` | `admin/kiosks/{id}/devices` | `devices.view` | Cihaz tarixçəsi: bağlı və ayrılmış bütün cihazlar (`isActive`, platforma, versiya, hostname, aktivləşdirmə / ayrılma vaxtı və səbəbi, son əlaqə) |
 
 **POST gövdəsi:**
