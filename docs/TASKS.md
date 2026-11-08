@@ -369,3 +369,6 @@ Statuslar: `Açıq`, `İcrada`, `Tamamlandı`, `Ləğv edildi (səbəb)`, `Təxi
 | T-343 | 2026-11-08 | 7B | Layihə sahibi: mobildə **fayla baxış işləmir** | Açıq | — |
 | T-344 | 2026-11-08 | 7B | Layihə sahibi: mobildə **"Mənim QR kodum" işləmir** | Açıq | — |
 | T-345 | 2026-11-08 | 7B | Layihə sahibi (T-341 b): kioskda hazırlanmış çapı **həm şəxsi QR, həm də "Çap kodu" ilə** tapmaq olsun | Açıq | — |
+| T-346 | 2026-11-08 | 7B | Layihə sahibi (telefon): **QR oxuma kamerası səhv kameranı açır** — görüntü çox pisdir; düzgün (əsas arxa) kamera və ayar seçilsin | Açıq | — |
+| T-347 | 2026-11-08 | 7B | Layihə sahibi (telefon): "Çap" tabında fayl seçəndə / şəkil çəkəndə tətbiq Fayllarım-a keçir və **birbaşa çapa keçmək olmur** — fayl seçiləndən sonra çap pəncərəsinə getməlidir | Açıq | — |
+| T-348 | 2026-11-08 | 7B | Layihə sahibi (telefon): **"Geri" düzgün işləmir** — "Çap" → "Fayllarımdan seç" Fayllar tabına keçir və "Geri" tətbiqdən çıxır; bildirişdən bir ekrana girib "Geri" basanda da tətbiqdən çıxır. Ekran menyudan yox, düymə ilə açılıbsa "Geri" əvvəlki ekrana qayıtmalıdır | Açıq | — |
