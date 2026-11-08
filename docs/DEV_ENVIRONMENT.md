@@ -1745,7 +1745,7 @@ bash tools/staging/staging.sh down     # dayandır
 # Pilot cihazı üçün flaş (Ubuntu 24.04 / 26.04, Server və ya Desktop): staging açarlı, self-contained linux-x64 UI və
 # Agent, provisioning skriptləri, install.sh. <HOST> — test serverinin adı (docs/TEST_SERVER.md), repoya yazılmır.
 bash tools/dev-kiosk/make-stick.sh --api-url https://<HOST> --out "$USERPROFILE/Desktop/neoprint-stick"
-# Qovluğun içindəkiləri FAT32 / exFAT flaşın kökünə köçürün. Cihazda: sudo bash /media/*/*/install.sh
+# Qovluğun içindəkiləri FAT32 / exFAT flaşın kökünə köçürün. Cihazda: sudo bash /run/media/*/*/install.sh (Ubuntu 24.04-də: /media/*/*/install.sh)
 
 # Skriptin bütöv sınağı başqa Ubuntu-da və "Desktop kimi" (GDM əvəzi, graphical.target, 26.04-də sudo-rs):
 UBUNTU=26.04 DESKTOP=1 bash tools/provision-test/check.sh

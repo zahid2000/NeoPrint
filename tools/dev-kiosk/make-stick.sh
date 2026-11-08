@@ -11,7 +11,7 @@
 # the repository. The folder it prints is copied, as it is, onto a USB stick
 # (FAT32 or exFAT); on the kiosk:
 #
-#   sudo bash /media/*/*/install.sh
+#   sudo bash /run/media/*/*/install.sh (24.04: /media/*/*/install.sh)
 #
 # install.sh asks for an enrollment token (Enter for none: the kiosk then shows
 # an activation code), runs provisioning/provision.sh with the package on the
@@ -56,7 +56,7 @@ cp -R "$root/desktop/provisioning/linux" "$out/provisioning"
 cat >"$out/install.sh" <<SCRIPT
 #!/bin/bash
 # NeoPrint kiosk setup from this stick (docs/KIOSK_SETUP.md section 11).
-#   sudo bash /media/*/*/install.sh
+#   sudo bash /run/media/*/*/install.sh (24.04: /media/*/*/install.sh)
 set -euo pipefail
 here="\$(cd "\$(dirname "\$0")" && pwd)"
 if [ "\$(id -u)" -ne 0 ]; then echo "Run it with sudo: sudo bash \$0" >&2; exit 1; fi
@@ -76,4 +76,4 @@ SCRIPT
 
 echo
 echo "The stick's files: $out"
-echo "Copy everything in that folder onto a USB stick; on the kiosk: sudo bash /media/*/*/install.sh"
+echo "Copy everything in that folder onto a USB stick; on the kiosk: sudo bash /run/media/*/*/install.sh (24.04: /media/*/*/install.sh)"

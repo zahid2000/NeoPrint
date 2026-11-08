@@ -299,8 +299,12 @@ Klaviatura taxılı qalırsa, B addımlarını onunla etmək daha rahatdır (ekr
    çıxır) və yazın, sonra **Enter** (klaviaturada ↵):
 
    ```bash
-   sudo bash /media/*/*/install.sh
+   sudo bash /run/media/*/*/install.sh
    ```
+
+   Ubuntu **26.04** flaşı `/run/media/...`-da, **24.04** isə `/media/...`-da açır — 24.04-də `/run` olmadan yazın.
+   Fayllar flaşda qovluğun içindədirsə (məs. `neoprint-stick`), yolda qovluğun adını da yazın:
+   `sudo bash /run/media/*/*/neoprint-stick/install.sh`. Tapılmırsa: `lsblk` flaşın harada açıldığını göstərir.
 
 5. **Parol:** öz Ubuntu parolunuzu yazın (yazılanlar görünmür — normaldır) → ↵.
 6. **Qeydiyyat açarı** soruşulanda — sadəcə ↵ (açarsız). Skript `step 1/13` … `step 13/13` yazır (10–15 dəqiqə,
