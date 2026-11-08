@@ -265,6 +265,26 @@ Ubuntu yenidən quraşdırılmır, **klaviatura lazım deyil** — hər şey bar
 `package`, `provisioning`) boş flaşın kökünə köçürün (test serveri üçün: `tools/dev-kiosk/make-stick.sh`,
 `docs/DEV_ENVIRONMENT.md` §7y). Flaşda gizli məlumat yoxdur.
 
+**Ubuntu parolu lazımdır** (B-5-də `sudo` soruşur; cihaz parolsuz açılsa da hesabın parolu var). Bilmirsinizsə —
+satıcıdan soruşun, yoxdursa **bir dəfəlik USB klaviatura** ilə sıfırlayın (5 dəqiqə; noutbukun klaviaturası olmur):
+
+1. Klaviaturanı kiosk cihazına taxın, cihazı yenidən başladın, açılan kimi **Esc**-i bir neçə dəfə basın (yalnız
+   `grub>` sətri çıxsa: `normal` yazıb ↵, yenidən cəhd edin) → **Advanced options for Ubuntu** → ilk
+   **(recovery mode)** sətri → **root — Drop to root shell prompt** → ↵.
+2. Yazın (hər sətirdən sonra ↵; `ls /home` istifadəçinin adını göstərir, onu `ad` yerinə yazın):
+
+   ```bash
+   mount -o remount,rw /
+   ls /home
+   passwd ad
+   usermod -aG sudo ad
+   reboot
+   ```
+
+   `passwd` yeni parolu iki dəfə soruşur (görünmür — normaldır). **Parolu yazın, saxlayın.**
+
+Klaviatura taxılı qalırsa, B addımlarını onunla etmək daha rahatdır (ekran klaviaturası lazım olmur).
+
 **B. Kiosk cihazında (barmaqla):**
 
 1. **Ekran klaviaturasını yandırın:** ekranın sağ yuxarı küncünə toxunun → ⚙ (**Settings**) → **Accessibility** →
