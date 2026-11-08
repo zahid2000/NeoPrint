@@ -31,9 +31,9 @@ void main() {
       final l10n = lookupAppLocalizations(Locale(language));
       final labels = [
         l10n.navHome,
-        l10n.navKiosks,
         l10n.navFiles,
-        l10n.navScheduledTab,
+        l10n.navPrint,
+        l10n.navWallet,
         l10n.navProfile,
       ];
 

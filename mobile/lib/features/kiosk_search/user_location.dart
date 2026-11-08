@@ -17,6 +17,10 @@ enum LocationProblem {
 
   /// It was asked for and did not come in time.
   unavailable,
+
+  /// Not given yet, and this time the app did not ask: the home screen only
+  /// looks when the permission is already there (T-338).
+  notAsked,
 }
 
 /// The user's place, or why there is none.
@@ -38,7 +42,8 @@ final class LocationMissing extends LocationResult {
 
 /// Where the user is, asked for only when they choose "near me".
 abstract interface class UserLocation {
-  Future<LocationResult> current();
+  /// With [ask] false a permission not given yet is not asked for.
+  Future<LocationResult> current({bool ask = true});
 }
 
 /// The device's own location through geolocator; on the web, the browser's.
@@ -46,7 +51,7 @@ final class DeviceLocation implements UserLocation {
   const DeviceLocation();
 
   @override
-  Future<LocationResult> current() async {
+  Future<LocationResult> current({bool ask = true}) async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       return const LocationMissing(LocationProblem.serviceOff);
     }
@@ -54,6 +59,9 @@ final class DeviceLocation implements UserLocation {
     var permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
+      if (!ask) {
+        return const LocationMissing(LocationProblem.notAsked);
+      }
       permission = await Geolocator.requestPermission();
     }
 

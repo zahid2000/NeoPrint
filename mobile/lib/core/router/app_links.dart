@@ -70,13 +70,15 @@ String? appLinkLocation(Uri uri) {
   };
 }
 
-/// The bottom-navigation tabs (plan section 8.1): switched to, never pushed -
-/// pushing a tab's route would stack a second, empty copy of the tab shell.
+/// The routes inside the bottom-navigation shell (T-338): switched to, never
+/// pushed - pushing one would stack a second, empty copy of the tab shell.
 const _tabs = {
   Routes.home,
-  Routes.kiosks,
   Routes.files,
+  Routes.print,
+  Routes.kiosks,
   Routes.scheduled,
+  Routes.wallet,
   Routes.profile,
 };
 

@@ -250,7 +250,9 @@ class _NearMeBar extends ConsumerWidget {
           icon: Icons.location_off_outlined,
           message: switch (problem) {
             LocationProblem.serviceOff => l10n.kioskLocationServiceOff,
-            LocationProblem.denied => l10n.kioskLocationDenied,
+            // The search always asks, so "not asked" reads as "denied".
+            LocationProblem.denied ||
+            LocationProblem.notAsked => l10n.kioskLocationDenied,
             LocationProblem.deniedForever => l10n.kioskLocationDeniedForever,
             LocationProblem.unavailable => l10n.kioskLocationUnavailable,
           },

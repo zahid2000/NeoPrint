@@ -1281,5 +1281,46 @@
 
   "securityBiometricsHint": "PIN-dən əlavə; PIN yenə də işləyir.",
 
-  "securityPinMandatory": "PIN kilidi hər hesab üçün məcburidir və söndürülmür. Tətbiq açılanda və 5 dəqiqədən çox arxa fonda qalıb qayıdanda soruşulur."
+  "securityPinMandatory": "PIN kilidi hər hesab üçün məcburidir və söndürülmür. Tətbiq açılanda və 5 dəqiqədən çox arxa fonda qalıb qayıdanda soruşulur.",
+  "navPrint": "Çap",
+  "navWallet": "Balans",
+  "homeHello": "Salam,",
+  "homeHelloHint": "Sənədlərinizi asan və sürətli çap edin.",
+  "homeNearKiosk": "Yaxın kiosk",
+  "homeFindNearTitle": "Yaxın kiosku tapın",
+  "homeFindNearHint": "Məkanınıza icazə versəniz, ən yaxın kioskları göstərərik.",
+  "homeShowNear": "Yaxın kioskları göstər",
+  "homeAllKiosks": "Bütün kiosklar",
+  "homeNoLocation": "Məkanınızı tapmaq alınmadı. Kioskları siyahıda tapın.",
+  "homeNoNearKiosk": "Yaxınlıqda kiosk yoxdur.",
+  "homeNearbyKiosks": "Yaxınlıqdakı kiosklar",
+  "homeAddFile": "Fayl əlavə et",
+  "homeScanDocument": "Skan et",
+  "homeScheduled": "Planlı çap",
+  "homeBonus": "Bonus",
+  "homeBonusPagesShort": "{count} səhifə",
+  "@homeBonusPagesShort": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "printHubTitle": "Yeni çap",
+  "printHubSubtitle": "Faylı necə əlavə etmək istəyirsiniz?",
+  "printHubAddSection": "Fayl əlavə et",
+  "printHubFromFiles": "Fayllarımdan seç",
+  "printHubFromFilesHint": "Əvvəl yüklədiyiniz fayllar",
+  "printHubFromPhone": "Telefondan fayl seç",
+  "printHubFromPhoneHint": "PDF, Word, Excel, şəkil və s.",
+  "printHubFromCloud": "Buluddan əlavə et",
+  "printHubFromCloudHint": "Google Drive, OneDrive və s. — seçicidə buludu seçin",
+  "printHubShared": "Paylaşılan fayllar",
+  "printHubSharedHint": "Sizə göndərilən fayllar",
+  "printHubKioskSection": "Kioskda çap",
+  "printHubScanQr": "Kioskdakı QR-ı oxut",
+  "printHubScanQrHint": "Kioskda çap etmək və ya ödəmək üçün",
+  "printHubPickKiosk": "Kiosk seç",
+  "printHubPickKioskHint": "Siyahı və xəritə",
+  "printHubMyQrHint": "Hazırladığınız faylı kioskda götürün",
+  "printHubPreparedHint": "Kiosk üçün hazırladığınız fayllar",
+  "printHubScheduledHint": "Çapı vaxtına planlayın"
 }

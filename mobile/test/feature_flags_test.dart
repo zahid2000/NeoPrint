@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:neoprint/core/auth/auth_controller.dart';
 import 'package:neoprint/core/features/feature_flags.dart';
 import 'package:neoprint/core/features/readiness.dart';
 import 'package:neoprint/core/network/api_client.dart';
@@ -22,7 +20,8 @@ import 'package:neoprint/features/schedule/schedule_repository.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
 import 'package:neoprint/l10n/app_localizations_az.dart';
 import 'package:neoprint/shared/api_error_text.dart';
-import 'package:neoprint/shared/widgets/bottom_nav_shell.dart';
+import 'package:neoprint/features/print_hub/print_hub_screen.dart';
+import 'package:neoprint/features/sharing/shares_controller.dart';
 
 import 'files_screen_test.dart' show ListRepository;
 import 'payments_kit.dart';
@@ -187,80 +186,53 @@ void main() {
     expect(find.text('Hesabımı sil'), findsOneWidget);
   });
 
-  group('the scheduled tab', () {
-    Future<void> pumpShell(
+  // No longer a tab (T-338): "Planlı çap" is a row in the Print tab, and the
+  // same rule decides it there, on the home screen and in the profile.
+  group('scheduled print in the Print tab', () {
+    Future<void> pumpHub(
       WidgetTester tester, {
       required List<ScheduledPrint> items,
       required bool on,
     }) async {
-      final router = GoRouter(
-        initialLocation: '/a',
-        routes: [
-          StatefulShellRoute.indexedStack(
-            builder: (context, state, shell) => BottomNavShell(shell: shell),
-            branches: [
-              for (final path in ['/a', '/b', '/c', '/d', '/e'])
-                StatefulShellBranch(
-                  routes: [GoRoute(path: path, builder: (_, __) => Text(path))],
-                ),
-            ],
-          ),
-        ],
-      );
-
       await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            currentUserProvider.overrideWithValue(null),
-            userHubProvider.overrideWithValue(null),
-            userHubEventsProvider.overrideWithValue(const Stream.empty()),
-            userHubReconnectedProvider.overrideWithValue(const Stream.empty()),
-            scheduleRepositoryProvider.overrideWithValue(
-              FakeSchedules()..items = items,
-            ),
-            flags({FeatureKey.scheduledPrint: on}),
-          ],
-          child: MaterialApp.router(
-            theme: AppTheme.light(),
-            locale: const Locale('az'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            routerConfig: router,
+        screen(const PrintHubScreen(), [
+          ...step4Overrides(),
+          newSharesCountProvider.overrideWithValue(0),
+          preparedRepositoryProvider.overrideWithValue(FakePrepared()),
+          scheduleRepositoryProvider.overrideWithValue(
+            FakeSchedules()..items = items,
           ),
-        ),
+          flags({FeatureKey.scheduledPrint: on}),
+        ]),
       );
       await tester.pumpAndSettle();
+    }
+
+    // The row is the last one: scrolled to the end, it is on screen if
+    // it is there at all.
+    Future<Finder> scheduledRow(WidgetTester tester) async {
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -2000));
+      await tester.pumpAndSettle();
+      return find.text('Planlı çap');
     }
 
     testWidgets('is hidden when it is off and nothing is waiting', (
       tester,
     ) async {
-      await pumpShell(tester, items: const [], on: false);
+      await pumpHub(tester, items: const [], on: false);
 
-      expect(find.text('Planlı'), findsNothing);
-      expect(
-        find.byType(NavigationDestination),
-        findsNWidgets(3 + (Readiness.kioskSearch ? 1 : 0)),
-      );
-
-      // The tabs after it still open their own branch.
-      await tester.tap(find.text('Profil'));
-      await tester.pumpAndSettle();
-      expect(find.text('/e'), findsOneWidget);
-    }, skip: !Readiness.scheduledPrint || !Readiness.kioskSearch);
+      expect(await scheduledRow(tester), findsNothing);
+    }, skip: !Readiness.scheduledPrint);
 
     testWidgets('stays while a paid schedule is waiting', (tester) async {
-      await pumpShell(
+      await pumpHub(
         tester,
         items: [schedule('s1', ScheduleStatus.scheduled)],
         on: false,
       );
 
-      expect(find.text('Planlı'), findsOneWidget);
-      await tester.tap(find.text('Planlı'));
-      await tester.pumpAndSettle();
-      expect(find.text('/d'), findsOneWidget);
-    }, skip: !Readiness.scheduledPrint || !Readiness.kioskSearch);
+      expect(await scheduledRow(tester), findsOneWidget);
+    }, skip: !Readiness.scheduledPrint);
   });
 
   group('a request refused because a feature is off', () {

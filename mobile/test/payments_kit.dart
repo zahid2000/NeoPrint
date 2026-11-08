@@ -13,6 +13,7 @@ import 'package:neoprint/features/payments/payments_repository.dart';
 import 'package:neoprint/features/payments/scan_screen.dart';
 import 'package:neoprint/features/wallet/wallet_controller.dart';
 import 'package:neoprint/features/wallet/wallet_repository.dart';
+import 'package:neoprint/features/kiosk_search/user_location.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
 
 /// Test doubles for the step 4 screens: no network, no hub.
@@ -162,14 +163,37 @@ List<Override> step4Overrides({
   List<MyJob> jobs = const [],
   bool canScan = true,
   PaymentsRepository? payments,
+  UserLocation? location,
 }) => [
   currentUserProvider.overrideWithValue(testUser),
   userHubProvider.overrideWithValue(null),
   canScanProvider.overrideWithValue(canScan),
   walletProvider.overrideWith(() => FakeWallet(wallet ?? walletOf(5))),
   myJobsProvider.overrideWith(() => FakeJobs(jobs)),
+  userLocationProvider.overrideWithValue(location ?? const NotAskedLocation()),
   if (payments != null) paymentsRepositoryProvider.overrideWithValue(payments),
 ];
+
+/// A phone that has not given the app its location: the home screen does
+/// not ask on its own (T-338).
+class NotAskedLocation implements UserLocation {
+  const NotAskedLocation();
+
+  @override
+  Future<LocationResult> current({bool ask = true}) async =>
+      const LocationMissing(LocationProblem.notAsked);
+}
+
+/// Remembers whether each look asked for the permission.
+class CountingLocation implements UserLocation {
+  final asks = <bool>[];
+
+  @override
+  Future<LocationResult> current({bool ask = true}) async {
+    asks.add(ask);
+    return const LocationMissing(LocationProblem.notAsked);
+  }
+}
 
 Widget step4App(Widget home, {List<Override> overrides = const []}) =>
     ProviderScope(

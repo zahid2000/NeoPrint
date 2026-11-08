@@ -2,17 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
 import '../../features/notices/hub_notices.dart';
 import '../../features/notifications/notification_host.dart';
 import '../../features/schedule/schedule_due_prompt.dart';
-import '../../features/schedule/schedule_repository.dart';
 import '../../features/session/session_banner.dart';
 import '../../l10n/app_localizations.dart';
 
-/// The bottom navigation from plan section 8.1: five destinations once every
-/// one of them has its screen, fewer until then (Readiness).
+/// The bottom navigation: Ana, Fayllar, Çap, Balans, Profil (T-338;
+/// docs/DECISIONS.md 2026-11-08 - the plan's section 8.1 had Kiosklar and
+/// Planlanmışlar, which now live in the Print tab).
 ///
 /// A stateful shell, so each tab keeps its scroll position and its loaded data
 /// when the user moves between them.
@@ -25,70 +24,21 @@ class BottomNavShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
 
-    // The same conditions and order as the branches in app_router.dart; a
-    // destination carries the index of its branch, so a tab hidden by a flag
-    // does not shift the others.
-    final branches = <int>[];
-    var next = 0;
-    int add() => next++;
-
-    final home = add();
-    final kiosks = Readiness.kioskSearch ? add() : null;
-    final files = add();
-    final scheduled = Readiness.scheduledPrint ? add() : null;
-    final profile = add();
-
-    // Switched off, the tab stays while a paid schedule is still waiting
-    // (docs/DECISIONS.md, T-148), and while it is the one on screen.
-    final showScheduled =
-        scheduled != null &&
-        (ref.watch(featureOnProvider(FeatureKey.scheduledPrint)) ||
-            shell.currentIndex == scheduled ||
-            (ref
-                    .watch(schedulesProvider)
-                    .valueOrNull
-                    ?.any((item) => item.status.isActive) ??
-                false));
-
-    final destinations = <NavigationDestination>[
-      NavigationDestination(
-        icon: const Icon(Icons.home_outlined),
-        selectedIcon: const Icon(Icons.home),
-        label: l10n.navHome,
-      ),
-      if (kiosks != null)
-        NavigationDestination(
-          icon: const Icon(Icons.place_outlined),
-          selectedIcon: const Icon(Icons.place),
-          label: l10n.navKiosks,
-        ),
-      NavigationDestination(
-        icon: const Icon(Icons.folder_outlined),
-        selectedIcon: const Icon(Icons.folder),
-        label: l10n.navFiles,
-      ),
-      if (showScheduled)
-        NavigationDestination(
-          icon: const Icon(Icons.schedule_outlined),
-          selectedIcon: const Icon(Icons.schedule),
-          // The section's full name does not fit a fifth of a phone's width.
-          label: l10n.navScheduledTab,
-        ),
-      NavigationDestination(
-        icon: const Icon(Icons.person_outline),
-        selectedIcon: const Icon(Icons.person),
-        label: l10n.navProfile,
-      ),
+    // The same order as the branches in app_router.dart.
+    const destinations = [
+      (Icons.home_outlined, Icons.home),
+      (Icons.folder_outlined, Icons.folder),
+      (Icons.print_outlined, Icons.print),
+      (Icons.account_balance_wallet_outlined, Icons.account_balance_wallet),
+      (Icons.person_outline, Icons.person),
     ];
-    branches.addAll([
-      home,
-      if (kiosks != null) kiosks,
-      files,
-      if (showScheduled) scheduled,
-      profile,
-    ]);
-
-    final selected = branches.indexOf(shell.currentIndex);
+    final labels = [
+      l10n.navHome,
+      l10n.navFiles,
+      l10n.navPrint,
+      l10n.navWallet,
+      l10n.navProfile,
+    ];
 
     return Scaffold(
       // Inside the scaffold, so a notice sits above the navigation bar.
@@ -105,14 +55,21 @@ class BottomNavShell extends ConsumerWidget {
         children: [
           if (Readiness.mobileSession) const SessionBanner(),
           NavigationBar(
-            selectedIndex: selected < 0 ? 0 : selected,
+            selectedIndex: shell.currentIndex,
             // goBranch with initialLocation restores a tab to its root when it is
             // tapped again, which is what people expect from a tab bar.
             onDestinationSelected: (index) => shell.goBranch(
-              branches[index],
-              initialLocation: branches[index] == shell.currentIndex,
+              index,
+              initialLocation: index == shell.currentIndex,
             ),
-            destinations: destinations,
+            destinations: [
+              for (var i = 0; i < destinations.length; i++)
+                NavigationDestination(
+                  icon: Icon(destinations[i].$1),
+                  selectedIcon: Icon(destinations[i].$2),
+                  label: labels[i],
+                ),
+            ],
           ),
         ],
       ),

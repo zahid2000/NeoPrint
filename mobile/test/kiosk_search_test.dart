@@ -70,7 +70,7 @@ class FakeLocation implements UserLocation {
   var asked = 0;
 
   @override
-  Future<LocationResult> current() async {
+  Future<LocationResult> current({bool ask = true}) async {
     asked++;
     return result;
   }

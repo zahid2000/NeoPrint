@@ -123,7 +123,7 @@ Widget app(
         GoRoute(path: '/', builder: (_, __) => home),
         GoRoute(path: '/home', builder: (_, __) => const Text('home tab')),
         GoRoute(
-          path: '/scheduled',
+          path: '/print/scheduled',
           builder: (_, __) => const Text('scheduled tab'),
         ),
         GoRoute(path: '/wallet', builder: (_, __) => const Text('wallet')),
@@ -146,7 +146,7 @@ void main() {
         'https://neoprint.az/r/np7k2m9q': '/register?ref=NP7K2M9Q',
         '/r/NP7K2M9Q': '/register?ref=NP7K2M9Q',
         'neoprint://jobs/1b2c': '/home',
-        'neoprint://schedules/9a8b': '/scheduled',
+        'neoprint://schedules/9a8b': '/print/scheduled',
         'neoprint://wallet': '/wallet',
         'neoprint://files': '/files',
         'neoprint://privacy/export': '/privacy/export',

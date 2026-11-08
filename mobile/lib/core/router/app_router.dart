@@ -28,6 +28,7 @@ import '../../features/wallet/wallet_screen.dart';
 import '../../features/kiosk_search/kiosk_detail_screen.dart';
 import '../../features/kiosk_search/kiosk_models.dart';
 import '../../features/kiosk_search/kiosk_search_screen.dart';
+import '../../features/print_hub/print_hub_screen.dart';
 import '../../features/session/pick_file_screen.dart';
 import '../../features/session/print_options_screen.dart';
 import '../../features/profile/profile_screen.dart';
@@ -57,7 +58,10 @@ abstract final class Routes {
   static const consents = '/consents';
 
   static const home = '/home';
-  static const kiosks = '/kiosks';
+
+  /// The Print tab (T-338); the kiosks and the scheduled prints live in it.
+  static const print = '/print';
+  static const kiosks = '/print/kiosks';
   static String kiosk(String code) => '/kiosk/$code';
   static const sessionFiles = '/session/files';
   static const sessionPrint = '/session/print';
@@ -65,7 +69,7 @@ abstract final class Routes {
   static const filesCamera = '/files/camera';
   static const filesScanner = '/files/scanner';
   static String filePreview(String id) => '/files/$id';
-  static const scheduled = '/scheduled';
+  static const scheduled = '/print/scheduled';
   static const profile = '/profile';
 
   /// The app's lock (T-270).
@@ -234,11 +238,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       ],
       if (Readiness.wallet) ...[
         GoRoute(
-          path: Routes.wallet,
-          builder: (_, state) =>
-              WalletScreen(voucher: state.uri.queryParameters['voucher']),
-        ),
-        GoRoute(
           path: Routes.receipts,
           builder: (_, __) => const ReceiptsScreen(),
         ),
@@ -355,7 +354,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ],
 
-      // The five bottom-nav destinations from plan section 8.1, in a shell so
+      // The five bottom-nav destinations (T-338; docs/DECISIONS.md 2026-11-08), in a shell so
       // the bar keeps its state as the tabs change.
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => BottomNavShell(shell: shell),
@@ -368,15 +367,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          if (Readiness.kioskSearch)
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: Routes.kiosks,
-                  builder: (_, __) => const KioskSearchScreen(),
-                ),
-              ],
-            ),
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -408,15 +398,37 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          if (Readiness.scheduledPrint)
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: Routes.scheduled,
-                  builder: (_, __) => const ScheduleScreen(),
-                ),
-              ],
-            ),
+          // "Çap": the kiosks and the scheduled prints are inside it, so the
+          // tab bar stays and back returns to the tab (T-338).
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.print,
+                builder: (_, __) => const PrintHubScreen(),
+                routes: [
+                  if (Readiness.kioskSearch)
+                    GoRoute(
+                      path: 'kiosks',
+                      builder: (_, __) => const KioskSearchScreen(),
+                    ),
+                  if (Readiness.scheduledPrint)
+                    GoRoute(
+                      path: 'scheduled',
+                      builder: (_, __) => const ScheduleScreen(),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Routes.wallet,
+                builder: (_, state) =>
+                    WalletScreen(voucher: state.uri.queryParameters['voucher']),
+              ),
+            ],
+          ),
           StatefulShellBranch(
             routes: [
               GoRoute(

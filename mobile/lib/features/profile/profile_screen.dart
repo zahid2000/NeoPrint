@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/features/entry_points.dart';
 import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
 import '../../core/l10n/language_controller.dart';
@@ -100,6 +101,16 @@ class ProfileScreen extends ConsumerWidget {
               title: Text(l10n.profileReceipts),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push(Routes.receipts),
+            ),
+
+          // No longer a tab (T-338): reached from here, the home screen and
+          // the Print tab.
+          if (ref.watch(scheduledVisibleProvider))
+            ListTile(
+              leading: const Icon(Icons.schedule_outlined),
+              title: Text(l10n.navScheduled),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go(Routes.scheduled),
             ),
 
           // The referral code, its link and what it earned (plan section 2.6).

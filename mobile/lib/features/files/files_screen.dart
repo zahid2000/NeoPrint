@@ -1,6 +1,5 @@
 import '../../shared/api_error_text.dart';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,12 +16,12 @@ import '../../shared/widgets/neo_empty_state.dart';
 import '../../shared/widgets/neo_status_chip.dart';
 import 'file_models.dart';
 import 'files_controller.dart';
+import 'file_sources.dart';
 import 'heic_converter.dart';
 import 'auto_delete_sheet.dart';
 import '../layout/layout_launcher.dart';
 import '../sharing/shares_controller.dart';
 import '../scanner/document_scanner.dart';
-import '../scanner/document_scan_screen.dart';
 
 /// "Fayllarım" (plan sections 2.2, 8.2): upload from the phone or the camera,
 /// the list with where each file came from, preview and delete.
@@ -121,7 +120,7 @@ class FilesScreen extends ConsumerWidget {
   Future<void> _chooseSource(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
 
-    final choice = await showModalBottomSheet<_Source>(
+    final choice = await showModalBottomSheet<FileSource>(
       context: context,
       showDragHandle: true,
       // Four ways in: scrollable, so a small or turned phone still reaches all.
@@ -135,14 +134,14 @@ class FilesScreen extends ConsumerWidget {
                 leading: const Icon(Icons.folder_open_outlined),
                 title: Text(l10n.filesPickFile),
                 subtitle: Text(l10n.filesPickFileHint),
-                onTap: () => Navigator.pop(context, _Source.file),
+                onTap: () => Navigator.pop(context, FileSource.device),
               ),
               if (!kIsWeb)
                 ListTile(
                   leading: const Icon(Icons.photo_camera_outlined),
                   title: Text(l10n.filesTakePhoto),
                   subtitle: Text(l10n.filesTakePhotoHint),
-                  onTap: () => Navigator.pop(context, _Source.camera),
+                  onTap: () => Navigator.pop(context, FileSource.camera),
                 ),
               // The phone scanner (plan section 2.11): not on the web.
               if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
@@ -150,14 +149,14 @@ class FilesScreen extends ConsumerWidget {
                   leading: const Icon(Icons.document_scanner_outlined),
                   title: Text(l10n.filesScanDocument),
                   subtitle: Text(l10n.filesScanDocumentHint),
-                  onTap: () => Navigator.pop(context, _Source.scan),
+                  onTap: () => Navigator.pop(context, FileSource.scan),
                 ),
               // Pictures and PDF pages on one sheet (plan section 2.11).
               ListTile(
                 leading: const Icon(Icons.dashboard_customize_outlined),
                 title: Text(l10n.filesNewLayout),
                 subtitle: Text(l10n.filesNewLayoutHint),
-                onTap: () => Navigator.pop(context, _Source.layout),
+                onTap: () => Navigator.pop(context, FileSource.layout),
               ),
               const SizedBox(height: Spacing.x4),
             ],
@@ -170,83 +169,9 @@ class FilesScreen extends ConsumerWidget {
       return;
     }
 
-    final controller = ref.read(filesControllerProvider.notifier);
-
-    switch (choice) {
-      case _Source.layout:
-        final sources = await Navigator.of(context, rootNavigator: true)
-            .push<List<LayoutSource>>(
-              MaterialPageRoute(builder: (_) => const LayoutSourcesScreen()),
-            );
-        if (sources != null && sources.isNotEmpty && context.mounted) {
-          await openNewLayout(context, ref, sources);
-        }
-      case _Source.scan:
-        final outcome = await context.push<ScanOutcome>(Routes.filesScanner);
-        if (!context.mounted) {
-          return;
-        }
-        if (outcome == ScanOutcome.saved) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(l10n.docScanSaved)));
-        } else if (outcome == ScanOutcome.useCamera) {
-          await _photo(context, controller);
-        }
-      case _Source.file:
-        final picked = await _pickFile(ref);
-        if (picked != null) {
-          await controller.upload(picked);
-        }
-      case _Source.camera:
-        await _photo(context, controller);
-    }
-  }
-
-  Future<void> _photo(BuildContext context, FilesController controller) async {
-    final path = await context.push<String>(Routes.filesCamera);
-    if (path != null) {
-      await controller.upload(
-        PickedFile(
-          name: 'photo-${DateTime.now().millisecondsSinceEpoch}.jpg',
-          path: path,
-          readBytes: () => throw UnsupportedError('Camera photos have a path.'),
-        ),
-      );
-    }
-  }
-
-  /// The system picker, filtered to the formats the installation accepts
-  /// now - plus HEIC, which the phone converts before upload.
-  Future<PickedFile?> _pickFile(WidgetRef ref) async {
-    Set<String>? accepted;
-
-    try {
-      accepted = await ref.read(filesRepositoryProvider).acceptedFormats();
-    } on Exception {
-      // Without the list, pick anything: the server still checks the format.
-      accepted = null;
-    }
-
-    final file = await FilePicker.pickFile(
-      type: accepted == null ? FileType.any : FileType.custom,
-      allowedExtensions: accepted == null
-          ? null
-          : [...accepted, ...phoneConvertedExtensions],
-    );
-
-    if (file == null) {
-      return null;
-    }
-
-    return PickedFile(
-      name: file.name,
-      path: kIsWeb ? null : file.path,
-      readBytes: file.xFile.readAsBytes,
-    );
+    await addFileFrom(context, ref, choice);
   }
 }
-
-enum _Source { file, camera, scan, layout }
 
 /// "Paylaşılanlar", with how many received files wait to be looked at
 /// (docs/DESIGN_SYSTEM.md, "Mobil: fayl paylaşımı").
