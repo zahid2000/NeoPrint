@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -84,6 +85,7 @@ public sealed partial class App : Application
         if (settings.Lockdown)
         {
             lockdown.Apply();
+            HidePointer();
         }
 
         SetUpAdminMenu(window, crashes, lockdown, settings.Lockdown ? null : desktop);
@@ -105,6 +107,21 @@ public sealed partial class App : Application
         _ = RunAsync(_model, _session, _stopping.Token);
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// No mouse pointer on a touch kiosk (T-337): cage draws one in the middle
+    /// of the screen, and it stays there. A style on every input element, added
+    /// after the theme, so it also wins over the theme's own (a text box's
+    /// I-beam) and reaches the popups, which are windows of their own. Off in
+    /// Development, where a mouse is used.
+    /// </summary>
+    private void HidePointer()
+    {
+        Styles.Add(new Style(selector => selector.Is<InputElement>())
+        {
+            Setters = { new Setter(InputElement.CursorProperty, new Cursor(StandardCursorType.None)) },
+        });
     }
 
     /// <summary>
