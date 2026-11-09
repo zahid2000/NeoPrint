@@ -92,6 +92,56 @@
         <Setter Property="Background" Value="{DynamicResource Brand50}" />
     </Style>
 
+    <!-- A way a file comes in, on the welcome screen (T-341): a whole card is the
+         button, icon square on top, name, one line under it. -->
+    <Style Selector="Button.source">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusLg}" />
+        <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
+        <Setter Property="MinHeight" Value="{DynamicResource SourceCardMinHeight}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Top" />
+    </Style>
+
+    <!-- The kiosk's main way in (the flash drive): already on the brand's light fill. -->
+    <Style Selector="Button.source.main">
+        <Setter Property="Background" Value="{DynamicResource Brand50}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brand600}" />
+    </Style>
+
+    <Style Selector="Button.source:pointerover /template/ ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource Brand600}" />
+        <Setter Property="Background" Value="{DynamicResource Brand50}" />
+    </Style>
+
+    <!-- On the main card the square stands on white, or it would vanish into the fill. -->
+    <Style Selector="Button.source.main Border.icon-tile">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+    </Style>
+
+    <!-- The same card, not a button: something to do on the phone. -->
+    <Style Selector="Border.source-info">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusLg}" />
+        <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
+        <Setter Property="MinHeight" Value="{DynamicResource SourceCardMinHeight}" />
+    </Style>
+
+    <!-- The coloured square an icon sits in (T-341, as on the phone). -->
+    <Style Selector="Border.icon-tile">
+        <Setter Property="Background" Value="{DynamicResource Brand50}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Width" Value="{DynamicResource IconTileSize}" />
+        <Setter Property="Height" Value="{DynamicResource IconTileSize}" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+
     <!-- Information the customer should know, not a problem: why an option is fixed. -->
     <Style Selector="Border.info">
         <Setter Property="Background" Value="{DynamicResource InfoBg}" />

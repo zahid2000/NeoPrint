@@ -142,6 +142,9 @@
     <!-- Payment screens (docs/DESIGN_SYSTEM.md "Ödəniş ekranları"): a method
          card a finger cannot miss, a QR a phone reads from arm's length. -->
     <sys:Double x:Key="PayMethodMinHeight">240</sys:Double>
+    <!-- The welcome screen's source cards and their icon squares (T-341). -->
+    <sys:Double x:Key="SourceCardMinHeight">200</sys:Double>
+    <sys:Double x:Key="IconTileSize">88</sys:Double>
     <sys:Double x:Key="PayMethodWidth">560</sys:Double>
     <sys:Double x:Key="PaymentQrSize">480</sys:Double>
     <sys:Double x:Key="ReceiptQrSize">280</sys:Double>

@@ -161,6 +161,31 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public string PrintByCodeText => T("home.printByCode");
 
+    // The welcome screen as the design draws it (T-341): a big line, the
+    // ways a file comes in as cards, and what the kiosk offers right now.
+    public string HeroTitle => T("home.heroTitle");
+
+    public string HeroSubtitle => T("home.heroSubtitle");
+
+    public string UsbCardTitle => T("home.usbTitle");
+
+    public string UsbCardHint => T("home.usbHint");
+
+    public string CodeCardTitle => T("home.codeTitle");
+
+    public string CodeCardHint => T("home.codeHint");
+
+    public string PhoneCardTitle => T("home.phoneTitle");
+
+    public string PhoneCardHint => T("home.phoneHint");
+
+    public string ReadyText => T("home.ready");
+
+    public string SecureText => T("home.secure");
+
+    /// <summary>"Növbə: 3" - how many orders are ahead, the same count the side panel lists.</summary>
+    public string QueueSummaryText => Queue.Count == 0 ? T("home.queueEmpty") : T("home.queue", Queue.Count);
+
     /// <summary>The flash order and the cancel screen; set once the services are up.</summary>
     [ObservableProperty]
     private PrintFlowViewModel? _flow;
@@ -756,6 +781,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 StatusText = T(entry.IsPrinting ? "queue.statusPrinting" : "queue.statusQueued"),
             });
         }
+
+        OnPropertyChanged(nameof(QueueSummaryText));
     }
 
     protected override void OnLanguageChanged()
