@@ -20,6 +20,7 @@ import 'heic_converter.dart';
 import 'auto_delete_sheet.dart';
 import '../layout/layout_launcher.dart';
 import '../print_hub/print_next.dart';
+import '../print_hub/print_start.dart';
 import '../sharing/shares_controller.dart';
 
 /// "Fayllarım" (plan sections 2.2, 8.2): upload from the phone or the camera,
@@ -153,7 +154,7 @@ class _FileCard extends ConsumerWidget {
         tooltip: l10n.commonMore,
         icon: Icon(Icons.more_vert, color: tokens.neutral600),
         onSelected: (choice) => switch (choice) {
-          'print' => context.push(next!, extra: file),
+          'print' => startPrint(context, ref, file),
           'prepare' => context.push(Routes.prepare, extra: file),
           'schedule' => context.push(Routes.scheduleNew, extra: file),
           'placeOnPage' => openNewLayout(context, ref, [LayoutSource(file)]),

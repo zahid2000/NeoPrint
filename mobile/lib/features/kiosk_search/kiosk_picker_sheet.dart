@@ -10,16 +10,23 @@ import 'kiosk_search_controller.dart';
 import 'kiosk_status_view.dart';
 
 /// Opens the kiosk choice as a bottom sheet; null when nothing was chosen.
-Future<KioskSummary?> showKioskPicker(BuildContext context) =>
-    showModalBottomSheet<KioskSummary>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => const KioskPickerSheet(),
-    );
+///
+/// [onlyWorking]: printing now (T-356) - a kiosk that does not take orders
+/// is listed with its status but cannot be chosen.
+Future<KioskSummary?> showKioskPicker(
+  BuildContext context, {
+  bool onlyWorking = false,
+}) => showModalBottomSheet<KioskSummary>(
+  context: context,
+  isScrollControlled: true,
+  builder: (_) => KioskPickerSheet(onlyWorking: onlyWorking),
+);
 
 /// The kiosks to choose from: the public search, nearest or by name.
 class KioskPickerSheet extends ConsumerWidget {
-  const KioskPickerSheet({super.key});
+  const KioskPickerSheet({super.key, this.onlyWorking = false});
+
+  final bool onlyWorking;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -54,6 +61,8 @@ class KioskPickerSheet extends ConsumerWidget {
                         ),
                         subtitle: Text(kiosk.address),
                         trailing: KioskStatusChip(status: kiosk.status),
+                        enabled:
+                            !onlyWorking || kiosk.status == KioskStatus.online,
                         onTap: () => Navigator.pop(context, kiosk),
                       ),
                   ],

@@ -12,6 +12,8 @@ import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:neoprint/features/files/file_models.dart';
 import 'package:neoprint/features/files/file_preview_screen.dart';
 import 'package:neoprint/features/files/files_controller.dart';
+import 'package:neoprint/features/kiosk_search/kiosk_models.dart';
+import 'package:neoprint/features/kiosk_search/kiosk_search_controller.dart';
 import 'package:neoprint/features/print_hub/choose_file_screen.dart';
 import 'package:neoprint/features/print_hub/print_upload_screen.dart';
 import 'package:neoprint/features/session/session_controller.dart';
@@ -19,6 +21,8 @@ import 'package:neoprint/features/session/session_models.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
 
 import 'feature_flags_test.dart' show FixedFlags;
+import 'kiosk_search_test.dart' show FakeKiosks, elmler, mayis;
+import 'session_test.dart' show FakeSessions;
 import 'files_screen_test.dart' show ListRepository, file;
 
 /// The list, and pages that come back as a 1×1 PNG.
@@ -137,6 +141,8 @@ Widget flow(
   Object? extra,
   Map<String, bool> flags = const {},
   ListRepository? repository,
+  FakeSessions? sessions,
+  List<KioskSummary> kiosks = const [elmler, mayis],
 }) {
   final router = GoRouter(
     initialLocation: start,
@@ -162,6 +168,11 @@ Widget flow(
             Text('prepare ${(state.extra! as UserFile).fileName}'),
       ),
       GoRoute(
+        path: Routes.sessionPrint,
+        builder: (_, state) =>
+            Text('print now ${(state.extra! as UserFile).fileName}'),
+      ),
+      GoRoute(
         path: Routes.scheduleNew,
         builder: (_, state) => const Text('schedule'),
       ),
@@ -176,6 +187,8 @@ Widget flow(
       userHubEventsProvider.overrideWithValue(const Stream.empty()),
       featureFlagsProvider.overrideWith(() => FixedFlags(flags)),
       sessionProvider.overrideWith(NoSession.new),
+      sessionRepositoryProvider.overrideWithValue(sessions ?? FakeSessions()),
+      kioskRepositoryProvider.overrideWithValue(FakeKiosks(kiosks)),
     ],
     child: MaterialApp.router(
       theme: AppTheme.light(),
@@ -217,6 +230,13 @@ void main() {
     await tester.tap(find.text('Çap parametrləri'));
     await tester.pumpAndSettle();
 
+    // T-356: how to print, "Çap et" chosen at first.
+    expect(find.text('Necə çap edək?'), findsOneWidget);
+    await tester.tap(find.text('Kiosk üçün hazırla'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Davam et'));
+    await tester.pumpAndSettle();
+
     expect(find.text('prepare hesabat.pdf'), findsOneWidget);
 
     // The file list keeps polling for the converting one; stop it.
@@ -245,15 +265,89 @@ void main() {
     },
   );
 
-  testWidgets('with "Kiosk üçün hazırla" off the file goes on to a scheduled '
-      'print', (tester) async {
+  Future<void> openChoice(WidgetTester tester) async {
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Çap parametrləri'),
+      100,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Çap parametrləri'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('"Çap et", the default, opens a session at a working kiosk and '
+      'its print settings; a kiosk that is not working cannot be chosen '
+      '(T-356)', (tester) async {
+    final ready = file();
+    final sessions = FakeSessions();
+    await tester.pumpWidget(
+      flow(
+        [ready],
+        start: Routes.filePreview(ready.id),
+        extra: ready,
+        sessions: sessions,
+      ),
+    );
+    await openChoice(tester);
+
+    await tester.tap(find.text('Davam et'));
+    await tester.pumpAndSettle();
+
+    // The kiosk that is not working is listed, but cannot be chosen.
+    await tester.tap(find.text('KSK-9001 · 28 May'));
+    await tester.pumpAndSettle();
+    expect(sessions.opened, isEmpty);
+
+    await tester.tap(find.text('KSK-9002 · Elmlər'));
+    await tester.pumpAndSettle();
+
+    expect(sessions.opened, ['KSK-9002']);
+    expect(find.text('print now hesabat.pdf'), findsOneWidget);
+
+    // Closing the session stops its end timer.
+    await ProviderScope.containerOf(
+      tester.element(find.text('print now hesabat.pdf')),
+    ).read(sessionProvider.notifier).close();
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('with no kiosk working "Çap et" is off and says why (T-356)', (
+    tester,
+  ) async {
     final ready = file();
     await tester.pumpWidget(
       flow(
         [ready],
         start: Routes.filePreview(ready.id),
         extra: ready,
-        flags: {FeatureKey.userQrPrint: false},
+        kiosks: const [mayis],
+      ),
+    );
+    await openChoice(tester);
+
+    expect(find.textContaining('işləyən kiosk yoxdur'), findsOneWidget);
+    await tester.tap(find.text('Çap et'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Davam et'));
+    await tester.pumpAndSettle();
+
+    // The preparation, not a kiosk choice.
+    expect(find.text('prepare hesabat.pdf'), findsOneWidget);
+  });
+
+  testWidgets('with printing now and "Kiosk üçün hazırla" off the file goes '
+      'on to a scheduled print', (tester) async {
+    final ready = file();
+    await tester.pumpWidget(
+      flow(
+        [ready],
+        start: Routes.filePreview(ready.id),
+        extra: ready,
+        flags: {
+          FeatureKey.userQrPrint: false,
+          FeatureKey.mobileSessionPrint: false,
+        },
       ),
     );
     await tester.pumpAndSettle();
@@ -283,6 +377,8 @@ void main() {
             readBytes: () async => Uint8List(3),
           ),
           repository: repository,
+          // Only the preparation is on: nothing to choose.
+          flags: {FeatureKey.mobileSessionPrint: false},
         ),
       );
       await tester.pump();

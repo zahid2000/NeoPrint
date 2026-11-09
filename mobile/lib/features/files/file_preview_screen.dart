@@ -15,6 +15,7 @@ import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_design.dart';
 import '../print_hub/print_next.dart';
+import '../print_hub/print_start.dart';
 import 'file_models.dart';
 import 'files_controller.dart';
 
@@ -291,7 +292,7 @@ class _FilePreviewScreenState extends ConsumerState<FilePreviewScreen> {
             const SizedBox(height: Spacing.x4),
             FilledButton.icon(
               onPressed: canPrint(file)
-                  ? () => context.push(next, extra: file)
+                  ? () => startPrint(context, ref, file)
                   : null,
               iconAlignment: IconAlignment.end,
               icon: const Icon(Icons.arrow_forward),
