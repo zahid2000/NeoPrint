@@ -398,3 +398,6 @@ Statuslar: `Açıq`, `İcrada`, `Tamamlandı`, `Ləğv edildi (səbəb)`, `Təxi
 | T-372 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): fayla baxışda faylın özünə az yer qalır, "Fayl məlumatı" kartı çox böyükdür — məlumat yuxarıda faylın adının yanında olsun | Açıq | — |
 | T-373 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): **Redaktə** ekranında düymələr bir-birinə girib ("Fırlat", "Əvvəl", "Sonra" kəsilir) | Açıq | — |
 | T-374 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): **Ödəniş** ekranında yazılar kənara daşır ("Ödəniş üçün 4:54 vaxtınız var") | Açıq | — |
+| T-375 | 2026-11-10 | 7B | Layihə sahibi (mobil): kiosk axtarışında radius **ən çox 10 km**-dir — dəyişmək imkanı olsun, ya da **məsafəsiz "Hamısı"** seçimi; ana səhifədəki yaxın kiosk da bu parametrə görə gətirmir (T-369 ilə əlaqəli) | Açıq | — |
+| T-376 | 2026-11-10 | 7B | Layihə sahibi (mobil, T-356-nın dəyişikliyi): fayla baxışdan sonra **popup soruşmasın** — birbaşa çap parametrlərinə girsin; parametrlərdə **kiosk seçimindən yuxarıda "İndi çap et" / "Hazırla"**, sonra kiosk seçimi: "İndi çap et" — yalnız aktiv kiosklar, "Hazırla" — bütün kiosklar | Açıq | — |
+| T-377 | 2026-11-10 | 7B | Layihə sahibi (mobil, T-338 / T-342-nin davamı): **dizayn seçilmiş şəkillə tam eyni deyil** — ikonlar, kartlar, üslub, rənglər `docs/dizayn/mobile/`-dəki seçilmiş nümunə ilə eyni olsun | Açıq | — |
