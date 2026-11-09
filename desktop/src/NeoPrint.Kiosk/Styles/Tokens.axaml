@@ -145,6 +145,9 @@
     <!-- The welcome screen's source cards and their icon squares (T-341). -->
     <sys:Double x:Key="SourceCardMinHeight">200</sys:Double>
     <sys:Double x:Key="IconTileSize">88</sys:Double>
+    <!-- The order screens in the same look (T-341): a file's row, the preview's side card. -->
+    <sys:Double x:Key="RowIconTileSize">56</sys:Double>
+    <sys:Double x:Key="SideCardWidth">400</sys:Double>
     <sys:Double x:Key="PayMethodWidth">560</sys:Double>
     <sys:Double x:Key="PaymentQrSize">480</sys:Double>
     <sys:Double x:Key="ReceiptQrSize">280</sys:Double>
@@ -154,8 +157,12 @@
     <CornerRadius x:Key="StatusIconRadius">60</CornerRadius>
     <sys:Double x:Key="FooterHeight">96</sys:Double>
     <sys:Double x:Key="QueuePanelWidth">280</sys:Double>
-    <!-- The label column of the print options: wide enough for the longest label in any language (ru "Страниц на листе"). -->
-    <sys:Double x:Key="OptionLabelWidth">340</sys:Double>
+    <!-- The label column of the print options, at body size as the poster draws it (T-341): wide enough for the longest label in any language (ru "Страниц на листе"). -->
+    <sys:Double x:Key="OptionLabelWidth">260</sys:Double>
     <sys:Double x:Key="StatusChipHeight">40</sys:Double>
+    <!-- "Sessiya bitmək üzrədir" (T-341): the card over a dimmed screen. -->
+    <sys:Double x:Key="DialogWidth">760</sys:Double>
+    <sys:Double x:Key="ScrimOpacity">0.55</sys:Double>
+    <sys:Double x:Key="CountdownBarHeight">12</sys:Double>
 
 </ResourceDictionary>

@@ -481,6 +481,15 @@ public sealed partial class ScreenRenderTests : IDisposable
         cancel.StartCancel();
         screens.Add(("26-flow-cancel-lookup", Shell(language, KioskScreen.Flow, shell => shell.Flow = cancel)));
 
+        // "Sessiya bitmək üzrədir" over a half-made order (T-341).
+        var idle = await FlowAsync(language, skipPayment: true);
+        await idle.OpenCommand.ExecuteAsync(idle.Entries.First(entry => entry.IsSelectable && !entry.IsFolder));
+        screens.Add(("27-idle-warning", Shell(language, KioskScreen.Flow, shell =>
+        {
+            shell.Flow = idle;
+            shell.IdleSecondsLeft = 25;
+        })));
+
         // The remaining steps as the view draws them when the flow is put there.
         foreach (var stage in new[]
                  {

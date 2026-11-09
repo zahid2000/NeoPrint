@@ -43,7 +43,11 @@ public sealed class KioskSession
     }
 
     /// <summary>Somebody touched the screen: the idle clock starts again.</summary>
-    public void Touch() => _lastTouch = DateTime.UtcNow;
+    public void Touch()
+    {
+        _lastTouch = DateTime.UtcNow;
+        _model.Touched(_lastTouch);
+    }
 
     /// <returns>True when the device was detached and enrollment has to start over.</returns>
     public async Task<bool> RunAsync(CancellationToken cancellationToken)
@@ -605,6 +609,7 @@ public sealed class KioskSession
     private void ResetIfIdle(KioskRuntime runtime)
     {
         var limit = TimeSpan.FromSeconds(Math.Max(30, runtime.Configuration?.IdleResetSeconds ?? 90));
+        _model.SetOrderIdleLimit(limit);
 
         if (_model.ResetIfIdle(DateTime.UtcNow - _lastTouch, limit, runtime.Configuration?.DefaultLanguage))
         {

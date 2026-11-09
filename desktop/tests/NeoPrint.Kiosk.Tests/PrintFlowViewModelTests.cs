@@ -242,6 +242,83 @@ public sealed class PrintFlowViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task The_last_half_minute_of_an_idle_order_shows_a_countdown_that_a_touch_takes_away()
+    {
+        var (flow, kit) = await FlowAsync();
+        kit.Pdf(2, _drive, "report.pdf");
+        var shell = new MainWindowViewModel { Flow = flow, Screen = KioskScreen.Flow };
+        await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
+        await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
+        shell.SetOrderIdleLimit(TimeSpan.FromSeconds(90));
+
+        shell.UpdateIdleWarning(TimeSpan.FromSeconds(50));
+        shell.ShowIdleWarning.Should().BeFalse("forty seconds are left - too early to warn");
+
+        shell.UpdateIdleWarning(TimeSpan.FromSeconds(65));
+        shell.ShowIdleWarning.Should().BeTrue();
+        shell.IdleSecondsLeft.Should().Be(25);
+        shell.IdleCountdownText.Should().Be("00:25");
+        flow.Stage.Should().Be(FlowStage.Preview, "a warning drops nothing");
+
+        shell.Touched(DateTime.UtcNow);
+        shell.ShowIdleWarning.Should().BeFalse();
+        flow.Stage.Should().Be(FlowStage.Preview);
+    }
+
+    [Fact]
+    public async Task At_the_end_of_the_countdown_the_order_goes_and_the_kiosk_is_home()
+    {
+        var (flow, kit) = await FlowAsync();
+        kit.Pdf(2, _drive, "report.pdf");
+        var shell = new MainWindowViewModel { Flow = flow, Screen = KioskScreen.Flow };
+        await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
+        await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
+        shell.SetOrderIdleLimit(TimeSpan.FromSeconds(90));
+
+        shell.UpdateIdleWarning(TimeSpan.FromSeconds(91));
+
+        shell.ShowIdleWarning.Should().BeFalse();
+        shell.Screen.Should().Be(KioskScreen.Home);
+        flow.Pages.Should().BeEmpty();
+        Directory.GetFileSystemEntries(kit.Spool.WorkFolder).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Cancel_on_the_warning_drops_the_order_at_once()
+    {
+        var (flow, kit) = await FlowAsync();
+        kit.Pdf(2, _drive, "report.pdf");
+        var shell = new MainWindowViewModel { Flow = flow, Screen = KioskScreen.Flow };
+        await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
+        await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
+        shell.SetOrderIdleLimit(TimeSpan.FromSeconds(90));
+        shell.UpdateIdleWarning(TimeSpan.FromSeconds(70));
+
+        shell.EndSessionCommand.Execute(null);
+
+        shell.ShowIdleWarning.Should().BeFalse();
+        shell.Screen.Should().Be(KioskScreen.Home);
+        flow.Pages.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(FlowStage.Working)]
+    [InlineData(FlowStage.QrPayment)]
+    [InlineData(FlowStage.Placed)]
+    public async Task No_countdown_over_an_order_being_prepared_paid_on_a_phone_or_already_placed(FlowStage stage)
+    {
+        var (flow, _) = await FlowAsync();
+        var shell = new MainWindowViewModel { Flow = flow, Screen = KioskScreen.Flow };
+        shell.SetOrderIdleLimit(TimeSpan.FromSeconds(90));
+        flow.Stage = stage;
+
+        shell.UpdateIdleWarning(TimeSpan.FromSeconds(80));
+
+        shell.ShowIdleWarning.Should().BeFalse();
+        shell.Screen.Should().Be(KioskScreen.Flow);
+    }
+
+    [Fact]
     public async Task An_order_being_placed_is_not_interrupted_by_the_idle_reset()
     {
         var (flow, _) = await FlowAsync();

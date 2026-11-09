@@ -524,7 +524,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         // A file being prepared or an order being placed is left to finish; a
         // QR being paid on a phone is not idleness - its own countdown ends it.
         // The user's own file list closes sooner: their file names are on a public screen (plan 7.3, screen 10).
-        var limit = Flow?.Stage == FlowStage.UserFiles && orderLimit > UserFilesFor ? UserFilesFor : orderLimit;
+        var limit = OrderLimit(orderLimit);
 
         if (Screen == KioskScreen.Flow && Flow is { Stage: not (FlowStage.Working or FlowStage.QrPayment) } flow && idle > limit)
         {
@@ -551,6 +551,109 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         return reset;
+    }
+
+    // ---- "Sessiya bitmək üzrədir" (T-341, the poster's screen 15) ----
+    //
+    // The idle reset above used to drop a half-made order without a word. For
+    // the last half minute the customer now sees a countdown with "Davam et"
+    // (any touch does the same) and "Ləğv et"; at zero the order goes, as before.
+
+    /// <summary>How long before an idle order is dropped the countdown shows.</summary>
+    public static readonly TimeSpan IdleWarningFor = TimeSpan.FromSeconds(30);
+
+    private DateTime _lastTouchUtc = DateTime.UtcNow;
+    private TimeSpan _orderIdleLimit = TimeSpan.FromSeconds(90);
+
+    /// <summary>Seconds left before the order is dropped; 0 while no warning shows.</summary>
+    [ObservableProperty]
+    private int _idleSecondsLeft;
+
+    public bool ShowIdleWarning => IdleSecondsLeft > 0;
+
+    public string IdleWarningTitle => T("idle.title");
+
+    public string IdleWarningBody => T("idle.body", IdleSecondsLeft);
+
+    public string IdleCountdownText => $"00:{IdleSecondsLeft:00}";
+
+    /// <summary>How much of the countdown is left, 0..1, for the bar under the number.</summary>
+    public double IdleWarningProgress => IdleSecondsLeft / WarningWindow(_orderIdleLimit).TotalSeconds;
+
+    public string IdleStayText => T("idle.stay");
+
+    public string IdleEndText => T("idle.end");
+
+    /// <summary><c>Kiosk.IdleResetSeconds</c> as the session last read it.</summary>
+    public void SetOrderIdleLimit(TimeSpan limit) => _orderIdleLimit = limit;
+
+    /// <summary>Somebody touched the screen: the countdown, if any, goes away.</summary>
+    public void Touched(DateTime utcNow)
+    {
+        _lastTouchUtc = utcNow;
+        IdleSecondsLeft = 0;
+    }
+
+    /// <summary>
+    /// Each second: shows the countdown over a half-made order in its last
+    /// <see cref="IdleWarningFor"/>, and drops the order at zero.
+    /// </summary>
+    public void UpdateIdleWarning(TimeSpan idle)
+    {
+        if (!HasOpenOrder)
+        {
+            IdleSecondsLeft = 0;
+            return;
+        }
+
+        var limit = OrderLimit(_orderIdleLimit);
+        var left = limit - idle;
+
+        if (left <= TimeSpan.Zero)
+        {
+            IdleSecondsLeft = 0;
+            ResetIfIdle(idle, _orderIdleLimit, defaultLanguage: null);
+            return;
+        }
+
+        IdleSecondsLeft = left <= WarningWindow(limit) ? (int)Math.Ceiling(left.TotalSeconds) : 0;
+    }
+
+    [RelayCommand]
+    private void StayInSession() => Touched(DateTime.UtcNow);
+
+    [RelayCommand]
+    private void EndSession()
+    {
+        IdleSecondsLeft = 0;
+
+        if (Screen == KioskScreen.Flow && Flow is { } flow)
+        {
+            flow.Abandon();
+            Screen = RestingScreen;
+        }
+    }
+
+    /// <summary>
+    /// An order the customer is still making: not one being prepared or paid
+    /// on a phone, and not a finished one whose screen simply goes home.
+    /// </summary>
+    private bool HasOpenOrder => Screen == KioskScreen.Flow
+        && Flow is { Stage: not (FlowStage.Working or FlowStage.QrPayment or FlowStage.Placed or FlowStage.Collected or FlowStage.CancelDone) };
+
+    private TimeSpan OrderLimit(TimeSpan orderLimit) =>
+        Flow?.Stage == FlowStage.UserFiles && orderLimit > UserFilesFor ? UserFilesFor : orderLimit;
+
+    // A short limit (30 s is the floor) warns for its second half, not the whole of it.
+    private static TimeSpan WarningWindow(TimeSpan limit) =>
+        limit / 2 < IdleWarningFor ? limit / 2 : IdleWarningFor;
+
+    partial void OnIdleSecondsLeftChanged(int value)
+    {
+        OnPropertyChanged(nameof(ShowIdleWarning));
+        OnPropertyChanged(nameof(IdleWarningBody));
+        OnPropertyChanged(nameof(IdleCountdownText));
+        OnPropertyChanged(nameof(IdleWarningProgress));
     }
 
     /// <summary>The wall clock, rendered in Asia/Baku (plan section 2.1).</summary>
@@ -829,6 +932,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(ClockText));
         ForgetEndedSessions();
+        UpdateIdleWarning(DateTime.UtcNow - _lastTouchUtc);
     }
 
     /// <summary>The header shows which language is on (docs/TASKS.md T-086).</summary>

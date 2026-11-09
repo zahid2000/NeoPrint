@@ -142,6 +142,36 @@
         <Setter Property="HorizontalAlignment" Value="Left" />
     </Style>
 
+    <!-- A list in one card (T-341: the drive's files): rows divided by a line, not boxed one by one. -->
+    <Style Selector="Border.list">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}" />
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+
+    <Style Selector="Button.file-row">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="{DynamicResource Inset4}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <Style Selector="Button.file-row:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brand50}" />
+    </Style>
+
+    <!-- The smaller square of a row. -->
+    <Style Selector="Border.icon-tile.row">
+        <Setter Property="Width" Value="{DynamicResource RowIconTileSize}" />
+        <Setter Property="Height" Value="{DynamicResource RowIconTileSize}" />
+    </Style>
+
     <!-- Information the customer should know, not a problem: why an option is fixed. -->
     <Style Selector="Border.info">
         <Setter Property="Background" Value="{DynamicResource InfoBg}" />

@@ -257,6 +257,35 @@
                            VerticalAlignment="Center" />
             </Grid>
         </Border>
+
+        <!-- "Sessiya bitmək üzrədir" (T-341, the poster's screen 15): over the whole
+             surface, so nothing under it can be touched by mistake; any touch keeps
+             the order, "Ləğv et" drops it now, zero drops it as the idle reset did. -->
+        <Panel Grid.RowSpan="3" Grid.ColumnSpan="2" IsVisible="{Binding ShowIdleWarning}">
+            <Border Background="{DynamicResource Neutral900}" Opacity="{StaticResource ScrimOpacity}" />
+            <Border Classes="card" Width="{StaticResource DialogWidth}" CornerRadius="{DynamicResource RadiusLg}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="{DynamicResource Space6}">
+                    <Border Width="{DynamicResource StatusIconSize}" Height="{DynamicResource StatusIconSize}" Background="{DynamicResource WarningBg}"
+                            CornerRadius="{DynamicResource StatusIconRadius}" HorizontalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconClock}" Width="60" Height="60" Foreground="{DynamicResource Warning500}" />
+                    </Border>
+                    <TextBlock Text="{Binding IdleWarningTitle}" Classes="h1" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding IdleWarningBody}" Classes="muted" TextAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding IdleCountdownText}" Classes="display" HorizontalAlignment="Center" />
+                    <ProgressBar Minimum="0" Maximum="1" Value="{Binding IdleWarningProgress}" Height="{StaticResource CountdownBarHeight}"
+                                 Foreground="{DynamicResource Brand600}" Background="{DynamicResource Neutral100}" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Space4}">
+                        <Button Classes="secondary" HorizontalAlignment="Stretch" Command="{Binding EndSessionCommand}">
+                            <TextBlock Text="{Binding IdleEndText}" />
+                        </Button>
+                        <Button Grid.Column="1" Classes="primary" HorizontalAlignment="Stretch" Command="{Binding StayInSessionCommand}">
+                            <TextBlock Text="{Binding IdleStayText}" />
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Panel>
     </Grid>
     </Viewbox>
 </Window>

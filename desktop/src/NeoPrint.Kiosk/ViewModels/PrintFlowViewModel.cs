@@ -288,6 +288,11 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
     public string PreviewTitle => T("preview.title");
 
+    /// <summary>The preview's side card (T-341): "Fayl məlumatı", the name and how many pages.</summary>
+    public string FileInfoTitle => T("preview.info");
+
+    public string? FilePagesText => PageCount > 0 ? Localization.Formats.Pages(PageCount, Language) : null;
+
     public string EditText => T("preview.edit");
 
     public string ContinueText => T("preview.continue");
@@ -671,6 +676,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsText));
         OnPropertyChanged(nameof(IsPaged));
         OnPropertyChanged(nameof(PageCount));
+        OnPropertyChanged(nameof(FilePagesText));
         OnPropertyChanged(nameof(AllPagesText));
     }
 
@@ -919,6 +925,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(PageCount));
+        OnPropertyChanged(nameof(FilePagesText));
         OnPropertyChanged(nameof(AllPagesText));
     }
 
