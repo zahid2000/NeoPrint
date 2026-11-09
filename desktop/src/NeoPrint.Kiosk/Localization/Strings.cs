@@ -93,6 +93,8 @@ public static class Strings
                 ["queue.guest"] = "Qonaq",
                 ["queue.statusQueued"] = "Növbədə",
                 ["queue.statusPrinting"] = "Çap olunur",
+                ["queue.progress"] = "{0} / {1} səhifə",
+                ["queue.finishAt"] = "Hazır ≈ {0}",
 
                 ["common.back"] = "Geri",
                 ["common.cancel"] = "İmtina",
@@ -396,6 +398,8 @@ public static class Strings
                 ["queue.guest"] = "Guest",
                 ["queue.statusQueued"] = "Queued",
                 ["queue.statusPrinting"] = "Printing",
+                ["queue.progress"] = "{0} / {1} pages",
+                ["queue.finishAt"] = "Ready ≈ {0}",
 
                 ["common.back"] = "Back",
                 ["common.cancel"] = "Cancel",
@@ -704,6 +708,8 @@ public static class Strings
                 ["queue.guest"] = "Гость",
                 ["queue.statusQueued"] = "В очереди",
                 ["queue.statusPrinting"] = "Печатается",
+                ["queue.progress"] = "{0} / {1} стр.",
+                ["queue.finishAt"] = "Готово ≈ {0}",
 
                 ["common.back"] = "Назад",
                 ["common.cancel"] = "Отмена",

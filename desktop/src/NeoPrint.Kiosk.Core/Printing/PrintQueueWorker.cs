@@ -46,7 +46,14 @@ public sealed class ApiPrintBackend : IPrintBackend
 }
 
 /// <summary>What the worker is doing, for the screen.</summary>
-public sealed record PrinterActivity(Guid? JobId, string? JobCode, PrinterState? PrinterState, string? LastErrorCode);
+public sealed record PrinterActivity(Guid? JobId, string? JobCode, PrinterState? PrinterState, string? LastErrorCode)
+{
+    /// <summary>Pages of the job at the printer that are out (T-360): its counter, or the clock.</summary>
+    public int PrintedSides { get; init; }
+
+    /// <summary>Pages the job at the printer takes; 0 when nothing is printing.</summary>
+    public int TotalSides { get; init; }
+}
 
 /// <summary>
 /// Prints this kiosk's queue, one job at a time (plan section 7.4).
@@ -116,6 +123,12 @@ public sealed class PrintQueueWorker
 
     /// <summary>What is at the printer now, and how the printer was last seen.</summary>
     public PrinterActivity Activity { get; private set; } = new(null, null, null, null);
+
+    /// <summary>How fast the printer goes, learnt from finished jobs (T-360).</summary>
+    public PrintPace Pace { get; } = new();
+
+    /// <summary>How often the page counter is read while a job prints (T-360).</summary>
+    public TimeSpan ProgressInterval { get; set; } = TimeSpan.FromSeconds(3);
 
     /// <summary>Raised when <see cref="Activity"/> changes.</summary>
     public event Action<PrinterActivity>? ActivityChanged;
@@ -551,12 +564,15 @@ public sealed class PrintQueueWorker
             UpdatedAt = DateTime.UtcNow,
         };
         _journal.Save(printing);
-        SetActivity(new PrinterActivity(entry.JobId, entry.JobCode, state, null));
+        var totalSides = PlannedSidesOf(entry);
+        SetActivity(new PrinterActivity(entry.JobId, entry.JobCode, state, null) { TotalSides = totalSides });
 
         await TryReportAsync(printing, "Printing", 0, 0, null, cancellationToken).ConfigureAwait(false);
 
         string? working = null;
         PrintOutcome outcome;
+        using var progressStop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var progress = TrackProgressAsync(printing, totalSides, state, progressStop.Token);
 
         try
         {
@@ -588,6 +604,13 @@ public sealed class PrintQueueWorker
         finally
         {
             _spool.Discard(working);
+            await progressStop.CancelAsync().ConfigureAwait(false);
+            await progress.ConfigureAwait(false);
+        }
+
+        if (outcome.Succeeded)
+        {
+            Pace.Learn(totalSides, DateTime.UtcNow - printing.StartedAt!.Value);
         }
 
         var counterAfter = await ReadCounterAsync(printer, cancellationToken).ConfigureAwait(false);
@@ -700,6 +723,62 @@ public sealed class PrintQueueWorker
                 entry.CounterAfter?.Value,
                 entry.CounterBefore is { } counter ? (counter.CountsSheets ? "sheets" : "impressions") : null,
                 entry.Recovered);
+
+    /// <summary>The printed sides a job takes.</summary>
+    private static int PlannedSidesOf(JournalEntry entry)
+        => entry.Sides > 0 ? entry.Sides : entry.RequiredSheets * (entry.Options.Duplex ? 2 : 1);
+
+    /// <summary>
+    /// While a job prints (T-360): how many of its pages are out - by the
+    /// printer's counter when it has one, by the learnt pace otherwise - for
+    /// the queue panel. Never the last page: that is the printer's to say.
+    /// Screen only; nothing is reported or charged by it.
+    /// </summary>
+    private async Task TrackProgressAsync(JournalEntry printing, int totalSides, PrinterState state, CancellationToken cancellationToken)
+    {
+        var shown = 0;
+
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(ProgressInterval, cancellationToken).ConfigureAwait(false);
+
+                int done;
+                if (printing.CounterBefore is { } before
+                    && await ReadCounterAsync(printing.Printer, cancellationToken).ConfigureAwait(false) is { } now
+                    && now.CountsSheets == before.CountsSheets)
+                {
+                    var delta = (int)Math.Min(Math.Max(0, now.Value - before.Value), int.MaxValue);
+                    done = before.CountsSheets && printing.Options.Duplex ? delta * 2 : delta;
+                }
+                else
+                {
+                    done = Pace.SidesByTime(totalSides, DateTime.UtcNow - printing.StartedAt!.Value);
+                }
+
+                done = Math.Clamp(done, 0, Math.Max(0, totalSides - 1));
+
+                if (done > shown)
+                {
+                    shown = done;
+                    SetActivity(new PrinterActivity(printing.JobId, printing.JobCode, state, null)
+                    {
+                        PrintedSides = done,
+                        TotalSides = totalSides,
+                    });
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The job left the printer.
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Progress of job {JobCode} could not be followed.", printing.JobCode);
+        }
+    }
 
     private void SetActivity(PrinterActivity activity)
     {

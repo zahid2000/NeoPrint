@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using NeoPrint.Kiosk.Core;
+using NeoPrint.Kiosk.Core.Printing;
 using NeoPrint.Kiosk.Localization;
 
 namespace NeoPrint.Kiosk.ViewModels;
@@ -61,6 +62,23 @@ public sealed record QueueEntry(int Position, string JobCode, string OwnerInitia
 
     /// <summary>Queued or printing, in words: status is never colour alone (docs/DESIGN_SYSTEM.md).</summary>
     public string StatusText { get; init; } = string.Empty;
+
+    /// <summary>Printed pages the job takes: pages times copies (T-360).</summary>
+    public int Sides { get; init; }
+
+    /// <summary>Pages of it already out, while it prints (T-360).</summary>
+    public int PrintedSides { get; init; }
+
+    /// <summary>"3 / 7 səhifə" while it prints; empty otherwise.</summary>
+    public string ProgressText { get; init; } = string.Empty;
+
+    /// <summary>How far it is, 0 to 100, for the bar.</summary>
+    public double ProgressPercent { get; init; }
+
+    /// <summary>"Hazır ≈ 14:32" - an estimate from the printer's pace (T-360).</summary>
+    public string FinishText { get; init; } = string.Empty;
+
+    public bool ShowProgress => IsPrinting && Sides > 0;
 }
 
 /// <summary>
@@ -869,19 +887,65 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         };
     }
 
+    /// <summary>How fast the printer goes, for the queue's finish times (T-360); none - no times.</summary>
+    public PrintPace? Pace { get; set; }
+
+    private string? _printingCode;
+    private int _printedSides;
+    private int _printingSides;
+
+    /// <summary>
+    /// The page the printer is on (T-360): <paramref name="printed"/> of
+    /// <paramref name="total"/> for the job with this code; null - nothing prints.
+    /// </summary>
+    public void SetPrintProgress(string? jobCode, int printed, int total)
+    {
+        if (jobCode == _printingCode && printed == _printedSides && total == _printingSides)
+        {
+            return;
+        }
+
+        _printingCode = jobCode;
+        _printedSides = printed;
+        _printingSides = total;
+        SetQueue([.. Queue]);
+    }
+
     /// <summary>Replaces the queue, trimmed to the display limit.</summary>
     public void SetQueue(IEnumerable<QueueEntry> entries)
     {
         ArgumentNullException.ThrowIfNull(entries);
 
+        var shown = entries.Take(QueueDisplayLimit).Select(entry =>
+        {
+            var sides = entry.Sides > 0 ? entry.Sides : entry.Pages;
+            var printing = entry.IsPrinting && entry.JobCode == _printingCode;
+            return entry with
+            {
+                Sides = printing && _printingSides > 0 ? _printingSides : sides,
+                PrintedSides = printing ? Math.Min(_printedSides, printing && _printingSides > 0 ? _printingSides : sides) : 0,
+            };
+        }).ToList();
+
+        var finishes = Pace?.Finishes(
+            [.. shown.Select(entry => new QueuedWork(entry.Sides, entry.PrintedSides, entry.IsPrinting))], DateTime.Now);
+
         Queue.Clear();
 
-        foreach (var entry in entries.Take(QueueDisplayLimit))
+        for (var i = 0; i < shown.Count; i++)
         {
+            var entry = shown[i];
             Queue.Add(entry with
             {
                 PagesText = Localization.Formats.Pages(entry.Pages, Language),
                 StatusText = T(entry.IsPrinting ? "queue.statusPrinting" : "queue.statusQueued"),
+                ProgressText = entry.IsPrinting && entry.Sides > 0
+                    ? T("queue.progress", entry.PrintedSides, entry.Sides)
+                    : string.Empty,
+                ProgressPercent = entry.Sides > 0 ? 100.0 * entry.PrintedSides / entry.Sides : 0,
+                FinishText = finishes is null
+                    ? string.Empty
+                    : T("queue.finishAt", finishes[i].ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)),
             });
         }
 

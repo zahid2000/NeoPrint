@@ -335,14 +335,18 @@ public sealed partial class ScreenRenderTests : IDisposable
             SelectedPrinterName = "HP Color LaserJet Pro M454dn",
             CanPrintFromFlash = true,
             Screen = screen,
+            // T-360: finish times from the printer's pace.
+            Pace = new NeoPrint.Kiosk.Core.Printing.PrintPace(),
         };
 
         shell.SetQueue(
         [
-            new QueueEntry(1, "482913", "Z", 12, IsPrinting: true),
-            new QueueEntry(2, "775201", "A", 3, IsPrinting: false),
-            new QueueEntry(3, "118340", "M", 148, IsPrinting: false),
+            new QueueEntry(1, "482913", "Z", 12, IsPrinting: true) { Sides = 12 },
+            new QueueEntry(2, "775201", "A", 3, IsPrinting: false) { Sides = 3 },
+            new QueueEntry(3, "118340", "M", 148, IsPrinting: false) { Sides = 148 },
         ]);
+        // The printer is on page 5 of 12 (T-360).
+        shell.SetPrintProgress("482913", 5, 12);
 
         more?.Invoke(shell);
 

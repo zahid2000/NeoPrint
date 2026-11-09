@@ -335,4 +335,20 @@
     <Style Selector="TextBlock.warning">
         <Setter Property="Foreground" Value="{DynamicResource Warning500}" />
     </Style>
+
+    <!-- A job on the printer (T-360): the hourglass turns over, pauses, turns
+         again - a status that something is happening, not decoration
+         (docs/DESIGN_SYSTEM.md). -->
+    <Style Selector="PathIcon.busy">
+        <Setter Property="RenderTransform" Value="rotate(0deg)" />
+        <Style.Animations>
+            <Animation Duration="0:0:2.4" IterationCount="INFINITE" Easing="CubicEaseOut">
+                <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0" /></KeyFrame>
+                <KeyFrame Cue="25%"><Setter Property="RotateTransform.Angle" Value="180" /></KeyFrame>
+                <KeyFrame Cue="50%"><Setter Property="RotateTransform.Angle" Value="180" /></KeyFrame>
+                <KeyFrame Cue="75%"><Setter Property="RotateTransform.Angle" Value="360" /></KeyFrame>
+                <KeyFrame Cue="100%"><Setter Property="RotateTransform.Angle" Value="360" /></KeyFrame>
+            </Animation>
+        </Style.Animations>
+    </Style>
 </Styles>

@@ -84,6 +84,7 @@
          The 4-based scale, one step up for the kiosk: the smallest gap used
          on this screen is 16.
     -->
+    <sys:Double x:Key="Space2">8</sys:Double>
     <sys:Double x:Key="Space4">16</sys:Double>
     <sys:Double x:Key="Space6">24</sys:Double>
     <sys:Double x:Key="Space8">32</sys:Double>
@@ -106,6 +107,8 @@
     <Thickness x:Key="GapStart8">32,0,0,0</Thickness>
     <Thickness x:Key="GapStart12">48,0,0,0</Thickness>
     <Thickness x:Key="GapBelow4">0,0,0,16</Thickness>
+    <!-- The compact queue panel (T-360): half a step. -->
+    <Thickness x:Key="GapAbove2">0,8,0,0</Thickness>
     <!-- Right of and under an on-screen key, so neighbouring keys never touch. -->
     <Thickness x:Key="KeyGap">0,0,16,16</Thickness>
 
@@ -164,5 +167,7 @@
     <sys:Double x:Key="DialogWidth">760</sys:Double>
     <sys:Double x:Key="ScrimOpacity">0.55</sys:Double>
     <sys:Double x:Key="CountdownBarHeight">12</sys:Double>
+    <!-- The page progress of the job at the printer, in the 280px queue panel (T-360). -->
+    <sys:Double x:Key="QueueProgressHeight">6</sys:Double>
 
 </ResourceDictionary>

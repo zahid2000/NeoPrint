@@ -161,10 +161,16 @@ public sealed class KioskSession
             runtime.InstalledVersions = () => (updates.Agent?.AgentVersion, updates.Agent?.Installed.GetValueOrDefault(Core.Updates.UpdateComponents.Provisioning));
 
             var counters = _services.GetRequiredService<TelemetryCounters>();
+            // The queue's page progress and finish times come from the printer's pace (T-360).
+            _model.Pace = worker.Pace;
             Action<PrinterActivity> activityChanged = activity =>
             {
                 counters.Printing(activity.JobCode);
-                Dispatcher.UIThread.Post(() => _model.SetPrinterProblem(activity.LastErrorCode));
+                Dispatcher.UIThread.Post(() =>
+                {
+                    _model.SetPrinterProblem(activity.LastErrorCode);
+                    _model.SetPrintProgress(activity.JobCode, activity.PrintedSides, activity.TotalSides);
+                });
             };
 
             // How each job ended, for the pilot report (plan section 2.17);
@@ -721,7 +727,10 @@ public sealed class KioskSession
     }
 
     private static IEnumerable<QueueEntry> Map(IReadOnlyList<QueueItem> items)
-        => items.Select(item => new QueueEntry(item.Position, item.JobCode, item.UserInitial ?? string.Empty, item.Pages, item.Status == "Printing"));
+        => items.Select(item => new QueueEntry(item.Position, item.JobCode, item.UserInitial ?? string.Empty, item.Pages, item.Status == "Printing")
+        {
+            Sides = item.Pages * Math.Max(1, item.Copies),
+        });
 
     private async Task TryAsync(string what, Func<Task> action)
     {

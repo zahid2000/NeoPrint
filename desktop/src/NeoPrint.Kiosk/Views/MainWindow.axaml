@@ -210,14 +210,28 @@
                                                    Classes="caption"
                                                    TextTrimming="CharacterEllipsis" />
                                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                                            <PathIcon Width="20" Height="20" VerticalAlignment="Center"
-                                                      Data="{StaticResource IconPrint}" IsVisible="{Binding IsPrinting}"
+                                            <!-- T-360: the hourglass turns while the job is on the printer. -->
+                                            <PathIcon Classes="busy" Width="20" Height="20" VerticalAlignment="Center"
+                                                      Data="{StaticResource IconHourglass}" IsVisible="{Binding IsPrinting}"
                                                       Foreground="{Binding IsPrinting, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
                                             <PathIcon Width="20" Height="20" VerticalAlignment="Center"
                                                       Data="{StaticResource IconClock}" IsVisible="{Binding !IsPrinting}"
                                                       Foreground="{Binding IsPrinting, Converter={x:Static vm:ScreenConverters.PrintingBrush}}" />
                                             <TextBlock Text="{Binding StatusText}" Classes="caption" VerticalAlignment="Center" />
                                         </StackPanel>
+                                        <!-- "3 / 7 səhifə" and the bar, while it prints (T-360). -->
+                                        <StackPanel IsVisible="{Binding ShowProgress}" Spacing="{DynamicResource Space2}"
+                                                    Margin="{DynamicResource GapAbove2}">
+                                            <TextBlock Text="{Binding ProgressText}" Classes="body-small" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource Brand600}" />
+                                            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressPercent}"
+                                                         Height="{StaticResource QueueProgressHeight}" MinHeight="{StaticResource QueueProgressHeight}" MinWidth="0"
+                                                         Foreground="{DynamicResource Brand600}" Background="{DynamicResource Neutral100}" />
+                                        </StackPanel>
+                                        <!-- When it should be ready: an estimate (T-360). -->
+                                        <TextBlock Text="{Binding FinishText}" Classes="caption" TextWrapping="Wrap"
+                                                   IsVisible="{Binding FinishText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                   Margin="{DynamicResource GapAbove2}" />
                                     </StackPanel>
                                 </Grid>
                             </Border>
