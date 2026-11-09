@@ -20,12 +20,14 @@ import 'package:neoprint/features/wallet/wallet_controller.dart';
 import 'package:neoprint/features/wallet/wallet_repository.dart';
 import 'package:neoprint/features/wallet/wallet_screen.dart';
 
+import 'package:neoprint/features/kiosk_search/kiosk_search_screen.dart';
 import 'package:neoprint/features/payments/pay_screen.dart';
 import 'package:neoprint/features/profile/profile_screen.dart';
 
 import '../feature_flags_test.dart' as flags;
 import '../files_screen_test.dart' as files;
 import '../job_progress_test.dart' as progress;
+import '../kiosk_search_test.dart' as search;
 import '../kiosk_queue_test.dart' as queue;
 import '../payments_kit.dart';
 import '../print_hub_test.dart' as print_hub;
@@ -259,5 +261,17 @@ void main() {
     );
     await tester.pumpAndSettle();
     await _shoot(tester, '14-profile');
+  });
+
+  testWidgets('04 kiosks', skip: !_enabled, (tester) async {
+    await _phoneSize(tester);
+    await tester.pumpWidget(
+      search.app(
+        const KioskSearchScreen(),
+        search.FakeKiosks([search.elmler, search.mayis]),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _shoot(tester, '04-kiosks');
   });
 }
