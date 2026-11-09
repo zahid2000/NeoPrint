@@ -72,46 +72,129 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   }
 }
 
-class _WalletBody extends StatelessWidget {
+enum _WalletTab { history, vouchers }
+
+/// T-355, as the design draws "Balansım": one blue card with the balance,
+/// "Artır" and the bonus pages; the no-refund rule as one line under it;
+/// then "Əməliyyatlar" and the voucher codes as two tabs.
+class _WalletBody extends StatefulWidget {
   const _WalletBody({required this.state});
 
   final WalletState state;
+
+  @override
+  State<_WalletBody> createState() => _WalletBodyState();
+}
+
+class _WalletBodyState extends State<_WalletBody> {
+  _WalletTab _tab = _WalletTab.history;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final tokens = context.tokens;
+    final state = widget.state;
+
+    return ListView(
+      padding: const EdgeInsets.all(Spacing.x4),
+      children: [
+        _BalanceCard(wallet: state.wallet),
+        const SizedBox(height: Spacing.x3),
+        // Always on screen, not only at top-up: the rule the user agreed to
+        // at registration (plan section 2.14) - one quiet line, not a card.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.info_outline, color: tokens.warning),
+            const SizedBox(width: Spacing.x2),
+            Expanded(
+              child: Text(
+                l10n.walletNoRefundNote,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: tokens.neutral600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Spacing.x4),
+        NeoPillTabs<_WalletTab>(
+          values: _WalletTab.values,
+          selected: _tab,
+          expand: true,
+          label: (tab) => switch (tab) {
+            _WalletTab.history => l10n.walletTabHistory,
+            _WalletTab.vouchers => l10n.walletTabVouchers,
+          },
+          onSelected: (tab) => setState(() => _tab = tab),
+        ),
+        const SizedBox(height: Spacing.x3),
+        ...switch (_tab) {
+          _WalletTab.history when state.entries.isEmpty => [
+            NeoEmptyState(
+              icon: Icons.receipt_long_outlined,
+              message: l10n.walletNoHistory,
+              hint: l10n.walletNoHistoryHint,
+            ),
+          ],
+          _WalletTab.history => [
+            for (final entry in state.entries) _EntryTile(entry: entry),
+          ],
+          _WalletTab.vouchers => [
+            Text(l10n.walletVoucherHint, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: Spacing.x3),
+            OutlinedButton.icon(
+              onPressed: () => showVoucherDialog(context),
+              icon: const Icon(Icons.confirmation_number_outlined),
+              label: Text(l10n.walletVoucherTitle),
+            ),
+          ],
+        },
+      ],
+    );
+  }
+}
+
+/// The balance and the bonus pages on the brand's blue, with adding money
+/// on it - the screen's one main action.
+class _BalanceCard extends StatelessWidget {
+  const _BalanceCard({required this.wallet});
+
+  final Wallet wallet;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final language = Localizations.localeOf(context).languageCode;
+    final onBrand = theme.colorScheme.onPrimary;
+    final label = theme.textTheme.bodySmall?.copyWith(color: onBrand);
 
-    return ListView(
+    return Container(
       padding: const EdgeInsets.all(Spacing.x4),
-      children: [
-        // The balance on the brand's own blue, with adding money on it - the
-        // screen's one main action (T-342; the design's screen 12).
-        Container(
-          padding: const EdgeInsets.all(Spacing.x4),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary,
-            borderRadius: BorderRadius.circular(Radii.lg),
-          ),
-          child: Row(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary,
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(l10n.walletCurrentBalance, style: label),
+                    const SizedBox(height: Spacing.x1),
                     Text(
-                      formatMoney(state.wallet.balance, language: language),
+                      formatMoney(wallet.balance, language: language),
                       style: theme.textTheme.headlineMedium?.copyWith(
-                        color: theme.colorScheme.onPrimary,
+                        color: onBrand,
                         fontWeight: FontWeights.semibold,
                         fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    ),
-                    Text(
-                      l10n.walletAvailable,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onPrimary,
                       ),
                     ),
                   ],
@@ -120,7 +203,7 @@ class _WalletBody extends StatelessWidget {
               const SizedBox(width: Spacing.x2),
               FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: theme.colorScheme.onPrimary,
+                  backgroundColor: onBrand,
                   foregroundColor: theme.colorScheme.primary,
                   minimumSize: const Size(0, Sizes.touchTarget),
                 ),
@@ -130,71 +213,20 @@ class _WalletBody extends StatelessWidget {
               ),
             ],
           ),
-        ),
-        const SizedBox(height: Spacing.x3),
-        // The bonus pages on their own card, as on the home screen.
-        Card(
-          margin: EdgeInsets.zero,
-          color: context.tokens.successBackground,
-          child: Padding(
-            padding: const EdgeInsets.all(Spacing.x4),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.card_giftcard_outlined,
-                  color: context.tokens.success,
-                ),
-                const SizedBox(width: Spacing.x3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.homeBonus,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: context.tokens.neutral600,
-                        ),
-                      ),
-                      Text(
-                        l10n.homeBonusPagesShort(state.wallet.bonusPages),
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeights.semibold,
-                        ),
-                      ),
-                      Text(
-                        l10n.walletBonusAvailable,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: context.tokens.neutral600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          const SizedBox(height: Spacing.x3),
+          Divider(height: 1, color: onBrand.withAlpha(64)),
+          const SizedBox(height: Spacing.x3),
+          Text(l10n.walletBonusLabel, style: label),
+          const SizedBox(height: Spacing.x1),
+          Text(
+            l10n.homeBonusPagesShort(wallet.bonusPages),
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: onBrand,
+              fontWeight: FontWeights.semibold,
             ),
           ),
-        ),
-        const SizedBox(height: Spacing.x3),
-        // Always on screen, not only at top-up: the rule the user agreed to
-        // at registration (plan section 2.14).
-        NeoBanner(message: l10n.walletNoRefundNote, tone: StatusTone.warning),
-        const SizedBox(height: Spacing.x3),
-        OutlinedButton.icon(
-          onPressed: () => showVoucherDialog(context),
-          icon: const Icon(Icons.confirmation_number_outlined),
-          label: Text(l10n.walletVoucher),
-        ),
-        const SizedBox(height: Spacing.x6),
-        NeoSectionHeader(title: l10n.walletHistory),
-        if (state.entries.isEmpty)
-          NeoEmptyState(
-            icon: Icons.receipt_long_outlined,
-            message: l10n.walletNoHistory,
-            hint: l10n.walletNoHistoryHint,
-          )
-        else
-          for (final entry in state.entries) _EntryTile(entry: entry),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -210,7 +242,13 @@ class _EntryTile extends StatelessWidget {
     final tokens = context.tokens;
     final theme = Theme.of(context);
     final language = Localizations.localeOf(context).languageCode;
-    final incoming = entry.amount > 0;
+    // Bonus pages without money (T-355): the pages are the amount.
+    final pagesOnly = entry.amount == 0 && entry.bonusPages != 0;
+    final incoming = pagesOnly ? entry.bonusPages > 0 : entry.amount > 0;
+    final outgoing = pagesOnly ? entry.bonusPages < 0 : entry.amount < 0;
+    final amount = pagesOnly
+        ? l10n.homeBonusPagesShort(entry.bonusPages)
+        : formatMoney(entry.amount, language: language);
 
     final (label, icon, tone) = switch (entry.type) {
       'TopUp' => (l10n.walletTypeTopUp, Icons.add_card, IconTileTone.brand),
@@ -235,7 +273,8 @@ class _EntryTile extends StatelessWidget {
 
     final details = [
       if (entry.note?.isNotEmpty ?? false) entry.note!,
-      if (entry.bonusPages != 0) l10n.homeBonusPagesCount(entry.bonusPages),
+      if (entry.bonusPages != 0 && !pagesOnly)
+        l10n.homeBonusPagesCount(entry.bonusPages),
       formatDateTime(
         entry.createdAt,
         today: l10n.commonToday,
@@ -247,16 +286,25 @@ class _EntryTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: NeoIconTile(icon: icon, tone: tone),
       title: Text(label),
-      subtitle: Text(details.join('\n')),
-      isThreeLine: details.length > 1,
+      // One quiet line, as the design has it: "08 Okt, 14:32 · KSK-024".
+      subtitle: Text(
+        details.join(' · '),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodySmall?.copyWith(color: tokens.neutral600),
+      ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            '${incoming ? '+' : ''}${formatMoney(entry.amount, language: language)}',
+            '${incoming ? '+' : ''}$amount',
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: incoming ? tokens.success : tokens.neutral800,
+              color: incoming
+                  ? tokens.success
+                  : outgoing
+                  ? tokens.danger
+                  : tokens.neutral800,
               fontWeight: FontWeights.medium,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),

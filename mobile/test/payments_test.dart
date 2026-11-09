@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neoprint/core/format/formats.dart';
 import 'package:neoprint/core/network/api_client.dart';
 import 'package:neoprint/core/realtime/user_hub.dart';
 import 'package:neoprint/core/router/app_links.dart';
@@ -422,6 +423,36 @@ void main() {
       expect(find.textContaining('geri qaytarılmır'), findsOneWidget);
       expect(find.text('Artır'), findsOneWidget);
       expect(find.text('Hələ hərəkət yoxdur'), findsOneWidget);
+    });
+
+    testWidgets('one card holds the balance and the bonus pages; the voucher '
+        'code is its own tab (T-355)', (tester) async {
+      await tester.pumpWidget(
+        step4App(
+          const WalletScreen(),
+          overrides: step4Overrides(
+            wallet: const WalletState(
+              wallet: Wallet(balance: 12.4, bonusPages: 25),
+              entries: [],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cari balans'), findsOneWidget);
+      expect(find.text(formatMoney(12.4)), findsOneWidget);
+      expect(find.text('Bonus səhifələr'), findsOneWidget);
+      expect(find.text('25 səhifə'), findsOneWidget);
+      expect(find.text('Əməliyyatlar'), findsOneWidget);
+
+      await tester.tap(find.text('Voucher kodları'));
+      await tester.pumpAndSettle();
+      expect(find.text('Hələ hərəkət yoxdur'), findsNothing);
+
+      await tester.tap(find.text('Voucher kodunu daxil edin'));
+      await tester.pumpAndSettle();
+      expect(find.text('Balansa köçür'), findsOneWidget);
     });
 
     testWidgets('movements show what they were and the balance after', (
