@@ -404,3 +404,4 @@ Statuslar: `Açıq`, `İcrada`, `Tamamlandı`, `Ləğv edildi (səbəb)`, `Təxi
 | T-378 | 2026-11-10 | 7B | Layihə sahibi (mobil): ödənişdən sonra **"Çap olunur"** və **"Çap tamamlandı"** ekranları olsun; onlarda **"Pəncərəni bağla"**, **"Sifarişi ləğv et"** və **"Yenidən çap et"** düymələri | Açıq | — |
 | T-379 | 2026-11-10 | 7B | Layihə sahibi (mobil): istifadəçi **kioskdakı çap növbəsinə** baxa bilsin (dizayndakı "Çap növbəsi") | Açıq | — |
 | T-380 | 2026-11-10 | 7B | Layihə sahibi (mobil): **Balans** hissəsində **son əməliyyatlar** görünsün və "Hamısına bax" ilə hamısına baxmaq olsun — dizayndakı kimi | Açıq | — |
+| T-381 | 2026-11-10 | 7B | Layihə sahibi (admin): kiosk yeniləməni quraşdırıb, amma **yayım "Aktiv" qalır** və əl ilə tamamlamaq lazım gəlir; quraşdırılandan sonra **"Dayandır"** düyməsi çıxır — çıxmamalıdır. Yayımın çatdığı bütün kiosklar versiyanı quraşdıranda yayım özü tamamlansın | Açıq | — |
