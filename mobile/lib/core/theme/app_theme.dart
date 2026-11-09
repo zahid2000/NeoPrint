@@ -29,7 +29,10 @@ abstract final class AppTheme {
 
   static ThemeData _build(Brightness brightness, NeoPrintTokens tokens) {
     final scheme = _scheme(brightness, tokens);
-    final textTheme = _textTheme(tokens);
+    // With the family on every style, so what is taken from it (the app bar
+    // title) is Inter too, not the platform font (T-377).
+    final textTheme = _textTheme(tokens)
+        .apply(fontFamily: fontFamily, fontFamilyFallback: fontFamilyFallback);
 
     return ThemeData(
       useMaterial3: true,

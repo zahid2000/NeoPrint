@@ -21,6 +21,17 @@ import 'package:neoprint/l10n/app_localizations_az.dart';
 import 'payments_kit.dart';
 
 void main() {
+  test('the amount to pay is never below nothing (T-377)', () {
+    final payment = paymentOf(
+      amount: 2.4,
+      bonusPagesUsable: 25,
+      bonusValue: 2.5,
+    );
+
+    expect(payment.toPay(useBonus: true), 0);
+    expect(payment.toPay(useBonus: false), 2.4);
+  });
+
   group('the money part', () {
     test('bonus pages first, then the promo code on what they leave', () {
       final payment = paymentOf(

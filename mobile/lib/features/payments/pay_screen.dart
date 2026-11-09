@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -93,7 +94,9 @@ class _PayScreenState extends ConsumerState<PayScreen> {
     final typed = _typedPromo;
 
     if (payment.promoCode == null && typed != null) {
-      return fromCents(toCents(_afterBonus(payment)) - toCents(typed.discount));
+      return fromCents(
+        max(0, toCents(_afterBonus(payment)) - toCents(typed.discount)),
+      );
     }
 
     return payment.toPay(useBonus: _useBonus && payment.canUseBonus);

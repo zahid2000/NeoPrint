@@ -20,6 +20,10 @@ import 'package:neoprint/features/wallet/wallet_controller.dart';
 import 'package:neoprint/features/wallet/wallet_repository.dart';
 import 'package:neoprint/features/wallet/wallet_screen.dart';
 
+import 'package:neoprint/features/payments/pay_screen.dart';
+import 'package:neoprint/features/profile/profile_screen.dart';
+
+import '../feature_flags_test.dart' as flags;
 import '../files_screen_test.dart' as files;
 import '../job_progress_test.dart' as progress;
 import '../kiosk_queue_test.dart' as queue;
@@ -223,5 +227,37 @@ void main() {
     );
     await tester.pumpAndSettle();
     await _shoot(tester, '12-wallet');
+  });
+
+  testWidgets('07 payment', skip: !_enabled, (tester) async {
+    await _phoneSize(tester);
+    final payments = FakePayments([
+      paymentOf(
+        amount: 2.4,
+        balance: 12.4,
+        bonusPagesUsable: 25,
+        bonusValue: 2.5,
+      ),
+    ]);
+    await tester.pumpWidget(
+      step4App(
+        PayScreen(paymentId: paymentOf().id),
+        overrides: step4Overrides(payments: payments),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _shoot(tester, '07-payment');
+  });
+
+  testWidgets('14 profile', skip: !_enabled, (tester) async {
+    await _phoneSize(tester);
+    await tester.pumpWidget(
+      flags.screen(const ProfileScreen(), [
+        ...step4Overrides(),
+        flags.flags(const {}),
+      ]),
+    );
+    await tester.pumpAndSettle();
+    await _shoot(tester, '14-profile');
   });
 }

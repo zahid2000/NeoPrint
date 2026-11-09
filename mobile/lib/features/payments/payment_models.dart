@@ -1,3 +1,5 @@
+import 'dart:math';
+
 /// Money in whole qəpik, so sums are exact: the server compares the amount the
 /// app showed with its own to the qəpik (`expectedAmount`).
 int toCents(num amount) => (amount * 100).round();
@@ -122,10 +124,14 @@ final class AppPayment {
       useBonus ? promoDiscountWithBonus : promoDiscount;
 
   /// The money part - what the wallet or the card pays.
+  /// Never below nothing: the bonus and a code take off at most the amount.
   double toPay({required bool useBonus}) => fromCents(
-    toCents(amount) -
-        (useBonus ? toCents(bonusValue) : 0) -
-        toCents(promoFor(useBonus: useBonus)),
+    max(
+      0,
+      toCents(amount) -
+          (useBonus ? toCents(bonusValue) : 0) -
+          toCents(promoFor(useBonus: useBonus)),
+    ),
   );
 }
 
