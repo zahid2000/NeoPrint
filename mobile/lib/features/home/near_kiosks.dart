@@ -4,8 +4,13 @@ import '../kiosk_search/kiosk_models.dart';
 import '../kiosk_search/kiosk_search_controller.dart';
 import '../kiosk_search/user_location.dart';
 
-/// How far the home screen looks for a kiosk.
-const nearKioskRadiusKm = 10.0;
+/// How far the home screen looks for a kiosk: a city and around it - the
+/// nearest *working* one may be farther than the nearest one (T-369); the
+/// card says how far it is.
+const nearKioskRadiusKm = 50.0;
+
+/// How many of the others the home screen lists sideways.
+const nearKioskOthers = 10;
 
 /// The kiosks near the user, nearest first, or why there is no list.
 final class NearKiosks {
@@ -33,7 +38,7 @@ final class NearKiosks {
     return [
       for (final kiosk in kiosks)
         if (kiosk != card) kiosk,
-    ];
+    ].take(nearKioskOthers).toList();
   }
 }
 
