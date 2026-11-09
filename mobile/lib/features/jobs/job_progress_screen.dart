@@ -104,7 +104,19 @@ class _Progress extends StatelessWidget {
                   backgroundColor: tokens.neutral100,
                 ),
               ),
-              Icon(Icons.print_outlined, size: 48, color: tokens.brand500),
+              // "82%" in the ring, as the design draws it (T-377); the
+              // printer until the first page is out.
+              if (total > 0 && printed > 0)
+                Text(
+                  '${(100 * printed / total).floor()}%',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    color: tokens.brand500,
+                    fontWeight: FontWeights.semibold,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                )
+              else
+                Icon(Icons.print_outlined, size: 48, color: tokens.brand500),
             ],
           ),
         ),
@@ -195,8 +207,8 @@ class _Steps extends StatelessWidget {
     // How many steps are behind it; the next is the current one.
     final done = switch (job.status) {
       'PendingPayment' => 1,
-      'Paid' || 'Queued' || 'Suspected' => 2,
-      'Printing' || 'Interrupted' => 3,
+      // Printing is the current step while it prints, not one behind it.
+      'Paid' || 'Queued' || 'Suspected' || 'Printing' || 'Interrupted' => 2,
       'Completed' => 4,
       _ => 0,
     };

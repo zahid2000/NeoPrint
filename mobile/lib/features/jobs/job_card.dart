@@ -78,6 +78,18 @@ import 'jobs_repository.dart';
 
 /// How far an active order is, 0..1, by its stage; null when it has none
 /// (stopped, or being looked into).
+/// The share of the order's pages already out, while it prints; null before
+/// the first page or when it is not printing (T-377).
+double? printedShare(MyJob job) {
+  final total = job.pages * (job.copies < 1 ? 1 : job.copies);
+
+  if (job.status != 'Printing' || total == 0 || job.printedSides <= 0) {
+    return null;
+  }
+
+  return job.printedSides.clamp(0, total) / total;
+}
+
 double? jobStage(String status) => switch (status) {
   'PendingPayment' => 0.15,
   'Paid' => 0.35,
@@ -224,17 +236,34 @@ class JobCard extends ConsumerWidget {
                   ),
                 ],
               ),
-              // How far along an active order is, by its stage - not a
-              // percentage the server does not send.
+              // How far along an active order is: by its pages while it
+              // prints ("82%", as the design draws it - T-377), by its stage
+              // before that.
               if (jobStage(job.status) case final stage?) ...[
                 const SizedBox(height: Spacing.x3),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(Radii.full),
-                  child: LinearProgressIndicator(
-                    value: stage,
-                    minHeight: Spacing.x1 + 2,
-                    backgroundColor: tokens.neutral100,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(Radii.full),
+                        child: LinearProgressIndicator(
+                          value: printedShare(job) ?? stage,
+                          minHeight: Spacing.x1 + 2,
+                          backgroundColor: tokens.neutral100,
+                        ),
+                      ),
+                    ),
+                    if (printedShare(job) case final share?) ...[
+                      const SizedBox(width: Spacing.x2),
+                      Text(
+                        '${(100 * share).floor()}%',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: tokens.brand500,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
               const SizedBox(height: Spacing.x3),

@@ -120,6 +120,29 @@ void main() {
     // 6 pages × 2 copies.
     expect(find.text('5 / 12 səhifə'), findsOneWidget);
     expect(find.text('Sifarişi ləğv et'), findsNothing);
+    // The share in the ring and beside the card's bar (T-377).
+    expect(find.text('41%'), findsNWidgets(2));
+    // "Çap olunur" is the step under way, not one behind it.
+    final printingStep = find.ancestor(
+      of: find.text('Çap olunur'),
+      matching: find.byType(ListTile),
+    );
+    expect(
+      find.descendant(
+        of: printingStep,
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('before the first page the ring shows the printer, no share', (
+    tester,
+  ) async {
+    await show(tester, order('Printing'));
+
+    expect(find.byIcon(Icons.print_outlined), findsWidgets);
+    expect(find.textContaining('%'), findsNothing);
   });
 
   testWidgets('printed: "Yenidən çap et" opens the same file', (tester) async {

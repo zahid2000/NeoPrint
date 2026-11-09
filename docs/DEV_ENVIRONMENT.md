@@ -2143,6 +2143,16 @@ cd mobile && flutter test
   icazəsində deyil və bu testdə yoxdur (statik yoxlama onları da əhatə edir).
 - Layihə sahibinin gördüyü xırda UI problemləri `docs/UI_BUGS.md`-yə yazılır.
 
+**Mobil ekranların şəkilləri (T-377).** Dizayn nümunəsi ilə müqayisə üçün ekranları real şriftlə (Inter, Material ikonları)
+PNG-yə çəkir; adi `flutter test`-də atlanır:
+
+```bash
+cd mobile && FLUTTER_ROOT=/c/src/flutter/flutter flutter test test/screens --dart-define=SCREENS=true
+# Şəkillər: mobile/build/screens/*.png (390 × 844, 2x)
+```
+
+Test mühitində kölgə (FAB-ın ətrafı) qara halqa kimi çəkilir — telefonda belə deyil.
+
 ---
 
 ## 9. Tez-tez lazım olan yoxlamalar

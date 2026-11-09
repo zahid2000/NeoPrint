@@ -52,10 +52,19 @@ abstract final class AppTheme {
         titleTextStyle: textTheme.titleLarge,
       ),
 
+      // The screen's one "+": solid brand, as the design draws it (T-377).
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        shape: const CircleBorder(),
+      ),
+
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(Sizes.controlHeight),
           textStyle: const TextStyle(
+            fontFamily: fontFamily,
+            fontFamilyFallback: fontFamilyFallback,
             fontSize: FontSizes.button,
             fontWeight: FontWeights.medium,
           ),
@@ -70,6 +79,8 @@ abstract final class AppTheme {
           minimumSize: const Size.fromHeight(Sizes.controlHeight),
           side: BorderSide(color: tokens.neutral200),
           textStyle: const TextStyle(
+            fontFamily: fontFamily,
+            fontFamilyFallback: fontFamilyFallback,
             fontSize: FontSizes.button,
             fontWeight: FontWeights.medium,
           ),
@@ -84,6 +95,8 @@ abstract final class AppTheme {
           // Comfortably above the 48dp minimum touch target, even inline.
           minimumSize: const Size(Sizes.touchTarget, Sizes.touchTarget),
           textStyle: const TextStyle(
+            fontFamily: fontFamily,
+            fontFamilyFallback: fontFamilyFallback,
             fontSize: FontSizes.body,
             fontWeight: FontWeights.medium,
           ),
@@ -105,14 +118,20 @@ abstract final class AppTheme {
           vertical: Spacing.x4,
         ),
         labelStyle: TextStyle(
+          fontFamily: fontFamily,
+          fontFamilyFallback: fontFamilyFallback,
           color: tokens.neutral600,
           fontSize: FontSizes.bodySmall,
         ),
         helperStyle: TextStyle(
+          fontFamily: fontFamily,
+          fontFamilyFallback: fontFamilyFallback,
           color: tokens.neutral600,
           fontSize: FontSizes.caption,
         ),
         errorStyle: TextStyle(
+          fontFamily: fontFamily,
+          fontFamilyFallback: fontFamilyFallback,
           color: tokens.danger,
           fontSize: FontSizes.caption,
         ),
@@ -148,6 +167,8 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.all(Radius.circular(Radii.md)),
         ),
         contentTextStyle: TextStyle(
+          fontFamily: fontFamily,
+          fontFamilyFallback: fontFamilyFallback,
           color: tokens.neutral0,
           fontSize: FontSizes.bodySmall,
         ),
@@ -169,6 +190,8 @@ abstract final class AppTheme {
         ),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
+            fontFamily: fontFamily,
+            fontFamilyFallback: fontFamilyFallback,
             fontSize: FontSizes.caption,
             fontWeight: states.contains(WidgetState.selected)
                 ? FontWeights.semibold
