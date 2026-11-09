@@ -1739,6 +1739,35 @@ bash tools/staging/staging.sh down     # dayandır
 - `docker-compose.yml`-də `NEOPRINT_*` dəyişənləri (konteyner adı, portlar, seed faylı, OpenBao qovluğu, rejim) yalnız
   staging üçündür; development-də heç birini verməyin.
 
+## 7z-1. Addım 7B — real Linux kioskunu yeni versiyaya yeniləmək (T-359)
+
+Flaşdan (`make-stick.sh`, 7y) quraşdırılmış kiosk **yenidən quraşdırılmır**: yeni versiyanı imzalı paketlə Agent özü
+alır (T-321, `docs/KIOSK_UPDATES.md`). Cihazdakı versiya flaşın versiyasıdır (`0.9.0-m19b`); yeni versiya ondan böyük
+olmalıdır, `min_agent_version` isə cihazdakı Agent-dən böyük olmamalıdır — yoxsa Agent paketi `MinAgentVersion` ilə rədd edir.
+
+```bash
+# 1. Paketlər (self-contained, production + staging, win + linux) — CI-da, ~5 dəqiqə; heç nə dərc etmir
+gh workflow run release-package.yml --ref main -f version=0.9.0-m20.1 -f min_agent_version=0.9.0-m19b
+gh run list --workflow release-package.yml --limit 1          # iş nömrəsi
+```
+
+```powershell
+# 2. Staging imzası və yoxlama (açar bu kompüterdə; heç nə serverə göndərilmir)
+powershell -ExecutionPolicy Bypass -File tools\release-sign\staging-quickstart.ps1 -Platform linux-x64 -RunId <iş nömrəsi>
+# Fayllar: %USERPROFILE%\.neoprint\staging-packages\<iş nömrəsi>\kiosk-release-<versiya>-linux-x64-staging\
+```
+
+3. **Panel** (test serveri, SuperAdmin) → "İdarəetmə" → "Buraxılışlar" → "Paket yüklə": hər komponent üçün üç fayl
+   (paket, `.manifest.json`, `.manifest.json.sig`), kanal "Pilot". Ardıcıllıq: **Agent → App** (provisioning
+   dəyişməyibsə lazım deyil).
+4. Hər paketin menyusundan **"Yay"** → hədəf "Seçilmiş kiosklar" → kiosk; dərhal lazımdırsa **"Təcili (təhlükəsizlik)
+   yeniləmə"** (yeniləmə pəncərəsini gözləmir, müştəri olmayan ilk anda). Və ya kioskun səhifəsində "Yeniləmə" → "İndi yenilə".
+5. Yoxlama: "Buraxılışlar" → "Kiosk versiyaları" — kiosk yeni versiyanı göstərir; kioskun "Yeniləmə" tabında status
+   `Succeeded`. Xətalı versiya özü geri qayıdır və `UpdateFailed` incident-i açılır.
+
+- Bir versiya bir dəfə yüklənir: təkrar üçün yeni versiya (`0.9.0-m20.2` …).
+- Növbəti versiyalarda `min_agent_version` — kioskda **artıq quraşdırılmış** Agent versiyası.
+
 ## 7y. Addım 7B — real Linux kiosku test serverinə (T-333)
 
 ```bash
