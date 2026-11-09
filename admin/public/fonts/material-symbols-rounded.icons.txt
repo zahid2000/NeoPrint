@@ -89,6 +89,7 @@ sensors
 settings
 settings_suggest
 shield
+smartphone
 star
 storage
 storefront

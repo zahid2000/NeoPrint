@@ -11,6 +11,9 @@ import { KioskPhotoComponent } from './kiosk-photo.component';
 describe('KioskPhotoComponent', () => {
   let made = 0;
   const revoked: string[] = [];
+  // Put back afterwards: other specs in the same worker use the real ones (or their own).
+  const realCreate = URL.createObjectURL;
+  const realRevoke = URL.revokeObjectURL;
 
   beforeEach(() => {
     made = 0;
@@ -27,7 +30,11 @@ describe('KioskPhotoComponent', () => {
     translate.use('az');
   });
 
-  afterEach(() => TestBed.inject(HttpTestingController).verify());
+  afterEach(() => {
+    URL.createObjectURL = realCreate;
+    URL.revokeObjectURL = realRevoke;
+    TestBed.inject(HttpTestingController).verify();
+  });
 
   it('fetches the picture once and keeps showing it - showing it does not fetch it again (T-363)', async () => {
     const http = TestBed.inject(HttpTestingController);
