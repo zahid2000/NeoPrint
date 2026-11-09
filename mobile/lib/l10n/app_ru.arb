@@ -785,6 +785,7 @@
   "homeAllKiosks": "Все киоски",
   "homeNoLocation": "Не удалось определить местоположение. Найдите киоск в списке.",
   "homeNoNearKiosk": "Рядом нет киосков.",
+  "homeNoWorkingNearKiosk": "Поблизости сейчас нет работающих киосков. Ближайшие киоски — ниже.",
   "homeNearbyKiosks": "Киоски рядом",
   "homeAddFile": "Добавить файл",
   "homeScanDocument": "Сканировать",

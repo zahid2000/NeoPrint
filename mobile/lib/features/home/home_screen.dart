@@ -223,11 +223,13 @@ class _NearKioskCard extends ConsumerWidget {
     final near = ref.watch(nearKiosksProvider);
 
     return switch (near) {
-      AsyncData(:final value) when value.kiosks.isNotEmpty => _KioskHero(
-        kiosk: value.kiosks.first,
+      AsyncData(:final value) when value.nearestWorking != null => _KioskHero(
+        kiosk: value.nearestWorking!,
       ),
       AsyncData(:final value) => _NoNearKiosk(
         message: switch (value.problem) {
+          // Kiosks near, none of them working now: they are listed below.
+          null when value.kiosks.isNotEmpty => l10n.homeNoWorkingNearKiosk,
           null => l10n.homeNoNearKiosk,
           LocationProblem.notAsked => l10n.homeFindNearHint,
           _ => l10n.homeNoLocation,
@@ -653,7 +655,7 @@ class _MoneyCard extends StatelessWidget {
   }
 }
 
-/// "Yaxınlıqdakı digər kiosklar": the kiosks after the nearest, sideways.
+/// "Yaxınlıqdakı digər kiosklar": the kiosks near but the card's, sideways.
 class _NearbyKiosks extends ConsumerWidget {
   const _NearbyKiosks();
 
@@ -662,8 +664,8 @@ class _NearbyKiosks extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final tokens = context.tokens;
-    final all = ref.watch(nearKiosksProvider).valueOrNull?.kiosks ?? const [];
-    final kiosks = all.skip(1).toList();
+    final kiosks =
+        ref.watch(nearKiosksProvider).valueOrNull?.others ?? const [];
 
     if (kiosks.isEmpty) {
       return const SizedBox.shrink();

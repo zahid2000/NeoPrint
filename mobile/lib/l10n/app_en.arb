@@ -785,6 +785,7 @@
   "homeAllKiosks": "All kiosks",
   "homeNoLocation": "Your location could not be found. Find a kiosk on the list.",
   "homeNoNearKiosk": "There is no kiosk nearby.",
+  "homeNoWorkingNearKiosk": "No kiosk near you is working right now. The kiosks near you are below.",
   "homeNearbyKiosks": "Kiosks nearby",
   "homeAddFile": "Add a file",
   "homeScanDocument": "Scan",

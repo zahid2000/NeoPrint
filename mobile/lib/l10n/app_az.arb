@@ -1302,6 +1302,7 @@
   "homeAllKiosks": "Bütün kiosklar",
   "homeNoLocation": "Məkanınızı tapmaq alınmadı. Kioskları siyahıda tapın.",
   "homeNoNearKiosk": "Yaxınlıqda kiosk yoxdur.",
+  "homeNoWorkingNearKiosk": "Yaxınlıqda hazırda işləyən kiosk yoxdur. Yaxındakı kiosklar aşağıdadır.",
   "homeNearbyKiosks": "Yaxınlıqdakı kiosklar",
   "homeAddFile": "Fayl əlavə et",
   "homeScanDocument": "Skan et",

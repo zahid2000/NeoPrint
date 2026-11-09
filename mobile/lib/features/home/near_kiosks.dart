@@ -15,6 +15,26 @@ final class NearKiosks {
 
   /// Set when there is no location: no list was asked for.
   final LocationProblem? problem;
+
+  /// The card's kiosk (T-367): the nearest that takes orders now, not
+  /// merely the nearest; null when none near does.
+  KioskSummary? get nearestWorking {
+    for (final kiosk in kiosks) {
+      if (kiosk.status == KioskStatus.online) {
+        return kiosk;
+      }
+    }
+    return null;
+  }
+
+  /// "Yaxınlıqdakı digər kiosklar": the rest, nearest first.
+  List<KioskSummary> get others {
+    final card = nearestWorking;
+    return [
+      for (final kiosk in kiosks)
+        if (kiosk != card) kiosk,
+    ];
+  }
 }
 
 /// The home screen's nearest kiosks (docs/DESIGN_SYSTEM.md, "Yaxın kiosk
