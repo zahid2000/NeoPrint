@@ -1516,7 +1516,8 @@ Tətbiqlə ödənilən kiosk sifarişi ödəniş anında hesaba bağlanır və b
 
 Hər sətirdə həm də: `canCancel` — sahibi indi ləğv edə bilər (`Queued` və ya `Interrupted`);
 `kioskStopped` — sifarişin kioskunda printer hazırda işləmir (plan 9.6): tətbiq "gözlə və ya ləğv et"
-seçimini göstərir.
+seçimini göstərir. `fileId` (T-378) — sifarişin hesabdakı faylı ("Yenidən çap et"); flash sifarişində `null`.
+`printedSides` tətbiqdə "5 / 12 səhifə" kimi göstərilir (səhifə × nüsxə).
 
 ### `POST /api/print-jobs/my/{id}/cancel` (User token)
 

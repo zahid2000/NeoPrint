@@ -650,10 +650,36 @@ class _SourceTile extends StatelessWidget {
   }
 }
 
-class _Paid extends StatelessWidget {
+class _Paid extends StatefulWidget {
   const _Paid({required this.payment});
 
   final AppPayment payment;
+
+  @override
+  State<_Paid> createState() => _PaidState();
+}
+
+class _PaidState extends State<_Paid> {
+  AppPayment get payment => widget.payment;
+
+  /// Printed now: the order's own screen follows it to the printer (T-378).
+  /// A scheduled print and one collected at the kiosk later stay here.
+  bool get _followsToPrinter =>
+      payment.jobCode != null &&
+      payment.scheduledAt == null &&
+      !payment.collectAtKiosk;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_followsToPrinter) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          GoRouter.maybeOf(context)?.go(Routes.job(payment.jobCode!));
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

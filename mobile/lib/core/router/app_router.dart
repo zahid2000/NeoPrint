@@ -14,6 +14,7 @@ import '../../features/security/security_settings_screen.dart';
 import '../../features/files/file_models.dart';
 import '../../features/files/file_preview_screen.dart';
 import '../../features/files/files_controller.dart';
+import '../../features/jobs/job_progress_screen.dart';
 import '../../features/jobs/my_jobs_screen.dart';
 import '../../features/print_hub/choose_file_screen.dart';
 import '../../features/print_hub/print_upload_screen.dart';
@@ -84,6 +85,9 @@ abstract final class Routes {
 
   /// "Sifarişlərim": every order, the home screen's "Hamısına bax" (T-342).
   static const jobs = '/jobs';
+
+  /// One order after it was paid: queued, printing, printed (T-378).
+  static String job(String code) => '/job/$code';
   static const scheduled = '/print/scheduled';
   static const profile = '/profile';
 
@@ -400,6 +404,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       if (Readiness.printJobs)
         GoRoute(path: Routes.jobs, builder: (_, __) => const MyJobsScreen()),
+      if (Readiness.printJobs)
+        GoRoute(
+          path: '/job/:code',
+          builder: (_, state) =>
+              JobProgressScreen(jobCode: state.pathParameters['code']!),
+        ),
 
       // The five bottom-nav destinations (T-338; docs/DECISIONS.md 2026-11-08), in a shell so
       // the bar keeps its state as the tabs change.

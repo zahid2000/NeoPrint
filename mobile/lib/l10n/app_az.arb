@@ -1377,6 +1377,42 @@
   },
   "homeQueueEmpty": "Növbə yoxdur",
   "jobsTitle": "Sifarişlərim",
+  "jobProgressTitle": "Sifariş {code}",
+  "@jobProgressTitle": {
+    "placeholders": {
+      "code": {"type": "String"}
+    }
+  },
+  "jobProgressNotFound": "Sifariş tapılmadı. \"Sifarişlərim\"-də baxın.",
+  "jobQueuedTitle": "Növbədə",
+  "jobQueuedBody": "Sifarişiniz {kiosk} kioskunun növbəsindədir. Bu pəncərəni bağlaya bilərsiniz — çap davam edəcək.",
+  "@jobQueuedBody": {
+    "placeholders": {
+      "kiosk": {"type": "String"}
+    }
+  },
+  "jobPrintingTitle": "Çap olunur…",
+  "jobPrintedOf": "{printed} / {total} səhifə",
+  "@jobPrintedOf": {
+    "placeholders": {
+      "printed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "jobDoneTitle": "Çap tamamlandı!",
+  "jobDoneBody": "Sənədləriniz hazırdır. Xoş istifadə edin!",
+  "jobCancelledTitle": "Sifariş ləğv edildi",
+  "jobCancelledBody": "Ödənilən məbləğ geri qaytarılır.",
+  "jobStoppedTitle": "Çap dayandı",
+  "jobStoppedBody": "Printer çapı yarımçıq saxladı. Gözləyə və ya sifarişi ləğv edib pulu geri ala bilərsiniz.",
+  "jobKioskStopped": "Kiosk hazırda çap edə bilmir. Sifariş növbədə qalır.",
+  "jobStepAccepted": "Sifariş qəbul edildi",
+  "jobStepPaid": "Ödəniş təsdiqləndi",
+  "jobStepPrinting": "Çap olunur",
+  "jobStepDone": "Tamamlandı",
+  "jobClose": "Pəncərəni bağla",
+  "jobCancelOrder": "Sifarişi ləğv et",
+  "jobReprint": "Yenidən çap et",
   "jobsHint": "Bütün çaplarınız və onların vəziyyəti",
   "jobsTabActive": "Aktiv",
   "jobsTabPast": "Keçmiş",

@@ -21,6 +21,8 @@ final class MyJob {
     this.scheduledAt,
     this.canCancel = false,
     this.kioskStopped = false,
+    this.printedSides = 0,
+    this.fileId,
   });
 
   factory MyJob.fromJson(Map<String, dynamic> json) => MyJob(
@@ -45,6 +47,8 @@ final class MyJob {
         : DateTime.parse(json['scheduledAt'] as String),
     canCancel: json['canCancel'] as bool? ?? false,
     kioskStopped: json['kioskStopped'] as bool? ?? false,
+    printedSides: json['printedSides'] as int? ?? 0,
+    fileId: json['fileId'] as String?,
   );
 
   final String id;
@@ -75,6 +79,13 @@ final class MyJob {
 
   /// Its kiosk cannot print at the moment: waiting may take a while.
   final bool kioskStopped;
+
+  /// The pages printed so far: "5 / 12" while it prints (T-378).
+  final int printedSides;
+
+  /// The file in the account it was made from - "Yenidən çap et" (T-378);
+  /// null for an order made at the kiosk from a flash drive.
+  final String? fileId;
 
   /// Stopped at the printer, or waiting at a kiosk that cannot print: the
   /// owner is offered the choice - wait, or cancel and take the money back.

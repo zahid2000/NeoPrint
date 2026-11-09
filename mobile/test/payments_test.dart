@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neoprint/l10n/app_localizations.dart';
+import 'package:neoprint/core/theme/app_theme.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:neoprint/core/format/formats.dart';
 import 'package:neoprint/core/network/api_client.dart';
 import 'package:neoprint/core/realtime/user_hub.dart';
@@ -122,6 +126,45 @@ void main() {
         'key': payments.paid.single['key'],
       });
       expect(find.text('Ödəniş uğurlu'), findsOneWidget);
+    });
+
+    testWidgets('a paid order printed now goes on to its own screen (T-378)', (
+      tester,
+    ) async {
+      final payments = FakePayments([paymentOf(amount: 1.00, balance: 5)])
+        ..payAnswer = paymentOf(status: 'Succeeded');
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, __) => PayScreen(paymentId: paymentOf().id),
+          ),
+          GoRoute(
+            path: '/job/:code',
+            builder: (_, state) => Text('job ${state.pathParameters['code']}'),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: step4Overrides(payments: payments),
+          child: MaterialApp.router(
+            theme: AppTheme.light(),
+            locale: const Locale('az'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tapText(tester, '${formatMoney(1.0)} ödə');
+      await tester.pumpAndSettle();
+
+      expect(payments.paid, hasLength(1));
+      expect(find.text('job 123456'), findsOneWidget);
     });
 
     testWidgets('a short balance suggests the card and picks it', (

@@ -10,6 +10,10 @@ import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_primary_button.dart';
 import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_status_chip.dart';
+
+import 'package:go_router/go_router.dart';
+
+import '../../core/router/app_router.dart';
 import '../files/file_models.dart';
 import 'jobs_controller.dart';
 import 'jobs_repository.dart';
@@ -82,57 +86,65 @@ double? jobStage(String status) => switch (status) {
   _ => null,
 };
 
-/// One of the user's jobs: on the home tab and in "Sifarişlərim".
+/// "Ləğv et və məbləği qaytar": asked once more, then done - the card and
+/// the order's own screen (T-378).
+Future<void> cancelJob(BuildContext context, WidgetRef ref, MyJob job) async {
+  final l10n = AppLocalizations.of(context);
+  final tokens = context.tokens;
+  final language = Localizations.localeOf(context).languageCode;
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(l10n.jobCancelTitle),
+      content: Text(
+        l10n.jobCancelBody(formatMoney(job.amount, language: language)),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(l10n.jobCancelKeep),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: tokens.danger,
+            foregroundColor: tokens.neutral0,
+          ),
+          onPressed: () => Navigator.pop(context, true),
+          child: Text(l10n.jobCancelConfirm),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true || !context.mounted) {
+    return;
+  }
+
+  final messenger = ScaffoldMessenger.of(context);
+  final problem = await ref.read(myJobsProvider.notifier).cancel(job.id);
+
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(
+        problem == null ? l10n.jobCancelDone : apiErrorText(l10n, problem),
+      ),
+    ),
+  );
+}
+
+/// One of the user's jobs: on the home tab and in "Sifarişlərim"; a tap
+/// opens where it is (T-378).
 class JobCard extends ConsumerWidget {
-  const JobCard({super.key, required this.job});
+  const JobCard({super.key, required this.job, this.showActions = true});
 
   final MyJob job;
 
-  /// "Ləğv et və məbləği qaytar": asked once more, then done.
-  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
-    final l10n = AppLocalizations.of(context);
-    final tokens = context.tokens;
-    final language = Localizations.localeOf(context).languageCode;
+  /// Off on the order's own screen: its buttons are below.
+  final bool showActions;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.jobCancelTitle),
-        content: Text(
-          l10n.jobCancelBody(formatMoney(job.amount, language: language)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(l10n.jobCancelKeep),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: tokens.danger,
-              foregroundColor: tokens.neutral0,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(l10n.jobCancelConfirm),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !context.mounted) {
-      return;
-    }
-
-    final messenger = ScaffoldMessenger.of(context);
-    final problem = await ref.read(myJobsProvider.notifier).cancel(job.id);
-
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          problem == null ? l10n.jobCancelDone : apiErrorText(l10n, problem),
-        ),
-      ),
-    );
-  }
+  Future<void> _cancel(BuildContext context, WidgetRef ref) =>
+      cancelJob(context, ref, job);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -169,141 +181,148 @@ class JobCard extends ConsumerWidget {
 
     return Card(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.x4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // The design's order card (T-342): the file's square, its name
-            // and what is printed, the amount on the right.
-            Row(
-              children: [
-                FileTypeTile(extension: extensionOf(name)),
-                const SizedBox(width: Spacing.x3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: theme.textTheme.titleSmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: Spacing.x1),
-                      Text(
-                        details,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: tokens.neutral600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: Spacing.x2),
-                Text(
-                  formatMoney(job.amount, language: language),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-            ),
-            // How far along an active order is, by its stage - not a
-            // percentage the server does not send.
-            if (jobStage(job.status) case final stage?) ...[
-              const SizedBox(height: Spacing.x3),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(Radii.full),
-                child: LinearProgressIndicator(
-                  value: stage,
-                  minHeight: Spacing.x1 + 2,
-                  backgroundColor: tokens.neutral100,
-                ),
-              ),
-            ],
-            const SizedBox(height: Spacing.x3),
-            // The status takes what it needs, up to a little over half the
-            // card; where it is or when it was keeps the rest.
-            LayoutBuilder(
-              builder: (context, box) => Row(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: showActions ? () => context.push(Routes.job(job.jobCode)) : null,
+        child: Padding(
+          padding: const EdgeInsets.all(Spacing.x4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // The design's order card (T-342): the file's square, its name
+              // and what is printed, the amount on the right.
+              Row(
                 children: [
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: box.maxWidth * 0.6),
-                    child: NeoStatusChip(
-                      label: look.label,
-                      tone: look.tone,
-                      icon: look.icon,
+                  FileTypeTile(extension: extensionOf(name)),
+                  const SizedBox(width: Spacing.x3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: theme.textTheme.titleSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: Spacing.x1),
+                        Text(
+                          details,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: tokens.neutral600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: Spacing.x2),
-                  Expanded(
-                    child: Text(
-                      job.isActive && kiosk.isNotEmpty
-                          ? kiosk
-                          : formatDateTime(
-                              job.createdAt,
-                              today: l10n.commonToday,
-                              yesterday: l10n.commonYesterday,
-                            ),
-                      textAlign: TextAlign.end,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: tokens.neutral600,
-                      ),
+                  Text(
+                    formatMoney(job.amount, language: language),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
               ),
-            ),
-            if (job.status == 'Suspected') ...[
+              // How far along an active order is, by its stage - not a
+              // percentage the server does not send.
+              if (jobStage(job.status) case final stage?) ...[
+                const SizedBox(height: Spacing.x3),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(Radii.full),
+                  child: LinearProgressIndicator(
+                    value: stage,
+                    minHeight: Spacing.x1 + 2,
+                    backgroundColor: tokens.neutral100,
+                  ),
+                ),
+              ],
               const SizedBox(height: Spacing.x3),
-              NeoBanner(message: l10n.jobSuspectedNote, tone: StatusTone.info),
-            ] else if (job.reason?.isNotEmpty ?? false) ...[
-              const SizedBox(height: Spacing.x2),
-              Text(job.reason!, style: theme.textTheme.bodySmall),
-            ],
-            if (job.offersRefund) ...[
-              // Plan section 9.6: wait, or cancel and take the money back.
-              const SizedBox(height: Spacing.x3),
-              NeoBanner(
-                message: job.status == 'Interrupted'
-                    ? l10n.jobInterruptedNote
-                    : l10n.jobKioskStoppedNote,
-                tone: StatusTone.warning,
-              ),
-              const SizedBox(height: Spacing.x2),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => _cancel(context, ref),
-                  child: Text(l10n.jobCancelRefund),
+              // The status takes what it needs, up to a little over half the
+              // card; where it is or when it was keeps the rest.
+              LayoutBuilder(
+                builder: (context, box) => Row(
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: box.maxWidth * 0.6),
+                      child: NeoStatusChip(
+                        label: look.label,
+                        tone: look.tone,
+                        icon: look.icon,
+                      ),
+                    ),
+                    const SizedBox(width: Spacing.x2),
+                    Expanded(
+                      child: Text(
+                        job.isActive && kiosk.isNotEmpty
+                            ? kiosk
+                            : formatDateTime(
+                                job.createdAt,
+                                today: l10n.commonToday,
+                                yesterday: l10n.commonYesterday,
+                              ),
+                        textAlign: TextAlign.end,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: tokens.neutral600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ] else if (job.canCancel) ...[
-              const SizedBox(height: Spacing.x2),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton.icon(
-                  onPressed: () => _cancel(context, ref),
-                  icon: const Icon(Icons.close),
-                  label: Text(l10n.jobCancel),
+              if (job.status == 'Suspected') ...[
+                const SizedBox(height: Spacing.x3),
+                NeoBanner(
+                  message: l10n.jobSuspectedNote,
+                  tone: StatusTone.info,
                 ),
-              ),
-            ],
-            if (job.canReport) ...[
-              const SizedBox(height: Spacing.x2),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton.icon(
-                  onPressed: () => showReportSheet(context, job),
-                  icon: const Icon(Icons.report_outlined),
-                  label: Text(l10n.jobReport),
+              ] else if (job.reason?.isNotEmpty ?? false) ...[
+                const SizedBox(height: Spacing.x2),
+                Text(job.reason!, style: theme.textTheme.bodySmall),
+              ],
+              if (showActions && job.offersRefund) ...[
+                // Plan section 9.6: wait, or cancel and take the money back.
+                const SizedBox(height: Spacing.x3),
+                NeoBanner(
+                  message: job.status == 'Interrupted'
+                      ? l10n.jobInterruptedNote
+                      : l10n.jobKioskStoppedNote,
+                  tone: StatusTone.warning,
                 ),
-              ),
+                const SizedBox(height: Spacing.x2),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => _cancel(context, ref),
+                    child: Text(l10n.jobCancelRefund),
+                  ),
+                ),
+              ] else if (showActions && job.canCancel) ...[
+                const SizedBox(height: Spacing.x2),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                    onPressed: () => _cancel(context, ref),
+                    icon: const Icon(Icons.close),
+                    label: Text(l10n.jobCancel),
+                  ),
+                ),
+              ],
+              if (job.canReport) ...[
+                const SizedBox(height: Spacing.x2),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                    onPressed: () => showReportSheet(context, job),
+                    icon: const Icon(Icons.report_outlined),
+                    label: Text(l10n.jobReport),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
