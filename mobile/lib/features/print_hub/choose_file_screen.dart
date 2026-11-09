@@ -51,21 +51,21 @@ class _ChooseFileScreenState extends ConsumerState<ChooseFileScreen> {
         title: l10n.printHubFromFiles,
         showBack: true,
       ),
+      // T-353, T-358: a new file comes in here, on the same floating button
+      // as the files tab; once ready its print settings open.
+      floatingActionButton: ready.isEmpty && query.isEmpty
+          ? null
+          : FloatingActionButton(
+              tooltip: l10n.filesUpload,
+              shape: const CircleBorder(),
+              onPressed: _upload,
+              child: const Icon(Icons.add),
+            ),
       body: state.loading && state.files.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(Spacing.x4),
               children: [
-                // T-353: a new file comes in here, not in the Print tab; once
-                // it is ready its print settings open.
-                if (ready.isNotEmpty || query.isNotEmpty) ...[
-                  OutlinedButton.icon(
-                    onPressed: _upload,
-                    icon: const Icon(Icons.upload_file),
-                    label: Text(l10n.filesUpload),
-                  ),
-                  const SizedBox(height: Spacing.x3),
-                ],
                 NeoSearchField(
                   hint: l10n.filesSearchHint,
                   onChanged: (value) => setState(() => _query = value),

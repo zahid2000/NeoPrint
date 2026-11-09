@@ -307,7 +307,7 @@ void main() {
     await tester.pumpWidget(flow([file()], start: Routes.printChoose));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Fayl yüklə'));
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
     expect(find.text('Fayl seç'), findsOneWidget);

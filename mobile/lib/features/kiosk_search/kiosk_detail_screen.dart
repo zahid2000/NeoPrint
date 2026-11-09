@@ -444,8 +444,9 @@ class _SessionBarState extends ConsumerState<_SessionBar> {
                 onPressed: _busy ? null : () => unawaited(_open()),
               )
             else
+              // T-357: a kiosk that does not take orders is a warning.
               NeoBanner(
-                tone: StatusTone.info,
+                tone: StatusTone.warning,
                 message: l10n.sessionKioskNotTaking,
               ),
           ],
