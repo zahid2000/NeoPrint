@@ -44,11 +44,11 @@
             </StackPanel>
             <Panel Grid.Column="1" Classes="hero-art">
                 <Ellipse Fill="{DynamicResource Brand100}" Width="300" Height="300" />
-                <Border Classes="hero-paper" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,48,0,0">
+                <Border Classes="hero-paper" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="{DynamicResource GapAbove12}">
                     <PathIcon Data="{StaticResource IconDocument}" Width="72" Height="72" Foreground="{DynamicResource Brand300}" />
                 </Border>
                 <PathIcon Data="{StaticResource IconPrint}" Width="200" Height="200" Foreground="{DynamicResource Brand500}"
-                          VerticalAlignment="Bottom" Margin="0,0,0,24" />
+                          VerticalAlignment="Bottom" Margin="{DynamicResource GapBelow6}" />
             </Panel>
         </Grid>
 

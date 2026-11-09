@@ -113,6 +113,9 @@
     <Thickness x:Key="GapAbove2">0,8,0,0</Thickness>
     <Thickness x:Key="GapAbove6">0,24,0,0</Thickness>
     <Thickness x:Key="GapAbove4">0,16,0,0</Thickness>
+    <!-- The welcome screen's printer art (T-371): the sheet and the printer in the circle. -->
+    <Thickness x:Key="GapAbove12">0,48,0,0</Thickness>
+    <Thickness x:Key="GapBelow6">0,0,0,24</Thickness>
     <!-- A pill on the footer and in the queue (T-371). -->
     <Thickness x:Key="ChipPadding">20,0</Thickness>
     <sys:Double x:Key="IconTileSmallSize">56</sys:Double>
