@@ -447,6 +447,7 @@
   "kioskEmptyNear": "No kiosk within {km} km",
   "kioskEmptyNearHint": "Widen the radius or search for a kiosk by name.",
   "kioskWiderRadius": "Widen the radius",
+  "kioskAnyDistance": "Any distance",
   "kioskLoadFailed": "The kiosks could not be loaded: {reason}",
   "kioskMore": "Details",
   "kioskMapLegend": "Kiosk status",

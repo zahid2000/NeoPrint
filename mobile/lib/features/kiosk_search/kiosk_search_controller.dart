@@ -12,8 +12,11 @@ final kioskRepositoryProvider = Provider<KioskRepository>(
 
 enum KioskView { list, map }
 
-/// The radii "near me" offers, in kilometres.
-const kioskRadii = [1, 3, 10];
+/// The radii "near me" offers, in kilometres; [kioskAnyDistance] last (T-375).
+const kioskRadii = [1, 3, 10, 50, kioskAnyDistance];
+
+/// "Məsafəsiz": every kiosk, nearest first - no radius is sent.
+const kioskAnyDistance = 0;
 
 /// What the kiosks tab is showing: the text, whether "near me" is on and how
 /// far, and the list or the map. The list and the map show the same result.
@@ -68,12 +71,18 @@ class KioskSearchController extends Notifier<KioskSearchState> {
 
   void setRadius(int km) => state = state.copyWith(radiusKm: km);
 
-  /// The next radius up, for "widen the radius"; the largest stays.
+  /// The next radius up, for "widen the radius"; after the largest, any distance.
   void widenRadius() {
-    final next = kioskRadii.where((km) => km > state.radiusKm);
-    if (next.isNotEmpty) {
-      setRadius(next.first);
+    if (state.radiusKm == kioskAnyDistance) {
+      return;
     }
+
+    final index = kioskRadii.indexOf(state.radiusKm);
+    setRadius(
+      index >= 0 && index + 1 < kioskRadii.length
+          ? kioskRadii[index + 1]
+          : kioskAnyDistance,
+    );
   }
 
   /// Turns "near me" on - asking for the location each time, so a permission
@@ -108,7 +117,9 @@ final kioskResultsProvider = FutureProvider.autoDispose<List<KioskSummary>>((
       .search(
         text: search.text,
         near: near,
-        radiusKm: near == null ? null : search.radiusKm.toDouble(),
+        radiusKm: near == null || search.radiusKm == kioskAnyDistance
+            ? null
+            : search.radiusKm.toDouble(),
       );
 });
 

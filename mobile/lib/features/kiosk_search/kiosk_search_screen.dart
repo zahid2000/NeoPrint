@@ -252,7 +252,11 @@ class _NearMeBar extends ConsumerWidget {
         children: [
           for (final km in kioskRadii)
             ChoiceChip(
-              label: Text(l10n.kioskDistanceKm('$km')),
+              label: Text(
+                km == kioskAnyDistance
+                    ? l10n.kioskAnyDistance
+                    : l10n.kioskDistanceKm('$km'),
+              ),
               selected: search.radiusKm == km,
               onSelected: (_) => controller.setRadius(km),
             ),
@@ -285,11 +289,13 @@ class _Empty extends ConsumerWidget {
     }
 
     if (search.near != null) {
-      final widest = search.radiusKm >= kioskRadii.last;
+      final widest = search.radiusKm == kioskAnyDistance;
 
       return NeoEmptyState(
         icon: Icons.location_searching,
-        message: l10n.kioskEmptyNear(search.radiusKm),
+        message: widest
+            ? l10n.kioskEmpty
+            : l10n.kioskEmptyNear(search.radiusKm),
         hint: l10n.kioskEmptyNearHint,
         action: widest
             ? null

@@ -447,6 +447,7 @@
   "kioskEmptyNear": "В радиусе {km} км киосков нет",
   "kioskEmptyNearHint": "Увеличьте радиус или найдите киоск по названию.",
   "kioskWiderRadius": "Увеличить радиус",
+  "kioskAnyDistance": "Без ограничения",
   "kioskLoadFailed": "Не удалось загрузить киоски: {reason}",
   "kioskMore": "Подробнее",
   "kioskMapLegend": "Состояние киоска",

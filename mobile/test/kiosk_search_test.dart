@@ -201,6 +201,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(kiosks.searches.last.radiusKm, 10);
 
+      // Farther, and any distance: near me, nearest first, no radius (T-375).
+      await tester.tap(find.text('50 km'));
+      await tester.pumpAndSettle();
+      expect(kiosks.searches.last.radiusKm, 50);
+      await tester.tap(find.text('Məsafəsiz'));
+      await tester.pumpAndSettle();
+      expect(kiosks.searches.last.near, (lat: 40.377, lng: 49.84));
+      expect(kiosks.searches.last.radiusKm, isNull);
+
       // "Hamısı" again: no place, no radius.
       await tester.tap(find.text('Hamısı'));
       await tester.pumpAndSettle();
@@ -247,6 +256,13 @@ void main() {
       await tester.tap(find.widgetWithText(OutlinedButton, 'Radiusu böyüt'));
       await tester.pumpAndSettle();
       expect(find.text('10 km radiusda kiosk yoxdur'), findsOneWidget);
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Radiusu böyüt'));
+      await tester.pumpAndSettle();
+      expect(find.text('50 km radiusda kiosk yoxdur'), findsOneWidget);
+      // Past the largest: any distance (T-375), and nothing wider to offer.
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Radiusu böyüt'));
+      await tester.pumpAndSettle();
+      expect(find.text('Hələ heç bir kiosk yoxdur'), findsOneWidget);
       expect(find.text('Radiusu böyüt'), findsNothing, reason: 'the widest');
     });
 
