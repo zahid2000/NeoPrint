@@ -8,6 +8,7 @@ import 'core/l10n/material_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
+import 'shared/widgets/system_bar_frame.dart';
 
 void main() {
   runApp(const ProviderScope(child: NeoPrintApp()));
@@ -27,6 +28,7 @@ class NeoPrintApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
 
       routerConfig: router,
+      builder: (context, child) => SystemBarFrame(child: child),
 
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
