@@ -249,6 +249,25 @@ describe('KioskUpdatesComponent', () => {
     expect(element(fixture).querySelector('[data-notice="skipped"]')).not.toBeNull();
   });
 
+  it('shows a kiosk whose components the API sends without a state or a target - as it does for one never updated (T-366)', async () => {
+    const fixture = await open(
+      [Permissions.kiosksView, Permissions.kioskCommandsUpdate],
+      detail({
+        components: [
+          { component: 'App', running: '0.1.0' },
+          { component: 'Agent', running: '0.1.0' },
+          { component: 'Provisioning' },
+        ] as KioskUpdateDetail['components'],
+        history: [],
+      }),
+    );
+
+    const text = element(fixture).textContent ?? '';
+    expect(text).toContain('kioskUpdate.versionsTitle');
+    expect(text).toContain('kioskUpdate.commandsTitle');
+    expect(element(fixture).querySelector('[data-notice]')).toBeNull();
+  });
+
   it('sends a command only after it is confirmed with a reason, and the reason goes with it', async () => {
     const fixture = await open(everything);
 

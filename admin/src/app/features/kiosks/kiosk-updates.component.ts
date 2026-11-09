@@ -427,7 +427,8 @@ export class KioskUpdatesComponent implements OnInit {
   readonly notice = computed<CurrentNotice | null>(() => {
     const states = (this.detail()?.components ?? [])
       .map((component) => component.state)
-      .filter((state) => state !== null);
+      // Left out, not null, for a component never updated (T-366): either is none.
+      .filter((state): state is KioskUpdateState => state != null);
 
     for (const status of underway) {
       const state = states.find((candidate) => candidate.status === status);

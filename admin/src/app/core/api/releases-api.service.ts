@@ -117,12 +117,15 @@ export interface KioskVersion {
   readonly lastHeartbeatAt: string | null;
 }
 
-/** One component on a kiosk (T-326): what runs, what it is offered, where its last update stands. */
+/**
+ * One component on a kiosk (T-326): what runs, what it is offered, where its last update stands.
+ * The API leaves out what it has not got - a component never updated has no `state` at all (T-366).
+ */
 export interface KioskComponent {
   readonly component: ReleaseComponent;
-  readonly running: string | null;
-  readonly target: string | null;
-  readonly state: KioskUpdateState | null;
+  readonly running?: string | null;
+  readonly target?: string | null;
+  readonly state?: KioskUpdateState | null;
 }
 
 /** A kiosk's "Yeniləmə" tab (GET admin/kiosks/{id}/update): within the account's kiosk scope. */
