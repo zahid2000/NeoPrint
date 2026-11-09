@@ -1345,6 +1345,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsFromDrive));
         OnPropertyChanged(nameof(ShowSteps));
         OnPropertyChanged(nameof(Steps));
+        HeaderChanged();
     }
 
     /// <summary>The indicator is part of an order, not of the cancel screen.</summary>

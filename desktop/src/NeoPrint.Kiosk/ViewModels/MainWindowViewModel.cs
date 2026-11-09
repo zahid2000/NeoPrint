@@ -374,6 +374,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         IsMaintenance = on;
+
+        ShellPrinterChanged();
         OnPropertyChanged(nameof(IsMaintenance));
         OnPropertyChanged(nameof(OutOfServiceTitle));
         OnPropertyChanged(nameof(OutOfServiceBody));
@@ -514,6 +516,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         PrinterProblem = problemKey;
         OnPropertyChanged(nameof(OutOfServiceTitle));
         OnPropertyChanged(nameof(OutOfServiceBody));
+        ShellPrinterChanged();
 
         if (IsSafeMode || Screen == KioskScreen.Admin)
         {
@@ -550,6 +553,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public bool ResetIfIdle(TimeSpan idle, TimeSpan orderLimit, string? defaultLanguage)
     {
         var reset = false;
+        CloseShellIfIdle(idle);
 
         // A file being prepared or an order being placed is left to finish; a
         // QR being paid on a phone is not idleness - its own countdown ends it.
@@ -797,6 +801,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         {
             Language = code;
         }
+
+        IsLanguageOpen = false;
     }
 
     /// <summary>Applies the enrollment state and moves to the right screen.</summary>
@@ -962,6 +968,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(QueueSummaryText));
+        OnPropertyChanged(nameof(QueueButtonText));
     }
 
     protected override void OnLanguageChanged()
@@ -1007,6 +1014,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     partial void OnNowChanged(DateTime value)
     {
         OnPropertyChanged(nameof(ClockText));
+        OnPropertyChanged(nameof(DateText));
         ForgetEndedSessions();
         UpdateIdleWarning(DateTime.UtcNow - _lastTouchUtc);
     }

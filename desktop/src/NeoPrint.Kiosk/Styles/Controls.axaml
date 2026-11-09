@@ -351,4 +351,119 @@
             </Animation>
         </Style.Animations>
     </Style>
+
+    <!-- ==== The poster's shell (T-371; docs/DESIGN_SYSTEM.md §5.1) ==== -->
+
+    <!-- "AZ ▾" in the header: a quiet pill, as large as a finger. -->
+    <Style Selector="Button.lang">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="MinHeight" Value="{DynamicResource TouchTarget}" />
+        <Setter Property="Padding" Value="{DynamicResource ChipPadding}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
+    </Style>
+
+    <!-- "← Geri" above a screen: words and an arrow, no box. -->
+    <Style Selector="Button.back">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="MinHeight" Value="{DynamicResource TouchTarget}" />
+        <Setter Property="Padding" Value="{DynamicResource InsetX4}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral600}" />
+    </Style>
+
+    <!-- A status as a pill: colour, icon and words (section 4). -->
+    <Style Selector="Border.status-chip">
+        <Setter Property="Background" Value="{DynamicResource WarningBg}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="MinHeight" Value="{DynamicResource StatusChipHeight}" />
+        <Setter Property="Padding" Value="{DynamicResource ChipPadding}" />
+    </Style>
+    <Style Selector="Border.status-chip.ok">
+        <Setter Property="Background" Value="{DynamicResource SuccessBg}" />
+    </Style>
+    <Style Selector="Border.status-chip.problem">
+        <Setter Property="Background" Value="{DynamicResource WarningBg}" />
+    </Style>
+
+    <!-- "Növbə: 3" on the footer: opens the queue. -->
+    <Style Selector="Button.queue-chip">
+        <Setter Property="Background" Value="{DynamicResource Neutral100}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="MinHeight" Value="{DynamicResource TouchTarget}" />
+        <Setter Property="Padding" Value="{DynamicResource ChipPadding}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
+    </Style>
+
+    <!-- One order in "Çap növbəsi"; the one on the printer stands out. -->
+    <Style Selector="Border.queue-row">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Padding" Value="{DynamicResource Inset6}" />
+        <Setter Property="Margin" Value="{DynamicResource GapBelow4}" />
+    </Style>
+    <Style Selector="Border.queue-row.printing">
+        <Setter Property="Background" Value="{DynamicResource Brand50}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brand300}" />
+    </Style>
+
+    <!-- The welcome screen (T-371): the big line, the printer beside it. -->
+    <Style Selector="TextBlock.hero">
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeHero}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
+    </Style>
+    <Style Selector="Panel.hero-art">
+        <Setter Property="Width" Value="{DynamicResource HeroArtWidth}" />
+        <Setter Property="Height" Value="{DynamicResource HeroArtHeight}" />
+    </Style>
+    <Style Selector="Border.hero-paper">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
+        <Setter Property="Padding" Value="{DynamicResource Inset4}" />
+    </Style>
+    <Style Selector="Border.icon-tile.small">
+        <Setter Property="Width" Value="{DynamicResource IconTileSmallSize}" />
+        <Setter Property="Height" Value="{DynamicResource IconTileSmallSize}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- The cards' content fills them: the arrow sits in the corner. -->
+    <Style Selector="Button.source">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    </Style>
+
+    <!-- A tool beside the preview (T-372): white, an icon and words, full width. -->
+    <Style Selector="Button.tool">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Padding" Value="{DynamicResource InsetX4}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
+    </Style>
+
+    <!-- A page's tool in the editor (T-373): compact, so the words always fit. -->
+    <Style Selector="Button.page-tool">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="MinHeight" Value="{DynamicResource PageToolHeight}" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Padding" Value="{DynamicResource Inset4}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
+        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
+    </Style>
+    <Style Selector="Button.page-tool.danger-text">
+        <Setter Property="Foreground" Value="{DynamicResource Danger500}" />
+    </Style>
 </Styles>

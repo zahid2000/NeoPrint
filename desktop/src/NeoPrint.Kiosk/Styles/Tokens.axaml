@@ -71,6 +71,8 @@
          one and nothing readable goes below 20.
     -->
     <sys:Double x:Key="FontSizeDisplay">56</sys:Double>
+    <!-- The welcome screen's big line (T-371). -->
+    <sys:Double x:Key="FontSizeHero">68</sys:Double>
     <sys:Double x:Key="FontSizeH1">44</sys:Double>
     <sys:Double x:Key="FontSizeH2">34</sys:Double>
     <sys:Double x:Key="FontSizeBody">26</sys:Double>
@@ -109,6 +111,19 @@
     <Thickness x:Key="GapBelow4">0,0,0,16</Thickness>
     <!-- The compact queue panel (T-360): half a step. -->
     <Thickness x:Key="GapAbove2">0,8,0,0</Thickness>
+    <Thickness x:Key="GapAbove6">0,24,0,0</Thickness>
+    <Thickness x:Key="GapAbove4">0,16,0,0</Thickness>
+    <!-- A pill on the footer and in the queue (T-371). -->
+    <Thickness x:Key="ChipPadding">20,0</Thickness>
+    <sys:Double x:Key="IconTileSmallSize">56</sys:Double>
+    <!-- The flow's screens as the poster draws them (T-371 - T-374). -->
+    <sys:Double x:Key="PreviewThumbsWidth">200</sys:Double>
+    <sys:Double x:Key="PreviewSideWidth">320</sys:Double>
+    <sys:Double x:Key="EditTileWidth">380</sys:Double>
+    <sys:Double x:Key="PageToolHeight">56</sys:Double>
+    <sys:Double x:Key="PayCardWidth">640</sys:Double>
+    <sys:Double x:Key="HeroArtWidth">380</sys:Double>
+    <sys:Double x:Key="HeroArtHeight">320</sys:Double>
     <!-- Right of and under an on-screen key, so neighbouring keys never touch. -->
     <Thickness x:Key="KeyGap">0,0,16,16</Thickness>
 

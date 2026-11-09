@@ -73,6 +73,10 @@ public sealed partial class PrintFlowViewModel
     [ObservableProperty]
     private string? _countdownText;
 
+    /// <summary>"4:39": the countdown alone, large (T-374).</summary>
+    [ObservableProperty]
+    private string? _countdownValue;
+
     [ObservableProperty]
     private bool _countdownLow;
 
@@ -559,6 +563,7 @@ public sealed partial class PrintFlowViewModel
     {
         var seconds = SecondsLeft();
         CountdownText = T("pay.timeLeft", $"{seconds / 60}:{seconds % 60:00}");
+        CountdownValue = $"{seconds / 60}:{seconds % 60:00}";
         CountdownLow = seconds <= 60;
     }
 

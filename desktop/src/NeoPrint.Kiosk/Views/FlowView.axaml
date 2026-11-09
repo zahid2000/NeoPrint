@@ -16,28 +16,17 @@
 
         <!-- The step indicator, the USB badge and the error, above every stage -->
         <StackPanel Grid.Row="0" Spacing="{DynamicResource Space4}" Margin="{DynamicResource GapBelow4}">
-            <!-- Done: a green tick; current: a brand number; upcoming: a neutral
-                 number - and always the step's name (docs/DESIGN_SYSTEM.md). -->
-            <ItemsControl ItemsSource="{Binding Steps}" IsVisible="{Binding ShowSteps}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space8}" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:FlowStep">
-                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                            <PathIcon Width="32" Height="32" Data="{StaticResource IconSuccess}"
-                                      Foreground="{DynamicResource Success500}" IsVisible="{Binding IsDone}" />
-                            <Border Classes="step" Classes.current="{Binding IsCurrent}" IsVisible="{Binding !IsDone}">
-                                <TextBlock Text="{Binding Number}" Classes="step-number" Classes.current="{Binding IsCurrent}" />
-                            </Border>
-                            <TextBlock Text="{Binding Label}" Classes="step-label" Classes.current="{Binding IsCurrent}"
-                                       VerticalAlignment="Center" />
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <!-- The poster's top of a screen (T-371): "← Geri" and the title - not the step indicator. -->
+            <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasHeader}">
+                <Button Classes="back" Command="{Binding BackCommand}" IsVisible="{Binding HasBack}" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                        <PathIcon Data="{StaticResource IconArrowBack}" Width="24" Height="24" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding BackText}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <TextBlock Grid.Column="1" Text="{Binding StageTitle}" Classes="h1" TextTrimming="CharacterEllipsis"
+                           Margin="{DynamicResource GapStart4}" VerticalAlignment="Center" />
+            </Grid>
 
             <Border Classes="usb" HorizontalAlignment="Left" IsVisible="{Binding IsFromDrive}">
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
@@ -61,7 +50,6 @@
             <!-- ============ Screen 2: the files on the drive ============ -->
             <Grid RowDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsBrowse}}">
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" Margin="{DynamicResource GapBelow4}">
-                    <TextBlock Text="{Binding BrowseTitle}" Classes="h1" VerticalAlignment="Center" />
                     <Button Classes="secondary" Command="{Binding UpCommand}" IsVisible="{Binding CanGoUp}">
                         <TextBlock Text="{Binding UpText}" />
                     </Button>
@@ -131,20 +119,19 @@
                 <TextBlock Text="{Binding WorkingText}" Classes="h2" HorizontalAlignment="Center" />
             </StackPanel>
 
-            <!-- ============ Screen 3: preview ============ -->
-            <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
-                <TextBlock Grid.ColumnSpan="3" Text="{Binding FileName}" Classes="h1" TextTrimming="CharacterEllipsis" Margin="{DynamicResource GapBelow4}" />
-
-                <ScrollViewer Grid.Row="1" Width="240">
+            <!-- ============ Screen 3: preview (the poster's "4. Preview", T-372) ============ -->
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Space6}"
+                  IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
+                <ScrollViewer Width="{DynamicResource PreviewThumbsWidth}">
                     <ItemsControl ItemsSource="{Binding Pages}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:PageTile">
                                 <Button Classes="choice" Classes.selected="{Binding IsSelected}" Margin="{DynamicResource GapBelow4}"
-                                        HorizontalAlignment="Stretch"
+                                        HorizontalAlignment="Stretch" Padding="{DynamicResource Inset4}"
                                         Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).ShowPageCommand}"
                                         CommandParameter="{Binding}">
-                                    <StackPanel Spacing="{DynamicResource Space4}">
-                                        <Image Source="{Binding Image}" IsVisible="{Binding HasImage}" MaxHeight="220" />
+                                    <StackPanel Spacing="{DynamicResource Space2}">
+                                        <Image Source="{Binding Image}" IsVisible="{Binding HasImage}" MaxHeight="180" />
                                         <TextBlock Text="{Binding Label}" Classes="caption" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
@@ -153,28 +140,32 @@
                     </ItemsControl>
                 </ScrollViewer>
 
-                <Border Grid.Row="1" Grid.Column="1" Classes="card" Background="{DynamicResource Brand50}" Margin="{DynamicResource GapStart6}">
+                <Border Grid.Column="1" Classes="card" Background="{DynamicResource Brand50}">
                     <Image Source="{Binding LargePage}" Stretch="Uniform" />
                 </Border>
 
-                <!-- "Fayl məlumatı" (T-341): what was opened, beside the page. -->
-                <Border Grid.Row="1" Grid.Column="2" Classes="card" Width="{StaticResource SideCardWidth}" VerticalAlignment="Top"
-                        Margin="{DynamicResource GapStart6}">
-                    <StackPanel Spacing="{DynamicResource Space4}">
-                        <TextBlock Text="{Binding FileInfoTitle}" Classes="h2" />
-                        <Border Classes="icon-tile row">
-                            <PathIcon Data="{StaticResource IconPrint}" Width="28" Height="28" Foreground="{DynamicResource Brand600}" />
-                        </Border>
-                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" Foreground="{DynamicResource Neutral900}" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding FilePagesText}" Classes="muted"
-                                   IsVisible="{Binding FilePagesText, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    </StackPanel>
-                </Border>
+                <!-- "Fayl məlumatı" as a few words, and the tools for the file. -->
+                <StackPanel Grid.Column="2" Width="{DynamicResource PreviewSideWidth}" Spacing="{DynamicResource Space4}">
+                    <TextBlock Text="{Binding FileInfoTitle}" Classes="body-small" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding FilePagesText}" Classes="muted"
+                               IsVisible="{Binding FilePagesText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <Button Classes="tool" Command="{Binding EditCommand}" IsVisible="{Binding CanEditFile}" Margin="{DynamicResource GapAbove4}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                            <PathIcon Data="{StaticResource IconEdit}" Width="28" Height="28" Foreground="{DynamicResource Brand500}" />
+                            <TextBlock Text="{Binding EditText}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="tool" Command="{Binding StartLayoutCommand}" IsVisible="{Binding CanStartLayout}">
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                            <PathIcon Data="{StaticResource IconDocument}" Width="28" Height="28" Foreground="{DynamicResource Brand500}" />
+                            <TextBlock Text="{Binding LayoutStartText}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
 
             <!-- ============ Screen 4: the editor ============ -->
             <Grid RowDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsEdit}}">
-                <TextBlock Text="{Binding EditTitle}" Classes="h1" Margin="{DynamicResource GapBelow4}" />
 
                 <!-- Pages of a document: turn, move, remove. -->
                 <ScrollViewer Grid.Row="1" IsVisible="{Binding IsPaged}">
@@ -186,30 +177,44 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:PageTile">
-                                <Border Classes="card" Margin="{DynamicResource GapStart4}" Width="300">
+                                <Border Classes="card" Margin="{DynamicResource KeyGap}" Width="{DynamicResource EditTileWidth}">
                                     <StackPanel Spacing="{DynamicResource Space4}">
                                         <Panel Height="260">
                                             <Image Source="{Binding Image}" RenderTransform="{Binding Rotate, Converter={x:Static vm:ScreenConverters.Rotation}}" />
                                         </Panel>
                                         <TextBlock Text="{Binding Label}" Classes="caption" HorizontalAlignment="Center" />
-                                        <UniformGrid Columns="2">
-                                            <Button Classes="secondary" Margin="{DynamicResource GapBelow4}"
+                                        <!-- T-373: icon + word, compact - the words are never cut. -->
+                                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto"
+                                              ColumnSpacing="{DynamicResource Space2}" RowSpacing="{DynamicResource Space2}">
+                                            <Button Classes="page-tool"
                                                     Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).RotatePageCommand}" CommandParameter="{Binding}">
-                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).RotateText}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                                    <PathIcon Data="{StaticResource IconRotate}" Width="22" Height="22" />
+                                                    <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).RotateText}" VerticalAlignment="Center" />
+                                                </StackPanel>
                                             </Button>
-                                            <Button Classes="secondary" Margin="{DynamicResource GapBelow4}"
+                                            <Button Grid.Column="1" Classes="page-tool danger-text"
                                                     Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).DeletePageCommand}" CommandParameter="{Binding}">
-                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).DeleteText}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                                    <PathIcon Data="{StaticResource IconDelete}" Width="22" Height="22" />
+                                                    <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).DeleteText}" VerticalAlignment="Center" />
+                                                </StackPanel>
                                             </Button>
-                                            <Button Classes="secondary"
+                                            <Button Grid.Row="1" Classes="page-tool"
                                                     Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MovePageBackCommand}" CommandParameter="{Binding}">
-                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MoveBackText}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                                    <PathIcon Data="{StaticResource IconChevronLeft}" Width="22" Height="22" />
+                                                    <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MoveBackText}" VerticalAlignment="Center" />
+                                                </StackPanel>
                                             </Button>
-                                            <Button Classes="secondary"
+                                            <Button Grid.Row="1" Grid.Column="1" Classes="page-tool"
                                                     Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MovePageForwardCommand}" CommandParameter="{Binding}">
-                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MoveForwardText}" />
+                                                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                                    <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MoveForwardText}" VerticalAlignment="Center" />
+                                                    <PathIcon Data="{StaticResource IconChevronRight}" Width="22" Height="22" />
+                                                </StackPanel>
                                             </Button>
-                                        </UniformGrid>
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -284,7 +289,6 @@
                     </Style>
                 </Grid.Styles>
 
-                <TextBlock Text="{Binding LayoutTitle}" Classes="h1" TextWrapping="Wrap" Margin="{DynamicResource GapBelow4}" />
                 <TextBlock Grid.Row="1" Text="{Binding LayoutHint}" Classes="muted" TextWrapping="Wrap" Margin="{DynamicResource GapBelow4}" />
 
                 <Border Grid.Row="2" Classes="card" Margin="{DynamicResource GapBelow4}">
@@ -363,7 +367,6 @@
                 </Border.Styles>
                 <ScrollViewer>
                     <StackPanel Spacing="{DynamicResource Space6}">
-                        <TextBlock Text="{Binding OptionsTitle}" Classes="h1" />
 
                         <!-- A file from the app: what was chosen there and this kiosk cannot do (plan 9.4). -->
                         <Border Classes="warning" IsVisible="{Binding PresetNote, Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -529,7 +532,6 @@
             <!-- ============ Screen 6: how to pay ============ -->
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}"
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPaymentMethod}}">
-                <TextBlock Text="{Binding PayTitle}" Classes="h1" HorizontalAlignment="Center" />
                 <TextBlock Text="{Binding PayAmountLabel}" Classes="muted" HorizontalAlignment="Center" />
                 <TextBlock Text="{Binding PayAmountText}" Classes="display" HorizontalAlignment="Center" />
                 <TextBlock Text="{Binding PayPromoText}" Foreground="{DynamicResource Success500}" HorizontalAlignment="Center"
@@ -563,7 +565,7 @@
                     <Image Source="{Binding QrContent, Converter={x:Static vm:ScreenConverters.QrImage}}"
                            Width="{DynamicResource PaymentQrSize}" Height="{DynamicResource PaymentQrSize}" />
                 </Border>
-                <Border Grid.Column="1" Classes="card" Margin="{DynamicResource GapStart12}" MaxWidth="760" VerticalAlignment="Center">
+                <Border Grid.Column="1" Classes="card" Margin="{DynamicResource GapStart12}" Width="{DynamicResource PayCardWidth}" VerticalAlignment="Center">
                 <StackPanel Spacing="{DynamicResource Space6}">
                     <Border Classes="warning" IsVisible="{Binding PayNotice, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
@@ -575,13 +577,17 @@
                     <TextBlock Text="{Binding PayAmountText}" Classes="display" />
                     <TextBlock Text="{Binding PayPromoText}" Foreground="{DynamicResource Success500}"
                                IsVisible="{Binding PayPromoText, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    <TextBlock Text="{Binding PayInstruction}" Classes="h2" TextWrapping="Wrap" />
-                    <!-- The countdown: a large number with words; the last minute in warning colour and with its icon. -->
-                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                        <PathIcon Data="{StaticResource IconClock}" Width="32" Height="32" Foreground="{DynamicResource Brand600}" IsVisible="{Binding !CountdownLow}" />
-                        <PathIcon Data="{StaticResource IconWarning}" Width="32" Height="32" Foreground="{DynamicResource Warning500}" IsVisible="{Binding CountdownLow}" />
-                        <TextBlock Text="{Binding CountdownText}" Classes="h1" Classes.warning="{Binding CountdownLow}" TextWrapping="Wrap" />
-                    </StackPanel>
+                    <TextBlock Text="{Binding PayInstruction}" TextWrapping="Wrap" />
+                    <!-- The countdown (T-374): the words small over the time, large; the last minute
+                         in warning colour and with its icon. Nothing runs past the card. -->
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
+                        <PathIcon Data="{StaticResource IconClock}" Width="40" Height="40" Foreground="{DynamicResource Brand500}" IsVisible="{Binding !CountdownLow}" VerticalAlignment="Center" />
+                        <PathIcon Data="{StaticResource IconWarning}" Width="40" Height="40" Foreground="{DynamicResource Warning500}" IsVisible="{Binding CountdownLow}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding CountdownLabel}" Classes="body-small" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding CountdownValue}" Classes="display" Classes.warning="{Binding CountdownLow}" />
+                        </StackPanel>
+                    </Grid>
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
                         <ProgressBar IsIndeterminate="True" Width="160" VerticalAlignment="Center" />
                         <TextBlock Text="{Binding PayWaitingText}" Classes="muted" VerticalAlignment="Center" />
@@ -686,7 +692,6 @@
             <!-- ============ Screen 10: the user's files, after their QR (plan 9.4) ============ -->
             <Grid RowDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsUserFiles}}">
                 <StackPanel Spacing="{DynamicResource Space4}" Margin="{DynamicResource GapBelow4}">
-                    <TextBlock Text="{Binding UserFilesTitle}" Classes="h1" />
                     <TextBlock Text="{Binding UserFilesBody}" Classes="muted" IsVisible="{Binding HasUserFiles}" />
                 </StackPanel>
 
@@ -930,17 +935,6 @@
         <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="{DynamicResource GapBelow4}" IsVisible="{Binding !IsTyping}">
 
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
-                <!-- Browse / cancel lookup / placed: leave -->
-                <Button Classes="secondary" Command="{Binding LeaveCommand}">
-                    <Button.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsBrowse}" />
-                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsCancelLookup}" />
-                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsUserFiles}" />
-                        </MultiBinding>
-                    </Button.IsVisible>
-                    <TextBlock Text="{Binding BackText}" />
-                </Button>
                 <!-- Screen 10: more than five files are paged (docs/DESIGN_SYSTEM.md §5.1). -->
                 <Button Classes="secondary" Command="{Binding PreviousUserPageCommand}">
                     <Button.IsVisible>
@@ -960,49 +954,6 @@
                     </Button.IsVisible>
                     <TextBlock Text="{Binding NextPageText}" />
                 </Button>
-                <Button Classes="secondary" Command="{Binding BackToBrowseCommand}"
-                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
-                    <TextBlock Text="{Binding BackText}" />
-                </Button>
-                <Button Classes="secondary" Command="{Binding EditCommand}">
-                    <Button.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsPreview}" />
-                            <Binding Path="CanEditFile" />
-                        </MultiBinding>
-                    </Button.IsVisible>
-                    <TextBlock Text="{Binding EditText}" />
-                </Button>
-                <Button Classes="secondary" Command="{Binding StartLayoutCommand}">
-                    <Button.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsPreview}" />
-                            <Binding Path="CanStartLayout" />
-                        </MultiBinding>
-                    </Button.IsVisible>
-                    <TextBlock Text="{Binding LayoutStartText}" />
-                </Button>
-                <Button Classes="secondary" Command="{Binding LayoutCancelCommand}"
-                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsLayout}}">
-                    <TextBlock Text="{Binding CancelText}" />
-                </Button>
-                <Button Classes="secondary" Command="{Binding CancelEditCommand}"
-                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsEdit}}">
-                    <TextBlock Text="{Binding CancelText}" />
-                </Button>
-                <Button Classes="secondary" Command="{Binding ShowPreviewCommand}"
-                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsOptions}}">
-                    <TextBlock Text="{Binding BackText}" />
-                </Button>
-                <Button Classes="secondary" Command="{Binding StartCancelAgainCommand}"
-                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsCancelConfirm}}">
-                    <TextBlock Text="{Binding BackText}" />
-                </Button>
-                <!-- Paying: another way, or cancel the order - nothing was taken yet. -->
-                <Button Classes="secondary" Command="{Binding ChangeMethodCommand}"
-                        IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsQrPayment}}">
-                    <TextBlock Text="{Binding OtherMethodText}" />
-                </Button>
                 <Button Classes="secondary" Command="{Binding CancelOrderCommand}">
                     <Button.IsVisible>
                         <MultiBinding Converter="{x:Static BoolConverters.Or}">
@@ -1016,9 +967,25 @@
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                <!-- The poster's screen 10 (T-371): the queue, with the order in it. -->
+                <Button Classes="secondary" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenQueueCommand}">
+                    <Button.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsPlaced}" />
+                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsCollected}" />
+                        </MultiBinding>
+                    </Button.IsVisible>
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                        <PathIcon Data="{StaticResource IconQueue}" Width="28" Height="28" />
+                        <TextBlock Text="{Binding FollowQueueText}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
                 <Button Classes="primary" Command="{Binding ContinueCommand}"
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPreview}}">
-                    <TextBlock Text="{Binding ContinueText}" Foreground="{DynamicResource Neutral0}" />
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                        <TextBlock Text="{Binding ContinueText}" Foreground="{DynamicResource Neutral0}" VerticalAlignment="Center" />
+                        <PathIcon Data="{StaticResource IconArrowForward}" Width="28" Height="28" Foreground="{DynamicResource Neutral0}" />
+                    </StackPanel>
                 </Button>
                 <Button Classes="primary" Command="{Binding SaveEditCommand}"
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsEdit}}">
@@ -1030,7 +997,10 @@
                 </Button>
                 <Button Classes="primary" Command="{Binding PlaceCommand}" IsEnabled="{Binding CanPlace}"
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsOptions}}">
-                    <TextBlock Text="{Binding PlaceText}" Foreground="{DynamicResource Neutral0}" />
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                        <TextBlock Text="{Binding PlaceText}" Foreground="{DynamicResource Neutral0}" VerticalAlignment="Center" />
+                        <PathIcon Data="{StaticResource IconArrowForward}" Width="28" Height="28" Foreground="{DynamicResource Neutral0}" />
+                    </StackPanel>
                 </Button>
                 <Button Classes="primary" Command="{Binding FindCommand}" IsEnabled="{Binding CanFind}"
                         IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsCancelLookup}}">

@@ -408,6 +408,8 @@ public sealed partial class ScreenRenderTests : IDisposable
                 shell.Activation.IsBackendReachable = false;
             })),
             ("04-home", Shell(language, KioskScreen.Home)),
+            // "Çap növbəsi" opened from the footer (T-371).
+            ("04b-queue", Shell(language, KioskScreen.Home, shell => shell.IsQueueOpen = true)),
             ("05-home-no-flash-empty-queue", Shell(language, KioskScreen.Home, shell =>
             {
                 shell.CanPrintFromFlash = false;

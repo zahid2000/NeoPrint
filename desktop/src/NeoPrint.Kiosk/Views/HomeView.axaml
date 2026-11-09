@@ -5,14 +5,16 @@
              x:DataType="vm:MainWindowViewModel">
 
     <!--
-        Screen 1 (plan section 7.3): print from a flash drive, cancel an order by
-        its code. Card-sized targets - this is a finger on a kiosk, not a mouse.
+        Screen 1 (plan section 7.3; the poster's "1. Welcome", T-371): the big line
+        and a printer on the right, the ways a file comes in as cards with an
+        arrow, cancelling by code as quiet words, and what the kiosk offers along
+        the bottom. The printer's state and the queue are on the footer (T-370).
     -->
 
-    <StackPanel VerticalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="1180">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="{DynamicResource Space6}" MaxWidth="1600">
         <!-- RefundInfo (plan sections 2.5, 7.3): the printer stopped a paid order and
              the backend is giving the money back - what, where, and how to follow it. -->
-        <Border Classes="card" IsVisible="{Binding HasRefundNotice}">
+        <Border Grid.Row="0" Classes="card" IsVisible="{Binding HasRefundNotice}">
             <!-- The text takes what the QR leaves and wraps there: it must not run past the card (T-238). -->
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space6}">
                 <Border Grid.Column="0" Classes="qr" VerticalAlignment="Center">
@@ -34,89 +36,102 @@
             </Grid>
         </Border>
 
-        <!-- The welcome screen as the design draws it (T-341; docs/DESIGN_SYSTEM.md
-             §5.1, "Kiosk: xoş gəlmisiniz ekranı"): a big line, the ways a file
-             comes in as cards, what the kiosk offers now. -->
-        <StackPanel Spacing="{DynamicResource Space4}">
-            <TextBlock Text="{Binding HeroTitle}" Classes="display" TextWrapping="Wrap" />
-            <TextBlock Text="{Binding HeroSubtitle}" Classes="muted" TextWrapping="Wrap" />
-        </StackPanel>
+        <!-- The big line on the left, the printer on the right (the poster's hero). -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" IsVisible="{Binding !HasRefundNotice}">
+            <StackPanel Spacing="{DynamicResource Space4}" VerticalAlignment="Center">
+                <TextBlock Text="{Binding HeroTitle}" Classes="hero" TextWrapping="Wrap" MaxWidth="820" HorizontalAlignment="Left" />
+                <TextBlock Text="{Binding HeroSubtitle}" Classes="muted" TextWrapping="Wrap" />
+            </StackPanel>
+            <Panel Grid.Column="1" Classes="hero-art">
+                <Ellipse Fill="{DynamicResource Brand100}" Width="300" Height="300" />
+                <Border Classes="hero-paper" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,48,0,0">
+                    <PathIcon Data="{StaticResource IconDocument}" Width="72" Height="72" Foreground="{DynamicResource Brand300}" />
+                </Border>
+                <PathIcon Data="{StaticResource IconPrint}" Width="200" Height="200" Foreground="{DynamicResource Brand500}"
+                          VerticalAlignment="Bottom" Margin="0,0,0,24" />
+            </Panel>
+        </Grid>
 
-        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="{DynamicResource Space6}">
-            <!-- The kiosk's own way in: shown wherever an order can be paid. -->
-            <Button Grid.Column="0" Classes="source main" Command="{Binding PrintFromUsbCommand}"
-                    IsVisible="{Binding CanPrintFromFlash}">
-                <StackPanel Spacing="{DynamicResource Space4}">
+        <!-- The ways a file comes in, in the poster's order: USB, phone, print code. -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,*,*" ColumnSpacing="{DynamicResource Space6}"
+              IsVisible="{Binding CanPrintFromFlash}">
+            <Button Grid.Column="0" Classes="source" Command="{Binding PrintFromUsbCommand}">
+                <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Space2}">
                     <Border Classes="icon-tile">
-                        <PathIcon Data="{StaticResource IconUsb}" Width="48" Height="48"
-                                  Foreground="{DynamicResource Brand600}" />
+                        <PathIcon Data="{StaticResource IconUsb}" Width="40" Height="40" Foreground="{DynamicResource Brand500}" />
                     </Border>
-                    <TextBlock Text="{Binding UsbCardTitle}" Classes="h2" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding UsbCardHint}" Classes="muted" FontWeight="Normal" TextWrapping="Wrap" />
-                </StackPanel>
-            </Button>
-
-            <!-- The app's "Çap kodu" (T-345): the personal QR as six digits. -->
-            <Button Grid.Column="1" Classes="source" Command="{Binding PrintByCodeCommand}"
-                    IsVisible="{Binding CanPrintFromFlash}">
-                <StackPanel Spacing="{DynamicResource Space4}">
-                    <Border Classes="icon-tile">
-                        <PathIcon Data="{StaticResource IconQrCode}" Width="48" Height="48"
-                                  Foreground="{DynamicResource Brand600}" />
-                    </Border>
-                    <TextBlock Text="{Binding CodeCardTitle}" Classes="h2" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding CodeCardHint}" Classes="muted" FontWeight="Normal" TextWrapping="Wrap" />
-                </StackPanel>
+                    <TextBlock Grid.Row="1" Text="{Binding UsbCardTitle}" Classes="h2" TextWrapping="Wrap" Margin="{DynamicResource GapAbove2}" />
+                    <TextBlock Grid.Row="2" Text="{Binding UsbCardHint}" Classes="muted" FontWeight="Normal" TextWrapping="Wrap" />
+                    <PathIcon Grid.Row="3" Data="{StaticResource IconArrowForward}" Width="32" Height="32"
+                              HorizontalAlignment="Right" Foreground="{DynamicResource Brand500}" />
+                </Grid>
             </Button>
 
             <!-- Done on the phone, so a card and not a button: the scanner reads it. -->
-            <Border Grid.Column="2" Classes="source-info" IsVisible="{Binding CanPrintFromFlash}">
-                <StackPanel Spacing="{DynamicResource Space4}">
+            <Border Grid.Column="1" Classes="source-info">
+                <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Space2}">
                     <Border Classes="icon-tile">
-                        <PathIcon Data="{StaticResource IconPhone}" Width="48" Height="48"
-                                  Foreground="{DynamicResource Brand600}" />
+                        <PathIcon Data="{StaticResource IconPhone}" Width="40" Height="40" Foreground="{DynamicResource Brand500}" />
                     </Border>
-                    <TextBlock Text="{Binding PhoneCardTitle}" Classes="h2" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding PhoneCardHint}" Classes="muted" TextWrapping="Wrap" />
-                </StackPanel>
+                    <TextBlock Grid.Row="1" Text="{Binding PhoneCardTitle}" Classes="h2" TextWrapping="Wrap" Margin="{DynamicResource GapAbove2}" />
+                    <TextBlock Grid.Row="2" Text="{Binding PhoneCardHint}" Classes="muted" TextWrapping="Wrap" />
+                </Grid>
             </Border>
+
+            <!-- The app's "Çap kodu" (T-345): the personal QR as six digits. -->
+            <Button Grid.Column="2" Classes="source" Command="{Binding PrintByCodeCommand}">
+                <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Space2}">
+                    <Border Classes="icon-tile">
+                        <PathIcon Data="{StaticResource IconQrCode}" Width="40" Height="40" Foreground="{DynamicResource Brand500}" />
+                    </Border>
+                    <TextBlock Grid.Row="1" Text="{Binding CodeCardTitle}" Classes="h2" TextWrapping="Wrap" Margin="{DynamicResource GapAbove2}" />
+                    <TextBlock Grid.Row="2" Text="{Binding CodeCardHint}" Classes="muted" FontWeight="Normal" TextWrapping="Wrap" />
+                    <PathIcon Grid.Row="3" Data="{StaticResource IconArrowForward}" Width="32" Height="32"
+                              HorizontalAlignment="Right" Foreground="{DynamicResource Brand500}" />
+                </Grid>
+            </Button>
         </Grid>
 
-        <Button Classes="secondary"
-                MinHeight="96" HorizontalAlignment="Stretch"
-                HorizontalContentAlignment="Left" Padding="{DynamicResource InsetX8}"
-                Command="{Binding CancelByCodeCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
-                <PathIcon Data="{StaticResource IconInfo}" Width="40" Height="40" />
-                <TextBlock Text="{Binding CancelByCodeText}"
-                           FontSize="{DynamicResource FontSizeButton}"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center" />
+        <!-- Cancelling by code: quiet words under the cards, not a fourth card. -->
+        <Button Grid.Row="3" Classes="back" HorizontalAlignment="Left" Command="{Binding CancelByCodeCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                <PathIcon Data="{StaticResource IconInfo}" Width="28" Height="28" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding CancelByCodeText}" FontWeight="SemiBold" VerticalAlignment="Center" />
             </StackPanel>
         </Button>
 
-        <!-- What the kiosk offers now: status as colour, icon and words. Not while a
-             refund notice takes the room: the screen would run past its bottom. -->
-        <Border Classes="card" IsVisible="{Binding !HasRefundNotice}">
-            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space8}">
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                    <PathIcon Data="{StaticResource IconSuccess}" Width="32" Height="32"
-                              Foreground="{DynamicResource Success500}" />
-                    <!-- The words in the body colour: green text on white is too faint
-                         from standing distance; the icon carries the colour. -->
-                    <TextBlock Text="{Binding ReadyText}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                    <PathIcon Data="{StaticResource IconClock}" Width="32" Height="32"
-                              Foreground="{DynamicResource Neutral600}" />
-                    <TextBlock Text="{Binding QueueSummaryText}" VerticalAlignment="Center" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                    <PathIcon Data="{StaticResource IconInfo}" Width="32" Height="32"
-                              Foreground="{DynamicResource Neutral600}" />
-                    <TextBlock Text="{Binding SecureText}" VerticalAlignment="Center" />
-                </StackPanel>
-            </StackPanel>
+        <!-- What the kiosk offers, along the bottom (the poster's strip). -->
+        <Border Grid.Row="5" Classes="card" IsVisible="{Binding !HasRefundNotice}">
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="{DynamicResource Space6}">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
+                    <Border Classes="icon-tile small"><PathIcon Data="{StaticResource IconDocument}" Width="28" Height="28" Foreground="{DynamicResource Brand500}" /></Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FeatureSizesTitle}" Classes="body-small" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding FeatureSizesHint}" Classes="caption" />
+                    </StackPanel>
+                </Grid>
+                <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
+                    <Border Classes="icon-tile small"><PathIcon Data="{StaticResource IconContrast}" Width="28" Height="28" Foreground="{DynamicResource Brand500}" /></Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FeatureColorTitle}" Classes="body-small" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding FeatureColorHint}" Classes="caption" />
+                    </StackPanel>
+                </Grid>
+                <Grid Grid.Column="2" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
+                    <Border Classes="icon-tile small"><PathIcon Data="{StaticResource IconBolt}" Width="28" Height="28" Foreground="{DynamicResource Brand500}" /></Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FeatureFastTitle}" Classes="body-small" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding FeatureFastHint}" Classes="caption" />
+                    </StackPanel>
+                </Grid>
+                <Grid Grid.Column="3" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
+                    <Border Classes="icon-tile small"><PathIcon Data="{StaticResource IconShield}" Width="28" Height="28" Foreground="{DynamicResource Brand500}" /></Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FeatureSafeTitle}" Classes="body-small" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding FeatureSafeHint}" Classes="caption" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
         </Border>
-    </StackPanel>
+    </Grid>
 </UserControl>
