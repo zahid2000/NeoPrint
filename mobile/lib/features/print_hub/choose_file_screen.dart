@@ -14,7 +14,8 @@ import '../files/files_controller.dart';
 
 /// "Fayllarımdan seç" in the Print tab (T-347, T-348): the files ready to
 /// print, inside the Print tab - back returns to it - and a tap opens the
-/// file's preview with its print settings next.
+/// file's preview with its print settings next. A new file is uploaded here
+/// (T-353) and, once ready, opens its print settings.
 class ChooseFileScreen extends ConsumerStatefulWidget {
   const ChooseFileScreen({super.key});
 
@@ -24,6 +25,13 @@ class ChooseFileScreen extends ConsumerStatefulWidget {
 
 class _ChooseFileScreenState extends ConsumerState<ChooseFileScreen> {
   String _query = '';
+
+  Future<void> _upload() async {
+    final source = await chooseFileSource(context);
+    if (source != null && mounted) {
+      await addFileFrom(context, ref, source, thenPrint: true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +56,16 @@ class _ChooseFileScreenState extends ConsumerState<ChooseFileScreen> {
           : ListView(
               padding: const EdgeInsets.all(Spacing.x4),
               children: [
+                // T-353: a new file comes in here, not in the Print tab; once
+                // it is ready its print settings open.
+                if (ready.isNotEmpty || query.isNotEmpty) ...[
+                  OutlinedButton.icon(
+                    onPressed: _upload,
+                    icon: const Icon(Icons.upload_file),
+                    label: Text(l10n.filesUpload),
+                  ),
+                  const SizedBox(height: Spacing.x3),
+                ],
                 NeoSearchField(
                   hint: l10n.filesSearchHint,
                   onChanged: (value) => setState(() => _query = value),
@@ -62,14 +80,9 @@ class _ChooseFileScreenState extends ConsumerState<ChooseFileScreen> {
                     hint: query.isEmpty ? l10n.pickFileEmptyHint : null,
                     action: query.isEmpty
                         ? FilledButton.icon(
-                            onPressed: () => addFileFrom(
-                              context,
-                              ref,
-                              FileSource.device,
-                              thenPrint: true,
-                            ),
-                            icon: const Icon(Icons.smartphone_outlined),
-                            label: Text(l10n.printHubFromPhone),
+                            onPressed: _upload,
+                            icon: const Icon(Icons.upload_file),
+                            label: Text(l10n.filesUpload),
                           )
                         : null,
                   )

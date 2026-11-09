@@ -32,8 +32,8 @@ Widget hub({bool canScan = true}) => ProviderScope(
 );
 
 void main() {
-  testWidgets('every way in and every way to a kiosk, as equal rows (T-338, '
-      'T-339)', (tester) async {
+  testWidgets('only ways to print, as equal rows - no upload here (T-338, '
+      'T-353)', (tester) async {
     await tester.pumpWidget(hub());
     await tester.pumpAndSettle();
 
@@ -43,10 +43,6 @@ void main() {
 
     final rows = [
       'Fayllarımdan seç',
-      'Telefondan fayl seç',
-      'Buluddan əlavə et',
-      'Şəkil çək',
-      'Yeni tərtibat',
       'Paylaşılan fayllar',
       'Kioskdakı QR-ı oxut',
       'Kiosk seç',
@@ -57,6 +53,16 @@ void main() {
     for (final row in rows) {
       await tester.scrollUntilVisible(find.text(row), 200);
       expect(find.text(row), findsOneWidget, reason: row);
+    }
+
+    // A file is uploaded in "Fayllarımdan seç", not here (T-353).
+    for (final upload in [
+      'Telefondan fayl seç',
+      'Buluddan əlavə et',
+      'Şəkil çək',
+      'Yeni tərtibat',
+    ]) {
+      expect(find.text(upload), findsNothing, reason: upload);
     }
 
     // The new shares are counted on their row.

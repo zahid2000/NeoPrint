@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,13 +9,12 @@ import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_icon_tile.dart';
-import '../files/file_sources.dart';
 import '../payments/scan_screen.dart';
-import '../scanner/document_scanner.dart';
 import '../sharing/shares_controller.dart';
 
 /// The Print tab, "Yeni çap" (docs/DESIGN_SYSTEM.md, "Mobil: yeni vizual
-/// dil"): every way a file comes in, and every way to print it at a kiosk.
+/// dil"): only ways to print (T-353) - a file is chosen from "Fayllarım",
+/// where a new one can be uploaded, and printed at a kiosk.
 /// No primary button - each row is one equal choice.
 class PrintHubScreen extends ConsumerWidget {
   const PrintHubScreen({super.key});
@@ -31,11 +29,6 @@ class PrintHubScreen extends ConsumerWidget {
     final newShares = Readiness.fileSharing
         ? ref.watch(newSharesCountProvider)
         : 0;
-
-    // A file chosen here goes on to its preview and print settings
-    // (T-347), not to the files tab.
-    Future<void> add(FileSource source) =>
-        addFileFrom(context, ref, source, thenPrint: true);
 
     Widget section(String title) => Padding(
       padding: const EdgeInsets.only(top: Spacing.x6, bottom: Spacing.x2),
@@ -60,44 +53,6 @@ class PrintHubScreen extends ConsumerWidget {
         title: l10n.printHubFromFiles,
         hint: l10n.printHubFromFilesHint,
         onTap: () => context.push(Routes.printChoose),
-      ),
-      if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
-        NeoNavRow(
-          icon: Icons.document_scanner_outlined,
-          tone: IconTileTone.accent,
-          title: l10n.filesScanDocument,
-          hint: l10n.filesScanDocumentHint,
-          onTap: () => add(FileSource.scan),
-        ),
-      NeoNavRow(
-        icon: Icons.smartphone_outlined,
-        title: l10n.printHubFromPhone,
-        hint: l10n.printHubFromPhoneHint,
-        onTap: () => add(FileSource.device),
-      ),
-      // The browser's picker knows only the computer's files (T-339).
-      if (!kIsWeb)
-        NeoNavRow(
-          icon: Icons.cloud_upload_outlined,
-          tone: IconTileTone.info,
-          title: l10n.printHubFromCloud,
-          hint: l10n.printHubFromCloudHint,
-          onTap: () => add(FileSource.cloud),
-        ),
-      if (!kIsWeb)
-        NeoNavRow(
-          icon: Icons.photo_camera_outlined,
-          tone: IconTileTone.success,
-          title: l10n.filesTakePhoto,
-          hint: l10n.filesTakePhotoHint,
-          onTap: () => add(FileSource.camera),
-        ),
-      NeoNavRow(
-        icon: Icons.dashboard_customize_outlined,
-        tone: IconTileTone.success,
-        title: l10n.filesNewLayout,
-        hint: l10n.filesNewLayoutHint,
-        onTap: () => add(FileSource.layout),
       ),
       if (Readiness.fileSharing)
         NeoNavRow(

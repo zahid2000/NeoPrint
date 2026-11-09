@@ -1,6 +1,5 @@
 import '../../shared/api_error_text.dart';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,7 +20,6 @@ import 'heic_converter.dart';
 import 'auto_delete_sheet.dart';
 import '../layout/layout_launcher.dart';
 import '../sharing/shares_controller.dart';
-import '../scanner/document_scanner.dart';
 
 /// "Fayllarım" (plan sections 2.2, 8.2): upload from the phone or the camera,
 /// the list with where each file came from, preview and delete.
@@ -102,52 +100,7 @@ class FilesScreen extends ConsumerWidget {
   }
 
   Future<void> _chooseSource(BuildContext context, WidgetRef ref) async {
-    final l10n = AppLocalizations.of(context);
-
-    final choice = await showModalBottomSheet<FileSource>(
-      context: context,
-      showDragHandle: true,
-      // Four ways in: scrollable, so a small or turned phone still reaches all.
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.folder_open_outlined),
-                title: Text(l10n.filesPickFile),
-                subtitle: Text(l10n.filesPickFileHint),
-                onTap: () => Navigator.pop(context, FileSource.device),
-              ),
-              if (!kIsWeb)
-                ListTile(
-                  leading: const Icon(Icons.photo_camera_outlined),
-                  title: Text(l10n.filesTakePhoto),
-                  subtitle: Text(l10n.filesTakePhotoHint),
-                  onTap: () => Navigator.pop(context, FileSource.camera),
-                ),
-              // The phone scanner (plan section 2.11): not on the web.
-              if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
-                ListTile(
-                  leading: const Icon(Icons.document_scanner_outlined),
-                  title: Text(l10n.filesScanDocument),
-                  subtitle: Text(l10n.filesScanDocumentHint),
-                  onTap: () => Navigator.pop(context, FileSource.scan),
-                ),
-              // Pictures and PDF pages on one sheet (plan section 2.11).
-              ListTile(
-                leading: const Icon(Icons.dashboard_customize_outlined),
-                title: Text(l10n.filesNewLayout),
-                subtitle: Text(l10n.filesNewLayoutHint),
-                onTap: () => Navigator.pop(context, FileSource.layout),
-              ),
-              const SizedBox(height: Spacing.x4),
-            ],
-          ),
-        ),
-      ),
-    );
+    final choice = await chooseFileSource(context);
 
     if (choice == null || !context.mounted) {
       return;

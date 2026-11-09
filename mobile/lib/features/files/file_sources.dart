@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/features/readiness.dart';
 import '../../core/router/app_router.dart';
+import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../layout/layout_launcher.dart';
 import '../scanner/document_scan_screen.dart';
+import '../scanner/document_scanner.dart';
 import 'file_models.dart';
 import 'files_controller.dart';
 
@@ -25,6 +28,65 @@ enum FileSource {
   camera,
   scan,
   layout,
+}
+
+/// The ways in, as a bottom sheet: the files tab and "Fayllarımdan seç" in
+/// the Print tab (T-353) offer the same ones. Null when nothing was chosen.
+Future<FileSource?> chooseFileSource(BuildContext context) async {
+  final l10n = AppLocalizations.of(context);
+
+  return showModalBottomSheet<FileSource>(
+    context: context,
+    showDragHandle: true,
+    // Four ways in: scrollable, so a small or turned phone still reaches all.
+    isScrollControlled: true,
+    builder: (context) => SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.folder_open_outlined),
+              title: Text(l10n.filesPickFile),
+              subtitle: Text(l10n.filesPickFileHint),
+              onTap: () => Navigator.pop(context, FileSource.device),
+            ),
+            // Google Drive, OneDrive: the same system picker (T-339).
+            if (!kIsWeb)
+              ListTile(
+                leading: const Icon(Icons.cloud_upload_outlined),
+                title: Text(l10n.printHubFromCloud),
+                subtitle: Text(l10n.printHubFromCloudHint),
+                onTap: () => Navigator.pop(context, FileSource.cloud),
+              ),
+            if (!kIsWeb)
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: Text(l10n.filesTakePhoto),
+                subtitle: Text(l10n.filesTakePhotoHint),
+                onTap: () => Navigator.pop(context, FileSource.camera),
+              ),
+            // The phone scanner (plan section 2.11): not on the web.
+            if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
+              ListTile(
+                leading: const Icon(Icons.document_scanner_outlined),
+                title: Text(l10n.filesScanDocument),
+                subtitle: Text(l10n.filesScanDocumentHint),
+                onTap: () => Navigator.pop(context, FileSource.scan),
+              ),
+            // Pictures and PDF pages on one sheet (plan section 2.11).
+            ListTile(
+              leading: const Icon(Icons.dashboard_customize_outlined),
+              title: Text(l10n.filesNewLayout),
+              subtitle: Text(l10n.filesNewLayoutHint),
+              onTap: () => Navigator.pop(context, FileSource.layout),
+            ),
+            const SizedBox(height: Spacing.x4),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Adds a file from [source].

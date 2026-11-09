@@ -13,10 +13,11 @@ import '../../shared/widgets/neo_design.dart';
 import '../files/file_models.dart';
 import '../files/files_controller.dart';
 import '../files/heic_converter.dart';
+import 'print_next.dart';
 
 /// A file chosen in the Print tab, on its way up (T-347): the progress here,
-/// then straight on to the file's preview and its print settings - not to
-/// the files tab, where the user would have to find it again.
+/// then - once the server has its pages - straight on to its print settings
+/// (T-353), not to the files tab, where the user would have to find it again.
 class PrintUploadScreen extends ConsumerStatefulWidget {
   const PrintUploadScreen({super.key, required this.file});
 
@@ -30,8 +31,18 @@ class _PrintUploadScreenState extends ConsumerState<PrintUploadScreen> {
   @override
   void initState() {
     super.initState();
-    unawaited(_upload());
+    // After the first frame: the upload changes the files' state, which may
+    // not happen while the tree is being built.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(_upload());
+      }
+    });
   }
+
+  /// The uploaded file, while the server turns it into pages.
+  String? _savedId;
+  bool _moved = false;
 
   Future<void> _upload() async {
     final saved = await ref
@@ -39,7 +50,27 @@ class _PrintUploadScreenState extends ConsumerState<PrintUploadScreen> {
         .upload(widget.file);
 
     if (saved != null && mounted) {
-      context.pushReplacement(Routes.filePreview(saved.id), extra: saved);
+      setState(() => _savedId = saved.id);
+      _onSaved(saved);
+    }
+  }
+
+  /// T-353: once the file is ready its print settings open straight away;
+  /// a file that could not be opened, or no way to print on, shows its
+  /// preview, which says why.
+  void _onSaved(UserFile file) {
+    if (_moved ||
+        file.status == FileStatus.pending ||
+        file.status == FileStatus.converting) {
+      return;
+    }
+
+    _moved = true;
+    final next = ref.read(printNextRouteProvider);
+    if (next != null && canPrint(file)) {
+      context.pushReplacement(next, extra: file);
+    } else {
+      context.pushReplacement(Routes.filePreview(file.id), extra: file);
     }
   }
 
@@ -52,8 +83,17 @@ class _PrintUploadScreenState extends ConsumerState<PrintUploadScreen> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final tokens = context.tokens;
-    final item = _item(ref.watch(filesControllerProvider));
-    final error = item?.error;
+    final files = ref.watch(filesControllerProvider);
+    final item = _item(files);
+    final error = _savedId == null ? item?.error : null;
+    final saved = files.files.where((f) => f.id == _savedId).firstOrNull;
+    if (saved != null && !_moved) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _onSaved(saved);
+        }
+      });
+    }
 
     return Scaffold(
       appBar: neoTabAppBar(context, title: l10n.printHubTitle, showBack: true),
@@ -83,11 +123,15 @@ class _PrintUploadScreenState extends ConsumerState<PrintUploadScreen> {
                   const SizedBox(height: Spacing.x4),
                   if (error == null) ...[
                     LinearProgressIndicator(
-                      value: (item?.progress ?? 0) == 0 ? null : item!.progress,
+                      value: _savedId != null || (item?.progress ?? 0) == 0
+                          ? null
+                          : item!.progress,
                     ),
                     const SizedBox(height: Spacing.x2),
                     Text(
-                      (item?.progress ?? 0) == 0
+                      _savedId != null
+                          ? l10n.filesStatusConverting
+                          : (item?.progress ?? 0) == 0
                           ? l10n.filesPreparingPhoto
                           : l10n.filesUploading(
                               ((item?.progress ?? 0) * 100).round(),
@@ -128,7 +172,7 @@ class _PrintUploadScreenState extends ConsumerState<PrintUploadScreen> {
               ),
             ),
           ),
-          if (error == null && item != null) ...[
+          if (error == null && item != null && _savedId == null) ...[
             const SizedBox(height: Spacing.x3),
             TextButton(
               onPressed: () {

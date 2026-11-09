@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,7 @@ import 'package:neoprint/features/files/file_models.dart';
 import 'package:neoprint/features/files/file_preview_screen.dart';
 import 'package:neoprint/features/files/files_controller.dart';
 import 'package:neoprint/features/print_hub/choose_file_screen.dart';
+import 'package:neoprint/features/print_hub/print_upload_screen.dart';
 import 'package:neoprint/features/session/session_controller.dart';
 import 'package:neoprint/features/session/session_models.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
@@ -100,6 +102,27 @@ const onePixelPng = [
   0x82,
 ];
 
+/// An upload the server takes as 'Converting'; the next list has it ready
+/// once [finish] is called.
+class UploadingRepository extends PagesRepository {
+  UploadingRepository() : super([]);
+
+  @override
+  Future<UserFile> upload({
+    String? path,
+    Uint8List? bytes,
+    required String fileName,
+    void Function(int sent, int total)? onProgress,
+    CancelToken? cancelToken,
+  }) async {
+    final saved = file(name: fileName, status: 'Converting');
+    files = [saved];
+    return saved;
+  }
+
+  void finish() => files = [file(name: files.single.fileName)];
+}
+
 /// No open kiosk session.
 class NoSession extends SessionController {
   @override
@@ -113,6 +136,7 @@ Widget flow(
   required String start,
   Object? extra,
   Map<String, bool> flags = const {},
+  ListRepository? repository,
 }) {
   final router = GoRouter(
     initialLocation: start,
@@ -121,6 +145,11 @@ Widget flow(
       GoRoute(
         path: Routes.printChoose,
         builder: (_, __) => const ChooseFileScreen(),
+      ),
+      GoRoute(
+        path: Routes.printUpload,
+        builder: (_, state) =>
+            PrintUploadScreen(file: state.extra! as PickedFile),
       ),
       GoRoute(
         path: '/file/:id',
@@ -141,7 +170,9 @@ Widget flow(
 
   return ProviderScope(
     overrides: [
-      filesRepositoryProvider.overrideWithValue(PagesRepository(files)),
+      filesRepositoryProvider.overrideWithValue(
+        repository ?? PagesRepository(files),
+      ),
       userHubEventsProvider.overrideWithValue(const Stream.empty()),
       featureFlagsProvider.overrideWith(() => FixedFlags(flags)),
       sessionProvider.overrideWith(NoSession.new),
@@ -235,5 +266,52 @@ void main() {
     await tester.tap(find.text('Çap parametrləri'));
     await tester.pumpAndSettle();
     expect(find.text('schedule'), findsOneWidget);
+  });
+
+  testWidgets(
+    'a file uploaded from the Print tab waits to be ready, then opens '
+    'its print settings straight away (T-353)',
+    (tester) async {
+      final repository = UploadingRepository();
+      await tester.pumpWidget(
+        flow(
+          const [],
+          start: Routes.printUpload,
+          extra: PickedFile(
+            name: 'yeni.pdf',
+            path: 'yeni.pdf',
+            readBytes: () async => Uint8List(3),
+          ),
+          repository: repository,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Uploaded; the server is still making its pages.
+      expect(find.text('Hazırlanır'), findsOneWidget);
+      expect(find.text('prepare yeni.pdf'), findsNothing);
+
+      repository.finish();
+      await tester.pump(FilesController.pollInterval);
+      await tester.pumpAndSettle();
+
+      // Not the preview: the print settings.
+      expect(find.text('prepare yeni.pdf'), findsOneWidget);
+      expect(find.text('Fayla baxış'), findsNothing);
+    },
+  );
+
+  testWidgets('"Fayllarımdan seç" uploads a new file from the same sources '
+      'as the files tab (T-353)', (tester) async {
+    await tester.pumpWidget(flow([file()], start: Routes.printChoose));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Fayl yüklə'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fayl seç'), findsOneWidget);
+    expect(find.text('Buluddan əlavə et'), findsOneWidget);
+    expect(find.text('Şəkil çək'), findsOneWidget);
   });
 }
