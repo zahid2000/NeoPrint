@@ -295,6 +295,8 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
     final detail = kiosk == null
         ? null
         : ref.watch(kioskDetailProvider(kiosk.id)).valueOrNull;
+    // The detail is the fresher of the two; the list's until it comes.
+    final kioskStatus = detail?.summary.status ?? kiosk?.status;
     final quote = _quote;
     final rangeInvalid =
         _pages == _Pages.range && _range.text.isNotEmpty && _selected == null;
@@ -374,7 +376,7 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
                               style: theme.textTheme.titleMedium,
                             ),
                             const SizedBox(height: Spacing.x2),
-                            KioskStatusChip(status: kiosk.status),
+                            KioskStatusChip(status: kioskStatus!),
                           ],
                         ),
                       ),
@@ -385,6 +387,15 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
                     ],
                   ),
           ),
+          // T-351: the print is paid now and waits; "Çapa ver" needs the
+          // kiosk working, so the customer is told before paying.
+          if (kioskStatus != null && kioskStatus != KioskStatus.online) ...[
+            const SizedBox(height: Spacing.x3),
+            NeoBanner(
+              tone: StatusTone.warning,
+              message: l10n.schedKioskInactive,
+            ),
+          ],
           const SizedBox(height: Spacing.x4),
 
           OptionLabel(l10n.schedTimeLabel),

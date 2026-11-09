@@ -8,6 +8,7 @@ import 'package:neoprint/core/format/formats.dart';
 import 'package:neoprint/core/network/api_client.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:neoprint/features/files/file_models.dart';
+import 'package:neoprint/features/kiosk_search/kiosk_models.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_search_controller.dart';
 import 'package:neoprint/features/payments/payment_models.dart';
 import 'package:neoprint/features/prepared/my_qr_screen.dart';
@@ -20,7 +21,7 @@ import 'package:neoprint/features/session/session_models.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
 import 'package:neoprint/shared/widgets/redirect_to.dart';
 
-import 'kiosk_search_test.dart' show FakeKiosks, elmler;
+import 'kiosk_search_test.dart' show FakeKiosks, elmler, mayis;
 import 'session_test.dart' show FakeSessions, detail;
 
 /// The preparations API the test scripts.
@@ -215,12 +216,16 @@ final file = UserFile(
   createdAt: DateTime(2026, 10, 3),
 );
 
-Widget app(Widget home, FakePrepared prepared) => ProviderScope(
+Widget app(
+  Widget home,
+  FakePrepared prepared, {
+  List<KioskSummary> kiosks = const [elmler],
+}) => ProviderScope(
   overrides: [
     preparedRepositoryProvider.overrideWithValue(prepared),
     sessionRepositoryProvider.overrideWithValue(PricedSessions(prepared)),
     kioskRepositoryProvider.overrideWithValue(
-      FakeKiosks([elmler], details: {elmler.id: detail, elmler.code: detail}),
+      FakeKiosks(kiosks, details: {elmler.id: detail, elmler.code: detail}),
     ),
   ],
   child: MaterialApp.router(
@@ -313,6 +318,40 @@ void main() {
         expect(prepared.paid.map((p) => p.expected), [0.30, 0.40]);
         expect(prepared.paid.last.kiosk, elmler.id);
         expect(find.text('pay pay1'), findsOneWidget);
+      },
+    );
+    testWidgets(
+      'a kiosk that is not working now is warned about, and the order may still be paid (T-351)',
+      (tester) async {
+        tallScreen(tester);
+        final prepared = FakePrepared();
+        await tester.pumpWidget(
+          app(PrepareScreen(file: file), prepared, kiosks: [elmler, mayis]),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Kiosk seç'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('KSK-9001 · 28 May'));
+        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('Seçdiyiniz kiosk hazırda aktiv deyil'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Əvvəlcədən ödə'), findsOneWidget);
+
+        // A working kiosk has no warning.
+        await tester.tap(find.text('Dəyiş'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('KSK-9002 · Elmlər'));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('Seçdiyiniz kiosk hazırda aktiv deyil'),
+          findsNothing,
+        );
       },
     );
   });

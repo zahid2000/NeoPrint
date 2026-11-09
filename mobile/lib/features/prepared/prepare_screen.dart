@@ -316,6 +316,8 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
     final detail = kiosk == null
         ? null
         : ref.watch(kioskDetailProvider(kiosk.id)).valueOrNull;
+    // The detail is the fresher of the two; the list's until it comes.
+    final kioskStatus = detail?.summary.status ?? kiosk?.status;
     final atKiosk = kiosk == null;
     final quote = _quote;
     final rangeInvalid =
@@ -500,7 +502,16 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
                           style: theme.textTheme.titleMedium,
                         ),
                         const SizedBox(height: Spacing.x2),
-                        KioskStatusChip(status: kiosk.status),
+                        KioskStatusChip(status: kioskStatus!),
+                        // T-351: a paid order may wait for a kiosk that is
+                        // not working now; the customer is told so first.
+                        if (kioskStatus != KioskStatus.online) ...[
+                          const SizedBox(height: Spacing.x3),
+                          NeoBanner(
+                            tone: StatusTone.warning,
+                            message: l10n.prepareKioskInactive,
+                          ),
+                        ],
                         const SizedBox(height: Spacing.x3),
                         Wrap(
                           spacing: Spacing.x2,
