@@ -2348,7 +2348,7 @@ Hamısı **qlobal** resursdur: `releases.view` / `releases.manage` `Permissions.
 | `POST /api/kiosks/heartbeat` | əlavə `provisioningVersion` sahəsi |
 | `GET /api/kiosks/me/config` | əlavə `update { window, checkIntervalMinutes, healthTimeoutMinutes, keepVersions, maxIdleWaitMinutes, maxLogUploadMb }` (T-321) |
 
-**`/hubs/kiosk`:** `UpdateAvailable { kioskId }` (hamıya — `Guid.Empty`). **`/hubs/admin`** (`releases.view` olanlara): `ReleasesChanged`, `KioskUpdateReported` (kiosk versiyası görünüşü); kioskun özünü görənlərə (kiosk əhatəsi, T-326): `KioskUpdateChanged { kioskId }`. `GET /api/admin/releases`-də hər yayımda `progress { installed, ready, updating, rolledBack, failed }` — yayımın çatdığı kiosklar bu versiyaya görə. Incident görünüşündə `occurrences`, `lastSeenAt`.
+**`/hubs/kiosk`:** `UpdateAvailable { kioskId }` (hamıya — `Guid.Empty`). **`/hubs/admin`** (`releases.view` olanlara): `ReleasesChanged`, `KioskUpdateReported` (kiosk versiyası görünüşü); kioskun özünü görənlərə (kiosk əhatəsi, T-326): `KioskUpdateChanged { kioskId }`. `GET /api/admin/releases`-də hər yayımda `progress { installed, ready, updating, rolledBack, failed, notes }` — yayımın çatdığı kiosklar bu versiyaya görə; `notes` (T-361) — hələ quraşdırmamış və səbəb bildirmiş kiosklar, ən çox 10: `{ kioskId, kioskCode, status, message }` (məs. `WaitingForIdle` + "Printerdə çap olunan iş var…"). Incident görünüşündə `occurrences`, `lastSeenAt`.
 
 ## Hələ mövcud olmayan endpoint-lər
 

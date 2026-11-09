@@ -13,6 +13,7 @@ import { firstValueFrom } from 'rxjs';
 
 import {
   KioskUpdateState,
+  KioskUpdateStatus,
   KioskVersion,
   Release,
   ReleaseChannel,
@@ -257,6 +258,12 @@ const rolloutActions: Record<Rollout['status'], readonly RolloutAction[]> = {
                             }
                           </div>
                         }
+                        @for (note of o.progress?.notes ?? []; track note.kioskId) {
+                          <span class="neo-row-note" [class.neo-row-note--warning]="isWarning(note.status)">
+                            <mat-icon>{{ noteIcon(note.status) }}</mat-icon>
+                            {{ 'releases.kioskNote' | translate: { kiosk: note.kioskCode, message: note.message } }}
+                          </span>
+                        }
                       </td>
                     </ng-container>
                     <ng-container matColumnDef="started">
@@ -475,6 +482,15 @@ export class ReleasesComponent implements OnInit {
       { key: 'failed', count: progress.failed, chip: updateChips.Failed },
     ];
     return parts.filter((part) => part.count > 0);
+  }
+
+  noteIcon(status: KioskUpdateStatus): string {
+    return updateChips[status].icon;
+  }
+
+  /** A note that says something went wrong, not that it waits (T-361). */
+  isWarning(status: KioskUpdateStatus): boolean {
+    return status === 'Failed' || status === 'RolledBack';
   }
 
   updateChip(update: KioskUpdateState): Chip {

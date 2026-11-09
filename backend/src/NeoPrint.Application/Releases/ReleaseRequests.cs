@@ -193,7 +193,14 @@ public sealed record RolloutView(
 /// Where the kiosks a rollout reaches stand with its version (T-326):
 /// running it, waiting for their moment, on the way, taken back, refused.
 /// </summary>
-public sealed record RolloutProgressView(int Installed, int Ready, int Updating, int RolledBack, int Failed);
+public sealed record RolloutProgressView(int Installed, int Ready, int Updating, int RolledBack, int Failed)
+{
+    /// <summary>What the kiosks not there yet said about it - why one waits (T-361); the first few.</summary>
+    public IReadOnlyList<RolloutKioskNoteView> Notes { get; init; } = [];
+}
+
+/// <summary>One kiosk's word on a rollout it has not installed yet (T-361).</summary>
+public sealed record RolloutKioskNoteView(Guid KioskId, string KioskCode, string Status, string Message);
 
 /// <summary>The releases page: the key set this server accepts, the releases and the rollouts.</summary>
 public sealed record ReleasesPageView(

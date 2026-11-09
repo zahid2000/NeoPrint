@@ -768,7 +768,9 @@ public sealed class KioskSession
     /// <summary>The screen, for the update coordinator: read and changed on the UI thread.</summary>
     private sealed class ScreenUpdateHost(MainWindowViewModel model) : Core.Updates.IUpdateHost
     {
-        public bool IsIdle => Dispatcher.UIThread.Invoke(() => model.IsIdleForUpdate);
+        public bool IsIdle => Blocker is null;
+
+        public string? Blocker => Dispatcher.UIThread.Invoke(() => model.UpdateBlocker);
 
         public void SetDraining(bool draining) => Dispatcher.UIThread.Post(() => model.SetDraining(draining));
 

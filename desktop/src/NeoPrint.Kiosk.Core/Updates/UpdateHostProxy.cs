@@ -12,6 +12,8 @@ public sealed class UpdateHostProxy : IUpdateHost
 
     public bool IsIdle => Target?.IsIdle ?? false;
 
+    public string? Blocker => Target is { } target ? target.Blocker : "updates.waiting.screen";
+
     public void SetDraining(bool draining) => Target?.SetDraining(draining);
 
     public void SetUpdating(bool updating) => Target?.SetUpdating(updating);

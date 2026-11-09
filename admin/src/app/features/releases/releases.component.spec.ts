@@ -278,6 +278,36 @@ describe('Buraxılışlar', () => {
     expect(fixture.componentInstance.installedPercent(rollout({ progress: { installed: 1, ready: 0, updating: 0, rolledBack: 0, failed: 0 } }))).toBeCloseTo(33.33, 1);
   });
 
+  it('says on the rollout row why a kiosk waits, and marks one that failed (T-361)', async () => {
+    const fixture = await open({
+      ...page(),
+      rollouts: [
+        rollout({
+          progress: {
+            installed: 0,
+            ready: 0,
+            updating: 1,
+            rolledBack: 0,
+            failed: 1,
+            notes: [
+              { kioskId: 'k-1', kioskCode: 'KSK-1001', status: 'WaitingForIdle', message: 'Printerdə çap olunan iş var.' },
+              { kioskId: 'k-2', kioskCode: 'KSK-1002', status: 'Failed', message: 'İmza qəbul olunmadı.' },
+            ],
+          },
+        }),
+      ],
+    });
+    await tab(fixture, 1);
+
+    const notes = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('[data-progress="o-1"] .neo-row-note'));
+    expect(notes.map((note) => note.textContent?.trim())).toEqual([
+      'hourglass_empty KSK-1001: Printerdə çap olunan iş var.',
+      'error KSK-1002: İmza qəbul olunmadı.',
+    ]);
+    expect(notes[0].classList).not.toContain('neo-row-note--warning');
+    expect(notes[1].classList).toContain('neo-row-note--warning');
+  });
+
   it('marks an urgent rollout, and shows a kiosk waiting for an idle moment or turning customers away (T-321)', async () => {
     const fixture = await open(
       { ...page(), rollouts: [rollout({ urgent: true })] },

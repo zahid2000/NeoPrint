@@ -18,6 +18,12 @@ public interface IUpdateHost
     /// </summary>
     bool IsIdle { get; }
 
+    /// <summary>
+    /// Why the kiosk is not idle, as a message key the panel shows (T-361):
+    /// <c>updates.waiting.*</c>; null when <see cref="IsIdle"/>.
+    /// </summary>
+    string? Blocker { get; }
+
     /// <summary>Turn new customers away ("Kiosk bir neçə dəqiqəyə yenilənir") or take them again.</summary>
     void SetDraining(bool draining);
 
@@ -35,6 +41,12 @@ public sealed class UpdateCoordinator
 {
     private static readonly TimeSpan MomentPoll = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan ResultPoll = TimeSpan.FromSeconds(2);
+
+    /// <summary>A changed reason for waiting is told the panel at most this often (T-361).</summary>
+    private static readonly TimeSpan ReasonRepeat = TimeSpan.FromMinutes(1);
+
+    /// <summary>Outside <c>Kiosk.UpdateWindow</c>, and not urgent (T-361).</summary>
+    private const string WindowReason = "updates.waiting.window";
 
     /// <summary>How often a package waiting for its moment is asked about again: withdrawn, or made urgent.</summary>
     private static readonly TimeSpan OfferRecheck = TimeSpan.FromMinutes(5);
@@ -445,6 +457,8 @@ public sealed class UpdateCoordinator
     {
         DateTime? waitingSince = null;
         var draining = false;
+        string? said = null;
+        var saidAt = DateTime.MinValue;
         var asked = _clock.UtcNow;
 
         while (true)
@@ -481,18 +495,31 @@ public sealed class UpdateCoordinator
 
             if (windowFree || UpdateWindow.Parse(settings.Window).Contains(_localTime(now)))
             {
+                var blocker = _host.Blocker;
+
+                // What it waits for, as the panel shows it (T-361): said when the
+                // window opens, and again when it changes - at most once a minute.
                 if (waitingSince is null)
                 {
                     waitingSince = now;
                     if (offer is not null)
                     {
-                        await ReportAsync(offer, "WaitingForIdle", null, cancellationToken).ConfigureAwait(false);
+                        said = blocker;
+                        saidAt = now;
+                        await ReportAsync(offer, "WaitingForIdle", blocker, cancellationToken).ConfigureAwait(false);
                     }
                 }
 
-                if (_host.IsIdle)
+                if (blocker is null)
                 {
                     return true;
+                }
+
+                if (offer is not null && blocker != said && now - saidAt >= ReasonRepeat)
+                {
+                    said = blocker;
+                    saidAt = now;
+                    await ReportAsync(offer, draining ? "Draining" : "WaitingForIdle", blocker, cancellationToken).ConfigureAwait(false);
                 }
 
                 if (!draining && now - waitingSince > TimeSpan.FromMinutes(Math.Clamp(settings.MaxIdleWaitMinutes, 1, 24 * 60)))
@@ -502,16 +529,28 @@ public sealed class UpdateCoordinator
                     _host.SetDraining(true);
                     if (offer is not null)
                     {
-                        await ReportAsync(offer, "Draining", null, cancellationToken).ConfigureAwait(false);
+                        said = blocker;
+                        saidAt = now;
+                        await ReportAsync(offer, "Draining", blocker, cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
-            else if (draining)
+            else
             {
-                // The window closed while turning customers away: take them again, try at the next window.
-                draining = false;
-                waitingSince = null;
-                _host.SetDraining(false);
+                if (draining)
+                {
+                    // The window closed while turning customers away: take them again, try at the next window.
+                    draining = false;
+                    waitingSince = null;
+                    _host.SetDraining(false);
+                }
+
+                if (offer is not null && said != WindowReason)
+                {
+                    said = WindowReason;
+                    saidAt = now;
+                    await ReportAsync(offer, "Ready", WindowReason, cancellationToken).ConfigureAwait(false);
+                }
             }
 
             await _delay(MomentPoll, cancellationToken).ConfigureAwait(false);

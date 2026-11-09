@@ -323,12 +323,24 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// while the printer works, none waiting for it. A paused or out-of-service
     /// kiosk's waiting jobs stay in the spool and go on afterwards.
     /// </summary>
-    public bool IsIdleForUpdate
-        => Screen is KioskScreen.Home or KioskScreen.OutOfService or KioskScreen.Offline or KioskScreen.Degraded
-               or KioskScreen.NotConfigured or KioskScreen.SafeMode
-           && !HasConnectedPhones
-           && !Queue.Any(entry => entry.IsPrinting)
-           && (Queue.Count == 0 || !TakesOrders);
+    public bool IsIdleForUpdate => UpdateBlocker is null;
+
+    /// <summary>
+    /// Why an update cannot be applied now, as a message key the panel shows
+    /// (T-361); null when the kiosk is idle (<see cref="IsIdleForUpdate"/>).
+    /// </summary>
+    public string? UpdateBlocker
+        => Screen switch
+        {
+            KioskScreen.Home or KioskScreen.OutOfService or KioskScreen.Offline or KioskScreen.Degraded
+                or KioskScreen.NotConfigured or KioskScreen.SafeMode => null,
+            KioskScreen.Admin => "updates.waiting.admin",
+            KioskScreen.Flow => "updates.waiting.customer",
+            _ => "updates.waiting.screen",
+        }
+           ?? (HasConnectedPhones ? "updates.waiting.phone" : null)
+           ?? (Queue.Any(entry => entry.IsPrinting) ? "updates.waiting.printing" : null)
+           ?? (Queue.Count > 0 && TakesOrders ? "updates.waiting.queue" : null);
 
     private void UpdatingChanged()
     {

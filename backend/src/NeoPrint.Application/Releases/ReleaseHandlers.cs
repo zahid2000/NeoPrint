@@ -835,10 +835,14 @@ public sealed class ReleaseHandlers :
         state.MessageKey is { } key ? Messages.Write(new UserMessage(key)) : null,
         state.ReportedAt);
 
+    /// <summary>How many kiosks' words a rollout row carries (T-361); the rest are on each kiosk's page.</summary>
+    private const int MaxRolloutNotes = 10;
+
     /// <summary>The kiosks a rollout reaches, by where they stand with its version (T-326).</summary>
     private static RolloutProgressView Progress(ReleaseRollout rollout, IReadOnlyList<Kiosk> kiosks)
     {
         int installed = 0, ready = 0, updating = 0, rolledBack = 0, failed = 0;
+        var notes = new List<RolloutKioskNoteView>();
         foreach (var kiosk in kiosks.Where(kiosk => Rid(kiosk.Platform) == rollout.Platform && rollout.Reaches(kiosk.Id, kiosk.UpdateChannel)))
         {
             if (InstalledVersion(kiosk, rollout.Component) == rollout.Version)
@@ -847,7 +851,13 @@ public sealed class ReleaseHandlers :
                 continue;
             }
 
-            switch (kiosk.UpdateStates.FirstOrDefault(state => state.Component == rollout.Component && state.Version == rollout.Version)?.Status)
+            var state = kiosk.UpdateStates.FirstOrDefault(state => state.Component == rollout.Component && state.Version == rollout.Version);
+            if (state?.MessageKey is { } key && notes.Count < MaxRolloutNotes)
+            {
+                notes.Add(new RolloutKioskNoteView(kiosk.Id, kiosk.Code, state.Status.ToString(), Messages.Write(new UserMessage(key))));
+            }
+
+            switch (state?.Status)
             {
                 case KioskUpdateStatus.Ready:
                     ready++;
@@ -865,7 +875,7 @@ public sealed class ReleaseHandlers :
             }
         }
 
-        return new RolloutProgressView(installed, ready, updating, rolledBack, failed);
+        return new RolloutProgressView(installed, ready, updating, rolledBack, failed) { Notes = notes };
     }
 
     private static string? InstalledVersion(Kiosk kiosk, ReleaseComponent component) => component switch

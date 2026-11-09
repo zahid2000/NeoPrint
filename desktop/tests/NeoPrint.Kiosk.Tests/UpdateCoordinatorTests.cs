@@ -60,7 +60,8 @@ public sealed class UpdateCoordinatorTests : IDisposable
         (await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None)).Should().BeTrue();
 
         _clock.UtcNow.TimeOfDay.Should().BeGreaterThanOrEqualTo(new TimeSpan(2, 0, 0), "nothing was handed over before the window opened");
-        _backend.Statuses.Select(s => s.Status).Should().Equal("Downloading", "Ready", "WaitingForIdle", "Applying", "Succeeded");
+        _backend.Statuses.Select(s => (s.Status, s.MessageKey)).Should().Equal(
+            ("Downloading", null), ("Ready", null), ("Ready", "updates.waiting.window"), ("WaitingForIdle", null), ("Applying", null), ("Succeeded", null));
         _screen.Updating.Should().Equal(true, false);
         _screen.Draining.Should().Equal(false);
         _leftOnPurpose.Should().Be(1, "the agent ending this UI for an update is not a crash");
@@ -78,9 +79,40 @@ public sealed class UpdateCoordinatorTests : IDisposable
 
         await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None);
 
-        _backend.Statuses.Select(s => s.Status).Should().Equal("Downloading", "Ready", "WaitingForIdle", "Draining", "Applying", "Succeeded");
+        _backend.Statuses.Select(s => (s.Status, s.MessageKey)).Should().Equal(
+            ("Downloading", null), ("Ready", null), ("WaitingForIdle", "updates.waiting.customer"), ("Draining", "updates.waiting.customer"),
+            ("Applying", null), ("Succeeded", null));
         _screen.Draining.Should().Equal(true, false);
         _clock.UtcNow.Should().BeAfter(new DateTime(2026, 10, 25, 12, 30, 0, DateTimeKind.Utc), "customers were turned away only after 30 minutes");
+    }
+
+    [Fact]
+    public async Task While_it_waits_the_panel_is_told_why_and_told_again_when_the_reason_changes()
+    {
+        var coordinator = await CoordinatorAsync(start: new DateTime(2026, 10, 25, 12, 0, 0, DateTimeKind.Utc));
+        _backend.Offer(Package("1.0.0"), urgent: true);
+        _screen.Idle = false;
+        _screen.Busy = "updates.waiting.phone";
+        AnswerAs(AgentOutcome.Succeeded, "1.0.0");
+        _onDelay = count =>
+        {
+            // The phone leaves; a job is still on the printer; then it is done.
+            if (count == 2)
+            {
+                _screen.Busy = "updates.waiting.printing";
+            }
+
+            if (count == 20)
+            {
+                _screen.Idle = true;
+            }
+        };
+
+        await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None);
+
+        _backend.Statuses.Where(s => s.Status == "WaitingForIdle").Select(s => s.MessageKey).Should().Equal(
+            "updates.waiting.phone", "updates.waiting.printing");
+        _backend.Statuses.Select(s => s.Status).Should().EndWith(["Applying", "Succeeded"]);
     }
 
     [Fact]
@@ -131,7 +163,7 @@ public sealed class UpdateCoordinatorTests : IDisposable
 
         await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None);
 
-        _backend.Statuses.Select(s => s.Status).Should().Equal("Downloading", "Ready");
+        _backend.Statuses.Select(s => s.Status).Should().Equal("Downloading", "Ready", "Ready");
         Directory.Exists(_paths.Requests).Should().BeFalse("nothing was handed to the agent");
     }
 
@@ -162,7 +194,7 @@ public sealed class UpdateCoordinatorTests : IDisposable
         await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None);
 
         _clock.UtcNow.Should().BeBefore(new DateTime(2026, 10, 25, 12, 10, 0, DateTimeKind.Utc), "the window was not waited for");
-        _backend.Statuses.Select(s => s.Status).Should().Equal("Downloading", "Ready", "WaitingForIdle", "Applying", "Succeeded");
+        _backend.Statuses.Select(s => s.Status).Should().Equal("Downloading", "Ready", "Ready", "WaitingForIdle", "Applying", "Succeeded");
         await Eventually(() => _backend.Answers.Count == 1);
         _backend.Answers.Single().Should().Be((commandId.ToString(), true, "updates.installed"));
     }
@@ -403,6 +435,11 @@ public sealed class UpdateCoordinatorTests : IDisposable
         public List<bool> Updating { get; } = [];
 
         public bool IsIdle => Idle;
+
+        /// <summary>What keeps it busy while not idle.</summary>
+        public string Busy { get; set; } = "updates.waiting.customer";
+
+        public string? Blocker => Idle ? null : Busy;
 
         public void Tick(DateTime now)
         {

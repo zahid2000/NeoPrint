@@ -523,6 +523,19 @@ public sealed class ReleaseTests : IDisposable
         var progress = page.GetProperty("rollouts").EnumerateArray().Single(o => o.GetProperty("id").GetGuid() == rolloutId).GetProperty("progress");
         progress.GetProperty("ready").GetInt32().Should().Be(1);
         progress.GetProperty("installed").GetInt32().Should().Be(0);
+        progress.GetProperty("notes").GetArrayLength().Should().Be(0, "a kiosk that said nothing has no note");
+
+        // It waits, and says why (T-361): the reason is on the rollout row, in the reader's words.
+        await Task.Delay(10);
+        (await api.PostAsJsonAsync("/api/kiosks/me/update-status", new { component = "App", version, status = "WaitingForIdle", messageKey = "updates.waiting.printing" }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        page = await admin.GetFromJsonAsync<JsonElement>("/api/admin/releases");
+        progress = page.GetProperty("rollouts").EnumerateArray().Single(o => o.GetProperty("id").GetGuid() == rolloutId).GetProperty("progress");
+        progress.GetProperty("updating").GetInt32().Should().Be(1);
+        var note = progress.GetProperty("notes").EnumerateArray().Should().ContainSingle().Subject;
+        note.GetProperty("kioskId").GetGuid().Should().Be(kiosk.KioskId);
+        note.GetProperty("status").GetString().Should().Be("WaitingForIdle");
+        note.GetProperty("message").GetString().Should().StartWith("Printerdə çap olunan iş var");
 
         // An account that sees only this kiosk sees its tab - not another kiosk's, nor the releases page.
         using var scoped = await ScopedAsync(host, Domain.Admin.KioskScope.Only(kiosk.KioskId), Domain.Admin.Permissions.KiosksView);

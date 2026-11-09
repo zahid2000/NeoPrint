@@ -75,6 +75,16 @@ export interface RolloutProgress {
   readonly updating: number;
   readonly rolledBack: number;
   readonly failed: number;
+  /** What the kiosks not there yet said - why one waits or failed (T-361); the first few. */
+  readonly notes?: readonly RolloutKioskNote[];
+}
+
+/** One kiosk's word on a rollout it has not installed yet (T-361). */
+export interface RolloutKioskNote {
+  readonly kioskId: string;
+  readonly kioskCode: string;
+  readonly status: KioskUpdateStatus;
+  readonly message: string;
 }
 
 export interface ReleasesPage {
