@@ -98,6 +98,7 @@ public sealed class UserQrFileHandlers :
     private readonly ICorrelationContext _correlation;
     private readonly IClock _clock;
     private readonly ILogger<UserQrFileHandlers> _logger;
+    private readonly IUserPrintCodeStore _printCodes;
 
     public UserQrFileHandlers(
         UserQrCodes codes,
@@ -117,7 +118,8 @@ public sealed class UserQrFileHandlers :
         ISettingsReader settings,
         ICorrelationContext correlation,
         IClock clock,
-        ILogger<UserQrFileHandlers> logger)
+        ILogger<UserQrFileHandlers> logger,
+        IUserPrintCodeStore printCodes)
     {
         _codes = codes;
         _grants = grants;
@@ -137,6 +139,7 @@ public sealed class UserQrFileHandlers :
         _correlation = correlation;
         _clock = clock;
         _logger = logger;
+        _printCodes = printCodes;
     }
 
     public async Task<UserQrFilesView> Handle(ScanUserQrCommand request, CancellationToken cancellationToken)
@@ -145,6 +148,13 @@ public sealed class UserQrFileHandlers :
 
         var kiosk = await KioskOfAsync(request.DeviceId, cancellationToken).ConfigureAwait(false);
         var now = _clock.UtcNow;
+
+        // Six digits typed on the keypad: the "Çap kodu" (T-345).
+        if (UserPrintCodes.Normalize(request.Code) is { } printCode)
+        {
+            return await ByPrintCodeAsync(kiosk, printCode, now, cancellationToken).ConfigureAwait(false);
+        }
+
         var rotation = await UserQrRules.RotationSecondsAsync(_settings, cancellationToken).ConfigureAwait(false);
         var (reading, userId) = _codes.Read(request.Code, now, rotation);
 
@@ -169,6 +179,42 @@ public sealed class UserQrFileHandlers :
         await _grants.SaveAsync(grant, cancellationToken).ConfigureAwait(false);
 
         _logger.LogInformation("Kiosk {KioskId} opened the files of user {UserId} by their QR.", kiosk.Id, user.Id);
+
+        return await ViewAsync(grant, kiosk, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The same as a scanned QR, by the code the app shows under it. A kiosk
+    /// that has typed too many wrong codes is refused before the code is even
+    /// looked at; a right code is used up.
+    /// </summary>
+    private async Task<UserQrFilesView> ByPrintCodeAsync(Kiosk kiosk, string code, DateTime now, CancellationToken cancellationToken)
+    {
+        if (await _printCodes.FailuresAsync(kiosk.Id, cancellationToken).ConfigureAwait(false) >= UserPrintCodes.MaxFailures)
+        {
+            _logger.LogWarning("Kiosk {KioskId} is refused print codes for a while: too many wrong ones.", kiosk.Id);
+            throw new DomainException("userQr.tooManyCodes");
+        }
+
+        var userId = await _printCodes.TakeAsync(code, cancellationToken).ConfigureAwait(false);
+        var user = userId is { } id
+            ? await _users.FindByIdAsync(id, cancellationToken).ConfigureAwait(false)
+            : null;
+
+        if (user is not { CanSignIn: true, DeletedAt: null })
+        {
+            var failures = await _printCodes
+                .CountFailureAsync(kiosk.Id, UserPrintCodes.FailureWindow, cancellationToken)
+                .ConfigureAwait(false);
+            // The code itself is never logged: it opens someone's files.
+            _logger.LogWarning("Kiosk {KioskId} typed a print code that is not valid ({Failures} in the window).", kiosk.Id, failures);
+            throw new DomainException("userQr.codeInvalid");
+        }
+
+        var grant = new UserQrGrant(Guid.NewGuid(), user.Id, kiosk.Id, now + GrantLifetime);
+        await _grants.SaveAsync(grant, cancellationToken).ConfigureAwait(false);
+
+        _logger.LogInformation("Kiosk {KioskId} opened the files of user {UserId} by their print code.", kiosk.Id, user.Id);
 
         return await ViewAsync(grant, kiosk, cancellationToken).ConfigureAwait(false);
     }

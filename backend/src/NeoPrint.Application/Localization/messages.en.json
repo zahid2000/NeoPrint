@@ -622,6 +622,8 @@
   "userQr.expired": "The QR code has expired. Open the QR code in the app again and scan it once more.",
   "userQr.grantExpired": "Your file list was closed. Scan the QR code in the app again.",
   "userQr.invalid": "This QR code was not recognised. Open \"My QR code\" in the NeoPrint app and scan it.",
+  "userQr.codeInvalid": "This print code was not recognised or has already been used. Open \"My QR code\" in the app and type the code shown there.",
+  "userQr.tooManyCodes": "Too many wrong codes were typed at this kiosk. Try again in a few minutes, or scan the QR code in the app.",
   "users.deleted": "A deleted account cannot be blocked.",
   "users.reasonRequired": "A reason is required (at most {max} characters) — it goes into the audit log.",
   "users.statusInvalid": "The status is not valid: it must be Active or Blocked.",

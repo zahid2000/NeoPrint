@@ -177,6 +177,7 @@ public static class DependencyInjection
         services.AddSingleton<Application.UserQr.IQrImages, UserQr.QrCoderImages>();
         services.AddSingleton<Application.UserQr.UserQrCodes>();
         services.AddScoped<Application.UserQr.IUserQrGrantStore, UserQr.RedisUserQrGrantStore>();
+        services.AddScoped<Application.UserQr.IUserPrintCodeStore, UserQr.RedisUserPrintCodeStore>();
         services.AddScoped<Application.PrintJobs.IPreparedPrintRepository, PreparedPrintRepository>();
         services.AddScoped<UserQr.UncollectedPrintJobsJob>();
         services.AddScoped<Application.Schedules.IScheduledPrintRepository, Schedules.ScheduledPrintRepository>();

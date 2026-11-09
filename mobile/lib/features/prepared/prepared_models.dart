@@ -159,3 +159,21 @@ final class MyQr {
   final DateTime expiresAt;
   final int rotationSeconds;
 }
+
+/// The "Çap kodu" (T-345): six digits typed at a kiosk instead of showing
+/// the QR; good until [expiresAt] and for one kiosk visit.
+final class PrintCode {
+  const PrintCode({required this.code, required this.expiresAt});
+
+  factory PrintCode.fromJson(Map<String, dynamic> json) => PrintCode(
+    code: json['code'] as String,
+    expiresAt: DateTime.parse(json['expiresAt'] as String).toUtc(),
+  );
+
+  final String code;
+  final DateTime expiresAt;
+
+  /// "482 915": two halves are easier to read off and type.
+  String get grouped =>
+      code.length == 6 ? '${code.substring(0, 3)} ${code.substring(3)}' : code;
+}

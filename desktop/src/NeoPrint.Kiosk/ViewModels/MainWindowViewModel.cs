@@ -159,6 +159,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public string CancelByCodeText => T("home.cancelByCode");
 
+    public string PrintByCodeText => T("home.printByCode");
+
     /// <summary>The flash order and the cancel screen; set once the services are up.</summary>
     [ObservableProperty]
     private PrintFlowViewModel? _flow;
@@ -402,6 +404,12 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public event Action? PrintFromUsbRequested;
 
     public event Action? CancelByCodeRequested;
+
+    /// <summary>"Çap kodu ilə" (T-345): the keypad for the app's code.</summary>
+    public event Action? PrintByCodeRequested;
+
+    [RelayCommand]
+    private void PrintByCode() => PrintByCodeRequested?.Invoke();
 
     [RelayCommand]
     private void PrintFromUsb() => PrintFromUsbRequested?.Invoke();

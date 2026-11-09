@@ -74,6 +74,13 @@ class PreparedRepository {
     parse: (_) {},
   );
 
+  /// The "Çap kodu" now: the same one until it is used or runs out (T-345).
+  Future<PrintCode> printCode() => _api.send(
+    method: 'GET',
+    path: 'api/users/me/print-code',
+    parse: (json) => PrintCode.fromJson(json as Map<String, dynamic>),
+  );
+
   /// The personal QR as a picture, with when it stops being good.
   Future<MyQr> qr() async {
     DateTime? expiresAt;

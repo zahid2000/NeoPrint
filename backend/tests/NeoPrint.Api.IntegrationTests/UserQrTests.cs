@@ -89,6 +89,62 @@ public sealed class UserQrTests
         (await stolen.Content.ReadAsStringAsync()).Should().Contain("userQr.grantExpired");
     }
 
+    [DockerFact]
+    public async Task The_print_code_stands_for_the_qr_once_and_a_kiosk_cannot_guess_its_way_through()
+    {
+        if (Skip)
+        {
+            return;
+        }
+
+        using var kiosk = await ReadyKioskAsync(_fixture, "code-scan");
+        using var guesser = await ReadyKioskAsync(_fixture, "code-guess");
+        using var user = await TestUsers.ConfirmedAsync(_fixture);
+
+        // Six digits, the same while it lasts, never cached (T-345).
+        var first = await user.Client.GetAsync("/api/users/me/print-code");
+        first.StatusCode.Should().Be(HttpStatusCode.OK, await first.Content.ReadAsStringAsync());
+        first.Headers.CacheControl!.NoStore.Should().BeTrue();
+        var code = (await first.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString()!;
+        code.Should().MatchRegex("^[0-9]{6}$");
+        (await user.Client.GetFromJsonAsync<JsonElement>("/api/users/me/print-code")).GetProperty("code").GetString()
+            .Should().Be(code);
+
+        // Typed with a space, as people do: the user's files at this kiosk.
+        var opened = await ScanAsync(kiosk.Client, $"{code[..3]} {code[3..]}");
+        opened.StatusCode.Should().Be(HttpStatusCode.OK, await opened.Content.ReadAsStringAsync());
+        (await opened.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("grant").GetGuid().Should().NotBeEmpty();
+
+        // Used once: not good again, and the app gets a new one.
+        (await (await ScanAsync(kiosk.Client, code)).Content.ReadAsStringAsync()).Should().Contain("userQr.codeInvalid");
+        var fresh = (await user.Client.GetFromJsonAsync<JsonElement>("/api/users/me/print-code")).GetProperty("code").GetString()!;
+        fresh.Should().NotBe(code);
+
+        // Ten wrong codes and the kiosk is refused, even a right one.
+        var wrong = fresh == "000000" ? "000001" : "000000";
+        for (var i = 0; i < UserPrintCodes.MaxFailures; i++)
+        {
+            (await ScanAsync(guesser.Client, wrong)).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        }
+
+        (await (await ScanAsync(guesser.Client, fresh)).Content.ReadAsStringAsync()).Should().Contain("userQr.tooManyCodes");
+
+        // Another kiosk is not held back by it.
+        (await ScanAsync(kiosk.Client, fresh)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public void A_typed_code_is_six_digits_and_nothing_else()
+    {
+        UserPrintCodes.Normalize("482 915").Should().Be("482915");
+        UserPrintCodes.Normalize("482-915").Should().Be("482915");
+        UserPrintCodes.Normalize("48291").Should().BeNull();
+        UserPrintCodes.Normalize("48291a").Should().BeNull();
+        UserPrintCodes.Normalize("NPU:abc").Should().BeNull();
+        UserPrintCodes.Normalize("٤٨٢٩١٥").Should().BeNull("only ASCII digits");
+        UserPrintCodes.NewCode().Should().MatchRegex("^[0-9]{6}$");
+    }
+
     [PdfiumFact]
     public async Task An_unpaid_preparation_is_priced_and_paid_at_the_kiosk_that_reads_the_qr()
     {

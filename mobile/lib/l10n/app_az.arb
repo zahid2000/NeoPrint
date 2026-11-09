@@ -1381,5 +1381,7 @@
   "profileCopy": "Kopyala",
   "schedTabUpcoming": "Planlılar",
   "schedTabPast": "Keçmiş",
-  "schedPastEmpty": "Hələ bitmiş planlı çap yoxdur"
+  "schedPastEmpty": "Hələ bitmiş planlı çap yoxdur",
+  "myQrCodeTitle": "Çap kodu",
+  "myQrCodeHint": "Kioskun skaneri QR-ı oxumursa, kioskda \"Çap kodu ilə\" seçib bu kodu yazın. 10 dəqiqə və bir dəfə keçərlidir."
 }

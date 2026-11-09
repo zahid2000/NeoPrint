@@ -72,6 +72,22 @@
             </StackPanel>
         </Button>
 
+        <!-- The app's "Çap kodu" (T-345): the personal QR as six digits, for a
+             phone the scanner cannot read. Where a flash order can be paid. -->
+        <Button Classes="secondary"
+                MinHeight="112" HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Left" Padding="{DynamicResource InsetX8}"
+                Command="{Binding PrintByCodeCommand}"
+                IsVisible="{Binding CanPrintFromFlash}">
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
+                <PathIcon Data="{StaticResource IconQrCode}" Width="40" Height="40" />
+                <TextBlock Text="{Binding PrintByCodeText}"
+                           FontSize="{DynamicResource FontSizeButton}"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
+
         <Button Classes="secondary"
                 MinHeight="112" HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Left" Padding="{DynamicResource InsetX8}"

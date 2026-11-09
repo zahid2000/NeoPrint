@@ -354,6 +354,8 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 - *Planlı çap (T-342):* böyük başlıq "Planlı çap", "Planlılar · Keçmiş" tabları (planlılar: ödəniş gözləyən, planlanmış, vaxtı çatmış; keçmiş: çap olunmuş, ləğv edilmiş, vaxtı keçmiş), kartın solunda fayl tipi kvadratı, yeni planlama sağ aşağıda dairəvi "+" (funksiya açıqdırsa). Tamamilə boşdursa əvvəlki empty state "Yeni planlama" düyməsi ilə.
 - *Profil (T-342):* böyük başlıq; baş hərflər dairəsi (`--brand-100` fonda `--brand-500`), ad (`titleLarge`, 600), email; Public ID kartı (`--brand-50` fon, "Public ID" + kod, sağda kopyala ikonu); sətirlər bir kartda nazik ayırıcılarla; məxfilik bölməsi ayrıca kartda; "Çıxış" ayrıca kartda, təhlükə rəngində.
 - *Bildirişdən keçid (T-348):* sifariş bildirişi "Sifarişlərim"i açır; tab açan bildiriş tabı dəyişir, "Geri" bildirişlər siyahısına qaytarır.
+- *"Çap kodu" (T-345):* "Mənim QR kodum" ekranında QR-ın altında `--brand-50` kart: "Çap kodu" (`bodySmall`), kod iki üçlük qrupla ("482 915", `headlineMedium`, 600, `--brand-500`, tabular), izah "Kioskun skaneri QR-ı oxumursa, kioskda \"Çap kodu ilə\" seçib bu kodu yazın. 10 dəqiqə və bir dəfə keçərlidir.". Kod alınmasa kart göstərilmir (QR yenə işləyir).
+- *Admin: kiosk şəkli (T-340):* kiosk redaktəsinin "Ümumi" tabında, formanın altında: solda 160 × 120 çərçivə (`--radius-md`, şəkil `cover`; yoxdursa `--brand-50` fonda `storefront` ikonu), sağda "Kiosk şəkli", izah, secondary "Şəkil yüklə" / "Şəkli dəyiş" və təhlükə rəngli mətn düyməsi "Şəkli sil". Xəta: error banner "Kioskun işinə təsir etmir — yalnız tətbiqdəki şəkil dəyişmədi.". Uğur: toast.
 
 **Kartlar.** `--neutral-0` fon, `--neutral-200` kənar, `--radius-md`, daxili boşluq 16 (kiosk 24).
 

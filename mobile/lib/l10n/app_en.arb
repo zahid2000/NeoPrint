@@ -844,5 +844,7 @@
   "profileCopy": "Copy",
   "schedTabUpcoming": "Upcoming",
   "schedTabPast": "Past",
-  "schedPastEmpty": "No finished scheduled prints yet"
+  "schedPastEmpty": "No finished scheduled prints yet",
+  "myQrCodeTitle": "Print code",
+  "myQrCodeHint": "If the kiosk's scanner cannot read the QR, choose \"With a print code\" at the kiosk and type this code. Good for 10 minutes and once."
 }

@@ -29,8 +29,22 @@ class _MyQrScreenState extends ConsumerState<MyQrScreen> {
   static const _shortest = Duration(seconds: 5);
 
   MyQr? _qr;
+  PrintCode? _code;
   Object? _error;
   Timer? _next;
+
+  Future<void> _loadCode() async {
+    try {
+      final code = await ref.read(preparedRepositoryProvider).printCode();
+      if (mounted) {
+        setState(() => _code = code);
+      }
+    } on Object {
+      if (mounted) {
+        setState(() => _code = null);
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -58,6 +72,11 @@ class _MyQrScreenState extends ConsumerState<MyQrScreen> {
         _qr = qr;
         _error = null;
       });
+
+      // The code under the QR (T-345), fetched with each new QR: the same
+      // one while it lasts, a new one once a kiosk used it. Without it the
+      // QR still works, so a failure here only hides the code.
+      unawaited(_loadCode());
 
       final wait = qr.expiresAt.difference(DateTime.now()) - _ahead;
       _next = Timer(
@@ -140,6 +159,49 @@ class _MyQrScreenState extends ConsumerState<MyQrScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    // When the kiosk's scanner cannot read the phone: the
+                    // same thing as six digits (T-345).
+                    if (_code case final code?) ...[
+                      const SizedBox(height: Spacing.x6),
+                      Card(
+                        margin: EdgeInsets.zero,
+                        color: context.tokens.brand50,
+                        child: Padding(
+                          padding: const EdgeInsets.all(Spacing.x4),
+                          child: Column(
+                            children: [
+                              Text(
+                                l10n.myQrCodeTitle,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: context.tokens.neutral600,
+                                ),
+                              ),
+                              const SizedBox(height: Spacing.x1),
+                              SelectableText(
+                                code.grouped,
+                                semanticsLabel: code.code.split('').join(' '),
+                                style: theme.textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeights.semibold,
+                                  color: context.tokens.brand500,
+                                  letterSpacing: Spacing.x1,
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: Spacing.x1),
+                              Text(
+                                l10n.myQrCodeHint,
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: context.tokens.neutral600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 );
               },

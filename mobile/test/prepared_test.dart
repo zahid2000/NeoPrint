@@ -92,6 +92,12 @@ class FakePrepared implements PreparedRepository {
   }
 
   @override
+  Future<PrintCode> printCode() async => PrintCode(
+    code: '048291',
+    expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 10)),
+  );
+
+  @override
   Future<MyQr> qr() async {
     if (qrError case final error?) {
       throw error;
@@ -374,6 +380,14 @@ void main() {
 
       expect(find.byType(Image), findsOneWidget);
       expect(find.text('Kod 60 saniyədən bir yenilənir'), findsOneWidget);
+
+      // The same thing as six digits, for a kiosk that cannot read it
+      // (T-345); the leading zero stays.
+      expect(find.text('Çap kodu'), findsOneWidget);
+      expect(find.text('048 291'), findsOneWidget);
+
+      // The screen fetches the QR again before it runs out; stop it.
+      await tester.pumpWidget(const SizedBox());
     });
 
     testWidgets('a code that could not be fetched is not shown', (

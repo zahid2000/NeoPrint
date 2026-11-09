@@ -105,6 +105,39 @@ public sealed partial class PrintFlowViewModel
         NotifyUserFiles();
     }
 
+    /// <summary>
+    /// The app's "Çap kodu" typed on the keypad (T-345): the same list as the
+    /// QR. A wrong or used code stays on the keypad with the server's words,
+    /// so the next try is one tap away.
+    /// </summary>
+    private async Task OpenByPrintCodeAsync(string code)
+    {
+        Stage = FlowStage.Working;
+
+        try
+        {
+            var files = await Task.Run(() => _orders.ScanUserQrAsync(code, CancellationToken.None)).ConfigureAwait(true);
+            SetPrintCodeMode(false);
+            CodeInput = string.Empty;
+            _userQr = files;
+            ShowUserPage(0);
+            Track("screen_view", ("screen", nameof(FlowStage.UserFiles)));
+            Stage = FlowStage.UserFiles;
+            NotifyUserFiles();
+            return;
+        }
+        catch (KioskApiException exception)
+        {
+            Error = exception.Message;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            Error = T("error.network");
+        }
+
+        Stage = FlowStage.CancelLookup;
+    }
+
     [RelayCommand]
     private void NextUserPage() => ShowUserPage(_userPage + 1);
 

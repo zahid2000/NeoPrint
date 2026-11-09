@@ -65,6 +65,17 @@ public sealed class UsersController : ControllerBase
         return File(image.Png, "image/png");
     }
 
+    /// <summary>
+    /// The "Çap kodu" (T-345): six digits typed at a kiosk instead of showing
+    /// the QR; good for ten minutes and once.
+    /// </summary>
+    [HttpGet("print-code")]
+    public async Task<ActionResult<MyPrintCode>> PrintCode(CancellationToken cancellationToken)
+    {
+        NoStore();
+        return Ok(await _sender.Send(new GetMyPrintCodeQuery(UserId), cancellationToken));
+    }
+
     /// <summary>A code that lets a kiosk open the account's files must not sit in a cache.</summary>
     private void NoStore() => Response.Headers.CacheControl = "no-store";
 }

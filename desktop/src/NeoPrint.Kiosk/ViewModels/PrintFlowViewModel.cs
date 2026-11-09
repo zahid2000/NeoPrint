@@ -352,11 +352,16 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
     public string KeepCodeText => T("placed.keepCode");
 
-    public string CancelTitle => T("cancel.title");
+    // The code screen serves two things: cancelling an order by its code and
+    // opening the user's files by the app's "Çap kodu" (T-345).
+    public string CancelTitle => _printCodeMode ? T("printCode.title") : T("cancel.title");
 
-    public string EnterCodeText => T("cancel.enterCode");
+    public string EnterCodeText => _printCodeMode ? T("printCode.enterCode") : T("cancel.enterCode");
 
-    public string FindText => T("cancel.find");
+    public string FindText => _printCodeMode ? T("printCode.find") : T("cancel.find");
+
+    /// <summary>The code screen is asking for the app's "Çap kodu", not an order's.</summary>
+    private bool _printCodeMode;
 
     public string ConfirmCancelText => T("cancel.confirm");
 
@@ -385,7 +390,28 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     {
         Reset();
         BeginVisit();
+        SetPrintCodeMode(false);
         Stage = FlowStage.CancelLookup;
+    }
+
+    /// <summary>
+    /// The same keypad for the app's "Çap kodu" (T-345): six digits that stand
+    /// for the personal QR when the scanner cannot read the phone.
+    /// </summary>
+    public void StartPrintCode()
+    {
+        Reset();
+        BeginVisit();
+        SetPrintCodeMode(true);
+        Stage = FlowStage.CancelLookup;
+    }
+
+    private void SetPrintCodeMode(bool on)
+    {
+        _printCodeMode = on;
+        OnPropertyChanged(nameof(CancelTitle));
+        OnPropertyChanged(nameof(EnterCodeText));
+        OnPropertyChanged(nameof(FindText));
     }
 
     /// <summary>Nobody touched the screen for too long: the visit ends where it was (plan 2.4).</summary>
@@ -449,6 +475,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         _sourcePath = null;
         _driveRoot = null;
         _foundJob = null;
+        _printCodeMode = false;
         ResetUserQr();
         ResetLayout();
         Entries.Clear();
@@ -1200,6 +1227,13 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         }
 
         var code = CodeInput;
+
+        if (_printCodeMode)
+        {
+            await OpenByPrintCodeAsync(code).ConfigureAwait(true);
+            return;
+        }
+
         Stage = FlowStage.Working;
 
         try

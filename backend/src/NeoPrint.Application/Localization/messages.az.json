@@ -622,6 +622,8 @@
   "userQr.expired": "QR kodun vaxtı keçib. Tətbiqdə QR kodu yenidən açın və təkrar oxudun.",
   "userQr.grantExpired": "Fayllarınızın siyahısı bağlandı. Tətbiqdəki QR kodu yenidən oxudun.",
   "userQr.invalid": "Bu QR kod tanınmadı. NeoPrint tətbiqində \"Mənim QR kodum\"u açıb oxudun.",
+  "userQr.codeInvalid": "Bu çap kodu tanınmadı və ya artıq istifadə olunub. Tətbiqdə \"Mənim QR kodum\"u açın və oradakı kodu yazın.",
+  "userQr.tooManyCodes": "Bu kioskda çox səhv kod yazıldı. Bir neçə dəqiqə sonra yenidən cəhd edin və ya tətbiqdəki QR kodu oxudun.",
   "users.deleted": "Silinmiş hesab bloklana bilməz.",
   "users.reasonRequired": "Səbəb məcburidir (ən çox {max} simvol) — audit jurnalına yazılır.",
   "users.statusInvalid": "Status düzgün deyil: Active, Blocked olmalıdır.",

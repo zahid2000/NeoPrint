@@ -110,6 +110,40 @@ public sealed class UserQrFlowTests : IDisposable
     }
 
     [Fact]
+    public async Task The_app_s_print_code_on_the_keypad_opens_the_same_files_and_a_wrong_one_stays_there()
+    {
+        var (flow, kit) = await FlowAsync();
+        kit.Backend.UserQrItems.Add(Paid("bilet.pdf", here: true));
+
+        // T-345: the cancel keypad, asking for the app's code instead.
+        flow.StartPrintCode();
+        flow.Stage.Should().Be(FlowStage.CancelLookup);
+        flow.CancelTitle.Should().Be(T("printCode.title"));
+        flow.FindText.Should().Be(T("printCode.find"));
+
+        kit.Backend.UserQrRefusal = "Bu çap kodu tanınmadı.";
+        foreach (var digit in "482915")
+        {
+            flow.DigitCommand.Execute(digit.ToString());
+        }
+
+        await flow.FindCommand.ExecuteAsync(null);
+        kit.Backend.ScannedCodes.Should().Equal("482915");
+        flow.Stage.Should().Be(FlowStage.CancelLookup, "the next try is on the same keypad");
+        flow.Error.Should().Be("Bu çap kodu tanınmadı.");
+        flow.CancelTitle.Should().Be(T("printCode.title"));
+
+        kit.Backend.UserQrRefusal = null;
+        await flow.FindCommand.ExecuteAsync(null);
+        flow.Stage.Should().Be(FlowStage.UserFiles);
+        flow.UserFiles.Should().ContainSingle();
+
+        // Cancelling by an order's code is the keypad's own job again.
+        flow.StartCancel();
+        flow.CancelTitle.Should().Be(T("cancel.title"));
+    }
+
+    [Fact]
     public async Task The_user_s_files_are_listed_and_one_paid_elsewhere_says_where()
     {
         var (flow, kit) = await FlowAsync();

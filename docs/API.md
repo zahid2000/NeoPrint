@@ -1927,6 +1927,12 @@ Plan 9.4; layihə sahibinin qərarı `DECISIONS.md` (T-144). Qiymət həmişə k
 `UserQr.RotationSeconds` (60) müddətində keçərli; tətbiq vaxtı bitməzdən əvvəl yenisini alır. `qr.png` eyni kodu PNG kimi qaytarır,
 bitmə vaxtı `X-Qr-Expires-At` başlığındadır. Hər iki cavab `Cache-Control: no-store`.
 
+### `GET /api/users/me/print-code` (`User`, T-345)
+
+→ `{ code, expiresAt }`. `code` 6 rəqəmdir (başdakı sıfırlar saxlanılır) və QR-ın kioskda yazılan əvəzidir.
+Kod 10 dəqiqə və bir dəfə keçərlidir. Bu müddətdə eyni kod qaytarılır, kiosk istifadə edəndən sonra isə yenisi.
+Cavab: `Cache-Control: no-store`. Kioskda: aşağıdakı `pending-for-user`.
+
 ### `/api/prepared-prints` (`User`)
 
 - `GET` → `{ items: [{ kind, id, fileId, fileName, pages, preset?, options?, state, kioskId?, kioskCode?, kioskName?, amount?, currency?, jobCode?, createdAt, collectBy? }] }`.
@@ -1946,6 +1952,12 @@ bitmə vaxtı `X-Qr-Expires-At` başlığındadır. Hər iki cavab `Cache-Contro
   QR-ın HMAC-ı və yaşı yoxlanır: tanınmayan / dəyişdirilmiş / bloklanmış hesab → `409 userQr.invalid` (hesabın olub-olmadığı deyilmir), köhnə → `409 userQr.expired`.
   `grant` — yalnız **bu kiosk** və bu istifadəçi üçün 5 dəqiqəlik icazə (Redis `userqr:{grant}`), hər istifadədə uzanır. Kod URL-ə düşməsin deyə `POST`.
   `here: false` — başqa kiosk üçün ödənilmiş sifariş (göstərilir, burada çap olunmur).
+
+  **"Çap kodu" (T-345).** `code` 6 rəqəmdirsə (boşluq və ya defis ola bilər), QR yox, tətbiqin "Çap kodu" sayılır. Kod birdəfəlikdir: düzgündürsə götürülür və cavab QR-dakı kimidir.
+  - Tanınmayan və ya artıq işlənmiş kod: `409 userQr.codeInvalid`.
+  - Bir kiosk 10 dəqiqədə 10 səhv kod yazıbsa, sonra düzgün kod da rədd edilir: `409 userQr.tooManyCodes`.
+  - Kod log-a yazılmır.
+
 - `GET /api/print-jobs/pending-for-user` (`X-User-Qr-Grant` başlığı) — eyni siyahı; icazə bitib və ya başqa kioskundur → `409 userQr.grantExpired`.
 - `POST /api/print-jobs/pending-for-user/prepared/{id}` (`X-User-Qr-Grant`, `Idempotency-Key`) `{ options, promoCode? }` → `PrintJobResponse`
   (`Source=UserQr`, `PendingPayment`, istifadəçiyə bağlı). Kioskun sifariş qaydaları və ödəniş ekranları (9.1 / 9.2) ilə eynidir.
