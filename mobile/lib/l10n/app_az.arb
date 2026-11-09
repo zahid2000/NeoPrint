@@ -766,6 +766,42 @@
   },
   "kioskPricesHint": "Yekun qiymət sifariş verəndə hesablanır.",
   "kioskQueue": "Növbə",
+  "queueTitle": "Çap növbəsi",
+  "queueSubtitle": "{kiosk} kioskunun növbəsi — çap olunan birinci.",
+  "@queueSubtitle": {
+    "placeholders": {
+      "kiosk": {"type": "String"}
+    }
+  },
+  "queueEmptyHint": "{kiosk} kioskunda indi gözləyən sifariş yoxdur.",
+  "@queueEmptyHint": {
+    "placeholders": {
+      "kiosk": {"type": "String"}
+    }
+  },
+  "queueLoadFailed": "Növbəni göstərmək alınmadı. Bir az sonra yenidən çəkib yeniləyin.",
+  "queueMine": "Sizin sifarişiniz · {code}",
+  "@queueMine": {
+    "placeholders": {
+      "code": {"type": "String"}
+    }
+  },
+  "queueSomeone": "Sifariş",
+  "queuePrintedOf": "{printed} / {total} səhifə",
+  "@queuePrintedOf": {
+    "placeholders": {
+      "printed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "queueReadyIn": "≈ {minutes} dəq",
+  "@queueReadyIn": {
+    "placeholders": {
+      "minutes": {"type": "int"}
+    }
+  },
+  "queueOpen": "Növbəyə bax",
+  "queueFollow": "Növbəni izlə",
   "kioskQueueEmpty": "Növbə boşdur",
   "kioskQueueCount": "Növbədə {count} sifariş",
   "@kioskQueueCount": {

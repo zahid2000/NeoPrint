@@ -41,7 +41,8 @@ public sealed record SearchKiosksQuery(string? Search, double? Lat, double? Lng,
 public sealed record GetPublicKioskQuery(string IdOrCode) : IRequest<PublicKioskDetail>;
 
 /// <summary>How long the queue is (<c>GET kiosks/{id}/queue</c>) - a count, never whose jobs they are.</summary>
-public sealed record GetPublicKioskQueueQuery(Guid KioskId) : IRequest<PublicKioskQueue>;
+/// <param name="UserId">The asking user: their own orders are marked, with their code (T-379).</param>
+public sealed record GetPublicKioskQueueQuery(Guid KioskId, Guid? UserId = null) : IRequest<PublicKioskQueue>;
 
 public sealed record KioskSearchResult(IReadOnlyList<PublicKioskListItem> Items);
 
@@ -93,7 +94,21 @@ public sealed record PublicKioskDetail(
 /// <param name="State"><c>Ok</c>, <c>Low</c> ("kağız azdır") or <c>Out</c>; <c>Unknown</c> without a counter.</param>
 public sealed record PublicPaperView(string Size, int? AvailableSheets, string State);
 
-public sealed record PublicKioskQueue(Guid KioskId, int Length);
+public sealed record PublicKioskQueue(Guid KioskId, int Length)
+{
+    /// <summary>The queue row by row, in printing order (T-379): never whose but the asker's own.</summary>
+    public IReadOnlyList<PublicQueueEntry> Entries { get; init; } = [];
+}
+
+/// <summary>
+/// One order in a kiosk's queue as the app shows it (T-379, the poster's
+/// "Çap növbəsi"). Another customer's order has no code: at the kiosk a code
+/// cancels an order, so it is only ever shown to its owner.
+/// </summary>
+/// <param name="Sides">The pages it prints, copies included.</param>
+/// <param name="ReadyInMinutes">A rough estimate, from a small office printer's pace; at least 1.</param>
+public sealed record PublicQueueEntry(
+    int Position, int Sides, int PrintedSides, string Status, bool IsMine, string? JobCode, int ReadyInMinutes);
 
 /// <inheritdoc cref="SearchKiosksQuery" />
 public sealed class SearchKiosksValidator : IValidator<SearchKiosksQuery>
@@ -150,6 +165,12 @@ public sealed class KioskSearchHandlers :
 
     /// <summary>The most kiosks one search returns: a city's worth, nearest or by code first.</summary>
     public const int MaxResults = 100;
+
+    /// <summary>A small office printer's pace, for the queue's estimate (T-379): seconds a page.</summary>
+    public const double QueueSecondsPerSide = 4;
+
+    /// <summary>Getting a job to the printer and its first page out.</summary>
+    public const double QueueSecondsPerJob = 8;
 
     /// <summary>How many of the nearest kiosks a search near a point counts the queue of (T-342).</summary>
     public const int QueueCountLimit = 10;
@@ -288,7 +309,29 @@ public sealed class KioskSearchHandlers :
         var kiosk = await ListedAsync(request.KioskId.ToString(), cancellationToken).ConfigureAwait(false);
         var queue = await _jobs.ListQueueAsync(kiosk.Id, cancellationToken).ConfigureAwait(false);
 
-        return new PublicKioskQueue(kiosk.Id, queue.Count);
+        // When each should be ready: the one printing with what is left of it,
+        // each waiting one after the one before (the kiosk's own estimate, T-360,
+        // starts from the same pace).
+        var entries = new List<PublicQueueEntry>(queue.Count);
+        var seconds = 0d;
+        for (var i = 0; i < queue.Count; i++)
+        {
+            var job = queue[i];
+            var sides = Math.Max(1, job.Price.Price.Pages) * Math.Max(1, job.Options.Copies);
+            var printing = job.Status == Domain.PrintJobs.PrintJobStatus.Printing;
+            seconds += (Math.Max(0, sides - job.PrintedSides) * QueueSecondsPerSide) + (printing ? 0 : QueueSecondsPerJob);
+            var mine = request.UserId is { } user && job.UserId == user;
+            entries.Add(new PublicQueueEntry(
+                i + 1,
+                sides,
+                Math.Min(job.PrintedSides, sides),
+                printing ? "Printing" : "Queued",
+                mine,
+                mine ? job.JobCode : null,
+                Math.Max(1, (int)Math.Ceiling(seconds / 60))));
+        }
+
+        return new PublicKioskQueue(kiosk.Id, queue.Count) { Entries = entries };
     }
 
     /// <summary>A kiosk by id or code that a customer may see; any other is not found, not "hidden".</summary>

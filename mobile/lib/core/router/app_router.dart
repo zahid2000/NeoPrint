@@ -31,6 +31,7 @@ import '../../features/receipts/receipts_screen.dart';
 import '../../features/referral/referral_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
 import '../../features/kiosk_search/kiosk_detail_screen.dart';
+import '../../features/kiosk_search/kiosk_queue_screen.dart';
 import '../../features/kiosk_search/kiosk_models.dart';
 import '../../features/kiosk_search/kiosk_search_screen.dart';
 import '../../features/print_hub/print_hub_screen.dart';
@@ -68,6 +69,10 @@ abstract final class Routes {
   static const print = '/print';
   static const kiosks = '/print/kiosks';
   static String kiosk(String code) => '/kiosk/$code';
+
+  /// A kiosk's queue, row by row (T-379).
+  static String kioskQueue(String id, String name) =>
+      '/kiosk-queue/$id?name=${Uri.encodeQueryComponent(name)}';
   static const sessionFiles = '/session/files';
   static const sessionPrint = '/session/print';
   static const files = '/files';
@@ -404,6 +409,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       if (Readiness.printJobs)
         GoRoute(path: Routes.jobs, builder: (_, __) => const MyJobsScreen()),
+      GoRoute(
+        path: '/kiosk-queue/:id',
+        builder: (_, state) => KioskQueueScreen(
+          kioskId: state.pathParameters['id']!,
+          kioskName: state.uri.queryParameters['name'] ?? '',
+        ),
+      ),
       if (Readiness.printJobs)
         GoRoute(
           path: '/job/:code',

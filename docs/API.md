@@ -781,6 +781,8 @@ sifariş zamanı qiymət serverdə yenidən hesablanır.
 
 ### `GET /api/kiosks/{id}/queue`
 
+**Növbə sətir-sətir (T-379):** cavabda həm də `entries: [{ position, sides, printedSides, status (Printing | Queued), isMine, jobCode?, readyInMinutes }]` — çap olunan birinci. **Başqasının sifarişinin kodu qaytarılmır** (kioskda kod sifarişi ləğv edir); `isMine` və `jobCode` yalnız soruşanın öz sifarişindədir. `readyInMinutes` — kiçik ofis printerinin tempi ilə (4 san/səhifə + 8 san/iş) kobud təxmin, ən az 1.
+
 → `{ "kioskId", "length" }` — növbədə və çapda olan sifarişlərin **sayı**; kimin olduğu heç vaxt verilmir.
 
 ### `GET /api/kiosks/{id}/photo` (T-340)

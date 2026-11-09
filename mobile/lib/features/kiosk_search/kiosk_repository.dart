@@ -1,5 +1,6 @@
 import '../../core/network/api_client.dart';
 import 'kiosk_models.dart';
+import 'kiosk_queue_screen.dart' show QueueRow;
 
 /// Where the user is, in degrees.
 typedef GeoPoint = ({double lat, double lng});
@@ -27,6 +28,17 @@ class KioskRepository {
     parse: (json) => [
       for (final item in (json as Map<String, dynamic>)['items'] as List)
         KioskSummary.fromJson(item as Map<String, dynamic>),
+    ],
+  );
+
+  /// The queue row by row (T-379): the user's own orders marked.
+  Future<List<QueueRow>> queue(String kioskId) => _api.send(
+    method: 'GET',
+    path: 'api/kiosks/${Uri.encodeComponent(kioskId)}/queue',
+    parse: (json) => [
+      for (final item
+          in ((json as Map<String, dynamic>)['entries'] as List?) ?? const [])
+        QueueRow.fromJson(item as Map<String, dynamic>),
     ],
   );
 

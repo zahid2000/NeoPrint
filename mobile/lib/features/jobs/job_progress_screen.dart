@@ -155,6 +155,21 @@ class _Progress extends StatelessWidget {
           const SizedBox(height: Spacing.x4),
           NeoBanner(tone: StatusTone.warning, message: l10n.jobKioskStopped),
         ],
+        if (job.isActive && job.kioskId != null) ...[
+          const SizedBox(height: Spacing.x2),
+          Center(
+            child: TextButton.icon(
+              onPressed: () => context.push(
+                Routes.kioskQueue(
+                  job.kioskId!,
+                  job.kioskName ?? job.kioskCode ?? '',
+                ),
+              ),
+              icon: const Icon(Icons.format_list_numbered),
+              label: Text(l10n.queueFollow),
+            ),
+          ),
+        ],
         const SizedBox(height: Spacing.x6),
         JobCard(job: job, showActions: false),
         const SizedBox(height: Spacing.x6),

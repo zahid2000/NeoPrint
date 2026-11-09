@@ -6,6 +6,7 @@ import 'package:neoprint/core/network/api_client.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_detail_screen.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_models.dart';
+import 'package:neoprint/features/kiosk_search/kiosk_queue_screen.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_repository.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_search_controller.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_search_screen.dart';
@@ -52,6 +53,9 @@ class FakeKiosks implements KioskRepository {
           kiosk,
     ];
   }
+
+  @override
+  Future<List<QueueRow>> queue(String kioskId) async => const [];
 
   @override
   Future<KioskDetail> detail(String idOrCode) async =>

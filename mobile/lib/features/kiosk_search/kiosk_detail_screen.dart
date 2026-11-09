@@ -157,6 +157,17 @@ class _Detail extends StatelessWidget {
                   : l10n.kioskQueueCount(kiosk.queueLength),
               style: theme.textTheme.bodyLarge,
             ),
+            if (kiosk.queueLength > 0)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: () => context.push(
+                    Routes.kioskQueue(kiosk.summary.id, kiosk.summary.name),
+                  ),
+                  icon: const Icon(Icons.format_list_numbered),
+                  label: Text(l10n.queueOpen),
+                ),
+              ),
           ],
         ),
         if (paper.isNotEmpty)

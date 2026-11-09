@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
+using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Kiosks;
 
 namespace NeoPrint.Api.Controllers;
@@ -23,8 +24,13 @@ namespace NeoPrint.Api.Controllers;
 public sealed class KioskSearchController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly ICurrentUser _currentUser;
 
-    public KioskSearchController(ISender sender) => _sender = sender;
+    public KioskSearchController(ISender sender, ICurrentUser currentUser)
+    {
+        _sender = sender;
+        _currentUser = currentUser;
+    }
 
     /// <summary>By name, code or id; nearest first when a location is given.</summary>
     [HttpGet]
@@ -42,8 +48,8 @@ public sealed class KioskSearchController : ControllerBase
     public async Task<IActionResult> Photo(Guid id, CancellationToken cancellationToken)
         => KioskPhotoResults.Of(this, await _sender.Send(new GetKioskPhotoQuery(id, ListedOnly: true), cancellationToken));
 
-    /// <summary>How many jobs are ahead - a count, never whose.</summary>
+    /// <summary>The queue row by row (T-379): never whose, but the asker's own marked with its code.</summary>
     [HttpGet("{id:guid}/queue")]
     public async Task<ActionResult<PublicKioskQueue>> Queue(Guid id, CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new GetPublicKioskQueueQuery(id), cancellationToken));
+        => Ok(await _sender.Send(new GetPublicKioskQueueQuery(id, _currentUser.UserId), cancellationToken));
 }

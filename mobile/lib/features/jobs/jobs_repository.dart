@@ -23,6 +23,7 @@ final class MyJob {
     this.kioskStopped = false,
     this.printedSides = 0,
     this.fileId,
+    this.kioskId,
   });
 
   factory MyJob.fromJson(Map<String, dynamic> json) => MyJob(
@@ -49,6 +50,7 @@ final class MyJob {
     kioskStopped: json['kioskStopped'] as bool? ?? false,
     printedSides: json['printedSides'] as int? ?? 0,
     fileId: json['fileId'] as String?,
+    kioskId: json['kioskId'] as String?,
   );
 
   final String id;
@@ -86,6 +88,9 @@ final class MyJob {
   /// The file in the account it was made from - "Yenidən çap et" (T-378);
   /// null for an order made at the kiosk from a flash drive.
   final String? fileId;
+
+  /// Its kiosk, for "Növbəni izlə" (T-379).
+  final String? kioskId;
 
   /// Stopped at the printer, or waiting at a kiosk that cannot print: the
   /// owner is offered the choice - wait, or cancel and take the money back.

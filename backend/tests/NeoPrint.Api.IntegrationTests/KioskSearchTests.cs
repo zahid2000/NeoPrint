@@ -115,7 +115,17 @@ public sealed class KioskSearchTests
         detail = await DetailAsync(user, kiosk.KioskId.ToString());
         detail.GetProperty("queueLength").GetInt32().Should().Be(1);
         Paper(detail, "A4").Should().Be((497, "Ok"));
-        (await user.GetFromJsonAsync<JsonElement>($"/api/kiosks/{kiosk.KioskId}/queue")).GetProperty("length").GetInt32().Should().Be(1);
+        var queue = await user.GetFromJsonAsync<JsonElement>($"/api/kiosks/{kiosk.KioskId}/queue");
+        queue.GetProperty("length").GetInt32().Should().Be(1);
+
+        // Row by row (T-379): somebody else's order - no code, which would cancel it at the kiosk.
+        var row = queue.GetProperty("entries").EnumerateArray().Should().ContainSingle().Subject;
+        row.GetProperty("position").GetInt32().Should().Be(1);
+        row.GetProperty("sides").GetInt32().Should().Be(3);
+        row.GetProperty("status").GetString().Should().Be("Queued");
+        row.GetProperty("isMine").GetBoolean().Should().BeFalse();
+        row.TryGetProperty("jobCode", out var code).Should().BeFalse("JSON leaves a null out - and it is null: not the asker's");
+        row.GetProperty("readyInMinutes").GetInt32().Should().BeGreaterThanOrEqualTo(1);
 
         await SetAsync(kiosk.KioskId, Builders<Kiosk>.Update.Set("PaperStock.A4.Current", 150));
         Paper(await DetailAsync(user, kiosk.KioskCode), "A4").Should().Be((147, "Low"));
