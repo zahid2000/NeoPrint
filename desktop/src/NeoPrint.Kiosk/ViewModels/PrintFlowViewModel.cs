@@ -1139,6 +1139,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
             PlacedCode = job.JobCode;
             PlacedPosition = job.QueuePosition is { } position ? T("placed.position", position) : null;
+            PlacedPlace = job.QueuePosition;
 
             Track(
                 "options_set",

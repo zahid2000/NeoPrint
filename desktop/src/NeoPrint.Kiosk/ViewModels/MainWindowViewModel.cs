@@ -967,6 +967,17 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             });
         }
 
+        // The receipt says where the customer's order stands (T-371).
+        if (Flow is { PlacedCode: { } placed } flow)
+        {
+            var at = shown.FindIndex(entry => entry.JobCode == placed);
+
+            if (at >= 0)
+            {
+                flow.ShowQueuePlace(placed, at + 1, finishes?[at], DateTime.Now);
+            }
+        }
+
         OnPropertyChanged(nameof(QueueSummaryText));
         OnPropertyChanged(nameof(QueueButtonText));
     }

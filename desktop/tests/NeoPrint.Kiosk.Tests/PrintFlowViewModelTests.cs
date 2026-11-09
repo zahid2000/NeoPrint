@@ -99,6 +99,37 @@ public sealed class PrintFlowViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task The_receipt_shows_the_orders_place_and_wait_from_the_kiosks_queue()
+    {
+        var (flow, kit) = await FlowAsync();
+        kit.Pdf(3, _drive, "report.pdf");
+        await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
+        await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
+        flow.ContinueCommand.Execute(null);
+
+        flow.FileSummaryLabel.Should().Be(T("options.fileSummary"));
+        flow.TotalPagesText.Should().Be(T("options.totalPages", Formats.Pages(3, "az")));
+
+        await flow.PlaceCommand.ExecuteAsync(null);
+
+        var now = new DateTime(2026, 11, 10, 15, 0, 0);
+        flow.ShowQueuePlace("000000", 2, now.AddMinutes(9), now);
+        flow.PlacedWaitText.Should().BeNull("another order's place is not this one's");
+
+        flow.ShowQueuePlace("482913", 4, now.AddMinutes(5.5), now);
+
+        flow.HasPlacedPlace.Should().BeTrue();
+        flow.PlacedPlaceText.Should().Be("#4");
+        flow.PlacedWaitText.Should().Be(T("placed.waitMinutes", 6));
+
+        flow.ShowQueuePlace("482913", 1, now.AddSeconds(10), now);
+        flow.PlacedWaitText.Should().Be(T("placed.waitMinutes", 1), "the wait is never under a minute");
+
+        flow.ShowQueuePlace("482913", 1, null, now);
+        flow.PlacedWaitText.Should().BeNull("without the printer's pace there is no estimate");
+    }
+
+    [Fact]
     public async Task The_step_indicator_follows_the_order_with_its_payment_step()
     {
         var (flow, kit) = await FlowAsync();

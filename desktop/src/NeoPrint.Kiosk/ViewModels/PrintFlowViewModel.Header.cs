@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 namespace NeoPrint.Kiosk.ViewModels;
@@ -33,6 +34,54 @@ public sealed partial class PrintFlowViewModel
 
     /// <summary>"Növbəni izlə" on the receipt (the poster's screen 10).</summary>
     public string FollowQueueText => T("placed.followQueue");
+
+    /// <summary>"Seçilmiş fayl" over the file's name, on the options screen (the poster's screen 5).</summary>
+    public string FileSummaryLabel => T("options.fileSummary");
+
+    /// <summary>"Ümumi: 17 səhifə".</summary>
+    public string? TotalPagesText => FilePagesText is { } pages ? T("options.totalPages", pages) : null;
+
+    /// <summary>The order's place in this kiosk's queue, from 1 (the poster's screen 10).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PlacedPlaceText))]
+    [NotifyPropertyChangedFor(nameof(HasPlacedPlace))]
+    private int? _placedPlace;
+
+    /// <summary>"≈ 6 dəq": the printer's pace over the work before it; null until it is known.</summary>
+    [ObservableProperty]
+    private string? _placedWaitText;
+
+    public string PlacedPlaceLabel => T("placed.placeLabel");
+
+    public string PlacedWaitLabel => T("placed.waitLabel");
+
+    /// <summary>"#4".</summary>
+    public string? PlacedPlaceText => PlacedPlace is { } place ? $"#{place}" : null;
+
+    public bool HasPlacedPlace => PlacedPlace is not null;
+
+    /// <summary>
+    /// Where the order stands in the kiosk's own queue, and when it is likely
+    /// done - the queue panel's estimate (T-360), told to the receipt (T-371).
+    /// </summary>
+    public void ShowQueuePlace(string jobCode, int place, DateTime? finishes, DateTime now)
+    {
+        if (jobCode != PlacedCode)
+        {
+            return;
+        }
+
+        PlacedPlace = place;
+        PlacedWaitText = finishes is { } at
+            ? T("placed.waitMinutes", Math.Max(1, (int)Math.Ceiling((at - now).TotalMinutes)))
+            : null;
+    }
+
+    partial void OnPlacedCodeChanged(string? value)
+    {
+        PlacedPlace = null;
+        PlacedWaitText = null;
+    }
 
     /// <summary>"Ödəniş üçün qalan vaxt": the words over the countdown (T-374).</summary>
     public string CountdownLabel => T("pay.timeLeftLabel");
@@ -72,5 +121,6 @@ public sealed partial class PrintFlowViewModel
         OnPropertyChanged(nameof(StageTitle));
         OnPropertyChanged(nameof(HasBack));
         OnPropertyChanged(nameof(HasHeader));
+        OnPropertyChanged(nameof(TotalPagesText));
     }
 }

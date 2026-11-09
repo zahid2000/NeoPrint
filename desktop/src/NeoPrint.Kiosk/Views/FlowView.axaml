@@ -356,9 +356,9 @@
             </Grid>
 
             <!-- ============ Screen 5: options and price ============ -->
-            <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsOptions}}">
-                <!-- The choices in one card, as the poster draws them (T-341). -->
-                <Border Classes="card" VerticalAlignment="Top">
+            <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsOptions}}">
+                <!-- The choices in one card, as the poster draws them (T-341), right of the file (T-371). -->
+                <Border Grid.Column="1" Classes="card" VerticalAlignment="Top" Margin="{DynamicResource GapStart8}">
                 <Border.Styles>
                     <!-- Narrower sides: the longest pair (ru "Односторонняя" / "Двусторонняя") fits a 5:4 screen. -->
                     <Style Selector="Button.choice, Button.secondary">
@@ -499,9 +499,22 @@
                 </ScrollViewer>
                 </Border>
 
-                <!-- The live price: the kiosk's profile, volume discount included; the
-                     promo code below it (docs/DESIGN_SYSTEM.md, "Promokod sahəsi"). -->
-                <StackPanel Grid.Column="1" Width="{StaticResource SideCardWidth}" Spacing="{DynamicResource Space4}" Margin="{DynamicResource GapStart8}">
+                <!-- The poster's screen 5 (T-371): the file on the left, its pages, then the live
+                     price - the kiosk's profile, volume discount included - and the promo code
+                     below it (docs/DESIGN_SYSTEM.md, "Promokod sahəsi"). -->
+                <StackPanel Width="{StaticResource SideCardWidth}" Spacing="{DynamicResource Space4}">
+                    <Border Classes="card">
+                        <StackPanel Spacing="{DynamicResource Space4}">
+                            <Border Classes="icon-tile" HorizontalAlignment="Center">
+                                <PathIcon Data="{StaticResource IconDocument}" Width="48" Height="48" Foreground="{DynamicResource Brand600}" />
+                            </Border>
+                            <TextBlock Text="{Binding FileSummaryLabel}" Classes="muted" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding FileName}" Classes="h2" TextWrapping="Wrap" TextAlignment="Center"
+                                       MaxLines="2" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding TotalPagesText}" Classes="body-small" HorizontalAlignment="Center"
+                                       IsVisible="{Binding TotalPagesText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        </StackPanel>
+                    </Border>
                     <Border Classes="card" VerticalAlignment="Top">
                         <StackPanel Spacing="{DynamicResource Space4}">
                             <TextBlock Text="{Binding PriceLabel}" Classes="muted" />
@@ -610,7 +623,7 @@
             <!-- ============ Screen 9: paid (or queued) - the receipt ============ -->
             <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center"
                   IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsPlaced}}">
-                <Border Classes="card" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="868">
+                <Border Classes="card" VerticalAlignment="Center">
                 <StackPanel Spacing="{DynamicResource Space6}">
                     <Border Width="{DynamicResource StatusIconSize}" Height="{DynamicResource StatusIconSize}" Background="{DynamicResource SuccessBg}"
                             CornerRadius="{DynamicResource StatusIconRadius}" HorizontalAlignment="Center" IsVisible="{Binding !PrinterStopped}">
@@ -627,8 +640,9 @@
                         <TextBlock Text="{Binding PlacedCode}" FontSize="{DynamicResource FontSizeCode}" FontWeight="SemiBold" Foreground="{DynamicResource Brand700}" />
                     </Border>
                     <StackPanel Spacing="{DynamicResource Space6}" IsVisible="{Binding !PrinterStopped}">
+                        <!-- Without the kiosk's queue at hand, the place in words; with it, the card on the right. -->
                         <TextBlock Text="{Binding PlacedPosition}" Classes="h2" HorizontalAlignment="Center"
-                                   IsVisible="{Binding PlacedPosition, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                   IsVisible="{Binding !HasPlacedPlace}" />
                         <TextBlock Text="{Binding KeepCodeText}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
                         <TextBlock Text="{Binding AppNoteText}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" IsVisible="{Binding PaidWithApp}" />
                     </StackPanel>
@@ -652,10 +666,34 @@
                 </StackPanel>
                 </Border>
 
-                <!-- The fiscal receipt and "email me the receipt": only for a paid order. -->
+                <!-- The place in the queue and the wait (the poster's screen 10, T-371); the fiscal
+                     receipt and "email me the receipt": only for a paid order. -->
                 <StackPanel Grid.Column="1" Spacing="{DynamicResource Space6}" Margin="{DynamicResource GapStart12}" Width="{DynamicResource PayMethodWidth}"
-                            IsVisible="{Binding HasPayment}">
+                            VerticalAlignment="Center">
+                    <StackPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                            <Binding Path="HasPayment" />
+                            <Binding Path="HasPlacedPlace" />
+                        </MultiBinding>
+                    </StackPanel.IsVisible>
                     <Border Classes="card">
+                        <Border.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="HasPlacedPlace" />
+                                <Binding Path="!PrinterStopped" />
+                            </MultiBinding>
+                        </Border.IsVisible>
+                        <StackPanel Spacing="{DynamicResource Space4}">
+                            <TextBlock Text="{Binding PlacedPlaceLabel}" Classes="muted" HorizontalAlignment="Center" />
+                            <TextBlock Text="{Binding PlacedPlaceText}" Classes="display" Foreground="{DynamicResource Brand600}" HorizontalAlignment="Center" />
+                            <StackPanel Spacing="{DynamicResource Space2}" IsVisible="{Binding PlacedWaitText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Separator />
+                                <TextBlock Text="{Binding PlacedWaitLabel}" Classes="muted" HorizontalAlignment="Center" />
+                                <TextBlock Text="{Binding PlacedWaitText}" Classes="h2" HorizontalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="card" IsVisible="{Binding HasPayment}">
                         <StackPanel Spacing="{DynamicResource Space4}">
                             <TextBlock Text="{Binding FiscalTitle}" Classes="h2" />
                             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" IsVisible="{Binding HasFiscalQr}">
@@ -672,7 +710,7 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Classes="card">
+                    <Border Classes="card" IsVisible="{Binding HasPayment}">
                         <StackPanel Spacing="{DynamicResource Space4}">
                             <TextBlock Text="{Binding EmailTitle}" Classes="h2" />
                             <!-- The keyboard opens on its own sheet: it does not fit this column. -->
