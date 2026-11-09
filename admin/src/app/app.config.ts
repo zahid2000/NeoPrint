@@ -1,5 +1,6 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
+import { MAT_TABS_CONFIG } from '@angular/material/tabs';
 import {
   ApplicationConfig,
   inject,
@@ -108,6 +109,8 @@ export const appConfig: ApplicationConfig = {
     // One look for every form field, set here rather than per template, so a
     // redesign changes it in one place (docs/DESIGN_SYSTEM.md, "Inputlar").
     { provide: MAT_FORM_FIELD_DEFAULT_OPTIONS, useValue: { appearance: 'outline' } },
+    // Tabs that do not fit scroll under the finger, without arrows (T-365, docs/DESIGN_SYSTEM.md).
+    { provide: MAT_TABS_CONFIG, useValue: { disablePagination: true } },
     provideBrowserGlobalErrorListeners(),
     provideZonelessChangeDetection(),
 

@@ -642,3 +642,32 @@ a {
   margin-right: var(--space-2);
   vertical-align: middle;
 }
+
+/* --- Tabs that do not fit (T-365, docs/DESIGN_SYSTEM.md) ------------------ */
+
+// No arrows (MAT_TABS_CONFIG.disablePagination): the row of labels scrolls
+// under the finger, a wheel or a trackpad. The header scrolls, not Material's
+// label container - Material puts that one back to the start whenever a label
+// takes the focus, and the chosen tab went out of sight. The right edge fades
+// so a cut label says there is more; the row ends with room for the fade.
+.mat-mdc-tab-group .mat-mdc-tab-header,
+.mat-mdc-tab-nav-bar.mat-mdc-tab-header {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  // A mask: only how opaque it is counts, it draws no colour.
+  mask-image: linear-gradient(to right, black calc(100% - var(--space-6)), transparent);
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mat-mdc-tab-label-container {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .mat-mdc-tab-list {
+    padding-right: var(--space-6);
+  }
+}

@@ -1,5 +1,8 @@
 .shell {
+  // The part of the screen the browser leaves visible (T-364): on a phone 100vh is
+  // the screen with the address bar hidden, and the menu's last group stayed under it.
   height: 100vh;
+  height: 100dvh;
 
   &__sidenav {
     width: var(--sidebar-width);
