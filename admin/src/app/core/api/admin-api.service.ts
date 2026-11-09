@@ -616,6 +616,22 @@ export class AdminApiService {
     return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}`, body);
   }
 
+  /** The kiosk's picture for the app (T-340), already shrunk to JPEG in the browser. */
+  setKioskPhoto(id: string, photo: Blob): Observable<{ version: number }> {
+    const form = new FormData();
+    form.append('photo', photo, 'kiosk.jpg');
+    return this.http.put<{ version: number }>(`/api/admin/kiosks/${id}/photo`, form);
+  }
+
+  removeKioskPhoto(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/admin/kiosks/${id}/photo`);
+  }
+
+  /** The picture behind a detail's `photoUrl` (relative to the API). */
+  kioskPhoto(photoUrl: string): Observable<Blob> {
+    return this.http.get(`/${photoUrl}`, { responseType: 'blob' });
+  }
+
   deleteKiosk(id: string, reason: string): Observable<void> {
     return this.http.delete<void>(`/api/admin/kiosks/${id}`, withReason(reason));
   }

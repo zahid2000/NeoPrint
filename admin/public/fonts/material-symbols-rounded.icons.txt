@@ -1,4 +1,5 @@
 add
+add_photo_alternate
 admin_panel_settings
 arrow_back
 assignment
@@ -19,6 +20,7 @@ crisis_alert
 dark_mode
 dashboard
 delete
+delete_outline
 delete_sweep
 deployed_code
 description

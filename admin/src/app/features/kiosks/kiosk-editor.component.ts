@@ -39,6 +39,7 @@ import { KioskCommandsComponent } from './kiosk-commands.component';
 import { KioskUpdatesComponent } from './kiosk-updates.component';
 import { KioskIncidentsComponent } from './kiosk-incidents.component';
 import { KioskQueueComponent } from './kiosk-queue.component';
+import { KioskPhotoComponent } from './kiosk-photo.component';
 import { KioskStatusComponent } from './kiosk-status.component';
 import { KioskTasksComponent } from './kiosk-tasks.component';
 import { KioskSuppliesComponent } from './kiosk-supplies.component';
@@ -58,6 +59,7 @@ const pinPattern = /^[0-9]{4,12}$/;
 @Component({
   selector: 'app-kiosk-editor',
   imports: [
+    KioskPhotoComponent,
     NgTemplateOutlet,
     FormsModule,
     RouterLink,
@@ -310,6 +312,23 @@ export class KioskEditorComponent implements OnInit {
       );
     } catch {
       // What is on screen stays; the header's indicator says the panel is cut off.
+    }
+  }
+
+  /**
+   * A new picture or none (T-340): only its address is fetched again, so the
+   * form's unsaved edits stay.
+   */
+  async photoChanged(): Promise<void> {
+    const id = this.id();
+    if (!id) {
+      return;
+    }
+    try {
+      const fresh = await firstValueFrom(this.api.getKiosk(id));
+      this.loaded.update((kiosk) => kiosk && { ...kiosk, photoUrl: fresh.photoUrl });
+    } catch {
+      // The old picture stays on screen; the next visit shows the new one.
     }
   }
 

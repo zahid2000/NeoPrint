@@ -11,6 +11,7 @@ import { featuresTranslations } from './features.i18n';
 import { formatsTranslations } from './formats.i18n';
 import { jobsTranslations } from './jobs.i18n';
 import { kiosksTranslations } from './kiosks.i18n';
+import { kioskPhotoTranslations } from './kiosk-photo.i18n';
 import { pricingTranslations } from './pricing.i18n';
 import { settingsTranslations } from './settings.i18n';
 import { moneyTranslations } from './money.i18n';
@@ -1118,6 +1119,7 @@ const pages: readonly PageTranslations[] = [
   storageTranslations,
   referralsTranslations,
   kiosksTranslations,
+  kioskPhotoTranslations,
   jobsTranslations,
   featuresTranslations,
   settingsTranslations,

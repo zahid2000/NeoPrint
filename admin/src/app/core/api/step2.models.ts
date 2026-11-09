@@ -258,6 +258,8 @@ export interface KioskDetail {
   readonly revision: number;
   /** Since when the kiosk runs in safe mode after a crash loop (plan section 7.12). */
   readonly safeModeSince?: string | null;
+  /** The picture the app shows, relative to the API (T-340); absent without one. */
+  readonly photoUrl?: string | null;
 }
 
 export interface CreateKioskInput {

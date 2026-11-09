@@ -360,6 +360,12 @@
             [ngTemplateOutlet]="general"
             [ngTemplateOutletContext]="{ readonly: !canEdit() }"
           />
+          <app-kiosk-photo
+            [kioskId]="current.id"
+            [photoUrl]="current.photoUrl"
+            [canEdit]="canEdit()"
+            (changed)="photoChanged()"
+          />
           @if (canEdit()) {
             <div class="editor__actions">
               <button
