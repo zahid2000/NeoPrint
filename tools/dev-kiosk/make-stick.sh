@@ -5,7 +5,7 @@
 # current code, with the STAGING keys - the test server's - built in. Not for
 # a production kiosk: that stick is made from a signed production release.
 #
-#   bash tools/dev-kiosk/make-stick.sh --api-url https://<HOST> [--out <folder>] [--version 0.9.0-m19b]
+#   bash tools/dev-kiosk/make-stick.sh --api-url https://<HOST> [--out <folder>] [--version 0.9.0-m20.3]
 #
 # <HOST> is the test server's name (docs/TEST_SERVER.md), never written into
 # the repository. The folder it prints is copied, as it is, onto a USB stick
@@ -21,7 +21,7 @@
 set -euo pipefail
 
 api_url=""
-version="0.9.0-m19b"
+version="0.9.0-m20.3"
 out="${TMPDIR:-/tmp}/neoprint-stick"
 while [ $# -gt 0 ]; do
     case "$1" in

@@ -1779,8 +1779,10 @@ sudo find /var/lib/neoprint/updates -type d -exec chmod 2770 {} +
 ls -la /var/lib/neoprint/updates        # downloads, requests, health: drwxrws--- kiosk neoprint
 ```
 
-Sonra paneldə kioskun "Yeniləmə" tabında "İndi yenilə" — və ya növbəti yoxlamanı gözləyin. Yeni flaş və
-`provision.sh --repair` (0.9.0-m21 skriptləri) bunu özü düzəldir.
+Sonra paneldə kioskun "Yeniləmə" tabında "İndi yenilə" — və ya növbəti yoxlamanı gözləyin. **Yeni kiosk üçün bu lazım deyil**, yalnız flaş 2026-11-09-dan (T-368) sonra yığılmalıdır:
+`make-stick.sh` cari kodu (düzəlmiş Agent və `provision.sh`) yığır, standart versiya `0.9.0-m20.3`-dür (m20.2 paketindən
+yeni — o kioska təklif olunmur). Köhnə flaşdan quraşdırılmış kioskda yuxarıdakı üç əmr bir dəfə lazımdır; `provision.sh
+--repair` da (yeni skriptlərlə) bunu özü düzəldir.
 
 ## 7y. Addım 7B — real Linux kiosku test serverinə (T-333)
 
