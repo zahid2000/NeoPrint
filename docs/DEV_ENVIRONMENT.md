@@ -1771,11 +1771,11 @@ powershell -ExecutionPolicy Bypass -File tools\release-sign\staging-quickstart.p
 **Yeniləmə "Endirilir"-də qalırsa (T-368).** 0.9.0-m21-dən əvvəlki Agent UI-ın qovluqlarını (`downloads`, `requests`,
 `health`) özü, öz adına yaradırdı — UI onlara yaza bilmir; loqda `Access to the path '/var/lib/neoprint/updates/...' is
 denied`. Flaşla quraşdırılmış kioskda **bir dəfə**, kioskun öz terminalında (Ctrl+Alt+F3, Ubuntu-nun admin hesabı ilə
-daxil olun; sonra Ctrl+Alt+F1 kiosk ekranına qaytarır):
+daxil olun; sonra Ctrl+Alt+F1 kiosk ekranına qaytarır). **Hər əmr ayrıca sətirdə**, hər birindən sonra Enter:
 
 ```bash
 sudo chown -R kiosk:neoprint /var/lib/neoprint/updates
-sudo find /var/lib/neoprint/updates -type d -exec chmod 2770 {} +
+sudo chmod 2770 /var/lib/neoprint/updates /var/lib/neoprint/updates/downloads /var/lib/neoprint/updates/requests /var/lib/neoprint/updates/health
 ls -la /var/lib/neoprint/updates        # downloads, requests, health: drwxrws--- kiosk neoprint
 ```
 
