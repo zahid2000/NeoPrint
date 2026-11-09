@@ -300,11 +300,38 @@ void main() {
       await type(tester, '1357');
 
       expect(find.text('Barmaq izi və ya üz ilə açılsın?'), findsOneWidget);
+      // T-349: the lock stays shut while the offer is up - opening it sends
+      // the router home and the offer went with this screen.
+      expect(lockOf(app.container), AppLockStatus.setup);
+
       await tester.tap(find.text('Bəli'));
       await settle(tester);
 
+      expect(app.biometrics.asked, 1, reason: 'the finger or face confirmed');
       expect(app.container.read(appLockProvider).biometrics, isTrue);
       expect(app.storage.values[SecureStorageKeys.pinBiometrics], user);
+      expect(lockOf(app.container), AppLockStatus.unlocked);
+      expect(app.storage.values[SecureStorageKeys.pin], '$user|1357');
+    });
+
+    testWidgets('a finger or face not confirmed leaves it off; the PIN is set '
+        'all the same (T-349)', (tester) async {
+      final app = wire(storedToken: null);
+      addTearDown(app.container.dispose);
+      app.container.read(appLockProvider);
+      await settle(tester);
+      await signIn(tester, app);
+      app.biometrics.passes = false;
+
+      await show(tester, app.container, PinMode.setup);
+      await type(tester, '1357');
+      await type(tester, '1357');
+      await tester.tap(find.text('Bəli'));
+      await settle(tester);
+
+      expect(app.container.read(appLockProvider).biometrics, isFalse);
+      expect(app.storage.values[SecureStorageKeys.pinBiometrics], isNull);
+      expect(lockOf(app.container), AppLockStatus.unlocked);
     });
 
     testWidgets('the lock says how many tries are left, and opens with the '

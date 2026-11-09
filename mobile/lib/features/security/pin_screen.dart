@@ -135,19 +135,24 @@ class _PinScreenState extends ConsumerState<PinScreen> {
         }
 
         setState(() => _busy = true);
-        await _lock.setPin(pin);
-        if (!mounted) {
-          return;
-        }
 
         if (widget.mode == PinMode.change) {
+          await _lock.setPin(pin);
+          if (!mounted) {
+            return;
+          }
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(l10n.pinChanged)));
           Navigator.of(context).pop();
           return;
         }
 
+        // The first PIN: the fingerprint or face is asked for and confirmed
+        // before the PIN is saved, because saving it opens the lock and the
+        // router leaves this screen at once - taking an offer still on it
+        // along (T-349).
         await _offerBiometrics();
+        await _lock.setPin(pin);
     }
   }
 
@@ -176,7 +181,18 @@ class _PinScreenState extends ConsumerState<PinScreen> {
       ),
     );
 
-    if (yes ?? false) {
+    if (!(yes ?? false) || !mounted) {
+      return;
+    }
+
+    // Switched on only once the phone has confirmed the finger or face.
+    final confirmed = await ref
+        .read(biometricsProvider)
+        .authenticate(
+          title: l10n.pinBiometricPrompt,
+          cancel: l10n.pinBiometricCancel,
+        );
+    if (confirmed) {
       await _lock.setBiometrics(true);
     }
   }
