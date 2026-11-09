@@ -408,6 +408,38 @@ public sealed class UpdateApplierTests : IDisposable
         _ui.Calls.Should().Equal("stop", "start");
     }
 
+    [Fact]
+    public async Task The_agent_makes_only_its_own_folders_and_waits_for_the_ui_to_make_its_folders()
+    {
+        // The UI's folders are the UI's to make (T-368): one the agent made was
+        // the agent's, and the UI could not write a download into it.
+        var agent = await StartedAsync();
+
+        Directory.Exists(_paths.Results).Should().BeTrue();
+        Directory.Exists(_paths.Incoming).Should().BeTrue();
+        Directory.Exists(_paths.Downloads).Should().BeFalse();
+        Directory.Exists(_paths.Requests).Should().BeFalse();
+        Directory.Exists(_paths.Health).Should().BeFalse();
+
+        // Nothing asked for yet: nothing to do, no error.
+        (await agent.ProcessPendingAsync(CancellationToken.None)).Should().Be(0);
+    }
+
+    [Fact]
+    public void The_ui_makes_its_folders_writable_by_the_agents_group()
+    {
+        UpdatePaths.EnsureShared(_paths.Downloads);
+        UpdatePaths.EnsureShared(_paths.Downloads);
+
+        Directory.Exists(_paths.Downloads).Should().BeTrue();
+        if (!OperatingSystem.IsWindows())
+        {
+            File.GetUnixFileMode(_paths.Downloads).Should().Be(
+                UnixFileMode.SetGroup | UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                | UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute);
+        }
+    }
+
     // ---------------------------------------------------------------------
 
     private sealed record TestPackage(string File, string Version, string Manifest, string Signature, string Sha256);

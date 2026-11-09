@@ -838,6 +838,7 @@
   "updates.agentTooOld": "The package needs a newer agent; the agent is updated first.",
   "updates.withdrawn": "The package was withdrawn; it was not installed.",
   "updates.downloadFailed": "The package could not be downloaded; the kiosk tries again later.",
+  "updates.cannotStore": "The kiosk cannot store the package (no permission on its update folder). Re-apply the provisioning on the kiosk; the update then carries on by itself.",
   "updates.healthCheckFailed": "The new version failed its health check; the kiosk went back to the previous one.",
   "updates.installed": "The new version is installed and running.",
   "incidents.kiosk.updateRolledBack": "On kiosk {kiosk}, the update to {componentMessage} {version} failed its health check and was rolled back. Reason: {reasonMessage} The kiosk runs the previous version; this version will not be offered to it again. Upload and read the kiosk's logs; after a fix, release a new version or try again with \"Update now\".",

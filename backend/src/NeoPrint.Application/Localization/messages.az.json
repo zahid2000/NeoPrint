@@ -838,6 +838,7 @@
   "updates.agentTooOld": "Paket daha yeni Agent tələb edir; əvvəl Agent yenilənəcək.",
   "updates.withdrawn": "Paket geri çəkilib; quraşdırılmadı.",
   "updates.downloadFailed": "Paket endirilmədi; kiosk sonra yenidən cəhd edəcək.",
+  "updates.cannotStore": "Kiosk paketi diskə yaza bilmir (yeniləmə qovluğuna icazə yoxdur). Kioskda quraşdırmanı yenidən tətbiq edin; yeniləmə özü davam edəcək.",
   "updates.healthCheckFailed": "Yeni versiya sağlamlıq yoxlamasından keçmədi; əvvəlki versiyaya qaytarıldı.",
   "updates.installed": "Yeni versiya quraşdırıldı və işləyir.",
   "incidents.kiosk.updateRolledBack": "{kiosk} kioskunda {componentMessage} {version} yeniləməsi sağlamlıq yoxlamasından keçmədi və əvvəlki versiyaya qaytarıldı. Səbəb: {reasonMessage} Kiosk əvvəlki versiya ilə işləyir; bu versiya ona bir daha təklif olunmur. Kioskun loglarını yükləyib baxın; düzəlişdən sonra yeni versiya buraxın və ya \"İndi yenilə\" ilə yenidən cəhd edin.",

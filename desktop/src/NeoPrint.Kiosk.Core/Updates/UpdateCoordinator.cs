@@ -127,7 +127,7 @@ public sealed class UpdateCoordinator
             var marker = _paths.HealthMarker(UpdateComponents.App, _appVersion);
             if (!File.Exists(marker))
             {
-                Directory.CreateDirectory(_paths.Health);
+                UpdatePaths.EnsureShared(_paths.Health);
                 File.WriteAllText(marker, _clock.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
                 _logger.LogInformation("Kiosk UI {Version} is healthy.", _appVersion);
             }
@@ -354,6 +354,14 @@ public sealed class UpdateCoordinator
             await ReportAsync(offer, "Downloading", "updates.downloadFailed", cancellationToken).ConfigureAwait(false);
             return;
         }
+        catch (Exception exception) when (exception is UnauthorizedAccessException or IOException)
+        {
+            // The kiosk cannot write where packages go (T-368): no retry mends that, somebody must -
+            // said on the panel, not left as "downloading" for ever.
+            _logger.LogError(exception, "{Component} {Version} cannot be stored on this kiosk.", offer.Component, offer.Version);
+            await ReportAsync(offer, "Downloading", "updates.cannotStore", cancellationToken).ConfigureAwait(false);
+            return;
+        }
 
         // The UI's own check: no time is lost waiting for a moment with a package the agent would refuse.
         var check = await _check.CheckAsync(
@@ -416,7 +424,7 @@ public sealed class UpdateCoordinator
             _leavingOnPurpose();
         }
 
-        Directory.CreateDirectory(_paths.Requests);
+        UpdatePaths.EnsureShared(_paths.Requests);
         AgentFiles.Write(Path.Combine(_paths.Requests, $"{request.Id:N}.json"), request);
         if (offer is not null)
         {

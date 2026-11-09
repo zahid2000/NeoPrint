@@ -115,7 +115,10 @@ public sealed partial class UpdateApplier
     /// <summary>At the agent's start: the folders, the state, and whatever a power cut left half done.</summary>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        foreach (var folder in new[] { _paths.Results, _paths.Incoming, _paths.Downloads, _paths.Requests, _paths.Health })
+        // Only the agent's own folders: the UI's (downloads, requests, health)
+        // are the UI's to make - one made here is the agent's, and the UI could
+        // not write in it (T-368).
+        foreach (var folder in new[] { _paths.Results, _paths.Incoming })
         {
             Directory.CreateDirectory(folder);
         }
@@ -231,6 +234,12 @@ public sealed partial class UpdateApplier
     public async Task<int> ProcessPendingAsync(CancellationToken cancellationToken)
     {
         var answered = 0;
+        // No folder yet: the UI has asked for nothing.
+        if (!Directory.Exists(_paths.Requests))
+        {
+            return 0;
+        }
+
         foreach (var file in Directory.GetFiles(_paths.Requests, "*.json").OrderBy(File.GetLastWriteTimeUtc))
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -453,7 +462,13 @@ public sealed partial class UpdateApplier
 
         try
         {
-            File.Delete(_paths.HealthMarker(UpdateComponents.App, to));
+            // The UI's health folder may not be there yet (T-368): no mark to clear then.
+            var stale = _paths.HealthMarker(UpdateComponents.App, to);
+            if (File.Exists(stale))
+            {
+                File.Delete(stale);
+            }
+
             Links(UpdateComponents.App).SwitchTo(to);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)

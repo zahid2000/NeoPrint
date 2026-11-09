@@ -339,6 +339,14 @@ install -d -o root -g root -m 755 "$INSTALL_ROOT/provisioning" "$INSTALL_ROOT/pr
 # What the UI writes for the agent (downloads, requests, health), and what the
 # agent writes for the UI (state, results); the agent's own copy stays its own.
 install -d -o "$KIOSK_USER" -g "$SERVICE_USER" -m 2770 "$DATA_ROOT/updates"
+# The UI's folders in it, the same way (T-368): an agent before 0.9.0-m21
+# made them itself, as its own, and the UI could not write a download, a
+# request or its health mark. Corrected on every run, --repair included.
+for folder in downloads requests health; do
+    install -d -o "$KIOSK_USER" -g "$SERVICE_USER" -m 2770 "$DATA_ROOT/updates/$folder"
+done
+chown -R "$KIOSK_USER:$SERVICE_USER" "$DATA_ROOT/updates"
+find "$DATA_ROOT/updates" -type d -exec chmod 2770 {} +
 install -d -o "$SERVICE_USER" -g "$KIOSK_USER" -m 750 "$DATA_ROOT/agent"
 install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 700 "$DATA_ROOT/agent/incoming"
 

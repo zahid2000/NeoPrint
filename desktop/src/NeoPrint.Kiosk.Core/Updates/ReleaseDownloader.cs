@@ -37,7 +37,7 @@ public sealed class ReleaseDownloader
     {
         ArgumentNullException.ThrowIfNull(offer);
 
-        Directory.CreateDirectory(_paths.Downloads);
+        UpdatePaths.EnsureShared(_paths.Downloads);
         var package = PackagePath(offer.ReleaseId);
         if (File.Exists(package) && new FileInfo(package).Length == offer.Size)
         {

@@ -48,6 +48,38 @@ public sealed record UpdatePaths(string InstallRoot, string UpdatesRoot, string 
 
     public string HealthMarker(string component, string version) => Path.Combine(Health, $"{component.ToLowerInvariant()}-{version}");
 
+    /// <summary>
+    /// One of the UI's folders under <see cref="UpdatesRoot"/> (downloads,
+    /// requests, health), made by the UI only (T-368): the UI writes in it and
+    /// the agent, by the group, reads and clears it - the mode of the folder
+    /// above, <c>2770</c>. The agent does not make them: one it made was its
+    /// own, and the UI could not write a byte of a download.
+    /// </summary>
+    public static void EnsureShared(string folder)
+    {
+        if (Directory.Exists(folder))
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(folder);
+
+        if (!OperatingSystem.IsWindows())
+        {
+            try
+            {
+                File.SetUnixFileMode(
+                    folder,
+                    UnixFileMode.SetGroup | UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                    | UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Not ours to change: what the provisioning script made stays as it is.
+            }
+        }
+    }
+
     /// <summary>The provisioned layout of this operating system (plan section 7.12).</summary>
     public static UpdatePaths ForThisMachine()
     {

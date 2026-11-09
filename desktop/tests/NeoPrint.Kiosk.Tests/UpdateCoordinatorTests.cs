@@ -131,6 +131,22 @@ public sealed class UpdateCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task A_package_the_kiosk_cannot_store_is_said_on_the_panel_not_left_downloading()
+    {
+        // Where packages go cannot be written (T-368: the agent had made the
+        // UI's folder as its own) - a file in its place does the same here.
+        var coordinator = await CoordinatorAsync();
+        _backend.Offer(Package("1.0.0"));
+        Directory.CreateDirectory(Path.GetDirectoryName(_paths.Downloads)!);
+        await File.WriteAllTextAsync(_paths.Downloads, "not a folder");
+
+        (await coordinator.CheckAsync(force: true, commandId: null, CancellationToken.None)).Should().BeTrue();
+
+        _backend.Statuses.Select(s => (s.Status, s.MessageKey)).Should().Equal(("Downloading", null), ("Downloading", "updates.cannotStore"));
+        Directory.Exists(_paths.Requests).Should().BeFalse("nothing was handed to the agent");
+    }
+
+    [Fact]
     public async Task A_download_that_broke_off_goes_on_from_where_it_stopped()
     {
         var coordinator = await CoordinatorAsync();
