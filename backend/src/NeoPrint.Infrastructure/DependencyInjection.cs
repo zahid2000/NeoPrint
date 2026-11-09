@@ -222,6 +222,7 @@ public static class DependencyInjection
         services.AddScoped<Refunds.WalletLedgerReconciliationJob>();
         services.AddScoped<Payments.PaymentJobs>();
         services.AddScoped<Sessions.KioskSessionJobs>();
+        services.AddScoped<Releases.RolloutCompletionJob>();
 
         // Jobs whose outcome is unknown and customers' claims (plan section 2.5, scenario B).
         services.AddScoped<Application.PrintJobs.SuspectedJobIncidents>();

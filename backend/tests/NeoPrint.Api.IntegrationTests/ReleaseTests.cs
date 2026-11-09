@@ -551,6 +551,44 @@ public sealed class ReleaseTests : IDisposable
         (await commander.PostAsJsonAsync($"/api/admin/kiosks/{other.KioskId}/update-now", Because)).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [DockerFact]
+    public async Task A_rollout_to_chosen_kiosks_completes_itself_once_each_of_them_installed_it()
+    {
+        if (Skip) { return; }
+
+        await using var host = Host();
+        using var admin = await AdminAsync(host);
+        using var first = await ReadyKioskAsync(_fixture, "release-auto-a");
+        using var second = await ReadyKioskAsync(_fixture, "release-auto-b");
+        using var firstApi = KioskClient(host, first);
+        using var secondApi = KioskClient(host, second);
+
+        var package = Package(NewVersion(major: 7), seed: 17);
+        var version = ReleaseVersionOf(package);
+        var releaseId = (await (await UploadAsync(admin, package, Sign(_current, package.Manifest))).Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+        var rolloutId = (await (await admin.PostAsJsonAsync("/api/admin/rollouts", new { releaseId, target = "Kiosks", kioskIds = new[] { first.KioskId, second.KioskId } }))
+            .Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        async Task<string?> StatusAsync() => (await admin.GetFromJsonAsync<JsonElement>("/api/admin/releases"))
+            .GetProperty("rollouts").EnumerateArray().Single(o => o.GetProperty("id").GetGuid() == rolloutId).GetProperty("status").GetString();
+
+        // One of two installed: still offered to the other (T-381).
+        (await firstApi.PostAsJsonAsync("/api/kiosks/me/update-status", new { component = "App", version, status = "Succeeded" }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await StatusAsync()).Should().Be("Active");
+
+        // The last one: nothing is left to offer - completed, no one pressed a button.
+        (await secondApi.PostAsJsonAsync("/api/kiosks/me/update-status", new { component = "App", version, status = "Succeeded" }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await StatusAsync()).Should().Be("Completed");
+
+        // Run again (the five-minute job): nothing more to do.
+        using var scope = host.Services.CreateScope();
+        (await scope.ServiceProvider.GetRequiredService<MediatR.ISender>().Send(new Application.Releases.CompleteInstalledRolloutsCommand()))
+            .Should().Be(0);
+    }
+
     private const string BecauseText = "Integration test: checking the command";
 
     private static object Because => new { reason = BecauseText };

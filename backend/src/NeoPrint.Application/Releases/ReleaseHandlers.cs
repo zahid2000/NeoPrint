@@ -38,7 +38,8 @@ public sealed class ReleaseHandlers :
     IRequestHandler<GetKioskUpdateDetailQuery, KioskUpdateDetailView>,
     IRequestHandler<GetKioskUpdateQuery, KioskUpdateView>,
     IRequestHandler<OpenReleasePackageQuery, ReleaseDownload>,
-    IRequestHandler<ReportKioskUpdateCommand, Unit>
+    IRequestHandler<ReportKioskUpdateCommand, Unit>,
+    IRequestHandler<CompleteInstalledRolloutsCommand, int>
 {
     /// <summary>A manifest or a signature is a few hundred bytes.</summary>
     public const int MaxSmallFile = 16 * 1024;
@@ -657,8 +658,67 @@ public sealed class ReleaseHandlers :
             .ConfigureAwait(false);
         await _admins.KioskUpdateChangedAsync(kiosk.Id, cancellationToken).ConfigureAwait(false);
 
+        // The last kiosk of a rollout to chosen kiosks: the rollout is done (T-381).
+        if (request.Status == KioskUpdateStatus.Succeeded)
+        {
+            await CompleteInstalledAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         return Unit.Value;
     }
+
+    /// <inheritdoc cref="CompleteInstalledRolloutsCommand" />
+    public Task<int> Handle(CompleteInstalledRolloutsCommand request, CancellationToken cancellationToken)
+        => CompleteInstalledAsync(cancellationToken);
+
+    private async Task<int> CompleteInstalledAsync(CancellationToken cancellationToken)
+    {
+        var active = (await _rollouts.ListAsync(cancellationToken).ConfigureAwait(false))
+            .Where(rollout => rollout.Status == RolloutStatus.Active && rollout.Target == RolloutTarget.Kiosks)
+            .ToList();
+        if (active.Count == 0)
+        {
+            return 0;
+        }
+
+        var kiosks = await _kiosks.ListAsync(cancellationToken).ConfigureAwait(false);
+        var now = _clock.UtcNow;
+        var completed = 0;
+
+        foreach (var rollout in active)
+        {
+            var reached = kiosks
+                .Where(kiosk => Rid(kiosk.Platform) == rollout.Platform && rollout.Reaches(kiosk.Id, kiosk.UpdateChannel))
+                .ToList();
+
+            // Installed: the version it runs, or the update it reported done before its next heartbeat.
+            if (reached.Count == 0 || !reached.All(kiosk => Installed(kiosk, rollout)))
+            {
+                continue;
+            }
+
+            rollout.Complete(ActorContext.System("rollouts.completeInstalled", _correlation.CorrelationId), now);
+            await _rollouts.UpdateAsync(rollout, cancellationToken).ConfigureAwait(false);
+            await _audit.WriteAsync(
+                    new AuditEntry(null, "rollouts.autoComplete", nameof(ReleaseRollout), rollout.Id.ToString(),
+                        nameof(RolloutStatus.Active), rollout.Status.ToString(), null, null, ActorType.System),
+                    cancellationToken)
+                .ConfigureAwait(false);
+            completed++;
+        }
+
+        if (completed > 0)
+        {
+            await _admins.ReleasesChangedAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return completed;
+    }
+
+    private static bool Installed(Kiosk kiosk, ReleaseRollout rollout)
+        => InstalledVersion(kiosk, rollout.Component) == rollout.Version
+           || kiosk.UpdateStates.Any(state => state.Component == rollout.Component && state.Version == rollout.Version
+                                              && state.Status == KioskUpdateStatus.Succeeded);
 
     /// <summary>
     /// A package did not check out on a kiosk (T-326): one incident per kiosk,

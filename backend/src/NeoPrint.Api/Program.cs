@@ -437,6 +437,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         jobs => jobs.RunAsync(CancellationToken.None),
         Cron.Minutely());
 
+    // Rollouts to chosen kiosks that every one of them installed are done (T-381).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Releases.RolloutCompletionJob>(
+        NeoPrint.Infrastructure.Releases.RolloutCompletionJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        "*/5 * * * *");
+
     // Orders paid in the app for later and never collected: cancelled, money to the wallet (plan section 9.4).
     recurring.AddOrUpdate<NeoPrint.Infrastructure.UserQr.UncollectedPrintJobsJob>(
         NeoPrint.Infrastructure.UserQr.UncollectedPrintJobsJob.RecurringId,

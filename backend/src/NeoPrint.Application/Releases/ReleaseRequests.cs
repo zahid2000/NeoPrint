@@ -120,6 +120,17 @@ public enum RolloutAction
     RollBack,
 }
 
+/// <summary>
+/// Completes the rollouts to chosen kiosks that every one of those kiosks has
+/// installed (T-381): nothing is left for them to offer, and "Dayandır" on a
+/// finished rollout says nothing true. A rollout to all kiosks, a channel or a
+/// share stays as it is - a kiosk that joins later is still to be offered it.
+/// After a kiosk reports an update done, and every few minutes (a heartbeat
+/// may be what says it runs the version).
+/// </summary>
+/// <returns>How many were completed.</returns>
+public sealed record CompleteInstalledRolloutsCommand : IRequest<int>;
+
 public sealed record ChangeRolloutCommand(Guid AdminUserId, Guid RolloutId, RolloutAction Action, string? Ip = null)
     : IRequest<RolloutView>, Behaviors.ITransactionalRequest;
 
