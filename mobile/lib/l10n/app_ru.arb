@@ -108,6 +108,7 @@
   "commonDelete": "Удалить",
   "commonMore": "Действия",
   "filesUpload": "Загрузить файл",
+  "filesSendToPrint": "Отправить на печать",
   "filesPickFile": "Выбрать файл",
   "filesPickFileHint": "PDF, Word, Excel, PowerPoint, изображения и др.",
   "filesTakePhoto": "Сделать фото",

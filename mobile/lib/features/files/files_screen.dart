@@ -19,6 +19,7 @@ import 'file_sources.dart';
 import 'heic_converter.dart';
 import 'auto_delete_sheet.dart';
 import '../layout/layout_launcher.dart';
+import '../print_hub/print_next.dart';
 import '../sharing/shares_controller.dart';
 
 /// "Fayllarım" (plan sections 2.2, 8.2): upload from the phone or the camera,
@@ -142,6 +143,8 @@ class _FileCard extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final flags = ref.watch(featureFlagsProvider);
+    // Where "Çapa göndər" leads - the preview's "Çap parametrləri" (T-354).
+    final next = ref.watch(printNextRouteProvider);
 
     return FileRow(
       file: file,
@@ -150,6 +153,7 @@ class _FileCard extends ConsumerWidget {
         tooltip: l10n.commonMore,
         icon: Icon(Icons.more_vert, color: tokens.neutral600),
         onSelected: (choice) => switch (choice) {
+          'print' => context.push(next!, extra: file),
           'prepare' => context.push(Routes.prepare, extra: file),
           'schedule' => context.push(Routes.scheduleNew, extra: file),
           'placeOnPage' => openNewLayout(context, ref, [LayoutSource(file)]),
@@ -159,6 +163,15 @@ class _FileCard extends ConsumerWidget {
           _ => _delete(context, ref),
         },
         itemBuilder: (_) => [
+          if (next != null && canPrint(file))
+            PopupMenuItem(
+              value: 'print',
+              child: ListTile(
+                leading: Icon(Icons.print_outlined, color: tokens.brand500),
+                title: Text(l10n.filesSendToPrint),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
           if (file.hasLayout && file.status == FileStatus.ready)
             PopupMenuItem(
               value: 'editLayout',
@@ -181,9 +194,11 @@ class _FileCard extends ConsumerWidget {
                 contentPadding: EdgeInsets.zero,
               ),
             ),
+          // Without an open kiosk session "Çapa göndər" is this already.
           if (Readiness.personalQr &&
               flags.isOn(FeatureKey.userQrPrint) &&
-              file.status == FileStatus.ready)
+              file.status == FileStatus.ready &&
+              next != Routes.prepare)
             PopupMenuItem(
               value: 'prepare',
               child: ListTile(

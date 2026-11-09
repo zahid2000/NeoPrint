@@ -14,6 +14,8 @@ import 'package:neoprint/features/prepared/prepared_models.dart';
 import 'package:neoprint/features/prepared/prepared_repository.dart';
 import 'package:neoprint/features/profile/profile_screen.dart';
 import 'package:neoprint/features/schedule/schedule_models.dart';
+import 'package:neoprint/features/session/session_controller.dart';
+import 'package:neoprint/features/session/session_models.dart';
 import 'package:neoprint/features/schedule/schedule_repository.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
 import 'package:neoprint/l10n/app_localizations_az.dart';
@@ -105,13 +107,16 @@ void main() {
     expect(find.text('Avtomatik silinmə'), findsOneWidget);
   });
 
-  testWidgets('switched on, the file menu has both', (tester) async {
+  Future<void> openMenu(WidgetTester tester, {bool session = false}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           filesRepositoryProvider.overrideWithValue(ListRepository([file])),
           userHubEventsProvider.overrideWithValue(const Stream.empty()),
           flags(const {}),
+          sessionProvider.overrideWith(
+            () => FixedSession(session ? openSession : null),
+          ),
         ],
         child: MaterialApp(
           theme: AppTheme.light(),
@@ -125,14 +130,31 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Əməliyyatlar').first);
     await tester.pumpAndSettle();
+  }
 
-    expect(
-      find.text('Kiosk üçün hazırla'),
-      Readiness.personalQr ? findsOneWidget : findsNothing,
-    );
+  testWidgets('switched on, the file menu sends to print and plans it; '
+      'without a kiosk session "Çapa göndər" is the preparation (T-354)', (
+    tester,
+  ) async {
+    await openMenu(tester);
+
+    expect(find.text('Çapa göndər'), findsOneWidget);
+    // The same screen as "Çapa göndər": not offered twice.
+    expect(find.text('Kiosk üçün hazırla'), findsNothing);
     expect(
       find.text('Çapı planla'),
       Readiness.scheduledPrint ? findsOneWidget : findsNothing,
+    );
+  });
+
+  testWidgets('at a kiosk "Çapa göndər" prints there, and the preparation '
+      'is offered beside it (T-354)', (tester) async {
+    await openMenu(tester, session: true);
+
+    expect(find.text('Çapa göndər'), findsOneWidget);
+    expect(
+      find.text('Kiosk üçün hazırla'),
+      Readiness.personalQr ? findsOneWidget : findsNothing,
     );
   });
 
@@ -307,3 +329,22 @@ class _NoStorage implements SecureStorage {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+/// A kiosk session that is open, or none.
+class FixedSession extends SessionController {
+  FixedSession(this.session);
+
+  final KioskSessionInfo? session;
+
+  @override
+  Future<KioskSessionInfo?> build() async => session;
+}
+
+final openSession = KioskSessionInfo(
+  id: 's1',
+  kioskId: 'k1',
+  kioskCode: 'KSK-9002',
+  kioskName: 'Elmlər',
+  expiresAt: DateTime(2100),
+  ttlMinutes: 10,
+);

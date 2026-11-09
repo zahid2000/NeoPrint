@@ -129,6 +129,7 @@
   "commonDelete": "Sil",
   "commonMore": "Əməliyyatlar",
   "filesUpload": "Fayl yüklə",
+  "filesSendToPrint": "Çapa göndər",
   "filesPickFile": "Fayl seç",
   "filesPickFileHint": "PDF, Word, Excel, PowerPoint, şəkil və s.",
   "filesTakePhoto": "Şəkil çək",

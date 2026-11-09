@@ -108,6 +108,7 @@
   "commonDelete": "Delete",
   "commonMore": "Actions",
   "filesUpload": "Upload a file",
+  "filesSendToPrint": "Send to print",
   "filesPickFile": "Choose a file",
   "filesPickFileHint": "PDF, Word, Excel, PowerPoint, images and more",
   "filesTakePhoto": "Take a photo",
