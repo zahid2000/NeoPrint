@@ -7,12 +7,13 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslatePipe } from '@ngx-translate/core';
-import { firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 
 import { AdminApiService } from '../../core/api/admin-api.service';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
@@ -186,22 +187,35 @@ export class KioskPhotoComponent implements OnDestroy {
   readonly busy = signal(false);
   readonly problem = signal<Problem | null>(null);
 
+  private fetching?: Subscription;
+
   constructor() {
     // The picture needs the panel's token, so it is fetched, not linked.
+    // Only the address is tracked: the picture shown is not - else showing
+    // it would start the effect again, take it away and fetch it again (T-363).
     effect(() => {
       const url = this.photoUrl();
-      this.release();
-      if (url) {
-        this.api.kioskPhoto(url).subscribe({
-          next: (blob) => this.objectUrl.set(URL.createObjectURL(blob)),
-          error: () => this.objectUrl.set(null),
-        });
-      }
+      untracked(() => this.show(url));
     });
   }
 
   ngOnDestroy(): void {
+    this.fetching?.unsubscribe();
     this.release();
+  }
+
+  private show(url: string | null | undefined): void {
+    this.fetching?.unsubscribe();
+    this.release();
+    if (url) {
+      this.fetching = this.api.kioskPhoto(url).subscribe({
+        next: (blob) => {
+          this.release();
+          this.objectUrl.set(URL.createObjectURL(blob));
+        },
+        error: () => this.objectUrl.set(null),
+      });
+    }
   }
 
   async chosen(picker: HTMLInputElement): Promise<void> {
