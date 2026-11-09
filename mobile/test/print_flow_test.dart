@@ -230,13 +230,8 @@ void main() {
     await tester.tap(find.text('Çap parametrləri'));
     await tester.pumpAndSettle();
 
-    // T-356: how to print, "Çap et" chosen at first.
-    expect(find.text('Necə çap edək?'), findsOneWidget);
-    await tester.tap(find.text('Kiosk üçün hazırla'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Davam et'));
-    await tester.pumpAndSettle();
-
+    // T-376: no sheet - straight to the print settings.
+    expect(find.text('Necə çap edək?'), findsNothing);
     expect(find.text('prepare hesabat.pdf'), findsOneWidget);
 
     // The file list keeps polling for the converting one; stop it.
@@ -264,77 +259,6 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
-
-  Future<void> openChoice(WidgetTester tester) async {
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Çap parametrləri'),
-      100,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('Çap parametrləri'));
-    await tester.pumpAndSettle();
-  }
-
-  testWidgets('"Çap et", the default, opens a session at a working kiosk and '
-      'its print settings; a kiosk that is not working cannot be chosen '
-      '(T-356)', (tester) async {
-    final ready = file();
-    final sessions = FakeSessions();
-    await tester.pumpWidget(
-      flow(
-        [ready],
-        start: Routes.filePreview(ready.id),
-        extra: ready,
-        sessions: sessions,
-      ),
-    );
-    await openChoice(tester);
-
-    await tester.tap(find.text('Davam et'));
-    await tester.pumpAndSettle();
-
-    // The kiosk that is not working is listed, but cannot be chosen.
-    await tester.tap(find.text('KSK-9001 · 28 May'));
-    await tester.pumpAndSettle();
-    expect(sessions.opened, isEmpty);
-
-    await tester.tap(find.text('KSK-9002 · Elmlər'));
-    await tester.pumpAndSettle();
-
-    expect(sessions.opened, ['KSK-9002']);
-    expect(find.text('print now hesabat.pdf'), findsOneWidget);
-
-    // Closing the session stops its end timer.
-    await ProviderScope.containerOf(
-      tester.element(find.text('print now hesabat.pdf')),
-    ).read(sessionProvider.notifier).close();
-    await tester.pumpWidget(const SizedBox());
-  });
-
-  testWidgets('with no kiosk working "Çap et" is off and says why (T-356)', (
-    tester,
-  ) async {
-    final ready = file();
-    await tester.pumpWidget(
-      flow(
-        [ready],
-        start: Routes.filePreview(ready.id),
-        extra: ready,
-        kiosks: const [mayis],
-      ),
-    );
-    await openChoice(tester);
-
-    expect(find.textContaining('işləyən kiosk yoxdur'), findsOneWidget);
-    await tester.tap(find.text('Çap et'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Davam et'));
-    await tester.pumpAndSettle();
-
-    // The preparation, not a kiosk choice.
-    expect(find.text('prepare hesabat.pdf'), findsOneWidget);
-  });
 
   testWidgets('with printing now and "Kiosk üçün hazırla" off the file goes '
       'on to a scheduled print', (tester) async {

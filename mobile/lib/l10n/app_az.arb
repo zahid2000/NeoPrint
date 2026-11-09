@@ -131,11 +131,20 @@
   "filesUpload": "Fayl yüklə",
   "filesSendToPrint": "Çapa göndər",
   "printModeTitle": "Necə çap edək?",
-  "printModeNow": "Çap et",
+  "printModeNow": "İndi çap et",
   "printModeNowHint": "İşləyən kiosk seçin — fayl indi çap olunur.",
   "printModeNowNone": "Hazırda işləyən kiosk yoxdur — faylı kiosk üçün hazırlayın.",
   "printModePrepareHint": "İndi və ya kioskda ödəyin, sonra kioskda QR kodunuzla götürün.",
   "printModeContinue": "Davam et",
+  "printNowChooseKiosk": "İşləyən kiosk seçin",
+  "printNowKioskHint": "Fayl seçdiyiniz kioskda dərhal çap olunacaq. Siyahıda yalnız hazırda işləyən kiosklar var.",
+  "printNowPlain": "Çap et",
+  "printNowPay": "Çap et · {amount}",
+  "@printNowPay": {
+    "placeholders": {
+      "amount": {"type": "String"}
+    }
+  },
   "filesPickFile": "Fayl seç",
   "filesPickFileHint": "PDF, Word, Excel, PowerPoint, şəkil və s.",
   "filesTakePhoto": "Şəkil çək",

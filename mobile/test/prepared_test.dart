@@ -220,10 +220,13 @@ Widget app(
   Widget home,
   FakePrepared prepared, {
   List<KioskSummary> kiosks = const [elmler],
+  FakeSessions? sessions,
 }) => ProviderScope(
   overrides: [
     preparedRepositoryProvider.overrideWithValue(prepared),
-    sessionRepositoryProvider.overrideWithValue(PricedSessions(prepared)),
+    sessionRepositoryProvider.overrideWithValue(
+      sessions ?? PricedSessions(prepared),
+    ),
     kioskRepositoryProvider.overrideWithValue(
       FakeKiosks(kiosks, details: {elmler.id: detail, elmler.code: detail}),
     ),
@@ -265,6 +268,8 @@ void main() {
       final prepared = FakePrepared();
       await tester.pumpWidget(app(PrepareScreen(file: file), prepared));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Kiosk üçün hazırla'));
+      await tester.pumpAndSettle();
 
       // Every choice starts "at the kiosk".
       expect(find.text('Kioskda'), findsNWidgets(6));
@@ -288,6 +293,8 @@ void main() {
         tallScreen(tester);
         final prepared = FakePrepared();
         await tester.pumpWidget(app(PrepareScreen(file: file), prepared));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Kiosk üçün hazırla'));
         await tester.pumpAndSettle();
 
         await tester.tap(find.text('Kiosk seç'));
@@ -329,6 +336,8 @@ void main() {
           app(PrepareScreen(file: file), prepared, kiosks: [elmler, mayis]),
         );
         await tester.pumpAndSettle();
+        await tester.tap(find.text('Kiosk üçün hazırla'));
+        await tester.pumpAndSettle();
 
         await tester.tap(find.text('Kiosk seç'));
         await tester.pumpAndSettle();
@@ -352,6 +361,72 @@ void main() {
           find.textContaining('Seçdiyiniz kiosk hazırda aktiv deyil'),
           findsNothing,
         );
+      },
+    );
+  });
+
+  // T-376: no sheet before - "İndi çap et" or "Hazırla" above the kiosk.
+  group('print now or prepare, on the settings screen', () {
+    testWidgets(
+      '"İndi çap et" is chosen at first, offers only working kiosks, and prints there: a session, the order, the payment',
+      (tester) async {
+        tallScreen(tester);
+        final prepared = FakePrepared();
+        final sessions = PricedSessions(prepared);
+        await tester.pumpWidget(
+          app(
+            PrepareScreen(file: file),
+            prepared,
+            kiosks: [elmler, mayis],
+            sessions: sessions,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('İşləyən kiosk seçin'), findsOneWidget);
+        // Printed now: nothing is left "at the kiosk".
+        expect(find.text('Kioskda'), findsNothing);
+
+        await tester.tap(find.text('Kiosk seç'));
+        await tester.pumpAndSettle();
+        // The kiosk that is not working is listed, but cannot be chosen.
+        await tester.tap(find.text('KSK-9001 · 28 May'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('KSK-9002 · Elmlər'));
+        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Çap et · ${money(0.30)}'));
+        await tester.pumpAndSettle();
+
+        expect(sessions.opened, ['KSK-9002']);
+        expect(sessions.orders.single.fileId, 'f1');
+        expect(prepared.paid, isEmpty, reason: 'not a preparation');
+        expect(find.text('pay p1'), findsOneWidget);
+
+        // Closing the session stops its end timer.
+        await ProviderScope.containerOf(tester.element(find.text('pay p1')))
+            .read(sessionProvider.notifier)
+            .close();
+      },
+    );
+
+    testWidgets(
+      'with no kiosk working "İndi çap et" is off, says why, and "Hazırla" is the choice',
+      (tester) async {
+        tallScreen(tester);
+        final prepared = FakePrepared();
+        await tester.pumpWidget(
+          app(PrepareScreen(file: file), prepared, kiosks: [mayis]),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('işləyən kiosk yoxdur'), findsOneWidget);
+        expect(find.text('Kioskda'), findsNWidgets(6));
+        await tester.tap(find.text('İndi çap et'));
+        await tester.pumpAndSettle();
+        expect(find.text('İşləyən kiosk seçin'), findsNothing);
       },
     );
   });

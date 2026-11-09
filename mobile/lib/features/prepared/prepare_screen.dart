@@ -22,6 +22,7 @@ import '../kiosk_search/kiosk_picker_sheet.dart';
 import '../kiosk_search/kiosk_search_controller.dart';
 import '../kiosk_search/kiosk_status_view.dart';
 import '../payments/payment_models.dart' show toCents;
+import '../print_hub/print_start.dart';
 import '../session/session_controller.dart';
 import '../session/session_models.dart';
 import 'prepared_models.dart';
@@ -63,6 +64,13 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
   final _range = TextEditingController();
 
   KioskSummary? _kiosk;
+
+  /// "İndi çap et" or "Hazırla" (T-376); null until the user chooses.
+  PrintMode? _mode;
+
+  /// The usual values were filled in for printing now, not chosen: going to
+  /// "Hazırla" gives them back to the kiosk.
+  bool _filledForNow = false;
 
   Timer? _quoteTimer;
   OrderQuote? _quote;
@@ -109,6 +117,7 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
 
   void _change(VoidCallback update) {
     setState(() {
+      _filledForNow = false;
       update();
       _error = null;
       _key = newIdempotencyKey();
@@ -162,8 +171,62 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
     }
   }
 
+  /// "İndi çap et" while it can be done (on, and a kiosk works), else
+  /// "Hazırla" - until the user chooses.
+  PrintMode get _currentMode {
+    if (_mode case final chosen?) {
+      return chosen;
+    }
+
+    final nowOn =
+        printNowOn(ref) &&
+        ref.read(anyKioskWorkingProvider).valueOrNull != false;
+    return nowOn || !prepareOn(ref) ? PrintMode.now : PrintMode.prepare;
+  }
+
+  /// Printed now: every choice is made here, none left to the kiosk.
+  void _settleForNow() {
+    if (_copies == null) {
+      _filledForNow = true;
+    }
+    _copies ??= 1;
+    _color ??= false;
+    _duplex ??= false;
+    _paper ??= 'A4';
+    _perSheet ??= 1;
+    if (_pages == _Pages.atKiosk) {
+      _pages = _Pages.all;
+    }
+  }
+
+  /// The choice above the kiosk: printing now needs a working one.
+  void _setMode(PrintMode mode) {
+    final restore =
+        mode == PrintMode.prepare && _filledForNow && _kiosk == null;
+    _change(() {
+      if (restore) {
+        _copies = null;
+        _color = null;
+        _duplex = null;
+        _paper = widget.file.realSizePaper;
+        _perSheet = widget.file.realSizePaper == null ? null : 1;
+        _pages = _Pages.atKiosk;
+      }
+      _mode = mode;
+      if (mode == PrintMode.now && _kiosk?.status != KioskStatus.online) {
+        _kiosk = null;
+      }
+      if (mode == PrintMode.now) {
+        _settleForNow();
+      }
+    });
+  }
+
   Future<void> _chooseKiosk() async {
-    final chosen = await showKioskPicker(context);
+    final chosen = await showKioskPicker(
+      context,
+      onlyWorking: _currentMode == PrintMode.now,
+    );
 
     if (chosen == null) {
       return;
@@ -273,6 +336,55 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
     }
   }
 
+  /// "İndi çap et" (T-376, plan 9.3): a session at the kiosk, the order in
+  /// it, then the payment; the job goes into the kiosk's queue once paid.
+  Future<void> _printNow() async {
+    final l10n = AppLocalizations.of(context);
+    final kiosk = _kiosk;
+
+    if (kiosk == null) {
+      return;
+    }
+
+    if (_pages == _Pages.range && _selected == null) {
+      setState(() => _error = l10n.optRangeInvalid(_pageCount));
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      final session = await ref.read(sessionProvider.notifier).open(kiosk.code);
+      final order = await ref
+          .read(sessionRepositoryProvider)
+          .placeOrder(
+            sessionId: session.id,
+            fileId: widget.file.id,
+            options: _pages == _Pages.range
+                ? _options
+                : _options.copyWith(allPages: true),
+            idempotencyKey: _key,
+          );
+
+      unawaited(ref.read(sessionProvider.notifier).refresh());
+
+      if (mounted) {
+        context.pushReplacement(Routes.pay(order.paymentId));
+      }
+    } on ApiException catch (error) {
+      _key = newIdempotencyKey();
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = l10n.prepareFailed(apiErrorText(l10n, error));
+        });
+      }
+    }
+  }
+
   /// The kiosk's prices changed since they were shown: the new one, asked.
   Future<void> _askNewPrice(double before, double now) async {
     final l10n = AppLocalizations.of(context);
@@ -312,13 +424,24 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
     final theme = Theme.of(context);
     final tokens = context.tokens;
     final language = Localizations.localeOf(context).languageCode;
+    final canNow = printNowOn(ref);
+    final canPrepare = prepareOn(ref);
+    // Unknown (still asking) leaves "İndi çap et" on: the list offers only working kiosks.
+    final nowWorks = ref.watch(anyKioskWorkingProvider).valueOrNull != false;
+    final nowOn = canNow && nowWorks;
+    final mode = _currentMode;
+    final printingNow = mode == PrintMode.now;
+    if (printingNow) {
+      // The first look, before any choice: the usual values, shown as chosen.
+      _settleForNow();
+    }
     final kiosk = _kiosk;
     final detail = kiosk == null
         ? null
         : ref.watch(kioskDetailProvider(kiosk.id)).valueOrNull;
     // The detail is the fresher of the two; the list's until it comes.
     final kioskStatus = detail?.summary.status ?? kiosk?.status;
-    final atKiosk = kiosk == null;
+    final atKiosk = kiosk == null && !printingNow;
     final quote = _quote;
     final rangeInvalid =
         _pages == _Pages.range && _range.text.isNotEmpty && _selected == null;
@@ -466,6 +589,40 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
           ],
           const SizedBox(height: Spacing.x6),
 
+          // "İndi çap et" or "Hazırla", above the kiosk (T-376).
+          if (canNow && canPrepare) ...[
+            OptionLabel(l10n.printModeTitle),
+            SegmentedButton<PrintMode>(
+              segments: [
+                ButtonSegment(
+                  value: PrintMode.now,
+                  icon: const Icon(Icons.print_outlined),
+                  label: Text(l10n.printModeNow),
+                  enabled: nowOn,
+                ),
+                ButtonSegment(
+                  value: PrintMode.prepare,
+                  icon: const Icon(Icons.storefront_outlined),
+                  label: Text(l10n.prepareMenu),
+                ),
+              ],
+              selected: {mode},
+              onSelectionChanged: (value) => _setMode(value.single),
+            ),
+            const SizedBox(height: Spacing.x1),
+            Text(
+              printingNow
+                  ? l10n.printModeNowHint
+                  : nowOn
+                  ? l10n.printModePrepareHint
+                  : l10n.printModeNowNone,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: tokens.neutral600,
+              ),
+            ),
+            const SizedBox(height: Spacing.x4),
+          ],
+
           OptionLabel(l10n.prepareKioskLabel),
           Card(
             margin: EdgeInsets.zero,
@@ -476,12 +633,16 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l10n.prepareAnyKiosk,
+                          printingNow
+                              ? l10n.printNowChooseKiosk
+                              : l10n.prepareAnyKiosk,
                           style: theme.textTheme.bodyLarge,
                         ),
                         const SizedBox(height: Spacing.x1),
                         Text(
-                          l10n.prepareKioskHint,
+                          printingNow
+                              ? l10n.printNowKioskHint
+                              : l10n.prepareKioskHint,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: tokens.neutral600,
                           ),
@@ -520,12 +681,13 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
                               onPressed: _busy ? null : _chooseKiosk,
                               child: Text(l10n.prepareChangeKiosk),
                             ),
-                            TextButton(
-                              onPressed: _busy
-                                  ? null
-                                  : () => _change(() => _kiosk = null),
-                              child: Text(l10n.prepareClearKiosk),
-                            ),
+                            if (!printingNow)
+                              TextButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () => _change(() => _kiosk = null),
+                                child: Text(l10n.prepareClearKiosk),
+                              ),
                           ],
                         ),
                       ],
@@ -580,7 +742,23 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
                 NeoBanner.error(message: error),
                 const SizedBox(height: Spacing.x2),
               ],
-              if (kiosk == null)
+              if (printingNow)
+                NeoPrimaryButton(
+                  label: quote == null || _selected == null
+                      ? l10n.printNowPlain
+                      : l10n.printNowPay(
+                          formatMoney(quote.total, language: language),
+                        ),
+                  busy: _busy,
+                  onPressed:
+                      _busy ||
+                          kiosk == null ||
+                          quote == null ||
+                          _selected == null
+                      ? null
+                      : () => unawaited(_printNow()),
+                )
+              else if (kiosk == null)
                 NeoPrimaryButton(
                   label: l10n.prepareSave,
                   busy: _busy,
