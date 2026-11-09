@@ -885,6 +885,8 @@
   "walletCurrentBalance": "Current balance",
   "walletBonusLabel": "Bonus pages",
   "walletTabHistory": "Transactions",
+  "walletRecent": "Recent transactions",
+  "walletHistoryTitle": "All transactions",
   "walletTabVouchers": "Voucher codes",
   "profileCopy": "Copy",
   "schedTabUpcoming": "Upcoming",

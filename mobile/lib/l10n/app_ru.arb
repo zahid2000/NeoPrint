@@ -885,6 +885,8 @@
   "walletCurrentBalance": "Текущий баланс",
   "walletBonusLabel": "Бонусные страницы",
   "walletTabHistory": "Операции",
+  "walletRecent": "Последние операции",
+  "walletHistoryTitle": "Все операции",
   "walletTabVouchers": "Ваучеры",
   "profileCopy": "Копировать",
   "schedTabUpcoming": "Запланированные",

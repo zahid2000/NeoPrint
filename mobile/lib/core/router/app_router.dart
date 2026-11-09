@@ -29,6 +29,7 @@ import '../../features/privacy/data_export_screen.dart';
 import '../../features/payments/scan_screen.dart';
 import '../../features/receipts/receipts_screen.dart';
 import '../../features/referral/referral_screen.dart';
+import '../../features/wallet/wallet_history_screen.dart';
 import '../../features/wallet/wallet_screen.dart';
 import '../../features/kiosk_search/kiosk_detail_screen.dart';
 import '../../features/kiosk_search/kiosk_queue_screen.dart';
@@ -104,6 +105,9 @@ abstract final class Routes {
   static const scan = '/scan';
   static String pay(String paymentId) => '/pay/$paymentId';
   static const wallet = '/wallet';
+
+  /// Every movement of the balance (T-380).
+  static const walletHistory = '/wallet-history';
   static const receipts = '/receipts';
   static const claims = '/claims';
   static const myQr = '/my-qr';
@@ -261,6 +265,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ],
       if (Readiness.wallet) ...[
+        GoRoute(
+          path: Routes.walletHistory,
+          builder: (_, __) => const WalletHistoryScreen(),
+        ),
         GoRoute(
           path: Routes.receipts,
           builder: (_, __) => const ReceiptsScreen(),

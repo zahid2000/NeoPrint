@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/format/formats.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/idempotency.dart';
+
+import 'package:go_router/go_router.dart';
+
+import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
@@ -74,6 +78,10 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
 enum _WalletTab { history, vouchers }
 
+/// How many movements the balance screen shows; the rest are behind
+/// "Hamısına bax" (T-380).
+const walletRecentCount = 5;
+
 /// T-355, as the design draws "Balansım": one blue card with the balance,
 /// "Artır" and the bonus pages; the no-refund rule as one line under it;
 /// then "Əməliyyatlar" and the voucher codes as two tabs.
@@ -138,8 +146,18 @@ class _WalletBodyState extends State<_WalletBody> {
               hint: l10n.walletNoHistoryHint,
             ),
           ],
+          // The design's "Son əməliyyatlar" (T-380): the latest few, and the
+          // whole history behind "Hamısına bax".
           _WalletTab.history => [
-            for (final entry in state.entries) _EntryTile(entry: entry),
+            NeoSectionHeader(
+              title: l10n.walletRecent,
+              actionLabel: state.entries.length > walletRecentCount
+                  ? l10n.homeSeeAll
+                  : null,
+              onAction: () => context.push(Routes.walletHistory),
+            ),
+            for (final entry in state.entries.take(walletRecentCount))
+              WalletEntryTile(entry: entry),
           ],
           _WalletTab.vouchers => [
             Text(l10n.walletVoucherHint, style: theme.textTheme.bodyMedium),
@@ -231,8 +249,10 @@ class _BalanceCard extends StatelessWidget {
   }
 }
 
-class _EntryTile extends StatelessWidget {
-  const _EntryTile({required this.entry});
+/// One movement of the balance - on the balance screen and in the whole
+/// history (T-380).
+class WalletEntryTile extends StatelessWidget {
+  const WalletEntryTile({super.key, required this.entry});
 
   final WalletEntry entry;
 

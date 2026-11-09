@@ -14,6 +14,7 @@ import 'package:neoprint/features/payments/pay_screen.dart';
 import 'package:neoprint/features/payments/payment_models.dart';
 import 'package:neoprint/features/wallet/wallet_controller.dart';
 import 'package:neoprint/features/wallet/wallet_repository.dart';
+import 'package:neoprint/features/wallet/wallet_history_screen.dart';
 import 'package:neoprint/features/wallet/wallet_screen.dart';
 import 'package:neoprint/l10n/app_localizations_az.dart';
 
@@ -536,6 +537,64 @@ void main() {
       expect(find.text('+5,00 ₼'), findsOneWidget);
       expect(find.text('Sonra: 4,70 ₼'), findsOneWidget);
     });
+
+    testWidgets(
+      'the latest five movements are on the balance screen, every one behind "Hamısına bax" (T-380)',
+      (tester) async {
+        tester.view
+          ..physicalSize = const Size(420, 2400)
+          ..devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+
+        final entries = [
+          for (var i = 7; i >= 1; i--)
+            WalletEntry(
+              id: 'e$i',
+              type: 'TopUp',
+              amount: i.toDouble(),
+              bonusPages: 0,
+              balanceAfter: i * 10.0,
+              createdAt: DateTime(2026, 11, 10, 9, i),
+            ),
+        ];
+        final router = GoRouter(
+          routes: [
+            GoRoute(path: '/', builder: (_, __) => const WalletScreen()),
+            GoRoute(
+              path: '/wallet-history',
+              builder: (_, __) => const WalletHistoryScreen(),
+            ),
+          ],
+        );
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: step4Overrides(
+              wallet: WalletState(
+                wallet: const Wallet(balance: 70, bonusPages: 0),
+                entries: entries,
+              ),
+            ),
+            child: MaterialApp.router(
+              theme: AppTheme.light(),
+              locale: const Locale('az'),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              routerConfig: router,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Son əməliyyatlar'), findsOneWidget);
+        expect(find.textContaining('Sonra:'), findsNWidgets(5));
+
+        await tester.tap(find.text('Hamısına bax'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Bütün əməliyyatlar'), findsOneWidget);
+        expect(find.textContaining('Sonra:'), findsNWidgets(7));
+      },
+    );
   });
 
   group('notices', () {

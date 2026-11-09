@@ -1469,6 +1469,8 @@
   "walletCurrentBalance": "Cari balans",
   "walletBonusLabel": "Bonus səhifələr",
   "walletTabHistory": "Əməliyyatlar",
+  "walletRecent": "Son əməliyyatlar",
+  "walletHistoryTitle": "Bütün əməliyyatlar",
   "walletTabVouchers": "Voucher kodları",
   "profileCopy": "Kopyala",
   "schedTabUpcoming": "Planlılar",
