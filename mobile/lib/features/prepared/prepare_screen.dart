@@ -12,7 +12,9 @@ import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
+import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_primary_button.dart';
+import '../files/file_row.dart';
 import '../files/file_models.dart';
 import '../../shared/widgets/option_widgets.dart';
 import '../kiosk_search/kiosk_models.dart';
@@ -320,7 +322,13 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
         _pages == _Pages.range && _range.text.isNotEmpty && _selected == null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.file.fileName)),
+      // The design's "Çap parametrləri" (T-342): the screen says what it is,
+      // the file is the card on top.
+      appBar: neoTabAppBar(
+        context,
+        title: l10n.filePreviewPrintSettings,
+        showBack: true,
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
           Spacing.x4,
@@ -331,12 +339,7 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
         children: [
           if (widget.file.realSizePaper case final realSize?)
             RealSizeNote(l10n.optRealSize(realSize)),
-          Text(
-            l10n.filesPageCount(_pageCount),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: tokens.neutral600,
-            ),
-          ),
+          FileRow(file: widget.file),
           const SizedBox(height: Spacing.x4),
 
           OptionLabel(l10n.optCopies),
