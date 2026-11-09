@@ -554,6 +554,7 @@
   "schedules.tooSoon": "A print can be scheduled at least {minutes} minutes ahead. Choose a later time.",
   "sessions.kioskNotTakingOrders": "This kiosk is not taking orders right now. Choose another kiosk or try again in a while.",
   "sessions.kioskRequired": "Give the kiosk's code or id.",
+  "kioskSessions.reasonRequired": "Say why you are closing the session (at least 3 characters).",
   "settings.nothingToChange": "No setting was given to change.",
   "settings.unknownKey": "'{key}' is not a known setting.",
   "settings.valueBoolean": "The value must be true or false.",

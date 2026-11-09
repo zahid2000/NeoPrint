@@ -815,6 +815,7 @@
     }
   },
   "noticeSessionExpired": "Sessiya bitdi. Çap üçün kioskda yenidən açın.",
+  "noticeSessionClosedByStaff": "Sessiyanı kiosk administratoru bağladı. Çap üçün kioskda yenidən açın.",
   "pickFileTitle": "Faylı seçin",
   "pickFileEmpty": "Çap üçün hazır faylınız yoxdur",
   "pickFileEmptyHint": "Faylı yükləyin; hazır olanda burada görünəcək.",

@@ -554,6 +554,7 @@
   "schedules.tooSoon": "Çapı ən azı {minutes} dəqiqə sonraya planlamaq olar. Daha gec vaxt seçin.",
   "sessions.kioskNotTakingOrders": "Bu kiosk hazırda sifariş qəbul etmir. Başqa kiosk seçin və ya bir az sonra yenidən cəhd edin.",
   "sessions.kioskRequired": "Kioskun kodunu və ya identifikatorunu göstərin.",
+  "kioskSessions.reasonRequired": "Sessiyanı niyə bağladığınızı yazın (ən az 3 simvol).",
   "settings.nothingToChange": "Dəyişdiriləcək parametr göstərilməyib.",
   "settings.unknownKey": "'{key}' tanınmayan parametrdir.",
   "settings.valueBoolean": "Dəyər true və ya false olmalıdır.",

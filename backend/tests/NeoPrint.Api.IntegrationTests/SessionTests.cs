@@ -140,6 +140,48 @@ public sealed class SessionTests
     }
 
     [DockerFact]
+    public async Task The_panel_lists_a_kiosks_sessions_and_closes_one_with_a_reason_telling_the_kiosk_and_the_app()
+    {
+        if (Skip)
+        {
+            return;
+        }
+
+        using var kiosk = await ReadyKioskAsync(_fixture, "session-panel");
+        using var other = await ReadyKioskAsync(_fixture, "session-panel-other");
+        await using var hub = await RawHubConnection.ConnectAsync(_fixture, "kiosk", kiosk.AccessToken);
+        using var user = await TestUsers.ConfirmedAsync(_fixture);
+        await using var app = await RawHubConnection.ConnectAsync(_fixture, "user", user.Client.DefaultRequestHeaders.Authorization!.Parameter!);
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+
+        var session = await OpenAsync(user.Client, kiosk.KioskCode);
+        await hub.WaitForAsync("SessionOpened", HubWait);
+
+        // The panel: whose by public id only, opened and running out when (T-362).
+        var listed = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kiosk.KioskId}/sessions");
+        var row = listed.EnumerateArray().Should().ContainSingle().Subject;
+        row.GetProperty("id").GetGuid().Should().Be(Id(session));
+        row.GetProperty("userPublicId").GetString().Should().NotBeNullOrEmpty();
+        row.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo(["id", "userId", "userPublicId", "openedAt", "expiresAt"]);
+        (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{other.KioskId}/sessions")).GetArrayLength().Should().Be(0);
+
+        // Somebody says why; a session of another kiosk is not this kiosk's to close.
+        var close = $"/api/admin/kiosks/{kiosk.KioskId}/sessions/{Id(session)}/close";
+        (await admin.PostAsJsonAsync(close, new { reason = "" })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await admin.PostAsJsonAsync($"/api/admin/kiosks/{other.KioskId}/sessions/{Id(session)}/close", new { reason = "Integration test" }))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        (await admin.PostAsJsonAsync(close, new { reason = "Integration test: stuck update" })).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await hub.WaitForAsync("SessionClosed", HubWait)).GetProperty("reason").GetString().Should().Be("ClosedByStaff");
+        (await app.WaitForAsync("SessionClosed", HubWait)).GetProperty("sessionId").GetGuid().Should().Be(Id(session));
+        (await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/sessions")).GetArrayLength().Should().Be(0);
+        (await user.Client.GetAsync($"/api/sessions/{Id(session)}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        // Pressed again: already over, nothing told twice.
+        (await admin.PostAsJsonAsync(close, new { reason = "Integration test: again" })).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [DockerFact]
     public async Task A_kiosk_not_taking_orders_opens_no_session_and_a_hidden_one_is_not_found()
     {
         if (Skip)

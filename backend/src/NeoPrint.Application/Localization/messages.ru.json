@@ -554,6 +554,7 @@
   "schedules.tooSoon": "Печать можно запланировать не раньше чем через {minutes} мин. Выберите более позднее время.",
   "sessions.kioskNotTakingOrders": "Этот киоск сейчас не принимает заказы. Выберите другой киоск или повторите позже.",
   "sessions.kioskRequired": "Укажите код или идентификатор киоска.",
+  "kioskSessions.reasonRequired": "Укажите, почему вы закрываете сессию (не менее 3 символов).",
   "settings.nothingToChange": "Не указано ни одного параметра для изменения.",
   "settings.unknownKey": "'{key}' — неизвестный параметр.",
   "settings.valueBoolean": "Значение должно быть true или false.",

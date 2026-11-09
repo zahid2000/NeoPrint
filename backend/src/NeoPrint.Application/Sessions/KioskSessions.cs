@@ -61,6 +61,9 @@ public enum KioskSessionEnd
 
     /// <summary>The user opened one at another kiosk.</summary>
     Replaced,
+
+    /// <summary>Closed from the panel by staff (T-362).</summary>
+    ClosedByStaff,
 }
 
 /// <summary>"Sessiya aç" (plan section 9.3, step 1): by the kiosk's id or code, from the search or its QR.</summary>

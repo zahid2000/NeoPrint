@@ -325,7 +325,19 @@ void main() {
     expect(ScannedCode.parse('MOCKBANK:123'), isA<ForeignCode>());
   });
 
-  test('only an expired session is announced', () {
+  test('a session closed from the panel is announced too (T-362)', () {
+    final l10n = AppLocalizationsAz();
+    expect(
+      noticeFor(
+        l10n,
+        const HubEvent('SessionClosed', {'reason': 'ClosedByStaff'}),
+        'az',
+      ),
+      l10n.noticeSessionClosedByStaff,
+    );
+  });
+
+  test('an expired session is announced, one the user closed is not', () {
     final l10n = AppLocalizationsAz();
     expect(
       noticeFor(

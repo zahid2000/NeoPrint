@@ -7,6 +7,7 @@ using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Devices;
 using NeoPrint.Application.Kiosks;
+using NeoPrint.Application.Sessions;
 using NeoPrint.Domain.Admin;
 
 namespace NeoPrint.Api.Controllers;
@@ -304,6 +305,21 @@ public sealed class AdminKiosksController : ControllerBase
     public async Task<ActionResult<KioskCommandView>> Resume(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new SendKioskCommandCommand(AdminId, id, Domain.Kiosks.KioskCommandType.Resume, _currentUser.Ip), cancellationToken));
 
+    /// <summary>The phone sessions open at the kiosk now (T-362): whose by public id, opened and running out when.</summary>
+    [HttpGet("{id:guid}/sessions")]
+    [HasPermission(Permissions.KiosksView)]
+    public async Task<ActionResult<IReadOnlyList<AdminKioskSessionView>>> Sessions(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new GetAdminKioskSessionsQuery(AdminId, id), cancellationToken));
+
+    /// <summary>Ends a session at the kiosk (T-362): the kiosk stops counting the phone, the app is told. A reason is required.</summary>
+    [HttpPost("{id:guid}/sessions/{sessionId:guid}/close")]
+    [HasPermission(Permissions.KioskCommandsPause)]
+    public async Task<IActionResult> CloseSession(Guid id, Guid sessionId, [FromBody] CloseKioskSessionRequest body, CancellationToken cancellationToken)
+    {
+        await _sender.Send(new CloseAdminKioskSessionCommand(AdminId, id, sessionId, body?.Reason, _currentUser.Ip), cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Restarts the kiosk application once the job at the printer is done.</summary>
     [HttpPost("{id:guid}/restart-app")]
     [HasPermission(Permissions.KioskCommandsRestart)]
@@ -402,3 +418,6 @@ public sealed record PaperRefillRequest(
     string? Paper, Domain.Kiosks.PaperRefillMode Mode, int Sheets, Guid? InventoryItemId = null, decimal? Quantity = null);
 
 public sealed record SupplyReplacedRequest(string? Resource, string? Variant, Guid? InventoryItemId, decimal? Quantity, string? Note);
+
+/// <summary>Why a session is closed from the panel (T-362).</summary>
+public sealed record CloseKioskSessionRequest(string? Reason);

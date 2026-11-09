@@ -1582,6 +1582,8 @@ Admin:
 | `PUT /api/admin/kiosks/{id}/capabilities` | `printers.capabilities.manage` | `{ color?, duplex?, a3? }` — yalnız söndürmək olar (`false`); printerin olmayan imkanını yandırmaq `400 printers.cannotEnable` |
 | `POST /api/admin/kiosks/{id}/printers/refresh` | `printers.refresh` | `RefreshPrinters` əmri |
 | `POST /api/admin/kiosks/{id}/test-print` | `printers.testprint` | `TestPrint` əmri; printer seçilməyibsə `409 printer.notSelected`; nəticə `/hubs/admin` `CommandResult` |
+| `GET /api/admin/kiosks/{id}/sessions` | `kiosks.view` (kiosk əhatəsi) | Kioskda açıq telefon sessiyaları (T-362): `[{ id, userId, userPublicId, openedAt, expiresAt }]` — müştərinin adı, telefonu, emaili qaytarılmır |
+| `POST /api/admin/kiosks/{id}/sessions/{sessionId}/close` | `kiosks.commands.pause` (kiosk əhatəsi) | `{ reason }` məcburi (3+ simvol, audit `kiosks.session.close`). Kiosk və tətbiq `SessionClosed { reason: "ClosedByStaff" }` alır; tətbiq bildiriş göstərir. Başqa kioskun sessiyası və artıq bitmiş sessiya — `404`; `204` |
 | `POST /api/admin/kiosks/{id}/pause` | `kiosks.commands.pause` | `Pause`: kiosk **dərhal** `Maintenance` olur və yeni sifariş rədd edilir (kiosk offline olsa da); növbə çap olunur, ekranda "Texniki xidmət". Heartbeat və safe mode-dan çıxış fasiləni götürmür |
 | `POST /api/admin/kiosks/{id}/resume` | `kiosks.commands.pause` | `Resume`: `Maintenance → Online` (printer seçilməyibsə `NotConfigured`) |
 | `POST /api/admin/kiosks/{id}/restart-app` | `kiosks.commands.restart` | `RestartApp`: kiosk təsdiqləyir (`Acknowledged`), cari çap bitəndə tətbiq yenidən başlayır və özü `Succeeded` yazır |

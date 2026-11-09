@@ -488,6 +488,7 @@
   "sessionUnderMinute": "Less than a minute left",
   "sessionOpenFailed": "The session could not be opened: {reason}",
   "noticeSessionExpired": "The session has ended. Open it again at the kiosk to print.",
+  "noticeSessionClosedByStaff": "The kiosk staff closed the session. Open it again at the kiosk to print.",
   "pickFileTitle": "Choose the file",
   "pickFileEmpty": "You have no file ready to print",
   "pickFileEmptyHint": "Upload a file; it shows here once it is ready.",

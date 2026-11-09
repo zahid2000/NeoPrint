@@ -184,6 +184,8 @@ public sealed class PermissionMatrixTests
         new("POST", "api/admin/kiosks/{id:guid}/restart-app", Permissions.KioskCommandsRestart, Target.TheirKiosk),
         new("POST", "api/admin/kiosks/{id:guid}/reboot", Permissions.KioskCommandsReboot, Target.TheirKiosk),
         new("GET", "api/admin/kiosks/{id:guid}/commands", Permissions.KiosksView, Target.TheirKiosk),
+        new("GET", "api/admin/kiosks/{id:guid}/sessions", Permissions.KiosksView, Target.TheirKiosk),
+        new("POST", "api/admin/kiosks/{id:guid}/sessions/{sessionId:guid}/close", Permissions.KioskCommandsPause, Target.TheirKiosk, """{"reason":"matrix"}"""),
         new("GET", "api/admin/printers", Permissions.PrintersView),
         new("GET", "api/admin/supply-rules", Permissions.SuppliesView),
         new("POST", "api/admin/supply-rules", Permissions.SupplyRulesManage, Body: Rule("{kiosk}")),
@@ -1002,7 +1004,8 @@ public sealed class PermissionMatrixTests
             .Replace("{item}", callers.ItemId.ToString(), StringComparison.Ordinal);
 
         var path = "/" + call.Template.Replace("{id:guid}", id.ToString(), StringComparison.Ordinal)
-            .Replace("{logId:guid}", Guid.NewGuid().ToString(), StringComparison.Ordinal);
+            .Replace("{logId:guid}", Guid.NewGuid().ToString(), StringComparison.Ordinal)
+            .Replace("{sessionId:guid}", Guid.NewGuid().ToString(), StringComparison.Ordinal);
         if (call.Query is not null)
         {
             path += "?" + Fill(call.Query);

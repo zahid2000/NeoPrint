@@ -368,6 +368,16 @@ export class AdminApiService {
     return this.http.post<PrintJob>(`/api/admin/print-jobs/${id}/cancel`, { reason }, idempotent());
   }
 
+  /** The phone sessions open at a kiosk (T-362): whose by public id only. */
+  kioskSessions(kioskId: string): Observable<AdminKioskSession[]> {
+    return this.http.get<AdminKioskSession[]>(`/api/admin/kiosks/${kioskId}/sessions`);
+  }
+
+  /** Ends one of them; the reason goes into the audit log (T-362). */
+  closeKioskSession(kioskId: string, sessionId: string, reason: string): Observable<void> {
+    return this.http.post<void>(`/api/admin/kiosks/${kioskId}/sessions/${sessionId}/close`, { reason });
+  }
+
   kioskQueue(kioskId: string): Observable<QueueEntry[]> {
     return this.http.get<QueueEntry[]>(`/api/admin/kiosks/${kioskId}/queue`);
   }
@@ -828,4 +838,14 @@ export class AdminApiService {
   startKeyRewrap(): Observable<void> {
     return this.http.post<void>('/api/admin/storage/rewrap', {}, idempotent());
   }
+}
+
+/** One phone session open at a kiosk, as the panel lists it (T-362). */
+export interface AdminKioskSession {
+  readonly id: string;
+  readonly userId: string;
+  /** The customer as the panel names them - never their name, phone or email here. */
+  readonly userPublicId: string;
+  readonly openedAt: string;
+  readonly expiresAt: string;
 }

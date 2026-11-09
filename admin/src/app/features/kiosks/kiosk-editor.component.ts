@@ -40,6 +40,7 @@ import { KioskUpdatesComponent } from './kiosk-updates.component';
 import { KioskIncidentsComponent } from './kiosk-incidents.component';
 import { KioskQueueComponent } from './kiosk-queue.component';
 import { KioskPhotoComponent } from './kiosk-photo.component';
+import { KioskSessionsComponent } from './kiosk-sessions.component';
 import { KioskStatusComponent } from './kiosk-status.component';
 import { KioskTasksComponent } from './kiosk-tasks.component';
 import { KioskSuppliesComponent } from './kiosk-supplies.component';
@@ -60,6 +61,7 @@ const pinPattern = /^[0-9]{4,12}$/;
   selector: 'app-kiosk-editor',
   imports: [
     KioskPhotoComponent,
+    KioskSessionsComponent,
     NgTemplateOutlet,
     FormsModule,
     RouterLink,

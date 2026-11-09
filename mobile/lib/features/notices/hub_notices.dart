@@ -19,9 +19,13 @@ String? noticeFor(AppLocalizations l10n, HubEvent event, String language) {
 
     // A refund that came back is told by its notification's banner (T-146).
 
-    // Only when its time ran out: closing or moving on is the user's own doing.
+    // When its time ran out; closing it or moving on is the user's own doing.
     case 'SessionClosed' when payload['reason'] == 'Expired':
       return l10n.noticeSessionExpired;
+
+    // Closed from the panel (T-362): not the user's doing either.
+    case 'SessionClosed' when payload['reason'] == 'ClosedByStaff':
+      return l10n.noticeSessionClosedByStaff;
 
     default:
       return null;
