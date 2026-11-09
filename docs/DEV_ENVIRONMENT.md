@@ -1747,7 +1747,7 @@ olmalıdır, `min_agent_version` isə cihazdakı Agent-dən böyük olmamalıdı
 
 ```bash
 # 1. Paketlər (self-contained, production + staging, win + linux) — CI-da, ~5 dəqiqə; heç nə dərc etmir
-gh workflow run release-package.yml --ref main -f version=0.9.0-m20.1 -f min_agent_version=0.9.0-m19b
+gh workflow run release-package.yml --ref main -f version=0.9.0-m20.2 -f min_agent_version=0.9.0-m19b
 gh run list --workflow release-package.yml --limit 1          # iş nömrəsi
 ```
 
@@ -1765,7 +1765,7 @@ powershell -ExecutionPolicy Bypass -File tools\release-sign\staging-quickstart.p
 5. Yoxlama: "Buraxılışlar" → "Kiosk versiyaları" — kiosk yeni versiyanı göstərir; kioskun "Yeniləmə" tabında status
    `Succeeded`. Xətalı versiya özü geri qayıdır və `UpdateFailed` incident-i açılır.
 
-- Bir versiya bir dəfə yüklənir: təkrar üçün yeni versiya (`0.9.0-m20.2` …).
+- Bir versiya bir dəfə yüklənir: təkrar üçün yeni versiya (`0.9.0-m20.3` …).
 - Növbəti versiyalarda `min_agent_version` — kioskda **artıq quraşdırılmış** Agent versiyası.
 
 ## 7y. Addım 7B — real Linux kiosku test serverinə (T-333)
