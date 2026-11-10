@@ -328,6 +328,32 @@ void main() {
       },
     );
     testWidgets(
+      'colour chosen before a kiosk without it moves to black and white (T-407)',
+      (tester) async {
+        tallScreen(tester);
+        final prepared = FakePrepared();
+        await tester.pumpWidget(app(PrepareScreen(file: file), prepared));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Kiosk üçün hazırla'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Rəngli'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Kiosk seç'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('KSK-9002 · Elmlər'));
+        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pumpAndSettle();
+
+        final color = tester.widget<SegmentedButton<bool?>>(
+          find.byType(SegmentedButton<bool?>).first,
+        );
+        expect(color.selected, {false}, reason: 'the kiosk has no colour');
+        expect(find.text('Bu kiosk rəngli çap etmir.'), findsOneWidget);
+      },
+    );
+    testWidgets(
       'a kiosk that is not working now is warned about, and the order may still be paid (T-351)',
       (tester) async {
         tallScreen(tester);

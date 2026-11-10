@@ -283,6 +283,37 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
     }
   }
 
+  /// A choice the chosen kiosk cannot print moves to one it can (T-407):
+  /// colour to black and white, two sides to one, A3 to A4 - the row then
+  /// says why. Done after the frame, when the kiosk's detail has come.
+  void _fitToKiosk(KioskDetail? detail) {
+    if (detail == null) {
+      return;
+    }
+    final color = _color && !detail.color;
+    final duplex = _duplex && !detail.duplex;
+    final a3 = _paper == 'A3' && !detail.a3 && !(_realSizePaper != null);
+    if (!color && !duplex && !a3) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _change(() {
+        if (color) {
+          _color = false;
+        }
+        if (duplex) {
+          _duplex = false;
+        }
+        if (a3) {
+          _paper = 'A4';
+        }
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -297,6 +328,7 @@ class _ScheduleCreateScreenState extends ConsumerState<ScheduleCreateScreen> {
         : ref.watch(kioskDetailProvider(kiosk.id)).valueOrNull;
     // The detail is the fresher of the two; the list's until it comes.
     final kioskStatus = detail?.summary.status ?? kiosk?.status;
+    _fitToKiosk(detail);
     final quote = _quote;
     final rangeInvalid =
         _pages == _Pages.range && _range.text.isNotEmpty && _selected == null;
