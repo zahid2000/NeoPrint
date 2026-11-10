@@ -398,6 +398,153 @@ abstract final class LayoutEditing {
     ]);
   }
 
+  /// How many pictures one page takes when they are laid out for the user
+  /// (T-430): more go on new pages after it, the same way.
+  static const perPage = 9;
+
+  /// [pictures] laid out [perPage] a page (T-430): the first ones on [page],
+  /// the rest on new pages right after it - never too small to see.
+  static LayoutProject arrangePaged(
+    LayoutProject project,
+    int page,
+    List<EditorPicture> pictures,
+  ) {
+    var result = arrange(project, page, pictures.take(perPage).toList());
+    var at = page;
+    for (var from = perPage; from < pictures.length; from += perPage) {
+      at++;
+      result = arrange(
+        _insertPage(result, at),
+        at,
+        pictures.skip(from).take(perPage).toList(),
+      );
+    }
+    return result;
+  }
+
+  /// [source]'s size and turn given to [indexes] (T-430: "Stili ver"). Each
+  /// keeps its own shape - as wide as [source], as tall as its picture is -
+  /// and its centre.
+  static LayoutProject applyStyle(
+    LayoutProject project,
+    int page,
+    Iterable<int> indexes,
+    LayoutElement source,
+    Map<String, EditorPicture> pictures,
+  ) {
+    final chosen = indexes.toSet();
+    return _withPage(project, page, [
+      for (final (i, element) in project.pages[page].elements.indexed)
+        if (!chosen.contains(i))
+          element
+        else
+          () {
+            final aspect = pictures[element.image]?.aspect;
+            final width = source.widthMm;
+            final height = aspect == null || aspect <= 0
+                ? source.heightMm
+                : width / aspect;
+            return _rounded(
+              element.copyWith(
+                xMm: element.xMm + (element.widthMm - width) / 2,
+                yMm: element.yMm + (element.heightMm - height) / 2,
+                widthMm: width,
+                heightMm: height,
+                rotationDeg: source.rotationDeg,
+              ),
+            );
+          }(),
+    ]);
+  }
+
+  /// [indexes] laid out again in equal cells of the page, in their order
+  /// (T-430: "Bərabər düz"); the others stay where they are.
+  static LayoutProject arrangeElements(
+    LayoutProject project,
+    int page,
+    Iterable<int> indexes,
+    Map<String, EditorPicture> pictures,
+  ) {
+    final chosen = indexes.toSet();
+    final elements = project.pages[page].elements;
+    final moved = [
+      for (final (i, element) in elements.indexed)
+        if (chosen.contains(i)) _pictureOf(element, pictures),
+    ];
+    final kept = _withPage(project, page, [
+      for (final (i, element) in elements.indexed)
+        if (!chosen.contains(i)) element,
+    ]);
+    return arrange(kept, page, moved);
+  }
+
+  /// [indexes] taken off [page] onto a new page right after it, laid out
+  /// there in equal cells (T-430: "Yeni səhifəyə").
+  static LayoutProject moveToNewPage(
+    LayoutProject project,
+    int page,
+    Iterable<int> indexes,
+    Map<String, EditorPicture> pictures,
+  ) {
+    final chosen = indexes.toSet();
+    final elements = project.pages[page].elements;
+    final moved = [
+      for (final (i, element) in elements.indexed)
+        if (chosen.contains(i)) _pictureOf(element, pictures),
+    ];
+    final kept = _withPage(project, page, [
+      for (final (i, element) in elements.indexed)
+        if (!chosen.contains(i)) element,
+    ]);
+    return arrange(_insertPage(kept, page + 1), page + 1, moved);
+  }
+
+  /// Every one of [indexes] removed.
+  static LayoutProject deleteMany(
+    LayoutProject project,
+    int page,
+    Iterable<int> indexes,
+  ) {
+    final chosen = indexes.toSet();
+    return _withPage(project, page, [
+      for (final (i, element) in project.pages[page].elements.indexed)
+        if (!chosen.contains(i)) element,
+    ]);
+  }
+
+  /// Every one of [indexes] turned a quarter.
+  static LayoutProject rotateMany(
+    LayoutProject project,
+    int page,
+    Iterable<int> indexes,
+  ) {
+    final chosen = indexes.toSet();
+    return _withPage(project, page, [
+      for (final (i, element) in project.pages[page].elements.indexed)
+        chosen.contains(i) ? rotate90(element) : element,
+    ]);
+  }
+
+  /// What is known of an element's picture; its own shape when nothing is.
+  static EditorPicture _pictureOf(
+    LayoutElement element,
+    Map<String, EditorPicture> pictures,
+  ) =>
+      pictures[element.image] ??
+      EditorPicture(
+        name: element.image,
+        aspect: element.heightMm <= 0 ? 1 : element.widthMm / element.heightMm,
+      );
+
+  static LayoutProject _insertPage(LayoutProject project, int at) =>
+      project.copyWith(
+        pages: [
+          ...project.pages.take(at),
+          const LayoutPage([]),
+          ...project.pages.skip(at),
+        ],
+      );
+
   /// Pictures whose centre is off the paper: the backend refuses them.
   static bool hasOffPage(LayoutProject project) {
     final (width, height) = project.pageSizeMm;

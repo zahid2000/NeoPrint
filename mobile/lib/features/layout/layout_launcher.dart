@@ -67,7 +67,7 @@ Future<void> openNewLayout(
   // One picture as large as fits; several side by side, small (T-402).
   final project = sources.length == 1
       ? LayoutEditing.add(empty, 0, pictures[sources.single.name]!)
-      : LayoutEditing.arrange(empty, 0, [
+      : LayoutEditing.arrangePaged(empty, 0, [
           for (final source in sources) pictures[source.name]!,
         ]);
 

@@ -80,6 +80,14 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
   late LayoutProject _project = widget.initial;
   int _page = 0;
   int? _selected;
+
+  /// "Çoxlu seç" (T-430): a tap adds a picture to [_marked] or takes it out,
+  /// and the tools act on all of them.
+  bool _multi = false;
+  Set<int> _marked = const {};
+
+  /// "Stili köçür" (T-430): the size and turn to give others.
+  LayoutElement? _style;
   bool _lockRatio = true;
   bool _dirty = false;
   bool _saving = false;
@@ -139,9 +147,10 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
       return;
     }
 
+    // Many at once go on new pages after this one (T-430).
     final project = added.length == 1
         ? LayoutEditing.add(_project, _page, added.single)
-        : LayoutEditing.arrange(_project, _page, added);
+        : LayoutEditing.arrangePaged(_project, _page, added);
     _apply(project, select: project.pages[_page].elements.length - 1);
     await _decode(images);
   }
@@ -156,6 +165,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
   void _apply(LayoutProject project, {int? select}) => setState(() {
     _project = project;
     _selected = select;
+    _marked = const {};
     _dirty = true;
     _error = null;
   });
@@ -163,6 +173,20 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
   void _replace(LayoutElement element) => _apply(
     LayoutEditing.replace(_project, _page, _selected!, element),
     select: _selected,
+  );
+
+  /// A change to the pictures chosen together; they stay chosen.
+  void _keepMarked(LayoutProject project) {
+    final marked = _marked;
+    _apply(project);
+    setState(() => _marked = marked);
+  }
+
+  /// A row of tools under the canvas, scrolling sideways when long.
+  Widget _toolbar(List<Widget> tools) => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    padding: const EdgeInsets.symmetric(horizontal: Spacing.x2),
+    child: Row(children: tools),
   );
 
   void _template(LayoutTemplate template) {
@@ -442,7 +466,20 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                   images: _decoded,
                   selected: _selected,
                   lockRatio: _lockRatio,
-                  onSelect: (index) => setState(() => _selected = index),
+                  marked: _multi ? _marked : const {},
+                  onSelect: (index) => setState(() {
+                    if (!_multi) {
+                      _selected = index;
+                      return;
+                    }
+                    // Several at once: a tap adds or takes out (T-430).
+                    _selected = null;
+                    if (index != null) {
+                      _marked = _marked.contains(index)
+                          ? ({..._marked}..remove(index))
+                          : {..._marked, index};
+                    }
+                  }),
                   onChanged: (index, element, {required done}) => setState(() {
                     _project = LayoutEditing.replace(
                       _project,
@@ -463,6 +500,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                           ? () => setState(() {
                               _page--;
                               _selected = null;
+                              _marked = const {};
                             })
                           : null,
                       icon: const Icon(Icons.chevron_left),
@@ -473,13 +511,112 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                           ? () => setState(() {
                               _page++;
                               _selected = null;
+                              _marked = const {};
                             })
                           : null,
                       icon: const Icon(Icons.chevron_right),
                     ),
                   ],
                 ),
-              if (current != null) ...[
+              // Several pictures at once (T-430).
+              if (_multi)
+                _toolbar([
+                  _Tool(
+                    icon: Icons.select_all,
+                    label: l10n.layoutSelectAll,
+                    onPressed: () => setState(
+                      () => _marked = {
+                        for (var i = 0; i < _elements.length; i++) i,
+                      },
+                    ),
+                  ),
+                  if (_marked.isNotEmpty) ...[
+                    _Tool(
+                      icon: Icons.rotate_right,
+                      label: l10n.layoutRotate90,
+                      onPressed: () => _keepMarked(
+                        LayoutEditing.rotateMany(_project, _page, _marked),
+                      ),
+                    ),
+                    if (_style case final style?)
+                      _Tool(
+                        icon: Icons.format_paint,
+                        label: l10n.layoutPasteStyle,
+                        onPressed: () => _keepMarked(
+                          LayoutEditing.applyStyle(
+                            _project,
+                            _page,
+                            _marked,
+                            style,
+                            _pictures,
+                          ),
+                        ),
+                      ),
+                    _Tool(
+                      icon: Icons.grid_view,
+                      label: l10n.layoutArrangeEqual,
+                      onPressed: () => _apply(
+                        LayoutEditing.arrangeElements(
+                          _project,
+                          _page,
+                          _marked,
+                          _pictures,
+                        ),
+                      ),
+                    ),
+                    _Tool(
+                      icon: Icons.note_add_outlined,
+                      label: l10n.layoutToNewPage,
+                      onPressed: () {
+                        _apply(
+                          LayoutEditing.moveToNewPage(
+                            _project,
+                            _page,
+                            _marked,
+                            _pictures,
+                          ),
+                        );
+                        setState(() => _page++);
+                      },
+                    ),
+                    if (_marked.length < _elements.length)
+                      _Tool(
+                        icon: Icons.delete_outline,
+                        label: l10n.layoutDelete,
+                        danger: true,
+                        onPressed: () => _apply(
+                          LayoutEditing.deleteMany(_project, _page, _marked),
+                        ),
+                      ),
+                  ],
+                  _Tool(
+                    icon: Icons.close,
+                    label: l10n.layoutMultiDone,
+                    onPressed: () => setState(() {
+                      _multi = false;
+                      _marked = const {};
+                    }),
+                  ),
+                ])
+              // Nothing chosen: what acts on the whole page (T-430).
+              else if (current == null && _elements.length > 1)
+                _toolbar([
+                  _Tool(
+                    icon: Icons.checklist,
+                    label: l10n.layoutMultiSelect,
+                    onPressed: () => setState(() => _multi = true),
+                  ),
+                  _Tool(
+                    icon: Icons.grid_view,
+                    label: l10n.layoutArrangeEqual,
+                    onPressed: () => _apply(
+                      LayoutEditing.arrangeElements(_project, _page, [
+                        for (var i = 0; i < _elements.length; i++) i,
+                      ], _pictures),
+                    ),
+                  ),
+                ]),
+              if (current != null && !_multi) ...[
                 Padding(
                   padding: const EdgeInsets.only(top: Spacing.x1),
                   child: Text(
@@ -548,6 +685,43 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                         onPressed: () =>
                             _replace(LayoutEditing.centre(_project, current)),
                       ),
+                      // Its size and turn, to give the others (T-430).
+                      _Tool(
+                        icon: Icons.style_outlined,
+                        label: l10n.layoutCopyStyle,
+                        selected: _style == current,
+                        onPressed: () {
+                          setState(() => _style = current);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l10n.layoutStyleCopied)),
+                          );
+                        },
+                      ),
+                      if (_style case final style? when style != current)
+                        _Tool(
+                          icon: Icons.format_paint,
+                          label: l10n.layoutPasteStyle,
+                          onPressed: () => _apply(
+                            LayoutEditing.applyStyle(
+                              _project,
+                              _page,
+                              [_selected!],
+                              style,
+                              _pictures,
+                            ),
+                            select: _selected,
+                          ),
+                        ),
+                      if (_elements.length > 1)
+                        _Tool(
+                          icon: Icons.checklist,
+                          label: l10n.layoutMultiSelect,
+                          onPressed: () => setState(() {
+                            _multi = true;
+                            _marked = {_selected!};
+                            _selected = null;
+                          }),
+                        ),
                       if (_elements.length > 1)
                         _Tool(
                           icon: Icons.delete_outline,

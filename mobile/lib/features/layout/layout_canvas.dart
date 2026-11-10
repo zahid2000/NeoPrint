@@ -24,7 +24,11 @@ class LayoutCanvas extends StatefulWidget {
     required this.lockRatio,
     required this.onSelect,
     required this.onChanged,
+    this.marked = const {},
   });
+
+  /// Pictures chosen together (T-430): framed like the selected one.
+  final Set<int> marked;
 
   final LayoutProject project;
   final int page;
@@ -251,6 +255,7 @@ class _LayoutCanvasState extends State<LayoutCanvas> {
               page: widget.page,
               images: widget.images,
               selected: widget.selected,
+              marked: widget.marked,
               paper: paper,
               scale: scale,
               ruler: _ruler,
@@ -312,6 +317,7 @@ class _CanvasPainter extends CustomPainter {
     required this.page,
     required this.images,
     required this.selected,
+    required this.marked,
     required this.paper,
     required this.scale,
     required this.ruler,
@@ -325,6 +331,7 @@ class _CanvasPainter extends CustomPainter {
   final int page;
   final Map<String, ui.Image> images;
   final int? selected;
+  final Set<int> marked;
   final Rect paper;
   final double scale;
   final double ruler;
@@ -391,6 +398,11 @@ class _CanvasPainter extends CustomPainter {
 
     canvas.restore();
 
+    for (final index in marked) {
+      if (index < elements.length && index != selected) {
+        _selection(canvas, elements[index]);
+      }
+    }
     if (selected case final index? when index < elements.length) {
       _selection(canvas, elements[index]);
     }
@@ -546,6 +558,7 @@ class _CanvasPainter extends CustomPainter {
       old.page != page ||
       old.images != images ||
       old.selected != selected ||
+      old.marked != marked ||
       old.paper != paper ||
       old.showGrid != showGrid ||
       old.snapLines != snapLines;

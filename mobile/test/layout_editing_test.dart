@@ -223,4 +223,86 @@ void main() {
       expect(placed[1].yMm, greaterThan(placed[0].yMm + placed[0].heightMm));
     });
   });
+
+  group('several pictures at once (T-430)', () {
+    const empty = LayoutProject(marginMm: 10, pages: [LayoutPage([])]);
+    final pictures = {
+      for (var i = 0; i < 12; i++)
+        'p$i': EditorPicture(name: 'p$i', aspect: i.isEven ? 1.5 : 0.75),
+    };
+
+    test('more than a page takes go on new pages after it', () {
+      final laid = LayoutEditing.arrangePaged(
+        empty,
+        0,
+        pictures.values.toList(),
+      );
+
+      expect(laid.pages, hasLength(2));
+      expect(laid.pages[0].elements, hasLength(LayoutEditing.perPage));
+      expect(laid.pages[1].elements, hasLength(12 - LayoutEditing.perPage));
+      expect(LayoutEditing.hasOffPage(laid), isFalse);
+    });
+
+    test('a style given keeps each picture its shape and its centre', () {
+      final laid = LayoutEditing.arrange(empty, 0, [
+        pictures['p0']!,
+        pictures['p1']!,
+      ]);
+      final source = laid.pages[0].elements[0].copyWith(
+        widthMm: 60,
+        rotationDeg: 90,
+      );
+      final before = laid.pages[0].elements[1];
+
+      final styled = LayoutEditing.applyStyle(laid, 0, [1], source, pictures);
+      final after = styled.pages[0].elements[1];
+
+      expect(after.widthMm, 60);
+      expect(after.heightMm, closeTo(80, 0.1), reason: 'p1 is 3:4');
+      expect(after.rotationDeg, 90);
+      expect(
+        after.xMm + after.widthMm / 2,
+        closeTo(before.xMm + before.widthMm / 2, 0.1),
+      );
+    });
+
+    test(
+      'chosen ones laid out evenly, to a new page, turned or removed together',
+      () {
+        final laid = LayoutEditing.arrange(
+          empty,
+          0,
+          pictures.values.take(4).toList(),
+        );
+
+        final moved = LayoutEditing.moveToNewPage(laid, 0, {1, 3}, pictures);
+        expect(moved.pages, hasLength(2));
+        expect(moved.pages[0].elements.map((e) => e.image), ['p0', 'p2']);
+        expect(moved.pages[1].elements.map((e) => e.image), ['p1', 'p3']);
+
+        final turned = LayoutEditing.rotateMany(laid, 0, {0, 2});
+        expect(turned.pages[0].elements.map((e) => e.rotationDeg), [
+          90,
+          0,
+          90,
+          0,
+        ]);
+
+        expect(
+          LayoutEditing.deleteMany(laid, 0, {0, 1}).pages[0].elements,
+          hasLength(2),
+        );
+
+        final even = LayoutEditing.arrangeElements(laid, 0, {
+          0,
+          1,
+          2,
+          3,
+        }, pictures);
+        expect(even.pages[0].elements, hasLength(4));
+        expect(LayoutEditing.hasOffPage(even), isFalse);
+      },
+    );
+  });
 }

@@ -219,6 +219,47 @@ void main() {
     ]);
   });
 
+  testWidgets('several chosen at once are turned together; the page tools '
+      'lay them out evenly (T-430)', (tester) async {
+    const left = LayoutElement(
+      image: 'p1.jpg',
+      xMm: 20,
+      yMm: 20,
+      widthMm: 50,
+      heightMm: 50,
+    );
+    const right = LayoutElement(
+      image: 'p1.jpg',
+      xMm: 120,
+      yMm: 200,
+      widthMm: 50,
+      heightMm: 50,
+    );
+    final result = await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([left, right]),
+        ],
+      ),
+      () async {
+        await tester.tap(find.text('Çoxlu seç'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Hamısını seç'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('90°'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Seçimi bitir'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Hazır'));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    expect(result!.pages.single.elements.map((e) => e.rotationDeg), [90, 90]);
+  });
+
   testWidgets('a picture off the paper cannot be handed back', (tester) async {
     final result = await openEditor(
       tester,
