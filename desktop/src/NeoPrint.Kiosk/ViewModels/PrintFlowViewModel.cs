@@ -1128,7 +1128,6 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         QuoteDetail = detail;
         Error = quote.PaperCovers ? null : T("options.notEnoughPaper");
         CanPlace = quote.PaperCovers && RealSizeBlocked is null;
-        RequotePromo(quote.Price.FinalPrice);
     }
 
     private void ResetOptions()
@@ -1166,10 +1165,10 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         try
         {
             var key = _orderKey ??= Guid.NewGuid().ToString("N");
-            var promo = AppliedPromo;
+            // No promo code at the kiosk (T-391): codes are for the app.
             var job = remote is not null && _userQr is { } files
-                ? await Task.Run(() => _orders.OrderPreparedAsync(files.Grant, remote.Id, options, key, promo, CancellationToken.None)).ConfigureAwait(true)
-                : await Task.Run(() => _orders.PlaceAsync(document!, name, options, key, CancellationToken.None, promo)).ConfigureAwait(true);
+                ? await Task.Run(() => _orders.OrderPreparedAsync(files.Grant, remote.Id, options, key, null, CancellationToken.None)).ConfigureAwait(true)
+                : await Task.Run(() => _orders.PlaceAsync(document!, name, options, key, CancellationToken.None)).ConfigureAwait(true);
             _orderKey = null;
 
             PlacedCode = job.JobCode;
@@ -1355,11 +1354,6 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
         // A typing sheet belongs to its screen: it never stays open over another
         // one, where it would also hide that screen's actions (IsTyping).
-        if (value != FlowStage.Options)
-        {
-            PromoEditing = false;
-        }
-
         if (value != FlowStage.Placed)
         {
             EmailEditing = false;

@@ -13,7 +13,8 @@ namespace NeoPrint.Kiosk.ViewModels;
 /// Paying for the order (plan sections 7.3 screens 6–9, 9.1, 9.2;
 /// docs/DESIGN_SYSTEM.md "Ödəniş ekranları"): the method, the QR with its
 /// countdown, the receipt with the fiscal QR and email, and what goes back
-/// after a cancellation. Also the promo code on the options screen.
+/// after a cancellation. No promo code is typed at the kiosk (T-391): one
+/// applied in the app, when the order is paid with it, is shown.
 /// </summary>
 public sealed partial class PrintFlowViewModel
 {
@@ -31,30 +32,9 @@ public sealed partial class PrintFlowViewModel
     private DateTime? _paymentOpenedAt;
     private CancellationTokenSource? _watch;
     private string? _emailKey;
-    private int _promoCheck;
 
     /// <summary>How the flow waits between looks; a test makes it instant.</summary>
     public Func<TimeSpan, CancellationToken, Task> Delay { get; init; } = Task.Delay;
-
-    // ---- promo code (options screen)
-
-    [ObservableProperty]
-    private bool _promoEditing;
-
-    [ObservableProperty]
-    private string _promoInput = string.Empty;
-
-    [ObservableProperty]
-    private string? _appliedPromo;
-
-    [ObservableProperty]
-    private string? _promoLine;
-
-    [ObservableProperty]
-    private string? _promoProblem;
-
-    [ObservableProperty]
-    private string? _amountDueText;
 
     // ---- payment
 
@@ -128,12 +108,6 @@ public sealed partial class PrintFlowViewModel
 
     // ---- texts
 
-    public string PromoButtonText => T("promo.button");
-
-    public string PromoApplyText => T("promo.apply");
-
-    public string PromoRemoveText => T("promo.remove");
-
     public string PayTitle => T("pay.title");
 
     public string PayAmountLabel => T("pay.amount");
@@ -177,10 +151,10 @@ public sealed partial class PrintFlowViewModel
     public string CloseKeyboardText => T("keyboard.close");
 
     /// <summary>
-    /// A typing sheet (promo code or email) fills the screen: the action row
+    /// A typing sheet (the receipt's email) fills the screen: the action row
     /// under it is hidden, so the sheet's own button is the one primary.
     /// </summary>
-    public bool IsTyping => PromoEditing || EmailEditing;
+    public bool IsTyping => EmailEditing;
 
     public string AppNoteText => T("paid.appNote");
 
@@ -193,15 +167,6 @@ public sealed partial class PrintFlowViewModel
     /// <summary>The receipt screen is for a paid order; a Development order (no payment) has no receipt to send.</summary>
     public bool HasPayment => _payment is not null;
 
-    /// <summary>The keys of the promo code keyboard: capitals, digits and the dash.</summary>
-    public IReadOnlyList<IReadOnlyList<string>> PromoKeys { get; } =
-    [
-        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-        ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-        ["A", "S", "D", "F", "G", "H", "J", "K", "L", "-"],
-        ["Z", "X", "C", "V", "B", "N", "M"],
-    ];
-
     /// <summary>The keys of the email keyboard: what an address is made of.</summary>
     public IReadOnlyList<IReadOnlyList<string>> EmailKeys { get; } =
     [
@@ -212,7 +177,7 @@ public sealed partial class PrintFlowViewModel
     ];
 
     // -----------------------------------------------------------------------
-    // Promo code
+    // Feature flags
     // -----------------------------------------------------------------------
 
     /// <summary>
@@ -221,141 +186,11 @@ public sealed partial class PrintFlowViewModel
     /// </summary>
     public bool CanPayWithApp => _orders.Configuration?.IsOn(KioskFeatures.MobilePaymentAtKiosk) ?? true;
 
-    /// <summary>Whether a promo code may be typed (<c>promo_codes</c>); one already applied can still be removed.</summary>
-    public bool CanUsePromo => _orders.Configuration?.IsOn(KioskFeatures.PromoCodes) ?? true;
-
-    /// <summary>The "Promokod" button: no code applied yet, and codes are on.</summary>
-    public bool CanEditPromo => AppliedPromo is null && CanUsePromo;
-
     /// <summary>
     /// The configuration changed (a feature flag switched): the screen on show
     /// hides or shows its ways in at once.
     /// </summary>
-    public void ConfigurationChanged()
-    {
-        OnPropertyChanged(nameof(CanPayWithApp));
-        OnPropertyChanged(nameof(CanUsePromo));
-        OnPropertyChanged(nameof(CanEditPromo));
-
-        if (!CanUsePromo && PromoEditing)
-        {
-            PromoEditing = false;
-        }
-    }
-
-    partial void OnAppliedPromoChanged(string? value) => OnPropertyChanged(nameof(CanEditPromo));
-
-    [RelayCommand]
-    private void EditPromo()
-    {
-        if (!CanUsePromo)
-        {
-            return;
-        }
-
-        PromoEditing = !PromoEditing;
-        PromoProblem = null;
-    }
-
-    [RelayCommand]
-    private void PromoKey(string? key)
-    {
-        if (key is { Length: 1 } && PromoInput.Length < 32)
-        {
-            PromoInput += key;
-            PromoProblem = null;
-        }
-    }
-
-    [RelayCommand]
-    private void PromoErase()
-    {
-        if (PromoInput.Length > 0)
-        {
-            PromoInput = PromoInput[..^1];
-        }
-    }
-
-    [RelayCommand]
-    private async Task ApplyPromoAsync()
-    {
-        if (PromoInput.Length == 0 || _quotedTotal is not { } total)
-        {
-            return;
-        }
-
-        await CheckPromoAsync(PromoInput, total, applying: true).ConfigureAwait(true);
-    }
-
-    [RelayCommand]
-    private void RemovePromo()
-    {
-        AppliedPromo = null;
-        PromoInput = string.Empty;
-        PromoLine = null;
-        PromoProblem = null;
-        AmountDueText = null;
-        _promoCheck++;
-    }
-
-    /// <summary>
-    /// What the code takes off this price. A code that stops applying (the
-    /// price fell below its minimum) is shown with its reason and taken off:
-    /// it never blocks the order.
-    /// </summary>
-    private async Task CheckPromoAsync(string code, decimal total, bool applying)
-    {
-        var check = ++_promoCheck;
-
-        try
-        {
-            var result = await Task.Run(() => _orders.ValidatePromoAsync(code, total, CancellationToken.None)).ConfigureAwait(true);
-
-            if (check != _promoCheck)
-            {
-                // The options changed meanwhile: a newer check answers.
-                return;
-            }
-
-            if (result.Valid)
-            {
-                AppliedPromo = result.Code;
-                PromoEditing = false;
-                PromoProblem = null;
-                PromoLine = T("pay.promoLine", result.Code, Formats.Money(result.Discount, Language));
-                AmountDueText = T("promo.total", Formats.Money(result.AmountDue, Language));
-                Track("promo_applied", ("code", result.Code));
-            }
-            else
-            {
-                PromoProblem = result.Reason ?? T("error.unexpected");
-                PromoLine = null;
-                AmountDueText = null;
-
-                if (!applying)
-                {
-                    AppliedPromo = null;
-                }
-            }
-        }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
-        {
-            PromoProblem = T("error.network");
-        }
-        catch (KioskApiException exception)
-        {
-            PromoProblem = exception.Message;
-        }
-    }
-
-    /// <summary>The price moved: a code already applied is worked out again on it.</summary>
-    private void RequotePromo(decimal total)
-    {
-        if (AppliedPromo is { } code)
-        {
-            _ = CheckPromoAsync(code, total, applying: false);
-        }
-    }
+    public void ConfigurationChanged() => OnPropertyChanged(nameof(CanPayWithApp));
 
     // -----------------------------------------------------------------------
     // Payment (screens 6–8)
@@ -666,8 +501,6 @@ public sealed partial class PrintFlowViewModel
     [RelayCommand]
     private void CloseKeyboard()
     {
-        PromoEditing = false;
-        PromoProblem = null;
         EmailEditing = false;
         EmailProblem = null;
     }
@@ -818,8 +651,6 @@ public sealed partial class PrintFlowViewModel
 
     partial void OnPrinterStoppedChanged(bool value) => OnPropertyChanged(nameof(PlacedHeading));
 
-    partial void OnPromoEditingChanged(bool value) => OnPropertyChanged(nameof(IsTyping));
-
     partial void OnEmailEditingChanged(bool value) => OnPropertyChanged(nameof(IsTyping));
 
     partial void OnFiscalQrChanged(string? value) => OnPropertyChanged(nameof(HasFiscalQr));
@@ -835,12 +666,6 @@ public sealed partial class PrintFlowViewModel
         _placedJob = null;
         _payment = null;
         _emailKey = null;
-        PromoEditing = false;
-        PromoInput = string.Empty;
-        AppliedPromo = null;
-        PromoLine = null;
-        PromoProblem = null;
-        AmountDueText = null;
         PayAmountText = null;
         PayPromoText = null;
         QrContent = null;

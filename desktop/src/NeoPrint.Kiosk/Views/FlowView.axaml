@@ -51,7 +51,11 @@
             <Grid RowDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsBrowse}}">
                 <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" Margin="{DynamicResource GapBelow4}">
                     <Button Classes="secondary" Command="{Binding UpCommand}" IsVisible="{Binding CanGoUp}">
-                        <TextBlock Text="{Binding UpText}" />
+                        <!-- An icon before the words, like "← Geri" (T-390). -->
+                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                            <PathIcon Data="{StaticResource IconFolderUp}" Width="24" Height="24" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding UpText}" VerticalAlignment="Center" />
+                        </StackPanel>
                     </Button>
                 </StackPanel>
 
@@ -483,8 +487,8 @@
                 </Border>
 
                 <!-- The poster's screen 5 (T-371): the file on the left, its pages, then the live
-                     price - the kiosk's profile, volume discount included - and the promo code
-                     below it (docs/DESIGN_SYSTEM.md, "Promokod sahəsi"). -->
+                     price - the kiosk's profile, volume discount included. No promo code at the
+                     kiosk: codes are typed in the app (T-391). -->
                 <StackPanel Width="{StaticResource SideCardWidth}" Spacing="{DynamicResource Space4}">
                     <Border Classes="card">
                         <StackPanel Spacing="{DynamicResource Space4}">
@@ -504,24 +508,8 @@
                             <TextBlock Text="{Binding PriceText}" Classes="display"
                                        IsVisible="{Binding PriceText, Converter={x:Static ObjectConverters.IsNotNull}}" />
                             <TextBlock Text="{Binding QuoteDetail}" Classes="body-small" TextWrapping="Wrap" />
-                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}"
-                                        IsVisible="{Binding PromoLine, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                <PathIcon Data="{StaticResource IconSuccess}" Width="28" Height="28" Foreground="{DynamicResource Success500}" />
-                                <TextBlock Text="{Binding PromoLine}" Foreground="{DynamicResource Success500}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                            </StackPanel>
-                            <TextBlock Text="{Binding AmountDueText}" Classes="h2"
-                                       IsVisible="{Binding AmountDueText, Converter={x:Static ObjectConverters.IsNotNull}}" />
                         </StackPanel>
                     </Border>
-
-                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                        <Button Classes="secondary" Command="{Binding EditPromoCommand}" IsVisible="{Binding CanEditPromo}">
-                            <TextBlock Text="{Binding PromoButtonText}" />
-                        </Button>
-                        <Button Classes="secondary" Command="{Binding RemovePromoCommand}" IsVisible="{Binding AppliedPromo, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <TextBlock Text="{Binding PromoRemoveText}" />
-                        </Button>
-                    </StackPanel>
                 </StackPanel>
             </Grid>
 
@@ -842,64 +830,9 @@
             </StackPanel>
 
             <!-- ============ Typing sheets (docs/DESIGN_SYSTEM.md, "Yazma paneli") ============
-                 A full keyboard is wider than a side column, so the promo code and the
-                 receipt email are typed on a sheet over the whole content area; the
+                 A full keyboard is wider than a side column, so the
+                 receipt email is typed on a sheet over the whole content area; the
                  action row below is hidden meanwhile (IsTyping). -->
-            <Border Background="{DynamicResource Neutral50}" IsVisible="{Binding PromoEditing}">
-                <Grid RowDefinitions="*,Auto">
-                    <StackPanel Spacing="{DynamicResource Space6}">
-                        <TextBlock Text="{Binding PromoButtonText}" Classes="h1" />
-                        <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                            <Border Classes="card" Width="{DynamicResource PayMethodWidth}" MinHeight="{DynamicResource TouchTarget}">
-                                <TextBlock Text="{Binding PromoInput}" Classes="h2" />
-                            </Border>
-                            <Button Classes="primary" Command="{Binding ApplyPromoCommand}" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding PromoApplyText}" Foreground="{DynamicResource Neutral0}" />
-                            </Button>
-                            <!-- Beside the field, not under it: the keys stay where the finger is. -->
-                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}" VerticalAlignment="Center"
-                                        IsVisible="{Binding PromoProblem, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                <PathIcon Data="{StaticResource IconError}" Width="28" Height="28" Foreground="{DynamicResource Danger500}" VerticalAlignment="Top" />
-                                <TextBlock Text="{Binding PromoProblem}" Classes="caption" Foreground="{DynamicResource Danger500}" TextWrapping="Wrap" MaxWidth="560" />
-                            </StackPanel>
-                        </StackPanel>
-                        <!-- Capitals, digits and the dash; "Sil" beside the keys. -->
-                        <StackPanel Orientation="Horizontal">
-                            <ItemsControl ItemsSource="{Binding PromoKeys}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <ItemsControl ItemsSource="{Binding}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal" />
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="x:String">
-                                                    <Button Classes="key"
-                                                            Classes.symbol="{Binding Converter={x:Static vm:ScreenConverters.IsSymbolKey}}"
-                                                            Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).PromoKeyCommand}"
-                                                            CommandParameter="{Binding}">
-                                                        <TextBlock Text="{Binding}" />
-                                                    </Button>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Button Classes="key" Command="{Binding PromoEraseCommand}" VerticalAlignment="Top">
-                                <TextBlock Text="{Binding BackspaceKeyText}" />
-                            </Button>
-                        </StackPanel>
-                    </StackPanel>
-                    <Button Grid.Row="1" Classes="secondary" HorizontalAlignment="Left" Margin="{DynamicResource GapBelow4}"
-                            Command="{Binding CloseKeyboardCommand}">
-                        <TextBlock Text="{Binding CloseKeyboardText}" />
-                    </Button>
-                </Grid>
-            </Border>
-
             <Border Background="{DynamicResource Neutral50}" IsVisible="{Binding EmailEditing}">
                 <Grid RowDefinitions="*,Auto">
                     <StackPanel Spacing="{DynamicResource Space6}">

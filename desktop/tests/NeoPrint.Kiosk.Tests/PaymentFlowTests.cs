@@ -10,7 +10,7 @@ namespace NeoPrint.Kiosk.Tests;
 /// Paying for a flash order at the kiosk (plan sections 7.3 screens 6–9, 9.1,
 /// 9.2; docs/TASKS.md T-108): the order waits for its payment and prints only
 /// once paid; the QR, the countdown, the receipt with the fiscal QR and email,
-/// the promo code, and what goes back after a cancellation.
+/// no promo code at the kiosk (T-391), and what goes back after a cancellation.
 /// </summary>
 [Collection(KioskLanguageCollection.Name)]
 public sealed class PaymentFlowTests : IDisposable
@@ -33,7 +33,7 @@ public sealed class PaymentFlowTests : IDisposable
     private static string T(string key, params object?[] arguments) => Strings.Get("az", key, arguments);
 
     /// <summary>An order placed at a kiosk that takes payments, on the payment method screen.</summary>
-    private async Task<(PrintFlowViewModel Flow, OrderTestKit Kit)> PlacedAsync(string? promo = null)
+    private async Task<(PrintFlowViewModel Flow, OrderTestKit Kit)> PlacedAsync()
     {
         var kit = await OrderTestKit.CreateAsync(skipPayment: false);
         _kits.Add(kit);
@@ -51,18 +51,6 @@ public sealed class PaymentFlowTests : IDisposable
         await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
         await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
         flow.ContinueCommand.Execute(null);
-
-        if (promo is not null)
-        {
-            flow.EditPromoCommand.Execute(null);
-
-            foreach (var key in promo)
-            {
-                flow.PromoKeyCommand.Execute(key.ToString());
-            }
-
-            await flow.ApplyPromoCommand.ExecuteAsync(null);
-        }
 
         await flow.PlaceCommand.ExecuteAsync(null);
 
@@ -165,59 +153,15 @@ public sealed class PaymentFlowTests : IDisposable
     }
 
     [Fact]
-    public async Task A_promo_code_is_checked_before_the_order_and_goes_with_it()
+    public async Task No_promo_code_is_typed_at_the_kiosk_one_paid_in_the_app_is_shown()
     {
-        var kitless = await PlacedAsync(promo: "NOPE-1");
-        kitless.Flow.Stage.Should().Be(FlowStage.PaymentMethod, "a code that does not apply never blocks the order");
-        kitless.Flow.PayPromoText.Should().BeNull();
+        // T-391: promo codes are for the app; the kiosk's order goes without one.
+        var (flow, kit) = await PlacedAsync();
 
-        var kit = await OrderTestKit.CreateAsync(skipPayment: false);
-        _kits.Add(kit);
-        kit.Backend.Promos["YAY-10"] = 0.05m;
-        kit.Pdf(1, _drive, "report2.pdf");
-        var flow = new PrintFlowViewModel(kit.Orders, new FakeRemovableDriveWatcher(), pageImage: _ => null) { Language = "az", Delay = (_, t) => Task.Delay(5, t) };
-        await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
-        await flow.OpenCommand.ExecuteAsync(flow.Entries.Single(entry => entry.Name == "report2.pdf"));
-        flow.ContinueCommand.Execute(null);
-
-        flow.EditPromoCommand.Execute(null);
-        flow.IsTyping.Should().BeTrue("the keyboard opens on a sheet that hides the action row");
-
-        foreach (var key in "NOPE")
-        {
-            flow.PromoKeyCommand.Execute(key.ToString());
-        }
-
-        await flow.ApplyPromoCommand.ExecuteAsync(null);
-        flow.PromoProblem.Should().Be("Belə promokod yoxdur. Kodu yoxlayın.");
-        flow.AppliedPromo.Should().BeNull();
-        flow.CanPlace.Should().BeTrue("the customer may go on without it");
-        flow.PromoEditing.Should().BeTrue("a refused code keeps the sheet open, with its reason");
-
-        flow.CloseKeyboardCommand.Execute(null);
+        flow.Stage.Should().Be(FlowStage.PaymentMethod);
+        kit.Backend.Bodies.Should().NotContain(body => body.Contains("\"promoCode\":\"", StringComparison.Ordinal));
+        flow.PayPromoText.Should().BeNull();
         flow.IsTyping.Should().BeFalse();
-        flow.PromoProblem.Should().BeNull();
-        flow.PromoInput.Should().Be("NOPE", "closing the sheet keeps what was typed");
-        flow.EditPromoCommand.Execute(null);
-
-        for (var i = 0; i < 4; i++)
-        {
-            flow.PromoEraseCommand.Execute(null);
-        }
-
-        foreach (var key in "YAY-10")
-        {
-            flow.PromoKeyCommand.Execute(key.ToString());
-        }
-
-        await flow.ApplyPromoCommand.ExecuteAsync(null);
-        flow.AppliedPromo.Should().Be("YAY-10");
-        flow.PromoLine.Should().Be(T("pay.promoLine", "YAY-10", Formats.Money(0.05m, "az")));
-        flow.IsTyping.Should().BeFalse("an accepted code closes the sheet and brings back Sifariş et");
-
-        await flow.PlaceCommand.ExecuteAsync(null);
-        kit.Backend.Bodies[^1].Should().Contain("\"promoCode\":\"YAY-10\"");
-        flow.PayPromoText.Should().Be(T("pay.promoLine", "YAY-10", Formats.Money(0.05m, "az")));
     }
 
     [Fact]
@@ -330,7 +274,7 @@ public sealed class PaymentFlowTests : IDisposable
     {
         var (flow, _) = await PlacedAsync();
         flow.Stage.Should().Be(FlowStage.PaymentMethod);
-        flow.IsTyping.Should().BeFalse("the promo sheet of the options screen closed with it");
+        flow.IsTyping.Should().BeFalse();
 
         flow.EmailEditing = true;
         flow.LeaveCommand.Execute(null);
@@ -387,7 +331,7 @@ public sealed class PaymentFlowTests : IDisposable
     }
 
     [Fact]
-    public async Task A_kiosk_with_app_payment_and_promo_codes_switched_off_offers_neither()
+    public async Task A_kiosk_with_app_payment_switched_off_offers_only_the_bank_qr()
     {
         // T-160: the configuration's flags, evaluated for this kiosk.
         var kit = await OrderTestKit.CreateAsync(
@@ -395,7 +339,6 @@ public sealed class PaymentFlowTests : IDisposable
             features: new Dictionary<string, bool>
             {
                 [KioskFeatures.MobilePaymentAtKiosk] = false,
-                [KioskFeatures.PromoCodes] = false,
             });
         _kits.Add(kit);
         kit.Pdf(1, _drive, "report.pdf");
@@ -407,10 +350,6 @@ public sealed class PaymentFlowTests : IDisposable
         await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
         await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
         flow.ContinueCommand.Execute(null);
-
-        flow.CanEditPromo.Should().BeFalse("promo_codes is off here");
-        flow.EditPromoCommand.Execute(null);
-        flow.PromoEditing.Should().BeFalse();
 
         await flow.PlaceCommand.ExecuteAsync(null);
         flow.Stage.Should().Be(FlowStage.PaymentMethod);

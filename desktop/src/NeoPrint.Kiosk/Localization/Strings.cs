@@ -252,10 +252,6 @@ public static class Strings
                 ["cancel.done"] = "Sifariş ləğv edildi.",
 
                 ["steps.payment"] = "Ödəniş",
-                ["promo.button"] = "Promokod",
-                ["promo.apply"] = "Tətbiq et",
-                ["promo.remove"] = "Promokodu sil",
-                ["promo.total"] = "Ödəniləcək: {0}",
                 ["pay.title"] = "Ödəniş üsulunu seçin",
                 ["pay.amount"] = "Ödəniləcək məbləğ",
                 ["pay.promoLine"] = "Promokod {0}: −{1}",
@@ -576,10 +572,6 @@ public static class Strings
                 ["cancel.done"] = "The order was cancelled.",
 
                 ["steps.payment"] = "Payment",
-                ["promo.button"] = "Promo code",
-                ["promo.apply"] = "Apply",
-                ["promo.remove"] = "Remove the code",
-                ["promo.total"] = "To pay: {0}",
                 ["pay.title"] = "Choose how to pay",
                 ["pay.amount"] = "Amount to pay",
                 ["pay.promoLine"] = "Promo code {0}: −{1}",
@@ -905,10 +897,6 @@ public static class Strings
                 ["cancel.done"] = "Заказ отменён.",
 
                 ["steps.payment"] = "Оплата",
-                ["promo.button"] = "Промокод",
-                ["promo.apply"] = "Применить",
-                ["promo.remove"] = "Удалить промокод",
-                ["promo.total"] = "К оплате: {0}",
                 ["pay.title"] = "Выберите способ оплаты",
                 ["pay.amount"] = "К оплате",
                 ["pay.promoLine"] = "Промокод {0}: −{1}",

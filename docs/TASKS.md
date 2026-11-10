@@ -413,8 +413,8 @@ Statuslar: `Açıq`, `İcrada`, `Tamamlandı`, `Ləğv edildi (səbəb)`, `Təxi
 | T-387 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): kioskda görünən **şəkil və yazılar — başlıq, alt yazı, hamısı — konfiqurasiya olunsun** (paneldən) | Açıq | — |
 | T-388 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): ana ekranda footer-in üstündəki **imkanlar zolağı footer-ə keçsin** | Açıq | — |
 | T-389 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): **növbə ayrıca ekran olmasın — əvvəlki kimi yanda, həmişə görünsün** | Açıq | — |
-| T-390 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): flaşda qovluqlara baxanda **"yuxarı qovluq" yazısının əvvəlinə ikon** qoyulsun | Açıq | — |
-| T-391 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): **kioskda promokod olmasın** — yalnız mobildə (gələcəkdə Telegram botda da) | Açıq | — |
+| T-390 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): flaşda qovluqlara baxanda **"yuxarı qovluq" yazısının əvvəlinə ikon** qoyulsun | İcrada | Kiosk: "Yuxarı qovluq" düyməsində mətndən əvvəl `IconFolderUp` ikonu; kiosk testləri 461/461. Real kioskda yoxlanılmalıdır |
+| T-391 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): **kioskda promokod olmasın** — yalnız mobildə (gələcəkdə Telegram botda da) | İcrada | Kiosk: parametrlər ekranından promokod düyməsi, yazma paneli və VM məntiqi çıxarıldı, sifariş promokodsuz gedir; tətbiqdə ödənilən kodun sətri qalır. `DECISIONS.md` (plan 2.7 dəyişikliyi); kiosk testləri 461/461. Real kioskda yoxlanılmalıdır |
 | T-392 | 2026-11-10 | 7B | Layihə sahibi (real kiosk): kioskun **admin menyusunda printer seçmək, növbə sayını tənzimləmək və kioskla bağlı təcili dəyişikliklər** olsun; bunun üçün **operator QR skan etsin** ki, hansı operatorun etdiyi auditə düşsün | Açıq | — |
 | T-393 | 2026-11-10 | 7B | Layihə sahibi (mobil): Profildə istifadəçi kodunun yanında, kopyalama düyməsinin yanında **QR düyməsi** — toxunanda istifadəçinin QR-ı açılsın | Açıq | — |
 | T-394 | 2026-11-10 | 7B | Layihə sahibi (mobil): Profil menyusunda **"Planlanmışlar" olmasın** | Açıq | — |
