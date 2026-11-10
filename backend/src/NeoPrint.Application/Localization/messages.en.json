@@ -889,5 +889,8 @@
   "incidents.resolution.claimClosed": "The claim was closed.",
   "notifications.claimAnswered.title": "Your claim was answered",
   "notifications.claimAnswered.body": "Your claim about order {jobCode} has an answer. If the problem is still there, you can carry the claim on.",
-  "support.notAnswered": "Only an answered claim can be carried on. For a closed one, send a new claim."
+  "support.notAnswered": "Only an answered claim can be carried on. For a closed one, send a new claim.",
+  "operatorLogin.expired": "This QR has run out or was used already. Open the menu on the kiosk again and read the new QR.",
+  "operatorLogin.notAllowed": "Your account may not do this at this kiosk. Nothing changed; ask an administrator.",
+  "notFound.operatorLogin": "This QR was not found, or it is not one of your kiosks."
 }

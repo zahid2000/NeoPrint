@@ -35,6 +35,17 @@ public sealed class OperatorController : ControllerBase
 
     private Guid AdminId => _currentUser.AdminUserId ?? throw new UnauthorizedAccessException();
 
+    /// <summary>
+    /// "Kioska daxil ol" (T-392): the operator read the QR on a kiosk's admin
+    /// corner; the kiosk's menu opens in their name. { "code": "neoprint://kiosk-login/..." }
+    /// </summary>
+    [HttpPost("kiosk-logins/approve")]
+    public async Task<ActionResult<Application.Kiosks.OperatorKioskLoginApproved>> ApproveKioskLogin(
+        [FromBody] ApproveKioskLoginRequest body, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(
+            new Application.Kiosks.ApproveOperatorKioskLoginCommand(AdminId, body?.Code ?? string.Empty, _currentUser.Ip),
+            cancellationToken));
+
     /// <summary>One health card a kiosk, the ones that need somebody first.</summary>
     [HttpGet("kiosks")]
     public async Task<ActionResult<IReadOnlyList<OperatorKioskCard>>> Kiosks(CancellationToken cancellationToken)
@@ -45,3 +56,6 @@ public sealed class OperatorController : ControllerBase
     public async Task<ActionResult<OperatorKioskDetail>> Kiosk(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new GetOperatorKioskQuery(AdminId, id), cancellationToken));
 }
+
+/// <summary>What the operator's scanner read off the kiosk (T-392).</summary>
+public sealed record ApproveKioskLoginRequest(string? Code);

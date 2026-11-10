@@ -143,6 +143,9 @@ public sealed class MongoContext
 
     /// <summary>What kiosks say on their welcome screen and footer (T-387): the default and per kiosk.</summary>
     public MongoSet<Domain.Kiosks.KioskBranding> KioskBrandings => Set<Domain.Kiosks.KioskBranding>("kiosk_branding");
+
+    /// <summary>An operator at a kiosk, by the one-off QR the kiosk showed (T-392).</summary>
+    public MongoSet<Domain.Kiosks.OperatorKioskLogin> OperatorKioskLogins => Set<Domain.Kiosks.OperatorKioskLogin>("operator_kiosk_logins");
     public MongoSet<Domain.PrintJobs.PreparedPrint> PreparedPrints => Set<Domain.PrintJobs.PreparedPrint>("prepared_prints");
 
     public MongoSet<Domain.Sharing.Share> Shares => Set<Domain.Sharing.Share>("file_shares");
@@ -617,6 +620,10 @@ public sealed class MongoContext
                 Named("ix_notifications_user_created")),
             (Builders<Domain.Notifications.Notification>.IndexKeys.Ascending(n => n.UserId).Ascending(n => n.ReadAt),
                 Named("ix_notifications_user_unread")));
+
+        await CreateAsync(OperatorKioskLogins,
+            // The QR's code is looked up when the operator reads it; each one is used once.
+            (Builders<Domain.Kiosks.OperatorKioskLogin>.IndexKeys.Ascending(l => l.Code), Unique("ux_operator_kiosk_logins_code")));
 
         await CreateAsync(SupportClaims,
             (Builders<Domain.Support.SupportClaim>.IndexKeys.Ascending(c => c.JobId), Named("ix_support_claims_job")),

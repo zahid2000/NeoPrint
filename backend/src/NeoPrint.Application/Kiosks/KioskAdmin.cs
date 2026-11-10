@@ -143,6 +143,10 @@ public sealed record SetKioskPricingProfileCommand(Guid KioskId, Guid? PricingPr
 public sealed record SetKioskFiscalTerminalCommand(Guid KioskId, string? FiscalTerminalId, Guid AdminUserId, string? Ip)
     : IRequest<KioskDetail>, ITransactionalRequest;
 
+/// <summary>How many orders the kiosk's queue panel shows, 3 or 5 (plan section 2.2); set by an operator at the kiosk (T-392).</summary>
+public sealed record SetKioskQueueLimitCommand(Guid KioskId, int Limit, Guid AdminUserId, string? Ip)
+    : IRequest<KioskDetail>, ITransactionalRequest;
+
 /// <summary>Tray capacities in sheets (plan section 2.15).</summary>
 public sealed record SetKioskPaperCapacityCommand(
     Guid KioskId, int CapacityA4, int CapacityA3, Guid AdminUserId, string? Ip)
@@ -294,6 +298,17 @@ public sealed class SetKioskLimitsCommandValidator : IValidator<SetKioskLimitsCo
         => KioskRules.Limits(request.MaxFileSizeMb, request.MaxPages);
 }
 
+public sealed class SetKioskQueueLimitCommandValidator : IValidator<SetKioskQueueLimitCommand>
+{
+    public IEnumerable<ValidationError> Validate(SetKioskQueueLimitCommand request)
+    {
+        if (!KioskRules.QueueDisplayLimits.Contains(request.Limit))
+        {
+            yield return new ValidationError("limit", "kiosks.queueLimitInvalid");
+        }
+    }
+}
+
 public sealed class SetKioskPaperCapacityCommandValidator : IValidator<SetKioskPaperCapacityCommand>
 {
     public IEnumerable<ValidationError> Validate(SetKioskPaperCapacityCommand request)
@@ -341,6 +356,7 @@ public sealed class KioskAdminHandlers :
     IRequestHandler<SetKioskLimitsCommand, KioskDetail>,
     IRequestHandler<SetKioskPricingProfileCommand, KioskDetail>,
     IRequestHandler<SetKioskFiscalTerminalCommand, KioskDetail>,
+    IRequestHandler<SetKioskQueueLimitCommand, KioskDetail>,
     IRequestHandler<SetKioskPaperCapacityCommand, KioskDetail>,
     IRequestHandler<SetKioskAdminPinCommand, KioskDetail>,
     IRequestHandler<DeleteKioskCommand>
@@ -512,6 +528,19 @@ public sealed class KioskAdminHandlers :
             kiosk =>
             {
                 kiosk.FiscalTerminalId = Normalize(request.FiscalTerminalId);
+                return Task.CompletedTask;
+            },
+            cancellationToken);
+
+    public Task<KioskDetail> Handle(SetKioskQueueLimitCommand request, CancellationToken cancellationToken)
+        => ChangeAsync(
+            request.KioskId,
+            request.AdminUserId,
+            request.Ip,
+            "kiosks.queue-limit",
+            kiosk =>
+            {
+                kiosk.QueueDisplayLimit = request.Limit;
                 return Task.CompletedTask;
             },
             cancellationToken);

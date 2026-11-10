@@ -643,6 +643,72 @@ public sealed class KioskConfigTests
         (await kiosk.GetAsync("/api/kiosks/me/branding/image")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    // -----------------------------------------------------------------------
+    // An operator at the kiosk, by the kiosk's QR (T-392)
+    // -----------------------------------------------------------------------
+
+    [DockerFact]
+    public async Task An_operator_reads_the_kiosks_qr_and_its_menu_acts_in_their_name()
+    {
+        if (Skip) { return; }
+
+        var (kiosk, _, kioskId, kioskCode) = await ActivatedKioskAsync("operator-login", "HP LaserJet");
+        var (other, _, _, _) = await ActivatedKioskAsync("operator-login-other", "HP LaserJet");
+        using var admin = await SuperAdminAsync();
+
+        var started = await kiosk.PostAsync("/api/kiosks/me/operator-logins", null);
+        started.StatusCode.Should().Be(HttpStatusCode.OK, await started.Content.ReadAsStringAsync());
+        var login = await started.Content.ReadFromJsonAsync<JsonElement>();
+        var id = login.GetProperty("id").GetGuid();
+        var qr = login.GetProperty("qr").GetString()!;
+        qr.Should().StartWith("neoprint://kiosk-login/");
+
+        // Not yet confirmed: the menu does nothing.
+        (await kiosk.GetFromJsonAsync<JsonElement>($"/api/kiosks/me/operator-logins/{id}"))
+            .GetProperty("status").GetString().Should().Be("Pending");
+        var early = await kiosk.PostAsJsonAsync($"/api/kiosks/me/operator-logins/{id}/actions", new { action = "SetQueueLimit", limit = 3 });
+        early.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        // Another kiosk cannot use this one's login.
+        (await other.GetAsync($"/api/kiosks/me/operator-logins/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var approved = await admin.PostAsJsonAsync("/api/admin/operator/kiosk-logins/approve", new { code = qr });
+        approved.StatusCode.Should().Be(HttpStatusCode.OK, await approved.Content.ReadAsStringAsync());
+        (await approved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("kioskCode").GetString().Should().Be(kioskCode);
+
+        // A QR is read once.
+        (await admin.PostAsJsonAsync("/api/admin/operator/kiosk-logins/approve", new { code = qr })).StatusCode
+            .Should().Be(HttpStatusCode.Conflict);
+
+        var view = await kiosk.GetFromJsonAsync<JsonElement>($"/api/kiosks/me/operator-logins/{id}");
+        view.GetProperty("status").GetString().Should().Be("Approved");
+        view.GetProperty("operatorName").GetString().Should().NotBeNullOrWhiteSpace();
+        view.GetProperty("canChangeQueue").GetBoolean().Should().BeTrue();
+
+        var queue = await kiosk.PostAsJsonAsync($"/api/kiosks/me/operator-logins/{id}/actions", new { action = "SetQueueLimit", limit = 3 });
+        queue.StatusCode.Should().Be(HttpStatusCode.NoContent, await queue.Content.ReadAsStringAsync());
+        (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("queueDisplayLimit").GetInt32().Should().Be(3);
+
+        var wrong = await kiosk.PostAsJsonAsync($"/api/kiosks/me/operator-logins/{id}/actions", new { action = "SetQueueLimit", limit = 4 });
+        wrong.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // In the operator's name, in the audit log.
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+            var entries = await context.AuditLogs
+                .Find(entry => entry.EntityId == kioskId.ToString() && (entry.Action == "kiosks.queue-limit" || entry.Action == "kiosks.operator-login"))
+                .ToListAsync();
+            entries.Select(entry => entry.Action).Should().Contain(["kiosks.operator-login", "kiosks.queue-limit"]);
+            entries.Should().OnlyContain(entry => entry.AdminUserId != null);
+        }
+
+        // Closed: nothing more in the operator's name.
+        (await kiosk.PostAsync($"/api/kiosks/me/operator-logins/{id}/end", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await kiosk.PostAsJsonAsync($"/api/kiosks/me/operator-logins/{id}/actions", new { action = "SetQueueLimit", limit = 5 }))
+            .StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
     [DockerFact]
     public async Task A_heartbeat_needs_a_kiosk_token()
     {
