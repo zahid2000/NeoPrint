@@ -165,18 +165,41 @@ void main() {
     // The share in the ring and beside the card's bar (T-377).
     expect(find.text('41%'), findsNWidgets(2));
     // "Çap olunur" is the step under way, not one behind it.
-    final printingStep = find.ancestor(
-      of: find.text('Çap olunur'),
-      matching: find.byType(ListTile),
-    );
+    final spinners = [
+      for (final element in find.byType(CircularProgressIndicator).evaluate())
+        if (tester.getSize(find.byWidget(element.widget)).width < 40)
+          tester.getCenter(find.byWidget(element.widget)).dx,
+    ];
+    final labels = [
+      for (final element in find.text('Çap olunur').evaluate())
+        tester.getCenter(find.byWidget(element.widget)).dx,
+    ];
     expect(
-      find.descendant(
-        of: printingStep,
-        matching: find.byType(CircularProgressIndicator),
-      ),
-      findsOneWidget,
+      spinners.any((x) => labels.any((label) => (x - label).abs() < 4)),
+      isTrue,
+      reason: 'the turning sign is over the step',
     );
   });
+
+  for (final status in ['Completed', 'Printing', 'Queued']) {
+    testWidgets('$status: the whole screen fits without scrolling (T-417)', (
+      tester,
+    ) async {
+      await show(
+        tester,
+        order(status, printedSides: status == 'Printing' ? 5 : 0),
+      );
+
+      final scrollable = tester.state<ScrollableState>(
+        find.descendant(
+          of: find.byType(SingleChildScrollView),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      expect(scrollable.position.maxScrollExtent, 0, reason: '360 x 800');
+      expect(find.text('Tamamlandı'), findsWidgets, reason: 'the last step');
+    });
+  }
 
   testWidgets('before the first page the ring shows the printer, no share', (
     tester,

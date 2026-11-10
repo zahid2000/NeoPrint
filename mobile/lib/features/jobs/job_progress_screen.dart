@@ -75,7 +75,8 @@ class _JobProgressScreenState extends ConsumerState<JobProgressScreen> {
   }
 }
 
-/// The stage: a big sign, a line or two, and the steps under it.
+/// The stage: a big sign, a line or two, and the steps under it - all on
+/// one screen (T-417); a very small one scrolls rather than cuts.
 class _Progress extends StatelessWidget {
   const _Progress({required this.job});
 
@@ -91,14 +92,14 @@ class _Progress extends StatelessWidget {
 
     final (Widget sign, String title, String body) = switch (job.status) {
       'Completed' => (
-        Icon(Icons.check_circle, size: 96, color: tokens.success),
+        Icon(Icons.check_circle, size: _signSize, color: tokens.success),
         l10n.jobDoneTitle,
         l10n.jobDoneBody,
       ),
       'Printing' => (
         SizedBox(
-          width: 140,
-          height: 140,
+          width: _ringSize,
+          height: _ringSize,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -129,75 +130,89 @@ class _Progress extends StatelessWidget {
         l10n.jobPrintedOf(printed, total),
       ),
       'Cancelled' || 'Expired' => (
-        Icon(Icons.block, size: 96, color: tokens.neutral400),
+        Icon(Icons.block, size: _signSize, color: tokens.neutral400),
         l10n.jobCancelledTitle,
         job.reason ?? l10n.jobCancelledBody,
       ),
       'Interrupted' => (
-        Icon(Icons.error_outline, size: 96, color: tokens.danger),
+        Icon(Icons.error_outline, size: _signSize, color: tokens.danger),
         l10n.jobStoppedTitle,
         job.reason ?? l10n.jobStoppedBody,
       ),
       _ => (
-        Icon(Icons.schedule, size: 96, color: tokens.brand500),
+        Icon(Icons.schedule, size: _signSize, color: tokens.brand500),
         l10n.jobQueuedTitle,
         l10n.jobQueuedBody(job.kioskName ?? job.kioskCode ?? ''),
       ),
     };
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        Spacing.x4,
-        Spacing.x6,
-        Spacing.x4,
-        Spacing.x8,
+    final content = [
+      Center(child: sign),
+      const SizedBox(height: Spacing.x3),
+      Text(
+        title,
+        textAlign: TextAlign.center,
+        style: theme.textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeights.semibold,
+        ),
       ),
-      children: [
-        Center(child: sign),
+      const SizedBox(height: Spacing.x2),
+      Text(
+        body,
+        textAlign: TextAlign.center,
+        style: theme.textTheme.bodyLarge?.copyWith(color: tokens.neutral600),
+      ),
+      if (job.kioskStopped && job.isActive) ...[
         const SizedBox(height: Spacing.x4),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeights.semibold,
-          ),
-        ),
-        const SizedBox(height: Spacing.x2),
-        Text(
-          body,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyLarge?.copyWith(color: tokens.neutral600),
-        ),
-        if (job.kioskStopped && job.isActive) ...[
-          const SizedBox(height: Spacing.x4),
-          NeoBanner(tone: StatusTone.warning, message: l10n.jobKioskStopped),
-        ],
-        if (job.isActive && job.kioskId != null) ...[
-          const SizedBox(height: Spacing.x2),
-          Center(
-            child: TextButton.icon(
-              onPressed: () => context.push(
-                Routes.kioskQueue(
-                  job.kioskId!,
-                  job.kioskName ?? job.kioskCode ?? '',
-                ),
-              ),
-              icon: const Icon(Icons.format_list_numbered),
-              label: Text(l10n.queueFollow),
-            ),
-          ),
-        ],
-        const SizedBox(height: Spacing.x6),
-        JobCard(job: job, showActions: false),
-        const SizedBox(height: Spacing.x6),
-        _Steps(job: job),
+        NeoBanner(tone: StatusTone.warning, message: l10n.jobKioskStopped),
       ],
+      if (job.isActive && job.kioskId != null) ...[
+        const SizedBox(height: Spacing.x2),
+        Center(
+          child: TextButton.icon(
+            onPressed: () => context.push(
+              Routes.kioskQueue(
+                job.kioskId!,
+                job.kioskName ?? job.kioskCode ?? '',
+              ),
+            ),
+            icon: const Icon(Icons.format_list_numbered),
+            label: Text(l10n.queueFollow),
+          ),
+        ),
+      ],
+      const SizedBox(height: Spacing.x4),
+      JobCard(job: job, showActions: false),
+      const SizedBox(height: Spacing.x4),
+      _Steps(job: job),
+    ];
+
+    // Room to spare: the column fills the screen, centred; none: it
+    // scrolls. (No IntrinsicHeight: the order card measures itself.)
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: const EdgeInsets.all(Spacing.x4),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: constraints.maxHeight - 2 * Spacing.x4,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: content,
+          ),
+        ),
+      ),
     );
   }
+
+  static const _signSize = 72.0;
+  static const _ringSize = 112.0;
 }
 
 /// "Sifariş qəbul edildi · Ödəniş təsdiqləndi · Çap olunur · Tamamlandı":
-/// done ones ticked, the current one turning, the rest waiting.
+/// done ones ticked, the current one turning, the rest waiting - side by
+/// side on a line, so the screen does not scroll (T-417).
 class _Steps extends StatelessWidget {
   const _Steps({required this.job});
 
@@ -224,37 +239,66 @@ class _Steps extends StatelessWidget {
       l10n.jobStepDone,
     ];
 
+    Widget sign(int i) => i < done
+        ? Icon(Icons.check_circle, color: tokens.success)
+        : i == done && job.isActive
+        ? SizedBox(
+            width: Spacing.x6,
+            height: Spacing.x6,
+            child: Padding(
+              padding: const EdgeInsets.all(Spacing.x1 / 2),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: tokens.brand500,
+              ),
+            ),
+          )
+        : Icon(Icons.radio_button_unchecked, color: tokens.neutral400);
+
+    // The line between two signs: green once the step before it is done.
+    Widget line(int i) => Expanded(
+      child: Container(
+        height: 2,
+        margin: const EdgeInsets.symmetric(horizontal: Spacing.x1),
+        color: i < done ? tokens.success : tokens.neutral200,
+      ),
+    );
+
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Spacing.x2),
-        child: Column(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Spacing.x2,
+          vertical: Spacing.x3,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (var i = 0; i < steps.length; i++)
-              ListTile(
-                leading: i < done
-                    ? Icon(Icons.check_circle, color: tokens.success)
-                    : i == done && job.isActive
-                    ? SizedBox(
-                        width: Spacing.x6,
-                        height: Spacing.x6,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: tokens.brand500,
-                        ),
-                      )
-                    : Icon(
-                        Icons.radio_button_unchecked,
-                        color: tokens.neutral400,
+              Expanded(
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        if (i == 0) const Spacer() else line(i - 1),
+                        sign(i),
+                        if (i == steps.length - 1) const Spacer() else line(i),
+                      ],
+                    ),
+                    const SizedBox(height: Spacing.x1),
+                    Text(
+                      steps[i],
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: i <= done ? null : tokens.neutral400,
+                        fontWeight: i == done && job.isActive
+                            ? FontWeights.semibold
+                            : null,
                       ),
-                title: Text(
-                  steps[i],
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: i <= done ? null : tokens.neutral400,
-                    fontWeight: i == done && job.isActive
-                        ? FontWeights.semibold
-                        : null,
-                  ),
+                    ),
+                  ],
                 ),
               ),
           ],
