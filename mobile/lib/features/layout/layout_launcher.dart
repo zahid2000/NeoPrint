@@ -228,8 +228,15 @@ String _stem(String fileName) {
   return dot <= 0 ? fileName : fileName.substring(0, dot);
 }
 
-/// "Yeni tərtibat": choose the files - and for a document, the page - that
-/// go into a new layout.
+/// How many pages of a document are chosen at first (T-416).
+const layoutDefaultPages = 12;
+
+/// The most pictures one layout takes from the files at a time (T-416): a
+/// sheet with more is too small to see, and each one is loaded.
+const layoutMaxSources = 24;
+
+/// "Yeni tərtibat": choose the files - and for a document, its pages - that
+/// go into a new layout. Every page chosen is a picture of its own (T-416).
 class LayoutSourcesScreen extends ConsumerStatefulWidget {
   const LayoutSourcesScreen({super.key});
 
@@ -239,18 +246,62 @@ class LayoutSourcesScreen extends ConsumerStatefulWidget {
 }
 
 class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
-  /// Chosen files, with the page for a document.
-  final Map<String, int?> _chosen = {};
+  /// Chosen files: an image file as it is (null), a document's pages.
+  final Map<String, Set<int>?> _chosen = {};
+
+  static bool _isImage(UserFile file) =>
+      layoutImageExtensions.contains(file.extension);
+
+  void _choose(UserFile file, bool on) => setState(() {
+    if (!on) {
+      _chosen.remove(file.id);
+    } else if (_isImage(file)) {
+      _chosen[file.id] = null;
+    } else {
+      final first = file.pageCount < layoutDefaultPages
+          ? file.pageCount
+          : layoutDefaultPages;
+      _chosen[file.id] = {for (var page = 1; page <= first; page++) page};
+    }
+  });
+
+  void _togglePage(UserFile file, int page) => setState(() {
+    final pages = {...?_chosen[file.id]};
+    if (!pages.remove(page)) {
+      pages.add(page);
+    }
+    // No page left: the file is not in the layout.
+    if (pages.isEmpty) {
+      _chosen.remove(file.id);
+    } else {
+      _chosen[file.id] = pages;
+    }
+  });
+
+  void _toggleAll(UserFile file, bool all) => setState(() {
+    if (all) {
+      _chosen[file.id] = {
+        for (var page = 1; page <= file.pageCount; page++) page,
+      };
+    } else {
+      _chosen.remove(file.id);
+    }
+  });
+
+  int get _count =>
+      _chosen.values.fold(0, (sum, pages) => sum + (pages?.length ?? 1));
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
+    final theme = Theme.of(context);
     final files = ref
         .watch(filesControllerProvider)
         .files
         .where(canUseInLayout)
         .toList();
+    final tooMany = _count > layoutMaxSources;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.layoutPickTitle)),
@@ -267,54 +318,55 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
                   Card(
                     margin: const EdgeInsets.only(bottom: Spacing.x2),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         CheckboxListTile(
                           value: _chosen.containsKey(file.id),
                           title: Text(file.fileName),
                           subtitle: Text(l10n.filesPageCount(file.pageCount)),
-                          onChanged: (on) => setState(() {
-                            if (on ?? false) {
-                              _chosen[file.id] =
-                                  layoutImageExtensions.contains(file.extension)
-                                  ? null
-                                  : 1;
-                            } else {
-                              _chosen.remove(file.id);
-                            }
-                          }),
+                          onChanged: (on) => _choose(file, on ?? false),
                         ),
-                        if (_chosen[file.id] case final page?
+                        if (_chosen[file.id] case final pages?
                             when file.pageCount > 1)
                           Padding(
                             padding: const EdgeInsets.fromLTRB(
                               Spacing.x4,
                               0,
                               Spacing.x4,
-                              Spacing.x2,
+                              Spacing.x3,
                             ),
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  l10n.layoutPickPage,
-                                  style: TextStyle(color: tokens.neutral600),
+                                  l10n.layoutPickPages(pages.length),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: tokens.neutral600,
+                                  ),
                                 ),
-                                const Spacer(),
-                                IconButton(
-                                  onPressed: page > 1
-                                      ? () => setState(
-                                          () => _chosen[file.id] = page - 1,
-                                        )
-                                      : null,
-                                  icon: const Icon(Icons.remove),
-                                ),
-                                Text('$page / ${file.pageCount}'),
-                                IconButton(
-                                  onPressed: page < file.pageCount
-                                      ? () => setState(
-                                          () => _chosen[file.id] = page + 1,
-                                        )
-                                      : null,
-                                  icon: const Icon(Icons.add),
+                                const SizedBox(height: Spacing.x2),
+                                Wrap(
+                                  spacing: Spacing.x2,
+                                  runSpacing: Spacing.x2,
+                                  children: [
+                                    FilterChip(
+                                      label: Text(l10n.layoutPickAllPages),
+                                      selected: pages.length == file.pageCount,
+                                      onSelected: (all) =>
+                                          _toggleAll(file, all),
+                                    ),
+                                    for (
+                                      var page = 1;
+                                      page <= file.pageCount;
+                                      page++
+                                    )
+                                      FilterChip(
+                                        label: Text('$page'),
+                                        selected: pages.contains(page),
+                                        onSelected: (_) =>
+                                            _togglePage(file, page),
+                                      ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -329,15 +381,35 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
           : SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(Spacing.x4),
-                child: NeoPrimaryButton(
-                  label: l10n.layoutPickContinue,
-                  onPressed: _chosen.isEmpty
-                      ? null
-                      : () => Navigator.pop(context, [
-                          for (final file in files)
-                            if (_chosen.containsKey(file.id))
-                              LayoutSource(file, _chosen[file.id]),
-                        ]),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (tooMany) ...[
+                      Text(
+                        l10n.layoutPickTooMany(layoutMaxSources, _count),
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: tokens.danger,
+                        ),
+                      ),
+                      const SizedBox(height: Spacing.x2),
+                    ],
+                    NeoPrimaryButton(
+                      label: l10n.layoutPickContinue,
+                      onPressed: _chosen.isEmpty || tooMany
+                          ? null
+                          : () => Navigator.pop(context, [
+                              for (final file in files)
+                                if (_chosen.containsKey(file.id))
+                                  if (_chosen[file.id] case final pages?)
+                                    for (final page in pages.toList()..sort())
+                                      LayoutSource(file, page)
+                                  else
+                                    LayoutSource(file),
+                            ]),
+                    ),
+                  ],
                 ),
               ),
             ),

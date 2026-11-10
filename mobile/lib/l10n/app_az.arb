@@ -291,7 +291,20 @@
   },
   "layoutPickTitle": "Tərtibat üçün fayllar",
   "layoutPickContinue": "Davam et",
-  "layoutPickPage": "Səhifə",
+  "layoutPickPages": "Səhifələr · {count} seçilib",
+  "@layoutPickPages": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "layoutPickAllPages": "Hamısı",
+  "layoutPickTooMany": "Bir tərtibata ən çox {max} şəkil və ya səhifə əlavə olunur, indi {count} seçilib — bəzilərini çıxarın.",
+  "@layoutPickTooMany": {
+    "placeholders": {
+      "max": { "type": "int" },
+      "count": { "type": "int" }
+    }
+  },
   "layoutPickEmpty": "Tərtibat üçün hazır fayl yoxdur",
   "layoutPickEmptyHint": "Əvvəl şəkil və ya PDF yükləyin; saxlanılmış skanlar tərtibata əlavə olunmur.",
   "filesEmpty": "Hələ faylınız yoxdur.",
