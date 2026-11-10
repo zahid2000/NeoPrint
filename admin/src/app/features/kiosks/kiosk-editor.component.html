@@ -366,6 +366,8 @@
             [canEdit]="canEdit()"
             (changed)="photoChanged()"
           />
+          <!-- What this kiosk's welcome screen says (T-387). -->
+          <app-kiosk-branding [kioskId]="current.id" [canEdit]="canEdit()" />
           @if (canEdit()) {
             <div class="editor__actions">
               <button

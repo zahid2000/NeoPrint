@@ -12,6 +12,7 @@ import { formatsTranslations } from './formats.i18n';
 import { jobsTranslations } from './jobs.i18n';
 import { kiosksTranslations } from './kiosks.i18n';
 import { kioskPhotoTranslations } from './kiosk-photo.i18n';
+import { kioskBrandingTranslations } from './kiosk-branding.i18n';
 import { kioskSessionsTranslations } from './kiosk-sessions.i18n';
 import { pricingTranslations } from './pricing.i18n';
 import { settingsTranslations } from './settings.i18n';
@@ -40,6 +41,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'nav.roles': 'Rollar',
     'nav.admins': 'Admin istifadəçiləri',
     'nav.settings': 'Tənzimləmələr',
+    'nav.kioskScreen': 'Kiosk ekranı',
     'nav.features': 'Funksiya açarları',
     'nav.legal': 'Hüquqi sənədlər',
     'nav.toggleMenu': 'Menyunu aç və ya bağla',
@@ -189,7 +191,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.revoked': 'Ləğv edilib',
     'tokens.expired': 'Vaxtı keçib',
     'tokens.revoke': 'Ləğv et',
-    'tokens.onceOnly': 'Bu açar yalnız indi göstərilir — serverdə yalnız onun izi saxlanılır. Kopyalayın və ya quraşdırma flaşına yazın.',
+    'tokens.onceOnly':
+      'Bu açar yalnız indi göstərilir — serverdə yalnız onun izi saxlanılır. Kopyalayın və ya quraşdırma flaşına yazın.',
     'tokens.commandHint': 'Hazır quraşdırma əmri:',
     'tokens.noneHint': '"Qeydiyyat açarı yarat" ilə kiosku ekrana baxmadan aktivləşdirin.',
     'tokens.newKioskNamed': 'Yeni: {{name}}',
@@ -209,7 +212,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.revokeTitle': 'Qeydiyyat açarını ləğv edək?',
     'tokens.revokeConfirm': 'Açarı ləğv et',
     'tokens.revokeReason': 'Səbəb (audit jurnalına yazılır)',
-    'tokens.revokeExplanation': 'Bu açarla hələ aktivləşməyən kiosklar onu istifadə edə bilməyəcək. Artıq aktivləşmiş kiosklara təsiri yoxdur.',
+    'tokens.revokeExplanation':
+      'Bu açarla hələ aktivləşməyən kiosklar onu istifadə edə bilməyəcək. Artıq aktivləşmiş kiosklara təsiri yoxdur.',
 
     'roles.title': 'Rollar',
     'roles.new': 'Yeni rol',
@@ -386,7 +390,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     'error.network': 'Şəbəkə xətası. Bağlantınızı yoxlayın.',
     'error.server': 'Serverdə xəta baş verdi.',
-    'error.tooManyRequests': 'Qısa müddətdə çox sorğu göndərildi. Bir qədər sonra yenidən cəhd edin — heç nə itməyib.',
+    'error.tooManyRequests':
+      'Qısa müddətdə çox sorğu göndərildi. Bir qədər sonra yenidən cəhd edin — heç nə itməyib.',
     'error.forbidden': 'Bu əməliyyat üçün icazəniz yoxdur.',
   },
 
@@ -398,6 +403,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'nav.roles': 'Roles',
     'nav.admins': 'Administrators',
     'nav.settings': 'Settings',
+    'nav.kioskScreen': 'Kiosk screen',
     'nav.features': 'Feature flags',
     'nav.legal': 'Legal documents',
     'nav.toggleMenu': 'Open or close the menu',
@@ -546,13 +552,16 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.revoked': 'Revoked',
     'tokens.expired': 'Expired',
     'tokens.revoke': 'Revoke',
-    'tokens.onceOnly': 'This token is shown only now - the server keeps only its hash. Copy it or write it to the setup stick.',
+    'tokens.onceOnly':
+      'This token is shown only now - the server keeps only its hash. Copy it or write it to the setup stick.',
     'tokens.commandHint': 'Ready-made provisioning command:',
-    'tokens.noneHint': 'With "Create an enrollment token" a kiosk activates without anyone reading its screen.',
+    'tokens.noneHint':
+      'With "Create an enrollment token" a kiosk activates without anyone reading its screen.',
     'tokens.newKioskNamed': 'New: {{name}}',
     'tokens.usesColumn': 'Uses',
     'tokens.uses': 'How many kiosks',
-    'tokens.usesHint': '1–{{max}}, for the clones of one golden image; each kiosk gets its own code.',
+    'tokens.usesHint':
+      '1–{{max}}, for the clones of one golden image; each kiosk gets its own code.',
     'tokens.nameHint': 'Every one is made with this name; change it on the kiosk page later.',
     'tokens.existingHint': 'Only kiosks without a device; the token works once.',
     'tokens.lifetime': 'Valid for',
@@ -566,7 +575,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.revokeTitle': 'Revoke the enrollment token?',
     'tokens.revokeConfirm': 'Revoke the token',
     'tokens.revokeReason': 'Reason (written to the audit log)',
-    'tokens.revokeExplanation': 'Kiosks not yet activated with it will not be able to use it. Kiosks already activated are not affected.',
+    'tokens.revokeExplanation':
+      'Kiosks not yet activated with it will not be able to use it. Kiosks already activated are not affected.',
 
     'roles.title': 'Roles',
     'roles.new': 'New role',
@@ -744,7 +754,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     'error.network': 'Network error. Check your connection.',
     'error.server': 'Something went wrong on the server.',
-    'error.tooManyRequests': 'Too many requests in a short time. Try again a little later — nothing was lost.',
+    'error.tooManyRequests':
+      'Too many requests in a short time. Try again a little later — nothing was lost.',
     'error.forbidden': 'You do not have permission for this.',
   },
 
@@ -756,6 +767,7 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'nav.roles': 'Роли',
     'nav.admins': 'Администраторы',
     'nav.settings': 'Настройки',
+    'nav.kioskScreen': 'Экран киоска',
     'nav.features': 'Переключатели функций',
     'nav.legal': 'Правовые документы',
     'nav.toggleMenu': 'Открыть или закрыть меню',
@@ -904,7 +916,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.revoked': 'Отозван',
     'tokens.expired': 'Просрочен',
     'tokens.revoke': 'Отозвать',
-    'tokens.onceOnly': 'Токен показывается только сейчас — на сервере хранится только его хеш. Скопируйте его или запишите на установочную флешку.',
+    'tokens.onceOnly':
+      'Токен показывается только сейчас — на сервере хранится только его хеш. Скопируйте его или запишите на установочную флешку.',
     'tokens.commandHint': 'Готовая команда provisioning:',
     'tokens.noneHint': 'С «Создать ключ регистрации» киоск активируется без чтения кода с экрана.',
     'tokens.newKioskNamed': 'Новый: {{name}}',
@@ -924,7 +937,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
     'tokens.revokeTitle': 'Отозвать ключ регистрации?',
     'tokens.revokeConfirm': 'Отозвать ключ',
     'tokens.revokeReason': 'Причина (записывается в журнал аудита)',
-    'tokens.revokeExplanation': 'Киоски, ещё не активированные этим ключом, не смогут его использовать. На уже активированные это не влияет.',
+    'tokens.revokeExplanation':
+      'Киоски, ещё не активированные этим ключом, не смогут его использовать. На уже активированные это не влияет.',
 
     'roles.title': 'Роли',
     'roles.new': 'Новая роль',
@@ -1104,7 +1118,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     'error.network': 'Ошибка сети. Проверьте подключение.',
     'error.server': 'На сервере произошла ошибка.',
-    'error.tooManyRequests': 'Слишком много запросов за короткое время. Повторите чуть позже — ничего не потеряно.',
+    'error.tooManyRequests':
+      'Слишком много запросов за короткое время. Повторите чуть позже — ничего не потеряно.',
     'error.forbidden': 'У вас нет прав на это действие.',
   },
 };
@@ -1121,6 +1136,7 @@ const pages: readonly PageTranslations[] = [
   referralsTranslations,
   kiosksTranslations,
   kioskPhotoTranslations,
+  kioskBrandingTranslations,
   kioskSessionsTranslations,
   jobsTranslations,
   featuresTranslations,

@@ -1,5 +1,14 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, DestroyRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
@@ -86,7 +95,16 @@ export class ShellComponent {
   readonly layout = toSignal(
     this.breakpoints
       .observe([phoneScreen, tabletScreen])
-      .pipe(map((state): NavLayout => (state.breakpoints[phoneScreen] ? 'drawer' : state.breakpoints[tabletScreen] ? 'rail' : 'full'))),
+      .pipe(
+        map(
+          (state): NavLayout =>
+            state.breakpoints[phoneScreen]
+              ? 'drawer'
+              : state.breakpoints[tabletScreen]
+                ? 'rail'
+                : 'full',
+        ),
+      ),
     { initialValue: this.layoutNow() },
   );
 
@@ -100,7 +118,9 @@ export class ShellComponent {
   readonly iconsOnly = computed(() => this.layout() === 'rail' && !this.railExpanded());
 
   readonly sidenavMode = computed(() =>
-    this.layout() === 'drawer' || (this.layout() === 'rail' && this.railExpanded()) ? 'over' : 'side',
+    this.layout() === 'drawer' || (this.layout() === 'rail' && this.railExpanded())
+      ? 'over'
+      : 'side',
   );
 
   readonly sidenavOpen = signal(this.layoutNow() === 'full');
@@ -338,6 +358,13 @@ export class ShellComponent {
       group: 'configuration',
     },
     {
+      path: '/kiosk-screen',
+      labelKey: 'nav.kioskScreen',
+      icon: 'desktop_windows',
+      permissions: [Permissions.settingsManage],
+      group: 'configuration',
+    },
+    {
       path: '/legal',
       labelKey: 'nav.legal',
       icon: 'description',
@@ -364,7 +391,9 @@ export class ShellComponent {
   readonly sections = computed(() => navSections(this.navItems()));
 
   /** One group at a time: the page's own, or the one chosen by hand (T-319). */
-  private readonly openSection = computed(() => openGroup(this.sections(), this.url(), this.choice()));
+  private readonly openSection = computed(() =>
+    openGroup(this.sections(), this.url(), this.choice()),
+  );
 
   isOpen(section: NavSection): boolean {
     return section.group === null || section.group === this.openSection();
@@ -383,7 +412,11 @@ export class ShellComponent {
   }
 
   private layoutNow(): NavLayout {
-    return this.breakpoints.isMatched(phoneScreen) ? 'drawer' : this.breakpoints.isMatched(tabletScreen) ? 'rail' : 'full';
+    return this.breakpoints.isMatched(phoneScreen)
+      ? 'drawer'
+      : this.breakpoints.isMatched(tabletScreen)
+        ? 'rail'
+        : 'full';
   }
 
   readonly initial = computed(() => {

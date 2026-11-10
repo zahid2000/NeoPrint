@@ -32,10 +32,10 @@ const JPEG_QUALITY = 0.85;
  * decodes an image (ADR-0005); re-encoding also drops whatever else the file
  * carried (location, camera data).
  */
-export async function shrinkPhoto(file: File): Promise<Blob> {
+export async function shrinkPhoto(file: File, maxSide = KIOSK_PHOTO_MAX_SIDE): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   try {
-    const scale = Math.min(1, KIOSK_PHOTO_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
     const width = Math.max(1, Math.round(bitmap.width * scale));
     const height = Math.max(1, Math.round(bitmap.height * scale));
     const canvas = document.createElement('canvas');
@@ -67,7 +67,13 @@ export async function shrinkPhoto(file: File): Promise<Blob> {
 @Component({
   selector: 'app-kiosk-photo',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslatePipe, ErrorBannerComponent],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    TranslatePipe,
+    ErrorBannerComponent,
+  ],
   template: `
     <div class="photo">
       <div class="photo__frame">
@@ -105,7 +111,13 @@ export async function shrinkPhoto(file: File): Promise<Blob> {
               {{ (photoUrl() ? 'kioskPhoto.replace' : 'kioskPhoto.upload') | translate }}
             </button>
             @if (photoUrl()) {
-              <button mat-button type="button" class="photo__remove" [disabled]="busy()" (click)="remove()">
+              <button
+                mat-button
+                type="button"
+                class="photo__remove"
+                [disabled]="busy()"
+                (click)="remove()"
+              >
                 <mat-icon>delete_outline</mat-icon>
                 {{ 'kioskPhoto.remove' | translate }}
               </button>

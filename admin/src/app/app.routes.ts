@@ -37,36 +37,48 @@ export const routes: Routes = [
         path: '',
         pathMatch: 'full',
         loadComponent: () =>
-          import('./features/operator/operator-kiosks.component').then((m) => m.OperatorKiosksComponent),
+          import('./features/operator/operator-kiosks.component').then(
+            (m) => m.OperatorKiosksComponent,
+          ),
       },
       {
         path: 'kiosks/:id',
         loadComponent: () =>
-          import('./features/operator/operator-kiosk.component').then((m) => m.OperatorKioskComponent),
+          import('./features/operator/operator-kiosk.component').then(
+            (m) => m.OperatorKioskComponent,
+          ),
       },
       {
         path: 'activate',
         canActivate: [permissionGuard(Permissions.kiosksActivate)],
         loadComponent: () =>
-          import('./features/operator/operator-activate.component').then((m) => m.OperatorActivateComponent),
+          import('./features/operator/operator-activate.component').then(
+            (m) => m.OperatorActivateComponent,
+          ),
       },
       {
         path: 'tasks',
         canActivate: [permissionGuard(Permissions.serviceTasksView)],
         loadComponent: () =>
-          import('./features/operator/operator-tasks.component').then((m) => m.OperatorTasksComponent),
+          import('./features/operator/operator-tasks.component').then(
+            (m) => m.OperatorTasksComponent,
+          ),
       },
       {
         path: 'incidents',
         canActivate: [permissionGuard(Permissions.incidentsView)],
         loadComponent: () =>
-          import('./features/operator/operator-incidents.component').then((m) => m.OperatorIncidentsComponent),
+          import('./features/operator/operator-incidents.component').then(
+            (m) => m.OperatorIncidentsComponent,
+          ),
       },
       {
         path: 'inventory',
         canActivate: [permissionGuard(Permissions.inventoryView)],
         loadComponent: () =>
-          import('./features/operator/operator-inventory.component').then((m) => m.OperatorInventoryComponent),
+          import('./features/operator/operator-inventory.component').then(
+            (m) => m.OperatorInventoryComponent,
+          ),
       },
     ],
   },
@@ -129,37 +141,49 @@ export const routes: Routes = [
         path: 'kiosks/:id/printers/:name',
         canActivate: [permissionGuard(Permissions.printersView)],
         loadComponent: () =>
-          import('./features/printers/printer-detail.component').then((m) => m.PrinterDetailComponent),
+          import('./features/printers/printer-detail.component').then(
+            (m) => m.PrinterDetailComponent,
+          ),
       },
       {
         path: 'printers',
         canActivate: [permissionGuard(Permissions.printersView)],
-        loadComponent: () => import('./features/printers/printers.component').then((m) => m.PrintersComponent),
+        loadComponent: () =>
+          import('./features/printers/printers.component').then((m) => m.PrintersComponent),
       },
       {
         path: 'incidents',
         canActivate: [permissionGuard(Permissions.incidentsView)],
-        loadComponent: () => import('./features/operations/incidents.component').then((m) => m.IncidentsComponent),
+        loadComponent: () =>
+          import('./features/operations/incidents.component').then((m) => m.IncidentsComponent),
       },
       {
         path: 'service-tasks',
         canActivate: [permissionGuard(Permissions.serviceTasksView)],
-        loadComponent: () => import('./features/operations/service-tasks.component').then((m) => m.ServiceTasksComponent),
+        loadComponent: () =>
+          import('./features/operations/service-tasks.component').then(
+            (m) => m.ServiceTasksComponent,
+          ),
       },
       {
         path: 'inventory',
         canActivate: [permissionGuard(Permissions.inventoryView)],
-        loadComponent: () => import('./features/operations/inventory.component').then((m) => m.InventoryComponent),
+        loadComponent: () =>
+          import('./features/operations/inventory.component').then((m) => m.InventoryComponent),
       },
       {
         path: 'supply-rules',
         canActivate: [permissionGuard(Permissions.suppliesView)],
-        loadComponent: () => import('./features/operations/supply-rules.component').then((m) => m.SupplyRulesComponent),
+        loadComponent: () =>
+          import('./features/operations/supply-rules.component').then(
+            (m) => m.SupplyRulesComponent,
+          ),
       },
       {
         path: 'audit',
         canActivate: [permissionGuard(Permissions.auditView)],
-        loadComponent: () => import('./features/operations/audit-log.component').then((m) => m.AuditLogComponent),
+        loadComponent: () =>
+          import('./features/operations/audit-log.component').then((m) => m.AuditLogComponent),
       },
       {
         path: 'print-jobs',
@@ -179,73 +203,89 @@ export const routes: Routes = [
       {
         path: 'payments',
         canActivate: [permissionGuard(Permissions.paymentsView)],
-        loadComponent: () => import('./features/money/payments.component').then((m) => m.PaymentsComponent),
+        loadComponent: () =>
+          import('./features/money/payments.component').then((m) => m.PaymentsComponent),
       },
       {
         path: 'payments/:id',
         canActivate: [permissionGuard(Permissions.paymentsView)],
-        loadComponent: () => import('./features/money/payment-detail.component').then((m) => m.PaymentDetailComponent),
+        loadComponent: () =>
+          import('./features/money/payment-detail.component').then((m) => m.PaymentDetailComponent),
       },
       {
         path: 'refunds',
         canActivate: [permissionGuard(Permissions.refundsView)],
-        loadComponent: () => import('./features/money/refunds.component').then((m) => m.RefundsComponent),
+        loadComponent: () =>
+          import('./features/money/refunds.component').then((m) => m.RefundsComponent),
       },
       {
         path: 'fiscal',
         canActivate: [permissionGuard(Permissions.fiscalView)],
-        loadComponent: () => import('./features/money/fiscal.component').then((m) => m.FiscalComponent),
+        loadComponent: () =>
+          import('./features/money/fiscal.component').then((m) => m.FiscalComponent),
       },
       {
         path: 'receipts',
         canActivate: [permissionGuard(Permissions.receiptsView)],
-        loadComponent: () => import('./features/money/receipts.component').then((m) => m.ReceiptsComponent),
+        loadComponent: () =>
+          import('./features/money/receipts.component').then((m) => m.ReceiptsComponent),
       },
       {
         path: 'vouchers',
         canActivate: [permissionGuard(Permissions.vouchersView)],
-        loadComponent: () => import('./features/money/vouchers.component').then((m) => m.VouchersComponent),
+        loadComponent: () =>
+          import('./features/money/vouchers.component').then((m) => m.VouchersComponent),
       },
       {
         path: 'promos',
         canActivate: [permissionGuard(Permissions.promosManage)],
-        loadComponent: () => import('./features/money/promos.component').then((m) => m.PromosComponent),
+        loadComponent: () =>
+          import('./features/money/promos.component').then((m) => m.PromosComponent),
       },
       // Step 6: the referral programme (plan section 8A.3).
       {
         path: 'referrals',
         canActivate: [permissionGuard(Permissions.referralsView)],
-        loadComponent: () => import('./features/referrals/referrals.component').then((m) => m.ReferralsComponent),
+        loadComponent: () =>
+          import('./features/referrals/referrals.component').then((m) => m.ReferralsComponent),
       },
       {
         path: 'customers',
         canActivate: [permissionGuard(Permissions.usersView)],
-        loadComponent: () => import('./features/money/customers.component').then((m) => m.CustomersComponent),
+        loadComponent: () =>
+          import('./features/money/customers.component').then((m) => m.CustomersComponent),
       },
       {
         path: 'customers/:id',
         canActivate: [permissionGuard(Permissions.usersView)],
-        loadComponent: () => import('./features/money/customer-detail.component').then((m) => m.CustomerDetailComponent),
+        loadComponent: () =>
+          import('./features/money/customer-detail.component').then(
+            (m) => m.CustomerDetailComponent,
+          ),
       },
       {
         path: 'suspected',
         canActivate: [permissionGuard(Permissions.jobsView)],
-        loadComponent: () => import('./features/money/suspected.component').then((m) => m.SuspectedComponent),
+        loadComponent: () =>
+          import('./features/money/suspected.component').then((m) => m.SuspectedComponent),
       },
       {
         path: 'revenue',
         canActivate: [permissionGuard(Permissions.reportsView)],
-        loadComponent: () => import('./features/money/revenue.component').then((m) => m.RevenueComponent),
+        loadComponent: () =>
+          import('./features/money/revenue.component').then((m) => m.RevenueComponent),
       },
       {
         path: 'system-jobs',
         canActivate: [permissionGuard(Permissions.systemJobsView)],
-        loadComponent: () => import('./features/operations/system-jobs.component').then((m) => m.SystemJobsComponent),
+        loadComponent: () =>
+          import('./features/operations/system-jobs.component').then((m) => m.SystemJobsComponent),
       },
       {
         path: 'releases',
         canActivate: [permissionGuard(Permissions.releasesView)],
-        loadComponent: () => import('./features/releases/releases.component').then((m) => m.ReleasesComponent),
+        loadComponent: () =>
+          import('./features/releases/releases.component').then((m) => m.ReleasesComponent),
       },
       {
         path: 'pilot-report',
@@ -278,6 +318,15 @@ export const routes: Routes = [
         canActivate: [permissionGuard(Permissions.settingsManage)],
         loadComponent: () =>
           import('./features/settings/settings.component').then((m) => m.SettingsComponent),
+      },
+      {
+        // The kiosks' welcome screen words and picture (T-387).
+        path: 'kiosk-screen',
+        canActivate: [permissionGuard(Permissions.settingsManage)],
+        loadComponent: () =>
+          import('./features/kiosk-screen/kiosk-screen.component').then(
+            (m) => m.KioskScreenComponent,
+          ),
       },
       {
         path: 'legal',

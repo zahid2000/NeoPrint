@@ -297,6 +297,18 @@ export interface FeatureFlagDetails {
  * One service for the whole surface, so every call sits behind the same
  * interceptor and nothing reaches the network with a hand-rolled client.
  */
+/** What the panel gets for the welcome screen's words and picture (T-387). */
+export interface KioskBrandingView {
+  kioskId: string | null;
+  texts: Record<string, Record<string, string>>;
+  defaults: Record<string, Record<string, string>> | null;
+  image: { version: number; contentType: string; updatedAt: string } | null;
+  defaultImage: { version: number; contentType: string; updatedAt: string } | null;
+  keys: string[];
+  maxLength: number;
+  updatedAt: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminApiService {
   private readonly http = inject(HttpClient);
@@ -375,7 +387,9 @@ export class AdminApiService {
 
   /** Ends one of them; the reason goes into the audit log (T-362). */
   closeKioskSession(kioskId: string, sessionId: string, reason: string): Observable<void> {
-    return this.http.post<void>(`/api/admin/kiosks/${kioskId}/sessions/${sessionId}/close`, { reason });
+    return this.http.post<void>(`/api/admin/kiosks/${kioskId}/sessions/${sessionId}/close`, {
+      reason,
+    });
   }
 
   kioskQueue(kioskId: string): Observable<QueueEntry[]> {
@@ -390,7 +404,12 @@ export class AdminApiService {
     return this.http.get<KioskSupplies>(`/api/admin/kiosks/${kioskId}/supplies`);
   }
 
-  refillPaper(kioskId: string, paper: string, mode: PaperRefillMode, sheets: number): Observable<KioskSupplies> {
+  refillPaper(
+    kioskId: string,
+    paper: string,
+    mode: PaperRefillMode,
+    sheets: number,
+  ): Observable<KioskSupplies> {
     return this.http.post<KioskSupplies>(
       `/api/admin/kiosks/${kioskId}/paper/refill`,
       { paper, mode, sheets },
@@ -635,6 +654,36 @@ export class AdminApiService {
 
   removeKioskPhoto(id: string): Observable<void> {
     return this.http.delete<void>(`/api/admin/kiosks/${id}/photo`);
+  }
+
+  /** The welcome screen's words and picture (T-387): the default (null) or one kiosk's own. */
+  kioskBranding(kioskId: string | null): Observable<KioskBrandingView> {
+    return this.http.get<KioskBrandingView>(this.brandingPath(kioskId));
+  }
+
+  setKioskBranding(
+    kioskId: string | null,
+    values: Record<string, Record<string, string>>,
+  ): Observable<KioskBrandingView> {
+    return this.http.put<KioskBrandingView>(this.brandingPath(kioskId), { values });
+  }
+
+  setKioskBrandingImage(kioskId: string | null, image: Blob): Observable<KioskBrandingView> {
+    const form = new FormData();
+    form.append('image', image, 'kiosk-screen.jpg');
+    return this.http.put<KioskBrandingView>(`${this.brandingPath(kioskId)}/image`, form);
+  }
+
+  removeKioskBrandingImage(kioskId: string | null): Observable<KioskBrandingView> {
+    return this.http.delete<KioskBrandingView>(`${this.brandingPath(kioskId)}/image`);
+  }
+
+  kioskBrandingImage(kioskId: string | null): Observable<Blob> {
+    return this.http.get(`${this.brandingPath(kioskId)}/image`, { responseType: 'blob' });
+  }
+
+  private brandingPath(kioskId: string | null): string {
+    return kioskId ? `/api/admin/kiosks/${kioskId}/branding` : '/api/admin/kiosk-branding';
   }
 
   /** The picture behind a detail's `photoUrl` (relative to the API). */
