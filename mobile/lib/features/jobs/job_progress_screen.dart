@@ -254,7 +254,7 @@ class _Steps extends StatelessWidget {
             width: Spacing.x6,
             height: Spacing.x6,
             child: Padding(
-              padding: const EdgeInsets.all(Spacing.x1 / 2),
+              padding: const EdgeInsets.all(Spacing.x1),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: tokens.brand500,
