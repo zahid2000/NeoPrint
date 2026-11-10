@@ -6,6 +6,7 @@ assignment
 block
 build
 calculate
+call
 cancel
 card_giftcard
 check_circle
@@ -67,11 +68,13 @@ person_check
 person_off
 person_search
 picture_as_pdf
+pin
 play_arrow
 post_add
 print
 print_disabled
 progress_activity
+qr_code_2
 qr_code_scanner
 query_stats
 queue
@@ -108,6 +111,7 @@ trending_down
 trending_up
 undo
 upload
+usb
 verified
 visibility
 visibility_off

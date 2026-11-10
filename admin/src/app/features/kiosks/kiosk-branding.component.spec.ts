@@ -39,7 +39,7 @@ describe('KioskBrandingComponent', () => {
 
   afterEach(() => TestBed.inject(HttpTestingController).verify());
 
-  it("shows a kiosk's own words, the default's where it has none, and saves every text", async () => {
+  it("fills every field - its own words, the default page's, else the kiosk's - and keeps only what differs (T-422)", async () => {
     const http = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(KioskBrandingComponent);
     fixture.componentRef.setInput('kioskId', 'k-1');
@@ -56,15 +56,23 @@ describe('KioskBrandingComponent', () => {
     fixture.detectChanges();
 
     const component = fixture.componentInstance;
-    expect(component.texts()['heroTitle']).toEqual({ az: 'Metroda çap', en: '', ru: '' });
-    expect(component.placeholder('heroTitle', 'en')).toBe('Everything prints');
-    expect(component.placeholder('usbTitle', 'az')).toBe('kioskBranding.builtIn');
+    expect(component.texts()['heroTitle']).toEqual({
+      az: 'Metroda çap',
+      en: 'Everything prints',
+      ru: 'Печатайте документы здесь',
+    });
+    expect(component.texts()['usbTitle']['az']).toBe('USB / Fleş kart');
+    // The kiosk has no help line of its own.
+    expect(component.texts()['hotline']['az']).toBe('');
 
     component.edit('hotline', 'az', 'Kömək: *1234');
     const saving = component.save();
     const put = http.expectOne('/api/admin/kiosks/k-1/branding');
     expect(put.request.method).toBe('PUT');
     expect(put.request.body.values.heroTitle.az).toBe('Metroda çap');
+    // The same as the default: not kept here.
+    expect(put.request.body.values.heroTitle.en).toBe('');
+    expect(put.request.body.values.usbTitle.az).toBe('');
     expect(put.request.body.values.hotline.az).toBe('Kömək: *1234');
     put.flush(
       view({ texts: { heroTitle: { az: 'Metroda çap' }, hotline: { az: 'Kömək: *1234' } } }),
@@ -84,7 +92,8 @@ describe('KioskBrandingComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.placeholder('heroTitle', 'az')).toBe('kioskBranding.builtIn');
+    expect(fixture.componentInstance.texts()['heroTitle']['az']).toBe('Sənədlərinizi burada çap edin');
+    expect(fixture.componentInstance.atDefaults()).toBe(true);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Kiosk ekranı');
   });
 });

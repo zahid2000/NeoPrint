@@ -366,8 +366,6 @@
             [canEdit]="canEdit()"
             (changed)="photoChanged()"
           />
-          <!-- What this kiosk's welcome screen says (T-387). -->
-          <app-kiosk-branding [kioskId]="current.id" [canEdit]="canEdit()" />
           @if (canEdit()) {
             <div class="editor__actions">
               <button
@@ -383,6 +381,13 @@
               </button>
             </div>
           }
+        </section>
+      </mat-tab>
+
+      <!-- What this kiosk's welcome screen says, with its preview: a tab of its own (T-422, T-387). -->
+      <mat-tab [label]="'kiosks.tabScreen' | translate">
+        <section class="neo-card editor__card editor__tab">
+          <app-kiosk-branding [kioskId]="current.id" [canEdit]="canEdit()" />
         </section>
       </mat-tab>
 

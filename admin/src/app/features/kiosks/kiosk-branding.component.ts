@@ -10,18 +10,22 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 import { AdminApiService, KioskBrandingView } from '../../core/api/admin-api.service';
+import { confirmAction } from '../../shared/confirm.dialog';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { NotifyService } from '../../shared/notify.service';
 import { Problem, toProblem } from '../../shared/problem';
+import { KIOSK_BUILT_IN_TEXTS } from './kiosk-branding.defaults';
 import { shrinkPhoto } from './kiosk-photo.component';
+import { KioskScreenPreviewComponent } from './kiosk-screen-preview.component';
 
 export const BRANDING_LANGUAGES = ['az', 'en', 'ru'] as const;
 type Language = (typeof BRANDING_LANGUAGES)[number];
@@ -77,6 +81,7 @@ function empty(): Texts {
     MatProgressSpinnerModule,
     TranslatePipe,
     ErrorBannerComponent,
+    KioskScreenPreviewComponent,
   ],
   template: `
     <section class="branding">
@@ -95,93 +100,121 @@ function empty(): Texts {
         />
       }
 
-      <div class="branding__image">
-        <div class="branding__frame">
-          @if (imageUrl(); as src) {
-            <img [src]="src" [alt]="'kioskBranding.imageAlt' | translate" />
-          } @else {
-            <mat-icon aria-hidden="true">print</mat-icon>
-          }
-        </div>
-        <div class="branding__image-body">
-          <h3>{{ 'kioskBranding.imageTitle' | translate }}</h3>
-          <p class="neo-caption">{{ imageNote() | translate }}</p>
-          @if (canEdit()) {
-            <div class="branding__actions">
-              <input
-                #picker
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                hidden
-                (change)="chosen(picker)"
-              />
-              <button mat-stroked-button type="button" [disabled]="busy()" (click)="picker.click()">
-                <mat-icon>add_photo_alternate</mat-icon>
-                {{ (view()?.image ? 'kioskBranding.replace' : 'kioskBranding.upload') | translate }}
-              </button>
-              @if (view()?.image) {
-                <button
-                  mat-button
-                  type="button"
-                  class="branding__remove"
-                  [disabled]="busy()"
-                  (click)="removeImage()"
-                >
-                  <mat-icon>delete_outline</mat-icon>
-                  {{ 'kioskBranding.remove' | translate }}
-                </button>
+      <div class="branding__layout">
+        <div class="branding__form">
+          <div class="branding__image">
+            <div class="branding__frame">
+              @if (imageUrl(); as src) {
+                <img [src]="src" [alt]="'kioskBranding.imageAlt' | translate" />
+              } @else {
+                <mat-icon aria-hidden="true">print</mat-icon>
+              }
+            </div>
+            <div class="branding__image-body">
+              <h3>{{ 'kioskBranding.imageTitle' | translate }}</h3>
+              <p class="neo-caption">{{ imageNote() | translate }}</p>
+              @if (canEdit()) {
+                <div class="branding__actions">
+                  <input
+                    #picker
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                    (change)="chosen(picker)"
+                  />
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="picker.click()"
+                  >
+                    <mat-icon>add_photo_alternate</mat-icon>
+                    {{
+                      (view()?.image ? 'kioskBranding.replace' : 'kioskBranding.upload') | translate
+                    }}
+                  </button>
+                  @if (view()?.image) {
+                    <button
+                      mat-button
+                      type="button"
+                      class="branding__remove"
+                      [disabled]="busy()"
+                      (click)="removeImage()"
+                    >
+                      <mat-icon>delete_outline</mat-icon>
+                      {{ 'kioskBranding.remove' | translate }}
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          @for (group of groups; track group.titleKey) {
+            <div class="branding__group">
+              <h3>{{ group.titleKey | translate }}</h3>
+              @for (key of group.keys; track key) {
+                <div class="branding__row">
+                  <span class="branding__label">{{ 'kioskBranding.key.' + key | translate }}</span>
+                  <div class="branding__fields">
+                    @for (language of languages; track language) {
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                        <mat-label>{{ language.toUpperCase() }}</mat-label>
+                        <input
+                          matInput
+                          [name]="key + '-' + language"
+                          [maxlength]="maxLength"
+                          [disabled]="!canEdit() || busy()"
+                          [placeholder]="placeholder(key, language) | translate"
+                          [ngModel]="texts()[key][language]"
+                          (ngModelChange)="edit(key, language, $event)"
+                        />
+                        <mat-hint align="end"
+                          >{{ texts()[key][language].length }} / {{ maxLength }}</mat-hint
+                        >
+                      </mat-form-field>
+                    }
+                  </div>
+                </div>
               }
             </div>
           }
-        </div>
-      </div>
 
-      @for (group of groups; track group.titleKey) {
-        <div class="branding__group">
-          <h3>{{ group.titleKey | translate }}</h3>
-          @for (key of group.keys; track key) {
-            <div class="branding__row">
-              <span class="branding__label">{{ 'kioskBranding.key.' + key | translate }}</span>
-              <div class="branding__fields">
-                @for (language of languages; track language) {
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                    <mat-label>{{ language.toUpperCase() }}</mat-label>
-                    <input
-                      matInput
-                      [name]="key + '-' + language"
-                      [maxlength]="maxLength"
-                      [disabled]="!canEdit() || busy()"
-                      [placeholder]="placeholder(key, language) | translate"
-                      [ngModel]="texts()[key][language]"
-                      (ngModelChange)="edit(key, language, $event)"
-                    />
-                    <mat-hint align="end"
-                      >{{ texts()[key][language].length }} / {{ maxLength }}</mat-hint
-                    >
-                  </mat-form-field>
+          @if (canEdit()) {
+            <div class="branding__save">
+              <!-- Back to what the kiosk says by itself (T-422). -->
+              <button
+                mat-button
+                type="button"
+                [disabled]="busy() || atDefaults()"
+                (click)="reset()"
+              >
+                <mat-icon>restart_alt</mat-icon>
+                {{ 'kioskBranding.reset' | translate }}
+              </button>
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                [disabled]="busy() || !dirty()"
+                (click)="save()"
+              >
+                @if (busy()) {
+                  <mat-spinner diameter="18" class="neo-button-spinner" />
                 }
-              </div>
+                {{ 'common.save' | translate }}
+              </button>
             </div>
           }
         </div>
-      }
 
-      @if (canEdit()) {
-        <div class="branding__save">
-          <button
-            mat-flat-button
-            color="primary"
-            type="button"
-            [disabled]="busy() || !dirty()"
-            (click)="save()"
-          >
-            @if (busy()) {
-              <mat-spinner diameter="18" class="neo-button-spinner" />
-            }
-            {{ 'common.save' | translate }}
-          </button>
-        </div>
-      }
+        <!-- How the welcome screen looks with these texts (T-422). -->
+        <app-kiosk-screen-preview
+          class="branding__preview"
+          [texts]="texts()"
+          [imageUrl]="imageUrl()"
+        />
+      </div>
     </section>
   `,
   styles: `
@@ -255,10 +288,12 @@ function empty(): Texts {
       background: var(--neutral-0);
     }
 
+    // The label above its three fields: beside the preview the row is narrow,
+    // and each field keeps room to read what it says (T-422).
     .branding__row {
       display: grid;
-      grid-template-columns: 200px 1fr;
-      gap: var(--space-4);
+      grid-template-columns: 1fr;
+      gap: var(--space-2);
       align-items: start;
     }
 
@@ -270,13 +305,44 @@ function empty(): Texts {
 
     .branding__fields {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: var(--space-2);
+    }
+
+    .branding__layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+      gap: var(--space-6);
+      align-items: start;
+    }
+
+    .branding__form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      min-width: 0;
+    }
+
+    // Stays in sight while the texts are typed.
+    .branding__preview {
+      position: sticky;
+      top: var(--space-4);
     }
 
     .branding__save {
       display: flex;
+      gap: var(--space-2);
       justify-content: flex-end;
+    }
+
+    @media (max-width: 1200px) {
+      .branding__layout {
+        grid-template-columns: 1fr;
+      }
+
+      .branding__preview {
+        position: static;
+      }
     }
 
     @media (max-width: 900px) {
@@ -294,6 +360,8 @@ function empty(): Texts {
 export class KioskBrandingComponent implements OnInit, OnDestroy {
   private readonly api = inject(AdminApiService);
   private readonly notify = inject(NotifyService);
+  private readonly dialog = inject(MatDialog);
+  private readonly translate = inject(TranslateService);
 
   /** One kiosk's own; without it, the default for every kiosk. */
   readonly kioskId = input<string | null>(null);
@@ -333,6 +401,40 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
     return this.view()?.defaults?.[key]?.[language] ?? 'kioskBranding.builtIn';
   }
 
+  /**
+   * What a kiosk says when nothing is set here (T-422): for one kiosk, the
+   * default page's text; else - and for the default page - the kiosk's own.
+   */
+  defaultText(key: string, language: Language): string {
+    return this.view()?.defaults?.[key]?.[language] || KIOSK_BUILT_IN_TEXTS[key]?.[language] || '';
+  }
+
+  /** Every field says what the kiosk would say without it. */
+  readonly atDefaults = computed(() => {
+    this.view();
+    const texts = this.texts();
+    return Object.entries(texts).every(([key, byLanguage]) =>
+      this.languages.every((language) => byLanguage[language] === this.defaultText(key, language)),
+    );
+  });
+
+  /** "Standarta qaytar" (T-422): every text back to the default, saved at once. */
+  async reset(): Promise<void> {
+    const text = (key: string): string => this.translate.instant(key) as string;
+    const confirmed = await confirmAction(this.dialog, {
+      title: text('kioskBranding.resetTitle'),
+      explanation: text('kioskBranding.resetExplanation'),
+      confirmLabel: text('kioskBranding.reset'),
+      cancelLabel: text('common.cancel'),
+    });
+    if (!confirmed) {
+      return;
+    }
+
+    this.texts.set(this.filled({}));
+    await this.save();
+  }
+
   edit(key: string, language: Language, value: string): void {
     this.texts.update((texts) => ({ ...texts, [key]: { ...texts[key], [language]: value } }));
     this.dirty.set(true);
@@ -340,9 +442,15 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
 
   async save(): Promise<void> {
     await this.run(async () => {
+      // A text the same as the default is not kept here: the kiosk follows
+      // the default when it changes (T-422).
       const values: Record<string, Record<string, string>> = {};
       for (const [key, byLanguage] of Object.entries(this.texts())) {
-        values[key] = { ...byLanguage };
+        values[key] = {};
+        for (const language of this.languages) {
+          const value = byLanguage[language].trim();
+          values[key][language] = value === this.defaultText(key, language) ? '' : value;
+        }
       }
       this.apply(await firstValueFrom(this.api.setKioskBranding(this.kioskId(), values)));
       this.notify.success('kioskBranding.saved');
@@ -401,16 +509,21 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
   private apply(view: KioskBrandingView, withTexts = true): void {
     this.view.set(view);
     if (withTexts) {
-      const texts = empty();
-      for (const [key, byLanguage] of Object.entries(view.texts ?? {})) {
-        if (texts[key]) {
-          texts[key] = { ...texts[key], ...byLanguage };
-        }
-      }
-      this.texts.set(texts);
+      this.texts.set(this.filled(view.texts ?? {}));
       this.dirty.set(false);
     }
     this.showImage(view);
+  }
+
+  /** The texts set here, and the default in every field left empty (T-422). */
+  private filled(own: Record<string, Partial<Record<string, string>>>): Texts {
+    const texts = empty();
+    for (const key of Object.keys(texts)) {
+      for (const language of this.languages) {
+        texts[key][language] = own[key]?.[language] || this.defaultText(key, language);
+      }
+    }
+    return texts;
   }
 
   private showImage(view: KioskBrandingView): void {
