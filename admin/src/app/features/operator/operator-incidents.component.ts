@@ -84,7 +84,7 @@ import { operatorScreen } from './operator-screen';
                 <button
                   mat-stroked-button
                   type="button"
-                  [disabled]="busy() !== null || !screen.canAct()"
+                  [disabled]="busy().has(incident.id) || !screen.canAct()"
                   (click)="acknowledge(incident)"
                 >
                   {{ 'operator.incidents.acknowledge' | translate }}
@@ -94,7 +94,7 @@ import { operatorScreen } from './operator-screen';
                 <button
                   mat-flat-button
                   type="button"
-                  [disabled]="busy() !== null || !screen.canAct()"
+                  [disabled]="busy().has(incident.id) || !screen.canAct()"
                   (click)="resolve(incident)"
                 >
                   {{ 'operator.incidents.resolve' | translate }}
@@ -118,8 +118,23 @@ export class OperatorIncidentsComponent {
   readonly canAcknowledge = computed(() => this.auth.can(Permissions.incidentsAcknowledge));
   readonly canResolve = computed(() => this.auth.can(Permissions.incidentsResolve));
 
-  /** The incident something is being sent for. */
-  readonly busy = signal<string | null>(null);
+  /**
+   * The ones a step is being sent for (T-426): only their buttons wait - the
+   * others stay as they were, and can be pressed meanwhile.
+   */
+  readonly busy = signal<ReadonlySet<string>>(new Set());
+
+  private mark(id: string, on: boolean): void {
+    this.busy.update((ids) => {
+      const next = new Set(ids);
+      if (on) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }
 
   readonly screen = operatorScreen<readonly IncidentRow[]>({
     key: () => 'incidents',
@@ -156,13 +171,13 @@ export class OperatorIncidentsComponent {
   }
 
   private async run(incident: IncidentRow, action: () => Promise<unknown>): Promise<void> {
-    this.busy.set(incident.id);
+    this.mark(incident.id, true);
 
     try {
       await this.actions.send(action);
       await this.screen.reload();
     } finally {
-      this.busy.set(null);
+      this.mark(incident.id, false);
     }
   }
 }

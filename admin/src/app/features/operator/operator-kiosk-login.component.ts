@@ -4,13 +4,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 import { toProblem } from '../../shared/problem';
 import { OperatorApiService, OperatorKioskLoginApproved } from './operator-api.service';
 import { QrScanner, kioskLoginQr } from './qr-scanner';
+import { scannedCode } from './operator-scan.component';
 
 /**
  * "Kioska daxil ol" (T-392; docs/DECISIONS.md 2026-11-10): the kiosk's admin
@@ -131,6 +132,12 @@ export class OperatorKioskLoginComponent {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.scanner.stop());
+
+    // Read on "Kioskun QR-ını oxut" (T-425): approved at once.
+    const scanned = scannedCode(inject(Router));
+    if (scanned) {
+      void this.approve(scanned);
+    }
   }
 
   async scan(): Promise<void> {

@@ -50,6 +50,7 @@ list
 local_offer
 lock
 lock_reset
+login
 logout
 manage_search
 map

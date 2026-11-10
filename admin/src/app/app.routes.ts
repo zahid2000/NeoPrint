@@ -49,6 +49,14 @@ export const routes: Routes = [
           ),
       },
       {
+        // A kiosk's QR, either one: the page it is for opens with it (T-425).
+        path: 'scan',
+        loadComponent: () =>
+          import('./features/operator/operator-scan.component').then(
+            (m) => m.OperatorScanComponent,
+          ),
+      },
+      {
         // The kiosk's admin menu in this operator's name, by the kiosk's QR (T-392).
         path: 'kiosk-login',
         loadComponent: () =>

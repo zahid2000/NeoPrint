@@ -154,6 +154,13 @@ export const operatorTranslations: PageTranslations = {
 
     'operator.kiosks.activate': 'Kiosk aktivləşdir',
     'operator.kiosks.kioskLogin': 'Kioska daxil ol',
+    'operator.kiosks.scan': 'Kioskun QR-ını oxut',
+    'operator.scan.title': 'Kioskun QR-ı',
+    'operator.scan.explanation':
+      'Kioskun ekranındakı QR-ı oxudun: yeni kioskun aktivləşdirmə QR-ı onu aktivləşdirir, admin küncündəki QR kioskun menyusunu sizin adınızla açır.',
+    'operator.scan.explanationLogin':
+      'Kioskun admin küncündəki QR-ı oxudun — kioskun menyusu sizin adınızla açılır.',
+    'operator.scan.typeInstead': 'Kamera yoxdursa, kodu əl ilə daxil edin:',
     'operator.kioskLogin.title': 'Kioska daxil ol',
     'operator.kioskLogin.explanation':
       'Kioskun loqosuna beş dəfə toxunun — ekranda QR çıxacaq. Onu oxudun: kioskun admin menyusu sizin adınızla açılacaq, orada etdiyiniz hər dəyişiklik auditə sizin adınızla düşəcək.',
@@ -371,6 +378,13 @@ export const operatorTranslations: PageTranslations = {
 
     'operator.kiosks.activate': 'Activate a kiosk',
     'operator.kiosks.kioskLogin': 'Sign in at a kiosk',
+    'operator.kiosks.scan': "Read a kiosk's QR",
+    'operator.scan.title': "A kiosk's QR",
+    'operator.scan.explanation':
+      "Read the QR on the kiosk's screen: a new kiosk's activation QR activates it, the QR in the admin corner opens the kiosk's menu in your name.",
+    'operator.scan.explanationLogin':
+      "Read the QR in the kiosk's admin corner — the kiosk's menu opens in your name.",
+    'operator.scan.typeInstead': 'No camera? Type the code in:',
     'operator.kioskLogin.title': 'Sign in at a kiosk',
     'operator.kioskLogin.explanation':
       "Tap the kiosk's logo five times — a QR appears on its screen. Read it: the kiosk's admin menu opens in your name, and every change you make there is audited as yours.",
@@ -587,6 +601,13 @@ export const operatorTranslations: PageTranslations = {
 
     'operator.kiosks.activate': 'Активировать киоск',
     'operator.kiosks.kioskLogin': 'Войти на киоске',
+    'operator.kiosks.scan': 'Считать QR киоска',
+    'operator.scan.title': 'QR киоска',
+    'operator.scan.explanation':
+      'Считайте QR на экране киоска: QR активации нового киоска активирует его, QR в углу администратора открывает меню киоска от вашего имени.',
+    'operator.scan.explanationLogin':
+      'Считайте QR в углу администратора киоска — меню киоска откроется от вашего имени.',
+    'operator.scan.typeInstead': 'Нет камеры? Введите код вручную:',
     'operator.kioskLogin.title': 'Войти на киоске',
     'operator.kioskLogin.explanation':
       'Коснитесь логотипа киоска пять раз — на экране появится QR. Считайте его: меню администратора откроется от вашего имени, и каждое изменение там попадёт в аудит под вашим именем.',

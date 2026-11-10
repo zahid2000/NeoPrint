@@ -266,6 +266,23 @@ describe('OperatorTasksComponent', () => {
     backend.expectOne(tasksRequest).flush(page([task({ id: 't-mine', status: 'InProgress', assignedTo: me })]));
   });
 
+  it('waits on the pressed task only: the others stay as they were (T-426)', async () => {
+    buttonOf('t-mine').click();
+    await settle();
+
+    expect(buttonOf('t-mine').disabled, 'its step is on its way').toBe(true);
+    expect(buttonOf('t-pool').disabled).toBe(false);
+    expect(buttonOf('t-doing').disabled).toBe(false);
+
+    backend
+      .expectOne('/api/admin/service-tasks/t-mine/start')
+      .flush(task({ id: 't-mine', status: 'InProgress', assignedTo: me, type: 'RefillPaper' }));
+    await settle();
+    expect(buttonOf('t-mine').disabled).toBe(false);
+
+    backend.expectOne(tasksRequest).flush(page([task({ id: 't-mine', status: 'InProgress', assignedTo: me })]));
+  });
+
   it('asks again and keeps the list when a step is refused', async () => {
     buttonOf('t-pool').click();
 

@@ -122,7 +122,7 @@ import { ServiceTask } from './operator.models';
             mat-flat-button
             type="button"
             class="op-primary"
-            [disabled]="busy() !== null || !store.canAct()"
+            [disabled]="busy().has(task.id) || !store.canAct()"
             (click)="next(task)"
           >
             {{ nextKey(task) | translate }}
@@ -144,8 +144,23 @@ export class OperatorTasksComponent {
 
   readonly canComplete = computed(() => this.auth.can(Permissions.serviceTasksComplete));
 
-  /** The task a step is being sent for. */
-  readonly busy = signal<string | null>(null);
+  /**
+   * The ones a step is being sent for (T-426): only their buttons wait - the
+   * others stay as they were, and can be pressed meanwhile.
+   */
+  readonly busy = signal<ReadonlySet<string>>(new Set());
+
+  private mark(id: string, on: boolean): void {
+    this.busy.update((ids) => {
+      const next = new Set(ids);
+      if (on) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }
 
   constructor() {
     this.store.watch();
@@ -164,7 +179,7 @@ export class OperatorTasksComponent {
   }
 
   async next(task: ServiceTask): Promise<void> {
-    this.busy.set(task.id);
+    this.mark(task.id, true);
 
     try {
       if (task.status === 'InProgress') {
@@ -184,7 +199,7 @@ export class OperatorTasksComponent {
       this.feedback.error(toProblem(error).message);
       void this.store.reload();
     } finally {
-      this.busy.set(null);
+      this.mark(task.id, false);
     }
   }
 }

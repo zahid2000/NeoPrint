@@ -40,19 +40,14 @@ import { operatorScreen } from './operator-screen';
       <div class="op-heading">
         <h1 class="op-title">{{ 'operator.kiosks.title' | translate }}</h1>
 
-        <!-- At a kiosk: its admin menu opens in this account's name (T-392). -->
-        <a mat-stroked-button routerLink="/operator/kiosk-login" data-action="kiosk-login">
+        <!--
+          One button for a kiosk's QR (T-425): the admin corner's opens its menu in this
+          account's name (T-392), a new machine's activates it (plan section 8B).
+        -->
+        <a mat-stroked-button routerLink="/operator/scan" data-action="scan">
           <mat-icon>qr_code_scanner</mat-icon>
-          {{ 'operator.kiosks.kioskLogin' | translate }}
+          {{ 'operator.kiosks.scan' | translate }}
         </a>
-
-        <!-- An installation: the machine on site is bound to its kiosk (plan section 8B). -->
-        @if (canActivate()) {
-          <a mat-stroked-button routerLink="/operator/activate" data-action="activate">
-            <mat-icon>devices</mat-icon>
-            {{ 'operator.kiosks.activate' | translate }}
-          </a>
-        }
       </div>
 
       @if (screen.problem(); as problem) {
@@ -106,7 +101,6 @@ export class OperatorKiosksComponent {
   private readonly statuses = inject(KioskLiveStore);
 
   readonly canRefill = computed(() => this.auth.can(Permissions.paperRefill));
-  readonly canActivate = computed(() => this.auth.can(Permissions.kiosksActivate));
 
   readonly screen = operatorScreen<OperatorKioskCard[]>({
     key: () => 'kiosks',

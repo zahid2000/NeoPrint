@@ -195,3 +195,14 @@
     width: 100%;
   }
 }
+
+// The pages a code is typed into, side by side, when it is not read (T-425).
+.op-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+
+  a {
+    min-height: var(--touch-target);
+  }
+}

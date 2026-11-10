@@ -17,6 +17,7 @@ import { NotifyService } from '../../shared/notify.service';
 import { Problem, toProblem } from '../../shared/problem';
 import { OperatorApiService } from './operator-api.service';
 import { OperatorKioskCard } from './operator.models';
+import { scannedCode } from './operator-scan.component';
 import { QrScanner, activationQr } from './qr-scanner';
 
 /**
@@ -240,6 +241,12 @@ export class OperatorActivateComponent {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.scanner.stop());
+
+    // Read on "Kioskun QR-ını oxut" (T-425): looked up at once.
+    const scanned = scannedCode(this.router);
+    if (scanned) {
+      void this.lookUp(scanned);
+    }
   }
 
   /** The code typed in. */

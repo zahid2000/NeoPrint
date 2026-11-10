@@ -6,7 +6,8 @@
     "operator/tasks",
     "operator/incidents",
     "operator/inventory",
-    "operator/activate"
+    "operator/activate",
+    "operator/scan"
   ],
   "api": {
     "GET /api/admin/operator/kiosks": [
