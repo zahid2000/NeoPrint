@@ -346,6 +346,13 @@
     }
   },
   "filesPageFailed": "Səhifəni göstərmək mümkün olmadı.",
+  "previewZoomIn": "Böyüt",
+  "previewZoomOut": "Kiçilt",
+  "previewMoveLeft": "Sola",
+  "previewMoveRight": "Sağa",
+  "previewMoveUp": "Yuxarı",
+  "previewMoveDown": "Aşağı",
+  "previewFit": "Səhifəni sığdır",
   "cameraTitle": "Şəkil çək",
   "cameraCapture": "Çək",
   "cameraNoCamera": "Bu cihazda kamera tapılmadı.",
