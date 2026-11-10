@@ -146,6 +146,7 @@
     }
   },
   "filesPickFile": "Fayl seç",
+  "filesPickFileCloudHint": "Telefondan və ya buluddan (Google Drive, OneDrive — seçicinin menyusunda): PDF, Word, şəkil və s.",
   "filesPickFileHint": "PDF, Word, Excel, PowerPoint, şəkil və s.",
   "filesTakePhoto": "Şəkil çək",
   "filesTakePhotoHint": "Sənədin və ya şəklin fotosunu çəkin",
@@ -1369,8 +1370,6 @@
   "printHubAddSection": "Fayl",
   "printHubFromFiles": "Fayllarımdan seç",
   "printHubFromFilesHint": "Yüklədiyiniz fayllar və ya yeni fayl",
-  "printHubFromCloud": "Buluddan əlavə et",
-  "printHubFromCloudHint": "Google Drive, OneDrive və s. — seçicidə buludu seçin",
   "printHubShared": "Paylaşılan fayllar",
   "printHubSharedHint": "Sizə göndərilən fayllar",
   "printHubKioskSection": "Kioskda çap",

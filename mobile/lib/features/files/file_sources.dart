@@ -18,13 +18,10 @@ import 'files_controller.dart';
 /// the Print tab both start here (docs/DESIGN_SYSTEM.md, "Mobil: yeni
 /// vizual dil").
 enum FileSource {
-  /// The system picker, for a file on the phone.
+  /// The system picker: a file on the phone, or in Google Drive, OneDrive
+  /// and the like, which the picker lists when their app is on the phone
+  /// (docs/DECISIONS.md, T-339, T-399).
   device,
-
-  /// The same system picker: Google Drive, OneDrive and the like are listed
-  /// in it when their app is on the phone (docs/DECISIONS.md, T-339). Not on
-  /// the web, where the browser's picker only knows the computer's files.
-  cloud,
   camera,
   scan,
   layout,
@@ -48,17 +45,13 @@ Future<FileSource?> chooseFileSource(BuildContext context) async {
             ListTile(
               leading: const Icon(Icons.folder_open_outlined),
               title: Text(l10n.filesPickFile),
-              subtitle: Text(l10n.filesPickFileHint),
+              // Google Drive, OneDrive: in the same system picker (T-399) -
+              // a row of its own opened the phone's files and looked broken.
+              subtitle: Text(
+                kIsWeb ? l10n.filesPickFileHint : l10n.filesPickFileCloudHint,
+              ),
               onTap: () => Navigator.pop(context, FileSource.device),
             ),
-            // Google Drive, OneDrive: the same system picker (T-339).
-            if (!kIsWeb)
-              ListTile(
-                leading: const Icon(Icons.cloud_upload_outlined),
-                title: Text(l10n.printHubFromCloud),
-                subtitle: Text(l10n.printHubFromCloudHint),
-                onTap: () => Navigator.pop(context, FileSource.cloud),
-              ),
             if (!kIsWeb)
               ListTile(
                 leading: const Icon(Icons.photo_camera_outlined),
@@ -140,7 +133,7 @@ Future<void> addFileFrom(
           await send(photo);
         }
       }
-    case FileSource.device || FileSource.cloud:
+    case FileSource.device:
       final picked = await _pickFile(ref);
       if (picked != null && context.mounted) {
         await send(picked);

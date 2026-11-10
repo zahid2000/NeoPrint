@@ -331,7 +331,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Fayl seç'), findsOneWidget);
-    expect(find.text('Buluddan əlavə et'), findsOneWidget);
+    // The cloud is in the same picker (T-399), not a row that opened it too.
+    expect(find.text('Buluddan əlavə et'), findsNothing);
     expect(find.text('Şəkil çək'), findsOneWidget);
   });
 }
