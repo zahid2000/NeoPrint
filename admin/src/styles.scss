@@ -671,3 +671,50 @@ a {
     padding-right: var(--space-6);
   }
 }
+
+/* --- Arrows beside tabs that do not fit (T-423, docs/DESIGN_SYSTEM.md) -------- */
+
+// On a computer only (TabArrowsDirective): the row still scrolls by finger,
+// wheel or trackpad; the arrows move it a screenful at a time.
+.neo-tab-arrows {
+  position: relative;
+}
+
+.neo-tab-arrow {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  padding: 0;
+  border: none;
+  background: var(--neutral-0);
+  color: var(--neutral-600);
+  cursor: pointer;
+
+  &[hidden] {
+    display: none;
+  }
+
+  &:hover:not(:disabled) {
+    color: var(--brand-500);
+  }
+
+  &:disabled {
+    color: var(--neutral-400);
+    cursor: default;
+  }
+
+  .material-symbols-rounded {
+    font-size: var(--icon-size);
+  }
+}
+
+.neo-tab-arrow--start {
+  left: 0;
+}
+
+.neo-tab-arrow--end {
+  right: 0;
+}

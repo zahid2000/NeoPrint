@@ -28,6 +28,7 @@ import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { DecisionDialogComponent, DecisionDialogData } from './decision-dialog.component';
 import { PagerComponent } from './money-shared';
+import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
 
 /**
  * "Baxış gözləyən sifarişlər" (plan section 8A.3): jobs whose result is
@@ -45,6 +46,7 @@ import { PagerComponent } from './money-shared';
     MatSelectModule,
     MatTableModule,
     MatTabsModule,
+    TabArrowsDirective,
     RouterLink,
     TranslatePipe,
     PageHeaderComponent,

@@ -31,6 +31,7 @@ import { PagerComponent } from '../money/money-shared';
 import { InventoryItem } from '../operator/operator.models';
 import { InventoryItemDialogComponent, InventoryMovementDialogComponent } from './inventory.dialogs';
 import { InventoryAmountPipe, isUnitWord } from './inventory-units';
+import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
 
 const pageSize = 30;
 
@@ -52,6 +53,7 @@ const pageSize = 30;
     MatSelectModule,
     MatTableModule,
     MatTabsModule,
+    TabArrowsDirective,
     TranslatePipe,
     DateTimePipe,
     InventoryAmountPipe,

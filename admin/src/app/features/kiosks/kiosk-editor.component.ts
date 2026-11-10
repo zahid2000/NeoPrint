@@ -45,6 +45,7 @@ import { KioskSessionsComponent } from './kiosk-sessions.component';
 import { KioskStatusComponent } from './kiosk-status.component';
 import { KioskTasksComponent } from './kiosk-tasks.component';
 import { KioskSuppliesComponent } from './kiosk-supplies.component';
+import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
 
 /** The PIN rules the server enforces: 4 to 12 digits. */
 const pinPattern = /^[0-9]{4,12}$/;
@@ -77,6 +78,7 @@ const pinPattern = /^[0-9]{4,12}$/;
     MatSelectModule,
     MatTableModule,
     MatTabsModule,
+    TabArrowsDirective,
     TranslatePipe,
     PageHeaderComponent,
     ErrorBannerComponent,

@@ -22,6 +22,7 @@ import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { PagerComponent } from './money-shared';
 import { HubEvents } from '../../core/realtime/hub-events';
+import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
 
 const pageSize = 20;
 
@@ -41,6 +42,7 @@ const pageSize = 20;
     MatButtonModule,
     MatTableModule,
     MatTabsModule,
+    TabArrowsDirective,
     TranslatePipe,
     PageHeaderComponent,
     ErrorBannerComponent,

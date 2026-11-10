@@ -34,6 +34,9 @@ const EXTRA = [
   'lock',
   // pilot-report.component.ts: iconOverride on today's "Canlı" chip
   'sensors',
+  // tab-arrows.directive.ts: the arrows beside tabs that do not fit (T-423)
+  'chevron_left',
+  'chevron_right',
 ];
 
 function files(dir) {

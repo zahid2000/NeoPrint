@@ -33,6 +33,7 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { HubEvents } from '../../core/realtime/hub-events';
+import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
 
 /**
  * The Devices page (plan sections 7.11, 8A.3).
@@ -50,6 +51,7 @@ import { HubEvents } from '../../core/realtime/hub-events';
     DateTimePipe,
     MatCardModule,
     MatTabsModule,
+    TabArrowsDirective,
     MatTableModule,
     MatButtonModule,
     MatIconModule,

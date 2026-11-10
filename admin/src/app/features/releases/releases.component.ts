@@ -36,6 +36,7 @@ import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { openRolloutDialog, openUploadDialog } from './release-dialogs';
 import { Chip, updateChips } from './update-chips';
+import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
 
 
 const rolloutChips: Record<Rollout['status'], Chip> = {
@@ -69,6 +70,7 @@ const rolloutActions: Record<Rollout['status'], readonly RolloutAction[]> = {
     MatSelectModule,
     MatTableModule,
     MatTabsModule,
+    TabArrowsDirective,
     RouterLink,
     TranslatePipe,
     PageHeaderComponent,

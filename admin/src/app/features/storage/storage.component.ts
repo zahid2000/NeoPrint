@@ -36,6 +36,7 @@ import {
 import { StorageSyncDialogComponent, StorageSyncDialogData } from './storage-sync.dialog';
 import { SyncProgressComponent } from './sync-progress.component';
 import { HubEvents } from '../../core/realtime/hub-events';
+import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
 
 /** One progress reading, for working out a speed. */
 interface Sample {
@@ -60,6 +61,7 @@ interface Sample {
     MatMenuModule,
     MatTableModule,
     MatTabsModule,
+    TabArrowsDirective,
     MatTooltipModule,
     TranslatePipe,
     PageHeaderComponent,

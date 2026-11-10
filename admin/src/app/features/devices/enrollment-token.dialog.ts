@@ -21,6 +21,7 @@ import {
 import { DateTimePipe } from '../../shared/format.pipes';
 import { describeError } from '../login/login.component';
 import { adminPinLength } from './activate-device.dialog';
+import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
 
 /** How long a token lasts unless the operator chooses otherwise. */
 export const defaultTokenTtlHours = 24;
@@ -53,6 +54,7 @@ export const maxTokenUses = 50;
     MatSelectModule,
     MatRadioModule,
     MatTabsModule,
+    TabArrowsDirective,
     MatProgressSpinnerModule,
     TranslatePipe,
     DateTimePipe,
