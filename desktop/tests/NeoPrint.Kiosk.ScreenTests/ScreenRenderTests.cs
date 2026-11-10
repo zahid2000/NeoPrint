@@ -423,6 +423,31 @@ public sealed partial class ScreenRenderTests : IDisposable
             ("10-admin-pin", Shell(language, KioskScreen.Admin, shell => shell.Admin = new AdminMenuViewModel(() => null) { Language = language })),
             ("11-admin-menu", Shell(language, KioskScreen.Admin, shell =>
                 shell.Admin = new AdminMenuViewModel(() => null) { Language = language, Stage = AdminStage.Menu, IsSafeMode = true })),
+            // The operator's QR, and the menu in the operator's name (T-392).
+            ("10b-admin-qr", Shell(language, KioskScreen.Admin, shell =>
+                shell.Admin = new AdminMenuViewModel(() => null)
+                {
+                    Language = language,
+                    Stage = AdminStage.Qr,
+                    LoginQr = "neoprint://kiosk-login/0123456789abcdef0123456789abcdef",
+                })),
+            ("11b-admin-operator", Shell(language, KioskScreen.Admin, shell =>
+            {
+                var admin = new AdminMenuViewModel(() => null)
+                {
+                    Language = language,
+                    Stage = AdminStage.Menu,
+                    OperatorName = "Elvin Məmmədov",
+                    CanSelectPrinter = true,
+                    CanChangeQueue = true,
+                    CanPause = true,
+                    QueueLimit = 5,
+                    Notice = NeoPrint.Kiosk.Localization.Strings.Get(language, "admin.saved"),
+                };
+                admin.Printers.Add(new AdminPrinterChoice("HP LaserJet Pro M404dn", true));
+                admin.Printers.Add(new AdminPrinterChoice("Canon imageRUNNER ADVANCE C3530i III", false));
+                shell.Admin = admin;
+            })),
         };
 
         foreach (var problem in new[] { "OutOfPaper", "PaperJam", "Offline", "NotFound" })

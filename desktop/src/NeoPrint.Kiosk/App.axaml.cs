@@ -146,7 +146,13 @@ public sealed partial class App : Application
                 return Task.CompletedTask;
             };
 
-        var admin = new AdminMenuViewModel(() => runtime.Configuration?.AdminPinHash, () => ServicePin.ReadHash(ServicePin.DefaultPath)) { Language = _model!.Language };
+        // An operator's QR opens the menu in their name (T-392); the PIN stays for when the server is out of reach.
+        var admin = new AdminMenuViewModel(
+            () => runtime.Configuration?.AdminPinHash,
+            () => ServicePin.ReadHash(ServicePin.DefaultPath),
+            logins: Services.GetRequiredService<KioskApiClient>(),
+            configuration: () => runtime.Configuration)
+        { Language = _model!.Language };
 
         async void Leave(string what, Func<Task> action)
         {

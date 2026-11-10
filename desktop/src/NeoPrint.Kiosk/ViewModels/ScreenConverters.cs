@@ -49,6 +49,8 @@ public static class ScreenConverters
 
     public static readonly IValueConverter IsAdminMenu = new FuncValueConverter<AdminStage, bool>(stage => stage == AdminStage.Menu);
 
+    public static readonly IValueConverter IsAdminQr = new FuncValueConverter<AdminStage, bool>(stage => stage == AdminStage.Qr);
+
     public static readonly IValueConverter IsAdminLocked = new FuncValueConverter<AdminStage, bool>(stage => stage == AdminStage.Locked);
 
     public static readonly IValueConverter IsAdminNoPin = new FuncValueConverter<AdminStage, bool>(stage => stage == AdminStage.NoPin);

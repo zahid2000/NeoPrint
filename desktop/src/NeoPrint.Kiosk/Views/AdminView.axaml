@@ -8,6 +8,30 @@
          the PIN on the screen's own keypad, then the service actions. -->
 
     <Panel>
+        <!-- The operator's QR (T-392): read in the operator panel, the menu opens in their name.
+             Without the server the PIN is the way in. -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="820"
+                    IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsAdminQr}}">
+            <TextBlock Text="{Binding QrTitle}" Classes="h1" HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding QrBody}" Classes="muted" TextWrapping="Wrap" TextAlignment="Center" />
+            <Border Classes="qr" HorizontalAlignment="Center" IsVisible="{Binding LoginQr, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Image Source="{Binding LoginQr, Converter={x:Static vm:ScreenConverters.QrImage}}"
+                       Width="{DynamicResource ReceiptQrSize}" Height="{DynamicResource ReceiptQrSize}" />
+            </Border>
+            <TextBlock Text="{Binding QrWaitingText}" Classes="body-small" HorizontalAlignment="Center"
+                       IsVisible="{Binding LoginQr, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <Border Classes="error" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                    <PathIcon Data="{StaticResource IconError}" Width="28" Height="28" Foreground="{DynamicResource Danger500}" />
+                    <TextBlock Text="{Binding Error}" TextWrapping="Wrap" VerticalAlignment="Center" MaxWidth="680" />
+                </StackPanel>
+            </Border>
+            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}" HorizontalAlignment="Center">
+                <Button Classes="secondary" Command="{Binding CloseCommand}"><TextBlock Text="{Binding CloseText}" /></Button>
+                <Button Classes="secondary" Command="{Binding UsePinCommand}"><TextBlock Text="{Binding UsePinText}" /></Button>
+            </StackPanel>
+        </StackPanel>
+
         <!-- PIN -->
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}"
                     IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsAdminPin}}">
@@ -62,22 +86,65 @@
             <Button Classes="primary" Command="{Binding CloseCommand}" HorizontalAlignment="Center"><TextBlock Text="{Binding CloseText}" /></Button>
         </StackPanel>
 
-        <!-- The service actions -->
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{DynamicResource Space6}" MinWidth="720"
-                    IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsAdminMenu}}">
+        <!-- The service actions; in an operator's name (T-392) also the printer, the queue and taking orders. -->
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Space8}" VerticalAlignment="Center" MaxWidth="1400"
+              IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsAdminMenu}}">
+        <StackPanel Grid.Column="1" Spacing="{DynamicResource Space4}" IsVisible="{Binding HasOperator}">
+            <Border Classes="status-chip ok" HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                    <PathIcon Data="{StaticResource IconShield}" Width="20" Height="20" VerticalAlignment="Center" Foreground="{DynamicResource Success500}" />
+                    <TextBlock Text="{Binding OperatorText}" Classes="body-small" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+            <StackPanel Spacing="{DynamicResource Space2}" IsVisible="{Binding CanSelectPrinter}">
+                <TextBlock Text="{Binding PrinterTitle}" Classes="h2" />
+                <ItemsControl ItemsSource="{Binding Printers}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:AdminPrinterChoice">
+                            <Button Classes="choice" Classes.selected="{Binding IsSelected}" HorizontalAlignment="Stretch" Margin="{DynamicResource GapBelow4}"
+                                    Command="{Binding $parent[UserControl].((vm:AdminMenuViewModel)DataContext).SelectPrinterCommand}"
+                                    CommandParameter="{Binding Name}">
+                                <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+            <StackPanel Spacing="{DynamicResource Space2}" IsVisible="{Binding CanChangeQueue}">
+                <TextBlock Text="{Binding QueueTitle}" Classes="h2" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                    <Button Classes="choice" Classes.selected="{Binding QueueIsThree}" Command="{Binding SetQueueLimitCommand}" CommandParameter="3"><TextBlock Text="3" /></Button>
+                    <Button Classes="choice" Classes.selected="{Binding QueueIsFive}" Command="{Binding SetQueueLimitCommand}" CommandParameter="5"><TextBlock Text="5" /></Button>
+                </StackPanel>
+            </StackPanel>
+            <StackPanel Spacing="{DynamicResource Space2}" IsVisible="{Binding CanPause}">
+                <Button Classes="secondary" HorizontalAlignment="Stretch" Command="{Binding PauseOrdersCommand}"><TextBlock Text="{Binding PauseOrdersText}" /></Button>
+                <Button Classes="secondary" HorizontalAlignment="Stretch" Command="{Binding ResumeOrdersCommand}"><TextBlock Text="{Binding ResumeOrdersText}" /></Button>
+            </StackPanel>
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space2}" IsVisible="{Binding Notice, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <PathIcon Data="{StaticResource IconSuccess}" Width="24" Height="24" Foreground="{DynamicResource Success500}" VerticalAlignment="Top" />
+                <TextBlock Grid.Column="1" Text="{Binding Notice}" Classes="body-small" TextWrapping="Wrap" />
+            </Grid>
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space2}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <PathIcon Data="{StaticResource IconError}" Width="24" Height="24" Foreground="{DynamicResource Danger500}" VerticalAlignment="Top" />
+                <TextBlock Grid.Column="1" Text="{Binding Error}" Classes="body-small" TextWrapping="Wrap" />
+            </Grid>
+        </StackPanel>
+        <StackPanel Grid.Column="0" Grid.ColumnSpan="{Binding MenuSpan}" VerticalAlignment="Center" Spacing="{DynamicResource Space6}" MaxWidth="720">
             <TextBlock Text="{Binding MenuTitle}" Classes="h1" HorizontalAlignment="Center" />
             <Button Classes="primary" HorizontalAlignment="Stretch" Command="{Binding LeaveSafeModeCommand}" IsVisible="{Binding IsSafeMode}">
-                <TextBlock Text="{Binding LeaveSafeModeText}" />
+                <TextBlock Text="{Binding LeaveSafeModeText}" TextWrapping="Wrap" TextAlignment="Center" />
             </Button>
             <Button Classes="secondary" HorizontalAlignment="Stretch" Command="{Binding RestartCommand}">
-                <TextBlock Text="{Binding RestartText}" />
+                <TextBlock Text="{Binding RestartText}" TextWrapping="Wrap" TextAlignment="Center" />
             </Button>
             <Button Classes="secondary" HorizontalAlignment="Stretch" Command="{Binding MaintenanceCommand}">
-                <TextBlock Text="{Binding MaintenanceText}" />
+                <TextBlock Text="{Binding MaintenanceText}" TextWrapping="Wrap" TextAlignment="Center" />
             </Button>
             <Button Classes="secondary" HorizontalAlignment="Stretch" Command="{Binding CloseCommand}">
                 <TextBlock Text="{Binding CloseText}" />
             </Button>
         </StackPanel>
+        </Grid>
     </Panel>
 </UserControl>
