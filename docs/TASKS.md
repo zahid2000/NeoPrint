@@ -432,3 +432,4 @@ Statuslar: `Açıq`, `İcrada`, `Tamamlandı`, `Ləğv edildi (səbəb)`, `Təxi
 | T-406 | 2026-11-10 | 7B | Layihə sahibi (mobil): QR skanında **"kameranı dəyiş" düyməsi heç nə etmir**, ikonu isə ön kameraya keçid kimi görünür | Açıq | — |
 | T-407 | 2026-11-10 | 7B | Layihə sahibi (mobil): kiosk seçməzdən əvvəl rəngli və ikitərəfli seçilib, sonra seçilən kiosk bunları dəstəkləmir — seçimlər deaktiv olur, amma seçilmiş qalır və validasiya göndərməyə qoymur. **Kiosk seçimi dəstəkləmirsə, dəstəklənən seçimə avtomatik keçsin** | Açıq | — |
 | T-408 | 2026-11-10 | 7B | Layihə sahibi (mobil): çap tamamlanandan sonra **"Yenidən çap et" eyni faylı eyni parametrlərlə** ödənişə və çapa göndərsin ("Fayllarım"ı açmasın), **amma parametrləri dəyişmək imkanı da olsun** | Açıq | — |
+| T-409 | 2026-11-10 | 7B | Layihə sahibi (mobil): **tərtibata girəndən sonra yeni fayl və ya şəkil əlavə etmək üçün düymə** olsun | Açıq | — |
