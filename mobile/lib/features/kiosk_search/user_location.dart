@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -50,13 +53,34 @@ abstract interface class UserLocation {
 final class DeviceLocation implements UserLocation {
   const DeviceLocation();
 
+  /// How long the home screen waits to learn whether it may look (T-400):
+  /// past it the card offers the button, which asks again.
+  static const checkLimit = Duration(seconds: 3);
+
+  /// A last known place this recent is used at once (T-400): a cold GPS
+  /// fix took up to the time limit while the card only spun.
+  static const lastKnownAge = Duration(minutes: 10);
+
   @override
   Future<LocationResult> current({bool ask = true}) async {
-    if (!await Geolocator.isLocationServiceEnabled()) {
-      return const LocationMissing(LocationProblem.serviceOff);
+    LocationPermission permission;
+    try {
+      // Without asking, nothing is waited for long: the card's button is
+      // the way in.
+      final check = () async {
+        if (!await Geolocator.isLocationServiceEnabled()) {
+          return null;
+        }
+        return Geolocator.checkPermission();
+      }();
+      final checked = ask ? await check : await check.timeout(checkLimit);
+      if (checked == null) {
+        return const LocationMissing(LocationProblem.serviceOff);
+      }
+      permission = checked;
+    } on TimeoutException {
+      return const LocationMissing(LocationProblem.notAsked);
     }
-
-    var permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
       if (!ask) {
@@ -74,6 +98,18 @@ final class DeviceLocation implements UserLocation {
           LocationPermission.always ||
           LocationPermission.unableToDetermine:
         break;
+    }
+
+    if (!kIsWeb) {
+      try {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last != null &&
+            DateTime.now().difference(last.timestamp) < lastKnownAge) {
+          return LocationFound((lat: last.latitude, lng: last.longitude));
+        }
+      } on Exception {
+        // No last place: a fresh one is asked for below.
+      }
     }
 
     try {
