@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/tokens.dart';
@@ -127,7 +129,12 @@ class NeoSearchField extends StatelessWidget {
 /// The page under [NeoPillTabs]: swiped sideways, it steps to the next or
 /// the previous tab (T-398) - right to left is the next one. A slow drag is
 /// not a swipe, so a list still scrolls up and down as before.
-class NeoTabSwipe<T> extends StatelessWidget {
+///
+/// It moves like a page (T-415, docs/DESIGN_SYSTEM.md "Hap tabları"): it
+/// follows the finger and fades as it goes; let go far or fast enough, the
+/// next tab slides in from the other side, otherwise the page settles back.
+/// A tab chosen by a tap slides in the same way.
+class NeoTabSwipe<T> extends StatefulWidget {
   const NeoTabSwipe({
     required this.values,
     required this.selected,
@@ -144,23 +151,140 @@ class NeoTabSwipe<T> extends StatelessWidget {
   /// Logical pixels a second; below it the finger only wandered.
   static const flingVelocity = 300.0;
 
+  /// The share of the width a page is taken that steps to the next tab.
+  static const switchShare = 0.25;
+
+  /// Where the next tab comes in from, as a share of the width.
+  static const entryShare = 0.3;
+
+  /// How far a page goes for the finger with no tab beyond it.
+  static const edgeResistance = 0.25;
+
+  @override
+  State<NeoTabSwipe<T>> createState() => _NeoTabSwipeState<T>();
+}
+
+class _NeoTabSwipeState<T> extends State<NeoTabSwipe<T>>
+    with SingleTickerProviderStateMixin {
+  /// The page's sideways offset, in logical pixels.
+  late final _offset = AnimationController.unbounded(vsync: this);
+  double _width = 0;
+
+  /// The tab change came from a swipe here: it already slid in.
+  bool _swiped = false;
+
+  @override
+  void didUpdateWidget(NeoTabSwipe<T> old) {
+    super.didUpdateWidget(old);
+
+    if (old.selected != widget.selected && !_swiped) {
+      // Chosen by a tap: in from the side it lies on.
+      final from = old.values.indexOf(old.selected);
+      final to = widget.values.indexOf(widget.selected);
+      _enter(forward: to > from);
+    }
+    _swiped = false;
+  }
+
+  @override
+  void dispose() {
+    _offset.dispose();
+    super.dispose();
+  }
+
+  bool get _rtl => Directionality.of(context) == TextDirection.rtl;
+
+  /// The tab a drag towards [dx] leads to, or null at the end.
+  T? _neighbour(double dx) {
+    final forward = (dx < 0) != _rtl;
+    final next = widget.values.indexOf(widget.selected) + (forward ? 1 : -1);
+    return next >= 0 && next < widget.values.length
+        ? widget.values[next]
+        : null;
+  }
+
+  /// The new page comes in from the right when going forward.
+  void _enter({required bool forward}) {
+    if (_width <= 0) {
+      return;
+    }
+    final side = forward != _rtl ? 1.0 : -1.0;
+    _offset.value = side * _width * NeoTabSwipe.entryShare;
+    unawaited(
+      _offset.animateTo(0, duration: Motion.base, curve: Motion.easing),
+    );
+  }
+
+  void _onStart(DragStartDetails _) => _offset.stop();
+
+  void _onUpdate(DragUpdateDetails details) {
+    final dx = details.primaryDelta ?? 0;
+    final next = _offset.value + dx;
+    // Nothing beyond: the page gives a little, not a page's worth.
+    final damped = _neighbour(next) == null
+        ? _offset.value + dx * NeoTabSwipe.edgeResistance
+        : next;
+    _offset.value = damped;
+  }
+
+  void _onEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    final offset = _offset.value;
+    final far = offset.abs() > _width * NeoTabSwipe.switchShare;
+    final fast = velocity.abs() >= NeoTabSwipe.flingVelocity;
+    // A fling the other way from where the page was taken: back it goes.
+    final towards = fast ? velocity : offset;
+    final next = (far || fast) && (offset == 0 || towards.sign == offset.sign)
+        ? _neighbour(towards)
+        : null;
+
+    if (next == null) {
+      unawaited(
+        _offset.animateTo(0, duration: Motion.fast, curve: Motion.easing),
+      );
+      return;
+    }
+
+    _swiped = true;
+    widget.onSelected(next);
+    _enter(forward: (towards < 0) != _rtl);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onHorizontalDragEnd: (details) {
-        final velocity = details.primaryVelocity ?? 0;
-        if (velocity.abs() < flingVelocity) {
-          return;
-        }
-        final rtl = Directionality.of(context) == TextDirection.rtl;
-        final forward = (velocity < 0) != rtl;
-        final next = values.indexOf(selected) + (forward ? 1 : -1);
-        if (next >= 0 && next < values.length) {
-          onSelected(values[next]);
-        }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _width = constraints.maxWidth;
+
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onHorizontalDragStart: _onStart,
+          onHorizontalDragUpdate: _onUpdate,
+          onHorizontalDragEnd: _onEnd,
+          onHorizontalDragCancel: () => unawaited(
+            _offset.animateTo(0, duration: Motion.fast, curve: Motion.easing),
+          ),
+          child: ClipRect(
+            child: AnimatedBuilder(
+              animation: _offset,
+              builder: (context, child) {
+                final share = _width <= 0
+                    ? 0.0
+                    : (_offset.value.abs() / _width).clamp(0.0, 1.0);
+                return Opacity(
+                  // Fades as it goes; gone by two thirds of the way.
+                  opacity: (1 - share * 1.5).clamp(0.0, 1.0),
+                  child: Transform.translate(
+                    offset: Offset(_offset.value, 0),
+                    child: child,
+                  ),
+                );
+              },
+              child: widget.child,
+            ),
+          ),
+        );
       },
-      child: child,
     );
   }
 }
