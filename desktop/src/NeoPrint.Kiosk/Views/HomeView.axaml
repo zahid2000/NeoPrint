@@ -42,7 +42,11 @@
                 <TextBlock Text="{Binding HeroTitle}" Classes="hero" TextWrapping="Wrap" MaxWidth="820" HorizontalAlignment="Left" />
                 <TextBlock Text="{Binding HeroSubtitle}" Classes="muted" TextWrapping="Wrap" />
             </StackPanel>
-            <Panel Grid.Column="1" Classes="hero-art">
+            <!-- The panel's picture (T-387), else the printer drawing. -->
+            <Image Grid.Column="1" IsVisible="{Binding HasHeroImage}" Stretch="Uniform"
+                   Width="{DynamicResource HeroArtWidth}" Height="{DynamicResource HeroArtHeight}"
+                   Source="{Binding HeroImagePath, Converter={x:Static vm:ScreenConverters.FileImage}}" />
+            <Panel Grid.Column="1" Classes="hero-art" IsVisible="{Binding !HasHeroImage}">
                 <Ellipse Fill="{DynamicResource Brand100}" Width="300" Height="300" />
                 <Border Classes="hero-paper" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="{DynamicResource GapAbove12}">
                     <PathIcon Data="{StaticResource IconDocument}" Width="72" Height="72" Foreground="{DynamicResource Brand300}" />

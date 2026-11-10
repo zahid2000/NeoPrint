@@ -112,6 +112,28 @@ public static class ScreenConverters
     /// </remarks>
     public static readonly IValueConverter QrImage = new QrImageConverter();
 
+    /// <summary>
+    /// A picture kept on disk (the welcome screen's, T-387). One that does not
+    /// open is no picture: the drawing stays rather than the screen failing.
+    /// </summary>
+    public static readonly IValueConverter FileImage = new FuncValueConverter<string?, Bitmap?>(path =>
+    {
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var stream = File.OpenRead(path);
+            return new Bitmap(stream);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        {
+            return null;
+        }
+    });
+
     private static IValueConverter Stage(FlowStage expected)
         => new FuncValueConverter<FlowStage, bool>(stage => stage == expected);
 

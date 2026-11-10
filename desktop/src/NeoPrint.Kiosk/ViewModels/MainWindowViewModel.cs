@@ -117,8 +117,22 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string? _selectedPrinterName;
 
+    /// <summary>The welcome screen's words and picture from the panel (T-387); null keeps the kiosk's own.</summary>
+    private KioskBranding? _branding;
+
+    /// <summary>The welcome screen's picture on disk (T-387); null shows the printer drawing.</summary>
     [ObservableProperty]
-    private string? _hotline;
+    private string? _heroImagePath;
+
+    /// <summary>The footer's help line, as the panel set it (T-387); nothing when it did not.</summary>
+    public string? Hotline => _branding?.Text("hotline", Language);
+
+    public bool HasHeroImage => HeroImagePath is not null;
+
+    partial void OnHeroImagePathChanged(string? value) => OnPropertyChanged(nameof(HasHeroImage));
+
+    /// <summary>The panel's text for this key in the language on now, else the kiosk's own words.</summary>
+    private string Brand(string key) => _branding?.Text(key, Language) ?? T("home." + key);
 
     public MainWindowViewModel()
     {
@@ -181,21 +195,21 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     // The welcome screen as the design draws it (T-341): a big line, the
     // ways a file comes in as cards, and what the kiosk offers right now.
-    public string HeroTitle => T("home.heroTitle");
+    public string HeroTitle => Brand("heroTitle");
 
-    public string HeroSubtitle => T("home.heroSubtitle");
+    public string HeroSubtitle => Brand("heroSubtitle");
 
-    public string UsbCardTitle => T("home.usbTitle");
+    public string UsbCardTitle => Brand("usbTitle");
 
-    public string UsbCardHint => T("home.usbHint");
+    public string UsbCardHint => Brand("usbHint");
 
-    public string CodeCardTitle => T("home.codeTitle");
+    public string CodeCardTitle => Brand("codeTitle");
 
-    public string CodeCardHint => T("home.codeHint");
+    public string CodeCardHint => Brand("codeHint");
 
-    public string PhoneCardTitle => T("home.phoneTitle");
+    public string PhoneCardTitle => Brand("phoneTitle");
 
-    public string PhoneCardHint => T("home.phoneHint");
+    public string PhoneCardHint => Brand("phoneHint");
 
     public string ReadyText => T("home.ready");
 
@@ -845,6 +859,13 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         KioskName = configuration.Name;
         KioskCode = configuration.Code;
+
+        // The panel's words for the welcome screen and footer (T-387): every text bound to them again.
+        _branding = configuration.Branding;
+        foreach (var name in BrandedProperties)
+        {
+            OnPropertyChanged(name);
+        }
         QueueDisplayLimit = configuration.QueueDisplayLimit;
         SelectedPrinterName = configuration.SelectedPrinter;
 

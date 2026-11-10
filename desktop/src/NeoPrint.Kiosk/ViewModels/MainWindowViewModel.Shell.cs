@@ -31,21 +31,30 @@ public sealed partial class MainWindowViewModel
     /// <summary>"Printer hazırdır", or why it is not.</summary>
     public string PrinterStatusText => PrinterOk ? ReadyText : T("home.notReady");
 
-    public string FeatureSizesTitle => T("home.featureSizes");
+    public string FeatureSizesTitle => Brand("featureSizes");
 
-    public string FeatureSizesHint => T("home.featureSizesHint");
+    public string FeatureSizesHint => Brand("featureSizesHint");
 
-    public string FeatureColorTitle => T("home.featureColor");
+    public string FeatureColorTitle => Brand("featureColor");
 
-    public string FeatureColorHint => T("home.featureColorHint");
+    public string FeatureColorHint => Brand("featureColorHint");
 
-    public string FeatureFastTitle => T("home.featureFast");
+    public string FeatureFastTitle => Brand("featureFast");
 
-    public string FeatureFastHint => T("home.featureFastHint");
+    public string FeatureFastHint => Brand("featureFastHint");
 
-    public string FeatureSafeTitle => T("home.featureSafe");
+    public string FeatureSafeTitle => Brand("featureSafe");
 
-    public string FeatureSafeHint => T("home.featureSafeHint");
+    public string FeatureSafeHint => Brand("featureSafeHint");
+
+    /// <summary>What the panel's words reach (T-387): told again when a configuration brings new ones.</summary>
+    private static readonly string[] BrandedProperties =
+    [
+        nameof(HeroTitle), nameof(HeroSubtitle), nameof(UsbCardTitle), nameof(UsbCardHint), nameof(CodeCardTitle),
+        nameof(CodeCardHint), nameof(PhoneCardTitle), nameof(PhoneCardHint), nameof(FeatureSizesTitle),
+        nameof(FeatureSizesHint), nameof(FeatureColorTitle), nameof(FeatureColorHint), nameof(FeatureFastTitle),
+        nameof(FeatureFastHint), nameof(FeatureSafeTitle), nameof(FeatureSafeHint), nameof(Hotline),
+    ];
 
     [RelayCommand]
     private void ToggleLanguages() => IsLanguageOpen = !IsLanguageOpen;

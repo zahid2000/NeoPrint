@@ -86,8 +86,20 @@ public sealed class KioskSession
                 await OnUiAsync(() => SetUpFlow(orders, drives, unsubscribe)).ConfigureAwait(false);
             }
 
+            // The welcome screen's picture (T-387): fetched once per version, kept on disk.
+            var heroImages = new BrandingImageCache(_services.GetRequiredService<IAppPaths>().StateDirectory, _logger);
             Action<KioskConfiguration> configurationChanged = configuration =>
+            {
                 Dispatcher.UIThread.Post(() => _model.ApplyConfiguration(configuration));
+                _ = Task.Run(
+                    async () =>
+                    {
+                        var path = await heroImages.GetAsync(configuration.Branding?.ImageVersion, api.GetBrandingImageAsync, token)
+                            .ConfigureAwait(false);
+                        Dispatcher.UIThread.Post(() => _model.HeroImagePath = path);
+                    },
+                    token);
+            };
             runtime.ConfigurationChanged += configurationChanged;
             unsubscribe.Add(() => runtime.ConfigurationChanged -= configurationChanged);
 

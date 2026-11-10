@@ -86,7 +86,8 @@ public sealed record KioskConfiguration(
     bool PaperBlockWhenInsufficient = true,
     int IdleResetSeconds = 90,
     int TelemetrySeconds = 30,
-    KioskUpdateSettings? Update = null)
+    KioskUpdateSettings? Update = null,
+    KioskBranding? Branding = null)
 {
     /// <summary>
     /// Whether a feature flag is on for this kiosk (plan section 2.16, T-160). A key
@@ -456,6 +457,26 @@ public sealed partial class KioskApiClient
                    .ReadFromJsonAsync<KioskConfiguration>(JsonOptions, cancellationToken)
                    .ConfigureAwait(false)
                ?? throw new InvalidOperationException("The configuration response was empty.");
+    }
+
+    /// <summary>
+    /// The welcome screen's picture (T-387): this kiosk's own, else the
+    /// default's. Null when neither is set.
+    /// </summary>
+    public async Task<byte[]?> GetBrandingImageAsync(CancellationToken cancellationToken = default)
+    {
+        using var request = await CreateAuthenticatedRequestAsync(
+            HttpMethod.Get, "api/kiosks/me/branding/image", cancellationToken).ConfigureAwait(false);
+
+        using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        ThrowIfRefused(response);
+        return await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
