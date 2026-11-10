@@ -979,7 +979,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         OnPropertyChanged(nameof(QueueSummaryText));
-        OnPropertyChanged(nameof(QueueButtonText));
     }
 
     protected override void OnLanguageChanged()

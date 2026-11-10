@@ -5,17 +5,13 @@ namespace NeoPrint.Kiosk.ViewModels;
 
 /// <summary>
 /// The shell as the poster draws it (T-371): a compact language picker and
-/// the date in the header, the queue as a screen of its own opened from the
-/// footer, and what the kiosk offers along the bottom of the welcome screen.
+/// the date in the header, and what the kiosk offers on the footer (T-388).
+/// The queue is the panel beside every screen again (T-389).
 /// </summary>
 public sealed partial class MainWindowViewModel
 {
-    /// <summary>How long the queue screen stays without a touch.</summary>
-    public static readonly TimeSpan QueueScreenFor = TimeSpan.FromSeconds(60);
-
-    /// <summary>"Çap növbəsi" is open over the screen under it.</summary>
-    [ObservableProperty]
-    private bool _isQueueOpen;
+    /// <summary>How long the language list stays out without a touch.</summary>
+    public static readonly TimeSpan LanguagesOpenFor = TimeSpan.FromSeconds(60);
 
     /// <summary>The three languages are out, under "AZ ▾".</summary>
     [ObservableProperty]
@@ -28,13 +24,6 @@ public sealed partial class MainWindowViewModel
     public string DateText => Now.ToString("dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture);
 
     public string BackText => T("common.back");
-
-    public string QueueScreenTitle => T("queue.screenTitle");
-
-    public string QueueScreenHint => T("queue.screenHint");
-
-    /// <summary>"Növbə: 3" on the footer's button, "Növbə yoxdur" when there is none.</summary>
-    public string QueueButtonText => QueueSummaryText;
 
     /// <summary>The printer takes orders now: the footer's green "Printer hazırdır".</summary>
     public bool PrinterOk => PrinterProblem is null && !IsMaintenance;
@@ -59,24 +48,13 @@ public sealed partial class MainWindowViewModel
     public string FeatureSafeHint => T("home.featureSafeHint");
 
     [RelayCommand]
-    private void OpenQueue()
-    {
-        IsLanguageOpen = false;
-        IsQueueOpen = true;
-    }
-
-    [RelayCommand]
-    private void CloseQueue() => IsQueueOpen = false;
-
-    [RelayCommand]
     private void ToggleLanguages() => IsLanguageOpen = !IsLanguageOpen;
 
-    /// <summary>The next person does not find the last one's queue or language list open.</summary>
+    /// <summary>The next person does not find the last one's language list open.</summary>
     private void CloseShellIfIdle(TimeSpan idle)
     {
-        if (idle > QueueScreenFor)
+        if (idle > LanguagesOpenFor)
         {
-            IsQueueOpen = false;
             IsLanguageOpen = false;
         }
     }

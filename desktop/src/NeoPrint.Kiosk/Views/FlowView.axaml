@@ -24,7 +24,8 @@
                         <TextBlock Text="{Binding BackText}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
-                <TextBlock Grid.Column="1" Text="{Binding StageTitle}" Classes="h1" TextTrimming="CharacterEllipsis"
+                <!-- Two lines for a long file name: the queue panel beside takes 280 px (T-389). -->
+                <TextBlock Grid.Column="1" Text="{Binding StageTitle}" Classes="h1" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
                            Margin="{DynamicResource GapStart4}" VerticalAlignment="Center" />
             </Grid>
 
@@ -925,19 +926,7 @@
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{DynamicResource Space6}">
-                <!-- The poster's screen 10 (T-371): the queue, with the order in it. -->
-                <Button Classes="secondary" Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).OpenQueueCommand}">
-                    <Button.IsVisible>
-                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
-                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsPlaced}" />
-                            <Binding Path="Stage" Converter="{x:Static vm:ScreenConverters.IsCollected}" />
-                        </MultiBinding>
-                    </Button.IsVisible>
-                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                        <PathIcon Data="{StaticResource IconQueue}" Width="28" Height="28" />
-                        <TextBlock Text="{Binding FollowQueueText}" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
+                <!-- No "Növbəni izlə": the queue is beside the screen (T-389). -->
                 <Button Classes="secondary" Command="{Binding StartLayoutCommand}">
                     <Button.IsVisible>
                         <MultiBinding Converter="{x:Static BoolConverters.And}">

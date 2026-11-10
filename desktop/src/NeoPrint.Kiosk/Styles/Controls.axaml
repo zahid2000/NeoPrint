@@ -389,23 +389,13 @@
         <Setter Property="Background" Value="{DynamicResource WarningBg}" />
     </Style>
 
-    <!-- "Növbə: 3" on the footer: opens the queue. -->
-    <Style Selector="Button.queue-chip">
-        <Setter Property="Background" Value="{DynamicResource Neutral100}" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="MinHeight" Value="{DynamicResource TouchTarget}" />
-        <Setter Property="Padding" Value="{DynamicResource ChipPadding}" />
-        <Setter Property="FontSize" Value="{DynamicResource FontSizeBodySmall}" />
-        <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
-    </Style>
-
-    <!-- One order in "Çap növbəsi"; the one on the printer stands out. -->
+    <!-- One order in the queue panel (T-389); the one on the printer stands out. -->
     <Style Selector="Border.queue-row">
         <Setter Property="Background" Value="{DynamicResource Neutral0}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}" />
-        <Setter Property="Padding" Value="{DynamicResource Inset6}" />
+        <Setter Property="Padding" Value="{DynamicResource Inset4}" />
         <Setter Property="Margin" Value="{DynamicResource GapBelow4}" />
     </Style>
     <Style Selector="Border.queue-row.printing">

@@ -32,9 +32,6 @@ public sealed partial class PrintFlowViewModel
     /// <summary>The header shows: a title, a "Geri", or both.</summary>
     public bool HasHeader => HasBack || StageTitle is not null;
 
-    /// <summary>"Növbəni izlə" on the receipt (the poster's screen 10).</summary>
-    public string FollowQueueText => T("placed.followQueue");
-
     /// <summary>"Seçilmiş fayl" over the file's name, on the options screen (the poster's screen 5).</summary>
     public string FileSummaryLabel => T("options.fileSummary");
 

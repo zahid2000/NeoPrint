@@ -16,7 +16,7 @@
 
     <!--
         The shell from plan section 7.2. Header, footer and queue panel live
-        here, and only the central area changes, so the kiosk QR and code stay
+        here (the queue panel again since T-389), and only the central area changes, so the kiosk QR and code stay
         visible on every screen and a dialog cannot cover the footer.
 
         Every colour, size and spacing comes from Styles/Tokens.axaml
@@ -127,8 +127,9 @@
             </StackPanel>
         </Grid>
 
-        <!-- CENTRAL AREA: the only part that changes between screens -->
-        <Panel Grid.Row="1" Margin="{DynamicResource PagePadding}">
+        <!-- CENTRAL AREA: the only part that changes between screens; the queue beside it (T-389). -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+        <Panel Grid.Column="0" Margin="{DynamicResource PagePadding}">
             <!-- Each screen sits inside a host whose visibility is bound to the
                  shell. The activation screen has its own view model, so the
                  wrapper keeps that DataContext change from also reaching the
@@ -179,81 +180,69 @@
             </Panel>
         </Panel>
 
-        <!-- "Çap növbəsi" (T-371, the poster's screen 11): opened from the footer, over
-             whatever is under it; "Geri" or a minute without a touch closes it. -->
-        <Panel Grid.Row="1" IsVisible="{Binding IsQueueOpen}" Margin="{DynamicResource PagePadding}">
-            <Border Classes="card" Background="{DynamicResource Neutral0}">
-                <Grid RowDefinitions="Auto,Auto,*">
-                    <Grid ColumnDefinitions="Auto,*">
-                        <Button Classes="back" Command="{Binding CloseQueueCommand}">
-                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
-                                <PathIcon Data="{StaticResource IconArrowBack}" Width="24" Height="24" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding BackText}" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        <TextBlock Grid.Column="1" Text="{Binding QueueScreenTitle}" Classes="h1"
-                                   Margin="{DynamicResource GapStart6}" VerticalAlignment="Center" />
-                    </Grid>
-                    <TextBlock Grid.Row="1" Text="{Binding QueueScreenHint}" Classes="muted" Margin="{DynamicResource GapAbove2}" />
 
-                    <Panel Grid.Row="2" Margin="{DynamicResource GapAbove6}">
-                        <TextBlock Text="{Binding QueueEmptyText}" Classes="h2" Foreground="{DynamicResource Neutral600}"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   IsVisible="{Binding !Queue.Count}" />
-                        <ScrollViewer>
-                            <ItemsControl ItemsSource="{Binding Queue}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:QueueEntry">
-                                        <!-- One row: the place, the code, the pages, the status, when it is ready;
-                                             the one on the printer with its page and bar (T-360). -->
-                                        <Border Classes="queue-row" Classes.printing="{Binding IsPrinting}">
-                                            <Grid ColumnDefinitions="96,*,*,Auto,200" ColumnSpacing="{DynamicResource Space6}">
-                                                <TextBlock Text="{Binding Position, StringFormat=#{0}}" Classes="h2" FontWeight="Bold"
-                                                           Foreground="{DynamicResource Brand500}" VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="1" Text="{Binding JobCode}" Classes="h2"
-                                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="{DynamicResource Space2}">
-                                                    <TextBlock Text="{Binding PagesText}" />
-                                                    <StackPanel IsVisible="{Binding ShowProgress}" Spacing="{DynamicResource Space2}">
-                                                        <TextBlock Text="{Binding ProgressText}" Classes="body-small" FontWeight="SemiBold"
-                                                                   Foreground="{DynamicResource Brand600}" />
-                                                        <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressPercent}"
-                                                                     Height="{StaticResource QueueProgressHeight}" MinHeight="{StaticResource QueueProgressHeight}" MinWidth="0"
-                                                                     Foreground="{DynamicResource Brand600}" Background="{DynamicResource Neutral100}" />
-                                                    </StackPanel>
-                                                </StackPanel>
-                                                <Border Grid.Column="3" Classes="status-chip" Classes.ok="{Binding IsPrinting}" VerticalAlignment="Center">
-                                                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
-                                                        <!-- T-360: the hourglass turns while the job is on the printer. -->
-                                                        <PathIcon Classes="busy" Width="20" Height="20" VerticalAlignment="Center"
-                                                                  Data="{StaticResource IconHourglass}" IsVisible="{Binding IsPrinting}"
-                                                                  Foreground="{DynamicResource Success500}" />
-                                                        <PathIcon Width="20" Height="20" VerticalAlignment="Center"
-                                                                  Data="{StaticResource IconClock}" IsVisible="{Binding !IsPrinting}"
-                                                                  Foreground="{DynamicResource Warning500}" />
-                                                        <TextBlock Text="{Binding StatusText}" Classes="body-small" FontWeight="SemiBold" VerticalAlignment="Center" />
-                                                    </StackPanel>
-                                                </Border>
-                                                <TextBlock Grid.Column="4" Text="{Binding FinishText}" Classes="body-small"
-                                                           HorizontalAlignment="Right" VerticalAlignment="Center" TextWrapping="Wrap" />
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </Panel>
-                </Grid>
-            </Border>
-        </Panel>
+        <!-- QUEUE PANEL (T-389, as before T-371): on the right of every screen, always in
+             sight - the one printing first with its page and bar, then the waiting ones. -->
+        <Border Grid.Column="1" Width="{StaticResource QueuePanelWidth}" IsVisible="{Binding ShowKioskQr}"
+                Background="{DynamicResource Neutral0}" BorderBrush="{DynamicResource Neutral200}" BorderThickness="1,0,0,0">
+            <Grid RowDefinitions="Auto,*" Margin="{DynamicResource Inset6}">
+                <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}" Margin="{DynamicResource GapBelow4}">
+                    <PathIcon Data="{StaticResource IconQueue}" Width="24" Height="24" VerticalAlignment="Center" Foreground="{DynamicResource Brand600}" />
+                    <TextBlock Text="{Binding QueueTitle}" Classes="h2" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Grid.Row="1" Text="{Binding QueueEmptyText}" Classes="caption" TextWrapping="Wrap"
+                           IsVisible="{Binding !Queue.Count}" />
+                <ScrollViewer Grid.Row="1" Classes="queue">
+                    <ItemsControl ItemsSource="{Binding Queue}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:QueueEntry">
+                                <!-- One column under the place: side by side they do not fit 280 px (T-122). -->
+                                <Border Classes="queue-row" Classes.printing="{Binding IsPrinting}">
+                                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
+                                        <TextBlock Text="{Binding Position, StringFormat=#{0}}" Classes="body-small" FontWeight="Bold"
+                                                   Foreground="{DynamicResource Brand600}" VerticalAlignment="Top" />
+                                        <StackPanel Grid.Column="1" Spacing="{DynamicResource Space2}">
+                                            <TextBlock Text="{Binding JobCode}" Classes="body-small" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource Neutral900}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding PagesText}" Classes="caption" TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
+                                                <!-- T-360: the hourglass turns while the job is on the printer. -->
+                                                <PathIcon Classes="busy" Width="20" Height="20" VerticalAlignment="Center"
+                                                          Data="{StaticResource IconHourglass}" IsVisible="{Binding IsPrinting}"
+                                                          Foreground="{DynamicResource Success500}" />
+                                                <PathIcon Width="20" Height="20" VerticalAlignment="Center"
+                                                          Data="{StaticResource IconClock}" IsVisible="{Binding !IsPrinting}"
+                                                          Foreground="{DynamicResource Warning500}" />
+                                                <TextBlock Text="{Binding StatusText}" Classes="caption" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            <StackPanel IsVisible="{Binding ShowProgress}" Spacing="{DynamicResource Space2}">
+                                                <TextBlock Text="{Binding ProgressText}" Classes="body-small" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource Brand600}" />
+                                                <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressPercent}"
+                                                             Height="{StaticResource QueueProgressHeight}" MinHeight="{StaticResource QueueProgressHeight}" MinWidth="0"
+                                                             Foreground="{DynamicResource Brand600}" Background="{DynamicResource Neutral100}" />
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding FinishText}" Classes="caption" TextWrapping="Wrap"
+                                                       IsVisible="{Binding FinishText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+        </Grid>
 
-        <!-- FOOTER (T-371): the kiosk QR and code on the left; on the right the printer as
-             colour, icon and words, and "Növbə: N", which opens the queue. -->
+        <!-- FOOTER (T-371): the kiosk QR and code on the left; in the middle what the kiosk
+             offers (T-388, the strip that sat above the footer); on the right the printer as
+             colour, icon and words. The queue is the panel beside the screen (T-389). -->
         <Border Grid.Row="2"
                 Background="{DynamicResource Neutral0}"
                 BorderBrush="{DynamicResource Neutral200}"
                 BorderThickness="0,1,0,0">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="{DynamicResource Space4}" Margin="{DynamicResource InsetX8}">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="{DynamicResource Space6}" Margin="{DynamicResource InsetX8}">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="{DynamicResource Space4}"
                             VerticalAlignment="Center"
                             IsVisible="{Binding ShowKioskQr}">
@@ -276,6 +265,38 @@
                                VerticalAlignment="Center" />
                 </StackPanel>
 
+                <Grid Grid.Column="1" ColumnDefinitions="*,*,*,*" ColumnSpacing="{DynamicResource Space4}" VerticalAlignment="Center"
+                      IsVisible="{Binding ShowKioskQr}">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="{DynamicResource Space2}" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconDocument}" Width="28" Height="28" VerticalAlignment="Center" Foreground="{DynamicResource Brand500}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding FeatureSizesTitle}" Classes="caption" FontWeight="SemiBold" Foreground="{DynamicResource Neutral900}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding FeatureSizesHint}" Classes="caption" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="{DynamicResource Space2}" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconContrast}" Width="28" Height="28" VerticalAlignment="Center" Foreground="{DynamicResource Brand500}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding FeatureColorTitle}" Classes="caption" FontWeight="SemiBold" Foreground="{DynamicResource Neutral900}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding FeatureColorHint}" Classes="caption" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="{DynamicResource Space2}" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconBolt}" Width="28" Height="28" VerticalAlignment="Center" Foreground="{DynamicResource Brand500}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding FeatureFastTitle}" Classes="caption" FontWeight="SemiBold" Foreground="{DynamicResource Neutral900}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding FeatureFastHint}" Classes="caption" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="{DynamicResource Space2}" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconShield}" Width="28" Height="28" VerticalAlignment="Center" Foreground="{DynamicResource Brand500}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{Binding FeatureSafeTitle}" Classes="caption" FontWeight="SemiBold" Foreground="{DynamicResource Neutral900}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding FeatureSafeHint}" Classes="caption" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+
                 <Border Grid.Column="2" Classes="status-chip" Classes.ok="{Binding PrinterOk}" Classes.problem="{Binding !PrinterOk}"
                         VerticalAlignment="Center" IsVisible="{Binding ShowKioskQr}">
                     <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
@@ -287,13 +308,6 @@
                     </StackPanel>
                 </Border>
 
-                <Button Grid.Column="3" Classes="queue-chip" Command="{Binding OpenQueueCommand}"
-                        VerticalAlignment="Center" IsVisible="{Binding ShowKioskQr}">
-                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}">
-                        <PathIcon Data="{StaticResource IconQueue}" Width="24" Height="24" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding QueueButtonText}" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Button>
             </Grid>
         </Border>
 

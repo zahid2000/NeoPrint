@@ -7,11 +7,11 @@
     <!--
         Screen 1 (plan section 7.3; the poster's "1. Welcome", T-371): the big line
         and a printer on the right, the ways a file comes in as cards with an
-        arrow, cancelling by code as quiet words, and what the kiosk offers along
-        the bottom. The printer's state and the queue are on the footer (T-370).
+        arrow and cancelling by code as quiet words. What the kiosk offers and the
+        printer's state are on the footer (T-370, T-388); the queue beside (T-389).
     -->
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto" RowSpacing="{DynamicResource Space6}" MaxWidth="1600">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="{DynamicResource Space6}" MaxWidth="1600">
         <!-- RefundInfo (plan sections 2.5, 7.3): the printer stopped a paid order and
              the backend is giving the money back - what, where, and how to follow it. -->
         <Border Grid.Row="0" Classes="card" IsVisible="{Binding HasRefundNotice}">
@@ -100,38 +100,5 @@
             </StackPanel>
         </Button>
 
-        <!-- What the kiosk offers, along the bottom (the poster's strip). -->
-        <Border Grid.Row="5" Classes="card" IsVisible="{Binding !HasRefundNotice}">
-            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="{DynamicResource Space6}">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
-                    <Border Classes="icon-tile small"><PathIcon Data="{StaticResource IconDocument}" Width="28" Height="28" Foreground="{DynamicResource Brand500}" /></Border>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding FeatureSizesTitle}" Classes="body-small" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding FeatureSizesHint}" Classes="caption" />
-                    </StackPanel>
-                </Grid>
-                <Grid Grid.Column="1" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
-                    <Border Classes="icon-tile small"><PathIcon Data="{StaticResource IconContrast}" Width="28" Height="28" Foreground="{DynamicResource Brand500}" /></Border>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding FeatureColorTitle}" Classes="body-small" FontWeight="SemiBold" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding FeatureColorHint}" Classes="caption" />
-                    </StackPanel>
-                </Grid>
-                <Grid Grid.Column="2" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
-                    <Border Classes="icon-tile small"><PathIcon Data="{StaticResource IconBolt}" Width="28" Height="28" Foreground="{DynamicResource Brand500}" /></Border>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding FeatureFastTitle}" Classes="body-small" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding FeatureFastHint}" Classes="caption" />
-                    </StackPanel>
-                </Grid>
-                <Grid Grid.Column="3" ColumnDefinitions="Auto,*" ColumnSpacing="{DynamicResource Space4}">
-                    <Border Classes="icon-tile small"><PathIcon Data="{StaticResource IconShield}" Width="28" Height="28" Foreground="{DynamicResource Brand500}" /></Border>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding FeatureSafeTitle}" Classes="body-small" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding FeatureSafeHint}" Classes="caption" TextWrapping="Wrap" />
-                    </StackPanel>
-                </Grid>
-            </Grid>
-        </Border>
     </Grid>
 </UserControl>
