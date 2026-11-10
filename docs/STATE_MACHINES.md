@@ -44,6 +44,10 @@ sayılır (`supply_events.DedupKey`: `job:{id}`, ikinci dəfədən `job:{id}:{ru
 ləğv edir: `Queued → Cancelled`, `Interrupted → Cancelled`. `Printing` (kağız artıq gedir) və `Suspected`
 (nəticə naməlumdur — qərar administratorundur, plan 2.5 B) ləğv olunmur.
 
+**Adminin ləğvi `Printing`-dən (T-385).** `Printing → Cancelled` yalnız admindir (`AdminCancelPrintJobCommand`, səbəb məcburi,
+audit): sifariş "çap olunur"da qalıb, amma çap getmir — sahibi müraciət açır, admin kioskda yoxlayıb ləğv edir, pul
+qaytarılır. Sahibinin ləğvi bu keçidi işlətmir.
+
 Kiosk ilə əlaqə itib — **nəticə naməlumdur** (Plan Bölmə 2.5, ssenari B):
 
 `Queued → Suspected`
@@ -274,6 +278,12 @@ olunanın **ilk pulla ödənmiş** (`Parts.Money > 0`) `Completed` job-u onu **b
 heç nə mane olmursa `Rewarded` (bonuslar həmin an yazılır), mane olursa `Registered` qalır və `Hold` səbəbi yazılır —
 `SameDevice`, `MonthlyLimit`, `InviterInactive`. Həll olunmuş qeyd bir daha dəyişmir; job sonradan refund olunsa da bonus geri
 alınmır (`DECISIONS.md` 2026-10-05).
+
+## SupportClaim (müraciət)
+
+`Open → Answered` (admin cavab yazır — istifadəçi üçün bağlanıb, bildiriş gedir), `Open | Answered → Closed` (admin bağlayır, son vəziyyət),
+`Answered → Open` (istifadəçi "Müraciəti davam etdir" seçir, T-385). Hər `Open` olma adminə `CustomerClaim` incident-idir;
+cavab və ya bağlanma onu bağlayır.
 
 ## Qaydalar
 
