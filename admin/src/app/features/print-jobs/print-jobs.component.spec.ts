@@ -209,14 +209,15 @@ describe('PrintJobDetailComponent', () => {
     return fixture.componentInstance;
   }
 
-  it('offers cancelling only for a job still waiting, and only with the permission', async () => {
+  it('offers cancelling for a job waiting or stuck printing, and only with the permission', async () => {
     expect((await open('Queued', [Permissions.jobsView, Permissions.jobsCancel])).canCancel()).toBe(
       true,
     );
     TestBed.resetTestingModule();
+    // Stuck "printing" with no paper going (T-385): the admin checks and takes it back.
     expect(
       (await open('Printing', [Permissions.jobsView, Permissions.jobsCancel])).canCancel(),
-    ).toBe(false);
+    ).toBe(true);
     TestBed.resetTestingModule();
     expect((await open('Paid', [Permissions.jobsView, Permissions.jobsCancel])).canCancel()).toBe(
       false,
@@ -238,14 +239,12 @@ describe('PrintJobDetailComponent', () => {
     request.flush({ ...job, status: 'Cancelled' });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    backend
-      .expectOne('/api/admin/print-jobs/j1')
-      .flush({
-        job: { ...job, status: 'Cancelled' },
-        kioskCode: 'KSK-0001',
-        history: [],
-        attempts: [],
-      });
+    backend.expectOne('/api/admin/print-jobs/j1').flush({
+      job: { ...job, status: 'Cancelled' },
+      kioskCode: 'KSK-0001',
+      history: [],
+      attempts: [],
+    });
     await cancelling;
 
     expect(component.detail()?.job.status).toBe('Cancelled');

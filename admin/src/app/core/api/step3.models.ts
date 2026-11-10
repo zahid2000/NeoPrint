@@ -3,7 +3,11 @@
  * the queue, paper (docs/API.md). Field names follow the API's camelCase JSON.
  */
 
-import type { SupplyAlert, SupplyForecast, SupplyLevel } from '../../features/operator/operator.models';
+import type {
+  SupplyAlert,
+  SupplyForecast,
+  SupplyLevel,
+} from '../../features/operator/operator.models';
 
 export interface PrinterCapabilities {
   readonly color: boolean;
@@ -228,4 +232,12 @@ export const printJobStatuses = [
 ] as const;
 
 /** A job still waiting for the printer can be taken out of the queue; one at the printer cannot. */
-export const cancellableStatuses: readonly string[] = ['Draft', 'PendingPayment', 'Queued', 'Interrupted'];
+// "Printing" too (T-385): stuck there with no paper going, the admin who
+// looked at the kiosk takes it back; the server asks for the reason.
+export const cancellableStatuses: readonly string[] = [
+  'Draft',
+  'PendingPayment',
+  'Queued',
+  'Printing',
+  'Interrupted',
+];
