@@ -28,6 +28,7 @@ public sealed record CancelMyPrintJobCommand(Guid UserId, Guid JobId) : IRequest
 /// <param name="CanCancel">The owner may cancel it now and take the money back (<see cref="CancelMyPrintJobCommand"/>).</param>
 /// <param name="KioskStopped">Its kiosk cannot print at the moment (plan section 9.6): waiting may take a while.</param>
 /// <param name="FileId">The file in the account it was made from - "Yenidən çap et" (T-378); null for a flash order.</param>
+/// <param name="Duplex">Both sides - with the page range and pages a sheet, what "Yenidən çap et" starts from (T-408).</param>
 public sealed record MyPrintJobView(
     Guid Id,
     string JobCode,
@@ -50,7 +51,10 @@ public sealed record MyPrintJobView(
     DateTime? ScheduledAt = null,
     bool CanCancel = false,
     bool KioskStopped = false,
-    Guid? FileId = null);
+    Guid? FileId = null,
+    bool Duplex = false,
+    string? PageRange = null,
+    int PagesPerSheet = 1);
 
 public sealed class MyPrintJobHandlers :
     IRequestHandler<ListMyPrintJobsQuery, IReadOnlyList<MyPrintJobView>>,
@@ -189,7 +193,10 @@ public sealed class MyPrintJobHandlers :
                     waiting.TryGetValue(job.Id, out var at) ? at : null,
                     Cancellable(job),
                     !job.IsFinished && kiosk?.FaultSince is not null,
-                    job.FileId);
+                    job.FileId,
+                    job.Options.Duplex,
+                    job.Options.PageRange,
+                    job.Options.PagesPerSheet);
             })
             .ToList();
     }

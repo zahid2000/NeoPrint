@@ -80,6 +80,8 @@ public sealed class ScheduleTests
         var mine = (await user.Client.GetFromJsonAsync<JsonElement>("/api/print-jobs/my")).EnumerateArray().Single(j => j.GetProperty("id").GetGuid() == jobId);
         mine.GetProperty("status").GetString().Should().Be("Paid");
         mine.GetProperty("fileId").GetGuid().Should().Be(fileId, "the app prints it again from the same file (T-378)");
+        mine.GetProperty("pagesPerSheet").GetInt32().Should().Be(1, "Yenidən çap et starts from the same options (T-408)");
+        mine.TryGetProperty("duplex", out _).Should().BeTrue();
         mine.GetProperty("scheduledAt").GetDateTime().ToUniversalTime().Should().BeCloseTo(listed.GetProperty("scheduledAt").GetDateTime().ToUniversalTime(), TimeSpan.FromSeconds(1));
         (await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/queue")).ToString().Should().NotContain(jobId.ToString());
         (await kiosk.Client.GetAsync($"/api/print-jobs/{jobId}/file")).StatusCode.Should().Be(HttpStatusCode.Conflict);
