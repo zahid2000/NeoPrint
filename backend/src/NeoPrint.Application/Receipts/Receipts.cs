@@ -54,7 +54,8 @@ public sealed record AddReceiptEmailCommand(Guid ReceiptId, string Email) : IReq
 /// <summary>An admin sends it again to the addresses it already went to.</summary>
 public sealed record AdminResendReceiptCommand(Guid AdminUserId, Guid ReceiptId, string? Ip) : IRequest<ReceiptView>;
 
-public sealed record ListMyReceiptsQuery(Guid UserId) : IRequest<IReadOnlyList<ReceiptView>>;
+/// <param name="Page">1-based page of <paramref name="PageSize"/> items, newest first (T-413: the app loads more as the list scrolls).</param>
+public sealed record ListMyReceiptsQuery(Guid UserId, int Page = 1, int PageSize = ListPaging.MaxSize) : IRequest<IReadOnlyList<ReceiptView>>;
 
 public sealed record ListReceiptsQuery(Guid AdminUserId, string? Number, Guid? PaymentId, int Page, int PageSize) : IRequest<ReceiptPage>;
 
@@ -372,8 +373,9 @@ public sealed class ReceiptHandlers :
         ArgumentNullException.ThrowIfNull(request);
 
         var views = new List<ReceiptView>();
+        var (skip, take) = ListPaging.Of(request.Page, request.PageSize);
 
-        foreach (var receipt in await _receipts.ListForUserAsync(request.UserId, 100, cancellationToken).ConfigureAwait(false))
+        foreach (var receipt in await _receipts.ListForUserAsync(request.UserId, take, cancellationToken, skip).ConfigureAwait(false))
         {
             views.Add(await ViewAsync(receipt, cancellationToken).ConfigureAwait(false));
         }

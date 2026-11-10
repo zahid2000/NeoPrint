@@ -22,18 +22,22 @@ public sealed class ShareRepository : IShareRepository
     public Task UpdateAsync(Share share, CancellationToken cancellationToken = default)
         => AggregateWriter.ReplaceAsync(_context, _context.Shares, share, cancellationToken);
 
-    public async Task<IReadOnlyList<Share>> ListSentAsync(Guid userId, int take, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Share>> ListSentAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0)
         => await _context.Shares
             .Find(s => s.FromUserId == userId)
             .SortByDescending(s => s.CreatedAt)
+            .ThenByDescending(s => s.Id)
+            .Skip(skip)
             .Limit(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<IReadOnlyList<Share>> ListReceivedAsync(Guid userId, int take, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Share>> ListReceivedAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0)
         => await _context.Shares
             .Find(s => s.ToUserId == userId)
             .SortByDescending(s => s.CreatedAt)
+            .ThenByDescending(s => s.Id)
+            .Skip(skip)
             .Limit(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

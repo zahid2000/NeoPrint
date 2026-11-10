@@ -26,7 +26,7 @@ public interface IScheduledPrintRepository
     Task UpdateAsync(ScheduledPrint schedule, CancellationToken cancellationToken = default);
 
     /// <summary>The user's scheduled prints, newest first, without the ones cancelled before they were paid.</summary>
-    Task<IReadOnlyList<ScheduledPrint>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ScheduledPrint>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0);
 
     /// <summary>Not paid yet and made before <paramref name="createdBefore"/>, oldest first.</summary>
     Task<IReadOnlyList<ScheduledPrint>> ListPendingPaymentAsync(DateTime createdBefore, int take, CancellationToken cancellationToken = default);
@@ -56,7 +56,8 @@ public sealed record CreateScheduleCommand(
     : IRequest<ScheduleCreatedResponse>;
 
 /// <summary><c>GET schedules</c>: the user's scheduled prints, newest first.</summary>
-public sealed record ListMySchedulesQuery(Guid UserId) : IRequest<IReadOnlyList<ScheduleView>>;
+/// <param name="Page">1-based page of <paramref name="PageSize"/> items, newest first (T-413: the app loads more as the list scrolls).</param>
+public sealed record ListMySchedulesQuery(Guid UserId, int Page = 1, int PageSize = ListPaging.MaxSize) : IRequest<IReadOnlyList<ScheduleView>>;
 
 /// <summary><c>PUT schedules/{id}/time</c> (plan section 9.5, step 4).</summary>
 public sealed record RescheduleCommand(Guid UserId, Guid ScheduleId, DateTime ScheduledAt) : IRequest<ScheduleView>;
@@ -233,7 +234,8 @@ public sealed class ScheduleHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var schedules = await _schedules.ListForUserAsync(request.UserId, 100, cancellationToken).ConfigureAwait(false);
+        var (skip, take) = ListPaging.Of(request.Page, request.PageSize);
+        var schedules = await _schedules.ListForUserAsync(request.UserId, take, cancellationToken, skip).ConfigureAwait(false);
         var jobs = (await _jobs.ListByIdsAsync(schedules.Select(s => s.JobId).ToList(), cancellationToken).ConfigureAwait(false))
             .ToDictionary(job => job.Id);
         var hours = await AutoCancelHoursAsync(cancellationToken).ConfigureAwait(false);

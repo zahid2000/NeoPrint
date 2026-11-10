@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Common;
 using NeoPrint.Application.PrintJobs;
 using NeoPrint.Application.UserQr;
 using NeoPrint.Domain.Admin;
@@ -211,8 +212,8 @@ public sealed class MyPrintJobsController : ControllerBase
     }
 
     [HttpGet("my")]
-    public async Task<ActionResult<IReadOnlyList<MyPrintJobView>>> Mine(CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new ListMyPrintJobsQuery(_currentUser.UserId ?? throw new UnauthorizedAccessException()), cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<MyPrintJobView>>> Mine([FromQuery] int page = 1, [FromQuery] int pageSize = ListPaging.MaxSize, CancellationToken cancellationToken = default)
+        => Ok(await _sender.Send(new ListMyPrintJobsQuery(_currentUser.UserId ?? throw new UnauthorizedAccessException(), page, pageSize), cancellationToken));
 
     /// <summary>
     /// The owner cancels an order that is waiting - in the queue, or stopped

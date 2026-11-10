@@ -21,6 +21,18 @@ Admin paneli və API **eyni origin**-dədir (nginx `/api` və `/hubs` yolların�
 backend-ə proxy edir) — admin refresh cookie `SameSite=Strict` olduğu üçün bu
 məcburidir.
 
+### Müştəri siyahılarının səhifələnməsi (T-413)
+
+Mobil tətbiqin siyahıları scroll aşağı getdikcə növbəti hissəni yükləyir.
+`GET /api/print-jobs/my`, `GET /api/schedules`, `GET /api/shares/sent`,
+`GET /api/shares/received`, `GET /api/receipts`, `GET /api/me/claims` əlavə
+`?page=1&pageSize=20` qəbul edir: `page` 1-dən, `pageSize` 1–100. Sıra — ən
+yenisi əvvəl, bərabər vaxtda `id` ilə (səhifələr bir-birini təkrarlamır).
+Cavabın forması dəyişmir; səhifə `pageSize`-dan az qaytarırsa — siyahının
+sonudur. Parametrsiz — əvvəlki kimi ən yeni 100. `GET /api/files` və
+`GET /api/wallet/transactions` öz `page` / `pageSize` parametrləri ilə,
+`GET /api/notifications` `before` kursoru ilə səhifələnir.
+
 ### Autentifikasiya
 
 Dörd növ token var, hamısı eyni sxem ilə yoxlanılır və `npt` claim-i ilə
@@ -1516,7 +1528,7 @@ Kiosk çapın gedişini bildirir: `{ "status": "Printing" | "Completed" | "Inter
 
 ### `GET /api/print-jobs/my` (User token)
 
-Tətbiqdə "Sifarişlərim": hesabın son 100 sifarişi, ən yenisi əvvəl —
+Tətbiqdə "Sifarişlərim": hesabın sifarişləri, ən yenisi əvvəl, `?page=&pageSize=` ilə səhifə-səhifə (parametrsiz — son 100; "Müştəri siyahılarının səhifələnməsi") —
 `[{ id, jobCode, status, kioskId, kioskCode, kioskName, fileName, pages, copies, color, paper, amount, currency, printedSides, reason, paymentId, createdAt, finishedAt }]`.
 Tətbiqlə ödənilən kiosk sifarişi ödəniş anında hesaba bağlanır və burada görünür; bank QR ilə ödənilən anonim sifariş görünmür. `amount` — kioskda göstərilən qiymət (promokod daxil); faktiki tutulan məbləğ qəbzdədir. `reason` — dayanma və ya ləğv səbəbi oxuyanın dilində.
 
@@ -2015,7 +2027,7 @@ ilə yaranır. Kolleksiya `file_shares`.
   yenidən göndərir). `message` — ən çox 200 simvol, bir sətir (idarəetmə və bidi simvolları boşluğa çevrilir), artığı
   `400 shares.messageTooLong`. Eyni faylın eyni PDF-i eyni alıcıya, o saxlamadan, yenidən göndərilirsə — **eyni paylaşım**
   qaytarılır (ikinci bildiriş getmir). Alıcıya `FileShared` bildirişi + push.
-- `GET /sent`, `GET /received` → `{ items: [ShareView] }`, ən yenisi əvvəl (100). `ShareView` =
+- `GET /sent`, `GET /received` → `{ items: [ShareView] }`, ən yenisi əvvəl (parametrsiz — 100; `?page=&pageSize=` — T-413). `ShareView` =
   `{ id, fileName, pageCount, isSensitive, message?, otherPublicId, createdAt, availability, savedFileId?, savedAt? }`;
   `otherPublicId` — göndərilənlərdə alıcının, alınanlarda göndərənin id-si. `availability`: `Available`, `Saved`
   (alıcının nüsxəsi var), `Gone` (göndərən faylı və ya hesabı silib / bloklanıb — "Fayl artıq yoxdur"), `Changed`

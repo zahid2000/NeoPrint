@@ -36,8 +36,8 @@ public sealed class ReceiptRepository : IReceiptRepository
     public Task UpdateAsync(Receipt receipt, CancellationToken cancellationToken = default)
         => AggregateWriter.ReplaceAsync(_context, _context.Receipts, receipt, cancellationToken);
 
-    public async Task<IReadOnlyList<Receipt>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default)
-        => await _context.Receipts.Find(r => r.UserId == userId).SortByDescending(r => r.CreatedAt).Limit(take)
+    public async Task<IReadOnlyList<Receipt>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0)
+        => await _context.Receipts.Find(r => r.UserId == userId).SortByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).Skip(skip).Limit(take)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
     public async Task<IReadOnlyList<Receipt>> ListWithoutFiscalAsync(DateTime since, int take, CancellationToken cancellationToken = default)

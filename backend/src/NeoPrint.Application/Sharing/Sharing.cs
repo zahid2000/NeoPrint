@@ -27,10 +27,10 @@ public interface IShareRepository
     Task UpdateAsync(Share share, CancellationToken cancellationToken = default);
 
     /// <summary>What the user sent, newest first.</summary>
-    Task<IReadOnlyList<Share>> ListSentAsync(Guid userId, int take, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Share>> ListSentAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0);
 
     /// <summary>What the user received, newest first.</summary>
-    Task<IReadOnlyList<Share>> ListReceivedAsync(Guid userId, int take, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Share>> ListReceivedAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0);
 
     /// <summary>An unsaved share of this very PDF to this person: sending it again is the same share.</summary>
     Task<Share?> FindUnsavedAsync(Guid fileId, Guid toUserId, string pdfKey, CancellationToken cancellationToken = default);
@@ -45,10 +45,12 @@ public sealed record SendShareCommand(Guid UserId, Guid FileId, string? ToPublic
     : IRequest<ShareView>;
 
 /// <summary><c>GET shares/sent</c>.</summary>
-public sealed record ListSentSharesQuery(Guid UserId) : IRequest<IReadOnlyList<ShareView>>;
+/// <param name="Page">1-based page of <paramref name="PageSize"/> items, newest first (T-413: the app loads more as the list scrolls).</param>
+public sealed record ListSentSharesQuery(Guid UserId, int Page = 1, int PageSize = ListPaging.MaxSize) : IRequest<IReadOnlyList<ShareView>>;
 
 /// <summary><c>GET shares/received</c>: the "Alınanlar" list.</summary>
-public sealed record ListReceivedSharesQuery(Guid UserId) : IRequest<IReadOnlyList<ShareView>>;
+/// <param name="Page">1-based page of <paramref name="PageSize"/> items, newest first (T-413: the app loads more as the list scrolls).</param>
+public sealed record ListReceivedSharesQuery(Guid UserId, int Page = 1, int PageSize = ListPaging.MaxSize) : IRequest<IReadOnlyList<ShareView>>;
 
 /// <summary><c>POST shares/{id}/save</c>: "Fayllarıma saxla" - the recipient's own copy.</summary>
 public sealed record SaveShareCommand(Guid UserId, Guid ShareId) : IRequest<UserFileResult>;
@@ -221,7 +223,8 @@ public sealed partial class ShareHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var shares = await _shares.ListSentAsync(request.UserId, ListSize, cancellationToken).ConfigureAwait(false);
+        var (skip, take) = ListPaging.Of(request.Page, Math.Min(request.PageSize, ListSize));
+        var shares = await _shares.ListSentAsync(request.UserId, take, cancellationToken, skip).ConfigureAwait(false);
         var people = await PublicIdsAsync(shares.Select(share => share.ToUserId), cancellationToken).ConfigureAwait(false);
         var views = new List<ShareView>(shares.Count);
 
@@ -242,7 +245,8 @@ public sealed partial class ShareHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var shares = await _shares.ListReceivedAsync(request.UserId, ListSize, cancellationToken).ConfigureAwait(false);
+        var (skip, take) = ListPaging.Of(request.Page, Math.Min(request.PageSize, ListSize));
+        var shares = await _shares.ListReceivedAsync(request.UserId, take, cancellationToken, skip).ConfigureAwait(false);
         var people = await PublicIdsAsync(shares.Select(share => share.FromUserId), cancellationToken).ConfigureAwait(false);
         var views = new List<ShareView>(shares.Count);
 

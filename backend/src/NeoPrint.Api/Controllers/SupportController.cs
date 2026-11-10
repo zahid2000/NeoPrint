@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Common;
 using NeoPrint.Application.Support;
 using NeoPrint.Domain.Admin;
 
@@ -58,8 +59,8 @@ public sealed class MyClaimsController : ControllerBase
     private Guid UserId => _currentUser.UserId ?? throw new UnauthorizedAccessException();
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<SupportClaimView>>> List(CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new ListMyClaimsQuery(UserId), cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<SupportClaimView>>> List([FromQuery] int page = 1, [FromQuery] int pageSize = ListPaging.MaxSize, CancellationToken cancellationToken = default)
+        => Ok(await _sender.Send(new ListMyClaimsQuery(UserId, page, pageSize), cancellationToken));
 
     [HttpPost]
     [Idempotent]

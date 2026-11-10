@@ -1,6 +1,7 @@
 using MediatR;
 
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Common;
 using NeoPrint.Application.Localization;
 
 namespace NeoPrint.Application.PrintJobs;
@@ -9,7 +10,8 @@ namespace NeoPrint.Application.PrintJobs;
 /// The customer's own jobs, newest first (plan section 6: <c>GET print-jobs/my</c>):
 /// the ones paid with the app and the ones sent from it.
 /// </summary>
-public sealed record ListMyPrintJobsQuery(Guid UserId) : IRequest<IReadOnlyList<MyPrintJobView>>;
+/// <param name="Page">1-based page of <paramref name="PageSize"/> items, newest first (T-413: the app loads more as the list scrolls).</param>
+public sealed record ListMyPrintJobsQuery(Guid UserId, int Page = 1, int PageSize = ListPaging.MaxSize) : IRequest<IReadOnlyList<MyPrintJobView>>;
 
 /// <summary>
 /// The owner cancels their own order (plan section 6: <c>POST print-jobs/{id}/cancel</c>;
@@ -150,7 +152,8 @@ public sealed class MyPrintJobHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var jobs = await _jobs.ListForUserAsync(request.UserId, Take, cancellationToken).ConfigureAwait(false);
+        var (skip, take) = ListPaging.Of(request.Page, request.PageSize);
+        var jobs = await _jobs.ListForUserAsync(request.UserId, take, cancellationToken, skip).ConfigureAwait(false);
         var kiosks = new Dictionary<Guid, Domain.Kiosks.Kiosk?>();
 
         foreach (var kioskId in jobs.Select(job => job.KioskId).Distinct())

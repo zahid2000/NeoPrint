@@ -29,10 +29,12 @@ public sealed class ScheduledPrintRepository : IScheduledPrintRepository
     public Task UpdateAsync(ScheduledPrint schedule, CancellationToken cancellationToken = default)
         => AggregateWriter.ReplaceAsync(_context, _context.ScheduledPrints, schedule, cancellationToken);
 
-    public async Task<IReadOnlyList<ScheduledPrint>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ScheduledPrint>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0)
         => await _context.ScheduledPrints
             .Find(s => s.UserId == userId && !(s.Status == ScheduledPrintStatus.Cancelled && s.PaidAt == null))
             .SortByDescending(s => s.CreatedAt)
+            .ThenByDescending(s => s.Id)
+            .Skip(skip)
             .Limit(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

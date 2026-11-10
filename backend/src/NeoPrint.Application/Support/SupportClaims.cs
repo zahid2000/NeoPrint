@@ -27,7 +27,7 @@ public interface ISupportClaimRepository
 
     Task<IReadOnlyList<SupportClaim>> ListForJobAsync(Guid jobId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<SupportClaim>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SupportClaim>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0);
 
     /// <summary>Open claims about one job: a customer who writes again adds to the pile only so far.</summary>
     Task<long> CountOpenForJobAsync(Guid jobId, CancellationToken cancellationToken = default);
@@ -54,7 +54,8 @@ public sealed record OpenRefundClaimCommand(Guid RefundId, string? Text, string?
 public sealed record OpenAppClaimCommand(Guid UserId, Guid JobId, string? Text) : IRequest<SupportClaimView>, ITransactionalRequest;
 
 /// <summary>The user's claims and their answers, newest first.</summary>
-public sealed record ListMyClaimsQuery(Guid UserId) : IRequest<IReadOnlyList<SupportClaimView>>;
+/// <param name="Page">1-based page of <paramref name="PageSize"/> items, newest first (T-413: the app loads more as the list scrolls).</param>
+public sealed record ListMyClaimsQuery(Guid UserId, int Page = 1, int PageSize = ListPaging.MaxSize) : IRequest<IReadOnlyList<SupportClaimView>>;
 
 public sealed record ListClaimsQuery(Guid AdminUserId, IReadOnlyCollection<string>? Statuses, Guid? JobId, int Page, int PageSize) : IRequest<SupportClaimPage>;
 
@@ -236,7 +237,8 @@ public sealed class SupportClaimHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var claims = await _claims.ListForUserAsync(request.UserId, 100, cancellationToken).ConfigureAwait(false);
+        var (skip, take) = ListPaging.Of(request.Page, request.PageSize);
+        var claims = await _claims.ListForUserAsync(request.UserId, take, cancellationToken, skip).ConfigureAwait(false);
 
         return [.. claims.Select(Own)];
     }

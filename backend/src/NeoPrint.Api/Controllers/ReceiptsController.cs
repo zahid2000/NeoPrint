@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Common;
 using NeoPrint.Application.Receipts;
 using NeoPrint.Domain.Admin;
 
@@ -29,8 +30,8 @@ public sealed class ReceiptsController : ControllerBase
     private Guid UserId => _currentUser.UserId ?? throw new UnauthorizedAccessException();
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<ReceiptView>>> List(CancellationToken cancellationToken)
-        => Ok(await _sender.Send(new ListMyReceiptsQuery(UserId), cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<ReceiptView>>> List([FromQuery] int page = 1, [FromQuery] int pageSize = ListPaging.MaxSize, CancellationToken cancellationToken = default)
+        => Ok(await _sender.Send(new ListMyReceiptsQuery(UserId, page, pageSize), cancellationToken));
 
     [HttpGet("{id:guid}/pdf")]
     public async Task<IActionResult> Pdf(Guid id, CancellationToken cancellationToken)

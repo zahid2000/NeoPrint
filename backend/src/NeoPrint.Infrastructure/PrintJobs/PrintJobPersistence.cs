@@ -184,10 +184,12 @@ public sealed class PrintJobRepository : IPrintJobRepository
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    public async Task<IReadOnlyList<PrintJob>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PrintJob>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0)
         => await _context.PrintJobs
             .Find(job => job.UserId == userId)
             .SortByDescending(job => job.CreatedAt)
+            .ThenByDescending(job => job.Id)
+            .Skip(skip)
             .Limit(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);

@@ -24,8 +24,8 @@ public sealed class SupportClaimRepository : ISupportClaimRepository
     public async Task<IReadOnlyList<SupportClaim>> ListForJobAsync(Guid jobId, CancellationToken cancellationToken = default)
         => await _context.SupportClaims.Find(c => c.JobId == jobId).SortByDescending(c => c.CreatedAt).ToListAsync(cancellationToken).ConfigureAwait(false);
 
-    public async Task<IReadOnlyList<SupportClaim>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default)
-        => await _context.SupportClaims.Find(c => c.UserId == userId).SortByDescending(c => c.CreatedAt).Limit(take)
+    public async Task<IReadOnlyList<SupportClaim>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0)
+        => await _context.SupportClaims.Find(c => c.UserId == userId).SortByDescending(c => c.CreatedAt).ThenByDescending(c => c.Id).Skip(skip).Limit(take)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
     public Task<long> CountOpenForJobAsync(Guid jobId, CancellationToken cancellationToken = default)

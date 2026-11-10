@@ -12,7 +12,7 @@ public interface IReceiptRepository
 
     Task UpdateAsync(Receipt receipt, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Receipt>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Receipt>> ListForUserAsync(Guid userId, int take, CancellationToken cancellationToken = default, int skip = 0);
 
     /// <summary>Receipts still rendered without their fiscal receipt, made after <paramref name="since"/>.</summary>
     Task<IReadOnlyList<Receipt>> ListWithoutFiscalAsync(DateTime since, int take, CancellationToken cancellationToken = default);

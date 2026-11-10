@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Common;
 using NeoPrint.Application.Features;
 using NeoPrint.Application.Files;
 using NeoPrint.Application.Sharing;
@@ -50,13 +51,13 @@ public sealed class SharesController : ControllerBase
 
     /// <summary>"Göndərilənlər", newest first.</summary>
     [HttpGet("sent")]
-    public async Task<ActionResult<ShareList>> Sent(CancellationToken cancellationToken)
-        => Ok(new ShareList(await _sender.Send(new ListSentSharesQuery(UserId), cancellationToken)));
+    public async Task<ActionResult<ShareList>> Sent([FromQuery] int page = 1, [FromQuery] int pageSize = ListPaging.MaxSize, CancellationToken cancellationToken = default)
+        => Ok(new ShareList(await _sender.Send(new ListSentSharesQuery(UserId, page, pageSize), cancellationToken)));
 
     /// <summary>"Alınanlar", newest first.</summary>
     [HttpGet("received")]
-    public async Task<ActionResult<ShareList>> Received(CancellationToken cancellationToken)
-        => Ok(new ShareList(await _sender.Send(new ListReceivedSharesQuery(UserId), cancellationToken)));
+    public async Task<ActionResult<ShareList>> Received([FromQuery] int page = 1, [FromQuery] int pageSize = ListPaging.MaxSize, CancellationToken cancellationToken = default)
+        => Ok(new ShareList(await _sender.Send(new ListReceivedSharesQuery(UserId, page, pageSize), cancellationToken)));
 
     /// <summary>
     /// "Fayllarıma saxla": the recipient's own encrypted copy, in their quota. Saving again

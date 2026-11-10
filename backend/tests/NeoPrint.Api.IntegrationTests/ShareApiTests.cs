@@ -185,6 +185,36 @@ public sealed class ShareApiTests
     }
 
     [PdfiumFact]
+    public async Task The_lists_come_a_page_at_a_time_newest_first()
+    {
+        // T-413: the app loads the next page as the list scrolls.
+        using var sender = await TestUsers.ConfirmedAsync(_fixture);
+        using var recipient = await TestUsers.ConfirmedAsync(_fixture);
+        var to = await PublicIdAsync(recipient.Id);
+        var shareIds = new List<Guid>();
+
+        for (var i = 0; i < 3; i++)
+        {
+            var fileId = await SessionTests.UploadReadyPdfAsync(_fixture, sender.Client, pages: 1);
+            shareIds.Add(await ShareIdAsync(await SendAsync(sender.Client, fileId, to)));
+        }
+
+        foreach (var (client, which) in new[] { (sender.Client, "sent"), (recipient.Client, "received") })
+        {
+            var first = await ListAsync(client, which + "?page=1&pageSize=2");
+            var second = await ListAsync(client, which + "?page=2&pageSize=2");
+            var past = await ListAsync(client, which + "?page=3&pageSize=2");
+
+            first.Should().HaveCount(2);
+            second.Should().ContainSingle();
+            past.Should().BeEmpty();
+            first.Concat(second).Select(share => share.GetProperty("id").GetGuid())
+                .Should().Equal(Enumerable.Reverse(shareIds), "newest first, none twice, none missed");
+            (await ListAsync(client, which)).Should().HaveCount(3, "without a page, the whole list as before");
+        }
+    }
+
+    [PdfiumFact]
     public async Task The_share_qr_names_the_user()
     {
         using var user = await TestUsers.ConfirmedAsync(_fixture);

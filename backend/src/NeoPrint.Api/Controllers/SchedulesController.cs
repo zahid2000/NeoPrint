@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using NeoPrint.Api.Infrastructure;
 using NeoPrint.Application.Abstractions;
+using NeoPrint.Application.Common;
 using NeoPrint.Application.Schedules;
 using NeoPrint.Domain.PrintJobs;
 
@@ -56,8 +57,8 @@ public sealed class SchedulesController : ControllerBase
 
     /// <summary>The user's scheduled prints, newest first.</summary>
     [HttpGet]
-    public async Task<ActionResult<ScheduleList>> List(CancellationToken cancellationToken)
-        => Ok(new ScheduleList(await _sender.Send(new ListMySchedulesQuery(UserId), cancellationToken)));
+    public async Task<ActionResult<ScheduleList>> List([FromQuery] int page = 1, [FromQuery] int pageSize = ListPaging.MaxSize, CancellationToken cancellationToken = default)
+        => Ok(new ScheduleList(await _sender.Send(new ListMySchedulesQuery(UserId, page, pageSize), cancellationToken)));
 
     /// <summary>"Vaxtı dəyiş": back to <c>Scheduled</c> at the new time.</summary>
     [HttpPut("{id:guid}/time")]
