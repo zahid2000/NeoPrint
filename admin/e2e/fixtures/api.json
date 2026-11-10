@@ -31,7 +31,8 @@
   "kiosks/07b60a14-f48c-432a-a815-19c68d09e250",
   "print-jobs/7d351843-74e5-452f-b6c4-e3c344f889bc",
   "payments/5d3ad532-0f1d-4254-8733-313ce562792c",
-  "customers/8a16e4e8-e0f2-438b-9e45-a3f98999048c"
+  "customers/8a16e4e8-e0f2-438b-9e45-a3f98999048c",
+  "kiosk-screen"
  ],
  "api": {
   "POST /api/auth/admin/login": {
@@ -2913,6 +2914,74 @@
     ],
     "lastHeartbeatAt": "2026-10-25T09:20:00Z"
    }
-  ]
+  ],
+  "GET /api/admin/kiosks/07b60a14-f48c-432a-a815-19c68d09e250/branding": {
+   "kioskId": "07b60a14-f48c-432a-a815-19c68d09e250",
+   "texts": {},
+   "defaults": {
+    "heroTitle": {
+     "az": "Sənədlərinizi çap edin",
+     "en": "Print your documents",
+     "ru": "Печатайте документы"
+    }
+   },
+   "image": null,
+   "defaultImage": null,
+   "keys": [
+    "heroTitle",
+    "heroSubtitle",
+    "usbTitle",
+    "usbHint",
+    "phoneTitle",
+    "phoneHint",
+    "codeTitle",
+    "codeHint",
+    "featureSizes",
+    "featureSizesHint",
+    "featureColor",
+    "featureColorHint",
+    "featureFast",
+    "featureFastHint",
+    "featureSafe",
+    "featureSafeHint",
+    "hotline"
+   ],
+   "maxLength": 160,
+   "updatedAt": null
+  },
+  "GET /api/admin/kiosk-branding": {
+   "kioskId": null,
+   "texts": {
+    "heroTitle": {
+     "az": "Sənədlərinizi çap edin",
+     "en": "Print your documents",
+     "ru": "Печатайте документы"
+    }
+   },
+   "defaults": null,
+   "image": null,
+   "defaultImage": null,
+   "keys": [
+    "heroTitle",
+    "heroSubtitle",
+    "usbTitle",
+    "usbHint",
+    "phoneTitle",
+    "phoneHint",
+    "codeTitle",
+    "codeHint",
+    "featureSizes",
+    "featureSizesHint",
+    "featureColor",
+    "featureColorHint",
+    "featureFast",
+    "featureFastHint",
+    "featureSafe",
+    "featureSafeHint",
+    "hotline"
+   ],
+   "maxLength": 160,
+   "updatedAt": null
+  }
  }
 }
