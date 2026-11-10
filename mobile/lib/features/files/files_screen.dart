@@ -387,23 +387,30 @@ class _FileListState extends ConsumerState<_FileList> {
               onSelected: (filter) => setState(() => _filter = filter),
             ),
             const SizedBox(height: Spacing.x3),
-            for (final upload in widget.state.uploads) ...[
-              _UploadCard(upload: upload),
-              const SizedBox(height: Spacing.x2),
-            ],
-            if (files.isEmpty && !paged.hasMore)
-              NeoEmptyState(
-                icon: Icons.search_off_outlined,
-                message: l10n.filesSearchEmpty,
-              )
-            else
-              for (final file in files) ...[
-                _FileCard(file: file),
-                const SizedBox(height: Spacing.x2),
-              ],
-            NeoLoadMoreFooter(
-              paged: more ? paged.copyWith(loadingMore: true) : paged,
-              onRetry: () => controller.loadMore(retry: true),
+            NeoSwipeContent(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final upload in widget.state.uploads) ...[
+                    _UploadCard(upload: upload),
+                    const SizedBox(height: Spacing.x2),
+                  ],
+                  if (files.isEmpty && !paged.hasMore)
+                    NeoEmptyState(
+                      icon: Icons.search_off_outlined,
+                      message: l10n.filesSearchEmpty,
+                    )
+                  else
+                    for (final file in files) ...[
+                      _FileCard(file: file),
+                      const SizedBox(height: Spacing.x2),
+                    ],
+                  NeoLoadMoreFooter(
+                    paged: more ? paged.copyWith(loadingMore: true) : paged,
+                    onRetry: () => controller.loadMore(retry: true),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

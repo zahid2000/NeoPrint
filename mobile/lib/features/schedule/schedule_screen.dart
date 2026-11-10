@@ -115,28 +115,35 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                       onSelected: (tab) => setState(() => _tab = tab),
                     ),
                     const SizedBox(height: Spacing.x3),
-                    // The tab's rows may be further down: empty only
-                    // once the whole list is in.
-                    if (shown.isEmpty && !value.hasMore)
-                      NeoEmptyState(
-                        icon: Icons.event_outlined,
-                        message: _tab == _ScheduleTab.upcoming
-                            ? l10n.schedEmpty
-                            : l10n.schedPastEmpty,
-                      )
-                    else
-                      for (final item in shown) ...[
-                        _ScheduleCard(item: item),
-                        const SizedBox(height: Spacing.x3),
-                      ],
-                    NeoLoadMoreFooter(
-                      paged:
-                          shown.isEmpty &&
-                              value.hasMore &&
-                              value.moreError == null
-                          ? value.copyWith(loadingMore: true)
-                          : value,
-                      onRetry: () => controller.loadMore(retry: true),
+                    NeoSwipeContent(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // The tab's rows may be further down: empty only
+                          // once the whole list is in.
+                          if (shown.isEmpty && !value.hasMore)
+                            NeoEmptyState(
+                              icon: Icons.event_outlined,
+                              message: _tab == _ScheduleTab.upcoming
+                                  ? l10n.schedEmpty
+                                  : l10n.schedPastEmpty,
+                            )
+                          else
+                            for (final item in shown) ...[
+                              _ScheduleCard(item: item),
+                              const SizedBox(height: Spacing.x3),
+                            ],
+                          NeoLoadMoreFooter(
+                            paged:
+                                shown.isEmpty &&
+                                    value.hasMore &&
+                                    value.moreError == null
+                                ? value.copyWith(loadingMore: true)
+                                : value,
+                            onRetry: () => controller.loadMore(retry: true),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

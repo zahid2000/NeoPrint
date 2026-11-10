@@ -16,9 +16,19 @@ void main() {
               values: const ['a', 'b', 'c'],
               selected: value,
               onSelected: (next) => selected.value = next,
-              child: ListView(
+              child: Column(
                 children: [
-                  for (var i = 0; i < 40; i++) ListTile(title: Text('$i')),
+                  const Text('header'),
+                  Expanded(
+                    child: NeoSwipeContent(
+                      child: ListView(
+                        children: [
+                          for (var i = 0; i < 40; i++)
+                            ListTile(title: Text('$i')),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -61,7 +71,7 @@ void main() {
       .widget<Transform>(
         find
             .descendant(
-              of: find.byType(NeoTabSwipe<String>),
+              of: find.byType(NeoSwipeContent),
               matching: find.byType(Transform),
             )
             .first,
@@ -160,5 +170,28 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(offsetOf(tester), 0);
+  });
+
+  testWidgets('only the content moves; the header stays (T-431)', (
+    tester,
+  ) async {
+    await pump(tester);
+    final before = tester.getTopLeft(find.text('header'));
+
+    final drag = await tester.startGesture(
+      tester.getCenter(find.byType(ListView)),
+    );
+    await drag.moveBy(const Offset(-30, 0));
+    await drag.moveBy(const Offset(-60, 0));
+    await tester.pump();
+
+    expect(offsetOf(tester), lessThan(0), reason: 'the list follows');
+    expect(
+      tester.getTopLeft(find.text('header')),
+      before,
+      reason: 'the header does not',
+    );
+    await drag.up();
+    await tester.pumpAndSettle();
   });
 }

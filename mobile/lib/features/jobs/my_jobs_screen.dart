@@ -56,55 +56,60 @@ class _MyJobsScreenState extends ConsumerState<MyJobsScreen> {
                   onSelected: (tab) => setState(() => _tab = tab),
                 ),
                 const SizedBox(height: Spacing.x4),
-                ...switch (jobs) {
-                  AsyncData(:final value) => () {
-                    final shown = [
-                      for (final job in value.items)
-                        if (job.isActive == (_tab == _JobsTab.active)) job,
-                    ];
-                    final footer = NeoLoadMoreFooter(
-                      // The tab's rows may be further down: a spinner, not
-                      // "nothing here", until the whole list is in.
-                      paged:
-                          shown.isEmpty &&
-                              value.hasMore &&
-                              value.moreError == null
-                          ? value.copyWith(loadingMore: true)
-                          : value,
-                      onRetry: () => ref
-                          .read(myJobsProvider.notifier)
-                          .loadMore(retry: true),
-                    );
-                    if (shown.isEmpty && !value.hasMore) {
-                      return [
-                        NeoEmptyState(
-                          icon: Icons.receipt_long_outlined,
-                          message: _tab == _JobsTab.active
-                              ? l10n.jobsNoActive
-                              : l10n.homeNoJobs,
-                          hint: l10n.homeNoJobsHint,
+                NeoSwipeContent(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: switch (jobs) {
+                      AsyncData(:final value) => () {
+                        final shown = [
+                          for (final job in value.items)
+                            if (job.isActive == (_tab == _JobsTab.active)) job,
+                        ];
+                        final footer = NeoLoadMoreFooter(
+                          // The tab's rows may be further down: a spinner, not
+                          // "nothing here", until the whole list is in.
+                          paged:
+                              shown.isEmpty &&
+                                  value.hasMore &&
+                                  value.moreError == null
+                              ? value.copyWith(loadingMore: true)
+                              : value,
+                          onRetry: () => ref
+                              .read(myJobsProvider.notifier)
+                              .loadMore(retry: true),
+                        );
+                        if (shown.isEmpty && !value.hasMore) {
+                          return [
+                            NeoEmptyState(
+                              icon: Icons.receipt_long_outlined,
+                              message: _tab == _JobsTab.active
+                                  ? l10n.jobsNoActive
+                                  : l10n.homeNoJobs,
+                              hint: l10n.homeNoJobsHint,
+                            ),
+                          ];
+                        }
+                        return [
+                          for (final job in shown) ...[
+                            JobCard(job: job),
+                            const SizedBox(height: Spacing.x2),
+                          ],
+                          footer,
+                        ];
+                      }(),
+                      AsyncError(:final error) => [
+                        NeoBanner.error(
+                          message: l10n.homeJobsFailed(
+                            error is ApiException
+                                ? apiErrorText(l10n, error)
+                                : l10n.errorServer,
+                          ),
                         ),
-                      ];
-                    }
-                    return [
-                      for (final job in shown) ...[
-                        JobCard(job: job),
-                        const SizedBox(height: Spacing.x2),
                       ],
-                      footer,
-                    ];
-                  }(),
-                  AsyncError(:final error) => [
-                    NeoBanner.error(
-                      message: l10n.homeJobsFailed(
-                        error is ApiException
-                            ? apiErrorText(l10n, error)
-                            : l10n.errorServer,
-                      ),
-                    ),
-                  ],
-                  _ => [const Center(child: CircularProgressIndicator())],
-                },
+                      _ => [const Center(child: CircularProgressIndicator())],
+                    },
+                  ),
+                ),
               ],
             ),
           ),

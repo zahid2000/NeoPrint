@@ -142,37 +142,45 @@ class _WalletBodyState extends State<_WalletBody> {
             onSelected: (tab) => setState(() => _tab = tab),
           ),
           const SizedBox(height: Spacing.x3),
-          ...switch (_tab) {
-            _WalletTab.history when state.entries.isEmpty => [
-              NeoEmptyState(
-                icon: Icons.receipt_long_outlined,
-                message: l10n.walletNoHistory,
-                hint: l10n.walletNoHistoryHint,
-              ),
-            ],
-            // The design's "Son əməliyyatlar" (T-380): the latest few, and the
-            // whole history behind "Hamısına bax".
-            _WalletTab.history => [
-              NeoSectionHeader(
-                title: l10n.walletRecent,
-                actionLabel: state.entries.length > walletRecentCount
-                    ? l10n.homeSeeAll
-                    : null,
-                onAction: () => context.push(Routes.walletHistory),
-              ),
-              for (final entry in state.entries.take(walletRecentCount))
-                WalletEntryTile(entry: entry),
-            ],
-            _WalletTab.vouchers => [
-              Text(l10n.walletVoucherHint, style: theme.textTheme.bodyMedium),
-              const SizedBox(height: Spacing.x3),
-              OutlinedButton.icon(
-                onPressed: () => showVoucherDialog(context),
-                icon: const Icon(Icons.confirmation_number_outlined),
-                label: Text(l10n.walletVoucherTitle),
-              ),
-            ],
-          },
+          NeoSwipeContent(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: switch (_tab) {
+                _WalletTab.history when state.entries.isEmpty => [
+                  NeoEmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    message: l10n.walletNoHistory,
+                    hint: l10n.walletNoHistoryHint,
+                  ),
+                ],
+                // The design's "Son əməliyyatlar" (T-380): the latest few, and the
+                // whole history behind "Hamısına bax".
+                _WalletTab.history => [
+                  NeoSectionHeader(
+                    title: l10n.walletRecent,
+                    actionLabel: state.entries.length > walletRecentCount
+                        ? l10n.homeSeeAll
+                        : null,
+                    onAction: () => context.push(Routes.walletHistory),
+                  ),
+                  for (final entry in state.entries.take(walletRecentCount))
+                    WalletEntryTile(entry: entry),
+                ],
+                _WalletTab.vouchers => [
+                  Text(
+                    l10n.walletVoucherHint,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: Spacing.x3),
+                  OutlinedButton.icon(
+                    onPressed: () => showVoucherDialog(context),
+                    icon: const Icon(Icons.confirmation_number_outlined),
+                    label: Text(l10n.walletVoucherTitle),
+                  ),
+                ],
+              },
+            ),
+          ),
         ],
       ),
     );

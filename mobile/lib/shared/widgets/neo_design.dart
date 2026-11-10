@@ -131,9 +131,12 @@ class NeoSearchField extends StatelessWidget {
 /// not a swipe, so a list still scrolls up and down as before.
 ///
 /// It moves like a page (T-415, docs/DESIGN_SYSTEM.md "Hap tabları"): it
-/// follows the finger and fades as it goes; let go far or fast enough, the
-/// next tab slides in from the other side, otherwise the page settles back.
-/// A tab chosen by a tap slides in the same way.
+/// follows the finger and fades a little as it goes; let go far or fast
+/// enough, the next tab slides in from the other side, otherwise it settles
+/// back. A tab chosen by a tap slides in the same way. Only what changes
+/// with the tab moves - the part wrapped in [NeoSwipeContent] (T-431); the
+/// title, the search and the tabs stay, so it does not read as another
+/// screen.
 class NeoTabSwipe<T> extends StatefulWidget {
   const NeoTabSwipe({
     required this.values,
@@ -264,27 +267,68 @@ class _NeoTabSwipeState<T> extends State<NeoTabSwipe<T>>
           onHorizontalDragCancel: () => unawaited(
             _offset.animateTo(0, duration: Motion.fast, curve: Motion.easing),
           ),
-          child: ClipRect(
-            child: AnimatedBuilder(
-              animation: _offset,
-              builder: (context, child) {
-                final share = _width <= 0
-                    ? 0.0
-                    : (_offset.value.abs() / _width).clamp(0.0, 1.0);
-                return Opacity(
-                  // Fades as it goes; gone by two thirds of the way.
-                  opacity: (1 - share * 1.5).clamp(0.0, 1.0),
-                  child: Transform.translate(
-                    offset: Offset(_offset.value, 0),
-                    child: child,
-                  ),
-                );
-              },
-              child: widget.child,
-            ),
+          child: _SwipeScope(
+            offset: _offset,
+            width: _width,
+            child: widget.child,
           ),
         );
       },
+    );
+  }
+}
+
+/// The motion of a [NeoTabSwipe], for the part of the page that moves.
+class _SwipeScope extends InheritedWidget {
+  const _SwipeScope({
+    required this.offset,
+    required this.width,
+    required super.child,
+  });
+
+  final Animation<double> offset;
+  final double width;
+
+  @override
+  bool updateShouldNotify(_SwipeScope old) =>
+      old.offset != offset || old.width != width;
+}
+
+/// What changes with the tab under a [NeoTabSwipe] - the list, not the
+/// title, search or tabs above it (T-431): it slides with the finger, and
+/// the next tab's slides in, inside its own bounds. Outside a
+/// [NeoTabSwipe] it is only its child.
+class NeoSwipeContent extends StatelessWidget {
+  const NeoSwipeContent({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<_SwipeScope>();
+    if (scope == null) {
+      return child;
+    }
+
+    return ClipRect(
+      child: AnimatedBuilder(
+        animation: scope.offset,
+        builder: (context, child) {
+          final share = scope.width <= 0
+              ? 0.0
+              : (scope.offset.value.abs() / scope.width).clamp(0.0, 1.0);
+          return Opacity(
+            // A little lighter as it goes, never blank: the list stays a
+            // list, it does not look loaded again.
+            opacity: (1 - share * 0.8).clamp(0.3, 1.0),
+            child: Transform.translate(
+              offset: Offset(scope.offset.value, 0),
+              child: child,
+            ),
+          );
+        },
+        child: child,
+      ),
     );
   }
 }

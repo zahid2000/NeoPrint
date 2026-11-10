@@ -74,30 +74,91 @@ class BottomNavShell extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (Readiness.mobileSession) const SessionBanner(),
-            NavigationBar(
-              selectedIndex: shell.currentIndex,
-              // goBranch with initialLocation restores a tab to its root when it is
-              // tapped again, which is what people expect from a tab bar.
-              onDestinationSelected: (index) {
-                // The tab bar is a move sideways: nothing to go back to.
+            // A swipe along the bar steps to the next or the previous tab
+            // (T-431), as a tap on it would.
+            NavBarSwipe(
+              index: shell.currentIndex,
+              count: destinations.length,
+              onSelected: (index) {
                 ref.read(backStackProvider).clear();
-                shell.goBranch(
-                  index,
-                  initialLocation: index == shell.currentIndex,
-                );
+                shell.goBranch(index);
               },
-              destinations: [
-                for (var i = 0; i < destinations.length; i++)
-                  NavigationDestination(
-                    icon: Icon(destinations[i].$1),
-                    selectedIcon: Icon(destinations[i].$2),
-                    label: labels[i],
-                  ),
-              ],
+              child: NavigationBar(
+                selectedIndex: shell.currentIndex,
+                // goBranch with initialLocation restores a tab to its root when it is
+                // tapped again, which is what people expect from a tab bar.
+                onDestinationSelected: (index) {
+                  // The tab bar is a move sideways: nothing to go back to.
+                  ref.read(backStackProvider).clear();
+                  shell.goBranch(
+                    index,
+                    initialLocation: index == shell.currentIndex,
+                  );
+                },
+                destinations: [
+                  for (var i = 0; i < destinations.length; i++)
+                    NavigationDestination(
+                      icon: Icon(destinations[i].$1),
+                      selectedIcon: Icon(destinations[i].$2),
+                      label: labels[i],
+                    ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
+}
+
+/// The bottom bar swiped sideways (T-431): right to left is the next tab,
+/// left to right the previous one; a short or slow move does nothing.
+class NavBarSwipe extends StatefulWidget {
+  const NavBarSwipe({
+    required this.index,
+    required this.count,
+    required this.onSelected,
+    required this.child,
+    super.key,
+  });
+
+  /// Logical pixels; a drag shorter than this is not a swipe.
+  static const distance = 48.0;
+
+  /// Logical pixels a second; a quicker flick is a swipe however short.
+  static const velocity = 300.0;
+
+  final int index;
+  final int count;
+  final ValueChanged<int> onSelected;
+  final Widget child;
+
+  @override
+  State<NavBarSwipe> createState() => _NavBarSwipeState();
+}
+
+class _NavBarSwipeState extends State<NavBarSwipe> {
+  double _dx = 0;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.translucent,
+    onHorizontalDragStart: (_) => _dx = 0,
+    onHorizontalDragUpdate: (details) => _dx += details.primaryDelta ?? 0,
+    onHorizontalDragEnd: (details) {
+      final speed = details.primaryVelocity ?? 0;
+      final towards = speed.abs() >= NavBarSwipe.velocity ? speed : _dx;
+      if (towards.abs() < NavBarSwipe.distance &&
+          speed.abs() < NavBarSwipe.velocity) {
+        return;
+      }
+      final rtl = Directionality.of(context) == TextDirection.rtl;
+      final next = widget.index + ((towards < 0) != rtl ? 1 : -1);
+      if (next >= 0 && next < widget.count) {
+        widget.onSelected(next);
+      }
+    },
+    child: widget.child,
+  );
 }
