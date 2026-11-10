@@ -87,6 +87,63 @@ public sealed class UpdateCoordinatorTests : IDisposable
     }
 
     [Fact]
+    public async Task When_the_agent_is_installed_the_UI_goes_next_at_once_not_at_the_next_check()
+    {
+        // T-410: the agent first, then the UI in the same look - no CheckIntervalMinutes between them.
+        var coordinator = await CoordinatorAsync(start: new DateTime(2026, 10, 25, 2, 0, 0, DateTimeKind.Utc));
+        _backend.Offer(Package("1.0.0"));
+        _backend.Also(Package("1.1.0", component: ReleaseComponent.Agent));
+        _screen.Idle = true;
+        DateTime? agentInstalled = null;
+        _agentAnswer = () =>
+        {
+            if (!Directory.Exists(_paths.Requests))
+            {
+                return;
+            }
+
+            foreach (var file in Directory.GetFiles(_paths.Requests))
+            {
+                var request = AgentFiles.Read<AgentRequest>(file)!;
+                var component = request.ReleaseId == _backend.Other?.ReleaseId ? "Agent" : "App";
+                var version = component == "Agent" ? "1.1.0" : "1.0.0";
+                if (component == "Agent")
+                {
+                    // The new agent writes down what it is, as the real one does.
+                    AgentFiles.Write(_paths.StateFile, new AgentState { AgentVersion = "1.1.0", Installed = new() { ["App"] = "0.9.0", ["Agent"] = "1.1.0" } });
+                    agentInstalled = _clock.UtcNow;
+                }
+
+                AgentFiles.Write(Path.Combine(_paths.Results, $"{request.Id:N}.json"),
+                    new AgentResult(request.Id, request.Kind, AgentOutcome.Succeeded, _clock.UtcNow, request.CommandId, component, version, null, null));
+                File.Delete(file);
+            }
+        };
+
+        (await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None)).Should().BeTrue();
+
+        _backend.Statuses.Where(s => s.Status == "Succeeded").Select(s => (s.Component, s.Version)).Should().Equal(("Agent", "1.1.0"), ("App", "1.0.0"));
+        agentInstalled.Should().NotBeNull();
+        (_clock.UtcNow - agentInstalled!.Value).Should().BeLessThan(TimeSpan.FromMinutes(1), "the UI was handed over right after the agent");
+        _leftOnPurpose.Should().Be(1, "only the UI's own switch ends this process");
+    }
+
+    [Fact]
+    public async Task An_agent_that_did_not_install_does_not_hurry_the_UI_after_it()
+    {
+        var coordinator = await CoordinatorAsync(start: new DateTime(2026, 10, 25, 2, 0, 0, DateTimeKind.Utc));
+        _backend.Offer(Package("1.0.0"));
+        _backend.Also(Package("1.1.0", component: ReleaseComponent.Agent));
+        _screen.Idle = true;
+        AnswerAs(AgentOutcome.Failed, "1.1.0");
+
+        (await coordinator.CheckAsync(force: false, commandId: null, CancellationToken.None)).Should().BeTrue();
+
+        _backend.Statuses.Where(s => s.Status == "Applying").Select(s => s.Component).Should().Equal(["Agent"], "only the agent was handed over");
+        _leftOnPurpose.Should().Be(0, "the UI waits for the next check");
+    }
+
+    [Fact]
     public async Task While_it_waits_the_panel_is_told_why_and_told_again_when_the_reason_changes()
     {
         var coordinator = await CoordinatorAsync(start: new DateTime(2026, 10, 25, 12, 0, 0, DateTimeKind.Utc));
@@ -407,11 +464,11 @@ public sealed class UpdateCoordinatorTests : IDisposable
 
     private sealed record TestPackage(byte[] Bytes, string Manifest, string Signature, string Version);
 
-    private TestPackage Package(string version, ECDsa? signer = null, int size = 4096)
+    private TestPackage Package(string version, ECDsa? signer = null, int size = 4096, ReleaseComponent component = ReleaseComponent.App)
     {
         var bytes = RandomNumberGenerator.GetBytes(size);
-        var file = $"neoprint-kiosk-app-{version}-{UpdatePaths.Platform}-staging.tar.gz";
-        var manifest = new ReleaseManifest(ReleaseComponent.App, UpdatePaths.Platform, "staging", ReleaseVersion.Parse(version), ReleaseVersion.Parse("0.1.0"),
+        var file = $"neoprint-kiosk-{component.ToString().ToLowerInvariant()}-{version}-{UpdatePaths.Platform}-staging.tar.gz";
+        var manifest = new ReleaseManifest(component, UpdatePaths.Platform, "staging", ReleaseVersion.Parse(version), ReleaseVersion.Parse("0.1.0"),
             file, bytes.Length, Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), "b6d4703", DateTimeOffset.UtcNow).ToBytes();
         return new TestPackage(bytes, Encoding.UTF8.GetString(manifest), Encoding.UTF8.GetString(ReleaseSignature.Sign(signer ?? _key, manifest).ToBytes()), version);
     }
@@ -503,7 +560,19 @@ public sealed class UpdateCoordinatorTests : IDisposable
 
         public string? LogCommand { get; private set; }
 
+        /// <summary>Another component offered beside <see cref="Offered"/> (T-410), served from the same bytes.</summary>
+        public KioskReleaseOffer? Other { get; private set; }
+
+        private byte[] _otherPackage = [];
+
         public void Withdraw() => Offered = null;
+
+        public void Also(TestPackage package)
+        {
+            _otherPackage = package.Bytes;
+            Other = new KioskReleaseOffer("Agent", Guid.NewGuid(), package.Version, package.Manifest, package.Signature, package.Bytes.Length,
+                "api/releases/other/download", false);
+        }
 
         public void Offer(TestPackage package, bool urgent = false)
         {
@@ -528,14 +597,16 @@ public sealed class UpdateCoordinatorTests : IDisposable
 
             if (path == "/api/kiosks/me/update")
             {
-                return Json(new { platform = UpdatePaths.Platform, keySet = "staging", offers = Offered is null ? [] : new[] { Offered }, withdrawn = Array.Empty<string>() });
+                var offers = new[] { Offered, Other }.OfType<KioskReleaseOffer>().ToArray();
+                return Json(new { platform = UpdatePaths.Platform, keySet = "staging", offers, withdrawn = Array.Empty<string>() });
             }
 
             if (path.EndsWith("/download", StringComparison.Ordinal))
             {
                 Ranges.Add(request.Headers.Range?.ToString());
                 var from = request.Headers.Range?.Ranges.Single().From ?? 0;
-                var rest = Package[(int)from..];
+                var whole = path.Contains("/other/", StringComparison.Ordinal) ? _otherPackage : Package;
+                var rest = whole[(int)from..];
                 if (BreakAfter is { } cut && from < cut)
                 {
                     // The line drops: some bytes arrive, then the stream fails.
@@ -545,7 +616,7 @@ public sealed class UpdateCoordinatorTests : IDisposable
                 var response = new HttpResponseMessage(from > 0 ? HttpStatusCode.PartialContent : HttpStatusCode.OK) { Content = new ByteArrayContent(rest) };
                 if (from > 0)
                 {
-                    response.Content.Headers.ContentRange = new ContentRangeHeaderValue(from, Package.Length - 1, Package.Length);
+                    response.Content.Headers.ContentRange = new ContentRangeHeaderValue(from, whole.Length - 1, whole.Length);
                 }
 
                 return response;

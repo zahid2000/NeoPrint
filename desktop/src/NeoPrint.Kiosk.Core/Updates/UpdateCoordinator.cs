@@ -175,7 +175,12 @@ public sealed class UpdateCoordinator
         }
     }
 
-    /// <summary>One look at what is offered; applies the first component that is newer than what runs.</summary>
+    /// <summary>
+    /// One look at what is offered; applies the first component that is newer
+    /// than what runs. When the agent or provisioning was installed, the next
+    /// one (the UI above all) is asked for at once, not at the next check
+    /// (T-410): nothing waits <c>Update.CheckIntervalMinutes</c> between them.
+    /// </summary>
     /// <param name="force">"İndi yenilə": no update window, and a version refused here before is tried again.</param>
     /// <returns>Whether anything was started.</returns>
     public async Task<bool> CheckAsync(bool force, Guid? commandId, CancellationToken cancellationToken)
@@ -183,47 +188,74 @@ public sealed class UpdateCoordinator
         await _running.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // The agent is in the middle of a switch (this UI may be the version
-            // being checked): nothing new is asked for until it is done.
-            if (File.Exists(_paths.JournalFile))
+            var started = false;
+
+            // Each component at most once a look: the order is Agent, Provisioning, App.
+            for (var pass = 0; pass < UpdateComponents.InOrder.Count; pass++)
             {
-                return false;
+                if (await NextAsync(force, commandId, cancellationToken).ConfigureAwait(false) is not { } goOn)
+                {
+                    return started;
+                }
+
+                started = true;
+                commandId = null;
+                if (!goOn)
+                {
+                    return true;
+                }
             }
 
-            var offers = await _api.GetUpdateOffersAsync(cancellationToken).ConfigureAwait(false);
-            _downloader.Forget(offers.Offers.Select(offer => offer.ReleaseId));
-            var agent = Agent ?? new AgentState();
-
-            foreach (var component in UpdateComponents.InOrder)
-            {
-                if (offers.Offers.FirstOrDefault(offer => offer.Component == component) is not { } offer
-                    || !ReleaseVersion.TryParse(offer.Version, out var offered))
-                {
-                    continue;
-                }
-
-                var installed = Installed(agent, component);
-                if (installed is not null && ReleaseVersion.TryParse(installed, out var running) && offered.CompareTo(running) <= 0)
-                {
-                    continue;
-                }
-
-                // Refused here, or failed its health check here: not again unless an administrator asks.
-                if (!force && (_refused.Contains(offer.ReleaseId) || agent.FailedHere.Contains($"{component}@{offer.Version}")))
-                {
-                    continue;
-                }
-
-                await ApplyAsync(offer, offers.Withdrawn, agent, force, commandId, cancellationToken).ConfigureAwait(false);
-                return true;
-            }
-
-            return false;
+            return started;
         }
         finally
         {
             _running.Release();
         }
+    }
+
+    /// <summary>The first component offered that is newer than what runs, applied.</summary>
+    /// <returns>Null when there is none; true when the agent installed it and the next one may start now.</returns>
+    private async Task<bool?> NextAsync(bool force, Guid? commandId, CancellationToken cancellationToken)
+    {
+        // The agent is in the middle of a switch (this UI may be the version
+        // being checked): nothing new is asked for until it is done.
+        if (File.Exists(_paths.JournalFile))
+        {
+            return null;
+        }
+
+        var offers = await _api.GetUpdateOffersAsync(cancellationToken).ConfigureAwait(false);
+        _downloader.Forget(offers.Offers.Select(offer => offer.ReleaseId));
+        var agent = Agent ?? new AgentState();
+
+        foreach (var component in UpdateComponents.InOrder)
+        {
+            if (offers.Offers.FirstOrDefault(offer => offer.Component == component) is not { } offer
+                || !ReleaseVersion.TryParse(offer.Version, out var offered))
+            {
+                continue;
+            }
+
+            var installed = Installed(agent, component);
+            if (installed is not null && ReleaseVersion.TryParse(installed, out var running) && offered.CompareTo(running) <= 0)
+            {
+                continue;
+            }
+
+            // Refused here, or failed its health check here: not again unless an administrator asks.
+            if (!force && (_refused.Contains(offer.ReleaseId) || agent.FailedHere.Contains($"{component}@{offer.Version}")))
+            {
+                continue;
+            }
+
+            var result = await ApplyAsync(offer, offers.Withdrawn, agent, force, commandId, cancellationToken).ConfigureAwait(false);
+
+            // The UI's own switch ends this process; anything else installed lets the next one start now.
+            return result is { Outcome: AgentOutcome.Succeeded } && component != UpdateComponents.App;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -336,7 +368,7 @@ public sealed class UpdateCoordinator
     private string? Installed(AgentState agent, string component)
         => component == UpdateComponents.App ? _appVersion : agent.Installed.GetValueOrDefault(component);
 
-    private async Task ApplyAsync(
+    private async Task<AgentResult?> ApplyAsync(
         KioskReleaseOffer offer, IReadOnlyList<string> withdrawn, AgentState agent, bool force, Guid? commandId, CancellationToken cancellationToken)
     {
         _logger.LogInformation("{Component} {Version} is offered (urgent: {Urgent}).", offer.Component, offer.Version, offer.Urgent);
@@ -352,7 +384,7 @@ public sealed class UpdateCoordinator
             // A line that dropped is not an incident: tried again at the next check, from where it stopped.
             _logger.LogWarning(exception, "{Component} {Version} could not be downloaded yet.", offer.Component, offer.Version);
             await ReportAsync(offer, "Downloading", "updates.downloadFailed", cancellationToken).ConfigureAwait(false);
-            return;
+            return null;
         }
         catch (Exception exception) when (exception is UnauthorizedAccessException or IOException)
         {
@@ -360,7 +392,7 @@ public sealed class UpdateCoordinator
             // said on the panel, not left as "downloading" for ever.
             _logger.LogError(exception, "{Component} {Version} cannot be stored on this kiosk.", offer.Component, offer.Version);
             await ReportAsync(offer, "Downloading", "updates.cannotStore", cancellationToken).ConfigureAwait(false);
-            return;
+            return null;
         }
 
         // The UI's own check: no time is lost waiting for a moment with a package the agent would refuse.
@@ -384,7 +416,7 @@ public sealed class UpdateCoordinator
             File.Delete(package);
             _refused.Add(offer.ReleaseId);
             await ReportAsync(offer, "Failed", ReleasePackageCheck.MessageKey(check.Rejection), cancellationToken).ConfigureAwait(false);
-            return;
+            return null;
         }
 
         await ReportAsync(offer, "Ready", null, cancellationToken).ConfigureAwait(false);
@@ -393,7 +425,7 @@ public sealed class UpdateCoordinator
             commandId ?? Guid.NewGuid(), AgentRequestKind.Install, _clock.UtcNow, commandId, offer.ReleaseId,
             Path.GetFileName(package), offer.Manifest, offer.Signature, withdrawn, HealthSeconds, Settings.KeepVersions, Retry: force);
 
-        await AskAgentAsync(request, moment: true, offer, cancellationToken, windowFree: force || offer.Urgent).ConfigureAwait(false);
+        return await AskAgentAsync(request, moment: true, offer, cancellationToken, windowFree: force || offer.Urgent).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -401,11 +433,12 @@ public sealed class UpdateCoordinator
     /// reports what it answers. For a switch of the UI there is no answer here:
     /// the agent stops this process, and the next one reports.
     /// </summary>
-    private async Task AskAgentAsync(AgentRequest request, bool moment, KioskReleaseOffer? offer, CancellationToken cancellationToken, bool windowFree = true)
+    /// <returns>The agent's answer; null when nothing was handed over.</returns>
+    private async Task<AgentResult?> AskAgentAsync(AgentRequest request, bool moment, KioskReleaseOffer? offer, CancellationToken cancellationToken, bool windowFree = true)
     {
         if (moment && !await WaitForMomentAsync(offer, windowFree, cancellationToken).ConfigureAwait(false))
         {
-            return;
+            return null;
         }
 
         if (_hurry && offer is not null)
@@ -440,7 +473,7 @@ public sealed class UpdateCoordinator
                 _host.SetUpdating(false);
                 _host.SetDraining(false);
                 await ReportResultAsync(result, offer?.ReleaseId, cancellationToken).ConfigureAwait(false);
-                return;
+                return result;
             }
 
             await _delay(ResultPoll, cancellationToken).ConfigureAwait(false);
@@ -452,6 +485,7 @@ public sealed class UpdateCoordinator
         var timedOut = new AgentResult(request.Id, request.Kind, AgentOutcome.Failed, _clock.UtcNow, request.CommandId,
             offer?.Component, offer?.Version, null, "updates.agentNotAnswering");
         await ReportResultAsync(timedOut, offer?.ReleaseId, cancellationToken).ConfigureAwait(false);
+        return timedOut;
     }
 
     /// <summary>
