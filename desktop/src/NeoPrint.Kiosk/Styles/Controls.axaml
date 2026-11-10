@@ -301,6 +301,11 @@
         <Setter Property="Foreground" Value="{DynamicResource Neutral600}" />
     </Style>
 
+    <!-- Pages scrolled one under the other (T-412): they keep away from the scroll bar. -->
+    <Style Selector="ScrollViewer.pages > ItemsControl, ScrollViewer.pages > Image">
+        <Setter Property="Margin" Value="{DynamicResource ScrollGutter}" />
+    </Style>
+
     <!-- A card, as the design system defines one: section 4. -->
     <Style Selector="Border.card">
         <Setter Property="Background" Value="{DynamicResource Neutral0}" />

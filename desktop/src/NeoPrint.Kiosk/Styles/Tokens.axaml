@@ -118,6 +118,8 @@
     <Thickness x:Key="GapBelow6">0,0,0,24</Thickness>
     <!-- The flow's action row (T-411): a step's gap above it, so the buttons never touch the page or card over them. -->
     <Thickness x:Key="ActionRowMargin">0,24,0,16</Thickness>
+    <!-- Pages in a scrolled list (T-412): a gap on the right, so a page never touches the scroll bar. -->
+    <Thickness x:Key="ScrollGutter">0,0,24,0</Thickness>
     <!-- A pill on the footer and in the queue (T-371). -->
     <Thickness x:Key="ChipPadding">20,0</Thickness>
     <sys:Double x:Key="IconTileSmallSize">56</sys:Double>
