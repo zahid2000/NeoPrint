@@ -11,6 +11,19 @@ final walletRepositoryProvider = Provider<WalletRepository>(
   (ref) => WalletRepository(ref.watch(apiClientProvider)),
 );
 
+/// A period of the history: from its first moment up to, not including, the
+/// last (T-397).
+typedef WalletPeriod = ({DateTime from, DateTime to});
+
+/// The movements of one period, newest first - the most the server gives in
+/// one page.
+final walletPeriodProvider = FutureProvider.autoDispose
+    .family<List<WalletEntry>, WalletPeriod>(
+      (ref, period) => ref
+          .read(walletRepositoryProvider)
+          .transactions(pageSize: 100, from: period.from, to: period.to),
+    );
+
 final walletProvider = AsyncNotifierProvider<WalletController, WalletState>(
   WalletController.new,
 );

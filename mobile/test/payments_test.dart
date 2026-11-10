@@ -606,6 +606,65 @@ void main() {
         expect(find.textContaining('Sonra:'), findsNWidgets(7));
       },
     );
+
+    testWidgets('"Bütün əməliyyatlar" asks the server for a period (T-397)', (
+      tester,
+    ) async {
+      tester.view
+        ..physicalSize = const Size(420, 2400)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final asked = <WalletPeriod>[];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ...step4Overrides(
+              wallet: WalletState(
+                wallet: const Wallet(balance: 70, bonusPages: 0),
+                entries: [
+                  for (var i = 3; i >= 1; i--)
+                    WalletEntry(
+                      id: 'e$i',
+                      type: 'TopUp',
+                      amount: i.toDouble(),
+                      bonusPages: 0,
+                      balanceAfter: i * 10.0,
+                      createdAt: DateTime(2026, 11, 10, 9, i),
+                    ),
+                ],
+              ),
+            ),
+            walletPeriodProvider.overrideWith((ref, period) async {
+              asked.add(period);
+              return const [];
+            }),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            locale: const Locale('az'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const WalletHistoryScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Sonra:'), findsNWidgets(3));
+
+      await tester.tap(find.text('Bu ay'));
+      await tester.pumpAndSettle();
+
+      expect(asked, hasLength(1));
+      expect(asked.single.from.day, 1, reason: 'from the first of the month');
+      expect(asked.single.to.isAfter(asked.single.from), isTrue);
+      expect(find.textContaining('Sonra:'), findsNothing);
+      expect(find.text('Bu dövrdə hərəkət yoxdur'), findsOneWidget);
+
+      await tester.tap(find.text('Hamısı'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Sonra:'), findsNWidgets(3));
+    });
   });
 
   group('notices', () {

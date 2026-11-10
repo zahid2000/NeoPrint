@@ -62,10 +62,21 @@ class WalletRepository {
     parse: (json) => Wallet.fromJson(json as Map<String, dynamic>),
   );
 
-  Future<List<WalletEntry>> transactions({int pageSize = 50}) => _api.send(
+  /// The newest movements; with [from] (inclusive) and [to] (exclusive) only
+  /// those in that period (T-397).
+  Future<List<WalletEntry>> transactions({
+    int pageSize = 50,
+    DateTime? from,
+    DateTime? to,
+  }) => _api.send(
     method: 'GET',
     path: 'api/wallet/transactions',
-    query: {'page': 1, 'pageSize': pageSize},
+    query: {
+      'page': 1,
+      'pageSize': pageSize,
+      if (from != null) 'from': from.toUtc().toIso8601String(),
+      if (to != null) 'to': to.toUtc().toIso8601String(),
+    },
     parse: (json) => ((json as Map<String, dynamic>)['items'] as List<dynamic>)
         .map((item) => WalletEntry.fromJson(item as Map<String, dynamic>))
         .toList(),
