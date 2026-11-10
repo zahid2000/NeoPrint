@@ -891,7 +891,7 @@
         </Panel>
 
         <!-- The actions: secondary on the left, the one primary on the right -->
-        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="{DynamicResource GapBelow4}" IsVisible="{Binding !IsTyping}">
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="{DynamicResource ActionRowMargin}" IsVisible="{Binding !IsTyping}">
 
             <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space6}">
                 <!-- Screen 10: more than five files are paged (docs/DESIGN_SYSTEM.md §5.1). -->

@@ -116,6 +116,8 @@
     <!-- The welcome screen's printer art (T-371): the sheet and the printer in the circle. -->
     <Thickness x:Key="GapAbove12">0,48,0,0</Thickness>
     <Thickness x:Key="GapBelow6">0,0,0,24</Thickness>
+    <!-- The flow's action row (T-411): a step's gap above it, so the buttons never touch the page or card over them. -->
+    <Thickness x:Key="ActionRowMargin">0,24,0,16</Thickness>
     <!-- A pill on the footer and in the queue (T-371). -->
     <Thickness x:Key="ChipPadding">20,0</Thickness>
     <sys:Double x:Key="IconTileSmallSize">56</sys:Double>
