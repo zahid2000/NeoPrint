@@ -67,6 +67,17 @@ class FakeKiosks implements KioskRepository {
       ));
 }
 
+/// The phone's settings, recorded instead of opened.
+class FakeSettings extends LocationSettingsOpener {
+  final opened = <LocationProblem>[];
+
+  @override
+  Future<bool> open(LocationProblem problem) async {
+    opened.add(problem);
+    return false;
+  }
+}
+
 class FakeLocation implements UserLocation {
   FakeLocation(this.result);
 
@@ -117,6 +128,7 @@ Widget app(
   FakeMapEngine? map,
   FakeMapConfig? mapConfig,
   List<Uri>? opened,
+  LocationSettingsOpener? settings,
 }) => ProviderScope(
   overrides: [
     kioskRepositoryProvider.overrideWithValue(kiosks),
@@ -128,6 +140,7 @@ Widget app(
     }),
     sessionRepositoryProvider.overrideWithValue(_NoSession()),
     if (location != null) userLocationProvider.overrideWithValue(location),
+    if (settings != null) locationSettingsProvider.overrideWithValue(settings),
   ],
   child: MaterialApp(
     theme: AppTheme.light(),
@@ -242,6 +255,58 @@ void main() {
       );
       expect(kiosks.searches.last.near, isNull, reason: 'the list stays');
       expect(find.text('Elmlər'), findsOneWidget);
+    });
+
+    testWidgets(
+      'location off: a button opens its settings and looks again (T-428)',
+      (tester) async {
+        final location = FakeLocation(
+          const LocationMissing(LocationProblem.serviceOff),
+        );
+        final settings = FakeSettings();
+        await tester.pumpWidget(
+          app(
+            const KioskSearchScreen(),
+            FakeKiosks([elmler]),
+            location: location,
+            settings: settings,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Yaxınlıqdakı'));
+        await tester.pumpAndSettle();
+        final before = location.asked;
+
+        await tester.tap(find.text('Məkanı aktivləşdir'));
+        await tester.pumpAndSettle();
+
+        expect(settings.opened, [LocationProblem.serviceOff]);
+        expect(location.asked, before + 1, reason: 'looked again');
+      },
+    );
+
+    testWidgets('refused this time: the button asks again (T-428)', (
+      tester,
+    ) async {
+      final location = FakeLocation(
+        const LocationMissing(LocationProblem.denied),
+      );
+      await tester.pumpWidget(
+        app(
+          const KioskSearchScreen(),
+          FakeKiosks([elmler]),
+          location: location,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Yaxınlıqdakı'));
+      await tester.pumpAndSettle();
+
+      location.result = const LocationFound((lat: 40.0, lng: 49.0));
+      await tester.tap(find.text('Məkana icazə ver'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Məkana icazə ver'), findsNothing, reason: 'found');
     });
 
     testWidgets('nothing near offers a wider radius', (tester) async {

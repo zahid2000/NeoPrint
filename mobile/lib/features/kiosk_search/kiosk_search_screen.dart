@@ -17,6 +17,7 @@ import 'kiosk_models.dart';
 import 'kiosk_photo.dart';
 import 'kiosk_search_controller.dart';
 import 'kiosk_status_view.dart';
+import 'location_fix_button.dart';
 import 'user_location.dart';
 
 /// "Yaxınlıqdakı · Hamısı · Xəritə" (T-342).
@@ -230,17 +231,31 @@ class _NearMeBar extends ConsumerWidget {
           Spacing.x4,
           0,
         ),
-        child: NeoBanner(
-          tone: StatusTone.warning,
-          icon: Icons.location_off_outlined,
-          message: switch (problem) {
-            LocationProblem.serviceOff => l10n.kioskLocationServiceOff,
-            // The search always asks, so "not asked" reads as "denied".
-            LocationProblem.denied ||
-            LocationProblem.notAsked => l10n.kioskLocationDenied,
-            LocationProblem.deniedForever => l10n.kioskLocationDeniedForever,
-            LocationProblem.unavailable => l10n.kioskLocationUnavailable,
-          },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            NeoBanner(
+              tone: StatusTone.warning,
+              icon: Icons.location_off_outlined,
+              message: switch (problem) {
+                LocationProblem.serviceOff => l10n.kioskLocationServiceOff,
+                // The search always asks, so "not asked" reads as "denied".
+                LocationProblem.denied ||
+                LocationProblem.notAsked => l10n.kioskLocationDenied,
+                LocationProblem.deniedForever =>
+                  l10n.kioskLocationDeniedForever,
+                LocationProblem.unavailable => l10n.kioskLocationUnavailable,
+              },
+            ),
+            const SizedBox(height: Spacing.x2),
+            // Not a notice alone: the way to fix it (T-428).
+            LocationFixButton(
+              problem: problem == LocationProblem.notAsked
+                  ? LocationProblem.denied
+                  : problem,
+              retry: () => controller.setNearMe(true),
+            ),
+          ],
         ),
       );
     }

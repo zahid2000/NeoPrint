@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -132,3 +133,50 @@ final class DeviceLocation implements UserLocation {
 final userLocationProvider = Provider<UserLocation>(
   (_) => const DeviceLocation(),
 );
+
+/// The phone's own settings, where what the app cannot ask for is turned on
+/// (T-428): the location service, or a permission refused for good.
+class LocationSettingsOpener {
+  const LocationSettingsOpener();
+
+  /// Opens the settings that fix [problem]; false when there is nothing to
+  /// open for it - asking again is the fix - or it could not be opened.
+  Future<bool> open(LocationProblem problem) async {
+    try {
+      return switch (problem) {
+        LocationProblem.serviceOff => await Geolocator.openLocationSettings(),
+        LocationProblem.deniedForever => await Geolocator.openAppSettings(),
+        _ => false,
+      };
+    } on Exception {
+      return false;
+    }
+  }
+}
+
+final locationSettingsProvider = Provider<LocationSettingsOpener>(
+  (_) => const LocationSettingsOpener(),
+);
+
+/// The one action for a missing location (T-428): the settings opened when
+/// only they can fix it, and [retry] once the user is back; otherwise
+/// [retry] at once, which asks for the permission again.
+Future<void> fixLocation(
+  LocationSettingsOpener settings,
+  LocationProblem? problem,
+  Future<void> Function() retry,
+) async {
+  if (problem == null || !await settings.open(problem)) {
+    await retry();
+    return;
+  }
+
+  // Back from the settings: looked again by itself.
+  late final AppLifecycleListener listener;
+  listener = AppLifecycleListener(
+    onResume: () {
+      listener.dispose();
+      unawaited(retry());
+    },
+  );
+}

@@ -21,6 +21,7 @@ import '../jobs/jobs_controller.dart';
 import '../kiosk_search/kiosk_models.dart';
 import '../kiosk_search/kiosk_photo.dart';
 import '../kiosk_search/kiosk_status_view.dart';
+import '../kiosk_search/location_fix_button.dart';
 import '../kiosk_search/user_location.dart';
 import '../notifications/notifications_screen.dart';
 import '../payments/scan_screen.dart';
@@ -194,11 +195,17 @@ class _NearKioskCard extends ConsumerWidget {
           null when value.kiosks.isNotEmpty => l10n.homeNoWorkingNearKiosk,
           null => l10n.homeNoNearKiosk,
           LocationProblem.notAsked => l10n.homeFindNearHint,
-          _ => l10n.homeNoLocation,
+          LocationProblem.serviceOff => l10n.homeLocationOff,
+          LocationProblem.denied ||
+          LocationProblem.deniedForever => l10n.homeLocationDenied,
+          LocationProblem.unavailable => l10n.homeNoLocation,
         },
-        canAsk: value.problem == LocationProblem.notAsked,
+        problem: value.problem,
       ),
-      AsyncError() => _NoNearKiosk(message: l10n.homeNoLocation, canAsk: false),
+      AsyncError() => _NoNearKiosk(
+        message: l10n.homeNoLocation,
+        problem: LocationProblem.unavailable,
+      ),
       _ => Container(
         height: 132,
         decoration: neoHeroDecoration(context),
@@ -210,12 +217,13 @@ class _NearKioskCard extends ConsumerWidget {
 }
 
 class _NoNearKiosk extends ConsumerWidget {
-  const _NoNearKiosk({required this.message, required this.canAsk});
+  const _NoNearKiosk({required this.message, required this.problem});
 
   final String message;
 
-  /// The permission was not asked for yet: the button asks.
-  final bool canAsk;
+  /// Why there is no location; null when kiosks were looked for and none
+  /// works near. The button is always there and fixes it (T-428).
+  final LocationProblem? problem;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -255,16 +263,11 @@ class _NoNearKiosk extends ConsumerWidget {
             spacing: Spacing.x2,
             runSpacing: Spacing.x2,
             children: [
-              if (canAsk)
-                OutlinedButton.icon(
-                  // As wide as its words: the two buttons share a line.
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, Sizes.touchTarget),
-                  ),
-                  onPressed: () => ref.read(nearKiosksProvider.notifier).find(),
-                  icon: const Icon(Icons.my_location),
-                  label: Text(l10n.homeShowNear),
-                ),
+              LocationFixButton(
+                problem: problem,
+                label: l10n.homeShowNear,
+                retry: () => ref.read(nearKiosksProvider.notifier).find(),
+              ),
               TextButton(
                 style: TextButton.styleFrom(
                   minimumSize: const Size(0, Sizes.touchTarget),
