@@ -20,6 +20,13 @@ import 'layout_model.dart';
 import 'layout_repository.dart';
 import 'layout_templates.dart';
 
+/// Pictures brought into the editor: their bytes and what is known of them,
+/// by name.
+typedef LoadedPictures = (
+  Map<String, Uint8List> images,
+  Map<String, EditorPicture> pictures,
+);
+
 /// What the editor is working on.
 enum LayoutEditorMode {
   /// A scan's arrangement: "Hazır" hands the layout back to the scan screen.
@@ -45,6 +52,7 @@ class LayoutEditorScreen extends ConsumerStatefulWidget {
     required this.mode,
     this.fileId,
     this.title,
+    this.onAddPictures,
   });
 
   final LayoutProject initial;
@@ -60,6 +68,10 @@ class LayoutEditorScreen extends ConsumerStatefulWidget {
   final String? fileId;
   final String? title;
 
+  /// Chooses more files and loads them (T-409); null where nothing can be
+  /// added (a scan's own pages).
+  final Future<LoadedPictures?> Function(BuildContext context)? onAddPictures;
+
   @override
   ConsumerState<LayoutEditorScreen> createState() => _LayoutEditorScreenState();
 }
@@ -74,10 +86,13 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
   String? _error;
   Map<String, ui.Image> _decoded = const {};
 
+  /// The pictures, with the ones added here (T-409).
+  late final Map<String, EditorPicture> _pictures = {...widget.pictures};
+
   @override
   void initState() {
     super.initState();
-    unawaited(_decode());
+    unawaited(_decode(widget.images));
   }
 
   @override
@@ -88,10 +103,13 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
     super.dispose();
   }
 
-  Future<void> _decode() async {
-    final decoded = <String, ui.Image>{};
+  Future<void> _decode(Map<String, Uint8List> images) async {
+    final decoded = <String, ui.Image>{..._decoded};
 
-    for (final MapEntry(key: name, value: bytes) in widget.images.entries) {
+    for (final MapEntry(key: name, value: bytes) in images.entries) {
+      if (decoded.containsKey(name)) {
+        continue;
+      }
       final codec = await ui.instantiateImageCodec(bytes);
       decoded[name] = (await codec.getNextFrame()).image;
       codec.dispose();
@@ -104,6 +122,28 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
         image.dispose();
       }
     }
+  }
+
+  /// More files onto this page (T-409): one in the middle, several side by
+  /// side; the last one comes selected.
+  Future<void> _addPictures() async {
+    final loaded = await widget.onAddPictures!(context);
+    if (loaded == null || !mounted) {
+      return;
+    }
+
+    final (images, pictures) = loaded;
+    _pictures.addAll(pictures);
+    final added = [for (final name in images.keys) _pictures[name]!];
+    if (added.isEmpty) {
+      return;
+    }
+
+    final project = added.length == 1
+        ? LayoutEditing.add(_project, _page, added.single)
+        : LayoutEditing.arrange(_project, _page, added);
+    _apply(project, select: project.pages[_page].elements.length - 1);
+    await _decode(images);
   }
 
   List<LayoutElement> get _elements => _project.pages[_page].elements;
@@ -129,7 +169,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
     final pictures = [
       for (final name in _project.images)
         () {
-          final picture = widget.pictures[name];
+          final picture = _pictures[name];
           final used = _project.pages
               .expand((page) => page.elements)
               .firstWhere((element) => element.image == name);
@@ -333,7 +373,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
     final current = _current;
     final offPage = LayoutEditing.hasOffPage(_project);
     final edge = !offPage && LayoutEditing.leavesPrintableArea(_project);
-    final picture = current == null ? null : widget.pictures[current.image];
+    final picture = current == null ? null : _pictures[current.image];
 
     return PopScope(
       canPop: !_dirty || _saving,
@@ -347,6 +387,12 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
         appBar: AppBar(
           title: Text(widget.title ?? l10n.layoutTitle),
           actions: [
+            if (widget.onAddPictures != null)
+              IconButton(
+                tooltip: l10n.layoutAddFile,
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                onPressed: _saving ? null : () => unawaited(_addPictures()),
+              ),
             PopupMenuButton<LayoutTemplate>(
               tooltip: l10n.layoutTemplate,
               icon: const Icon(Icons.grid_view),

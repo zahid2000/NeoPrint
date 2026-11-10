@@ -24,8 +24,9 @@ void main() {
   Future<LayoutProject?> openEditor(
     WidgetTester tester,
     LayoutProject project,
-    Future<void> Function() act,
-  ) async {
+    Future<void> Function() act, {
+    Future<LoadedPictures?> Function(BuildContext context)? onAdd,
+  }) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -52,6 +53,7 @@ void main() {
                           },
                           images: {'p1.jpg': png},
                           mode: LayoutEditorMode.scan,
+                          onAddPictures: onAdd,
                         ),
                       ),
                     ),
@@ -186,6 +188,35 @@ void main() {
 
     expect(changed, isNotEmpty);
     expect(changed.toSet(), {1});
+  });
+
+  testWidgets('a file added in the editor comes onto the page (T-409)', (
+    tester,
+  ) async {
+    final result = await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([picture]),
+        ],
+      ),
+      () async {
+        await tester.tap(find.byTooltip('Fayl əlavə et'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Hazır'));
+        await tester.pumpAndSettle();
+      },
+      onAdd: (_) async => (
+        {'p2.jpg': png},
+        const {'p2.jpg': EditorPicture(name: 'p2.jpg', aspect: 0.5)},
+      ),
+    );
+
+    expect(result!.pages.single.elements.map((e) => e.image), [
+      'p1.jpg',
+      'p2.jpg',
+    ]);
   });
 
   testWidgets('a picture off the paper cannot be handed back', (tester) async {

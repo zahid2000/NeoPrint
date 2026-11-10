@@ -12,6 +12,7 @@ import '../../shared/widgets/neo_empty_state.dart';
 import '../../shared/widgets/neo_primary_button.dart';
 import '../files/file_models.dart';
 import '../files/files_controller.dart';
+import '../files/files_repository.dart';
 import 'layout_editing.dart';
 import 'layout_editor_screen.dart';
 import 'layout_model.dart';
@@ -49,25 +50,12 @@ Future<void> openNewLayout(
   final messenger = ScaffoldMessenger.of(context);
   final navigator = Navigator.of(context, rootNavigator: true);
   final files = ref.read(filesRepositoryProvider);
+  final add = _picker(ref);
 
-  final loaded = await _withProgress(context, () async {
-    final images = <String, Uint8List>{};
-    for (final source in sources) {
-      images[source.name] = await files.pageImage(
-        source.file.id,
-        source.page ?? 1,
-        960,
-      );
-    }
-    final pictures = {
-      for (final source in sources)
-        source.name: EditorPicture(
-          name: source.name,
-          aspect: await _aspect(images[source.name]!),
-        ),
-    };
-    return (images, pictures);
-  });
+  final loaded = await _withProgress(
+    context,
+    () => _loadSources(files, sources),
+  );
 
   if (loaded == null || !context.mounted) {
     return;
@@ -92,6 +80,7 @@ Future<void> openNewLayout(
         images: images,
         mode: LayoutEditorMode.newFile,
         title: sources.length == 1 ? _stem(sources.single.file.fileName) : null,
+        onAddPictures: add,
       ),
     ),
   );
@@ -141,6 +130,7 @@ Future<void> openLayoutFile(
         mode: LayoutEditorMode.editFile,
         fileId: file.id,
         title: _stem(file.fileName),
+        onAddPictures: _picker(ref),
       ),
     ),
   );
@@ -149,6 +139,45 @@ Future<void> openLayoutFile(
     messenger.showSnackBar(SnackBar(content: Text(l10n.layoutSaved)));
   }
 }
+
+/// The files' pictures: a document's page or an image file, at the
+/// editor's size, with each one's width over height.
+Future<LoadedPictures> _loadSources(
+  FilesRepository files,
+  List<LayoutSource> sources,
+) async {
+  final images = <String, Uint8List>{};
+  for (final source in sources) {
+    images[source.name] = await files.pageImage(
+      source.file.id,
+      source.page ?? 1,
+      960,
+    );
+  }
+  final pictures = {
+    for (final source in sources)
+      source.name: EditorPicture(
+        name: source.name,
+        aspect: await _aspect(images[source.name]!),
+      ),
+  };
+  return (images, pictures);
+}
+
+/// The editor's "Fayl əlavə et" (T-409): the same choice of files as a new
+/// layout, loaded behind a progress dialog.
+Future<LoadedPictures?> Function(BuildContext context) _picker(WidgetRef ref) =>
+    (context) async {
+      final files = ref.read(filesRepositoryProvider);
+      final sources = await Navigator.of(context, rootNavigator: true)
+          .push<List<LayoutSource>>(
+            MaterialPageRoute(builder: (_) => const LayoutSourcesScreen()),
+          );
+      if (sources == null || sources.isEmpty || !context.mounted) {
+        return null;
+      }
+      return _withProgress(context, () => _loadSources(files, sources));
+    };
 
 /// Runs [load] behind a progress dialog; null, with the reason shown, on failure.
 Future<T?> _withProgress<T>(

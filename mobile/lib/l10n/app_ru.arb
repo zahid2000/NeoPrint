@@ -184,6 +184,7 @@
   "layoutTitle": "Макет",
   "layoutTemplate": "Шаблон",
   "layoutPaper": "Бумага",
+  "layoutAddFile": "Добавить файл",
   "layoutPortrait": "Книжная",
   "layoutLandscape": "Альбомная",
   "layoutMargin": "Поля: {mm} мм",

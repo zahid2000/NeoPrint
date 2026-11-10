@@ -184,6 +184,7 @@
   "layoutTitle": "Layout",
   "layoutTemplate": "Template",
   "layoutPaper": "Paper",
+  "layoutAddFile": "Add a file",
   "layoutPortrait": "Portrait",
   "layoutLandscape": "Landscape",
   "layoutMargin": "Margin: {mm} mm",

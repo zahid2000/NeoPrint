@@ -242,6 +242,7 @@
   "layoutTitle": "Tərtibat",
   "layoutTemplate": "Şablon",
   "layoutPaper": "Kağız",
+  "layoutAddFile": "Fayl əlavə et",
   "layoutPortrait": "Portret",
   "layoutLandscape": "Landşaft",
   "layoutMargin": "Kənar boşluq: {mm} mm",
