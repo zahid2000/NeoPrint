@@ -24,6 +24,7 @@ delete_outline
 delete_sweep
 deployed_code
 description
+desktop_windows
 devices
 do_not_disturb_on
 download
@@ -70,6 +71,7 @@ post_add
 print
 print_disabled
 progress_activity
+qr_code_scanner
 query_stats
 queue
 radio_button_unchecked
