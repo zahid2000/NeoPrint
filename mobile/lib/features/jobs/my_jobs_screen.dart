@@ -32,58 +32,63 @@ class _MyJobsScreenState extends ConsumerState<MyJobsScreen> {
 
     return Scaffold(
       appBar: neoTabAppBar(context, title: l10n.jobsTitle, showBack: true),
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(myJobsProvider.notifier).refresh(),
-        child: ListView(
-          padding: const EdgeInsets.all(Spacing.x4),
-          children: [
-            NeoPillTabs<_JobsTab>(
-              values: _JobsTab.values,
-              selected: _tab,
-              expand: true,
-              label: (tab) => switch (tab) {
-                _JobsTab.active => l10n.jobsTabActive,
-                _JobsTab.past => l10n.jobsTabPast,
-              },
-              onSelected: (tab) => setState(() => _tab = tab),
-            ),
-            const SizedBox(height: Spacing.x4),
-            ...switch (jobs) {
-              AsyncData(:final value) => () {
-                final shown = [
-                  for (final job in value)
-                    if (job.isActive == (_tab == _JobsTab.active)) job,
-                ];
-                if (shown.isEmpty) {
-                  return [
-                    NeoEmptyState(
-                      icon: Icons.receipt_long_outlined,
-                      message: _tab == _JobsTab.active
-                          ? l10n.jobsNoActive
-                          : l10n.homeNoJobs,
-                      hint: l10n.homeNoJobsHint,
-                    ),
+      body: NeoTabSwipe<_JobsTab>(
+        values: _JobsTab.values,
+        selected: _tab,
+        onSelected: (tab) => setState(() => _tab = tab),
+        child: RefreshIndicator(
+          onRefresh: () => ref.read(myJobsProvider.notifier).refresh(),
+          child: ListView(
+            padding: const EdgeInsets.all(Spacing.x4),
+            children: [
+              NeoPillTabs<_JobsTab>(
+                values: _JobsTab.values,
+                selected: _tab,
+                expand: true,
+                label: (tab) => switch (tab) {
+                  _JobsTab.active => l10n.jobsTabActive,
+                  _JobsTab.past => l10n.jobsTabPast,
+                },
+                onSelected: (tab) => setState(() => _tab = tab),
+              ),
+              const SizedBox(height: Spacing.x4),
+              ...switch (jobs) {
+                AsyncData(:final value) => () {
+                  final shown = [
+                    for (final job in value)
+                      if (job.isActive == (_tab == _JobsTab.active)) job,
                   ];
-                }
-                return [
-                  for (final job in shown) ...[
-                    JobCard(job: job),
-                    const SizedBox(height: Spacing.x2),
-                  ],
-                ];
-              }(),
-              AsyncError(:final error) => [
-                NeoBanner.error(
-                  message: l10n.homeJobsFailed(
-                    error is ApiException
-                        ? apiErrorText(l10n, error)
-                        : l10n.errorServer,
+                  if (shown.isEmpty) {
+                    return [
+                      NeoEmptyState(
+                        icon: Icons.receipt_long_outlined,
+                        message: _tab == _JobsTab.active
+                            ? l10n.jobsNoActive
+                            : l10n.homeNoJobs,
+                        hint: l10n.homeNoJobsHint,
+                      ),
+                    ];
+                  }
+                  return [
+                    for (final job in shown) ...[
+                      JobCard(job: job),
+                      const SizedBox(height: Spacing.x2),
+                    ],
+                  ];
+                }(),
+                AsyncError(:final error) => [
+                  NeoBanner.error(
+                    message: l10n.homeJobsFailed(
+                      error is ApiException
+                          ? apiErrorText(l10n, error)
+                          : l10n.errorServer,
+                    ),
                   ),
-                ),
-              ],
-              _ => [const Center(child: CircularProgressIndicator())],
-            },
-          ],
+                ],
+                _ => [const Center(child: CircularProgressIndicator())],
+              },
+            ],
+          ),
         ),
       ),
     );

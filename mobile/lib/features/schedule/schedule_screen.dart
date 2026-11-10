@@ -86,39 +86,44 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               for (final item in value)
                 if (_upcoming(item) == (_tab == _ScheduleTab.upcoming)) item,
             ];
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(
-                Spacing.x4,
-                Spacing.x2,
-                Spacing.x4,
-                // Room for the round button over the last card.
-                Spacing.x16 + Spacing.x8,
-              ),
-              children: [
-                NeoPillTabs<_ScheduleTab>(
-                  values: _ScheduleTab.values,
-                  selected: _tab,
-                  expand: true,
-                  label: (tab) => switch (tab) {
-                    _ScheduleTab.upcoming => l10n.schedTabUpcoming,
-                    _ScheduleTab.past => l10n.schedTabPast,
-                  },
-                  onSelected: (tab) => setState(() => _tab = tab),
+            return NeoTabSwipe<_ScheduleTab>(
+              values: _ScheduleTab.values,
+              selected: _tab,
+              onSelected: (tab) => setState(() => _tab = tab),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  Spacing.x4,
+                  Spacing.x2,
+                  Spacing.x4,
+                  // Room for the round button over the last card.
+                  Spacing.x16 + Spacing.x8,
                 ),
-                const SizedBox(height: Spacing.x3),
-                if (shown.isEmpty)
-                  NeoEmptyState(
-                    icon: Icons.event_outlined,
-                    message: _tab == _ScheduleTab.upcoming
-                        ? l10n.schedEmpty
-                        : l10n.schedPastEmpty,
-                  )
-                else
-                  for (final item in shown) ...[
-                    _ScheduleCard(item: item),
-                    const SizedBox(height: Spacing.x3),
-                  ],
-              ],
+                children: [
+                  NeoPillTabs<_ScheduleTab>(
+                    values: _ScheduleTab.values,
+                    selected: _tab,
+                    expand: true,
+                    label: (tab) => switch (tab) {
+                      _ScheduleTab.upcoming => l10n.schedTabUpcoming,
+                      _ScheduleTab.past => l10n.schedTabPast,
+                    },
+                    onSelected: (tab) => setState(() => _tab = tab),
+                  ),
+                  const SizedBox(height: Spacing.x3),
+                  if (shown.isEmpty)
+                    NeoEmptyState(
+                      icon: Icons.event_outlined,
+                      message: _tab == _ScheduleTab.upcoming
+                          ? l10n.schedEmpty
+                          : l10n.schedPastEmpty,
+                    )
+                  else
+                    for (final item in shown) ...[
+                      _ScheduleCard(item: item),
+                      const SizedBox(height: Spacing.x3),
+                    ],
+                ],
+              ),
             );
           }(),
           AsyncError(:final error) => ListView(

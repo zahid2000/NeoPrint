@@ -124,6 +124,47 @@ class NeoSearchField extends StatelessWidget {
   }
 }
 
+/// The page under [NeoPillTabs]: swiped sideways, it steps to the next or
+/// the previous tab (T-398) - right to left is the next one. A slow drag is
+/// not a swipe, so a list still scrolls up and down as before.
+class NeoTabSwipe<T> extends StatelessWidget {
+  const NeoTabSwipe({
+    required this.values,
+    required this.selected,
+    required this.onSelected,
+    required this.child,
+    super.key,
+  });
+
+  final List<T> values;
+  final T selected;
+  final ValueChanged<T> onSelected;
+  final Widget child;
+
+  /// Logical pixels a second; below it the finger only wandered.
+  static const flingVelocity = 300.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity.abs() < flingVelocity) {
+          return;
+        }
+        final rtl = Directionality.of(context) == TextDirection.rtl;
+        final forward = (velocity < 0) != rtl;
+        final next = values.indexOf(selected) + (forward ? 1 : -1);
+        if (next >= 0 && next < values.length) {
+          onSelected(values[next]);
+        }
+      },
+      child: child,
+    );
+  }
+}
+
 /// Pill tabs: "Hamısı · PDF · Şəkil", "Yaxınlıqdakı · Hamısı · Xəritə". The
 /// chosen one is on the brand's light fill in the brand's colour.
 class NeoPillTabs<T> extends StatelessWidget {

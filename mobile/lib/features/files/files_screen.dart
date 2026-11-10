@@ -347,48 +347,53 @@ class _FileListState extends State<_FileList> {
     final l10n = AppLocalizations.of(context);
     final files = widget.state.files.where(_matches).toList();
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        Spacing.x4,
-        Spacing.x2,
-        Spacing.x4,
-        // Room for the floating button over the last row.
-        Spacing.x16 + Spacing.x8,
-      ),
-      children: [
-        NeoSearchField(
-          hint: l10n.filesSearchHint,
-          onChanged: (value) => setState(() => _query = value),
+    return NeoTabSwipe<_FileFilter>(
+      values: _FileFilter.values,
+      selected: _filter,
+      onSelected: (filter) => setState(() => _filter = filter),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          Spacing.x4,
+          Spacing.x2,
+          Spacing.x4,
+          // Room for the floating button over the last row.
+          Spacing.x16 + Spacing.x8,
         ),
-        const SizedBox(height: Spacing.x3),
-        NeoPillTabs<_FileFilter>(
-          values: _FileFilter.values,
-          selected: _filter,
-          label: (filter) => switch (filter) {
-            _FileFilter.all => l10n.filesFilterAll,
-            _FileFilter.pdf => l10n.filesFilterPdf,
-            _FileFilter.image => l10n.filesFilterImage,
-            _FileFilter.document => l10n.filesFilterDocument,
-            _FileFilter.scan => l10n.filesFilterScan,
-          },
-          onSelected: (filter) => setState(() => _filter = filter),
-        ),
-        const SizedBox(height: Spacing.x3),
-        for (final upload in widget.state.uploads) ...[
-          _UploadCard(upload: upload),
-          const SizedBox(height: Spacing.x2),
-        ],
-        if (files.isEmpty)
-          NeoEmptyState(
-            icon: Icons.search_off_outlined,
-            message: l10n.filesSearchEmpty,
-          )
-        else
-          for (final file in files) ...[
-            _FileCard(file: file),
+        children: [
+          NeoSearchField(
+            hint: l10n.filesSearchHint,
+            onChanged: (value) => setState(() => _query = value),
+          ),
+          const SizedBox(height: Spacing.x3),
+          NeoPillTabs<_FileFilter>(
+            values: _FileFilter.values,
+            selected: _filter,
+            label: (filter) => switch (filter) {
+              _FileFilter.all => l10n.filesFilterAll,
+              _FileFilter.pdf => l10n.filesFilterPdf,
+              _FileFilter.image => l10n.filesFilterImage,
+              _FileFilter.document => l10n.filesFilterDocument,
+              _FileFilter.scan => l10n.filesFilterScan,
+            },
+            onSelected: (filter) => setState(() => _filter = filter),
+          ),
+          const SizedBox(height: Spacing.x3),
+          for (final upload in widget.state.uploads) ...[
+            _UploadCard(upload: upload),
             const SizedBox(height: Spacing.x2),
           ],
-      ],
+          if (files.isEmpty)
+            NeoEmptyState(
+              icon: Icons.search_off_outlined,
+              message: l10n.filesSearchEmpty,
+            )
+          else
+            for (final file in files) ...[
+              _FileCard(file: file),
+              const SizedBox(height: Spacing.x2),
+            ],
+        ],
+      ),
     );
   }
 }

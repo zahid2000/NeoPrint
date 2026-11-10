@@ -104,72 +104,77 @@ class _WalletBodyState extends State<_WalletBody> {
     final tokens = context.tokens;
     final state = widget.state;
 
-    return ListView(
-      padding: const EdgeInsets.all(Spacing.x4),
-      children: [
-        _BalanceCard(wallet: state.wallet),
-        const SizedBox(height: Spacing.x3),
-        // Always on screen, not only at top-up: the rule the user agreed to
-        // at registration (plan section 2.14) - one quiet line, not a card.
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.info_outline, color: tokens.warning),
-            const SizedBox(width: Spacing.x2),
-            Expanded(
-              child: Text(
-                l10n.walletNoRefundNote,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: tokens.neutral600,
+    return NeoTabSwipe<_WalletTab>(
+      values: _WalletTab.values,
+      selected: _tab,
+      onSelected: (tab) => setState(() => _tab = tab),
+      child: ListView(
+        padding: const EdgeInsets.all(Spacing.x4),
+        children: [
+          _BalanceCard(wallet: state.wallet),
+          const SizedBox(height: Spacing.x3),
+          // Always on screen, not only at top-up: the rule the user agreed to
+          // at registration (plan section 2.14) - one quiet line, not a card.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, color: tokens.warning),
+              const SizedBox(width: Spacing.x2),
+              Expanded(
+                child: Text(
+                  l10n.walletNoRefundNote,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: tokens.neutral600,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: Spacing.x4),
-        NeoPillTabs<_WalletTab>(
-          values: _WalletTab.values,
-          selected: _tab,
-          expand: true,
-          label: (tab) => switch (tab) {
-            _WalletTab.history => l10n.walletTabHistory,
-            _WalletTab.vouchers => l10n.walletTabVouchers,
+            ],
+          ),
+          const SizedBox(height: Spacing.x4),
+          NeoPillTabs<_WalletTab>(
+            values: _WalletTab.values,
+            selected: _tab,
+            expand: true,
+            label: (tab) => switch (tab) {
+              _WalletTab.history => l10n.walletTabHistory,
+              _WalletTab.vouchers => l10n.walletTabVouchers,
+            },
+            onSelected: (tab) => setState(() => _tab = tab),
+          ),
+          const SizedBox(height: Spacing.x3),
+          ...switch (_tab) {
+            _WalletTab.history when state.entries.isEmpty => [
+              NeoEmptyState(
+                icon: Icons.receipt_long_outlined,
+                message: l10n.walletNoHistory,
+                hint: l10n.walletNoHistoryHint,
+              ),
+            ],
+            // The design's "Son əməliyyatlar" (T-380): the latest few, and the
+            // whole history behind "Hamısına bax".
+            _WalletTab.history => [
+              NeoSectionHeader(
+                title: l10n.walletRecent,
+                actionLabel: state.entries.length > walletRecentCount
+                    ? l10n.homeSeeAll
+                    : null,
+                onAction: () => context.push(Routes.walletHistory),
+              ),
+              for (final entry in state.entries.take(walletRecentCount))
+                WalletEntryTile(entry: entry),
+            ],
+            _WalletTab.vouchers => [
+              Text(l10n.walletVoucherHint, style: theme.textTheme.bodyMedium),
+              const SizedBox(height: Spacing.x3),
+              OutlinedButton.icon(
+                onPressed: () => showVoucherDialog(context),
+                icon: const Icon(Icons.confirmation_number_outlined),
+                label: Text(l10n.walletVoucherTitle),
+              ),
+            ],
           },
-          onSelected: (tab) => setState(() => _tab = tab),
-        ),
-        const SizedBox(height: Spacing.x3),
-        ...switch (_tab) {
-          _WalletTab.history when state.entries.isEmpty => [
-            NeoEmptyState(
-              icon: Icons.receipt_long_outlined,
-              message: l10n.walletNoHistory,
-              hint: l10n.walletNoHistoryHint,
-            ),
-          ],
-          // The design's "Son əməliyyatlar" (T-380): the latest few, and the
-          // whole history behind "Hamısına bax".
-          _WalletTab.history => [
-            NeoSectionHeader(
-              title: l10n.walletRecent,
-              actionLabel: state.entries.length > walletRecentCount
-                  ? l10n.homeSeeAll
-                  : null,
-              onAction: () => context.push(Routes.walletHistory),
-            ),
-            for (final entry in state.entries.take(walletRecentCount))
-              WalletEntryTile(entry: entry),
-          ],
-          _WalletTab.vouchers => [
-            Text(l10n.walletVoucherHint, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: Spacing.x3),
-            OutlinedButton.icon(
-              onPressed: () => showVoucherDialog(context),
-              icon: const Icon(Icons.confirmation_number_outlined),
-              label: Text(l10n.walletVoucherTitle),
-            ),
-          ],
-        },
-      ],
+        ],
+      ),
     );
   }
 }
