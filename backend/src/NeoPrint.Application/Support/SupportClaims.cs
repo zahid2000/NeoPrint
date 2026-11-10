@@ -8,7 +8,9 @@ using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Behaviors;
 using NeoPrint.Application.Common;
 using NeoPrint.Application.PrintJobs;
+using NeoPrint.Application.Refunds;
 using NeoPrint.Domain.Common;
+using NeoPrint.Domain.Incidents;
 using NeoPrint.Domain.PrintJobs;
 using NeoPrint.Domain.Support;
 
@@ -61,6 +63,12 @@ public sealed record AnswerClaimCommand(Guid AdminUserId, Guid ClaimId, string? 
 
 public sealed record CloseClaimCommand(Guid AdminUserId, Guid ClaimId, string? Ip) : IRequest<SupportClaimView>, ITransactionalRequest;
 
+/// <summary>
+/// "Müraciəti davam etdir": the customer carries an answered claim on, and it
+/// is open for the admins again (T-385).
+/// </summary>
+public sealed record ReopenMyClaimCommand(Guid UserId, Guid ClaimId) : IRequest<SupportClaimView>, ITransactionalRequest;
+
 /// <summary>What an anonymous customer gets back: the claim's id to quote on the hotline.</summary>
 public sealed record SupportClaimReceipt(Guid Id, string Status, DateTime CreatedAt);
 
@@ -108,7 +116,8 @@ public sealed class SupportClaimHandlers :
     IRequestHandler<ListMyClaimsQuery, IReadOnlyList<SupportClaimView>>,
     IRequestHandler<ListClaimsQuery, SupportClaimPage>,
     IRequestHandler<AnswerClaimCommand, SupportClaimView>,
-    IRequestHandler<CloseClaimCommand, SupportClaimView>
+    IRequestHandler<CloseClaimCommand, SupportClaimView>,
+    IRequestHandler<ReopenMyClaimCommand, SupportClaimView>
 {
     /// <summary>Open claims one job may have; more is someone filling the list, not a customer being heard.</summary>
     public const int MaxOpenPerJob = 5;
@@ -122,6 +131,9 @@ public sealed class SupportClaimHandlers :
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly Admin.IPermissionResolver _permissions;
+    private readonly IncidentReporter _incidents;
+    private readonly IEventPublisher _events;
+    private readonly ICorrelationContext _correlation;
     private readonly ILogger<SupportClaimHandlers> _logger;
 
     public SupportClaimHandlers(
@@ -131,9 +143,15 @@ public sealed class SupportClaimHandlers :
         Refunds.IRefundRepository refunds,
         IAuditWriter audit,
         Admin.IPermissionResolver permissions,
+        IncidentReporter incidents,
+        IEventPublisher events,
+        ICorrelationContext correlation,
         IClock clock,
         ILogger<SupportClaimHandlers> logger)
     {
+        _incidents = incidents;
+        _events = events;
+        _correlation = correlation;
         _claims = claims;
         _jobs = jobs;
         _kiosks = kiosks;
@@ -261,6 +279,18 @@ public sealed class SupportClaimHandlers :
         claim.Answer(request.AdminUserId, request.Reply, _clock.UtcNow);
         await _claims.UpdateAsync(claim, cancellationToken).ConfigureAwait(false);
         await AuditAsync(request.AdminUserId, "support.claims.answer", claim, request.Ip, cancellationToken).ConfigureAwait(false);
+        await _incidents.ResolveAsync(ClaimKey(claim), UserMessage.Of("incidents.resolution.claimAnswered"), cancellationToken).ConfigureAwait(false);
+
+        // Answered is closed for the customer, who is told and may carry it on
+        // (T-385) - through the outbox, written with the answer.
+        if (claim.UserId is { } userId)
+        {
+            await _events
+                .PublishAsync(
+                    new NeoPrint.Contracts.SupportClaimAnswered(claim.Id, userId, claim.JobCode, claim.ReopenCount, _correlation.CorrelationId),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         return SupportClaimView.From(claim);
     }
@@ -277,9 +307,74 @@ public sealed class SupportClaimHandlers :
             claim.Close();
             await _claims.UpdateAsync(claim, cancellationToken).ConfigureAwait(false);
             await AuditAsync(request.AdminUserId, "support.claims.close", claim, request.Ip, cancellationToken).ConfigureAwait(false);
+            await _incidents.ResolveAsync(ClaimKey(claim), UserMessage.Of("incidents.resolution.claimClosed"), cancellationToken).ConfigureAwait(false);
         }
 
         return SupportClaimView.From(claim);
+    }
+
+    /// <inheritdoc cref="ReopenMyClaimCommand" />
+    public async Task<SupportClaimView> Handle(ReopenMyClaimCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var claim = await _claims.FindByIdAsync(request.ClaimId, cancellationToken).ConfigureAwait(false);
+
+        // Somebody else's claim is not there at all, as far as this user goes.
+        if (claim is null || claim.UserId != request.UserId)
+        {
+            throw new NotFoundException("claim");
+        }
+
+        if (claim.Status == ClaimStatus.Open)
+        {
+            // Pressed twice: the first one did it.
+            return Own(claim);
+        }
+
+        claim.Reopen();
+        await _claims.UpdateAsync(claim, cancellationToken).ConfigureAwait(false);
+        await _audit
+            .WriteAsync(
+                new AuditEntry(
+                    null,
+                    "support.claims.reopen",
+                    nameof(SupportClaim),
+                    claim.Id.ToString(),
+                    null,
+                    JsonSerializer.Serialize(new { status = claim.Status.ToString(), reopened = claim.ReopenCount, userId = request.UserId }),
+                    null,
+                    null,
+                    ActorType.User),
+                cancellationToken)
+            .ConfigureAwait(false);
+        await RaiseAsync(claim, cancellationToken).ConfigureAwait(false);
+
+        return Own(claim);
+    }
+
+    /// <summary>One incident per time the claim is open: answered or closed, it closes (T-385).</summary>
+    private static string ClaimKey(SupportClaim claim) => $"claim:{claim.Id}:{claim.ReopenCount}";
+
+    /// <summary>Every open claim is an admin's to look at: the panel, e-mail and Telegram are told (T-385).</summary>
+    private async Task RaiseAsync(SupportClaim claim, CancellationToken cancellationToken)
+    {
+        var job = claim.JobId is { } jobId ? await _jobs.FindByIdAsync(jobId, cancellationToken).ConfigureAwait(false) : null;
+
+        await _incidents
+            .RaiseAsync(
+                IncidentType.CustomerClaim,
+                IncidentSeverity.Medium,
+                UserMessage.Of(
+                    claim.ReopenCount > 0 ? "incidents.customerClaimReopened" : "incidents.customerClaim",
+                    ("jobCode", claim.JobCode ?? "-"),
+                    ("status", job?.Status.ToString() ?? "-")),
+                ClaimKey(claim),
+                cancellationToken,
+                claim.KioskId,
+                nameof(SupportClaim),
+                claim.Id)
+            .ConfigureAwait(false);
     }
 
     private async Task<SupportClaim> OpenAsync(
@@ -316,6 +411,7 @@ public sealed class SupportClaimHandlers :
             .ConfigureAwait(false);
 
         _logger.LogInformation("Support claim {ClaimId} opened about job {JobId} ({Channel}).", claim.Id, job.Id, channel);
+        await RaiseAsync(claim, cancellationToken).ConfigureAwait(false);
 
         return claim;
     }

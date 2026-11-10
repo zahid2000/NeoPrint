@@ -76,7 +76,8 @@ public sealed class NotificationDeliveryConsumer : IConsumer<UserNotificationCre
 /// <summary>Turns the events a user should hear about into notifications (plan section 8.4).</summary>
 public sealed class NotificationTriggerConsumer :
     IConsumer<PrintJobStatusChanged>,
-    IConsumer<RefundCompleted>
+    IConsumer<RefundCompleted>,
+    IConsumer<SupportClaimAnswered>
 {
     private readonly ISender _sender;
 
@@ -98,5 +99,13 @@ public sealed class NotificationTriggerConsumer :
         return context.Message.UserId is null
             ? Task.CompletedTask
             : _sender.Send(new NotifyRefundCompletedCommand(context.Message.RefundId), context.CancellationToken);
+    }
+
+    public Task Consume(ConsumeContext<SupportClaimAnswered> context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var answered = context.Message;
+        return _sender.Send(ClaimNotifications.Answered(answered.ClaimId, answered.UserId, answered.JobCode, answered.ReopenCount), context.CancellationToken);
     }
 }

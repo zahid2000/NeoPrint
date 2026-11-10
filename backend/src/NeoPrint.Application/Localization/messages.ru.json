@@ -881,5 +881,12 @@
   "kioskCommands.agentRestarted": "Agent перезапущен.",
   "kioskCommands.provisioningApplied": "Скрипты установки применены повторно.",
   "kioskCommands.rolledBack": "Киоск возвращён к предыдущей версии.",
-  "updates.agentNotAnswering": "Служба Agent на киоске не ответила; обновление не применено."
+  "updates.agentNotAnswering": "Служба Agent на киоске не ответила; обновление не применено.",
+  "incidents.customerClaim": "Клиент написал обращение по заказу {jobCode} (заказ: {status}). Посмотрите: ответьте или проверьте заказ и отмените его.",
+  "incidents.customerClaimReopened": "Клиент продолжил отвеченное обращение по заказу {jobCode} (заказ: {status}). Посмотрите снова.",
+  "incidents.resolution.claimAnswered": "На обращение дан ответ.",
+  "incidents.resolution.claimClosed": "Обращение закрыто.",
+  "notifications.claimAnswered.title": "На ваше обращение ответили",
+  "notifications.claimAnswered.body": "На ваше обращение по заказу {jobCode} дан ответ. Если проблема осталась, обращение можно продолжить.",
+  "support.notAnswered": "Продолжить можно только отвеченное обращение. Для закрытого отправьте новое обращение."
 }

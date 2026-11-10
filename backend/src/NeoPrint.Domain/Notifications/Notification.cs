@@ -19,6 +19,9 @@ public enum NotificationType
     ReferralRewarded = 7,
     ExportReady = 8,
     FileAutoDeleted = 9,
+
+    /// <summary>An admin answered the user's claim (T-385).</summary>
+    ClaimAnswered = 10,
 }
 
 /// <summary>Where the push for a notification is.</summary>

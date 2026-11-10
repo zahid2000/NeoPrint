@@ -209,11 +209,15 @@ public sealed class PrintJob : Entity
             .Allow(PrintJobStatus.PendingPayment, PrintJobStatus.Paid, PrintJobStatus.Expired, PrintJobStatus.Cancelled)
             .Allow(PrintJobStatus.Paid, PrintJobStatus.Queued, PrintJobStatus.Cancelled)
             .Allow(PrintJobStatus.Queued, PrintJobStatus.Printing, PrintJobStatus.Cancelled, PrintJobStatus.Suspected)
+            // Printing -> Cancelled is the admin's only (T-385): the order is stuck
+            // "printing" and the admin checked that no paper goes; the owner's own
+            // cancel does not take it (MyPrintJobHandlers.Cancellable).
             .Allow(
                 PrintJobStatus.Printing,
                 PrintJobStatus.Completed,
                 PrintJobStatus.Interrupted,
-                PrintJobStatus.Suspected)
+                PrintJobStatus.Suspected,
+                PrintJobStatus.Cancelled)
             .Allow(PrintJobStatus.Interrupted, PrintJobStatus.Queued, PrintJobStatus.Cancelled)
             .Allow(
                 PrintJobStatus.Suspected,

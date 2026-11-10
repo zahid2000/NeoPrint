@@ -881,5 +881,12 @@
   "kioskCommands.agentRestarted": "The agent was restarted.",
   "kioskCommands.provisioningApplied": "The provisioning scripts were applied again.",
   "kioskCommands.rolledBack": "The kiosk went back to the previous version.",
-  "updates.agentNotAnswering": "The kiosk's agent service did not answer; the update was not applied."
+  "updates.agentNotAnswering": "The kiosk's agent service did not answer; the update was not applied.",
+  "incidents.customerClaim": "A customer wrote about order {jobCode} (order: {status}). Look at it: answer, or check the order and cancel it.",
+  "incidents.customerClaimReopened": "A customer carried on an answered claim about order {jobCode} (order: {status}). Look at it again.",
+  "incidents.resolution.claimAnswered": "The claim was answered.",
+  "incidents.resolution.claimClosed": "The claim was closed.",
+  "notifications.claimAnswered.title": "Your claim was answered",
+  "notifications.claimAnswered.body": "Your claim about order {jobCode} has an answer. If the problem is still there, you can carry the claim on.",
+  "support.notAnswered": "Only an answered claim can be carried on. For a closed one, send a new claim."
 }

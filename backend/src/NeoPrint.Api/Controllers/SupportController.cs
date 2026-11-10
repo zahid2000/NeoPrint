@@ -69,6 +69,12 @@ public sealed class MyClaimsController : ControllerBase
 
         return Ok(await _sender.Send(new OpenAppClaimCommand(UserId, request.JobId, request.Text), cancellationToken));
     }
+
+    /// <summary>"Müraciəti davam etdir": an answered claim is open again (T-385).</summary>
+    [HttpPost("{id:guid}/reopen")]
+    [Idempotent]
+    public async Task<ActionResult<SupportClaimView>> Reopen(Guid id, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new ReopenMyClaimCommand(UserId, id), cancellationToken));
 }
 
 public sealed record AppClaimRequest(Guid JobId, string? Text);

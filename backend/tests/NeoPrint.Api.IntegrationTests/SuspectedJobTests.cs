@@ -272,15 +272,37 @@ public sealed class SuspectedJobTests
             .EnumerateArray().Single(entry => entry.GetProperty("jobId").GetGuid() == jobId).GetProperty("openClaims").GetInt32().Should().Be(2);
 
         var answer = await ClaimAsync(admin, $"/api/admin/support/claims/{claimId}/answer", new { reply = "Araşdırırıq, 3 iş günü ərzində cavab veriləcək." });
-        answer.StatusCode.Should().Be(HttpStatusCode.OK);
+        answer.StatusCode.Should().Be(HttpStatusCode.OK, await answer.Content.ReadAsStringAsync());
 
         var own = await user.Client.GetFromJsonAsync<JsonElement>("/api/me/claims");
         var answered = own.EnumerateArray().Single(c => c.GetProperty("id").GetGuid() == claimId);
         answered.GetProperty("status").GetString().Should().Be("Answered");
         answered.GetProperty("reply").GetString().Should().StartWith("Araşdırırıq");
 
+        // Every open claim is an incident for the admins; the answer closes it and tells the user (T-385).
+        (await ClaimIncidentsAsync(claimId, open: true)).Should().BeEmpty("the answer closed it");
+        (await ClaimIncidentsAsync(claimId, open: false)).Should().ContainSingle();
+        var told = await user.Client.GetFromJsonAsync<JsonElement>("/api/notifications");
+        told.GetProperty("items").EnumerateArray().Select(n => n.GetProperty("type").GetString()).Should().Contain("ClaimAnswered");
+
+        // The customer carries it on: open again, and the admins are told again.
+        var reopened = await ClaimAsync(user.Client, $"/api/me/claims/{claimId}/reopen", new { });
+        reopened.StatusCode.Should().Be(HttpStatusCode.OK, await reopened.Content.ReadAsStringAsync());
+        (await reopened.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString().Should().Be("Open");
+        (await ClaimIncidentsAsync(claimId, open: true)).Should().ContainSingle();
+        (await ClaimAsync(user.Client, $"/api/me/claims/{Guid.NewGuid()}/reopen", new { })).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
         (await ClaimAsync(admin, $"/api/admin/support/claims/{claimId}/close", new { })).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ClaimIncidentsAsync(claimId, open: true)).Should().BeEmpty("closing it closes the incident");
         (await ClaimAsync(admin, $"/api/admin/support/claims/{claimId}/answer", new { reply = "Yenə" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await ClaimAsync(user.Client, $"/api/me/claims/{claimId}/reopen", new { })).StatusCode.Should().Be(HttpStatusCode.Conflict, "a closed claim stays closed");
+    }
+
+    private async Task<List<Incident>> ClaimIncidentsAsync(Guid claimId, bool open)
+    {
+        using var scope = _fixture.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<MongoContext>().Incidents
+            .Find(i => i.EntityId == claimId && i.Type == IncidentType.CustomerClaim && i.Open == open).ToListAsync();
     }
 
     /// <summary>A bank-paid job that started printing, then the kiosk went quiet and the watchdog noticed.</summary>

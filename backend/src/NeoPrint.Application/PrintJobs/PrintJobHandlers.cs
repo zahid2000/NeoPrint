@@ -452,6 +452,10 @@ internal static class PrintJobCancellation
     /// goes back through the refund module: PrintJobCancelled carries who
     /// cancelled it and why (plan section 2.5).
     /// </remarks>
+    /// <param name="checkedAtPrinter">
+    /// An admin who looked at the kiosk and saw no paper go (T-385): a job
+    /// stuck "printing" may then be cancelled. Nobody else passes it.
+    /// </param>
     public static async Task CancelAsync(
         PrintJob job,
         UserMessage reason,
@@ -462,14 +466,15 @@ internal static class PrintJobCancellation
         IKioskNotifier notifier,
         IEventPublisher events,
         ICorrelationContext correlation,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool checkedAtPrinter = false)
     {
         if (job.Status == PrintJobStatus.Cancelled)
         {
             return;
         }
 
-        if (job.Status == PrintJobStatus.Printing)
+        if (job.Status == PrintJobStatus.Printing && !checkedAtPrinter)
         {
             throw new DomainException("printJobs.cancelWhilePrinting");
         }
@@ -676,7 +681,8 @@ public sealed class AdminPrintJobHandlers :
                 _notifier,
                 _events,
                 _correlation,
-                cancellationToken)
+                cancellationToken,
+                checkedAtPrinter: true)
             .ConfigureAwait(false);
 
         if (wasSuspected)

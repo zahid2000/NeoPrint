@@ -27,6 +27,9 @@ public static class NotificationLinks
 
     public const string Files = "neoprint://files";
 
+    /// <summary>The user's claims and their answers (T-385).</summary>
+    public const string Claims = "neoprint://claims";
+
     /// <summary>The "Alınanlar" list of shared files.</summary>
     public const string Shares = "neoprint://shares";
 
@@ -34,6 +37,19 @@ public static class NotificationLinks
     public const string Referral = "neoprint://referral";
 
     public const string Export = "neoprint://privacy/export";
+}
+
+/// <summary>An admin answered the user's claim (T-385): one notification per answer.</summary>
+public static class ClaimNotifications
+{
+    public static NotifyUserCommand Answered(Guid claimId, Guid userId, string? jobCode, int reopenCount)
+        => new(
+            userId,
+            NotificationType.ClaimAnswered,
+            UserMessage.Of("notifications.claimAnswered.title"),
+            UserMessage.Of("notifications.claimAnswered.body", ("jobCode", jobCode ?? "-")),
+            NotificationLinks.Claims,
+            $"ClaimAnswered:{claimId}:{reopenCount}");
 }
 
 /// <summary>A job printed: its owner hears it (plan section 8.4, <c>JobCompleted</c>).</summary>

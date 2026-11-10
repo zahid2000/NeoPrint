@@ -426,3 +426,9 @@ Statuslar: `Açıq`, `İcrada`, `Tamamlandı`, `Ləğv edildi (səbəb)`, `Təxi
 | T-400 | 2026-11-10 | 7B | Layihə sahibi (mobil): ilk girişdə Ana səhifədə / "Yaxınlıqdakı kiosklar"da **"Məkanı aktivləşdir" düyməsi gec çıxdı** — səbəbi araşdırılsın | Açıq | — |
 | T-401 | 2026-11-10 | 7B | Layihə sahibi (mobil): tərtibatda bir faylı / şəkli seçib hərəkət etdirəndə və **başqasına toxunanda əvvəlki seçilmiş toxunulana çevrilir** (baq) | Açıq | — |
 | T-402 | 2026-11-10 | 7B | Layihə sahibi (mobil): tərtibata **çox fayl / çox səhifə** gətiriləndə hamısı üst-üstə düşür — ilkin variantda **hamısı xırda formada səhifəyə düzülsün**, sonra tərtib edilsin | Açıq | — |
+| T-403 | 2026-11-10 | 7B | Layihə sahibi (mobil): Ana səhifədəki **Balans və Bonus düymələri ləğv olunsun** (ikisi də eyni səhifəni açır, menyuda var) — balans və bonus Ana səhifənin yuxarısında **yalnız məlumat** kimi göstərilsin (dizayn mənə buraxılıb) | Açıq | — |
+| T-404 | 2026-11-10 | 7B | Layihə sahibi (mobil): Ana səhifənin yuxarısındakı **profil ikonu silinsin** — profil menyudadır | Açıq | — |
+| T-405 | 2026-11-10 | 7B | Layihə sahibi (mobil): **fayla baxış çox gec açılır**; iki barmaqla böyütmə zəifdir — **böyüt / kiçilt və sağa / sola / yuxarı / aşağı hərəkət düymələri** olsun | Açıq | — |
+| T-406 | 2026-11-10 | 7B | Layihə sahibi (mobil): QR skanında **"kameranı dəyiş" düyməsi heç nə etmir**, ikonu isə ön kameraya keçid kimi görünür | Açıq | — |
+| T-407 | 2026-11-10 | 7B | Layihə sahibi (mobil): kiosk seçməzdən əvvəl rəngli və ikitərəfli seçilib, sonra seçilən kiosk bunları dəstəkləmir — seçimlər deaktiv olur, amma seçilmiş qalır və validasiya göndərməyə qoymur. **Kiosk seçimi dəstəkləmirsə, dəstəklənən seçimə avtomatik keçsin** | Açıq | — |
+| T-408 | 2026-11-10 | 7B | Layihə sahibi (mobil): çap tamamlanandan sonra **"Yenidən çap et" eyni faylı eyni parametrlərlə** ödənişə və çapa göndərsin ("Fayllarım"ı açmasın), **amma parametrləri dəyişmək imkanı da olsun** | Açıq | — |

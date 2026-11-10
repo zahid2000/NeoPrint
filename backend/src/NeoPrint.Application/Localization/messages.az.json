@@ -881,5 +881,12 @@
   "kioskCommands.agentRestarted": "Agent yenidən başladıldı.",
   "kioskCommands.provisioningApplied": "Quraşdırma skriptləri yenidən tətbiq olundu.",
   "kioskCommands.rolledBack": "Kiosk əvvəlki versiyaya qaytarıldı.",
-  "updates.agentNotAnswering": "Kioskun Agent servisi cavab vermədi; yeniləmə tətbiq olunmadı."
+  "updates.agentNotAnswering": "Kioskun Agent servisi cavab vermədi; yeniləmə tətbiq olunmadı.",
+  "incidents.customerClaim": "Müştəri {jobCode} sifarişi barədə müraciət yazdı (sifariş: {status}). Baxın: cavab yazın və ya sifarişi yoxlayıb ləğv edin.",
+  "incidents.customerClaimReopened": "Müştəri {jobCode} sifarişi barədə cavablanmış müraciəti davam etdirdi (sifariş: {status}). Yenidən baxın.",
+  "incidents.resolution.claimAnswered": "Müraciətə cavab yazıldı.",
+  "incidents.resolution.claimClosed": "Müraciət bağlandı.",
+  "notifications.claimAnswered.title": "Müraciətinizə cavab verildi",
+  "notifications.claimAnswered.body": "{jobCode} sifarişi barədə müraciətinizə cavab yazıldı. Problem qalırsa, müraciəti davam etdirə bilərsiniz.",
+  "support.notAnswered": "Yalnız cavablanmış müraciəti davam etdirmək olar. Bağlanmış müraciət üçün yeni müraciət göndərin."
 }

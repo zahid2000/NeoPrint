@@ -53,6 +53,9 @@ public sealed class SupportClaim : Entity
 
     public DateTime? RepliedAt { get; private set; }
 
+    /// <summary>How many times the customer carried it on after an answer (T-385).</summary>
+    public int ReopenCount { get; private set; }
+
     public static SupportClaim Open(
         ClaimChannel channel, Guid? jobId, string? jobCode, Guid? kioskId, Guid? userId, string text, string? contact, DateTime now)
     {
@@ -87,4 +90,19 @@ public sealed class SupportClaim : Entity
     }
 
     public void Close() => Status = ClaimStatus.Closed;
+
+    /// <summary>
+    /// The customer carries an answered claim on (T-385): it is open again for
+    /// the admins. A closed one stays closed - that was the admin's decision.
+    /// </summary>
+    public void Reopen()
+    {
+        if (Status != ClaimStatus.Answered)
+        {
+            throw new DomainException("support.notAnswered");
+        }
+
+        Status = ClaimStatus.Open;
+        ReopenCount++;
+    }
 }

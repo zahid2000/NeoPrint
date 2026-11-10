@@ -1854,8 +1854,9 @@ Admin qərarı kağız sayğacını dəyişmir — sayğac yalnız printerin bil
 | `POST /api/support/claims` (`Idempotency-Key`) | anonim, IP üzrə saatda 10 (`RateLimits:SupportClaimPerHour`) | `{ jobCode, kioskCode, text, contact? }` — hər iki kod uyğun gəlməlidir, əks halda `404` (hansının səhv olduğu deyilmir). Cavab: `{ id, status, createdAt }` |
 | `POST /api/me/claims` (`Idempotency-Key`) | `User` | `{ jobId, text }` — yalnız öz sifarişi (`404`). "Problem barədə bildir" |
 | `GET /api/me/claims` | `User` | Öz müraciətləri və cavablar (`contact` qaytarılmır) |
+| `POST /api/me/claims/{id}/reopen` (`Idempotency-Key`) | `User` | "Müraciəti davam etdir" (T-385): yalnız `Answered` müraciət yenidən `Open` olur və adminə təzə `CustomerClaim` incident-i açılır; `Open` — dəyişmir; `Closed` — `409 support.notAnswered`; başqasının — `404` |
 | `GET /api/admin/support/claims?status=&jobId=&page=&pageSize=` | `jobs.view` | Siyahı; `contact` yalnız adminə görünür |
-| `POST /api/admin/support/claims/{id}/answer` · `.../close` (`Idempotency-Key`) | `payments.refund` | Cavab (1–1000 simvol) / bağlama; bağlı müraciətə cavab `409 support.closed`; audit |
+| `POST /api/admin/support/claims/{id}/answer` · `.../close` (`Idempotency-Key`) | `payments.refund` | Cavab (1–1000 simvol) / bağlama; bağlı müraciətə cavab `409 support.closed`; audit — müraciətin incident-i bağlanır, qeydiyyatlı istifadəçiyə `ClaimAnswered` bildirişi gedir (`SupportClaimAnswered` hadisəsi, T-385) |
 
 Mətn 1–1000 simvol (`400 support.textLength`); bir sifarişdə ən çox 5 açıq müraciət
 (`409 support.tooManyOpen`). Hər müraciət `audit_logs`-a düşür; mətn və əlaqə məlumatı

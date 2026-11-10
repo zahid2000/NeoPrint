@@ -314,6 +314,18 @@ public sealed class PrintJobTests
 
         var queue = await kiosk.Client.GetFromJsonAsync<JsonElement>("/api/kiosks/me/queue");
         queue.EnumerateArray().Select(entry => entry.GetProperty("status").GetString()).Should().Equal("Printing");
+
+        // Stuck "printing" with no paper going: the admin, who looked, may take it back (T-385).
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var adminCancel = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/print-jobs/{first.GetProperty("id").GetGuid()}/cancel")
+        {
+            Content = JsonContent.Create(new { reason = "Kioskda yoxlandı: çap getmir" }),
+        };
+        adminCancel.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+        (await admin.SendAsync(adminCancel)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var after = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/print-jobs/{first.GetProperty("id").GetGuid()}");
+        after.GetProperty("job").GetProperty("status").GetString().Should().Be("Cancelled");
     }
 
     [DockerFact]

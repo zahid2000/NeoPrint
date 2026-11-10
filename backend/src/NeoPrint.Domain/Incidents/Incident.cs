@@ -50,6 +50,12 @@ public enum IncidentType
     /// kiosk nobody should have made - a security matter (T-326).
     /// </summary>
     UpdatePackageRejected = 20,
+
+    /// <summary>
+    /// A customer wrote about an order (T-385): open until an admin answers or
+    /// closes it; opened again when the customer carries it on.
+    /// </summary>
+    CustomerClaim = 21,
 }
 
 public enum IncidentSeverity
