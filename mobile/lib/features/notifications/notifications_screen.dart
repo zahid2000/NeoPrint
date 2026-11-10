@@ -26,6 +26,7 @@ import 'notification_repository.dart';
   'ExportReady' => (Icons.inventory_2_outlined, StatusTone.success),
   'FileShared' => (Icons.move_to_inbox_outlined, StatusTone.info),
   'ReferralRewarded' => (Icons.card_giftcard_outlined, StatusTone.success),
+  'ClaimAnswered' => (Icons.support_agent_outlined, StatusTone.info),
   _ => (Icons.notifications, StatusTone.neutral),
 };
 

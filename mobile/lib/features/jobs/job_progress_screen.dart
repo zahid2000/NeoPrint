@@ -305,6 +305,22 @@ class _Actions extends ConsumerWidget {
                 onPressed: () => unawaited(cancelJob(context, ref, job)),
                 child: Text(l10n.jobCancelOrder),
               ),
+            // Printing is not the owner's to cancel; when no paper goes, an
+            // admin looks at the kiosk and may cancel it (T-385).
+            if (job.status == 'Printing') ...[
+              const SizedBox(height: Spacing.x2),
+              Text(
+                l10n.jobPrintingStuckHint,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: tokens.neutral600),
+              ),
+              TextButton.icon(
+                onPressed: () => unawaited(showReportSheet(context, job)),
+                icon: const Icon(Icons.support_agent_outlined),
+                label: Text(l10n.jobReport),
+              ),
+            ],
           ],
         ),
       ),

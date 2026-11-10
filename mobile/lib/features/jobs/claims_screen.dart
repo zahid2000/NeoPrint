@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format/formats.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/idempotency.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
@@ -55,10 +58,43 @@ class ClaimsScreen extends ConsumerWidget {
   }
 }
 
-class _ClaimCard extends StatelessWidget {
+class _ClaimCard extends ConsumerStatefulWidget {
   const _ClaimCard({required this.claim});
 
   final MyClaim claim;
+
+  @override
+  ConsumerState<_ClaimCard> createState() => _ClaimCardState();
+}
+
+class _ClaimCardState extends ConsumerState<_ClaimCard> {
+  final _key = newIdempotencyKey();
+  var _busy = false;
+
+  MyClaim get claim => widget.claim;
+
+  /// "Müraciəti davam etdir" (T-385): open again, the admins are told.
+  Future<void> _reopen() async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+
+    try {
+      await ref
+          .read(jobsRepositoryProvider)
+          .reopenClaim(claim.id, idempotencyKey: _key);
+      ref.invalidate(myClaimsProvider);
+      messenger.showSnackBar(SnackBar(content: Text(l10n.claimReopened)));
+    } on ApiException catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(apiErrorText(l10n, error))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,6 +141,22 @@ class _ClaimCard extends StatelessWidget {
               Text(l10n.claimReplyLabel, style: theme.textTheme.titleSmall),
               const SizedBox(height: Spacing.x1),
               Text(claim.reply!, style: theme.textTheme.bodyMedium),
+            ],
+            // Answered is closed; the customer may carry it on (T-385).
+            if (claim.status == 'Answered') ...[
+              const SizedBox(height: Spacing.x3),
+              Text(
+                l10n.claimReopenHint,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: tokens.neutral600,
+                ),
+              ),
+              const SizedBox(height: Spacing.x2),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => unawaited(_reopen()),
+                icon: const Icon(Icons.replay),
+                label: Text(l10n.claimReopen),
+              ),
             ],
           ],
         ),

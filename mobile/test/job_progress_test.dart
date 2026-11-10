@@ -120,6 +120,9 @@ void main() {
     // 6 pages × 2 copies.
     expect(find.text('5 / 12 səhifə'), findsOneWidget);
     expect(find.text('Sifarişi ləğv et'), findsNothing);
+    // Not the owner's to cancel, but theirs to report: an admin looks (T-385).
+    expect(find.text('Problem barədə bildir'), findsWidgets);
+    expect(find.textContaining('Çap getmir?'), findsOneWidget);
     // The share in the ring and beside the card's bar (T-377).
     expect(find.text('41%'), findsNWidgets(2));
     // "Çap olunur" is the step under way, not one behind it.

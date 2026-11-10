@@ -112,6 +112,8 @@ final class MyJob {
   /// Something the customer may want to report: a job that has an outcome,
   /// or whose outcome is still being worked out.
   bool get canReport => const {
+    // Stuck "printing" with no paper going: an admin looks and may cancel it (T-385).
+    'Printing',
     'Completed',
     'Interrupted',
     'Cancelled',
@@ -178,6 +180,15 @@ class JobsRepository {
     path: 'api/print-jobs/my/$jobId/cancel',
     parse: (_) {},
   );
+
+  /// "Müraciəti davam etdir": an answered claim is open for the admins again (T-385).
+  Future<void> reopenClaim(String claimId, {required String idempotencyKey}) =>
+      _api.send(
+        method: 'POST',
+        path: 'api/me/claims/$claimId/reopen',
+        headers: {idempotencyKeyHeader: idempotencyKey},
+        parse: (_) {},
+      );
 
   Future<void> report(
     String jobId,

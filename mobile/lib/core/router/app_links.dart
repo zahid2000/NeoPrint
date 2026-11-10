@@ -65,6 +65,8 @@ String? appLinkLocation(Uri uri) {
     'privacy' when segments.length == 1 && segments.single == 'export' =>
       Routes.privacyExport,
     'notifications' => Routes.notifications,
+    // An answer to the user's claim (T-385).
+    'claims' => Routes.claims,
     'referral' when Readiness.referral => Routes.referral,
     'shares' when Readiness.fileSharing => Routes.shares,
     'share' when Readiness.fileSharing && one != null =>
