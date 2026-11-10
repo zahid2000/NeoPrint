@@ -312,6 +312,92 @@ abstract final class LayoutEditing {
     return _withPage(project, page, [...project.pages[page].elements, element]);
   }
 
+  /// The gap between two pictures laid out together.
+  static const arrangeGapMm = 4.0;
+
+  /// Several pictures at once (T-402): small, side by side in a grid inside
+  /// the margins, in the order given - not all in the middle on top of each
+  /// other. The grid with the largest pictures is taken; each one fits its
+  /// cell, centred in it, never above its real size.
+  static LayoutProject arrange(
+    LayoutProject project,
+    int page,
+    List<EditorPicture> pictures,
+  ) {
+    if (pictures.isEmpty) {
+      return project;
+    }
+
+    final (width, height) = project.pageSizeMm;
+    final usableWidth = width - 2 * project.marginMm;
+    final usableHeight = height - 2 * project.marginMm;
+    final count = pictures.length;
+
+    (int, int, double, double) cells(int columns) {
+      final rows = (count + columns - 1) ~/ columns;
+      return (
+        columns,
+        rows,
+        (usableWidth - (columns - 1) * arrangeGapMm) / columns,
+        (usableHeight - (rows - 1) * arrangeGapMm) / rows,
+      );
+    }
+
+    // The area the pictures get, each fitted to its cell.
+    double covered((int, int, double, double) grid) {
+      final (_, _, cellWidth, cellHeight) = grid;
+      if (cellWidth <= 0 || cellHeight <= 0) {
+        return 0;
+      }
+      var area = 0.0;
+      for (final picture in pictures) {
+        final w = math.min(cellWidth, cellHeight * picture.aspect);
+        area += w * (w / picture.aspect);
+      }
+      return area;
+    }
+
+    var best = cells(1);
+    for (var columns = 2; columns <= count; columns++) {
+      final grid = cells(columns);
+      if (covered(grid) > covered(best)) {
+        best = grid;
+      }
+    }
+
+    final (columns, _, cellWidth, cellHeight) = best;
+    final placed = <LayoutElement>[];
+    for (var i = 0; i < count; i++) {
+      final picture = pictures[i];
+      var w = math.min(cellWidth, cellHeight * picture.aspect);
+      var h = w / picture.aspect;
+      if (picture.hasRealSize && picture.realWidthMm! < w) {
+        w = picture.realWidthMm!;
+        h = picture.realHeightMm!;
+      }
+      final left =
+          project.marginMm + (i % columns) * (cellWidth + arrangeGapMm);
+      final top =
+          project.marginMm + (i ~/ columns) * (cellHeight + arrangeGapMm);
+      placed.add(
+        _rounded(
+          LayoutElement(
+            image: picture.name,
+            xMm: left + (cellWidth - w) / 2,
+            yMm: top + (cellHeight - h) / 2,
+            widthMm: w,
+            heightMm: h,
+          ),
+        ),
+      );
+    }
+
+    return _withPage(project, page, [
+      ...project.pages[page].elements,
+      ...placed,
+    ]);
+  }
+
   /// Pictures whose centre is off the paper: the backend refuses them.
   static bool hasOffPage(LayoutProject project) {
     final (width, height) = project.pageSizeMm;

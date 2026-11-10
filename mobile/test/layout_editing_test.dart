@@ -176,4 +176,51 @@ void main() {
 
     expect((centred.xMm, centred.yMm), (62.2, 121.51));
   });
+
+  group('arrange (T-402)', () {
+    const a4 = LayoutProject(marginMm: 10, pages: [LayoutPage([])]);
+
+    test('several pictures sit side by side inside the margins, none on '
+        'another', () {
+      final pictures = [
+        for (var i = 0; i < 6; i++)
+          EditorPicture(name: 'p$i.jpg', aspect: 210 / 297),
+      ];
+
+      final placed = LayoutEditing.arrange(a4, 0, pictures).pages[0].elements;
+
+      expect(placed, hasLength(6));
+      expect(placed.map((e) => e.image), [
+        for (var i = 0; i < 6; i++) 'p$i.jpg',
+      ]);
+      for (final e in placed) {
+        expect(e.xMm, greaterThanOrEqualTo(10 - 0.1));
+        expect(e.yMm, greaterThanOrEqualTo(10 - 0.1));
+        expect(e.xMm + e.widthMm, lessThanOrEqualTo(200 + 0.1));
+        expect(e.yMm + e.heightMm, lessThanOrEqualTo(287 + 0.1));
+      }
+      for (var i = 0; i < placed.length; i++) {
+        for (var j = i + 1; j < placed.length; j++) {
+          final a = placed[i];
+          final b = placed[j];
+          final apart =
+              a.xMm + a.widthMm <= b.xMm + 0.1 ||
+              b.xMm + b.widthMm <= a.xMm + 0.1 ||
+              a.yMm + a.heightMm <= b.yMm + 0.1 ||
+              b.yMm + b.heightMm <= a.yMm + 0.1;
+          expect(apart, isTrue, reason: '$i and $j overlap');
+        }
+      }
+    });
+
+    test('two wide pictures go one under the other', () {
+      final placed = LayoutEditing.arrange(a4, 0, const [
+        EditorPicture(name: 'a.jpg', aspect: 2),
+        EditorPicture(name: 'b.jpg', aspect: 2),
+      ]).pages[0].elements;
+
+      expect(placed[0].xMm, placed[1].xMm);
+      expect(placed[1].yMm, greaterThan(placed[0].yMm + placed[0].heightMm));
+    });
+  });
 }
