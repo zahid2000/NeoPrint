@@ -64,7 +64,6 @@ class HomeScreen extends ConsumerWidget {
               icon: const Icon(Icons.qr_code_scanner),
             ),
           const NotificationBell(),
-          const _Avatar(),
           const SizedBox(width: Spacing.x2),
         ],
       ),
@@ -86,6 +85,10 @@ class HomeScreen extends ConsumerWidget {
           ),
           children: [
             const _Greeting(),
+            if (Readiness.wallet) ...[
+              const SizedBox(height: Spacing.x3),
+              const _MoneyInfo(),
+            ],
             if (Readiness.kioskSearch) ...[
               const SizedBox(height: Spacing.x4),
               const _NearKioskCard(),
@@ -113,10 +116,6 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
             ],
-            if (Readiness.wallet) ...[
-              const SizedBox(height: Spacing.x4),
-              const _MoneyRow(),
-            ],
             if (Readiness.kioskSearch) const _NearbyKiosks(),
             // Every order, also the finished ones, one tap away when none is
             // on its way.
@@ -138,43 +137,6 @@ class HomeScreen extends ConsumerWidget {
 }
 
 /// The user's initials; opens the profile tab.
-class _Avatar extends ConsumerWidget {
-  const _Avatar();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-    final user = ref.watch(currentUserProvider);
-    final tokens = context.tokens;
-
-    return Semantics(
-      button: true,
-      label: l10n.navProfile,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: () => context.goTab(Routes.profile),
-        child: SizedBox.square(
-          dimension: Sizes.touchTarget,
-          child: Center(
-            child: CircleAvatar(
-              radius: Spacing.x4 + 2,
-              backgroundColor: tokens.brand100,
-              child: Text(
-                initialsOf(user?.fullName, user?.email),
-                style: TextStyle(
-                  color: tokens.brand500,
-                  fontSize: FontSizes.caption,
-                  fontWeight: FontWeights.semibold,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _Greeting extends ConsumerWidget {
   const _Greeting();
 
@@ -536,9 +498,10 @@ class _Shortcut extends StatelessWidget {
   }
 }
 
-/// The balance and the bonus pages, side by side; both open the wallet tab.
-class _MoneyRow extends ConsumerWidget {
-  const _MoneyRow();
+/// The balance and the bonus pages as words under the greeting (T-403): to
+/// read, not to press - the wallet is in the menu.
+class _MoneyInfo extends ConsumerWidget {
+  const _MoneyInfo();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -556,38 +519,33 @@ class _MoneyRow extends ConsumerWidget {
 
     final value = wallet.valueOrNull?.wallet;
 
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _MoneyCard(
-              icon: Icons.account_balance_wallet_outlined,
-              label: l10n.homeBalance,
-              value: value == null
-                  ? null
-                  : formatMoney(value.balance, language: language),
-            ),
-          ),
-          const SizedBox(width: Spacing.x2),
-          Expanded(
-            child: _MoneyCard(
-              icon: Icons.card_giftcard_outlined,
-              tone: IconTileTone.success,
-              label: l10n.homeBonus,
-              value: value == null
-                  ? null
-                  : l10n.homeBonusPagesShort(value.bonusPages),
-            ),
-          ),
-        ],
-      ),
+    return Wrap(
+      spacing: Spacing.x2,
+      runSpacing: Spacing.x2,
+      children: [
+        _MoneyFact(
+          icon: Icons.account_balance_wallet_outlined,
+          label: l10n.homeBalance,
+          value: value == null
+              ? null
+              : formatMoney(value.balance, language: language),
+        ),
+        _MoneyFact(
+          icon: Icons.card_giftcard_outlined,
+          tone: IconTileTone.success,
+          label: l10n.homeBonus,
+          value: value == null
+              ? null
+              : l10n.homeBonusPagesShort(value.bonusPages),
+        ),
+      ],
     );
   }
 }
 
-class _MoneyCard extends StatelessWidget {
-  const _MoneyCard({
+/// One fact on a soft pill: icon, what it is, how much. Not a button.
+class _MoneyFact extends StatelessWidget {
+  const _MoneyFact({
     required this.icon,
     required this.label,
     required this.value,
@@ -607,49 +565,34 @@ class _MoneyCard extends StatelessWidget {
     final tokens = context.tokens;
     final colours = iconTileColours(context, tone);
 
-    return Card(
-      margin: EdgeInsets.zero,
-      color: colours.background,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.goTab(Routes.wallet),
-        child: Padding(
-          padding: const EdgeInsets.all(Spacing.x3),
-          child: Row(
-            children: [
-              Icon(icon, color: colours.foreground),
-              const SizedBox(width: Spacing.x2),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      label,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: tokens.neutral600,
-                      ),
-                    ),
-                    if (value == null)
-                      const Padding(
-                        padding: EdgeInsets.only(top: Spacing.x2),
-                        child: LinearProgressIndicator(),
-                      )
-                    else
-                      Text(
-                        value!,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeights.semibold,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: tokens.neutral400),
-            ],
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Spacing.x3,
+        vertical: Spacing.x2,
+      ),
+      decoration: BoxDecoration(
+        color: colours.background,
+        borderRadius: BorderRadius.circular(Radii.full),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: colours.foreground),
+          const SizedBox(width: Spacing.x2),
+          Text(
+            '$label: ',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: tokens.neutral600,
+            ),
           ),
-        ),
+          Text(
+            value ?? '…',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeights.semibold,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -6,20 +6,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
-import '../../core/features/entry_points.dart';
 import '../../core/features/feature_flags.dart';
 import '../../core/features/readiness.dart';
-import '../../core/l10n/language_controller.dart';
 import '../../core/router/app_router.dart';
-import '../../core/router/back_stack.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/neo_design.dart';
-import 'language_sheet.dart';
+import '../sharing/shares_screen.dart';
 
 /// The profile tab (plan section 8.2).
 ///
-/// The account, the money screens, the language and the legal documents
-/// (T-152), privacy, and signing out.
+/// The account, the money screens, the legal documents (T-152), the settings
+/// (the language, the PIN, privacy - T-395), and signing out.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -27,9 +24,6 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final dataExport =
-        Readiness.dataExport &&
-        ref.watch(featureOnProvider(FeatureKey.dataExport));
     final referral =
         Readiness.referral && ref.watch(featureOnProvider(FeatureKey.referral));
     final user = ref.watch(currentUserProvider);
@@ -115,6 +109,13 @@ class ProfileScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
+                    // The same code as a QR, for someone to read with their
+                    // phone (T-393).
+                    IconButton(
+                      tooltip: l10n.sharesMyQr,
+                      icon: Icon(Icons.qr_code_2, color: tokens.brand500),
+                      onPressed: () => showMyQrSheet(context, user.publicId),
+                    ),
                     IconButton(
                       tooltip: l10n.profileCopy,
                       icon: Icon(Icons.copy_outlined, color: tokens.brand500),
@@ -136,7 +137,7 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: Spacing.x4),
           ],
 
-          _Group(
+          ProfileGroup(
             children: [
               // Every order, printed or waiting (T-386).
               if (Readiness.printJobs)
@@ -152,16 +153,6 @@ class ProfileScreen extends ConsumerWidget {
                   title: Text(l10n.profileReceipts),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push(Routes.receipts),
-                ),
-
-              // No longer a tab (T-338): reached from here, the home screen and
-              // the Print tab.
-              if (ref.watch(scheduledVisibleProvider))
-                ListTile(
-                  leading: const Icon(Icons.schedule_outlined),
-                  title: Text(l10n.navScheduled),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.goTab(Routes.scheduled),
                 ),
 
               // The referral code, its link and what it earned (plan section 2.6).
@@ -181,23 +172,12 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () => context.push(Routes.claims),
                 ),
 
-              if (Readiness.languageSetting)
-                ListTile(
-                  leading: const Icon(Icons.language_outlined),
-                  title: Text(l10n.profileLanguage),
-                  subtitle: Text(
-                    languageSummary(l10n, ref.watch(appLanguageProvider)),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => showLanguageSheet(context),
-                ),
-
-              // The app's PIN and the fingerprint or face (T-270).
+              // The language, the PIN and privacy (T-395).
               ListTile(
-                leading: const Icon(Icons.lock_outline),
-                title: Text(l10n.securityTitle),
+                leading: const Icon(Icons.settings_outlined),
+                title: Text(l10n.settingsTitle),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push(Routes.security),
+                onTap: () => context.push(Routes.settings),
               ),
 
               if (Readiness.legalDocuments)
@@ -210,37 +190,8 @@ class ProfileScreen extends ConsumerWidget {
             ],
           ),
 
-          if (dataExport || Readiness.accountDeletion) ...[
-            const SizedBox(height: Spacing.x4),
-            NeoSectionHeader(title: l10n.privacySection),
-          ],
-          _Group(
-            children: [
-              if (dataExport)
-                ListTile(
-                  leading: const Icon(Icons.download_outlined),
-                  title: Text(l10n.exportTitle),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push(Routes.privacyExport),
-                ),
-
-              if (Readiness.accountDeletion)
-                ListTile(
-                  leading: Icon(
-                    Icons.person_remove_outlined,
-                    color: theme.colorScheme.error,
-                  ),
-                  title: Text(
-                    l10n.deleteTitle,
-                    style: TextStyle(color: theme.colorScheme.error),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push(Routes.privacyDelete),
-                ),
-            ],
-          ),
           const SizedBox(height: Spacing.x4),
-          _Group(
+          ProfileGroup(
             children: [
               ListTile(
                 leading: Icon(Icons.logout, color: tokens.danger),
@@ -266,8 +217,8 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 /// Rows on one card, a hairline between them (T-342).
-class _Group extends StatelessWidget {
-  const _Group({required this.children});
+class ProfileGroup extends StatelessWidget {
+  const ProfileGroup({super.key, required this.children});
 
   final List<Widget> children;
 

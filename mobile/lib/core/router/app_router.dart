@@ -11,6 +11,7 @@ import '../../features/files/camera_capture_screen.dart';
 import '../../features/scanner/document_scan_screen.dart';
 import '../../features/security/pin_screen.dart';
 import '../../features/security/security_settings_screen.dart';
+import '../../features/profile/settings_screen.dart';
 import '../../features/files/file_models.dart';
 import '../../features/files/file_preview_screen.dart';
 import '../../features/files/files_controller.dart';
@@ -101,6 +102,9 @@ abstract final class Routes {
   static const pin = '/pin';
   static const pinSetup = '/pin/setup';
   static const security = '/security';
+
+  /// The language, the PIN and privacy, out of the profile's list (T-395).
+  static const settings = '/settings';
 
   static const scan = '/scan';
   static String pay(String paymentId) => '/pay/$paymentId';
@@ -252,6 +256,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.security,
         builder: (_, __) => const SecuritySettingsScreen(),
+      ),
+      GoRoute(
+        path: Routes.settings,
+        builder: (_, __) => const SettingsScreen(),
       ),
 
       // Full screen, above the tabs: paying and the money screens are a task

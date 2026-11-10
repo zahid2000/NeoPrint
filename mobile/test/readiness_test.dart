@@ -59,10 +59,11 @@ void main() {
     expectNothingUnfinished(tester);
     expect(find.text('Fayldan çap et'), findsOneWidget);
 
-    // A new account's balance is a real value, so it is shown (Readiness);
-    // the scanner is there on a phone that can scan.
+    // A new account's balance is a real value, so it is shown (Readiness) -
+    // as words under the greeting, not a button (T-403); the scanner is
+    // there on a phone that can scan.
     expect(
-      find.text('Balans'),
+      find.text('Balans: '),
       Readiness.wallet ? findsOneWidget : findsNothing,
     );
     expect(

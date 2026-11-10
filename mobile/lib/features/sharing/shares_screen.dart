@@ -186,11 +186,7 @@ class _MyIdCard extends ConsumerWidget {
                   label: Text(l10n.sharesCopy),
                 ),
                 TextButton.icon(
-                  onPressed: () => showModalBottomSheet<void>(
-                    context: context,
-                    showDragHandle: true,
-                    builder: (_) => _QrSheet(publicId: publicId),
-                  ),
+                  onPressed: () => showMyQrSheet(context, publicId),
                   icon: const Icon(Icons.qr_code_2),
                   label: Text(l10n.sharesMyQr),
                 ),
@@ -202,6 +198,15 @@ class _MyIdCard extends ConsumerWidget {
     );
   }
 }
+
+/// The user's own code as a QR, made by the server (here and in the profile,
+/// T-393).
+Future<void> showMyQrSheet(BuildContext context, String publicId) =>
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => _QrSheet(publicId: publicId),
+    );
 
 class _QrSheet extends ConsumerStatefulWidget {
   const _QrSheet({required this.publicId});

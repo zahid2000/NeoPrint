@@ -12,7 +12,7 @@ import 'package:neoprint/features/files/files_controller.dart';
 import 'package:neoprint/features/files/files_screen.dart';
 import 'package:neoprint/features/prepared/prepared_models.dart';
 import 'package:neoprint/features/prepared/prepared_repository.dart';
-import 'package:neoprint/features/profile/profile_screen.dart';
+import 'package:neoprint/features/profile/settings_screen.dart';
 import 'package:neoprint/features/schedule/schedule_models.dart';
 import 'package:neoprint/features/session/session_controller.dart';
 import 'package:neoprint/features/session/session_models.dart';
@@ -187,16 +187,15 @@ void main() {
   testWidgets('"Məlumatlarımı yüklə" is not offered while it is off', (
     tester,
   ) async {
+    // In "Tənzimləmələr" since T-395.
     await tester.pumpWidget(
-      screen(const ProfileScreen(), [
+      screen(const SettingsScreen(), [
         ...step4Overrides(),
         flags({FeatureKey.dataExport: false}),
       ]),
     );
     await tester.pumpAndSettle();
 
-    // Below the rows: scrolled to on a small phone.
-    await tester.scrollUntilVisible(find.text('Hesabımı sil'), 200);
     expect(find.text('Məlumatlarımı yüklə'), findsNothing);
     expect(find.text('Hesabımı sil'), findsOneWidget);
   });
