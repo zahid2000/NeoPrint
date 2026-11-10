@@ -25,8 +25,10 @@ public interface IWalletTransactionRepository
     /// <exception cref="DuplicateLedgerEntryException">A line with this dedup key already exists.</exception>
     Task AddAsync(WalletTransaction entry, CancellationToken cancellationToken = default);
 
+    /// <param name="from">Inclusive; null for no lower bound.</param>
+    /// <param name="to">Exclusive; null for no upper bound.</param>
     Task<(IReadOnlyList<WalletTransaction> Items, long Total)> ListAsync(
-        Guid userId, int skip, int take, CancellationToken cancellationToken = default);
+        Guid userId, int skip, int take, DateTime? from = null, DateTime? to = null, CancellationToken cancellationToken = default);
 
     /// <summary>The ledger's own totals for a user: what the balance must be.</summary>
     Task<(Money Amount, int BonusPages)> SumAsync(Guid userId, CancellationToken cancellationToken = default);

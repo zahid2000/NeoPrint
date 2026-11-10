@@ -52,6 +52,29 @@ public sealed class WalletTests
     }
 
     [DockerFact]
+    public async Task The_history_is_filtered_by_date()
+    {
+        if (Skip)
+        {
+            return;
+        }
+
+        // T-397: "Bütün əməliyyatlar" asks for a period.
+        using var user = await TestUsers.ConfirmedAsync(_fixture);
+        (await TopUpAsync(user, 5m, Guid.NewGuid().ToString("N"))).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        async Task<int> CountAsync(string query)
+            => (await user.Client.GetFromJsonAsync<JsonElement>("/api/wallet/transactions?page=1&pageSize=10" + query))
+                .GetProperty("items").GetArrayLength();
+
+        var now = DateTime.UtcNow;
+        (await CountAsync($"&from={now.AddDays(-1):O}&to={now.AddDays(1):O}")).Should().Be(1);
+        (await CountAsync($"&from={now.AddDays(1):O}")).Should().Be(0, "nothing after tomorrow");
+        (await CountAsync($"&to={now.AddDays(-1):O}")).Should().Be(0, "nothing before yesterday");
+        (await CountAsync(string.Empty)).Should().Be(1);
+    }
+
+    [DockerFact]
     public async Task A_declined_card_puts_nothing_on_the_wallet()
     {
         if (Skip)

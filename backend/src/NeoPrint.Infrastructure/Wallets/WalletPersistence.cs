@@ -58,9 +58,20 @@ public sealed class WalletTransactionRepository : IWalletTransactionRepository
     }
 
     public async Task<(IReadOnlyList<WalletTransaction> Items, long Total)> ListAsync(
-        Guid userId, int skip, int take, CancellationToken cancellationToken = default)
+        Guid userId, int skip, int take, DateTime? from = null, DateTime? to = null, CancellationToken cancellationToken = default)
     {
-        var filter = Builders<WalletTransaction>.Filter.Eq(entry => entry.UserId, userId);
+        var builder = Builders<WalletTransaction>.Filter;
+        var filter = builder.Eq(entry => entry.UserId, userId);
+
+        if (from is { } start)
+        {
+            filter &= builder.Gte(entry => entry.CreatedAt, start.ToUniversalTime());
+        }
+
+        if (to is { } end)
+        {
+            filter &= builder.Lt(entry => entry.CreatedAt, end.ToUniversalTime());
+        }
 
         var items = await _context.WalletTransactions
             .Find(filter)

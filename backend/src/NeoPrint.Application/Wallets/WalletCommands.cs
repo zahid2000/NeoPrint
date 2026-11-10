@@ -8,7 +8,10 @@ namespace NeoPrint.Application.Wallets;
 public sealed record GetWalletQuery(Guid UserId) : IRequest<WalletView>;
 
 /// <summary>The ledger, newest first (<c>GET wallet/transactions</c>).</summary>
-public sealed record ListWalletTransactionsQuery(Guid UserId, int Page, int PageSize) : IRequest<WalletTransactionPage>;
+/// <param name="From">Only movements at or after this moment (T-397); null for no lower bound.</param>
+/// <param name="To">Only movements before this moment; null for no upper bound.</param>
+public sealed record ListWalletTransactionsQuery(Guid UserId, int Page, int PageSize, DateTime? From = null, DateTime? To = null)
+    : IRequest<WalletTransactionPage>;
 
 /// <summary>
 /// Puts money on the wallet from a card (plan section 2.14: never paid back

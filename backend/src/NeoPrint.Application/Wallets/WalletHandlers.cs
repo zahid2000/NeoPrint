@@ -83,7 +83,9 @@ public sealed class WalletHandlers :
 
         var page = Math.Max(1, request.Page);
         var size = Math.Clamp(request.PageSize, 1, 100);
-        var (items, total) = await _ledger.ListAsync(request.UserId, (page - 1) * size, size, cancellationToken).ConfigureAwait(false);
+        var (items, total) = await _ledger
+            .ListAsync(request.UserId, (page - 1) * size, size, request.From, request.To, cancellationToken)
+            .ConfigureAwait(false);
 
         return new WalletTransactionPage(
             items.Select(entry => new WalletTransactionView(

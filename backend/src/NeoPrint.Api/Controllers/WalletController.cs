@@ -35,10 +35,16 @@ public sealed class WalletController : ControllerBase
     public async Task<ActionResult<WalletView>> Get(CancellationToken cancellationToken)
         => Ok(await _sender.Send(new GetWalletQuery(UserId), cancellationToken));
 
+    /// <param name="from">Movements at or after this moment (T-397).</param>
+    /// <param name="to">Movements before this moment.</param>
     [HttpGet("transactions")]
     public async Task<ActionResult<WalletTransactionPage>> Transactions(
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
-        => Ok(await _sender.Send(new ListWalletTransactionsQuery(UserId, page, pageSize), cancellationToken));
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        CancellationToken cancellationToken = default)
+        => Ok(await _sender.Send(new ListWalletTransactionsQuery(UserId, page, pageSize, from, to), cancellationToken));
 
     /// <summary>Puts money on the wallet from a card. What is put on is never paid back (plan section 2.14).</summary>
     [HttpPost("top-up")]
