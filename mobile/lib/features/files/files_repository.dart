@@ -23,6 +23,20 @@ class FilesRepository {
     parse: (json) => FilePage.fromJson(json as Map<String, dynamic>),
   );
 
+  /// The file as it was uploaded, with its media type (T-429: "Cihaza yüklə").
+  Future<({Uint8List bytes, String mediaType})> content(String id) async {
+    var mediaType = 'application/octet-stream';
+    final bytes = await _api.send<Uint8List>(
+      method: 'GET',
+      path: 'api/files/$id/content',
+      responseType: ResponseType.bytes,
+      response: (reply) =>
+          mediaType = reply.headers.value('content-type') ?? mediaType,
+      parse: (data) => Uint8List.fromList(data as List<int>),
+    );
+    return (bytes: bytes, mediaType: mediaType);
+  }
+
   /// One file of the user's, wherever it is on the list (T-413).
   Future<UserFile> get(String id) => _api.send(
     method: 'GET',

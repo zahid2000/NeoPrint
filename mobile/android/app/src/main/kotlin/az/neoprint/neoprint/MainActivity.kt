@@ -24,6 +24,7 @@ class MainActivity : FlutterActivity() {
     private val worker = Executors.newSingleThreadExecutor()
     private val scanner = DocumentScanner(this, worker)
     private val cloudPicker = CloudPicker(this, worker)
+    private val fileSaver = FileSaver(this, worker)
     private val secureStore = SecureStore(this)
     private val biometrics = Biometrics(this)
 
@@ -33,6 +34,7 @@ class MainActivity : FlutterActivity() {
         registerShare(flutterEngine)
         scanner.register(flutterEngine.dartExecutor.binaryMessenger)
         cloudPicker.register(flutterEngine.dartExecutor.binaryMessenger)
+        fileSaver.register(flutterEngine.dartExecutor.binaryMessenger)
         secureStore.register(flutterEngine.dartExecutor.binaryMessenger)
         biometrics.register(flutterEngine.dartExecutor.binaryMessenger)
 
@@ -126,7 +128,8 @@ class MainActivity : FlutterActivity() {
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (!scanner.onActivityResult(requestCode, resultCode, data) &&
-            !cloudPicker.onActivityResult(requestCode, resultCode, data)
+            !cloudPicker.onActivityResult(requestCode, resultCode, data) &&
+            !fileSaver.onActivityResult(requestCode, resultCode, data)
         ) {
             super.onActivityResult(requestCode, resultCode, data)
         }

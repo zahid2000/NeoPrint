@@ -14,6 +14,7 @@ import '../../shared/widgets/neo_empty_state.dart';
 import '../../shared/widgets/neo_load_more.dart';
 import '../../shared/widgets/neo_design.dart';
 import 'file_row.dart';
+import 'file_download.dart';
 import 'file_models.dart';
 import 'files_controller.dart';
 import 'file_sources.dart';
@@ -161,6 +162,7 @@ class _FileCard extends ConsumerWidget {
           'placeOnPage' => openNewLayout(context, ref, [LayoutSource(file)]),
           'editLayout' => openLayoutFile(context, ref, file),
           'share' => context.push(Routes.shareSend, extra: file),
+          'download' => downloadFile(context, ref, file),
           'autoDelete' => showAutoDeleteSheet(context, file),
           _ => _delete(context, ref),
         },
@@ -231,6 +233,17 @@ class _FileCard extends ConsumerWidget {
               child: ListTile(
                 leading: Icon(Icons.share_outlined, color: tokens.brand500),
                 title: Text(l10n.shareMenu),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          // The file as uploaded, onto the phone (T-429).
+          if (ref.read(fileSaverProvider).supported &&
+              file.status == FileStatus.ready)
+            PopupMenuItem(
+              value: 'download',
+              child: ListTile(
+                leading: Icon(Icons.download_outlined, color: tokens.brand500),
+                title: Text(l10n.filesDownload),
                 contentPadding: EdgeInsets.zero,
               ),
             ),

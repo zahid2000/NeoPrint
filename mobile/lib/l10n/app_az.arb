@@ -147,6 +147,14 @@
   },
   "filesPickFile": "Fayl seç",
   "filesFromCloud": "Buluddan əlavə et",
+  "filesDownload": "Cihaza yüklə",
+  "filesDownloaded": "Fayl telefona saxlanıldı.",
+  "filesDownloadFailed": "Faylı yükləmək alınmadı: {reason}",
+  "@filesDownloadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
   "filesFromCloudHint": "Google Drive, OneDrive və ya Dropbox",
   "filesWhichCloud": "Hansı buluddan?",
   "filesNoCloudApp": "Telefonda Google Drive, OneDrive və ya Dropbox tətbiqi yoxdur — telefonun faylları açılır.",
