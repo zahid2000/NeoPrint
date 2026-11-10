@@ -34,6 +34,8 @@ edit_note
 engineering
 error
 error_outline
+expand_more
+filter_list
 forward_to_inbox
 group
 history

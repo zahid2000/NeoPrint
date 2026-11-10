@@ -21,6 +21,9 @@ import { DateTimePipe } from '../../shared/format.pipes';
 import { KioskMapComponent, MapMarker } from '../../shared/kiosk-map.component';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
+import { MatSortModule } from '@angular/material/sort';
+import { ClientTable } from '../../shared/client-table';
+import { PagerComponent } from '../money/money-shared';
 
 export const kioskStatuses: readonly KioskStatus[] = [
   'Online',
@@ -62,7 +65,9 @@ export const kioskTone: Record<KioskStatus, StatusTone> = {
     MatInputModule,
     MatSelectModule,
     MatTableModule,
+    MatSortModule,
     TranslatePipe,
+    PagerComponent,
     HasPermissionDirective,
     PageHeaderComponent,
     FilterBarComponent,
@@ -119,6 +124,20 @@ export class KiosksComponent {
   });
 
   readonly filtersActive = computed(() => this.search().trim() !== '' || this.status() !== 'all');
+
+  /** How many filters are set: the filter bar opens for them (T-424). */
+  readonly activeFilters = computed(
+    () => Number(this.search().trim() !== '') + Number(this.status() !== 'all'),
+  );
+
+  /** Sorted by a header, twenty a page (T-424). */
+  readonly table = new ClientTable(this.filtered, {
+    code: (kiosk) => kiosk.code,
+    name: (kiosk) => kiosk.name,
+    status: (kiosk) => kiosk.status,
+    address: (kiosk) => kiosk.address,
+    heartbeat: (kiosk) => (kiosk.lastHeartbeatAt ? new Date(kiosk.lastHeartbeatAt) : null),
+  });
 
   /** Kiosks with a real position; one at 0,0 has not been placed yet. */
   readonly markers = computed<MapMarker[]>(() =>

@@ -25,6 +25,9 @@ import { AuthService } from '../../core/auth/auth.service';
 import { minimumAdminPasswordLength } from '../login/change-password.component';
 import { describeError } from '../login/login.component';
 import { DateTimePipe } from '../../shared/format.pipes';
+import { MatSortModule } from '@angular/material/sort';
+import { ClientTable } from '../../shared/client-table';
+import { PagerComponent } from '../money/money-shared';
 
 /**
  * Administrator and operator accounts (plan sections 8A.2, 8A.3).
@@ -40,6 +43,8 @@ import { DateTimePipe } from '../../shared/format.pipes';
     DateTimePipe,
     MatCardModule,
     MatTableModule,
+    MatSortModule,
+    PagerComponent,
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
@@ -64,6 +69,13 @@ export class AdminUsersComponent {
   readonly minimumPasswordLength = minimumAdminPasswordLength;
 
   readonly admins = signal<AdminUser[]>([]);
+
+  /** Sorted by a header, twenty a page (T-424). */
+  readonly adminsTable = new ClientTable(this.admins, {
+    name: (row) => row.fullName,
+    status: (row) => row.isActive,
+    lastLogin: (row) => row.lastLoginAt ? new Date(row.lastLoginAt) : null,
+  });
   readonly roles = signal<RoleResponse[]>([]);
   readonly kiosks = signal<KioskListItem[]>([]);
 

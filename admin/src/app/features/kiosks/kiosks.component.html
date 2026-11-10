@@ -18,7 +18,7 @@
     <app-error-banner [problem]="problem" effect="kiosks.loadFailedEffect" (retry)="load()" />
   }
 
-  <app-filter-bar>
+  <app-filter-bar [active]="activeFilters()">
     <mat-form-field>
       <mat-label>{{ 'common.search' | translate }}</mat-label>
       <mat-icon matPrefix>search</mat-icon>
@@ -35,6 +35,10 @@
       </mat-select>
     </mat-form-field>
 
+  </app-filter-bar>
+
+  <!-- List or map: beside the filters, not inside them (T-424). -->
+  <div class="kiosks__view">
     <mat-button-toggle-group
       class="kiosks__view"
       [attr.aria-label]="'kiosks.view' | translate"
@@ -50,7 +54,7 @@
         {{ 'common.map' | translate }}
       </mat-button-toggle>
     </mat-button-toggle-group>
-  </app-filter-bar>
+  </div>
 
   @if (loading()) {
     <div class="neo-card">
@@ -85,20 +89,26 @@
     </app-empty-state>
   } @else if (view() === 'list') {
     <div class="neo-table-wrapper">
-      <table mat-table class="neo-table" [dataSource]="filtered()">
+      <table
+        mat-table
+        class="neo-table"
+        [dataSource]="table.rows()"
+        matSort
+        (matSortChange)="table.onSort($event)"
+      >
         <ng-container matColumnDef="code">
-          <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.code' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="code">{{ 'kiosks.code' | translate }}</th>
           <td mat-cell *matCellDef="let kiosk">
             <!-- A code is one word: it is not broken at its hyphen. -->
             <strong class="neo-nowrap">{{ kiosk.code }}</strong>
           </td>
         </ng-container>
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.name' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="name">{{ 'kiosks.name' | translate }}</th>
           <td mat-cell *matCellDef="let kiosk">{{ kiosk.name }}</td>
         </ng-container>
         <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.statusColumn' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="status">{{ 'kiosks.statusColumn' | translate }}</th>
           <td mat-cell *matCellDef="let kiosk">
             <app-status-chip
               [status]="kiosk.status"
@@ -114,7 +124,7 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="address">
-          <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.address' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="address">{{ 'kiosks.address' | translate }}</th>
           <td mat-cell *matCellDef="let kiosk">{{ kiosk.address }}</td>
         </ng-container>
         <ng-container matColumnDef="version">
@@ -128,7 +138,7 @@
           </td>
         </ng-container>
         <ng-container matColumnDef="heartbeat">
-          <th mat-header-cell *matHeaderCellDef>{{ 'kiosks.lastHeartbeat' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="heartbeat">{{ 'kiosks.lastHeartbeat' | translate }}</th>
           <td mat-cell *matCellDef="let kiosk">{{ kiosk.lastHeartbeatAt | dateTime }}</td>
         </ng-container>
 
@@ -143,9 +153,13 @@
         ></tr>
       </table>
     </div>
-    <p class="neo-caption">
-      {{ 'kiosks.count' | translate: { shown: filtered().length, total: kiosks().length } }}
-    </p>
+    <app-money-pager
+      [total]="table.total()"
+      [page]="table.page()"
+      [pageSize]="table.pageSize"
+      countKey="common.rows"
+      (go)="table.go($event)"
+    />
   } @else {
     <app-kiosk-map
       [markers]="markers()"

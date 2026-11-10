@@ -34,6 +34,9 @@ import { StatusChipComponent, StatusTone } from '../../shared/status-chip.compon
 import { DateTimePipe } from '../../shared/format.pipes';
 import { HubEvents } from '../../core/realtime/hub-events';
 import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
+import { MatSortModule } from '@angular/material/sort';
+import { ClientTable } from '../../shared/client-table';
+import { PagerComponent } from '../money/money-shared';
 
 /**
  * The Devices page (plan sections 7.11, 8A.3).
@@ -53,6 +56,8 @@ import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
     MatTabsModule,
     TabArrowsDirective,
     MatTableModule,
+    MatSortModule,
+    PagerComponent,
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
@@ -79,6 +84,15 @@ export class DevicesComponent {
 
   readonly pending = signal<DeviceListItem[]>([]);
   readonly active = signal<DeviceListItem[]>([]);
+
+  /** Sorted by a header, twenty a page (T-424). */
+  readonly activeTable = new ClientTable(this.active, {
+    kiosk: (row) => row.kioskCode,
+    hostname: (row) => row.hostname,
+    platform: (row) => row.platform,
+    version: (row) => row.appVersion,
+    lastSeen: (row) => row.lastSeenAt ? new Date(row.lastSeenAt) : null,
+  });
   readonly revoked = signal<DeviceListItem[]>([]);
   readonly tokens = signal<EnrollmentTokenListItem[]>([]);
 

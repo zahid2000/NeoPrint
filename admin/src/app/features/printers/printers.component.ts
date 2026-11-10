@@ -23,6 +23,9 @@ import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem } from '../../shared/problem';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
 import { PrinterStatus, lowestToner, printerStatus } from './printer-status';
+import { MatSortModule } from '@angular/material/sort';
+import { ClientTable } from '../../shared/client-table';
+import { PagerComponent } from '../money/money-shared';
 
 type Filter = 'all' | 'lowToner' | 'faulty' | 'unreachable';
 
@@ -55,6 +58,8 @@ interface PrinterRow {
     MatButtonModule,
     MatButtonToggleModule,
     MatTableModule,
+    MatSortModule,
+    PagerComponent,
     TranslatePipe,
     CountPipe,
     DateTimePipe,
@@ -102,15 +107,17 @@ interface PrinterRow {
         </app-empty-state>
       } @else {
         <div class="neo-table-wrapper">
-          <table mat-table class="neo-table" [dataSource]="shown()">
+          <table mat-table class="neo-table" [dataSource]="shownTable.rows()"
+            matSort
+            (matSortChange)="shownTable.onSort($event)">
             <ng-container matColumnDef="kiosk">
-              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.printers.colKiosk' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.printers.colKiosk' | translate }}</th>
               <td mat-cell *matCellDef="let row" class="neo-nowrap">
                 <a [routerLink]="['/kiosks', row.kioskId]">{{ row.kioskCode }}</a>
               </td>
             </ng-container>
             <ng-container matColumnDef="printer">
-              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.printers.colPrinter' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.printers.colPrinter' | translate }}</th>
               <td mat-cell *matCellDef="let row">
                 <a [routerLink]="['/kiosks', row.kioskId, 'printers', row.printer]">{{ row.printer }}</a>
                 @if (row.selected) {
@@ -122,7 +129,7 @@ interface PrinterRow {
               </td>
             </ng-container>
             <ng-container matColumnDef="status">
-              <th mat-header-cell *matHeaderCellDef>{{ 'printers.colStatus' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'printers.colStatus' | translate }}</th>
               <td mat-cell *matCellDef="let row">
                 <app-status-chip
                   [status]="row.status.key"
@@ -145,7 +152,7 @@ interface PrinterRow {
               </td>
             </ng-container>
             <ng-container matColumnDef="pages">
-              <th mat-header-cell *matHeaderCellDef class="printers__number">{{ 'monitoring.printers.colPages' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header class="printers__number">{{ 'monitoring.printers.colPages' | translate }}</th>
               <td mat-cell *matCellDef="let row" class="printers__number neo-nowrap">
                 @if (row.lifetimePages === null) {
                   <span class="neo-caption">{{ 'monitoring.printerNotReported' | translate }}</span>
@@ -155,7 +162,7 @@ interface PrinterRow {
               </td>
             </ng-container>
             <ng-container matColumnDef="readAt">
-              <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.printers.colReadAt' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.printers.colReadAt' | translate }}</th>
               <td mat-cell *matCellDef="let row" class="neo-nowrap">{{ row.readAt | dateTime }}</td>
             </ng-container>
 
@@ -163,6 +170,13 @@ interface PrinterRow {
             <tr mat-row *matRowDef="let row; columns: columns"></tr>
           </table>
         </div>
+        <app-money-pager
+          [total]="shownTable.total()"
+          [page]="shownTable.page()"
+          [pageSize]="shownTable.pageSize"
+          countKey="common.rows"
+          (go)="shownTable.go($event)"
+        />
       }
     </div>
   `,
@@ -252,6 +266,15 @@ export class PrintersComponent {
       default:
         return rows;
     }
+  });
+
+  /** Sorted by a header, twenty a page (T-424). */
+  readonly shownTable = new ClientTable(this.shown, {
+    kiosk: (row) => row.kioskCode,
+    printer: (row) => row.printer,
+    status: (row) => row.status.key,
+    pages: (row) => row.lifetimePages,
+    readAt: (row) => row.readAt ? new Date(row.readAt) : null,
   });
 
   constructor() {

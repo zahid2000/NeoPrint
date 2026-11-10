@@ -354,6 +354,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     'common.save': 'Yadda saxla',
     'common.cancel': 'Ləğv et',
+    'common.filters': 'Filtrlər',
+    'common.rows': 'Cəmi: {{total}}',
     'common.close': 'Bağla',
     'common.confirm': 'Təsdiq et',
     'common.delete': 'Sil',
@@ -718,6 +720,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     'common.save': 'Save',
     'common.cancel': 'Cancel',
+    'common.filters': 'Filters',
+    'common.rows': 'Total: {{total}}',
     'common.close': 'Close',
     'common.confirm': 'Confirm',
     'common.delete': 'Delete',
@@ -1082,6 +1086,8 @@ export const translations: Record<SupportedLanguage, Record<string, string>> = {
 
     'common.save': 'Сохранить',
     'common.cancel': 'Отмена',
+    'common.filters': 'Фильтры',
+    'common.rows': 'Всего: {{total}}',
     'common.close': 'Закрыть',
     'common.confirm': 'Подтвердить',
     'common.delete': 'Удалить',

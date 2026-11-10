@@ -110,9 +110,11 @@
     @if (admins().length === 0) {
       <p class="admins__empty">{{ 'admins.none' | translate }}</p>
     } @else {
-      <table mat-table [dataSource]="admins()" class="admins__table">
+      <table mat-table [dataSource]="adminsTable.rows()"
+        matSort
+        (matSortChange)="adminsTable.onSort($event)" class="admins__table">
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>{{ 'admins.fullName' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'admins.fullName' | translate }}</th>
           <td mat-cell *matCellDef="let admin">
             <div class="admins__name">{{ admin.fullName }}</div>
             <div class="admins__email">{{ admin.email }}</div>
@@ -142,7 +144,7 @@
         </ng-container>
 
         <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>{{ 'tokens.status' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'tokens.status' | translate }}</th>
           <td mat-cell *matCellDef="let admin">
             @if (!admin.isActive) {
               <span class="admins__status admins__status--off">
@@ -170,7 +172,7 @@
         </ng-container>
 
         <ng-container matColumnDef="lastLogin">
-          <th mat-header-cell *matHeaderCellDef>{{ 'admins.lastLogin' | translate }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'admins.lastLogin' | translate }}</th>
           <td mat-cell *matCellDef="let admin">
             {{ admin.lastLoginAt ? (admin.lastLoginAt | dateTime) : '—' }}
           </td>
@@ -232,6 +234,13 @@
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
         <tr mat-row *matRowDef="let row; columns: columns"></tr>
       </table>
+      <app-money-pager
+        [total]="adminsTable.total()"
+        [page]="adminsTable.page()"
+        [pageSize]="adminsTable.pageSize"
+        countKey="common.rows"
+        (go)="adminsTable.go($event)"
+      />
     }
   </mat-card>
 </div>

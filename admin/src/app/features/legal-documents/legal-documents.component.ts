@@ -22,6 +22,9 @@ import {
 import { supportedLanguages } from '../../core/i18n/translations';
 import { describeError } from '../login/login.component';
 import { DateTimePipe } from '../../shared/format.pipes';
+import { MatSortModule } from '@angular/material/sort';
+import { ClientTable } from '../../shared/client-table';
+import { PagerComponent } from '../money/money-shared';
 
 /**
  * Legal documents (plan section 2.13).
@@ -38,6 +41,8 @@ import { DateTimePipe } from '../../shared/format.pipes';
     DateTimePipe,
     MatCardModule,
     MatTableModule,
+    MatSortModule,
+    PagerComponent,
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
@@ -61,6 +66,15 @@ export class LegalDocumentsComponent {
   readonly languages = supportedLanguages;
 
   readonly documents = signal<LegalDocument[]>([]);
+
+  /** Sorted by a header, twenty a page (T-424). */
+  readonly documentsTable = new ClientTable(this.documents, {
+    docType: (row) => row.docType,
+    version: (row) => row.version,
+    language: (row) => row.language,
+    publishedAt: (row) => row.publishedAt ? new Date(row.publishedAt) : null,
+    acceptances: (row) => row.acceptances,
+  });
   readonly selected = signal<LegalDocument | null>(null);
 
   readonly loading = signal(false);
