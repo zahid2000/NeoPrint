@@ -12,6 +12,7 @@ import '../../core/router/app_router.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/neo_design.dart';
 import '../sharing/shares_screen.dart';
+import 'profile_photo.dart';
 
 /// The profile tab (plan section 8.2).
 ///
@@ -37,17 +38,8 @@ class ProfileScreen extends ConsumerWidget {
           // Who is signed in (T-342; the design's screen 14).
           Row(
             children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: tokens.brand100,
-                child: Text(
-                  initialsOf(user?.fullName, user?.email),
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: tokens.brand500,
-                    fontWeight: FontWeights.semibold,
-                  ),
-                ),
-              ),
+              // The photo, else the initials; a tap changes it (T-396).
+              ProfileAvatar(initials: initialsOf(user?.fullName, user?.email)),
               const SizedBox(width: Spacing.x4),
               Expanded(
                 child: Column(

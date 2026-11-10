@@ -43,6 +43,7 @@ public sealed class DataExportTests
 
         using var user = await TestUsers.ConfirmedAsync(_fixture);
         var fileId = await SessionTests.UploadReadyPdfAsync(_fixture, user.Client, pages: 2);
+        (await UserPhotoTests.UploadAsync(user.Client, UserPhotoTests.Png)).StatusCode.Should().Be(HttpStatusCode.OK);
         (await user.Client.GetAsync("/api/users/me/export")).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var first = await RequestAsync(user.Client);
@@ -78,6 +79,7 @@ public sealed class DataExportTests
             var names = zip.Entries.Select(e => e.FullName).ToList();
             names.Should().Contain(["README.txt", "profile.json", "payments.json", "refunds.json", "balance.json", "orders.json", "files.json"]);
             names.Should().ContainSingle(n => n.StartsWith("files/001 hesabat", StringComparison.Ordinal) && n.EndsWith(".pdf", StringComparison.Ordinal));
+            names.Should().Contain("profile-photo.png", "the profile picture goes in too (T-396)");
 
             var profile = Read(zip, "profile.json");
             profile.Should().Contain(user.Email);

@@ -892,5 +892,8 @@
   "support.notAnswered": "Yalnız cavablanmış müraciəti davam etdirmək olar. Bağlanmış müraciət üçün yeni müraciət göndərin.",
   "operatorLogin.expired": "Bu QR-ın vaxtı keçib və ya artıq istifadə olunub. Kioskda menyunu yenidən açın və yeni QR-ı oxudun.",
   "operatorLogin.notAllowed": "Hesabınızın bu kioskda bunu etməyə icazəsi yoxdur. Heç nə dəyişmədi; adminə müraciət edin.",
-  "notFound.operatorLogin": "Bu QR tapılmadı və ya sizin kiosklarınızdan birinə aid deyil."
+  "notFound.operatorLogin": "Bu QR tapılmadı və ya sizin kiosklarınızdan birinə aid deyil.",
+  "users.photoEmpty": "Şəkil seçilməyib. Şəkli yenidən seçin.",
+  "users.photoTooLarge": "Şəkil çox böyükdür: ən çox {maxMb} MB ola bilər. Başqa şəkil seçin.",
+  "users.photoNotImage": "Bu fayl şəkil deyil. JPEG, PNG və ya WebP şəkil seçin."
 }

@@ -69,10 +69,11 @@ audit history must not become misleading.
   olunan kimi, faylın açıq sifarişi / aktiv planlanmış çapı varsa sonuncudan sonra; `AfterOneDay/SevenDays/ThirtyDays` —
   yükləmədən N gün sonra. Bütün obyektlər (orijinal, PDF, versiyalar) bütün provayderlərdən silinir (`FileEraser`,
   istifadəçinin öz silməsi ilə eyni yol), sonra `DeletedAt`; uğursuz silmə növbəti dövrdə təkrarlanır.
+- **Profil şəkli (T-396):** yalnız sahibi görür (`GET users/me/photo`, `no-store`); telefonun çəkdiyi kimi saxlanılır (şifrəli, `profile-photos/{user}/`), yükləmədə sıxılmır (hədd 25 MB); yeni şəkil köhnəsinin obyektini silir, "Şəkli sil" — dərhal. "Məlumatlarımı yüklə" arxivinə düşür (`profile-photo.*`). Hesab silinəndə digər məlumat kimi gözləmə müddətindən sonra (`AccountDeletionJob`) silinir.
 - **"Hesabımı sil":** şərtlər — aktiv çap, aktiv planlanmış çap, kioskda götürülməmiş sifariş, bitməmiş refund yoxdur.
   Dərhal: `Status = Deleted`, email → SHA-256 hash (+ hesab id-si), ad / şifrə / push cihazları silinir, sessiyalar ləğv
   olunur. `Privacy.AccountDeletionGraceHours` (24) keçəndən sonra `AccountDeletionJob` (10 dəq): fayllar bütün
-  provayderlərdən, ixrac arxivləri, bildirişlər, hər iki istiqamətdəki fayl paylaşımları (`file_shares`) silinir; qəbzlərdən email, razılıqlardan IP / cihaz, dəstək
+  provayderlərdən, **profil şəkli** (T-396), ixrac arxivləri, bildirişlər, hər iki istiqamətdəki fayl paylaşımları (`file_shares`) silinir; qəbzlərdən email, razılıqlardan IP / cihaz, dəstək
   müraciətlərindən mətn və cavab silinir (`—`), sonra `ErasedAt`.
 - **Qalır (anonim hesaba bağlı):** ödənişlər, refund-lar, fiskal çeklər (dəyişmir), qəbzlər, balans ledger-i (balans
   itir, geri qaytarılmır — plan 2.14), razılıqların versiya və tarixi (sübut), müraciətin statusu / məbləği / qərarı,

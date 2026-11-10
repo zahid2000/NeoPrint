@@ -76,6 +76,53 @@ public sealed class UsersController : ControllerBase
         return Ok(await _sender.Send(new GetMyPrintCodeQuery(UserId), cancellationToken));
     }
 
+    private const long PhotoRequestBytes = ProfilePhotoHandlers.MaxBytes + (64 * 1024);
+
+    /// <summary>
+    /// The profile picture (T-396), one file field <c>photo</c>: JPEG, PNG or WebP
+    /// as the phone took it, up to <see cref="ProfilePhotoHandlers.MaxBytes"/>.
+    /// </summary>
+    [HttpPut("photo")]
+    [RequestSizeLimit(PhotoRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = PhotoRequestBytes)]
+    public async Task<ActionResult<MyPhotoInfo>> SetPhoto(IFormFile? photo, CancellationToken cancellationToken)
+    {
+        byte[] bytes = [];
+        if (photo is not null)
+        {
+            await using var stream = photo.OpenReadStream();
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            bytes = buffer.ToArray();
+        }
+
+        return Ok(await _sender.Send(new SetMyPhotoCommand(UserId, bytes), cancellationToken));
+    }
+
+    /// <summary>The profile picture, for its owner only; 404 without one.</summary>
+    [HttpGet("photo")]
+    public async Task<IActionResult> Photo(CancellationToken cancellationToken)
+    {
+        if (await _sender.Send(new GetMyPhotoQuery(UserId), cancellationToken) is not { } photo)
+        {
+            return NotFound();
+        }
+
+        // Someone's face: not kept by a shared cache, and never sniffed as anything else.
+        Response.Headers.CacheControl = "private, no-store";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        Response.Headers.ETag = $"\"{photo.Version}\"";
+        return File(photo.Bytes, photo.ContentType);
+    }
+
+    /// <summary>Takes the profile picture away.</summary>
+    [HttpDelete("photo")]
+    public async Task<IActionResult> RemovePhoto(CancellationToken cancellationToken)
+    {
+        await _sender.Send(new RemoveMyPhotoCommand(UserId), cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>A code that lets a kiosk open the account's files must not sit in a cache.</summary>
     private void NoStore() => Response.Headers.CacheControl = "no-store";
 }

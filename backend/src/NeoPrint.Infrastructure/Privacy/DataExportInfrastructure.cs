@@ -196,7 +196,15 @@ public sealed class DataExportBuilder : IDataExportBuilder
             user.ReferralCode,
             RegisteredAt = user.CreatedAt,
             Consents = consents.Select(c => new { c.DocType, c.Version, c.AcceptedAt }),
+            Photo = user.Photo is { } photo ? "profile-photo" + PhotoExtension(photo.ContentType) : null,
         }).ConfigureAwait(false);
+
+        // The profile picture (T-396), as it was uploaded - small, so always in.
+        if (user.Photo is { } picture)
+        {
+            await Copy(zip, "profile-photo" + PhotoExtension(picture.ContentType), picture.Object, StorageBucket.Files, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         await JsonEntry(zip, "payments", payments.Select(p => new
         {
@@ -312,6 +320,13 @@ public sealed class DataExportBuilder : IDataExportBuilder
         await using var stream = entry.Open();
         await _storage.ReadAsync(DataExportHandlers.Stored(source), bucket, stream, cancellationToken).ConfigureAwait(false);
     }
+
+    private static string PhotoExtension(string contentType) => contentType switch
+    {
+        "image/png" => ".png",
+        "image/webp" => ".webp",
+        _ => ".jpg",
+    };
 
     /// <summary>A name that is a name inside the archive, never a path.</summary>
     private static string Safe(string name)

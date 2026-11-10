@@ -1550,6 +1550,17 @@
   "walletPeriodEmptyHint": "Başqa dövr seçin.",
   "walletTabVouchers": "Voucher kodları",
   "settingsTitle": "Tənzimləmələr",
+  "profilePhotoAdd": "Profil şəkli əlavə et",
+  "profilePhotoChange": "Profil şəklini dəyiş",
+  "profilePhotoCamera": "Şəkil çək",
+  "profilePhotoGallery": "Qalereyadan seç",
+  "profilePhotoRemove": "Şəkli sil",
+  "profilePhotoFailed": "Profil şəkli dəyişmədi: {reason}",
+  "@profilePhotoFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
   "profileCopy": "Kopyala",
   "schedTabUpcoming": "Planlılar",
   "schedTabPast": "Keçmiş",

@@ -1944,6 +1944,12 @@ oxuyur; tərcümə yoxdursa cavabın `language`-i `az` olur və ekran bunu deyir
 
 Plan 9.4; layihə sahibinin qərarı `DECISIONS.md` (T-144). Qiymət həmişə kioskun **cari** profili ilə hesablanır.
 
+### Profil şəkli (`User`, T-396)
+
+- `PUT /api/users/me/photo` — multipart, bir sahə `photo`: JPEG / PNG / WebP (növ baytlardan oxunur), ən çox 25 MB → `{ version, contentType, updatedAt }`; `400 users.photoEmpty | users.photoTooLarge | users.photoNotImage`. Yeni şəkil köhnəsini əvəz edir, `version` dəyişir.
+- `GET /api/users/me/photo` — yalnız öz şəkli (`Cache-Control: private, no-store`, `nosniff`, `ETag` = version); yoxdursa `404`.
+- `DELETE /api/users/me/photo` — `204`, təkrar zərərsizdir.
+
 ### `GET /api/users/me/qr` · `GET /api/users/me/qr.png` (`User`)
 
 `{ code, expiresAt, rotationSeconds }` — `code` = `NPU:{userId:N}:{unixSeconds}:{hmac}` (HMAC-SHA256, açar `NEOPRINT_QR_HMAC_KEY`, base64url),

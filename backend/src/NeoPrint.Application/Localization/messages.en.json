@@ -892,5 +892,8 @@
   "support.notAnswered": "Only an answered claim can be carried on. For a closed one, send a new claim.",
   "operatorLogin.expired": "This QR has run out or was used already. Open the menu on the kiosk again and read the new QR.",
   "operatorLogin.notAllowed": "Your account may not do this at this kiosk. Nothing changed; ask an administrator.",
-  "notFound.operatorLogin": "This QR was not found, or it is not one of your kiosks."
+  "notFound.operatorLogin": "This QR was not found, or it is not one of your kiosks.",
+  "users.photoEmpty": "No picture was chosen. Choose it again.",
+  "users.photoTooLarge": "The picture is too large: it can be up to {maxMb} MB. Choose another one.",
+  "users.photoNotImage": "This file is not a picture. Choose a JPEG, PNG or WebP picture."
 }

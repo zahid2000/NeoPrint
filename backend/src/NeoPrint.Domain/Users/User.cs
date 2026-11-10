@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 
 using NeoPrint.Domain.Common;
+using NeoPrint.Domain.Files;
 
 namespace NeoPrint.Domain.Users;
 
@@ -127,6 +128,40 @@ public sealed class User : Entity
 
         var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(NormalizeEmail(email)));
         return $"deleted-{Convert.ToHexString(hash).ToLowerInvariant()}-{userId:N}";
+    }
+
+    /// <summary>
+    /// The profile picture (T-396): only its owner sees it for now. Set and
+    /// removed through <see cref="ReplacePhoto"/> and <see cref="RemovePhoto"/>;
+    /// a deleted account's goes with its files when the account is erased.
+    /// </summary>
+    public UserPhoto? Photo { get; set; }
+
+    /// <summary>Puts a new picture in place and hands back the one it replaces, for its object to be deleted.</summary>
+    public UserPhoto? ReplacePhoto(FileObject stored, string contentType, DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(stored);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
+
+        var previous = Photo;
+        Photo = new UserPhoto
+        {
+            Object = stored,
+            ContentType = contentType,
+            // Never repeats, even after a removal: the app caches by it.
+            Version = Math.Max(utcNow.Ticks, (previous?.Version ?? 0) + 1),
+            UpdatedAt = utcNow,
+        };
+
+        return previous;
+    }
+
+    /// <summary>Takes the picture away; hands back what was there, if anything.</summary>
+    public UserPhoto? RemovePhoto()
+    {
+        var previous = Photo;
+        Photo = null;
+        return previous;
     }
 
     /// <summary>When an admin blocked the account; null while it is not blocked.</summary>
@@ -272,4 +307,19 @@ public sealed class LegalDocument : Entity
     public DateTime PublishedAt { get; set; } = DateTime.UtcNow;
 
     public Guid? PublishedBy { get; set; }
+}
+
+
+/// <summary>A user's profile picture (T-396): the bytes as uploaded, stored encrypted like every object.</summary>
+public sealed class UserPhoto
+{
+    public FileObject Object { get; set; } = default!;
+
+    /// <summary><c>image/jpeg</c>, <c>image/png</c> or <c>image/webp</c>, as read from the bytes.</summary>
+    public string ContentType { get; set; } = "image/jpeg";
+
+    /// <summary>Changes with every new picture: the app's cache key.</summary>
+    public long Version { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
 }

@@ -227,6 +227,13 @@ public sealed class AccountDeletionHandlers :
             }
         }
 
+        // The profile picture (T-396): a face, erased with the files.
+        if (user.RemovePhoto() is { } photo)
+        {
+            await _storage.DeleteAsync(Users.ProfilePhotoHandlers.Stored(photo.Object), StorageBucket.Files, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         await _records.ScrubAsync(user.Id, cancellationToken).ConfigureAwait(false);
 
         user.ErasedAt = _clock.UtcNow;
