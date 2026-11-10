@@ -1454,6 +1454,7 @@
   "jobClose": "Pəncərəni bağla",
   "jobCancelOrder": "Sifarişi ləğv et",
   "jobReprint": "Yenidən çap et",
+  "jobReprintFileGone": "Bu sifarişin faylı artıq \"Fayllarım\"da yoxdur — faylı yenidən yükləyib çap edin.",
   "jobsHint": "Bütün çaplarınız və onların vəziyyəti",
   "jobsTabActive": "Aktiv",
   "jobsTabPast": "Keçmiş",

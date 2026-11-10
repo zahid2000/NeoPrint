@@ -10,6 +10,9 @@ import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_primary_button.dart';
+import '../files/file_models.dart';
+import '../files/files_controller.dart';
+import '../prepared/prepare_screen.dart';
 import 'job_card.dart';
 import 'jobs_controller.dart';
 import 'jobs_repository.dart';
@@ -288,7 +291,7 @@ class _Actions extends ConsumerWidget {
               NeoPrimaryButton(
                 label: l10n.jobReprint,
                 icon: Icons.replay,
-                onPressed: () => context.push(Routes.filePreview(job.fileId!)),
+                onPressed: () => unawaited(printAgain(context, ref, job)),
               ),
               TextButton(
                 onPressed: () => context.go(Routes.home),
@@ -326,4 +329,48 @@ class _Actions extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// "Yenidən çap et" (T-408): the same file's print settings, filled in with
+/// what the order was printed with and at its kiosk - one tap to pay, and
+/// every choice can still be changed. The file is looked for in the list
+/// (read again when it is not there yet); a file deleted since is said so.
+Future<void> printAgain(BuildContext context, WidgetRef ref, MyJob job) async {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+
+  UserFile? find() => ref
+      .read(filesControllerProvider)
+      .files
+      .where((file) => file.id == job.fileId)
+      .firstOrNull;
+
+  var file = find();
+  if (file == null) {
+    await ref.read(filesControllerProvider.notifier).load();
+    file = find();
+  }
+  if (!context.mounted) {
+    return;
+  }
+  if (file == null) {
+    messenger.showSnackBar(SnackBar(content: Text(l10n.jobReprintFileGone)));
+    return;
+  }
+
+  await context.push(
+    Routes.prepare,
+    extra: (
+      file,
+      PrintAgain(
+        copies: job.copies,
+        color: job.color,
+        duplex: job.duplex,
+        paper: job.paper,
+        pagesPerSheet: job.pagesPerSheet,
+        pageRange: job.pageRange,
+        kioskId: job.kioskId,
+      ),
+    ),
+  );
 }

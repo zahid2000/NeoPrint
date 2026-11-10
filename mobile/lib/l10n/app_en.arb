@@ -875,6 +875,7 @@
   "jobClose": "Close",
   "jobCancelOrder": "Cancel the order",
   "jobReprint": "Print again",
+  "jobReprintFileGone": "This order's file is no longer in \"My files\" - upload it again to print.",
   "jobsHint": "All your prints and their state",
   "jobsTabActive": "Active",
   "jobsTabPast": "Past",

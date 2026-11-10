@@ -35,10 +35,35 @@ import 'prepared_repository.dart';
 /// unpaid for any kiosk. With a kiosk every option is set, the server prices
 /// it by that kiosk's current profile and it can be paid now; a price that
 /// changed meanwhile is shown and asked about again.
+/// "Yenidən çap et" (T-408): what an order was printed with, and where - the
+/// print settings start from it and can still be changed.
+final class PrintAgain {
+  const PrintAgain({
+    required this.copies,
+    required this.color,
+    required this.duplex,
+    required this.paper,
+    required this.pagesPerSheet,
+    this.pageRange,
+    this.kioskId,
+  });
+
+  final int copies;
+  final bool color;
+  final bool duplex;
+  final String paper;
+  final int pagesPerSheet;
+  final String? pageRange;
+  final String? kioskId;
+}
+
 class PrepareScreen extends ConsumerStatefulWidget {
-  const PrepareScreen({super.key, required this.file});
+  const PrepareScreen({super.key, required this.file, this.again});
 
   final UserFile file;
+
+  /// The order printed again, when that is how the screen was opened.
+  final PrintAgain? again;
 
   @override
   ConsumerState<PrepareScreen> createState() => _PrepareScreenState();
@@ -81,6 +106,50 @@ class _PrepareScreenState extends ConsumerState<PrepareScreen> {
 
   // One per set of choices: a retry after a lost answer is the same order.
   String _key = newIdempotencyKey();
+
+  @override
+  void initState() {
+    super.initState();
+    final again = widget.again;
+    if (again == null) {
+      return;
+    }
+
+    _copies = again.copies;
+    _color = again.color;
+    _duplex = again.duplex;
+    if (!_realSize) {
+      _paper = again.paper;
+      _perSheet = again.pagesPerSheet;
+    }
+    if (again.pageRange case final range? when range.trim().isNotEmpty) {
+      _pages = _Pages.range;
+      _range.text = range;
+    } else {
+      _pages = _Pages.all;
+    }
+    if (again.kioskId case final id?) {
+      unawaited(_takeKiosk(id));
+    }
+  }
+
+  /// The order's kiosk, when it can take the order now; otherwise the user
+  /// chooses one as usual.
+  Future<void> _takeKiosk(String id) async {
+    try {
+      final detail = await ref.read(kioskDetailProvider(id).future);
+      if (!mounted || _kiosk != null) {
+        return;
+      }
+      if (_currentMode == PrintMode.now &&
+          detail.summary.status != KioskStatus.online) {
+        return;
+      }
+      _change(() => _kiosk = detail.summary);
+    } on Object {
+      // Not found or not reachable: chosen by hand.
+    }
+  }
 
   @override
   void dispose() {

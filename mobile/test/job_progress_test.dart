@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:neoprint/core/realtime/user_hub_provider.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
+import 'package:neoprint/features/files/file_models.dart';
+import 'package:neoprint/features/files/files_controller.dart';
+import 'package:neoprint/features/prepared/prepare_screen.dart';
 import 'package:neoprint/features/jobs/job_progress_screen.dart';
 import 'package:neoprint/features/jobs/jobs_controller.dart';
 import 'package:neoprint/features/jobs/jobs_repository.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
 
+import 'files_screen_test.dart' show ListRepository;
 import 'job_card_test.dart' show CancellingJobs;
 
 /// The order's own screen after it was paid (T-378): its stage, and
@@ -27,6 +32,10 @@ MyJob order(
   bool canCancel = false,
   String? fileId = 'f1',
 }) => MyJob(
+  duplex: true,
+  pageRange: '1-3',
+  pagesPerSheet: 2,
+  kioskId: 'k1',
   id: 'j1',
   jobCode: '482913',
   status: status,
@@ -44,7 +53,24 @@ MyJob order(
   fileId: fileId,
 );
 
-Future<ShownJobs> show(WidgetTester tester, MyJob job) async {
+final f1 = UserFile(
+  id: 'f1',
+  fileName: 'hesabat.pdf',
+  extension: 'pdf',
+  source: FileSourceKind.uploaded,
+  status: FileStatus.ready,
+  sizeBytes: 1000,
+  pageCount: 6,
+  isSensitive: false,
+  versionCount: 0,
+  createdAt: DateTime(2026, 11, 10),
+);
+
+Future<ShownJobs> show(
+  WidgetTester tester,
+  MyJob job, {
+  List<UserFile>? files,
+}) async {
   tester.view
     ..physicalSize = const Size(420, 1400)
     ..devicePixelRatio = 1;
@@ -59,15 +85,27 @@ Future<ShownJobs> show(WidgetTester tester, MyJob job) async {
       ),
       GoRoute(path: '/home', builder: (_, __) => const Text('home')),
       GoRoute(
-        path: '/file/:id',
-        builder: (_, state) => Text('file ${state.pathParameters['id']}'),
+        path: '/prepare',
+        builder: (_, state) => switch (state.extra) {
+          (final UserFile file, final PrintAgain again) => Text(
+            'prepare ${file.id} ${again.copies} ${again.duplex} '
+            '${again.pagesPerSheet} ${again.pageRange} ${again.kioskId}',
+          ),
+          _ => const Text('prepare ?'),
+        },
       ),
     ],
   );
 
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [myJobsProvider.overrideWith(() => jobs)],
+      overrides: [
+        myJobsProvider.overrideWith(() => jobs),
+        filesRepositoryProvider.overrideWithValue(
+          ListRepository(files ?? [f1]),
+        ),
+        userHubEventsProvider.overrideWithValue(const Stream.empty()),
+      ],
       child: MaterialApp.router(
         theme: AppTheme.light(),
         locale: const Locale('az'),
@@ -148,13 +186,24 @@ void main() {
     expect(find.textContaining('%'), findsNothing);
   });
 
-  testWidgets('printed: "Yenidən çap et" opens the same file', (tester) async {
+  // T-408: the same file, with what the order was printed with and at its
+  // kiosk - not "Fayllarım".
+  testWidgets('printed: "Yenidən çap et" opens the print settings filled in '
+      'as the order was', (tester) async {
     await show(tester, order('Completed', printedSides: 12));
 
     expect(find.text('Çap tamamlandı!'), findsOneWidget);
     await tester.tap(find.text('Yenidən çap et'));
     await tester.pumpAndSettle();
-    expect(find.text('file f1'), findsOneWidget);
+    expect(find.text('prepare f1 2 true 2 1-3 k1'), findsOneWidget);
+  });
+
+  testWidgets('a file deleted since is said so', (tester) async {
+    await show(tester, order('Completed', printedSides: 12), files: const []);
+
+    await tester.tap(find.text('Yenidən çap et'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('artıq "Fayllarım"da yoxdur'), findsOneWidget);
   });
 
   testWidgets('an order made from a flash drive cannot be printed again '

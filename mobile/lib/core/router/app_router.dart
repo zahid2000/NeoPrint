@@ -379,10 +379,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
         GoRoute(
           path: Routes.prepare,
-          // Opened from a file's menu; without the file there is nothing to prepare.
-          redirect: (_, state) => state.extra is UserFile ? null : Routes.files,
+          // Opened from a file's menu, or from an order printed again
+          // (T-408); without the file there is nothing to prepare.
+          redirect: (_, state) =>
+              state.extra is UserFile || state.extra is (UserFile, PrintAgain)
+              ? null
+              : Routes.files,
           builder: (_, state) => switch (state.extra) {
             final UserFile file => PrepareScreen(file: file),
+            (final UserFile file, final PrintAgain again) => PrepareScreen(
+              file: file,
+              again: again,
+            ),
             _ => const RedirectTo(Routes.files),
           },
         ),

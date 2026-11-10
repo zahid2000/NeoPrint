@@ -328,6 +328,39 @@ void main() {
       },
     );
     testWidgets(
+      'printed again: the order choices and kiosk are filled in (T-408)',
+      (tester) async {
+        tallScreen(tester);
+        final prepared = FakePrepared();
+        await tester.pumpWidget(
+          app(
+            PrepareScreen(
+              file: file,
+              again: const PrintAgain(
+                copies: 3,
+                color: false,
+                duplex: false,
+                paper: 'A4',
+                pagesPerSheet: 2,
+                pageRange: '1-2',
+                kioskId: 'k1',
+              ),
+            ),
+            prepared,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pumpAndSettle();
+
+        expect(find.text('3'), findsWidgets, reason: 'three copies');
+        expect(find.text('Kiosk seç'), findsNothing, reason: 'its kiosk');
+        expect(find.text('Kioskda'), findsNothing);
+        final range = tester.widget<TextField>(find.byType(TextField).first);
+        expect(range.controller?.text, '1-2');
+      },
+    );
+    testWidgets(
       'colour chosen before a kiosk without it moves to black and white (T-407)',
       (tester) async {
         tallScreen(tester);

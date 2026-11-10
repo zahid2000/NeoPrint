@@ -24,6 +24,9 @@ final class MyJob {
     this.printedSides = 0,
     this.fileId,
     this.kioskId,
+    this.duplex = false,
+    this.pageRange,
+    this.pagesPerSheet = 1,
   });
 
   factory MyJob.fromJson(Map<String, dynamic> json) => MyJob(
@@ -51,6 +54,9 @@ final class MyJob {
     printedSides: json['printedSides'] as int? ?? 0,
     fileId: json['fileId'] as String?,
     kioskId: json['kioskId'] as String?,
+    duplex: json['duplex'] as bool? ?? false,
+    pageRange: json['pageRange'] as String?,
+    pagesPerSheet: json['pagesPerSheet'] as int? ?? 1,
   );
 
   final String id;
@@ -91,6 +97,12 @@ final class MyJob {
 
   /// Its kiosk, for "Növbəni izlə" (T-379).
   final String? kioskId;
+
+  /// With [copies], [color] and [paper]: what "Yenidən çap et" starts from
+  /// (T-408).
+  final bool duplex;
+  final String? pageRange;
+  final int pagesPerSheet;
 
   /// Stopped at the printer, or waiting at a kiosk that cannot print: the
   /// owner is offered the choice - wait, or cancel and take the money back.
