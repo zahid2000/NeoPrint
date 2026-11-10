@@ -447,6 +447,13 @@
     </Style>
 
     <!-- A page's tool in the editor (T-373): compact, so the words always fit. -->
+    <!-- The home screen's picture from the panel (T-421): a white card it fills, clipped to its corners. -->
+    <Style Selector="Border.hero-image">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusLg}" />
+        <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+
     <Style Selector="Button.page-tool">
         <Setter Property="Background" Value="{DynamicResource Neutral0}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />

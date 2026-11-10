@@ -259,10 +259,16 @@
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource Neutral900}"
                                VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding Hotline}"
-                               Classes="caption"
-                               Margin="{DynamicResource GapStart6}"
-                               VerticalAlignment="Center" />
+                    <!-- The help line (T-420): red and bold behind a phone, so it is found at once. -->
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space2}" Margin="{DynamicResource GapStart6}"
+                                VerticalAlignment="Center" IsVisible="{Binding Hotline, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <PathIcon Data="{StaticResource IconCall}" Width="24" Height="24" Foreground="{DynamicResource Danger500}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Hotline}"
+                                   Classes="body-small"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource Danger500}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
                 </StackPanel>
 
                 <Grid Grid.Column="1" ColumnDefinitions="*,*,*,*" ColumnSpacing="{DynamicResource Space4}" VerticalAlignment="Center"
