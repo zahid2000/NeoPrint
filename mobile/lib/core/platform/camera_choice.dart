@@ -36,3 +36,17 @@ List<CameraDescription> backCamerasMainFirst(List<CameraDescription> all) {
 
   return [for (final entry in indexed) entry.$2];
 }
+
+/// The cameras the QR scanner steps through (T-406): the main back camera,
+/// then the front one - what the switch icon promises, and a change the user
+/// sees - then the other back lenses (T-346). Several back lenses often open
+/// the same picture, so stepping through them alone looked like nothing.
+List<CameraDescription> scanCamerasInOrder(List<CameraDescription> all) {
+  final backs = backCamerasMainFirst(all);
+  final front = [
+    for (final camera in all)
+      if (camera.lensDirection == CameraLensDirection.front) camera,
+  ];
+  final order = [...backs.take(1), ...front.take(1), ...backs.skip(1)];
+  return order.isEmpty ? all.take(1).toList() : order;
+}

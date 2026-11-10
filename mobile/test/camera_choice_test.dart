@@ -43,4 +43,20 @@ void main() {
       isEmpty,
     );
   });
+
+  test('the scanner steps from the main back camera to the front one, then '
+      'the other lenses (T-406)', () {
+    final cameras = [
+      cam('2', CameraLensDirection.back),
+      cam('1', CameraLensDirection.front),
+      cam('0', CameraLensDirection.back),
+    ];
+
+    expect(scanCamerasInOrder(cameras).map((c) => c.name), ['0', '1', '2']);
+    expect(
+      scanCamerasInOrder([cam('1', CameraLensDirection.front)])
+          .map((c) => c.name),
+      ['1'],
+    );
+  });
 }

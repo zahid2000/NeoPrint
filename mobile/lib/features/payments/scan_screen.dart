@@ -47,14 +47,14 @@ class ScanScreen extends ConsumerStatefulWidget {
 class _ScanScreenState extends ConsumerState<ScanScreen> {
   final _scanner = BarcodeScanner(formats: [BarcodeFormat.qrCode]);
 
-  /// Which back camera, as an index into [_backs]: the main one unless the
-  /// user stepped to another. Kept while the app runs, so the next scan
+  /// Which camera, as an index into [_cameras]: the main back one unless
+  /// the user stepped to another (T-406). Kept while the app runs, so the next scan
   /// opens the one that worked.
   static int _lens = 0;
 
   CameraController? _controller;
   CameraDescription? _camera;
-  List<CameraDescription> _backs = const [];
+  List<CameraDescription> _cameras = const [];
   _ScanProblem? _problem;
 
   /// A frame is with ML Kit; the next ones are dropped until it answers.
@@ -103,10 +103,18 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       }
 
       // The main back camera, not the ultra-wide or macro one that some
-      // phones list first (T-346); "another camera" steps through the rest.
-      final backs = backCamerasMainFirst(cameras);
-      _backs = backs.isEmpty ? [cameras.first] : backs;
-      final back = _backs[_lens % _backs.length];
+      // phones list first (T-346); "another camera" goes to the front one,
+      // then the other back lenses (T-406).
+      _cameras = scanCamerasInOrder(cameras);
+      // A lens that worked is kept for the next scan; the front camera is
+      // not - a kiosk is in front of the back one.
+      if (_controller == null &&
+          _camera == null &&
+          _cameras[_lens % _cameras.length].lensDirection ==
+              CameraLensDirection.front) {
+        _lens = 0;
+      }
+      final back = _cameras[_lens % _cameras.length];
 
       // 720p: sharp enough for a QR on a kiosk screen an arm's length away,
       // light enough for ML Kit on every frame. The formats are the ones ML
@@ -153,15 +161,15 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     }
   }
 
-  /// The next back camera: a phone whose main camera still does not focus
-  /// on a screen can try its others (T-346).
+  /// The next camera: the front one, then the other back lenses for a phone
+  /// whose main camera does not focus on a screen (T-346, T-406).
   Future<void> _nextLens() async {
     final controller = _controller;
     setState(() => _controller = null);
     if (controller != null) {
       await _close(controller);
     }
-    _lens = (_lens + 1) % _backs.length;
+    _lens = (_lens + 1) % _cameras.length;
     await _open();
   }
 
@@ -266,7 +274,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
       appBar: AppBar(
         title: Text(l10n.scanTitle),
         actions: [
-          if (_backs.length > 1 && controller != null)
+          if (_cameras.length > 1 && controller != null)
             IconButton(
               tooltip: l10n.scanOtherCamera,
               onPressed: _nextLens,
