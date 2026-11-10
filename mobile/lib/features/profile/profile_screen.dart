@@ -138,6 +138,14 @@ class ProfileScreen extends ConsumerWidget {
 
           _Group(
             children: [
+              // Every order, printed or waiting (T-386).
+              if (Readiness.printJobs)
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: Text(l10n.jobsTitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push(Routes.jobs),
+                ),
               if (Readiness.wallet)
                 ListTile(
                   leading: const Icon(Icons.receipt_long_outlined),

@@ -49,6 +49,8 @@ void main() {
       'Mənim QR kodum',
       'Hazırladıqlarım',
       'Planlı çap',
+      // Every order as a history (T-386).
+      'Sifarişlərim',
     ];
     for (final row in rows) {
       await tester.scrollUntilVisible(find.text(row), 200);

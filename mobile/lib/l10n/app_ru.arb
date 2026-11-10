@@ -824,6 +824,7 @@
   "printHubMyQrHint": "Заберите подготовленный файл в киоске",
   "printHubPreparedHint": "Файлы, подготовленные для киоска",
   "printHubScheduledHint": "Запланируйте печать на нужное время",
+  "printHubJobsHint": "Напечатанное и ожидающие заказы",
   "scanOtherCamera": "Другая камера",
   "scanTapToFocus": "Если код размыт, коснитесь экрана — камера сфокусируется.",
   "filePreviewTitle": "Просмотр файла",

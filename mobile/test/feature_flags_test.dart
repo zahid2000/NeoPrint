@@ -195,6 +195,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // Below the rows: scrolled to on a small phone.
+    await tester.scrollUntilVisible(find.text('Hesabımı sil'), 200);
     expect(find.text('Məlumatlarımı yüklə'), findsNothing);
     expect(find.text('Hesabımı sil'), findsOneWidget);
   });

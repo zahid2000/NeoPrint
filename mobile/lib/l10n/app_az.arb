@@ -1377,6 +1377,7 @@
   "printHubMyQrHint": "Hazırladığınız faylı kioskda götürün",
   "printHubPreparedHint": "Kiosk üçün hazırladığınız fayllar",
   "printHubScheduledHint": "Çapı vaxtına planlayın",
+  "printHubJobsHint": "Çap etdikləriniz və gözləyən sifarişlər",
   "scanOtherCamera": "Başqa kamera",
   "scanTapToFocus": "Kod bulanıqdırsa, ekrana toxunun — kamera ora fokuslanır.",
   "filePreviewTitle": "Fayla baxış",

@@ -102,6 +102,15 @@ class PrintHubScreen extends ConsumerWidget {
           hint: l10n.printHubScheduledHint,
           onTap: () => context.push(Routes.scheduled),
         ),
+      // What was printed and what waits, as a history (T-386).
+      if (Readiness.printJobs)
+        NeoNavRow(
+          icon: Icons.history,
+          tone: IconTileTone.info,
+          title: l10n.jobsTitle,
+          hint: l10n.printHubJobsHint,
+          onTap: () => context.push(Routes.jobs),
+        ),
     ];
 
     return Scaffold(
