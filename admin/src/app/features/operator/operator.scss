@@ -103,6 +103,10 @@
   color: var(--danger-500);
 }
 
+.op-row--success mat-icon {
+  color: var(--success-500);
+}
+
 .op-row--warning,
 .op-row--warning mat-icon {
   color: var(--warning-500);

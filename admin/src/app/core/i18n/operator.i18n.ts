@@ -92,7 +92,8 @@ export const operatorTranslations: PageTranslations = {
     'operator.refill.quantity': 'Neçə {{unit}}',
     'operator.refill.itemStock': 'Anbarda: {{stock}} {{unit}}',
     'operator.refill.save': 'Qeyd et',
-    'operator.refill.invalid': 'Bu say lotoka sığmır: tutum {{capacity}}, hazırda {{current}} vərəq.',
+    'operator.refill.invalid':
+      'Bu say lotoka sığmır: tutum {{capacity}}, hazırda {{current}} vərəq.',
 
     'operator.replaced.title': 'Toner dəyişdirildi',
     'operator.replaced.what': 'Nə dəyişdirildi',
@@ -152,25 +153,44 @@ export const operatorTranslations: PageTranslations = {
     'operator.incidents.resolveNote': 'Nə edildi',
 
     'operator.kiosks.activate': 'Kiosk aktivləşdir',
+    'operator.kiosks.kioskLogin': 'Kioska daxil ol',
+    'operator.kioskLogin.title': 'Kioska daxil ol',
+    'operator.kioskLogin.explanation':
+      'Kioskun loqosuna beş dəfə toxunun — ekranda QR çıxacaq. Onu oxudun: kioskun admin menyusu sizin adınızla açılacaq, orada etdiyiniz hər dəyişiklik auditə sizin adınızla düşəcək.',
+    'operator.kioskLogin.code': 'QR-ın mətni',
+    'operator.kioskLogin.codeHint':
+      'Bu brauzer QR oxumur: QR-ı başqa tətbiqlə oxuyub mətnini bura yapışdırın.',
+    'operator.kioskLogin.confirm': 'Təsdiqlə',
+    'operator.kioskLogin.done': '{{code}} — {{name}}: menyu sizin adınızla açıldı.',
+    'operator.kioskLogin.doneHint':
+      'Dəyişiklikləri kioskun ekranında edin. Menyu 15 dəqiqə və ya siz bağlayana qədər açıq qalır.',
+    'operator.kioskLogin.another': 'Başqa kioska daxil ol',
     'operator.activate.title': 'Kiosk aktivləşdir',
-    'operator.activate.explanation': 'Yeni quraşdırılan kioskun ekranında aktivləşdirmə kodu görünür. Kodu aşağıda yazın.',
+    'operator.activate.explanation':
+      'Yeni quraşdırılan kioskun ekranında aktivləşdirmə kodu görünür. Kodu aşağıda yazın.',
     'operator.activate.explanationScan':
       'Yeni quraşdırılan kioskun ekranında aktivləşdirmə kodu və QR görünür. Kodu yazın və ya QR-ı kamera ilə oxudun.',
     'operator.activate.code': 'Aktivləşdirmə kodu',
-    'operator.activate.codeHint': 'Kiosk ekranındakı 8 simvol. Kod 30 dəqiqə keçərlidir və ekranda özü yenilənir.',
+    'operator.activate.codeHint':
+      'Kiosk ekranındakı 8 simvol. Kod 30 dəqiqə keçərlidir və ekranda özü yenilənir.',
     'operator.activate.find': 'Cihazı tap',
     'operator.activate.scan': 'QR-ı kamera ilə oxut',
     'operator.activate.scanning': 'Kameranı kiosk ekranındakı QR-a tutun.',
     'operator.activate.stopScan': 'Dayandır, kodu yazacağam',
-    'operator.activate.noCamera': 'Kamera açılmadı: icazə verilməyib və ya kamera yoxdur. Kodu əl ilə yazın və ya brauzer ayarlarında kameraya icazə verin.',
-    'operator.activate.notFound': 'Bu kodla cihaz tapılmadı və ya kodun vaxtı keçib. Heç nə dəyişmədi — kiosk ekranındakı kodu yenidən yoxlayıb yazın.',
+    'operator.activate.noCamera':
+      'Kamera açılmadı: icazə verilməyib və ya kamera yoxdur. Kodu əl ilə yazın və ya brauzer ayarlarında kameraya icazə verin.',
+    'operator.activate.notFound':
+      'Bu kodla cihaz tapılmadı və ya kodun vaxtı keçib. Heç nə dəyişmədi — kiosk ekranındakı kodu yenidən yoxlayıb yazın.',
     'operator.activate.unnamed': 'Adsız cihaz',
     'operator.activate.printers': 'Qoşulmuş printer: {{count}}',
-    'operator.activate.noPrinters': 'Cihaz heç bir printer görmür. Aktivləşdirmək olar, amma kiosk printer qoşulub seçilənə qədər sifariş qəbul etməyəcək.',
+    'operator.activate.noPrinters':
+      'Cihaz heç bir printer görmür. Aktivləşdirmək olar, amma kiosk printer qoşulub seçilənə qədər sifariş qəbul etməyəcək.',
     'operator.activate.kiosk': 'Hansı kiosk',
     'operator.activate.kioskHint': 'Yalnız sizə təyin olunmuş kiosklar göstərilir.',
-    'operator.activate.noKiosks': 'Sizə təyin olunmuş kiosk yoxdur, ona görə cihazı bağlamağa yer yoxdur. Administratordan kioskun sizə təyin olunmasını istəyin.',
-    'operator.activate.replaces': '{{code}} kioskunun artıq cihazı var. Aktivləşdirsəniz köhnə cihaz ayrılacaq və işləməyəcək; kioskun ayarları, tarixçəsi və sayğacları qalacaq.',
+    'operator.activate.noKiosks':
+      'Sizə təyin olunmuş kiosk yoxdur, ona görə cihazı bağlamağa yer yoxdur. Administratordan kioskun sizə təyin olunmasını istəyin.',
+    'operator.activate.replaces':
+      '{{code}} kioskunun artıq cihazı var. Aktivləşdirsəniz köhnə cihaz ayrılacaq və işləməyəcək; kioskun ayarları, tarixçəsi və sayğacları qalacaq.',
     'operator.activate.printer': 'Printer',
     'operator.activate.printerLater': 'Sonra seçəcəyəm',
     'operator.activate.confirm': 'Aktivləşdir',
@@ -186,7 +206,8 @@ export const operatorTranslations: PageTranslations = {
     'operator.inventory.location': 'Yeri: {{location}}',
     'operator.inventory.take': 'Özümə götürürəm',
     'operator.inventory.takeTitle': '{{name}} — özümə götürürəm',
-    'operator.inventory.takeExplanation': 'Götürdüyünüz miqdar anbar qalığından çıxılır və sizin adınıza yazılır.',
+    'operator.inventory.takeExplanation':
+      'Götürdüyünüz miqdar anbar qalığından çıxılır və sizin adınıza yazılır.',
     'operator.inventory.quantity': 'Miqdar ({{unit}})',
     'operator.inventory.note': 'Qeyd',
     'operator.inventory.tooMany': 'Anbarda bu qədər yoxdur: {{stock}} {{unit}} qalıb.',
@@ -287,12 +308,14 @@ export const operatorTranslations: PageTranslations = {
     'operator.refill.quantity': 'How many ({{unit}})',
     'operator.refill.itemStock': 'In the warehouse: {{stock}} {{unit}}',
     'operator.refill.save': 'Record',
-    'operator.refill.invalid': 'This count does not fit the tray: capacity {{capacity}}, now {{current}} sheets.',
+    'operator.refill.invalid':
+      'This count does not fit the tray: capacity {{capacity}}, now {{current}} sheets.',
 
     'operator.replaced.title': 'Toner replaced',
     'operator.replaced.what': 'What was replaced',
     'operator.replaced.which': 'Which one (as the printer names it)',
-    'operator.replaced.whichHint': 'For example: Black Cartridge. Leave empty when there is only one.',
+    'operator.replaced.whichHint':
+      'For example: Black Cartridge. Leave empty when there is only one.',
     'operator.replaced.note': 'Note',
     'operator.replaced.explanation':
       'The printer reports the level itself: the alert closes when it sees the new cartridge.',
@@ -347,25 +370,44 @@ export const operatorTranslations: PageTranslations = {
     'operator.incidents.resolveNote': 'What was done',
 
     'operator.kiosks.activate': 'Activate a kiosk',
+    'operator.kiosks.kioskLogin': 'Sign in at a kiosk',
+    'operator.kioskLogin.title': 'Sign in at a kiosk',
+    'operator.kioskLogin.explanation':
+      "Tap the kiosk's logo five times — a QR appears on its screen. Read it: the kiosk's admin menu opens in your name, and every change you make there is audited as yours.",
+    'operator.kioskLogin.code': "The QR's text",
+    'operator.kioskLogin.codeHint':
+      'This browser cannot read codes: read the QR with another app and paste its text here.',
+    'operator.kioskLogin.confirm': 'Confirm',
+    'operator.kioskLogin.done': '{{code}} — {{name}}: the menu is open in your name.',
+    'operator.kioskLogin.doneHint':
+      "Make the changes on the kiosk's screen. The menu stays open for 15 minutes or until you close it.",
+    'operator.kioskLogin.another': 'Sign in at another kiosk',
     'operator.activate.title': 'Activate a kiosk',
-    'operator.activate.explanation': 'A newly installed kiosk shows an activation code on its screen. Type the code below.',
+    'operator.activate.explanation':
+      'A newly installed kiosk shows an activation code on its screen. Type the code below.',
     'operator.activate.explanationScan':
       'A newly installed kiosk shows an activation code and a QR on its screen. Type the code or read the QR with the camera.',
     'operator.activate.code': 'Activation code',
-    'operator.activate.codeHint': 'The 8 characters on the kiosk screen. A code lasts 30 minutes and renews itself on the screen.',
+    'operator.activate.codeHint':
+      'The 8 characters on the kiosk screen. A code lasts 30 minutes and renews itself on the screen.',
     'operator.activate.find': 'Find the device',
     'operator.activate.scan': 'Read the QR with the camera',
     'operator.activate.scanning': 'Point the camera at the QR on the kiosk screen.',
     'operator.activate.stopScan': 'Stop, I will type the code',
-    'operator.activate.noCamera': 'The camera did not open: it was not allowed, or there is none. Type the code, or allow the camera in the browser settings.',
-    'operator.activate.notFound': 'No device matches that code, or the code has expired. Nothing was changed - check the code on the kiosk screen and type it again.',
+    'operator.activate.noCamera':
+      'The camera did not open: it was not allowed, or there is none. Type the code, or allow the camera in the browser settings.',
+    'operator.activate.notFound':
+      'No device matches that code, or the code has expired. Nothing was changed - check the code on the kiosk screen and type it again.',
     'operator.activate.unnamed': 'Unnamed device',
     'operator.activate.printers': 'Printers connected: {{count}}',
-    'operator.activate.noPrinters': 'The device sees no printer. It can be activated, but the kiosk will take no orders until a printer is connected and chosen.',
+    'operator.activate.noPrinters':
+      'The device sees no printer. It can be activated, but the kiosk will take no orders until a printer is connected and chosen.',
     'operator.activate.kiosk': 'Which kiosk',
     'operator.activate.kioskHint': 'Only the kiosks assigned to you are shown.',
-    'operator.activate.noKiosks': 'No kiosk is assigned to you, so there is nothing to bind the device to. Ask an administrator to assign the kiosk to you.',
-    'operator.activate.replaces': 'Kiosk {{code}} already has a device. Activating will detach the old device and it will stop working; the kiosk keeps its settings, history and counters.',
+    'operator.activate.noKiosks':
+      'No kiosk is assigned to you, so there is nothing to bind the device to. Ask an administrator to assign the kiosk to you.',
+    'operator.activate.replaces':
+      'Kiosk {{code}} already has a device. Activating will detach the old device and it will stop working; the kiosk keeps its settings, history and counters.',
     'operator.activate.printer': 'Printer',
     'operator.activate.printerLater': 'I will choose later',
     'operator.activate.confirm': 'Activate',
@@ -381,7 +423,8 @@ export const operatorTranslations: PageTranslations = {
     'operator.inventory.location': 'Where: {{location}}',
     'operator.inventory.take': 'I am taking some',
     'operator.inventory.takeTitle': '{{name}} — I am taking some',
-    'operator.inventory.takeExplanation': 'What you take leaves the warehouse count and is written in your name.',
+    'operator.inventory.takeExplanation':
+      'What you take leaves the warehouse count and is written in your name.',
     'operator.inventory.quantity': 'Quantity ({{unit}})',
     'operator.inventory.note': 'Note',
     'operator.inventory.tooMany': 'The warehouse does not hold that many: {{stock}} {{unit}} left.',
@@ -482,7 +525,8 @@ export const operatorTranslations: PageTranslations = {
     'operator.refill.quantity': 'Сколько ({{unit}})',
     'operator.refill.itemStock': 'На складе: {{stock}} {{unit}}',
     'operator.refill.save': 'Записать',
-    'operator.refill.invalid': 'Столько не поместится в лоток: ёмкость {{capacity}}, сейчас {{current}} листов.',
+    'operator.refill.invalid':
+      'Столько не поместится в лоток: ёмкость {{capacity}}, сейчас {{current}} листов.',
 
     'operator.replaced.title': 'Тонер заменён',
     'operator.replaced.what': 'Что заменено',
@@ -542,31 +586,51 @@ export const operatorTranslations: PageTranslations = {
     'operator.incidents.resolveNote': 'Что сделано',
 
     'operator.kiosks.activate': 'Активировать киоск',
+    'operator.kiosks.kioskLogin': 'Войти на киоске',
+    'operator.kioskLogin.title': 'Войти на киоске',
+    'operator.kioskLogin.explanation':
+      'Коснитесь логотипа киоска пять раз — на экране появится QR. Считайте его: меню администратора откроется от вашего имени, и каждое изменение там попадёт в аудит под вашим именем.',
+    'operator.kioskLogin.code': 'Текст QR',
+    'operator.kioskLogin.codeHint':
+      'Этот браузер не читает коды: считайте QR другим приложением и вставьте сюда его текст.',
+    'operator.kioskLogin.confirm': 'Подтвердить',
+    'operator.kioskLogin.done': '{{code}} — {{name}}: меню открыто от вашего имени.',
+    'operator.kioskLogin.doneHint':
+      'Вносите изменения на экране киоска. Меню открыто 15 минут или пока вы его не закроете.',
+    'operator.kioskLogin.another': 'Войти на другом киоске',
     'operator.activate.title': 'Активировать киоск',
-    'operator.activate.explanation': 'На экране нового киоска показан код активации. Введите его ниже.',
+    'operator.activate.explanation':
+      'На экране нового киоска показан код активации. Введите его ниже.',
     'operator.activate.explanationScan':
       'На экране нового киоска показаны код активации и QR. Введите код или считайте QR камерой.',
     'operator.activate.code': 'Код активации',
-    'operator.activate.codeHint': '8 символов на экране киоска. Код действует 30 минут и сам обновляется на экране.',
+    'operator.activate.codeHint':
+      '8 символов на экране киоска. Код действует 30 минут и сам обновляется на экране.',
     'operator.activate.find': 'Найти устройство',
     'operator.activate.scan': 'Считать QR камерой',
     'operator.activate.scanning': 'Наведите камеру на QR на экране киоска.',
     'operator.activate.stopScan': 'Остановить, введу код',
-    'operator.activate.noCamera': 'Камера не открылась: нет разрешения или камеры. Введите код вручную или разрешите камеру в настройках браузера.',
-    'operator.activate.notFound': 'Устройство с таким кодом не найдено, или срок кода истёк. Ничего не изменилось — проверьте код на экране киоска и введите его снова.',
+    'operator.activate.noCamera':
+      'Камера не открылась: нет разрешения или камеры. Введите код вручную или разрешите камеру в настройках браузера.',
+    'operator.activate.notFound':
+      'Устройство с таким кодом не найдено, или срок кода истёк. Ничего не изменилось — проверьте код на экране киоска и введите его снова.',
     'operator.activate.unnamed': 'Устройство без имени',
     'operator.activate.printers': 'Подключено принтеров: {{count}}',
-    'operator.activate.noPrinters': 'Устройство не видит ни одного принтера. Активировать можно, но киоск не будет принимать заказы, пока принтер не подключён и не выбран.',
+    'operator.activate.noPrinters':
+      'Устройство не видит ни одного принтера. Активировать можно, но киоск не будет принимать заказы, пока принтер не подключён и не выбран.',
     'operator.activate.kiosk': 'Какой киоск',
     'operator.activate.kioskHint': 'Показаны только назначенные вам киоски.',
-    'operator.activate.noKiosks': 'Вам не назначен ни один киоск, поэтому привязать устройство не к чему. Попросите администратора назначить вам киоск.',
-    'operator.activate.replaces': 'У киоска {{code}} уже есть устройство. При активации старое устройство будет отвязано и перестанет работать; настройки, история и счётчики киоска сохранятся.',
+    'operator.activate.noKiosks':
+      'Вам не назначен ни один киоск, поэтому привязать устройство не к чему. Попросите администратора назначить вам киоск.',
+    'operator.activate.replaces':
+      'У киоска {{code}} уже есть устройство. При активации старое устройство будет отвязано и перестанет работать; настройки, история и счётчики киоска сохранятся.',
     'operator.activate.printer': 'Принтер',
     'operator.activate.printerLater': 'Выберу позже',
     'operator.activate.confirm': 'Активировать',
     'operator.activate.another': 'Другой код',
     'operator.activate.done': 'Киоск активирован. Проверьте принтер и сделайте тестовую печать.',
-    'operator.activate.newKiosk': 'Новый киоск, которого нет в списке, создаётся в панели администратора:',
+    'operator.activate.newKiosk':
+      'Новый киоск, которого нет в списке, создаётся в панели администратора:',
     'operator.activate.newKioskLink': 'Устройства',
     'operator.inventory.title': 'Склад',
     'operator.inventory.empty': 'На складе ничего нет.',
@@ -576,7 +640,8 @@ export const operatorTranslations: PageTranslations = {
     'operator.inventory.location': 'Место: {{location}}',
     'operator.inventory.take': 'Беру себе',
     'operator.inventory.takeTitle': '{{name}} — беру себе',
-    'operator.inventory.takeExplanation': 'Взятое количество списывается со склада и записывается на вас.',
+    'operator.inventory.takeExplanation':
+      'Взятое количество списывается со склада и записывается на вас.',
     'operator.inventory.quantity': 'Количество ({{unit}})',
     'operator.inventory.note': 'Примечание',
     'operator.inventory.tooMany': 'На складе столько нет: осталось {{stock}} {{unit}}.',

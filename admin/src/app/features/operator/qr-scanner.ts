@@ -13,7 +13,12 @@ interface Detector {
 type DetectorConstructor = new (options: { formats: string[] }) => Detector;
 
 /** What a kiosk's activation screen shows: `neoprint://activate/{deviceId}?code={pairingCode}`. */
-export const activationQr = (text: string): boolean => text.toLowerCase().startsWith('neoprint://activate/');
+export const activationQr = (text: string): boolean =>
+  text.toLowerCase().startsWith('neoprint://activate/');
+
+/** What a kiosk's admin corner shows (T-392): `neoprint://kiosk-login/{code}`. */
+export const kioskLoginQr = (text: string): boolean =>
+  text.toLowerCase().startsWith('neoprint://kiosk-login/');
 
 const detectorOf = (): DetectorConstructor | undefined =>
   (globalThis as { BarcodeDetector?: DetectorConstructor }).BarcodeDetector;
@@ -27,7 +32,11 @@ export class QrScanner {
   private settle: ((text: string | null) => void) | null = null;
 
   static supported(): boolean {
-    return detectorOf() !== undefined && typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+    return (
+      detectorOf() !== undefined &&
+      typeof navigator !== 'undefined' &&
+      !!navigator.mediaDevices?.getUserMedia
+    );
   }
 
   /**
@@ -47,7 +56,10 @@ export class QrScanner {
 
     const detector = new Detector({ formats: ['qr_code'] });
 
-    this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    this.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false,
+    });
     video.srcObject = this.stream;
     await video.play();
 

@@ -28,9 +28,23 @@ function idempotent(): { headers: HttpHeaders } {
  * with a phone and a weak signal. Everything else is what the admin panel
  * calls, under the same permissions.
  */
+/** The kiosk whose menu opened (T-392). */
+export interface OperatorKioskLoginApproved {
+  kioskId: string;
+  kioskCode: string;
+  kioskName: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class OperatorApiService {
   private readonly http = inject(HttpClient);
+
+  /** "Kioska daxil ol" (T-392): the kiosk's menu opens in this account's name. */
+  approveKioskLogin(code: string): Observable<OperatorKioskLoginApproved> {
+    return this.http.post<OperatorKioskLoginApproved>('/api/admin/operator/kiosk-logins/approve', {
+      code,
+    });
+  }
 
   kiosks(): Observable<OperatorKioskCard[]> {
     return this.http.get<OperatorKioskCard[]>('/api/admin/operator/kiosks');

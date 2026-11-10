@@ -49,6 +49,14 @@ export const routes: Routes = [
           ),
       },
       {
+        // The kiosk's admin menu in this operator's name, by the kiosk's QR (T-392).
+        path: 'kiosk-login',
+        loadComponent: () =>
+          import('./features/operator/operator-kiosk-login.component').then(
+            (m) => m.OperatorKioskLoginComponent,
+          ),
+      },
+      {
         path: 'activate',
         canActivate: [permissionGuard(Permissions.kiosksActivate)],
         loadComponent: () =>

@@ -40,6 +40,12 @@ import { operatorScreen } from './operator-screen';
       <div class="op-heading">
         <h1 class="op-title">{{ 'operator.kiosks.title' | translate }}</h1>
 
+        <!-- At a kiosk: its admin menu opens in this account's name (T-392). -->
+        <a mat-stroked-button routerLink="/operator/kiosk-login" data-action="kiosk-login">
+          <mat-icon>qr_code_scanner</mat-icon>
+          {{ 'operator.kiosks.kioskLogin' | translate }}
+        </a>
+
         <!-- An installation: the machine on site is bound to its kiosk (plan section 8B). -->
         @if (canActivate()) {
           <a mat-stroked-button routerLink="/operator/activate" data-action="activate">
@@ -50,7 +56,11 @@ import { operatorScreen } from './operator-screen';
       </div>
 
       @if (screen.problem(); as problem) {
-        <app-error-banner [problem]="problem" effect="operator.loadFailedEffect" (retry)="screen.reload()" />
+        <app-error-banner
+          [problem]="problem"
+          effect="operator.loadFailedEffect"
+          (retry)="screen.reload()"
+        />
       } @else if (screen.loading()) {
         @for (row of [1, 2, 3]; track row) {
           <div class="neo-skeleton neo-skeleton--block"></div>
@@ -116,7 +126,8 @@ export class OperatorKiosksComponent {
     ],
     // Each card's status goes to the store every page reads it from (T-254),
     // so a status heard a moment later is shown here without asking again.
-    fresh: (cards) => cards.forEach((card) => this.statuses.learn(card.id, card.status as KioskStatus)),
+    fresh: (cards) =>
+      cards.forEach((card) => this.statuses.learn(card.id, card.status as KioskStatus)),
   });
 
   /** The cards as the server sorted them: the ones that need somebody first. */
