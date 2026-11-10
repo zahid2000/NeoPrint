@@ -121,8 +121,8 @@
     <sys:Double x:Key="IconTileSmallSize">56</sys:Double>
     <!-- The flow's screens as the poster draws them (T-371 - T-374). -->
     <sys:Double x:Key="PreviewThumbsWidth">200</sys:Double>
-    <sys:Double x:Key="PreviewSideWidth">320</sys:Double>
-    <sys:Double x:Key="EditTileWidth">380</sys:Double>
+    <!-- The editor's tools beside each page (T-384). -->
+    <sys:Double x:Key="EditToolsWidth">280</sys:Double>
     <sys:Double x:Key="PageToolHeight">56</sys:Double>
     <sys:Double x:Key="PayCardWidth">640</sys:Double>
     <sys:Double x:Key="HeroArtWidth">380</sys:Double>

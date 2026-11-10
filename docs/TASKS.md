@@ -1,4 +1,4 @@
-# NeoPrint — tapşırıq reyestri
+| İcrada | Səhifələr alt-alta, hər biri enə görə böyük (1000 px), alətlər sağda alt-alta. Ekran testində şəkilli səhifə ilə baxıldı. Real kioskda yoxlanılmalıdır || İcrada | Sağ sütun götürüldü; səhifə bütün enə uzanır (1400 px), aşağı sürüşür; "Redaktə et" / "Səhifədə yerləşdir" "Davam et"-in yanında. Ekran testində şəkilli səhifə ilə baxıldı. Real kioskda yoxlanılmalıdır || İcrada | Sağ sütun sürüşən oldu (`ScrollViewer`) — düymələrin üstünə düşmür; növbə kartı kompakt (yer və gözləmə yan-yana). Kiosk testləri 461/461, ekran testləri 8/8. Real kioskda (növbəti paket) yoxlanılmalıdır |# NeoPrint — tapşırıq reyestri
 
 Layihə sahibinin verdiyi **bütün** tapşırıqların yeganə siyahısı. Məqsəd: sessiya
 bitəndə, limit dolanda və ya iş dayananda heç nə itməsin.

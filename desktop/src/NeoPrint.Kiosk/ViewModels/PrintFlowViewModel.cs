@@ -90,6 +90,14 @@ public sealed partial class PageTile : ObservableObject
 
     public bool HasImage => Image is not null;
 
+    /// <summary>The page drawn large for the editor (T-384); null until it is drawn.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShownImage))]
+    private Bitmap? _fullImage;
+
+    /// <summary>The large page once it is there, the small one until then.</summary>
+    public Bitmap? ShownImage => FullImage ?? Image;
+
     [ObservableProperty]
     private int _rotate;
 
@@ -109,7 +117,11 @@ public sealed partial class PageTile : ObservableObject
 public sealed partial class PrintFlowViewModel : ViewModelBase
 {
     private const int ThumbnailWidth = 180;
-    private const int LargeWidth = 900;
+    // The preview fills the screen's width (T-383): drawn wide enough to read.
+    private const int LargeWidth = 1400;
+
+    // A page in the editor, one under the other (T-384).
+    private const int EditWidth = 1000;
 
     private readonly KioskOrderService _orders;
     private readonly IRemovableDriveWatcher _drives;
@@ -799,10 +811,33 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void Edit()
+    private async Task EditAsync()
     {
         Error = null;
         Stage = FlowStage.Edit;
+
+        // The pages large, one by one, so each can be read (T-384); the small
+        // ones stand in until then. New tiles on save or cancel let them go.
+        if (!IsPaged || _document is null)
+        {
+            return;
+        }
+
+        var pdf = await File.ReadAllBytesAsync(_document.PdfPath).ConfigureAwait(true);
+
+        foreach (var tile in Pages.ToList())
+        {
+            if (Stage != FlowStage.Edit)
+            {
+                return;
+            }
+
+            if (tile.FullImage is null)
+            {
+                var index = tile.Page - 1;
+                tile.FullImage = await Task.Run(() => Render(pdf, index, EditWidth)).ConfigureAwait(true);
+            }
+        }
     }
 
     [RelayCommand]

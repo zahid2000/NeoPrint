@@ -200,10 +200,12 @@ public sealed partial class ScreenRenderTests : IDisposable
         }
 
         // On the pilot's screen nothing needs scrolling: a customer does not know to (T-097, T-329).
+        // A document's pages are the one exception (ScrollViewer.pages, T-383, T-384): drawn large
+        // enough to read, a page runs past the edge, and that edge shows there is more.
         if (width == 1280)
         {
             foreach (var scroller in window.GetVisualDescendants().OfType<ScrollViewer>()
-                         .Where(scroller => scroller.IsEffectivelyVisible && scroller.Viewport.Height > 0
+                         .Where(scroller => scroller.IsEffectivelyVisible && !scroller.Classes.Contains("pages") && scroller.Viewport.Height > 0
                                             && scroller.Extent.Height > scroller.Viewport.Height + 1))
             {
                 yield return $"a part of the screen needs scrolling: {scroller.Extent.Height:0} px of content in {scroller.Viewport.Height:0}";
@@ -353,7 +355,7 @@ public sealed partial class ScreenRenderTests : IDisposable
         return shell;
     }
 
-    private async Task<PrintFlowViewModel> FlowAsync(string language, bool skipPayment)
+    private async Task<PrintFlowViewModel> FlowAsync(string language, bool skipPayment, bool drawPages = false)
     {
         var kit = await OrderTestKit.CreateAsync(skipPayment: skipPayment);
         _kits.Add(kit);
@@ -369,7 +371,8 @@ public sealed partial class ScreenRenderTests : IDisposable
         var drive = new RemovableDrive(folder, "KINGSTON", 1, 1);
         drives.Drives.Add(drive);
 
-        var flow = new PrintFlowViewModel(kit.Orders, drives, pageImage: _ => null)
+        // Pages are drawn only where the screen is about them (T-383, T-384).
+        var flow = new PrintFlowViewModel(kit.Orders, drives, pageImage: drawPages ? null : _ => null)
         {
             Language = language,
             Delay = (_, token) => Task.Delay(5, token),
@@ -454,9 +457,15 @@ public sealed partial class ScreenRenderTests : IDisposable
         var browse = await FlowAsync(language, skipPayment: true);
         screens.Add(("20-flow-browse", Shell(language, KioskScreen.Flow, shell => shell.Flow = browse)));
 
-        var preview = await FlowAsync(language, skipPayment: true);
+        var preview = await FlowAsync(language, skipPayment: true, drawPages: true);
         await preview.OpenCommand.ExecuteAsync(preview.Entries.First(entry => entry.IsSelectable && !entry.IsFolder));
         screens.Add(("21-flow-preview", Shell(language, KioskScreen.Flow, shell => shell.Flow = preview)));
+
+        // The editor: the pages one under the other, large (T-384).
+        var editing = await FlowAsync(language, skipPayment: true, drawPages: true);
+        await editing.OpenCommand.ExecuteAsync(editing.Entries.First(entry => entry.IsSelectable && !entry.IsFolder));
+        await editing.EditCommand.ExecuteAsync(null);
+        screens.Add(("21b-flow-edit-pages", Shell(language, KioskScreen.Flow, shell => shell.Flow = editing)));
 
         var options = await FlowAsync(language, skipPayment: true);
         await options.OpenCommand.ExecuteAsync(options.Entries.First(entry => entry.IsSelectable && !entry.IsFolder));
