@@ -105,7 +105,7 @@ if (-not (Test-Path $currentPrivate)) {
     Good 'açarlar yaradıldı'
 }
 
-$builtIn = Get-PemBody ([IO.File]::ReadAllText($stagingKeysFile).Split(@('public const string Next'), 'None')[0])
+$builtIn = Get-PemBody ([IO.File]::ReadAllText($stagingKeysFile).Split([string[]]@('public const string Next'), [StringSplitOptions]::None)[0])
 $mine = Get-PemBody ([IO.File]::ReadAllText($currentPublic))
 if ($mine -ne $builtIn) {
     Write-Host ''
