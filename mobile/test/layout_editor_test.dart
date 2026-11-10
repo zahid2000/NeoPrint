@@ -125,6 +125,69 @@ void main() {
     expect(moved.xMm, picture.xMm, reason: 'a vertical drag keeps x');
   });
 
+  // T-401: the first moves of a drag come before the parent has rebuilt with
+  // the new selection; they belong to the picture touched, not to the one
+  // selected before it.
+  testWidgets('dragging another picture moves that one, not the one selected '
+      'before', (tester) async {
+    const first = LayoutElement(
+      image: 'p1.jpg',
+      xMm: 10,
+      yMm: 10,
+      widthMm: 50,
+      heightMm: 50,
+    );
+    const second = LayoutElement(
+      image: 'p1.jpg',
+      xMm: 120,
+      yMm: 200,
+      widthMm: 50,
+      heightMm: 50,
+    );
+    final changed = <int>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 400,
+            height: 600,
+            child: LayoutCanvas(
+              project: const LayoutProject(
+                marginMm: 10,
+                pages: [
+                  LayoutPage([first, second]),
+                ],
+              ),
+              page: 0,
+              images: const {},
+              // The parent still says the first one is selected.
+              selected: 0,
+              lockRatio: true,
+              onSelect: (_) {},
+              onChanged: (index, _, {required done}) => changed.add(index),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // A4 in 400 × 600: 1.714 px a millimetre from (32, 57.4).
+    const scale = 360 / 210;
+    final centre = const Offset(32, 57.43) + const Offset(145, 225) * scale;
+    await tester.timedDragFrom(
+      centre,
+      const Offset(0, 40),
+      const Duration(milliseconds: 300),
+    );
+    await tester.pumpAndSettle();
+
+    expect(changed, isNotEmpty);
+    expect(changed.toSet(), {1});
+  });
+
   testWidgets('a picture off the paper cannot be handed back', (tester) async {
     final result = await openEditor(
       tester,

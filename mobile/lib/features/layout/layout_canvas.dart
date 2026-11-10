@@ -48,6 +48,12 @@ class _LayoutCanvasState extends State<LayoutCanvas> {
   static const _handleTouch = 28.0;
 
   _Gesture _gesture = _Gesture.none;
+
+  /// The picture this gesture started on (T-401). Not [LayoutCanvas.selected]:
+  /// the parent learns of a new selection only on its next build, and the
+  /// first moves came before it - they were written over the picture
+  /// selected before, which then turned into the one touched.
+  int? _index;
   LayoutElement? _start;
   Offset _startFocal = Offset.zero;
   List<SnapLine> _snapLines = const [];
@@ -137,6 +143,7 @@ class _LayoutCanvasState extends State<LayoutCanvas> {
                       _handleTouch,
                 )) {
               _gesture = _Gesture.resize;
+              _index = selected;
               _start = _elements[selected];
               _startFocal = details.localFocalPoint;
               return;
@@ -147,17 +154,19 @@ class _LayoutCanvasState extends State<LayoutCanvas> {
 
             if (hit == null) {
               _gesture = _Gesture.none;
+              _index = null;
               return;
             }
 
             _gesture = details.pointerCount > 1
                 ? _Gesture.transform
                 : _Gesture.move;
+            _index = hit;
             _start = _elements[hit];
             _startFocal = details.localFocalPoint;
           },
           onScaleUpdate: (details) {
-            final index = widget.selected;
+            final index = _index;
             final start = _start;
 
             if (index == null || start == null || _gesture == _Gesture.none) {
@@ -224,12 +233,13 @@ class _LayoutCanvasState extends State<LayoutCanvas> {
             }
           },
           onScaleEnd: (_) {
-            final index = widget.selected;
+            final index = _index;
             if (index != null && _gesture != _Gesture.none) {
               widget.onChanged(index, _elements[index], done: true);
             }
             setState(() {
               _gesture = _Gesture.none;
+              _index = null;
               _start = null;
               _snapLines = const [];
             });
