@@ -225,6 +225,7 @@
   "kiosks.photoEmpty": "Şəkil seçilməyib. Şəkli yenidən seçin.",
   "kiosks.photoTooLarge": "Şəkil çox böyükdür: ən çox {maxMb} MB ola bilər. Daha kiçik şəkil seçin.",
   "kiosks.photoNotImage": "Bu fayl şəkil deyil. JPEG, PNG və ya WebP şəkil seçin.",
+  "kiosks.brandingTextInvalid": "Bu mətn qəbul olunmadı: ən çox {max} simvol ola bilər. Mətni qısaldın və yenidən saxlayın.",
   "kiosks.codeTaken": "Kiosk kodu '{code}' artıq istifadə olunur.",
   "kiosks.deleteHasHistory": "{code} kioskuna cihaz bağlanıb — onun tarixçəsi var və silinə bilməz. Yalnız heç vaxt aktivləşdirilməmiş kiosk silinir.",
   "analytics.batchInvalid": "Analitika paketi boşdur və ya çox böyükdür (ən çox 200 hadisə).",

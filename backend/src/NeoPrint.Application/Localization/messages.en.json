@@ -225,6 +225,7 @@
   "kiosks.photoEmpty": "No picture was chosen. Choose the picture again.",
   "kiosks.photoTooLarge": "The picture is too large: at most {maxMb} MB. Choose a smaller one.",
   "kiosks.photoNotImage": "This file is not a picture. Choose a JPEG, PNG or WebP image.",
+  "kiosks.brandingTextInvalid": "This text was not accepted: it can be at most {max} characters. Shorten it and save again.",
   "kiosks.codeTaken": "The kiosk code '{code}' is already in use.",
   "kiosks.deleteHasHistory": "A device has been bound to {code}, so it has a history and cannot be deleted. Only a kiosk that was never activated can be deleted.",
   "analytics.batchInvalid": "The analytics batch is missing or too large (200 events at most).",

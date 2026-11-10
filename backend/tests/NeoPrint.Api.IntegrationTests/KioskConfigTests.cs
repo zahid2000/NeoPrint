@@ -543,6 +543,106 @@ public sealed class KioskConfigTests
             .GetProperty("status").GetString().Should().Be("Paused");
     }
 
+    // -----------------------------------------------------------------------
+    // Welcome screen words and picture (T-387)
+    // -----------------------------------------------------------------------
+
+    private static readonly byte[] OnePixelPng =
+    [
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+        0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+        0x00, 0x05, 0xFE, 0x02, 0xFE, 0xA7, 0x35, 0x81, 0x84, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+        0x44, 0xAE, 0x42, 0x60, 0x82,
+    ];
+
+    private static MultipartFormDataContent ImageForm(byte[] bytes)
+    {
+        var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(bytes);
+        file.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        form.Add(file, "image", "hero.jpg");
+        return form;
+    }
+
+    [DockerFact]
+    public async Task The_welcome_screen_says_what_the_panel_set_the_kiosks_own_words_before_the_defaults()
+    {
+        if (Skip) { return; }
+
+        var (kiosk, _, kioskId, _) = await ActivatedKioskAsync("config-branding", "HP LaserJet");
+        using var admin = await SuperAdminAsync();
+
+        try
+        {
+            // The default for every kiosk: a title in all three languages, a hotline in one.
+            var defaults = await admin.PutAsJsonAsync("/api/admin/kiosk-branding", new
+            {
+                values = new Dictionary<string, Dictionary<string, string?>>
+                {
+                    ["heroTitle"] = new() { ["az"] = "Hər şey çap olunur", ["en"] = "Everything prints", ["ru"] = "Всё печатается" },
+                    ["hotline"] = new() { ["az"] = "Kömək: *1234" },
+                },
+            });
+            defaults.StatusCode.Should().Be(HttpStatusCode.OK, await defaults.Content.ReadAsStringAsync());
+
+            // This kiosk's own title in Azerbaijani only; English falls back to the default.
+            var own = await admin.PutAsJsonAsync($"/api/admin/kiosks/{kioskId}/branding", new
+            {
+                values = new Dictionary<string, Dictionary<string, string?>>
+                {
+                    ["heroTitle"] = new() { ["az"] = "  Metroda çap  ", ["en"] = "" },
+                },
+            });
+            own.StatusCode.Should().Be(HttpStatusCode.OK, await own.Content.ReadAsStringAsync());
+            var view = await own.Content.ReadFromJsonAsync<JsonElement>();
+            view.GetProperty("texts").GetProperty("heroTitle").GetProperty("az").GetString().Should().Be("Metroda çap");
+            view.GetProperty("defaults").GetProperty("heroTitle").GetProperty("en").GetString().Should().Be("Everything prints");
+
+            var image = await admin.PutAsync("/api/admin/kiosk-branding/image", ImageForm(OnePixelPng));
+            image.StatusCode.Should().Be(HttpStatusCode.OK, await image.Content.ReadAsStringAsync());
+
+            var branding = (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("branding");
+            var title = branding.GetProperty("texts").GetProperty("heroTitle");
+            title.GetProperty("az").GetString().Should().Be("Metroda çap");
+            title.GetProperty("en").GetString().Should().Be("Everything prints");
+            title.GetProperty("ru").GetString().Should().Be("Всё печатается");
+            branding.GetProperty("texts").GetProperty("hotline").TryGetProperty("en", out _).Should().BeFalse("nothing was written in English");
+            branding.GetProperty("texts").TryGetProperty("usbTitle", out _).Should().BeFalse("the kiosk keeps its own words");
+            branding.GetProperty("imageVersion").GetInt64().Should().BePositive();
+
+            // The picture, as stored and unsniffed, to the kiosk only.
+            var served = await kiosk.GetAsync("/api/kiosks/me/branding/image");
+            served.StatusCode.Should().Be(HttpStatusCode.OK);
+            served.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
+            served.Headers.GetValues("X-Content-Type-Options").Should().Contain("nosniff");
+            (await served.Content.ReadAsByteArrayAsync()).Should().Equal(OnePixelPng);
+            using var anonymous = _fixture.CreateApiClient();
+            (await anonymous.GetAsync("/api/kiosks/me/branding/image")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+            // A key the kiosk does not know, or a text too long, changes nothing.
+            var wrong = await admin.PutAsJsonAsync($"/api/admin/kiosks/{kioskId}/branding", new
+            {
+                values = new Dictionary<string, Dictionary<string, string?>>
+                {
+                    ["heroTitle"] = new() { ["az"] = new string('a', 161) },
+                    ["secret"] = new() { ["az"] = "x" },
+                },
+            });
+            wrong.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/kiosks/{kioskId}/branding"))
+                .GetProperty("texts").GetProperty("heroTitle").GetProperty("az").GetString().Should().Be("Metroda çap");
+        }
+        finally
+        {
+            // The default reaches every kiosk: leave it as it was.
+            await admin.PutAsJsonAsync("/api/admin/kiosk-branding", new { values = new Dictionary<string, object>() });
+            await admin.DeleteAsync("/api/admin/kiosk-branding/image");
+        }
+
+        (await kiosk.GetAsync("/api/kiosks/me/branding/image")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
     [DockerFact]
     public async Task A_heartbeat_needs_a_kiosk_token()
     {

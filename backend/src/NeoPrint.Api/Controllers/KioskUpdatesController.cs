@@ -41,6 +41,17 @@ public sealed class KioskUpdatesController : ControllerBase
             ? Ok(await _sender.Send(new GetKioskUpdateQuery(deviceId), cancellationToken))
             : Forbid();
 
+    /// <summary>
+    /// The picture beside the welcome screen's big line (T-387): this kiosk's
+    /// own, else the default's; 404 when neither is set. The configuration
+    /// carries its version, the kiosk caches by it.
+    /// </summary>
+    [HttpGet("kiosks/me/branding/image")]
+    public async Task<IActionResult> BrandingImage(CancellationToken cancellationToken)
+        => _currentUser.DeviceId is { } deviceId
+            ? KioskPhotoResults.Of(this, await _sender.Send(new GetDeviceBrandingImageQuery(deviceId), cancellationToken))
+            : Forbid();
+
     /// <summary>A package this kiosk is offered right now; any other is "not found".</summary>
     [HttpGet("releases/{id:guid}/download")]
     public async Task<IActionResult> Download(Guid id, CancellationToken cancellationToken)

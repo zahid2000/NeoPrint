@@ -163,6 +163,8 @@ public static class DependencyInjection
         services.AddScoped<Operations.OperationsJobs>();
         services.AddScoped<Analytics.AnalyticsRollupJob>();
         services.AddScoped<Application.Kiosks.IKioskTelemetryStore, Kiosks.KioskTelemetryStore>();
+        services.AddScoped<Application.Kiosks.IKioskBrandingRepository, Kiosks.KioskBrandingRepository>();
+        services.AddScoped<Application.Kiosks.KioskBrandingResolver>();
         services.AddScoped<Application.Kiosks.IKioskStatusCache, Kiosks.RedisKioskStatusCache>();
         services.AddScoped<Application.Kiosks.IPrinterTelemetryStore, Kiosks.PrinterTelemetryStore>();
         services.AddScoped<Application.Kiosks.IPrinterEventStore, Kiosks.PrinterEventStore>();

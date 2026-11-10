@@ -140,6 +140,9 @@ public sealed class MongoContext
     public MongoSet<Domain.Incidents.IncidentNotification> IncidentNotifications
         => Set<Domain.Incidents.IncidentNotification>("incident_notifications");
     public MongoSet<Domain.Support.SupportClaim> SupportClaims => Set<Domain.Support.SupportClaim>("support_claims");
+
+    /// <summary>What kiosks say on their welcome screen and footer (T-387): the default and per kiosk.</summary>
+    public MongoSet<Domain.Kiosks.KioskBranding> KioskBrandings => Set<Domain.Kiosks.KioskBranding>("kiosk_branding");
     public MongoSet<Domain.PrintJobs.PreparedPrint> PreparedPrints => Set<Domain.PrintJobs.PreparedPrint>("prepared_prints");
 
     public MongoSet<Domain.Sharing.Share> Shares => Set<Domain.Sharing.Share>("file_shares");

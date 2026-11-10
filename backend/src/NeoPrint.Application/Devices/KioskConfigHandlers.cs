@@ -49,6 +49,7 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
     private readonly IFeatureFlagEvaluator _features;
     private readonly IClock _clock;
     private readonly Pricing.IPricingProfileRepository _profiles;
+    private readonly Kiosks.KioskBrandingResolver _branding;
 
     public GetKioskConfigHandler(
         IKioskDeviceRepository devices,
@@ -56,8 +57,10 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
         ISettingsReader settings,
         IFeatureFlagEvaluator features,
         IClock clock,
-        Pricing.IPricingProfileRepository profiles)
+        Pricing.IPricingProfileRepository profiles,
+        Kiosks.KioskBrandingResolver branding)
     {
+        _branding = branding;
         _profiles = profiles;
         _devices = devices;
         _kiosks = kiosks;
@@ -179,7 +182,9 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
                 await _settings.GetIntAsync(SettingKeys.UpdateHealthTimeoutMinutes, 5, cancellationToken).ConfigureAwait(false),
                 await _settings.GetIntAsync(SettingKeys.UpdateKeepVersions, 3, cancellationToken).ConfigureAwait(false),
                 await _settings.GetIntAsync(SettingKeys.UpdateMaxIdleWaitMinutes, 30, cancellationToken).ConfigureAwait(false),
-                await _settings.GetIntAsync(SettingKeys.LogsMaxUploadMb, 10, cancellationToken).ConfigureAwait(false)));
+                await _settings.GetIntAsync(SettingKeys.LogsMaxUploadMb, 10, cancellationToken).ConfigureAwait(false)),
+            // The welcome screen's words and picture, set in the panel (T-387).
+            await _branding.ResolveAsync(kiosk.Id, cancellationToken).ConfigureAwait(false));
     }
 }
 

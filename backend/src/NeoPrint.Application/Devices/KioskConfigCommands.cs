@@ -43,7 +43,8 @@ public sealed record KioskConfigResponse(
     bool PaperBlockWhenInsufficient = true,
     int IdleResetSeconds = 90,
     int TelemetrySeconds = 30,
-    KioskUpdateSettingsDto? Update = null);
+    KioskUpdateSettingsDto? Update = null,
+    Kiosks.KioskBrandingDto? Branding = null);
 
 /// <summary>
 /// When and how the kiosk updates itself (plan section 7.12, T-321;
