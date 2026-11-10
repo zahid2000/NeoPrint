@@ -11,6 +11,7 @@ import 'package:neoprint/core/router/app_router.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:neoprint/features/files/file_models.dart';
 import 'package:neoprint/features/files/file_preview_screen.dart';
+import 'package:neoprint/features/files/cloud_picker.dart';
 import 'package:neoprint/features/files/files_controller.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_models.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_search_controller.dart';
@@ -135,6 +136,23 @@ class NoSession extends SessionController {
 
 /// The Print tab's way from a file to its print settings (T-347), on a
 /// router so the next screen can be seen.
+/// Cloud apps on the phone; their chooser is closed without a file.
+class FakeCloud implements CloudPicker {
+  FakeCloud(this.apps);
+
+  final List<CloudApp> apps;
+  final opened = <CloudApp>[];
+
+  @override
+  Future<List<CloudApp>> installed() async => apps;
+
+  @override
+  Future<CloudFile?> pick(CloudApp app) async {
+    opened.add(app);
+    return null;
+  }
+}
+
 Widget flow(
   List<UserFile> files, {
   required String start,
@@ -143,6 +161,7 @@ Widget flow(
   ListRepository? repository,
   FakeSessions? sessions,
   List<KioskSummary> kiosks = const [elmler, mayis],
+  CloudPicker? cloud,
 }) {
   final router = GoRouter(
     initialLocation: start,
@@ -189,6 +208,7 @@ Widget flow(
       sessionProvider.overrideWith(NoSession.new),
       sessionRepositoryProvider.overrideWithValue(sessions ?? FakeSessions()),
       kioskRepositoryProvider.overrideWithValue(FakeKiosks(kiosks)),
+      if (cloud != null) cloudPickerProvider.overrideWithValue(cloud),
     ],
     child: MaterialApp.router(
       theme: AppTheme.light(),
@@ -331,8 +351,43 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Fayl seç'), findsOneWidget);
-    // The cloud is in the same picker (T-399), not a row that opened it too.
-    expect(find.text('Buluddan əlavə et'), findsNothing);
+    expect(find.text('Buluddan əlavə et'), findsOneWidget);
     expect(find.text('Şəkil çək'), findsOneWidget);
+  });
+
+  testWidgets('"Buluddan əlavə et" asks which cloud when there are several, '
+      'and opens the chosen app chooser (T-399)', (tester) async {
+    final cloud = FakeCloud([CloudApp.googleDrive, CloudApp.oneDrive]);
+    await tester.pumpWidget(
+      flow([file()], start: Routes.printChoose, cloud: cloud),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Buluddan əlavə et'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hansı buluddan?'), findsOneWidget);
+    await tester.tap(find.text('OneDrive'));
+    await tester.pumpAndSettle();
+
+    expect(cloud.opened, [CloudApp.oneDrive]);
+  });
+
+  testWidgets('one cloud app opens at once (T-399)', (tester) async {
+    final cloud = FakeCloud([CloudApp.googleDrive]);
+    await tester.pumpWidget(
+      flow([file()], start: Routes.printChoose, cloud: cloud),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Buluddan əlavə et'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hansı buluddan?'), findsNothing);
+    expect(cloud.opened, [CloudApp.googleDrive]);
   });
 }

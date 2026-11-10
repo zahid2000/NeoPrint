@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -12,16 +13,19 @@ import '../layout/layout_launcher.dart';
 import '../scanner/document_scan_screen.dart';
 import '../scanner/document_scanner.dart';
 import 'file_models.dart';
+import 'cloud_picker.dart';
 import 'files_controller.dart';
 
 /// The ways a file gets into "Fayllarım": the files tab's upload sheet and
 /// the Print tab both start here (docs/DESIGN_SYSTEM.md, "Mobil: yeni
 /// vizual dil").
 enum FileSource {
-  /// The system picker: a file on the phone, or in Google Drive, OneDrive
-  /// and the like, which the picker lists when their app is on the phone
-  /// (docs/DECISIONS.md, T-339, T-399).
+  /// The system picker, for a file on the phone.
   device,
+
+  /// A cloud app's own chooser - Google Drive, OneDrive, Dropbox (T-399,
+  /// docs/DECISIONS.md 2026-11-10). Not on the web.
+  cloud,
   camera,
   scan,
   layout,
@@ -45,13 +49,17 @@ Future<FileSource?> chooseFileSource(BuildContext context) async {
             ListTile(
               leading: const Icon(Icons.folder_open_outlined),
               title: Text(l10n.filesPickFile),
-              // Google Drive, OneDrive: in the same system picker (T-399) -
-              // a row of its own opened the phone's files and looked broken.
-              subtitle: Text(
-                kIsWeb ? l10n.filesPickFileHint : l10n.filesPickFileCloudHint,
-              ),
+              subtitle: Text(l10n.filesPickFileHint),
               onTap: () => Navigator.pop(context, FileSource.device),
             ),
+            // The cloud app's own chooser, not the phone's files (T-399).
+            if (!kIsWeb)
+              ListTile(
+                leading: const Icon(Icons.cloud_upload_outlined),
+                title: Text(l10n.filesFromCloud),
+                subtitle: Text(l10n.filesFromCloudHint),
+                onTap: () => Navigator.pop(context, FileSource.cloud),
+              ),
             if (!kIsWeb)
               ListTile(
                 leading: const Icon(Icons.photo_camera_outlined),
@@ -138,6 +146,11 @@ Future<void> addFileFrom(
       if (picked != null && context.mounted) {
         await send(picked);
       }
+    case FileSource.cloud:
+      final picked = await _pickCloud(context, ref);
+      if (picked != null && context.mounted) {
+        await send(picked);
+      }
     case FileSource.camera:
       final photo = await _photo(context);
       if (photo != null && context.mounted) {
@@ -172,6 +185,88 @@ Future<PickedFile?> _photo(BuildContext context) async {
     path: path,
     readBytes: () => throw UnsupportedError('Camera photos have a path.'),
   );
+}
+
+/// "Buluddan əlavə et" (T-399): the one cloud app on the phone opens at
+/// once, several are offered first; with none, the system picker - and why.
+Future<PickedFile?> _pickCloud(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final picker = ref.read(cloudPickerProvider);
+
+  List<CloudApp> apps;
+  try {
+    apps = await picker.installed();
+  } on PlatformException {
+    apps = const [];
+  }
+  if (!context.mounted) {
+    return null;
+  }
+
+  if (apps.isEmpty) {
+    messenger.showSnackBar(SnackBar(content: Text(l10n.filesNoCloudApp)));
+    return _pickFile(ref);
+  }
+
+  final app = apps.length == 1
+      ? apps.single
+      : await showModalBottomSheet<CloudApp>(
+          context: context,
+          showDragHandle: true,
+          builder: (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    Spacing.x4,
+                    0,
+                    Spacing.x4,
+                    Spacing.x2,
+                  ),
+                  child: Text(
+                    l10n.filesWhichCloud,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                for (final app in apps)
+                  ListTile(
+                    leading: const Icon(Icons.cloud_outlined),
+                    title: Text(app.title),
+                    onTap: () => Navigator.pop(context, app),
+                  ),
+              ],
+            ),
+          ),
+        );
+  if (app == null) {
+    return null;
+  }
+
+  try {
+    final file = await picker.pick(app);
+    if (file == null) {
+      return null;
+    }
+    return PickedFile(
+      name: file.name,
+      path: file.path,
+      readBytes: () => throw UnsupportedError('A cloud copy has a path.'),
+    );
+  } on CloudPickException catch (error) {
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          error.failure == CloudPickFailure.tooLarge
+              ? l10n.filesCloudTooLarge
+              : l10n.filesCloudFailed(app.title),
+        ),
+      ),
+    );
+    return null;
+  }
 }
 
 /// The system picker, filtered to the formats the installation accepts

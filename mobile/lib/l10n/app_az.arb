@@ -146,7 +146,17 @@
     }
   },
   "filesPickFile": "Fayl seç",
-  "filesPickFileCloudHint": "Telefondan və ya buluddan (Google Drive, OneDrive — seçicinin menyusunda): PDF, Word, şəkil və s.",
+  "filesFromCloud": "Buluddan əlavə et",
+  "filesFromCloudHint": "Google Drive, OneDrive və ya Dropbox",
+  "filesWhichCloud": "Hansı buluddan?",
+  "filesNoCloudApp": "Telefonda Google Drive, OneDrive və ya Dropbox tətbiqi yoxdur — telefonun faylları açılır.",
+  "filesCloudTooLarge": "Fayl çox böyükdür — 200 MB-dan kiçik fayl seçin.",
+  "filesCloudFailed": "{app} faylı vermədi. Yenidən cəhd edin və ya faylı telefona yükləyib \"Fayl seç\" ilə əlavə edin.",
+  "@filesCloudFailed": {
+    "placeholders": {
+      "app": { "type": "String" }
+    }
+  },
   "filesPickFileHint": "PDF, Word, Excel, PowerPoint, şəkil və s.",
   "filesTakePhoto": "Şəkil çək",
   "filesTakePhotoHint": "Sənədin və ya şəklin fotosunu çəkin",
