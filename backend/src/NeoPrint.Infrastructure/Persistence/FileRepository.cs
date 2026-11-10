@@ -27,6 +27,7 @@ public sealed class FileRepository : IFileRepository
         => await _context.Files
             .Find(file => file.UserId == userId && file.DeletedAt == null)
             .SortByDescending(file => file.CreatedAt)
+            .ThenByDescending(file => file.Id)
             .Skip(skip)
             .Limit(take)
             .ToListAsync(cancellationToken)

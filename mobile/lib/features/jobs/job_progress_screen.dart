@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/network/api_client.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
+import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_primary_button.dart';
@@ -37,8 +39,8 @@ class _JobProgressScreenState extends ConsumerState<JobProgressScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final jobs = ref.watch(myJobsProvider);
-    final job = jobs.valueOrNull
-        ?.where((candidate) => candidate.jobCode == widget.jobCode)
+    final job = jobs.valueOrNull?.items
+        .where((candidate) => candidate.jobCode == widget.jobCode)
         .firstOrNull;
 
     // Just paid: the list may not have it yet - asked once more.
@@ -333,22 +335,22 @@ class _Actions extends ConsumerWidget {
 
 /// "Yenidən çap et" (T-408): the same file's print settings, filled in with
 /// what the order was printed with and at its kiosk - one tap to pay, and
-/// every choice can still be changed. The file is looked for in the list
-/// (read again when it is not there yet); a file deleted since is said so.
+/// every choice can still be changed. The file is looked for in the list,
+/// and asked from the server when the list has not come to it yet (T-413);
+/// a file deleted since is said so.
 Future<void> printAgain(BuildContext context, WidgetRef ref, MyJob job) async {
   final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
 
-  UserFile? find() => ref
-      .read(filesControllerProvider)
-      .files
-      .where((file) => file.id == job.fileId)
-      .firstOrNull;
-
-  var file = find();
-  if (file == null) {
-    await ref.read(filesControllerProvider.notifier).load();
-    file = find();
+  final fileId = job.fileId;
+  final UserFile? file;
+  try {
+    file = fileId == null
+        ? null
+        : await ref.read(filesControllerProvider.notifier).find(fileId);
+  } on ApiException catch (error) {
+    messenger.showSnackBar(SnackBar(content: Text(apiErrorText(l10n, error))));
+    return;
   }
   if (!context.mounted) {
     return;

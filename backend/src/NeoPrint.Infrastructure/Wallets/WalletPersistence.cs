@@ -76,6 +76,7 @@ public sealed class WalletTransactionRepository : IWalletTransactionRepository
         var items = await _context.WalletTransactions
             .Find(filter)
             .SortByDescending(entry => entry.CreatedAt)
+            .ThenByDescending(entry => entry.Id)
             .Skip(skip)
             .Limit(take)
             .ToListAsync(cancellationToken)

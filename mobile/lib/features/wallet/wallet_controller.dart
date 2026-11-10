@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/realtime/user_hub_provider.dart';
+import '../../shared/paging.dart';
 import 'wallet_repository.dart';
 
 final walletRepositoryProvider = Provider<WalletRepository>(
@@ -15,14 +16,41 @@ final walletRepositoryProvider = Provider<WalletRepository>(
 /// last (T-397).
 typedef WalletPeriod = ({DateTime from, DateTime to});
 
-/// The movements of one period, newest first - the most the server gives in
-/// one page.
-final walletPeriodProvider = FutureProvider.autoDispose
-    .family<List<WalletEntry>, WalletPeriod>(
-      (ref, period) => ref
-          .read(walletRepositoryProvider)
-          .transactions(pageSize: 100, from: period.from, to: period.to),
+/// The movements of one period, newest first, a page at a time (T-413).
+final walletPeriodProvider = AsyncNotifierProvider.autoDispose
+    .family<WalletPeriodController, Paged<WalletEntry>, WalletPeriod>(
+      WalletPeriodController.new,
     );
+
+class WalletPeriodController
+    extends AutoDisposeFamilyAsyncNotifier<Paged<WalletEntry>, WalletPeriod> {
+  late PageLoader<WalletEntry> _loader;
+
+  @override
+  Future<Paged<WalletEntry>> build(WalletPeriod period) {
+    final repository = ref.watch(walletRepositoryProvider);
+    _loader = PageLoader(
+      (page, size) => repository.transactions(
+        page: page,
+        pageSize: size,
+        from: period.from,
+        to: period.to,
+      ),
+      (entry) => entry.id,
+    );
+    return _loader.first();
+  }
+
+  Future<void> refresh() =>
+      refreshPaged(_loader, () => state, (value) => state = value);
+
+  Future<void> loadMore({bool retry = false}) => loadMorePaged(
+    _loader,
+    () => state,
+    (value) => state = value,
+    retry: retry,
+  );
+}
 
 final walletProvider = AsyncNotifierProvider<WalletController, WalletState>(
   WalletController.new,

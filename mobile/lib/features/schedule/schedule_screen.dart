@@ -13,6 +13,7 @@ import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_empty_state.dart';
+import '../../shared/widgets/neo_load_more.dart';
 import '../files/file_models.dart';
 import '../../shared/widgets/neo_status_chip.dart';
 import 'schedule_actions.dart';
@@ -53,7 +54,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         showBack: Navigator.of(context).canPop(),
       ),
       floatingActionButton: switch (items) {
-        AsyncData(:final value) when value.isNotEmpty && canCreate =>
+        AsyncData(:final value) when value.items.isNotEmpty && canCreate =>
           FloatingActionButton(
             tooltip: l10n.schedNew,
             shape: const CircleBorder(),
@@ -65,7 +66,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       body: RefreshIndicator(
         onRefresh: () => ref.read(schedulesProvider.notifier).refresh(),
         child: switch (items) {
-          AsyncData(:final value) when value.isEmpty => ListView(
+          AsyncData(:final value) when value.items.isEmpty => ListView(
             children: [
               NeoEmptyState(
                 icon: Icons.event_outlined,
@@ -83,46 +84,62 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           ),
           AsyncData(:final value) => () {
             final shown = [
-              for (final item in value)
+              for (final item in value.items)
                 if (_upcoming(item) == (_tab == _ScheduleTab.upcoming)) item,
             ];
+            final controller = ref.read(schedulesProvider.notifier);
             return NeoTabSwipe<_ScheduleTab>(
               values: _ScheduleTab.values,
               selected: _tab,
               onSelected: (tab) => setState(() => _tab = tab),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  Spacing.x4,
-                  Spacing.x2,
-                  Spacing.x4,
-                  // Room for the round button over the last card.
-                  Spacing.x16 + Spacing.x8,
-                ),
-                children: [
-                  NeoPillTabs<_ScheduleTab>(
-                    values: _ScheduleTab.values,
-                    selected: _tab,
-                    expand: true,
-                    label: (tab) => switch (tab) {
-                      _ScheduleTab.upcoming => l10n.schedTabUpcoming,
-                      _ScheduleTab.past => l10n.schedTabPast,
-                    },
-                    onSelected: (tab) => setState(() => _tab = tab),
+              child: NeoLoadMore(
+                paged: value,
+                onMore: controller.loadMore,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    Spacing.x4,
+                    Spacing.x2,
+                    Spacing.x4,
+                    // Room for the round button over the last card.
+                    Spacing.x16 + Spacing.x8,
                   ),
-                  const SizedBox(height: Spacing.x3),
-                  if (shown.isEmpty)
-                    NeoEmptyState(
-                      icon: Icons.event_outlined,
-                      message: _tab == _ScheduleTab.upcoming
-                          ? l10n.schedEmpty
-                          : l10n.schedPastEmpty,
-                    )
-                  else
-                    for (final item in shown) ...[
-                      _ScheduleCard(item: item),
-                      const SizedBox(height: Spacing.x3),
-                    ],
-                ],
+                  children: [
+                    NeoPillTabs<_ScheduleTab>(
+                      values: _ScheduleTab.values,
+                      selected: _tab,
+                      expand: true,
+                      label: (tab) => switch (tab) {
+                        _ScheduleTab.upcoming => l10n.schedTabUpcoming,
+                        _ScheduleTab.past => l10n.schedTabPast,
+                      },
+                      onSelected: (tab) => setState(() => _tab = tab),
+                    ),
+                    const SizedBox(height: Spacing.x3),
+                    // The tab's rows may be further down: empty only
+                    // once the whole list is in.
+                    if (shown.isEmpty && !value.hasMore)
+                      NeoEmptyState(
+                        icon: Icons.event_outlined,
+                        message: _tab == _ScheduleTab.upcoming
+                            ? l10n.schedEmpty
+                            : l10n.schedPastEmpty,
+                      )
+                    else
+                      for (final item in shown) ...[
+                        _ScheduleCard(item: item),
+                        const SizedBox(height: Spacing.x3),
+                      ],
+                    NeoLoadMoreFooter(
+                      paged:
+                          shown.isEmpty &&
+                              value.hasMore &&
+                              value.moreError == null
+                          ? value.copyWith(loadingMore: true)
+                          : value,
+                      onRetry: () => controller.loadMore(retry: true),
+                    ),
+                  ],
+                ),
               ),
             );
           }(),

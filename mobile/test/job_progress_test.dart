@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:neoprint/shared/paging.dart';
 import 'package:neoprint/core/realtime/user_hub_provider.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:neoprint/features/files/file_models.dart';
@@ -23,7 +24,7 @@ class ShownJobs extends CancellingJobs {
   final List<MyJob> jobs;
 
   @override
-  Future<List<MyJob>> build() async => jobs;
+  Future<Paged<MyJob>> build() async => Paged(jobs);
 }
 
 MyJob order(

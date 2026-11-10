@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:neoprint/shared/paging.dart';
 import 'package:neoprint/core/auth/auth_controller.dart';
 import 'package:neoprint/core/auth/auth_models.dart';
 import 'package:neoprint/core/network/api_client.dart';
@@ -41,7 +42,7 @@ class FakeJobs extends MyJobsController {
   final List<MyJob> jobs;
 
   @override
-  Future<List<MyJob>> build() async => jobs;
+  Future<Paged<MyJob>> build() async => Paged(jobs);
 }
 
 /// A payments API the test scripts: [get] answers in turn, [pay] records

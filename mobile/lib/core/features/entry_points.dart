@@ -15,7 +15,8 @@ final scheduledVisibleProvider = Provider.autoDispose<bool>(
           (ref
                   .watch(schedulesProvider)
                   .valueOrNull
-                  ?.any((item) => item.status.isActive) ??
+                  ?.items
+                  .any((item) => item.status.isActive) ??
               false)),
 );
 

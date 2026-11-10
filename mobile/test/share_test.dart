@@ -50,10 +50,12 @@ class FakeShares implements ShareRepository {
   }
 
   @override
-  Future<List<ShareItem>> received() async => receivedItems;
+  Future<List<ShareItem>> received({int? page, int? pageSize}) async =>
+      (page ?? 1) == 1 ? receivedItems : const [];
 
   @override
-  Future<List<ShareItem>> sent() async => sentItems;
+  Future<List<ShareItem>> sent({int? page, int? pageSize}) async =>
+      (page ?? 1) == 1 ? sentItems : const [];
 
   @override
   Future<Uint8List> myQr() async => Uint8List(0);

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neoprint/core/network/api_client.dart';
 import 'package:neoprint/core/realtime/user_hub.dart';
 import 'package:neoprint/core/realtime/user_hub_provider.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
@@ -25,6 +26,11 @@ class ListRepository implements FilesRepository {
   @override
   Future<FilePage> list({int page = 1, int pageSize = 50}) async =>
       FilePage(items: files, total: files.length);
+
+  @override
+  Future<UserFile> get(String id) async =>
+      files.where((file) => file.id == id).firstOrNull ??
+      (throw const ApiException(statusCode: 404, message: ''));
 
   @override
   Future<UserFile> upload({

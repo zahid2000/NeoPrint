@@ -30,7 +30,8 @@ class FakeSchedules implements ScheduleRepository {
   ApiException? printError;
 
   @override
-  Future<List<ScheduledPrint>> list() async => items;
+  Future<List<ScheduledPrint>> list({int? page, int? pageSize}) async =>
+      (page ?? 1) == 1 ? items : const [];
 
   @override
   Future<PlacedSchedule> create({

@@ -169,17 +169,27 @@ class JobsRepository {
 
   final ApiClient _api;
 
-  Future<List<MyJob>> mine() => _api.send(
+  /// Newest first; a [page] of [pageSize] rows (T-413), or the newest 100.
+  Future<List<MyJob>> mine({int? page, int? pageSize}) => _api.send(
     method: 'GET',
     path: 'api/print-jobs/my',
+    query: {
+      if (page != null) 'page': page,
+      if (pageSize != null) 'pageSize': pageSize,
+    },
     parse: (json) => (json as List<dynamic>)
         .map((item) => MyJob.fromJson(item as Map<String, dynamic>))
         .toList(),
   );
 
-  Future<List<MyClaim>> claims() => _api.send(
+  /// Newest first; a [page] of [pageSize] rows (T-413), or the newest 100.
+  Future<List<MyClaim>> claims({int? page, int? pageSize}) => _api.send(
     method: 'GET',
     path: 'api/me/claims',
+    query: {
+      if (page != null) 'page': page,
+      if (pageSize != null) 'pageSize': pageSize,
+    },
     parse: (json) => (json as List<dynamic>)
         .map((item) => MyClaim.fromJson(item as Map<String, dynamic>))
         .toList(),

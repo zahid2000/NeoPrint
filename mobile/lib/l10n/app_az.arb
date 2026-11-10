@@ -374,6 +374,12 @@
       "reason": { "type": "String" }
     }
   },
+  "listMoreFailed": "Siyahının davamı yüklənmədi: {reason}",
+  "@listMoreFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
   "jobPagesCopies": "{pages} səhifə × {copies} nüsxə",
   "@jobPagesCopies": {
     "placeholders": {
@@ -1484,7 +1490,6 @@
   "walletTabHistory": "Əməliyyatlar",
   "walletRecent": "Son əməliyyatlar",
   "walletHistoryTitle": "Bütün əməliyyatlar",
-  "walletPeriodAll": "Hamısı",
   "walletPeriodMonth": "Bu ay",
   "walletPeriodQuarter": "Son 3 ay",
   "walletPeriodPick": "Tarix seç",

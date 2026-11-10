@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neoprint/shared/paging.dart';
 import 'package:neoprint/core/network/api_client.dart';
 import 'package:neoprint/features/jobs/job_card.dart';
 import 'package:neoprint/features/jobs/jobs_controller.dart';
@@ -16,7 +17,7 @@ class CancellingJobs extends MyJobsController {
   final cancelled = <String>[];
 
   @override
-  Future<List<MyJob>> build() async => const [];
+  Future<Paged<MyJob>> build() async => const Paged([]);
 
   @override
   Future<ApiException?> cancel(String jobId) async {

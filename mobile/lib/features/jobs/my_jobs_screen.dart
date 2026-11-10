@@ -8,6 +8,7 @@ import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_design.dart';
 import '../../shared/widgets/neo_empty_state.dart';
+import '../../shared/widgets/neo_load_more.dart';
 import 'job_card.dart';
 import 'jobs_controller.dart';
 
@@ -38,56 +39,74 @@ class _MyJobsScreenState extends ConsumerState<MyJobsScreen> {
         onSelected: (tab) => setState(() => _tab = tab),
         child: RefreshIndicator(
           onRefresh: () => ref.read(myJobsProvider.notifier).refresh(),
-          child: ListView(
-            padding: const EdgeInsets.all(Spacing.x4),
-            children: [
-              NeoPillTabs<_JobsTab>(
-                values: _JobsTab.values,
-                selected: _tab,
-                expand: true,
-                label: (tab) => switch (tab) {
-                  _JobsTab.active => l10n.jobsTabActive,
-                  _JobsTab.past => l10n.jobsTabPast,
-                },
-                onSelected: (tab) => setState(() => _tab = tab),
-              ),
-              const SizedBox(height: Spacing.x4),
-              ...switch (jobs) {
-                AsyncData(:final value) => () {
-                  final shown = [
-                    for (final job in value)
-                      if (job.isActive == (_tab == _JobsTab.active)) job,
-                  ];
-                  if (shown.isEmpty) {
-                    return [
-                      NeoEmptyState(
-                        icon: Icons.receipt_long_outlined,
-                        message: _tab == _JobsTab.active
-                            ? l10n.jobsNoActive
-                            : l10n.homeNoJobs,
-                        hint: l10n.homeNoJobsHint,
-                      ),
+          child: NeoLoadMore(
+            paged: jobs.valueOrNull,
+            onMore: () => ref.read(myJobsProvider.notifier).loadMore(),
+            child: ListView(
+              padding: const EdgeInsets.all(Spacing.x4),
+              children: [
+                NeoPillTabs<_JobsTab>(
+                  values: _JobsTab.values,
+                  selected: _tab,
+                  expand: true,
+                  label: (tab) => switch (tab) {
+                    _JobsTab.active => l10n.jobsTabActive,
+                    _JobsTab.past => l10n.jobsTabPast,
+                  },
+                  onSelected: (tab) => setState(() => _tab = tab),
+                ),
+                const SizedBox(height: Spacing.x4),
+                ...switch (jobs) {
+                  AsyncData(:final value) => () {
+                    final shown = [
+                      for (final job in value.items)
+                        if (job.isActive == (_tab == _JobsTab.active)) job,
                     ];
-                  }
-                  return [
-                    for (final job in shown) ...[
-                      JobCard(job: job),
-                      const SizedBox(height: Spacing.x2),
-                    ],
-                  ];
-                }(),
-                AsyncError(:final error) => [
-                  NeoBanner.error(
-                    message: l10n.homeJobsFailed(
-                      error is ApiException
-                          ? apiErrorText(l10n, error)
-                          : l10n.errorServer,
+                    final footer = NeoLoadMoreFooter(
+                      // The tab's rows may be further down: a spinner, not
+                      // "nothing here", until the whole list is in.
+                      paged:
+                          shown.isEmpty &&
+                              value.hasMore &&
+                              value.moreError == null
+                          ? value.copyWith(loadingMore: true)
+                          : value,
+                      onRetry: () => ref
+                          .read(myJobsProvider.notifier)
+                          .loadMore(retry: true),
+                    );
+                    if (shown.isEmpty && !value.hasMore) {
+                      return [
+                        NeoEmptyState(
+                          icon: Icons.receipt_long_outlined,
+                          message: _tab == _JobsTab.active
+                              ? l10n.jobsNoActive
+                              : l10n.homeNoJobs,
+                          hint: l10n.homeNoJobsHint,
+                        ),
+                      ];
+                    }
+                    return [
+                      for (final job in shown) ...[
+                        JobCard(job: job),
+                        const SizedBox(height: Spacing.x2),
+                      ],
+                      footer,
+                    ];
+                  }(),
+                  AsyncError(:final error) => [
+                    NeoBanner.error(
+                      message: l10n.homeJobsFailed(
+                        error is ApiException
+                            ? apiErrorText(l10n, error)
+                            : l10n.errorServer,
+                      ),
                     ),
-                  ),
-                ],
-                _ => [const Center(child: CircularProgressIndicator())],
-              },
-            ],
+                  ],
+                  _ => [const Center(child: CircularProgressIndicator())],
+                },
+              ],
+            ),
           ),
         ),
       ),

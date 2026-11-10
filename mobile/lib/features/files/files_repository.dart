@@ -23,6 +23,13 @@ class FilesRepository {
     parse: (json) => FilePage.fromJson(json as Map<String, dynamic>),
   );
 
+  /// One file of the user's, wherever it is on the list (T-413).
+  Future<UserFile> get(String id) => _api.send(
+    method: 'GET',
+    path: 'api/files/$id',
+    parse: (json) => UserFile.fromJson(json as Map<String, dynamic>),
+  );
+
   /// The formats the installation accepts now, for the picker's filter.
   Future<Set<String>> acceptedFormats() => _api.send(
     method: 'GET',

@@ -42,7 +42,7 @@ class HomeScreen extends ConsumerWidget {
     final tokens = context.tokens;
     final canScanQr = Readiness.kioskPayment && ref.watch(canScanProvider);
     final jobs = Readiness.printJobs ? ref.watch(myJobsProvider) : null;
-    final active = [...?jobs?.valueOrNull?.where((job) => job.isActive)];
+    final active = [...?jobs?.valueOrNull?.items.where((job) => job.isActive)];
 
     return Scaffold(
       appBar: AppBar(

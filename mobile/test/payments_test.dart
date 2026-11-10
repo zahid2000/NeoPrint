@@ -20,6 +20,34 @@ import 'package:neoprint/l10n/app_localizations_az.dart';
 
 import 'payments_kit.dart';
 
+/// The ledger's history as the server pages it: a period, newest first.
+class FakeWalletHistory extends Fake implements WalletRepository {
+  FakeWalletHistory(this.entries);
+
+  final List<WalletEntry> entries;
+  final asked = <WalletPeriod>[];
+  final pages = <int>[];
+
+  @override
+  Future<List<WalletEntry>> transactions({
+    int page = 1,
+    int pageSize = 50,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    if (page == 1) {
+      asked.add((from: from!, to: to!));
+    }
+    pages.add(page);
+    final inPeriod = [
+      for (final entry in entries)
+        if (!entry.createdAt.isBefore(from!) && entry.createdAt.isBefore(to!))
+          entry,
+    ];
+    return inPeriod.skip((page - 1) * pageSize).take(pageSize).toList();
+  }
+}
+
 void main() {
   test('the amount to pay is never below nothing (T-377)', () {
     final payment = paymentOf(
@@ -579,12 +607,17 @@ void main() {
         );
         await tester.pumpWidget(
           ProviderScope(
-            overrides: step4Overrides(
-              wallet: WalletState(
-                wallet: const Wallet(balance: 70, bonusPages: 0),
-                entries: entries,
+            overrides: [
+              ...step4Overrides(
+                wallet: WalletState(
+                  wallet: const Wallet(balance: 70, bonusPages: 0),
+                  entries: entries,
+                ),
               ),
-            ),
+              walletRepositoryProvider.overrideWithValue(
+                FakeWalletHistory(entries),
+              ),
+            ],
             child: MaterialApp.router(
               theme: AppTheme.light(),
               locale: const Locale('az'),
@@ -607,38 +640,21 @@ void main() {
       },
     );
 
-    testWidgets('"Bütün əməliyyatlar" asks the server for a period (T-397)', (
-      tester,
+    Future<FakeWalletHistory> history(
+      WidgetTester tester,
+      List<WalletEntry> entries,
     ) async {
       tester.view
-        ..physicalSize = const Size(420, 2400)
+        ..physicalSize = const Size(420, 900)
         ..devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
-      final asked = <WalletPeriod>[];
+      final server = FakeWalletHistory(entries);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            ...step4Overrides(
-              wallet: WalletState(
-                wallet: const Wallet(balance: 70, bonusPages: 0),
-                entries: [
-                  for (var i = 3; i >= 1; i--)
-                    WalletEntry(
-                      id: 'e$i',
-                      type: 'TopUp',
-                      amount: i.toDouble(),
-                      bonusPages: 0,
-                      balanceAfter: i * 10.0,
-                      createdAt: DateTime(2026, 11, 10, 9, i),
-                    ),
-                ],
-              ),
-            ),
-            walletPeriodProvider.overrideWith((ref, period) async {
-              asked.add(period);
-              return const [];
-            }),
+            ...step4Overrides(),
+            walletRepositoryProvider.overrideWithValue(server),
           ],
           child: MaterialApp(
             theme: AppTheme.light(),
@@ -650,20 +666,62 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.textContaining('Sonra:'), findsNWidgets(3));
+      return server;
+    }
 
-      await tester.tap(find.text('Bu ay'));
+    WalletEntry entry(int i, DateTime at) => WalletEntry(
+      id: 'e$i',
+      type: 'TopUp',
+      amount: i.toDouble(),
+      bonusPages: 0,
+      balanceAfter: i * 10.0,
+      createdAt: at,
+    );
+
+    testWidgets(
+      '"Bütün əməliyyatlar" opens on this month, then the last three months; no "Hamısı" (T-397, T-414)',
+      (tester) async {
+        final server = await history(tester, [
+          entry(2, DateTime(2026, 11, 10, 9)),
+          entry(1, DateTime(2026, 9, 20, 9)),
+        ]);
+
+        expect(find.text('Hamısı'), findsNothing);
+        expect(server.asked.first.from, DateTime(2026, 11));
+        expect(find.textContaining('Sonra:'), findsOneWidget);
+
+        await tester.tap(find.text('Son 3 ay'));
+        await tester.pumpAndSettle();
+
+        expect(server.asked.last.from, DateTime(2026, 8, 15));
+        expect(find.textContaining('Sonra:'), findsNWidgets(2));
+      },
+    );
+
+    testWidgets('the history comes twenty at a time as it scrolls (T-413)', (
+      tester,
+    ) async {
+      final server = await history(tester, [
+        for (var i = 45; i >= 1; i--)
+          entry(i, DateTime(2026, 11, 1).add(Duration(hours: i))),
+      ]);
+
+      expect(server.pages, [1], reason: 'one page to open with');
+
+      for (var i = 0; i < 20 && server.pages.length < 3; i++) {
+        await tester.drag(find.byType(ListView), const Offset(0, -2000));
+        await tester.pumpAndSettle();
+      }
+
+      expect(server.pages, [1, 2, 3]);
+      await tester.drag(find.byType(ListView), const Offset(0, -5000));
       await tester.pumpAndSettle();
-
-      expect(asked, hasLength(1));
-      expect(asked.single.from.day, 1, reason: 'from the first of the month');
-      expect(asked.single.to.isAfter(asked.single.from), isTrue);
-      expect(find.textContaining('Sonra:'), findsNothing);
-      expect(find.text('Bu dövrdə hərəkət yoxdur'), findsOneWidget);
-
-      await tester.tap(find.text('Hamısı'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('Sonra:'), findsNWidgets(3));
+      expect(
+        find.textContaining('Sonra: 10,00'),
+        findsOneWidget,
+        reason: 'the oldest one',
+      );
+      expect(server.pages, [1, 2, 3], reason: 'nothing past the end');
     });
   });
 

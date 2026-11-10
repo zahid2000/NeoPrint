@@ -10,8 +10,10 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
+import '../../shared/paging.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_empty_state.dart';
+import '../../shared/widgets/neo_load_more.dart';
 import '../../shared/widgets/neo_status_chip.dart';
 import 'share_models.dart';
 import 'share_repository.dart';
@@ -53,30 +55,37 @@ class _Received extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final shares = ref.watch(receivedSharesProvider);
 
+    final controller = ref.read(receivedSharesProvider.notifier);
+
     return RefreshIndicator(
-      onRefresh: () => ref.refresh(receivedSharesProvider.future),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(Spacing.x4),
-        children: [
-          const _MyIdCard(),
-          const SizedBox(height: Spacing.x4),
-          ..._items(
-            context,
-            shares,
-            empty: NeoEmptyState(
-              icon: Icons.move_to_inbox_outlined,
-              message: l10n.sharesReceivedEmpty,
-              hint: l10n.sharesReceivedEmptyHint,
+      onRefresh: controller.refresh,
+      child: NeoLoadMore(
+        paged: shares.valueOrNull,
+        onMore: controller.loadMore,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(Spacing.x4),
+          children: [
+            const _MyIdCard(),
+            const SizedBox(height: Spacing.x4),
+            ..._items(
+              context,
+              shares,
+              onRetry: () => controller.loadMore(retry: true),
+              empty: NeoEmptyState(
+                icon: Icons.move_to_inbox_outlined,
+                message: l10n.sharesReceivedEmpty,
+                hint: l10n.sharesReceivedEmptyHint,
+              ),
+              build: (share) => _ShareTile(
+                share: share,
+                received: true,
+                onTap: () =>
+                    context.push(Routes.shareDetail(share.id), extra: share),
+              ),
             ),
-            build: (share) => _ShareTile(
-              share: share,
-              received: true,
-              onTap: () =>
-                  context.push(Routes.shareDetail(share.id), extra: share),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -90,20 +99,27 @@ class _Sent extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final shares = ref.watch(sentSharesProvider);
 
+    final controller = ref.read(sentSharesProvider.notifier);
+
     return RefreshIndicator(
-      onRefresh: () => ref.refresh(sentSharesProvider.future),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(Spacing.x4),
-        children: _items(
-          context,
-          shares,
-          empty: NeoEmptyState(
-            icon: Icons.outbox_outlined,
-            message: l10n.sharesSentEmpty,
-            hint: l10n.sharesSentEmptyHint,
+      onRefresh: controller.refresh,
+      child: NeoLoadMore(
+        paged: shares.valueOrNull,
+        onMore: controller.loadMore,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(Spacing.x4),
+          children: _items(
+            context,
+            shares,
+            onRetry: () => controller.loadMore(retry: true),
+            empty: NeoEmptyState(
+              icon: Icons.outbox_outlined,
+              message: l10n.sharesSentEmpty,
+              hint: l10n.sharesSentEmptyHint,
+            ),
+            build: (share) => _ShareTile(share: share, received: false),
           ),
-          build: (share) => _ShareTile(share: share, received: false),
         ),
       ),
     );
@@ -113,19 +129,21 @@ class _Sent extends ConsumerWidget {
 /// The list's rows, its empty state, a loading indicator or the error.
 List<Widget> _items(
   BuildContext context,
-  AsyncValue<List<ShareItem>> shares, {
+  AsyncValue<Paged<ShareItem>> shares, {
+  required VoidCallback onRetry,
   required Widget empty,
   required Widget Function(ShareItem) build,
 }) {
   final l10n = AppLocalizations.of(context);
 
   return switch (shares) {
-    AsyncData(:final value) when value.isEmpty => [empty],
+    AsyncData(:final value) when value.items.isEmpty => [empty],
     AsyncData(:final value) => [
-      for (final share in value) ...[
+      for (final share in value.items) ...[
         build(share),
         const SizedBox(height: Spacing.x2),
       ],
+      NeoLoadMoreFooter(paged: value, onRetry: onRetry),
     ],
     AsyncError(:final error) => [
       NeoBanner.error(

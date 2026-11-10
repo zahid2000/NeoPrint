@@ -6,6 +6,7 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/idempotency.dart';
 import '../../core/realtime/user_hub_provider.dart';
+import '../../shared/paging.dart';
 import '../session/session_models.dart';
 import 'schedule_models.dart';
 
@@ -15,9 +16,14 @@ class ScheduleRepository {
 
   final ApiClient _api;
 
-  Future<List<ScheduledPrint>> list() => _api.send(
+  /// Newest first; a [page] of [pageSize] rows (T-413), or the newest 100.
+  Future<List<ScheduledPrint>> list({int? page, int? pageSize}) => _api.send(
     method: 'GET',
     path: 'api/schedules',
+    query: {
+      if (page != null) 'page': page,
+      if (pageSize != null) 'pageSize': pageSize,
+    },
     parse: (json) => [
       for (final item
           in (json as Map<String, dynamic>)['items'] as List<dynamic>)
@@ -74,14 +80,14 @@ final scheduleRepositoryProvider = Provider<ScheduleRepository>(
   (ref) => ScheduleRepository(ref.watch(apiClientProvider)),
 );
 
-/// The user's scheduled prints, newest first. Read again when the hub says
-/// one of them, its order or its money moved on.
+/// The user's scheduled prints, newest first, a page at a time (T-413). Read
+/// again when the hub says one of them, its order or its money moved on.
 final schedulesProvider =
-    AsyncNotifierProvider<SchedulesController, List<ScheduledPrint>>(
+    AsyncNotifierProvider<SchedulesController, Paged<ScheduledPrint>>(
       SchedulesController.new,
     );
 
-class SchedulesController extends AsyncNotifier<List<ScheduledPrint>> {
+class SchedulesController extends AsyncNotifier<Paged<ScheduledPrint>> {
   static const _news = {
     'ScheduleDue',
     'JobStatusChanged',
@@ -91,8 +97,13 @@ class SchedulesController extends AsyncNotifier<List<ScheduledPrint>> {
 
   ScheduleRepository get _repository => ref.read(scheduleRepositoryProvider);
 
+  late final _loader = PageLoader<ScheduledPrint>(
+    (page, size) => _repository.list(page: page, pageSize: size),
+    (item) => item.id,
+  );
+
   @override
-  Future<List<ScheduledPrint>> build() {
+  Future<Paged<ScheduledPrint>> build() {
     final news = ref
         .watch(userHubEventsProvider)
         .where((event) => _news.contains(event.target))
@@ -106,12 +117,18 @@ class SchedulesController extends AsyncNotifier<List<ScheduledPrint>> {
       unawaited(back.cancel());
     });
 
-    return _repository.list();
+    return _loader.first();
   }
 
-  Future<void> refresh() async {
-    state = await AsyncValue.guard(_repository.list);
-  }
+  Future<void> refresh() =>
+      refreshPaged(_loader, () => state, (value) => state = value);
+
+  Future<void> loadMore({bool retry = false}) => loadMorePaged(
+    _loader,
+    () => state,
+    (value) => state = value,
+    retry: retry,
+  );
 
   Future<void> reschedule(String id, DateTime at) async {
     await _repository.reschedule(id, at);

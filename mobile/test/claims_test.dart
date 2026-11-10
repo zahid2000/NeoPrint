@@ -15,7 +15,8 @@ class FakeClaims implements JobsRepository {
   final reopened = <String>[];
 
   @override
-  Future<List<MyClaim>> claims() async => list;
+  Future<List<MyClaim>> claims({int? page, int? pageSize}) async =>
+      (page ?? 1) == 1 ? list : const [];
 
   @override
   Future<void> reopenClaim(

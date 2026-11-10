@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../../core/realtime/user_hub_provider.dart';
+import '../../shared/paging.dart';
 import 'file_models.dart';
 import 'files_repository.dart';
 import 'heic_converter.dart';
@@ -88,9 +89,28 @@ final class FilesState {
     this.loading = true,
     this.error,
     this.uploads = const [],
+    this.hasMore = false,
+    this.loadingMore = false,
+    this.moreError,
   });
 
+  /// Newest first, a page at a time (T-413).
   final List<UserFile> files;
+
+  /// The server has older files than the list shows.
+  final bool hasMore;
+  final bool loadingMore;
+
+  /// Why the next page did not come; the files shown stay.
+  final Object? moreError;
+
+  /// The list as the shared paging widgets read it.
+  Paged<UserFile> get paged => Paged(
+    files,
+    hasMore: hasMore,
+    loadingMore: loadingMore,
+    moreError: moreError,
+  );
 
   /// True only until the first list arrives: later refreshes keep the list
   /// on screen instead of blanking it.
@@ -107,11 +127,15 @@ final class FilesState {
     ApiException? error,
     bool clearError = false,
     List<UploadItem>? uploads,
+    Paged<UserFile>? paged,
   }) => FilesState(
-    files: files ?? this.files,
+    files: paged?.items ?? files ?? this.files,
     loading: loading ?? this.loading,
     error: clearError ? null : error ?? this.error,
     uploads: uploads ?? this.uploads,
+    hasMore: paged?.hasMore ?? hasMore,
+    loadingMore: paged?.loadingMore ?? loadingMore,
+    moreError: paged == null ? moreError : paged.moreError,
   );
 }
 
@@ -127,6 +151,12 @@ class FilesController extends Notifier<FilesState> {
   int _nextUploadId = 0;
 
   FilesRepository get _repository => ref.read(filesRepositoryProvider);
+
+  late final _loader = PageLoader<UserFile>(
+    (page, size) async =>
+        (await _repository.list(page: page, pageSize: size)).items,
+    (file) => file.id,
+  );
 
   @override
   FilesState build() {
@@ -147,19 +177,65 @@ class FilesController extends Notifier<FilesState> {
     return const FilesState();
   }
 
+  /// Reads the list again, as long as it is shown.
   Future<void> load() async {
     try {
-      final page = await _repository.list();
-      state = state.copyWith(
-        files: page.items,
-        loading: false,
-        clearError: true,
-      );
+      final paged = await _loader.reload(state.loading ? null : state.paged);
+      state = state.copyWith(paged: paged, loading: false, clearError: true);
     } on ApiException catch (error) {
       state = state.copyWith(loading: false, error: error);
     }
 
     _schedulePoll();
+  }
+
+  /// The next, older page under the list (T-413).
+  Future<void> loadMore({bool retry = false}) async {
+    final current = state.paged;
+    if (state.loading ||
+        !current.hasMore ||
+        current.loadingMore ||
+        (current.moreError != null && !retry)) {
+      return;
+    }
+
+    state = state.copyWith(
+      paged: current.copyWith(loadingMore: true, clearMoreError: true),
+    );
+    try {
+      final next = await _loader.more(current);
+      // Uploads and deletions meanwhile are kept: only the new rows are added.
+      final shown = {for (final file in state.files) file.id};
+      state = state.copyWith(
+        paged: Paged([
+          ...state.files,
+          for (final file in next.items)
+            if (!shown.contains(file.id)) file,
+        ], hasMore: next.hasMore),
+      );
+    } on Object catch (error) {
+      state = state.copyWith(
+        paged: state.paged.copyWith(loadingMore: false, moreError: error),
+      );
+    }
+  }
+
+  /// One file, from the list or the server (T-413: it may be further down
+  /// than the list has come); null when it is gone. No answer from the
+  /// server is thrown, not taken for "gone".
+  Future<UserFile?> find(String id) async {
+    final shown = state.files.where((file) => file.id == id).firstOrNull;
+    if (shown != null) {
+      return shown;
+    }
+    try {
+      return await _repository.get(id);
+    } on ApiException catch (error) {
+      if (error.statusCode == 404) {
+        return null;
+      }
+      rethrow;
+    }
   }
 
   /// Uploads [file]; the saved file, or null when it failed or was

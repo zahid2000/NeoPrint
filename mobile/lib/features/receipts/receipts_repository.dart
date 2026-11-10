@@ -40,9 +40,14 @@ class ReceiptsRepository {
 
   final ApiClient _api;
 
-  Future<List<Receipt>> list() => _api.send(
+  /// Newest first; a [page] of [pageSize] rows (T-413), or the newest 100.
+  Future<List<Receipt>> list({int? page, int? pageSize}) => _api.send(
     method: 'GET',
     path: 'api/receipts',
+    query: {
+      if (page != null) 'page': page,
+      if (pageSize != null) 'pageSize': pageSize,
+    },
     parse: (json) => (json as List<dynamic>)
         .map((item) => Receipt.fromJson(item as Map<String, dynamic>))
         .toList(),

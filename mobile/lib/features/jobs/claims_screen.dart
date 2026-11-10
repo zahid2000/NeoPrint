@@ -10,6 +10,7 @@ import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_empty_state.dart';
+import '../../shared/widgets/neo_load_more.dart';
 import '../../shared/widgets/neo_status_chip.dart';
 import 'jobs_controller.dart';
 import 'jobs_repository.dart';
@@ -26,18 +27,29 @@ class ClaimsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.claimsTitle)),
       body: switch (claims) {
-        AsyncData(:final value) when value.isEmpty => NeoEmptyState(
+        AsyncData(:final value) when value.items.isEmpty => NeoEmptyState(
           icon: Icons.support_agent_outlined,
           message: l10n.claimsEmpty,
           hint: l10n.claimsEmptyHint,
         ),
         AsyncData(:final value) => RefreshIndicator(
-          onRefresh: () => ref.refresh(myClaimsProvider.future),
-          child: ListView.separated(
-            padding: const EdgeInsets.all(Spacing.x4),
-            itemCount: value.length,
-            separatorBuilder: (_, __) => const SizedBox(height: Spacing.x2),
-            itemBuilder: (_, index) => _ClaimCard(claim: value[index]),
+          onRefresh: () => ref.read(myClaimsProvider.notifier).refresh(),
+          child: NeoLoadMore(
+            paged: value,
+            onMore: () => ref.read(myClaimsProvider.notifier).loadMore(),
+            child: ListView.separated(
+              padding: const EdgeInsets.all(Spacing.x4),
+              itemCount: value.items.length + 1,
+              separatorBuilder: (_, __) => const SizedBox(height: Spacing.x2),
+              itemBuilder: (_, index) => index < value.items.length
+                  ? _ClaimCard(claim: value.items[index])
+                  : NeoLoadMoreFooter(
+                      paged: value,
+                      onRetry: () => ref
+                          .read(myClaimsProvider.notifier)
+                          .loadMore(retry: true),
+                    ),
+            ),
           ),
         ),
         AsyncError(:final error) => NeoEmptyState(

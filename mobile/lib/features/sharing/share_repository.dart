@@ -38,19 +38,28 @@ class ShareRepository {
     parse: (json) => ShareItem.fromJson(json as Map<String, dynamic>),
   );
 
-  Future<List<ShareItem>> received() => _list('received');
+  /// Newest first; a [page] of [pageSize] rows (T-413), or the newest 100.
+  Future<List<ShareItem>> received({int? page, int? pageSize}) =>
+      _list('received', page, pageSize);
 
-  Future<List<ShareItem>> sent() => _list('sent');
+  /// Newest first; a [page] of [pageSize] rows (T-413), or the newest 100.
+  Future<List<ShareItem>> sent({int? page, int? pageSize}) =>
+      _list('sent', page, pageSize);
 
-  Future<List<ShareItem>> _list(String which) => _api.send(
-    method: 'GET',
-    path: 'api/shares/$which',
-    parse: (json) => [
-      for (final item
-          in (json as Map<String, dynamic>)['items'] as List<dynamic>)
-        ShareItem.fromJson(item as Map<String, dynamic>),
-    ],
-  );
+  Future<List<ShareItem>> _list(String which, int? page, int? pageSize) =>
+      _api.send(
+        method: 'GET',
+        path: 'api/shares/$which',
+        query: {
+          if (page != null) 'page': page,
+          if (pageSize != null) 'pageSize': pageSize,
+        },
+        parse: (json) => [
+          for (final item
+              in (json as Map<String, dynamic>)['items'] as List<dynamic>)
+            ShareItem.fromJson(item as Map<String, dynamic>),
+        ],
+      );
 
   /// "Fayllarıma saxla": the recipient's own copy. Saving again returns it.
   Future<UserFile> save(String shareId) => _api.send(

@@ -11,6 +11,7 @@ import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_empty_state.dart';
+import '../../shared/widgets/neo_load_more.dart';
 import '../../shared/widgets/neo_design.dart';
 import 'file_row.dart';
 import 'file_models.dart';
@@ -313,16 +314,16 @@ class _FileCard extends ConsumerWidget {
 enum _FileFilter { all, pdf, image, document, scan }
 
 /// The list with its search field and type tabs.
-class _FileList extends StatefulWidget {
+class _FileList extends ConsumerStatefulWidget {
   const _FileList({required this.state});
 
   final FilesState state;
 
   @override
-  State<_FileList> createState() => _FileListState();
+  ConsumerState<_FileList> createState() => _FileListState();
 }
 
-class _FileListState extends State<_FileList> {
+class _FileListState extends ConsumerState<_FileList> {
   String _query = '';
   _FileFilter _filter = _FileFilter.all;
 
@@ -346,53 +347,66 @@ class _FileListState extends State<_FileList> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final files = widget.state.files.where(_matches).toList();
+    final paged = widget.state.paged;
+    final controller = ref.read(filesControllerProvider.notifier);
+    // The filter's rows may be further down: a spinner, not "nothing
+    // found", until the whole list is in (T-413).
+    final more = files.isEmpty && paged.hasMore && paged.moreError == null;
 
     return NeoTabSwipe<_FileFilter>(
       values: _FileFilter.values,
       selected: _filter,
       onSelected: (filter) => setState(() => _filter = filter),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          Spacing.x4,
-          Spacing.x2,
-          Spacing.x4,
-          // Room for the floating button over the last row.
-          Spacing.x16 + Spacing.x8,
-        ),
-        children: [
-          NeoSearchField(
-            hint: l10n.filesSearchHint,
-            onChanged: (value) => setState(() => _query = value),
+      child: NeoLoadMore(
+        paged: paged,
+        onMore: controller.loadMore,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            Spacing.x4,
+            Spacing.x2,
+            Spacing.x4,
+            // Room for the floating button over the last row.
+            Spacing.x16 + Spacing.x8,
           ),
-          const SizedBox(height: Spacing.x3),
-          NeoPillTabs<_FileFilter>(
-            values: _FileFilter.values,
-            selected: _filter,
-            label: (filter) => switch (filter) {
-              _FileFilter.all => l10n.filesFilterAll,
-              _FileFilter.pdf => l10n.filesFilterPdf,
-              _FileFilter.image => l10n.filesFilterImage,
-              _FileFilter.document => l10n.filesFilterDocument,
-              _FileFilter.scan => l10n.filesFilterScan,
-            },
-            onSelected: (filter) => setState(() => _filter = filter),
-          ),
-          const SizedBox(height: Spacing.x3),
-          for (final upload in widget.state.uploads) ...[
-            _UploadCard(upload: upload),
-            const SizedBox(height: Spacing.x2),
-          ],
-          if (files.isEmpty)
-            NeoEmptyState(
-              icon: Icons.search_off_outlined,
-              message: l10n.filesSearchEmpty,
-            )
-          else
-            for (final file in files) ...[
-              _FileCard(file: file),
+          children: [
+            NeoSearchField(
+              hint: l10n.filesSearchHint,
+              onChanged: (value) => setState(() => _query = value),
+            ),
+            const SizedBox(height: Spacing.x3),
+            NeoPillTabs<_FileFilter>(
+              values: _FileFilter.values,
+              selected: _filter,
+              label: (filter) => switch (filter) {
+                _FileFilter.all => l10n.filesFilterAll,
+                _FileFilter.pdf => l10n.filesFilterPdf,
+                _FileFilter.image => l10n.filesFilterImage,
+                _FileFilter.document => l10n.filesFilterDocument,
+                _FileFilter.scan => l10n.filesFilterScan,
+              },
+              onSelected: (filter) => setState(() => _filter = filter),
+            ),
+            const SizedBox(height: Spacing.x3),
+            for (final upload in widget.state.uploads) ...[
+              _UploadCard(upload: upload),
               const SizedBox(height: Spacing.x2),
             ],
-        ],
+            if (files.isEmpty && !paged.hasMore)
+              NeoEmptyState(
+                icon: Icons.search_off_outlined,
+                message: l10n.filesSearchEmpty,
+              )
+            else
+              for (final file in files) ...[
+                _FileCard(file: file),
+                const SizedBox(height: Spacing.x2),
+              ],
+            NeoLoadMoreFooter(
+              paged: more ? paged.copyWith(loadingMore: true) : paged,
+              onRetry: () => controller.loadMore(retry: true),
+            ),
+          ],
+        ),
       ),
     );
   }
