@@ -290,6 +290,12 @@ public sealed class UserQrTests
         mine.GetProperty("kioskCode").GetString().Should().Be(kiosk.KioskCode);
         mine.GetProperty("collectBy").GetDateTime().Should().BeAfter(DateTime.UtcNow.AddDays(6));
 
+        // In "Sifarişlərim" it waits for its owner, not for a printer - and can be cancelled there (T-427).
+        var order = (await user.Client.GetFromJsonAsync<JsonElement>("/api/print-jobs/my")).EnumerateArray()
+            .Single(j => j.GetProperty("id").GetGuid() == jobId);
+        order.GetProperty("held").GetBoolean().Should().BeTrue();
+        order.GetProperty("canCancel").GetBoolean().Should().BeTrue();
+
         // Another kiosk shows it, but it is not that kiosk's to print.
         var elsewhere = await (await ScanAsync(other.Client, await CodeAsync(user.Client))).Content.ReadFromJsonAsync<JsonElement>();
         var shown = elsewhere.GetProperty("items").EnumerateArray().Single();
@@ -329,8 +335,8 @@ public sealed class UserQrTests
         var (late, latePayment) = await PaidPreparationAsync(user.Client, kiosk.KioskCode, fileId);
         var (cancelled, cancelledPayment) = await PaidPreparationAsync(user.Client, kiosk.KioskCode, fileId);
 
-        // The owner cancels one.
-        (await user.Client.PostAsync($"/api/prepared-prints/paid/{cancelled}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        // The owner cancels one - from the order's own screen (T-427), as from "Hazırladıqlarım".
+        (await user.Client.PostAsync($"/api/print-jobs/my/{cancelled}/cancel", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // The other was paid eight days ago and nobody came.
         using (var scope = _fixture.Services.CreateScope())

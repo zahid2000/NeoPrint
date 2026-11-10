@@ -29,6 +29,12 @@ import 'jobs_repository.dart';
     tone: StatusTone.warning,
     icon: Icons.payments_outlined,
   ),
+  // Waiting for its owner at the kiosk (T-427), not for a printer.
+  'Held' => (
+    label: l10n.jobStatusHeld,
+    tone: StatusTone.warning,
+    icon: Icons.qr_code_2,
+  ),
   'Paid' => (
     label: l10n.jobStatusPaid,
     tone: StatusTone.info,
@@ -177,7 +183,7 @@ class JobCard extends ConsumerWidget {
             tone: StatusTone.info,
             icon: Icons.schedule,
           )
-        : jobStatusLook(l10n, job.status);
+        : jobStatusLook(l10n, job.held ? 'Held' : job.status);
     final language = Localizations.localeOf(context).languageCode;
     final kiosk = [
       if (job.kioskName?.isNotEmpty ?? false) job.kioskName!,

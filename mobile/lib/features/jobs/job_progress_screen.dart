@@ -90,7 +90,15 @@ class _Progress extends StatelessWidget {
     final total = job.pages * (job.copies < 1 ? 1 : job.copies);
     final printed = job.printedSides.clamp(0, total);
 
-    final (Widget sign, String title, String body) = switch (job.status) {
+    final (Widget sign, String title, String body) = switch (job.held
+        ? 'Held'
+        : job.status) {
+      // Paid in the app for later (T-427): it waits for the QR, not a printer.
+      'Held' => (
+        Icon(Icons.qr_code_2, size: _signSize, color: tokens.warning),
+        l10n.jobHeldTitle,
+        l10n.jobHeldBody(job.kioskName ?? job.kioskCode ?? ''),
+      ),
       'Completed' => (
         Icon(Icons.check_circle, size: _signSize, color: tokens.success),
         l10n.jobDoneTitle,
@@ -241,7 +249,7 @@ class _Steps extends StatelessWidget {
 
     Widget sign(int i) => i < done
         ? Icon(Icons.check_circle, color: tokens.success)
-        : i == done && job.isActive
+        : i == done && job.isActive && !job.held
         ? SizedBox(
             width: Spacing.x6,
             height: Spacing.x6,
@@ -293,7 +301,7 @@ class _Steps extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: i <= done ? null : tokens.neutral400,
-                        fontWeight: i == done && job.isActive
+                        fontWeight: i == done && job.isActive && !job.held
                             ? FontWeights.semibold
                             : null,
                       ),

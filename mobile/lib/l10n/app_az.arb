@@ -1462,6 +1462,14 @@
   },
   "jobProgressNotFound": "Sifariş tapılmadı. \"Sifarişlərim\"-də baxın.",
   "jobQueuedTitle": "Növbədə",
+  "jobHeldTitle": "Kioskda sizi gözləyir",
+  "jobHeldBody": "Sifariş ödənilib, amma {kiosk} kioskunda QR kodunuzu göstərənə qədər çap başlamır. Getməyəcəksinizsə, sifarişi ləğv edin — pul balansınıza qayıdır.",
+  "@jobHeldBody": {
+    "placeholders": {
+      "kiosk": { "type": "String" }
+    }
+  },
+  "jobStatusHeld": "Kioskda gözləyir",
   "jobQueuedBody": "Sifarişiniz {kiosk} kioskunun növbəsindədir. Bu pəncərəni bağlaya bilərsiniz — çap davam edəcək.",
   "@jobQueuedBody": {
     "placeholders": {

@@ -32,7 +32,9 @@ MyJob order(
   int printedSides = 0,
   bool canCancel = false,
   String? fileId = 'f1',
+  bool held = false,
 }) => MyJob(
+  held: held,
   duplex: true,
   pageRange: '1-3',
   pagesPerSheet: 2,
@@ -200,6 +202,23 @@ void main() {
       expect(find.text('Tamamlandı'), findsWidgets, reason: 'the last step');
     });
   }
+
+  testWidgets(
+    'paid for later: it waits for the QR at the kiosk, not a printer, '
+    'and can be cancelled (T-427)',
+    (tester) async {
+      await show(tester, order('Paid', held: true, canCancel: true));
+
+      expect(find.text('Kioskda sizi gözləyir'), findsOneWidget);
+      expect(
+        find.textContaining('QR kodunuzu göstərənə qədər'),
+        findsOneWidget,
+      );
+      expect(find.text('Kioskda gözləyir'), findsOneWidget, reason: 'the card');
+      expect(find.text('Sifarişi ləğv et'), findsOneWidget);
+      expect(find.text('Çap olunur…'), findsNothing);
+    },
+  );
 
   testWidgets('before the first page the ring shows the printer, no share', (
     tester,

@@ -209,7 +209,7 @@ describe('PrintJobDetailComponent', () => {
     return fixture.componentInstance;
   }
 
-  it('offers cancelling for a job waiting or stuck printing, and only with the permission', async () => {
+  it('offers cancelling for a job waiting, uncollected or stuck printing, and only with the permission', async () => {
     expect((await open('Queued', [Permissions.jobsView, Permissions.jobsCancel])).canCancel()).toBe(
       true,
     );
@@ -219,9 +219,14 @@ describe('PrintJobDetailComponent', () => {
       (await open('Printing', [Permissions.jobsView, Permissions.jobsCancel])).canCancel(),
     ).toBe(true);
     TestBed.resetTestingModule();
+    // Paid in the app and never collected at the kiosk (T-427): taken back, the money returned.
     expect((await open('Paid', [Permissions.jobsView, Permissions.jobsCancel])).canCancel()).toBe(
-      false,
+      true,
     );
+    TestBed.resetTestingModule();
+    expect(
+      (await open('Completed', [Permissions.jobsView, Permissions.jobsCancel])).canCancel(),
+    ).toBe(false);
     TestBed.resetTestingModule();
     expect((await open('Queued', [Permissions.jobsView])).canCancel()).toBe(false);
   });

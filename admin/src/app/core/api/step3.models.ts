@@ -237,6 +237,8 @@ export const printJobStatuses = [
 export const cancellableStatuses: readonly string[] = [
   'Draft',
   'PendingPayment',
+  // Paid in the app and never collected at the kiosk (T-427): the money goes back.
+  'Paid',
   'Queued',
   'Printing',
   'Interrupted',

@@ -27,6 +27,7 @@ final class MyJob {
     this.duplex = false,
     this.pageRange,
     this.pagesPerSheet = 1,
+    this.held = false,
   });
 
   factory MyJob.fromJson(Map<String, dynamic> json) => MyJob(
@@ -57,6 +58,7 @@ final class MyJob {
     duplex: json['duplex'] as bool? ?? false,
     pageRange: json['pageRange'] as String?,
     pagesPerSheet: json['pagesPerSheet'] as int? ?? 1,
+    held: json['held'] as bool? ?? false,
   );
 
   final String id;
@@ -103,6 +105,11 @@ final class MyJob {
   final bool duplex;
   final String? pageRange;
   final int pagesPerSheet;
+
+  /// Paid in the app and waiting for its owner's QR at the kiosk (T-427):
+  /// not printing - nothing happens until the QR is shown there - and it
+  /// can be cancelled for the money back.
+  final bool held;
 
   /// Stopped at the printer, or waiting at a kiosk that cannot print: the
   /// owner is offered the choice - wait, or cancel and take the money back.

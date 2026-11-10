@@ -30,6 +30,7 @@ public sealed record CancelMyPrintJobCommand(Guid UserId, Guid JobId) : IRequest
 /// <param name="CanCancel">The owner may cancel it now and take the money back (<see cref="CancelMyPrintJobCommand"/>).</param>
 /// <param name="KioskStopped">Its kiosk cannot print at the moment (plan section 9.6): waiting may take a while.</param>
 /// <param name="FileId">The file in the account it was made from - "Yenidən çap et" (T-378); null for a flash order.</param>
+/// <param name="Held">Paid in the app and waiting for its owner's QR at the kiosk (T-427): not printing, and cancellable.</param>
 /// <param name="Duplex">Both sides - with the page range and pages a sheet, what "Yenidən çap et" starts from (T-408).</param>
 public sealed record MyPrintJobView(
     Guid Id,
@@ -56,7 +57,8 @@ public sealed record MyPrintJobView(
     Guid? FileId = null,
     bool Duplex = false,
     string? PageRange = null,
-    int PagesPerSheet = 1);
+    int PagesPerSheet = 1,
+    bool Held = false);
 
 public sealed class MyPrintJobHandlers :
     IRequestHandler<ListMyPrintJobsQuery, IReadOnlyList<MyPrintJobView>>,
@@ -69,8 +71,18 @@ public sealed class MyPrintJobHandlers :
     /// cannot be taken back, and one whose outcome nobody knows (Suspected)
     /// is an administrator's to decide (plan section 2.5, scenario B).
     /// </summary>
+    /// <summary>
+    /// Waiting: in the queue, stopped at the printer, or paid in the app and
+    /// waiting for its owner's QR at the kiosk (T-427: it was not cancellable
+    /// from the order's own screen and looked stuck). A scheduled print is
+    /// cancelled from "Planlı çap" instead.
+    /// </summary>
     private static bool Cancellable(Domain.PrintJobs.PrintJob job)
-        => job.Status is Domain.PrintJobs.PrintJobStatus.Queued or Domain.PrintJobs.PrintJobStatus.Interrupted;
+        => job.Status is Domain.PrintJobs.PrintJobStatus.Queued or Domain.PrintJobs.PrintJobStatus.Interrupted
+           || Held(job);
+
+    private static bool Held(Domain.PrintJobs.PrintJob job)
+        => job.IsHeld && job.Source != Domain.PrintJobs.PrintJobSource.Scheduled;
 
     /// <summary>The app shows recent jobs; the full history is the receipts' and the wallet's.</summary>
     private const int Take = 100;
@@ -199,7 +211,8 @@ public sealed class MyPrintJobHandlers :
                     job.FileId,
                     job.Options.Duplex,
                     job.Options.PageRange,
-                    job.Options.PagesPerSheet);
+                    job.Options.PagesPerSheet,
+                    Held(job));
             })
             .ToList();
     }

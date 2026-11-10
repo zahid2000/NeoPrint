@@ -116,7 +116,7 @@ export const jobsTranslations: PageTranslations = {
     'jobs.cancel': 'Sifarişi ləğv et',
     'jobs.cancelTitle': '{{code}} sifarişi ləğv edilsin?',
     'jobs.cancelExplanation':
-      'Sifariş növbədən çıxarılır və çap olunmayacaq. Printerdə olan sifarişi ləğv etmək mümkün deyil.',
+      'Sifariş ləğv olunur və çap olunmayacaq. Ödənilibsə, pul qaytarılır (tətbiqlə ödəniləndə — balansa).',
     'jobs.cancelled': '{{code}} sifarişi ləğv edildi.',
 
     'queue.tabDescription':
@@ -362,7 +362,7 @@ export const jobsTranslations: PageTranslations = {
     'jobs.cancel': 'Cancel the order',
     'jobs.cancelTitle': 'Cancel order {{code}}?',
     'jobs.cancelExplanation':
-      'The order leaves the queue and will not print. An order at the printer cannot be cancelled.',
+      'The order is cancelled and will not print. If it was paid, the money goes back (to the balance when paid in the app).',
     'jobs.cancelled': 'Order {{code}} was cancelled.',
 
     'queue.tabDescription':
@@ -609,7 +609,7 @@ export const jobsTranslations: PageTranslations = {
     'jobs.cancel': 'Отменить заказ',
     'jobs.cancelTitle': 'Отменить заказ {{code}}?',
     'jobs.cancelExplanation':
-      'Заказ уйдёт из очереди и не будет напечатан. Заказ, который уже печатается, отменить нельзя.',
+      'Заказ будет отменён и не будет напечатан. Если он оплачен, деньги вернутся (при оплате в приложении — на баланс).',
     'jobs.cancelled': 'Заказ {{code}} отменён.',
 
     'queue.tabDescription':

@@ -1529,7 +1529,7 @@ Kiosk çapın gedişini bildirir: `{ "status": "Printing" | "Completed" | "Inter
 ### `GET /api/print-jobs/my` (User token)
 
 Tətbiqdə "Sifarişlərim": hesabın sifarişləri, ən yenisi əvvəl, `?page=&pageSize=` ilə səhifə-səhifə (parametrsiz — son 100; "Müştəri siyahılarının səhifələnməsi") —
-`[{ id, jobCode, status, kioskId, kioskCode, kioskName, fileName, pages, copies, color, paper, amount, currency, printedSides, reason, paymentId, createdAt, finishedAt }]`.
+`[{ id, jobCode, status, kioskId, kioskCode, kioskName, fileName, pages, copies, color, paper, amount, currency, printedSides, reason, paymentId, createdAt, finishedAt, scheduledAt, canCancel, kioskStopped, fileId, duplex, pageRange, pagesPerSheet, held }]`. `held` (T-427) — tətbiqlə əvvəlcədən ödənilib və sahibinin QR-ını kioskda gözləyir (`Paid`, "Kiosk üçün hazırla"): printerə getməyib, `canCancel: true` — `POST my/{id}/cancel` ilə ləğv olunur, pul balansa qayıdır (planlı çap `/api/schedules`-dən ləğv olunur).
 Tətbiqlə ödənilən kiosk sifarişi ödəniş anında hesaba bağlanır və burada görünür; bank QR ilə ödənilən anonim sifariş görünmür. `amount` — kioskda göstərilən qiymət (promokod daxil); faktiki tutulan məbləğ qəbzdədir. `reason` — dayanma və ya ləğv səbəbi oxuyanın dilində.
 
 Hər sətirdə həm də: `canCancel` — sahibi indi ləğv edə bilər (`Queued` və ya `Interrupted`);
