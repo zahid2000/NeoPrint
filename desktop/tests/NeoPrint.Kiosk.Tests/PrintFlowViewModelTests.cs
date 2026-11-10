@@ -403,4 +403,35 @@ public sealed class PrintFlowViewModelTests : IDisposable
         flow.Error.Should().Be(T("cancel.cannot", T("jobStatus.Printing")));
         kit.Backend.Cancelled.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task The_editor_shows_one_page_at_a_time_and_stays_on_the_page_that_moves()
+    {
+        // T-419: one page, one set of tools; "Əvvəlki" / "Növbəti səhifə" or a swipe turn it.
+        var (flow, _) = await FlowAsync();
+        foreach (var page in new[] { 1, 2, 3 })
+        {
+            flow.Pages.Add(new PageTile(page, null, T("preview.page", page)));
+        }
+
+        flow.EditPage!.Page.Should().Be(1);
+        flow.EditPageText.Should().Be(T("edit.pageOf", 1, 3));
+        flow.ShowPreviousPageCommand.CanExecute(null).Should().BeFalse();
+
+        flow.ShowNextPageCommand.Execute(null);
+        flow.SwipeEditPage(forward: true);
+        flow.EditPage!.Page.Should().Be(3);
+        flow.ShowNextPageCommand.CanExecute(null).Should().BeFalse();
+
+        // Moved earlier, the editor goes with it.
+        flow.MovePageBackCommand.Execute(flow.EditPage);
+        flow.EditIndex.Should().Be(1);
+        flow.EditPage!.Page.Should().Be(3);
+
+        // Removed: the next page in its place, never past the end.
+        flow.SwipeEditPage(forward: true);
+        flow.DeletePageCommand.Execute(flow.EditPage);
+        flow.EditPage!.Page.Should().Be(3);
+        flow.EditPageText.Should().Be(T("edit.pageOf", 2, 2));
+    }
 }

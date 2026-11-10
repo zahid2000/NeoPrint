@@ -162,53 +162,57 @@
             <!-- ============ Screen 4: the editor ============ -->
             <Grid RowDefinitions="Auto,*" IsVisible="{Binding Stage, Converter={x:Static vm:ScreenConverters.IsEdit}}">
 
-                <!-- Pages of a document (T-384): one under the other, each as wide as the
-                     screen allows so what is on it can be read; its tools beside it. -->
-                <ScrollViewer Grid.Row="1" Classes="pages" IsVisible="{Binding IsPaged}" HorizontalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding Pages}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:PageTile">
-                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Space6}" Margin="{DynamicResource GapBelow6}">
-                                    <Border Classes="card" Background="{DynamicResource Brand50}">
-                                        <Image Source="{Binding ShownImage}" Stretch="Uniform"
-                                               RenderTransform="{Binding Rotate, Converter={x:Static vm:ScreenConverters.Rotation}}" />
-                                    </Border>
-                                    <StackPanel Grid.Column="1" Width="{DynamicResource EditToolsWidth}" Spacing="{DynamicResource Space4}">
-                                        <TextBlock Text="{Binding Label}" Classes="h2" />
-                                        <Button Classes="page-tool"
-                                                Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).RotatePageCommand}" CommandParameter="{Binding}">
-                                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                                                <PathIcon Data="{StaticResource IconRotate}" Width="28" Height="28" />
-                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).RotateText}" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Classes="page-tool"
-                                                Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MovePageBackCommand}" CommandParameter="{Binding}">
-                                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                                                <PathIcon Data="{StaticResource IconChevronLeft}" Width="28" Height="28" />
-                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MoveBackText}" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Classes="page-tool"
-                                                Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MovePageForwardCommand}" CommandParameter="{Binding}">
-                                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).MoveForwardText}" VerticalAlignment="Center" />
-                                                <PathIcon Data="{StaticResource IconChevronRight}" Width="28" Height="28" />
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Classes="page-tool danger-text"
-                                                Command="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).DeletePageCommand}" CommandParameter="{Binding}">
-                                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
-                                                <PathIcon Data="{StaticResource IconDelete}" Width="28" Height="28" />
-                                                <TextBlock Text="{Binding $parent[UserControl].((vm:PrintFlowViewModel)DataContext).DeleteText}" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Button>
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                <!-- Pages of a document (T-419): one page at a time, as large as the screen
+                     allows, and one set of tools beside it that stays put. "Əvvəlki səhifə" /
+                     "Növbəti səhifə" under the page - or a swipe across it - go to the next. -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" RowDefinitions="*,Auto" ColumnSpacing="{DynamicResource Space6}" IsVisible="{Binding IsPaged}">
+                    <Border x:Name="EditPageCard" Classes="card" Background="{DynamicResource Brand50}">
+                        <Image Source="{Binding EditPage.ShownImage, FallbackValue={x:Null}}" Stretch="Uniform"
+                               RenderTransform="{Binding EditPage.Rotate, Converter={x:Static vm:ScreenConverters.Rotation}, FallbackValue={x:Null}}" />
+                    </Border>
+                    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Margin="{DynamicResource GapAbove4}">
+                        <Button Classes="secondary" Command="{Binding ShowPreviousPageCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                                <PathIcon Data="{StaticResource IconChevronLeft}" Width="28" Height="28" />
+                                <TextBlock Text="{Binding EditPreviousText}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Grid.Column="2" Classes="secondary" Command="{Binding ShowNextPageCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                                <TextBlock Text="{Binding EditNextText}" VerticalAlignment="Center" />
+                                <PathIcon Data="{StaticResource IconChevronRight}" Width="28" Height="28" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                    <StackPanel Grid.Column="1" Grid.RowSpan="2" Width="{DynamicResource EditToolsWidth}" Spacing="{DynamicResource Space4}">
+                        <!-- "Səhifə 2 / 5": where the page is now, after a move or a removal. -->
+                        <TextBlock Text="{Binding EditPageText}" Classes="h2" TextWrapping="Wrap" />
+                        <Button Classes="page-tool" Command="{Binding RotatePageCommand}" CommandParameter="{Binding EditPage}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                                <PathIcon Data="{StaticResource IconRotate}" Width="28" Height="28" />
+                                <TextBlock Text="{Binding RotateText}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="page-tool" Command="{Binding MovePageBackCommand}" CommandParameter="{Binding EditPage}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                                <PathIcon Data="{StaticResource IconChevronLeft}" Width="28" Height="28" />
+                                <TextBlock Text="{Binding MoveBackText}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="page-tool" Command="{Binding MovePageForwardCommand}" CommandParameter="{Binding EditPage}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                                <TextBlock Text="{Binding MoveForwardText}" VerticalAlignment="Center" />
+                                <PathIcon Data="{StaticResource IconChevronRight}" Width="28" Height="28" />
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="page-tool danger-text" Command="{Binding DeletePageCommand}" CommandParameter="{Binding EditPage}">
+                            <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                                <PathIcon Data="{StaticResource IconDelete}" Width="28" Height="28" />
+                                <TextBlock Text="{Binding DeleteText}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
 
                 <!-- An image: turn it, lighten or darken it. -->
                 <Grid Grid.Row="1" ColumnDefinitions="*,Auto" IsVisible="{Binding IsImage}">

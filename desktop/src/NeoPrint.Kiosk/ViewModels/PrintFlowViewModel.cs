@@ -165,6 +165,7 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         _drives = drives;
         _analytics = analytics ?? NoAnalytics.Instance;
         _pageImage = pageImage ?? ToBitmap;
+        Pages.CollectionChanged += (_, _) => OnEditPagesChanged();
     }
 
     /// <summary>The customer is done or gave up: back to the home screen.</summary>
@@ -814,6 +815,8 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
     private async Task EditAsync()
     {
         Error = null;
+        // On the page the preview showed (T-419).
+        EditIndex = Math.Clamp(LargePageNumber - 1, 0, Math.Max(0, Pages.Count - 1));
         Stage = FlowStage.Edit;
 
         // The pages large, one by one, so each can be read (T-384); the small
@@ -884,7 +887,14 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
         if (index >= 0 && target >= 0 && target < Pages.Count)
         {
+            var shown = index == EditIndex;
             Pages.Move(index, target);
+
+            // The editor stays on the page that moved (T-419).
+            if (shown)
+            {
+                EditIndex = target;
+            }
         }
     }
 

@@ -458,6 +458,19 @@
         <Setter Property="FontSize" Value="{DynamicResource FontSizeCaption}" />
         <Setter Property="Foreground" Value="{DynamicResource Neutral900}" />
     </Style>
+    <!-- No colour change under a finger that only passes over or scrolls (T-418): it tires
+         the eye. A press shows, briefly, in the brand's lightest tint. -->
+    <Style Selector="Button.page-tool:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Neutral200}" />
+    </Style>
+    <Style Selector="Button.page-tool:focus-visible /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Neutral0}" />
+    </Style>
+    <Style Selector="Button.page-tool:pressed /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource Brand50}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brand500}" />
+    </Style>
     <Style Selector="Button.page-tool.danger-text">
         <Setter Property="Foreground" Value="{DynamicResource Danger500}" />
     </Style>
