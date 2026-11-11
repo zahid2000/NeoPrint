@@ -201,6 +201,7 @@ class _NearKioskCard extends ConsumerWidget {
           LocationProblem.unavailable => l10n.homeNoLocation,
         },
         problem: value.problem,
+        none: value.kiosks.isEmpty,
       ),
       AsyncError() => _NoNearKiosk(
         message: l10n.homeNoLocation,
@@ -217,9 +218,16 @@ class _NearKioskCard extends ConsumerWidget {
 }
 
 class _NoNearKiosk extends ConsumerWidget {
-  const _NoNearKiosk({required this.message, required this.problem});
+  const _NoNearKiosk({
+    required this.message,
+    required this.problem,
+    this.none = false,
+  });
 
   final String message;
+
+  /// Looked, and there is no kiosk at all - not only none working.
+  final bool none;
 
   /// Why there is no location; null when kiosks were looked for and none
   /// works near. The button is always there and fixes it (T-428).
@@ -230,20 +238,37 @@ class _NoNearKiosk extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final tokens = context.tokens;
+    // Looked, and nothing takes orders now (T-435): a warning, not an
+    // invitation to look - colour, icon and words say it.
+    final searched = problem == null;
+    final noneAtAll = searched && none;
 
     return Container(
-      decoration: neoHeroDecoration(context),
+      decoration: searched
+          ? BoxDecoration(
+              color: tokens.warningBackground,
+              borderRadius: BorderRadius.circular(Radii.lg),
+            )
+          : neoHeroDecoration(context),
       padding: const EdgeInsets.all(Spacing.x4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.place_outlined, size: 18, color: tokens.brand500),
+              Icon(
+                searched ? Icons.warning_amber_outlined : Icons.place_outlined,
+                size: 18,
+                color: searched ? tokens.warning : tokens.brand500,
+              ),
               const SizedBox(width: Spacing.x1),
               Expanded(
                 child: Text(
-                  l10n.homeFindNearTitle,
+                  noneAtAll
+                      ? l10n.homeNoKioskTitle
+                      : searched
+                      ? l10n.homeNoActiveKioskTitle
+                      : l10n.homeFindNearTitle,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeights.semibold,
                   ),
@@ -265,7 +290,7 @@ class _NoNearKiosk extends ConsumerWidget {
             children: [
               LocationFixButton(
                 problem: problem,
-                label: l10n.homeShowNear,
+                label: searched ? l10n.homeCheckNearAgain : l10n.homeShowNear,
                 retry: () => ref.read(nearKiosksProvider.notifier).find(),
               ),
               TextButton(

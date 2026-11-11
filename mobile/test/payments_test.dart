@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neoprint/features/kiosk_search/kiosk_models.dart';
+import 'package:neoprint/features/home/near_kiosks.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
@@ -454,6 +456,42 @@ void main() {
       expect(find.text('Sifarişlərim'), findsOneWidget);
     });
 
+    testWidgets('every kiosk out of service: a warning says none is active '
+        '(T-435)', (tester) async {
+      await tester.pumpWidget(
+        step4App(
+          const HomeScreen(),
+          overrides: [
+            ...step4Overrides(),
+            nearKiosksProvider.overrideWith(
+              () => _FixedNear(
+                const NearKiosks(
+                  kiosks: [
+                    KioskSummary(
+                      id: 'k1',
+                      code: 'KSK-1',
+                      name: 'Elmlər',
+                      address: 'Bakı',
+                      lat: 40.4,
+                      lng: 49.8,
+                      status: KioskStatus.offline,
+                      distanceKm: 312,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hazırda aktiv kiosk yoxdur'), findsOneWidget);
+      expect(find.byIcon(Icons.warning_amber_outlined), findsOneWidget);
+      expect(find.text('Yenidən yoxla'), findsOneWidget);
+      expect(find.text('Yaxın kiosku tapın'), findsNothing);
+    });
+
     testWidgets('without a scanner there is no QR button', (tester) async {
       await tester.pumpWidget(
         step4App(const HomeScreen(), overrides: step4Overrides(canScan: false)),
@@ -820,4 +858,13 @@ Future<void> enterPromo(WidgetTester tester, String code) async {
   await tester.ensureVisible(field);
   await tester.pumpAndSettle();
   await tester.enterText(field, code);
+}
+
+class _FixedNear extends NearKiosksController {
+  _FixedNear(this.value);
+
+  final NearKiosks value;
+
+  @override
+  Future<NearKiosks> build() async => value;
 }
