@@ -698,6 +698,40 @@ void main() {
       },
     );
 
+    testWidgets(
+      'the periods are swiped through too; a swipe never opens the calendar (T-432)',
+      (tester) async {
+        final server = await history(tester, [
+          entry(2, DateTime(2026, 11, 10, 9)),
+        ]);
+
+        await tester.fling(
+          find.byType(ListView).first,
+          const Offset(-300, 0),
+          1000,
+        );
+        await tester.pumpAndSettle();
+        expect(server.asked.last.from, DateTime(2026, 8, 15));
+
+        // "Tarix seç" is no step of a swipe until dates were picked.
+        await tester.fling(
+          find.byType(ListView).first,
+          const Offset(-300, 0),
+          1000,
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(DateRangePickerDialog), findsNothing);
+
+        await tester.fling(
+          find.byType(ListView).first,
+          const Offset(300, 0),
+          1000,
+        );
+        await tester.pumpAndSettle();
+        expect(server.asked.last.from, DateTime(2026, 11));
+      },
+    );
+
     testWidgets('the history comes twenty at a time as it scrolls (T-413)', (
       tester,
     ) async {

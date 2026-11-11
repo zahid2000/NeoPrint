@@ -4,10 +4,9 @@ import '../kiosk_search/kiosk_models.dart';
 import '../kiosk_search/kiosk_search_controller.dart';
 import '../kiosk_search/user_location.dart';
 
-/// How far the home screen looks for a kiosk: a city and around it - the
-/// nearest *working* one may be farther than the nearest one (T-369); the
-/// card says how far it is.
-const nearKioskRadiusKm = 50.0;
+// How far the home screen looks for a kiosk: as far as it takes (T-434) -
+// the nearest *working* one may be in another city, and the card says how
+// far it is. The server returns the kiosks nearest first, a page of them.
 
 /// How many of the others the home screen lists sideways.
 const nearKioskOthers = 10;
@@ -63,7 +62,7 @@ class NearKiosksController extends AutoDisposeAsyncNotifier<NearKiosks> {
       case LocationFound(:final point):
         final kiosks = await ref
             .read(kioskRepositoryProvider)
-            .search(near: point, radiusKm: nearKioskRadiusKm);
+            .search(near: point);
         return NearKiosks(kiosks: kiosks);
     }
   }

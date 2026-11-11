@@ -272,7 +272,7 @@ class _NoNearKiosk extends ConsumerWidget {
                 style: TextButton.styleFrom(
                   minimumSize: const Size(0, Sizes.touchTarget),
                 ),
-                onPressed: () => context.goTab(Routes.kiosks),
+                onPressed: () => context.push(Routes.kioskList),
                 child: Text(l10n.homeAllKiosks),
               ),
             ],
@@ -624,7 +624,7 @@ class _NearbyKiosks extends ConsumerWidget {
         NeoSectionHeader(
           title: l10n.homeNearbyKiosks,
           actionLabel: l10n.homeSeeAll,
-          onAction: () => context.goTab(Routes.kiosks),
+          onAction: () => context.push(Routes.kioskList),
         ),
         SizedBox(
           height: 96,

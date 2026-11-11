@@ -51,20 +51,17 @@ void main() {
     expect(near.others, isEmpty);
   });
 
-  test(
-    'the card looks a city wide (T-369) and lists at most $nearKioskOthers others',
-    () {
-      expect(nearKioskRadiusKm, greaterThanOrEqualTo(50));
-      final near = NearKiosks(
-        kiosks: [
-          for (var i = 0; i < 15; i++)
-            kiosk('KSK-$i', KioskStatus.offline, i + 0.5),
-          kiosk('KSK-far', KioskStatus.online, 12.4),
-        ],
-      );
+  test('the card takes the nearest working kiosk however far (T-369, T-434) '
+      'and lists at most $nearKioskOthers others', () {
+    final near = NearKiosks(
+      kiosks: [
+        for (var i = 0; i < 15; i++)
+          kiosk('KSK-$i', KioskStatus.offline, i + 0.5),
+        kiosk('KSK-far', KioskStatus.online, 12.4),
+      ],
+    );
 
-      expect(near.nearestWorking?.code, 'KSK-far');
-      expect(near.others, hasLength(nearKioskOthers));
-    },
-  );
+    expect(near.nearestWorking?.code, 'KSK-far');
+    expect(near.others, hasLength(nearKioskOthers));
+  });
 }

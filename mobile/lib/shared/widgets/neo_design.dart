@@ -143,6 +143,7 @@ class NeoTabSwipe<T> extends StatefulWidget {
     required this.selected,
     required this.onSelected,
     required this.child,
+    this.swipeable = true,
     super.key,
   });
 
@@ -150,6 +151,10 @@ class NeoTabSwipe<T> extends StatefulWidget {
   final T selected;
   final ValueChanged<T> onSelected;
   final Widget child;
+
+  /// False on a tab whose content takes sideways drags itself - the kiosks'
+  /// map pans (T-432): it is left by a tap on a tab, and still slides in.
+  final bool swipeable;
 
   /// Logical pixels a second; below it the finger only wandered.
   static const flingVelocity = 300.0;
@@ -261,12 +266,18 @@ class _NeoTabSwipeState<T> extends State<NeoTabSwipe<T>>
 
         return GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onHorizontalDragStart: _onStart,
-          onHorizontalDragUpdate: _onUpdate,
-          onHorizontalDragEnd: _onEnd,
-          onHorizontalDragCancel: () => unawaited(
-            _offset.animateTo(0, duration: Motion.fast, curve: Motion.easing),
-          ),
+          onHorizontalDragStart: widget.swipeable ? _onStart : null,
+          onHorizontalDragUpdate: widget.swipeable ? _onUpdate : null,
+          onHorizontalDragEnd: widget.swipeable ? _onEnd : null,
+          onHorizontalDragCancel: widget.swipeable
+              ? () => unawaited(
+                  _offset.animateTo(
+                    0,
+                    duration: Motion.fast,
+                    curve: Motion.easing,
+                  ),
+                )
+              : null,
           child: _SwipeScope(
             offset: _offset,
             width: _width,

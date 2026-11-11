@@ -27,7 +27,10 @@ enum _KioskTab { near, all, map }
 /// address, "near me" with a radius, and the same result as a list or a map
 /// (docs/DESIGN_SYSTEM.md, "Mobil: kiosklar").
 class KioskSearchScreen extends ConsumerStatefulWidget {
-  const KioskSearchScreen({super.key});
+  const KioskSearchScreen({this.title, super.key});
+
+  /// "Kiosklar" when opened on its own (T-433); "Kiosk seç" in the Print tab.
+  final String? title;
 
   @override
   ConsumerState<KioskSearchScreen> createState() => _KioskSearchScreenState();
@@ -80,112 +83,126 @@ class _KioskSearchScreenState extends ConsumerState<KioskSearchScreen> {
     final results = ref.watch(kioskResultsProvider);
 
     final view = search.view;
+    final tab = view == KioskView.map
+        ? _KioskTab.map
+        : search.nearMe
+        ? _KioskTab.near
+        : _KioskTab.all;
+
+    void select(_KioskTab tab) {
+      switch (tab) {
+        case _KioskTab.near:
+          controller.setView(KioskView.list);
+          unawaited(controller.setNearMe(true));
+        case _KioskTab.all:
+          controller.setView(KioskView.list);
+          unawaited(controller.setNearMe(false));
+        case _KioskTab.map:
+          controller.setView(KioskView.map);
+      }
+    }
 
     return Scaffold(
       appBar: neoTabAppBar(
         context,
-        title: l10n.printHubPickKiosk,
+        title: widget.title ?? l10n.printHubPickKiosk,
         showBack: Navigator.of(context).canPop(),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Spacing.x4,
-              Spacing.x2,
-              Spacing.x4,
-              0,
-            ),
-            child: NeoSearchField(
-              controller: _text,
-              hint: l10n.kioskSearchHint,
-              onChanged: _typed,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Spacing.x4,
-              Spacing.x3,
-              Spacing.x4,
-              0,
-            ),
-            child: NeoPillTabs<_KioskTab>(
-              values: _KioskTab.values,
-              selected: view == KioskView.map
-                  ? _KioskTab.map
-                  : search.nearMe
-                  ? _KioskTab.near
-                  : _KioskTab.all,
-              expand: true,
-              label: (tab) => switch (tab) {
-                _KioskTab.near => l10n.kioskTabNear,
-                _KioskTab.all => l10n.kioskTabAll,
-                _KioskTab.map => l10n.kioskTabMap,
-              },
-              onSelected: (tab) {
-                switch (tab) {
-                  case _KioskTab.near:
-                    controller.setView(KioskView.list);
-                    unawaited(controller.setNearMe(true));
-                  case _KioskTab.all:
-                    controller.setView(KioskView.list);
-                    unawaited(controller.setNearMe(false));
-                  case _KioskTab.map:
-                    controller.setView(KioskView.map);
-                }
-              },
-            ),
-          ),
-          if (search.nearMe) _NearMeBar(search: search),
-          const SizedBox(height: Spacing.x2),
-          Expanded(
-            child: switch (results) {
-              // A failure with nothing shown yet; a failed refresh keeps the list.
-              AsyncError(:final error) when !results.hasValue => NeoEmptyState(
-                icon: Icons.cloud_off_outlined,
-                message: l10n.kioskLoadFailed(
-                  error is ApiException
-                      ? apiErrorText(l10n, error)
-                      : l10n.errorServer,
-                ),
-                action: OutlinedButton(
-                  onPressed: () => ref.invalidate(kioskResultsProvider),
-                  child: Text(l10n.commonRetry),
-                ),
+      // Sideways from tab to tab, as on the other tabbed pages (T-432).
+      body: NeoTabSwipe<_KioskTab>(
+        values: _KioskTab.values,
+        selected: tab,
+        onSelected: select,
+        swipeable: tab != _KioskTab.map,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Spacing.x4,
+                Spacing.x2,
+                Spacing.x4,
+                0,
               ),
-              // While a new search loads, the last result stays on screen.
-              AsyncValue(valueOrNull: final value?) =>
-                value.isEmpty
-                    ? _Empty(search: search, onClear: _clear)
-                    : view == KioskView.map
-                    ? KioskMapView(
-                        kiosks: value,
-                        me: search.near,
-                        onOpen: _open,
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () =>
-                            ref.refresh(kioskResultsProvider.future),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(
-                            Spacing.x4,
-                            Spacing.x2,
-                            Spacing.x4,
-                            Spacing.x6,
-                          ),
-                          itemCount: value.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: Spacing.x2),
-                          itemBuilder: (_, index) => KioskCard(
-                            kiosk: value[index],
-                            onTap: () => _open(value[index]),
-                          ),
-                        ),
+              child: NeoSearchField(
+                controller: _text,
+                hint: l10n.kioskSearchHint,
+                onChanged: _typed,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Spacing.x4,
+                Spacing.x3,
+                Spacing.x4,
+                0,
+              ),
+              child: NeoPillTabs<_KioskTab>(
+                values: _KioskTab.values,
+                selected: tab,
+                expand: true,
+                label: (tab) => switch (tab) {
+                  _KioskTab.near => l10n.kioskTabNear,
+                  _KioskTab.all => l10n.kioskTabAll,
+                  _KioskTab.map => l10n.kioskTabMap,
+                },
+                onSelected: select,
+              ),
+            ),
+            if (search.nearMe) _NearMeBar(search: search),
+            const SizedBox(height: Spacing.x2),
+            Expanded(
+              // The list moves with the tab (T-432); the map pans instead.
+              child: NeoSwipeContent(
+                child: switch (results) {
+                  // A failure with nothing shown yet; a failed refresh keeps the list.
+                  AsyncError(:final error) when !results.hasValue =>
+                    NeoEmptyState(
+                      icon: Icons.cloud_off_outlined,
+                      message: l10n.kioskLoadFailed(
+                        error is ApiException
+                            ? apiErrorText(l10n, error)
+                            : l10n.errorServer,
                       ),
-              _ => const Center(child: CircularProgressIndicator()),
-            },
-          ),
-        ],
+                      action: OutlinedButton(
+                        onPressed: () => ref.invalidate(kioskResultsProvider),
+                        child: Text(l10n.commonRetry),
+                      ),
+                    ),
+                  // While a new search loads, the last result stays on screen.
+                  AsyncValue(valueOrNull: final value?) =>
+                    value.isEmpty
+                        ? _Empty(search: search, onClear: _clear)
+                        : view == KioskView.map
+                        ? KioskMapView(
+                            kiosks: value,
+                            me: search.near,
+                            onOpen: _open,
+                          )
+                        : RefreshIndicator(
+                            onRefresh: () =>
+                                ref.refresh(kioskResultsProvider.future),
+                            child: ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(
+                                Spacing.x4,
+                                Spacing.x2,
+                                Spacing.x4,
+                                Spacing.x6,
+                              ),
+                              itemCount: value.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: Spacing.x2),
+                              itemBuilder: (_, index) => KioskCard(
+                                kiosk: value[index],
+                                onTap: () => _open(value[index]),
+                              ),
+                            ),
+                          ),
+                  _ => const Center(child: CircularProgressIndicator()),
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

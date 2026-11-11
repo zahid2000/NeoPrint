@@ -99,67 +99,82 @@ class _WalletHistoryScreenState extends ConsumerState<WalletHistoryScreen> {
         title: l10n.walletHistoryTitle,
         showBack: true,
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Spacing.x4,
-              Spacing.x2,
-              Spacing.x4,
-              0,
-            ),
-            child: NeoPillTabs<_Period>(
-              values: _Period.values,
-              selected: _period,
-              label: (period) => _label(l10n, period),
-              onSelected: _choose,
-            ),
-          ),
-          Expanded(
-            child: switch (entries) {
-              AsyncData(:final value) => RefreshIndicator(
-                onRefresh: controller.refresh,
-                child: value.items.isEmpty
-                    ? ListView(
-                        children: [
-                          const SizedBox(height: Spacing.x8),
-                          NeoEmptyState(
-                            icon: Icons.receipt_long_outlined,
-                            message: l10n.walletPeriodEmpty,
-                            hint: l10n.walletPeriodEmptyHint,
-                          ),
-                        ],
-                      )
-                    : NeoLoadMore(
-                        paged: value,
-                        onMore: controller.loadMore,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(Spacing.x4),
-                          itemCount: value.items.length + 1,
-                          itemBuilder: (context, index) =>
-                              index < value.items.length
-                              ? WalletEntryTile(entry: value.items[index])
-                              : NeoLoadMoreFooter(
-                                  paged: value,
-                                  onRetry: () =>
-                                      controller.loadMore(retry: true),
-                                ),
-                        ),
-                      ),
-              ),
-              AsyncError() => NeoEmptyState(
-                icon: Icons.cloud_off_outlined,
-                message: l10n.errorServer,
-                action: OutlinedButton(
-                  onPressed: () => ref.invalidate(walletPeriodProvider(range)),
-                  child: Text(l10n.commonRetry),
-                ),
-              ),
-              _ => const Center(child: CircularProgressIndicator()),
-            },
-          ),
+      // Swiped sideways from period to period (T-432). "Tarix seç" is a
+      // step of the swipe only once dates were picked: a swipe does not
+      // open the calendar, a tap does.
+      body: NeoTabSwipe<_Period>(
+        values: [
+          _Period.month,
+          _Period.quarter,
+          if (_picked != null) _Period.pick,
         ],
+        selected: _period,
+        onSelected: (period) => setState(() => _period = period),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Spacing.x4,
+                Spacing.x2,
+                Spacing.x4,
+                0,
+              ),
+              child: NeoPillTabs<_Period>(
+                values: _Period.values,
+                selected: _period,
+                label: (period) => _label(l10n, period),
+                onSelected: _choose,
+              ),
+            ),
+            Expanded(
+              child: NeoSwipeContent(
+                child: switch (entries) {
+                  AsyncData(:final value) => RefreshIndicator(
+                    onRefresh: controller.refresh,
+                    child: value.items.isEmpty
+                        ? ListView(
+                            children: [
+                              const SizedBox(height: Spacing.x8),
+                              NeoEmptyState(
+                                icon: Icons.receipt_long_outlined,
+                                message: l10n.walletPeriodEmpty,
+                                hint: l10n.walletPeriodEmptyHint,
+                              ),
+                            ],
+                          )
+                        : NeoLoadMore(
+                            paged: value,
+                            onMore: controller.loadMore,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(Spacing.x4),
+                              itemCount: value.items.length + 1,
+                              itemBuilder: (context, index) =>
+                                  index < value.items.length
+                                  ? WalletEntryTile(entry: value.items[index])
+                                  : NeoLoadMoreFooter(
+                                      paged: value,
+                                      onRetry: () =>
+                                          controller.loadMore(retry: true),
+                                    ),
+                            ),
+                          ),
+                  ),
+                  AsyncError() => NeoEmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    message: l10n.errorServer,
+                    action: OutlinedButton(
+                      onPressed: () =>
+                          ref.invalidate(walletPeriodProvider(range)),
+                      child: Text(l10n.commonRetry),
+                    ),
+                  ),
+                  _ => const Center(child: CircularProgressIndicator()),
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

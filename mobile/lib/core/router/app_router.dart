@@ -55,6 +55,7 @@ import '../auth/auth_controller.dart';
 import '../auth/auth_models.dart';
 import '../security/app_lock.dart';
 import '../features/readiness.dart';
+import '../../l10n/app_localizations.dart';
 import 'app_links.dart';
 
 /// Route paths, in one place so a rename cannot leave a dangling link.
@@ -70,6 +71,11 @@ abstract final class Routes {
   /// The Print tab (T-338); the kiosks and the scheduled prints live in it.
   static const print = '/print';
   static const kiosks = '/print/kiosks';
+
+  /// The same kiosks on a screen of their own, above the tabs (T-433): the
+  /// home screen's "Hamısına bax" is about kiosks, not about printing, so it
+  /// does not switch the user to the Print tab.
+  static const kioskList = '/kiosks';
   static String kiosk(String code) => '/kiosk/$code';
 
   /// A kiosk's queue, row by row (T-379).
@@ -284,6 +290,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       ],
       // A kiosk found in the search, or opened by its code (plan section 8.3,
       // neoprint://kiosk/{code}).
+      if (Readiness.kioskSearch)
+        GoRoute(
+          path: Routes.kioskList,
+          builder: (context, __) =>
+              KioskSearchScreen(title: AppLocalizations.of(context).navKiosks),
+        ),
       if (Readiness.kioskSearch)
         GoRoute(
           path: '/kiosk/:code',

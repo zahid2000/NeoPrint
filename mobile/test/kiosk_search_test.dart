@@ -171,6 +171,28 @@ void main() {
       expect(find.text('Xəritə'), findsOneWidget);
     });
 
+    testWidgets('the tabs are swiped through as on the other pages; '
+        'opened alone it is "Kiosklar" (T-432, T-433)', (tester) async {
+      await tester.pumpWidget(
+        app(
+          const KioskSearchScreen(title: 'Kiosklar'),
+          FakeKiosks([elmler, mayis]),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Kiosklar'), findsOneWidget);
+      expect(find.text('Kiosk seç'), findsNothing);
+
+      // "Hamısı" to "Xəritə", right to left.
+      await tester.fling(
+        find.byType(ListView).first,
+        const Offset(-300, 0),
+        1000,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(KioskMapView), findsOneWidget);
+    });
+
     testWidgets('searches when typing pauses, and says when nothing matches', (
       tester,
     ) async {
