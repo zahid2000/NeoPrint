@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 using MongoDB.Driver;
 
+using NeoPrint.Application.Common;
 using NeoPrint.Application.PrintJobs;
 using NeoPrint.Domain.Common;
 using NeoPrint.Domain.PrintJobs;
@@ -264,13 +265,30 @@ public sealed class PrintJobRepository : IPrintJobRepository
         var total = await _context.PrintJobs.CountDocumentsAsync(where, cancellationToken).ConfigureAwait(false);
         var items = await _context.PrintJobs
             .Find(where)
-            .SortByDescending(job => job.CreatedAt)
+            .Sort(Order(filter.Sort))
             .Skip(skip)
             .Limit(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return (items, total);
+    }
+
+    /// <summary>The admin list's order (T-424); the id breaks ties so pages never overlap.</summary>
+    private static SortDefinition<PrintJob> Order(ListSort? sort)
+    {
+        var by = Builders<PrintJob>.Sort;
+        var descending = sort?.Descending ?? true;
+
+        SortDefinition<PrintJob> primary = sort?.Field switch
+        {
+            "finishedAt" => descending ? by.Descending(job => job.FinishedAt) : by.Ascending(job => job.FinishedAt),
+            "total" => descending ? by.Descending(job => job.Price.Price.FinalPrice) : by.Ascending(job => job.Price.Price.FinalPrice),
+            "code" => descending ? by.Descending(job => job.JobCode) : by.Ascending(job => job.JobCode),
+            _ => descending ? by.Descending(job => job.CreatedAt) : by.Ascending(job => job.CreatedAt),
+        };
+
+        return by.Combine(primary, descending ? by.Descending(job => job.Id) : by.Ascending(job => job.Id));
     }
 }
 

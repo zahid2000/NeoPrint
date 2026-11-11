@@ -25,6 +25,7 @@ import { confirmAction } from '../../shared/confirm.dialog';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
+import { rememberFilters } from '../../shared/remembered-filters';
 import { DateTimePipe, MoneyPipe } from '../../shared/format.pipes';
 import { NotifyService } from '../../shared/notify.service';
 import { PageHeaderComponent } from '../../shared/page-header.component';
@@ -94,7 +95,7 @@ const loud = new Set(['Critical', 'High']);
         </div>
       }
 
-      <app-filter-bar>
+      <app-filter-bar [active]="activeFilters()" (clear)="clearFilters()">
         <mat-button-toggle-group [attr.aria-label]="'monitoring.filter' | translate" [ngModel]="view()" (ngModelChange)="setView($event)">
           <mat-button-toggle value="open">{{ 'ops.incidents.viewOpen' | translate }}</mat-button-toggle>
           <mat-button-toggle value="resolved">{{ 'ops.incidents.viewResolved' | translate }}</mat-button-toggle>
@@ -269,6 +270,14 @@ export class IncidentsComponent {
 
   readonly view = signal<IncidentView>('open');
   readonly kioskId = signal<string | null>(null);
+
+  /** How many filters are set, for the filter bar (T-424). */
+  readonly activeFilters = computed(
+    () => [this.kioskId() !== null].filter(Boolean).length,
+  );
+
+  /** Back on the page, the list is as it was left (T-424). */
+  protected readonly keptFilters = rememberFilters('incidents', { view: this.view, kioskId: this.kioskId });
   readonly page = signal(1);
   readonly rows = signal<readonly IncidentRow[] | null>(null);
   readonly total = signal(0);
@@ -321,6 +330,11 @@ export class IncidentsComponent {
   setKiosk(kioskId: string | null): void {
     this.kioskId.set(kioskId);
     this.restart();
+  }
+
+  /** "Təmizlə" in the filter bar: every filter off (T-424). */
+  clearFilters(): void {
+    this.setKiosk(null);
   }
 
   go(page: number): void {

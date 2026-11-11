@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
@@ -9,11 +10,13 @@ import { MonitoringApiService } from '../../core/api/monitoring-api.service';
 import { IncidentRow } from '../../core/api/step4.models';
 import { HubEvents, IncidentEvent } from '../../core/realtime/hub-events';
 import { liveRefresh } from '../../core/realtime/live-refresh';
+import { ClientTable, rank } from '../../shared/client-table';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
+import { PagerComponent } from '../money/money-shared';
 
 const statusTones: Readonly<Record<string, StatusTone>> = {
   Open: 'danger',
@@ -31,7 +34,9 @@ const statusTones: Readonly<Record<string, StatusTone>> = {
   imports: [
     FormsModule,
     MatButtonToggleModule,
+    MatSortModule,
     MatTableModule,
+    PagerComponent,
     TranslatePipe,
     DateTimePipe,
     EmptyStateComponent,
@@ -62,9 +67,9 @@ const statusTones: Readonly<Record<string, StatusTone>> = {
       />
     } @else {
       <div class="neo-table-wrapper">
-        <table mat-table class="neo-table" [dataSource]="incidents()!">
+        <table mat-table class="neo-table" [dataSource]="table.rows()" matSort (matSortChange)="table.onSort($event)">
           <ng-container matColumnDef="severity">
-            <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.incidents.colSeverity' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.incidents.colSeverity' | translate }}</th>
             <td mat-cell *matCellDef="let incident">
               <app-status-chip
                 [status]="incident.severity"
@@ -82,7 +87,7 @@ const statusTones: Readonly<Record<string, StatusTone>> = {
             </td>
           </ng-container>
           <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.incidents.colStatus' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.incidents.colStatus' | translate }}</th>
             <td mat-cell *matCellDef="let incident">
               <app-status-chip
                 [status]="incident.status"
@@ -92,11 +97,11 @@ const statusTones: Readonly<Record<string, StatusTone>> = {
             </td>
           </ng-container>
           <ng-container matColumnDef="opened">
-            <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.incidents.colOpened' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.incidents.colOpened' | translate }}</th>
             <td mat-cell *matCellDef="let incident" class="neo-nowrap">{{ incident.createdAt | dateTime }}</td>
           </ng-container>
           <ng-container matColumnDef="closed">
-            <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.incidents.colClosed' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.incidents.colClosed' | translate }}</th>
             <td mat-cell *matCellDef="let incident" class="neo-nowrap">{{ incident.resolvedAt | dateTime }}</td>
           </ng-container>
 
@@ -104,6 +109,13 @@ const statusTones: Readonly<Record<string, StatusTone>> = {
           <tr mat-row *matRowDef="let row; columns: columns"></tr>
         </table>
       </div>
+      <app-money-pager
+        [total]="table.total()"
+        [page]="table.page()"
+        [pageSize]="table.pageSize"
+        countKey="common.rows"
+        (go)="table.go($event)"
+      />
     }
   `,
   styleUrl: './kiosk-tab.scss',
@@ -118,6 +130,14 @@ export class KioskIncidentsComponent implements OnInit {
 
   readonly openOnly = signal(true);
   readonly incidents = signal<readonly IncidentRow[] | null>(null);
+
+  /** Sorted by a header, twenty rows a page (T-424). */
+  readonly table = new ClientTable(computed(() => this.incidents() ?? []), {
+    severity: (row) => rank(['Critical', 'High', 'Medium'], row.severity),
+    status: (row) => row.status,
+    opened: (row) => new Date(row.createdAt),
+    closed: (row) => (row.resolvedAt ? new Date(row.resolvedAt) : null),
+  });
   readonly problem = signal<Problem | null>(null);
 
   constructor() {

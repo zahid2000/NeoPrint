@@ -31,6 +31,7 @@
   "common.concurrentChange": "Bu məlumatı başqası dəyişdi. Səhifəni yeniləyib yenidən cəhd edin.",
   "common.illegalTransition": "Bu əməliyyat indiki vəziyyətdə mümkün deyil ({from} → {to}).",
   "common.languageInvalid": "Dil az, en və ya ru ola bilər.",
+  "common.sortInvalid": "Bu sütuna görə sıralamaq olmur. Mümkün olanlar: {fields}.",
   "conversion.failed": "Sənədi PDF-ə çevirmək mümkün olmadı. Fayl zədələnib və ya şifrələnib ola bilər.",
   "conversion.formatRetired": "'{format}' formatı artıq dəstəklənmir.",
   "conversion.imageToPdfFailed": "Şəkli PDF-ə çevirmək mümkün olmadı.",

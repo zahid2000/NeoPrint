@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, Injector, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -20,7 +21,9 @@ import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
+import { serverSort } from '../../shared/client-table';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
+import { rememberFilters } from '../../shared/remembered-filters';
 import { provideNeoDates } from '../../shared/date-input';
 import { DateTimePipe, MoneyPipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
@@ -47,6 +50,7 @@ const pageSize = 20;
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    MatSortModule,
     MatTableModule,
     TranslatePipe,
     PageHeaderComponent,
@@ -70,7 +74,7 @@ const pageSize = 20;
         <app-error-banner [problem]="problem" effect="payments.loadFailedEffect" (retry)="load()" />
       }
 
-      <app-filter-bar>
+      <app-filter-bar [active]="activeFilters()" (clear)="clear()">
         <mat-form-field>
           <mat-label>{{ 'payments.filterSearch' | translate }}</mat-label>
           <mat-icon matPrefix>search</mat-icon>
@@ -184,9 +188,17 @@ const pageSize = 20;
         }
       } @else if (rows().length > 0) {
         <div class="neo-table-wrapper">
-          <table mat-table class="neo-table" [dataSource]="rows()">
+          <table
+            mat-table
+            class="neo-table"
+            [dataSource]="rows()"
+            matSort
+            [matSortActive]="sort().active"
+            [matSortDirection]="sort().direction"
+            (matSortChange)="onSort($event)"
+          >
             <ng-container matColumnDef="created">
-              <th mat-header-cell *matHeaderCellDef>{{ 'payments.colCreated' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header="createdAt">{{ 'payments.colCreated' | translate }}</th>
               <td mat-cell *matCellDef="let p">{{ p.createdAt | dateTime }}</td>
             </ng-container>
             <ng-container matColumnDef="status">
@@ -218,7 +230,7 @@ const pageSize = 20;
               <td mat-cell *matCellDef="let p">{{ p.jobCode }}</td>
             </ng-container>
             <ng-container matColumnDef="amount">
-              <th mat-header-cell *matHeaderCellDef class="money__number">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header="amount" arrowPosition="before" class="money__number">
                 {{ 'payments.colAmount' | translate }}
               </th>
               <td mat-cell *matCellDef="let p" class="money__number">
@@ -261,6 +273,7 @@ export class PaymentsComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
 
   readonly pageSize = pageSize;
   readonly statusOptions = paymentStatuses;
@@ -285,18 +298,25 @@ export class PaymentsComponent implements OnInit {
   readonly to = signal<Date | null>(null);
   readonly hadError = signal(false);
 
-  readonly filtersActive = computed(
+  /** The column the server orders by (T-424); none for newest first. */
+  readonly sort = signal<Sort>({ active: '', direction: '' });
+
+  /** How many filters are set, for the filter bar (T-424). */
+  readonly activeFilters = computed(
     () =>
-      this.search().trim() !== '' ||
-      this.statuses().length > 0 ||
-      this.methods().length > 0 ||
-      this.channel() !== null ||
-      this.refund() !== null ||
-      this.kiosk() !== null ||
-      this.from() !== null ||
-      this.to() !== null ||
-      this.hadError(),
+      [
+        this.search().trim() !== '',
+        this.statuses().length > 0,
+        this.methods().length > 0,
+        this.channel() !== null,
+        this.refund() !== null,
+        this.kiosk() !== null,
+        this.from() !== null || this.to() !== null,
+        this.hadError(),
+      ].filter(Boolean).length,
   );
+
+  readonly filtersActive = computed(() => this.activeFilters() > 0);
 
   private lastQuery = '';
 
@@ -309,9 +329,27 @@ export class PaymentsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // A link from the dashboard ("uğursuz refund-lar") arrives with its filter set.
+    // Back on the page, the list is as it was left (T-424).
+    rememberFilters(
+      'payments',
+      {
+        search: this.search,
+        statuses: this.statuses,
+        methods: this.methods,
+        channel: this.channel,
+        refund: this.refund,
+        kiosk: this.kiosk,
+        from: this.from,
+        to: this.to,
+        hadError: this.hadError,
+      },
+      { injector: this.injector, dates: ['from', 'to'] },
+    );
+
+    // A link from the dashboard ("uğursuz refund-lar") arrives with its filter set, and only it.
     const refund = this.route.snapshot.queryParamMap.get('refund');
     if (refund === 'failed' || refund === 'pending') {
+      this.reset();
       this.refund.set(refund);
     }
 
@@ -334,7 +372,18 @@ export class PaymentsComponent implements OnInit {
     void this.load();
   }
 
+  /** A header pressed: the server orders the whole list, from the first page. */
+  onSort(sort: Sort): void {
+    this.sort.set(sort);
+    this.apply();
+  }
+
   clear(): void {
+    this.reset();
+    this.apply();
+  }
+
+  private reset(): void {
     this.search.set('');
     this.statuses.set([]);
     this.methods.set([]);
@@ -344,7 +393,6 @@ export class PaymentsComponent implements OnInit {
     this.from.set(null);
     this.to.set(null);
     this.hadError.set(false);
-    this.apply();
   }
 
   valid(value: Date | null): Date | null {
@@ -367,6 +415,7 @@ export class PaymentsComponent implements OnInit {
       from: startOfDay(this.from()),
       to: endOfDay(this.to()),
       hadError: this.hadError(),
+      sort: serverSort(this.sort()),
       page: this.page(),
       pageSize,
     };

@@ -45,9 +45,10 @@ public sealed class AdminPaymentsController : ControllerBase
         [FromQuery] string? search,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] string? sort = null,
         CancellationToken cancellationToken = default)
         => Ok(await _sender.Send(
-            new ListPaymentsQuery(AdminId, statuses, methods, channel, purpose, kioskId, from, to, hadError, refund, search, page, pageSize),
+            new ListPaymentsQuery(AdminId, statuses, methods, channel, purpose, kioskId, from, to, hadError, refund, search, page, pageSize, sort),
             cancellationToken));
 
     [HttpGet("payments/{id:guid}")]

@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
@@ -18,12 +19,14 @@ import { HubEvents } from '../../core/realtime/hub-events';
 import { KioskLiveStore } from '../../core/realtime/kiosk-live.store';
 import { liveRefresh } from '../../core/realtime/live-refresh';
 import { confirmAction } from '../../shared/confirm.dialog';
+import { ClientTable } from '../../shared/client-table';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { NotifyService } from '../../shared/notify.service';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
+import { PagerComponent } from '../money/money-shared';
 
 /**
  * Kiosk detail → "Əmrlər" (plan sections 7.8, 8A.3): pause and resume, a
@@ -36,7 +39,9 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatSortModule,
     MatTableModule,
+    PagerComponent,
     TranslatePipe,
     DateTimePipe,
     EmptyStateComponent,
@@ -108,13 +113,13 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
       <app-empty-state icon="terminal" [message]="'printers.commandsEmpty' | translate" />
     } @else {
       <div class="neo-table-wrapper">
-        <table mat-table class="neo-table" [dataSource]="commands()!">
+        <table mat-table class="neo-table" [dataSource]="table.rows()" matSort (matSortChange)="table.onSort($event)">
           <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef>{{ 'printers.colCommand' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'printers.colCommand' | translate }}</th>
             <td mat-cell *matCellDef="let command">{{ 'printers.command.' + command.type | translate }}</td>
           </ng-container>
           <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>{{ 'printers.colStatus' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'printers.colStatus' | translate }}</th>
             <td mat-cell *matCellDef="let command">
               <app-status-chip [status]="command.status" [text]="'printers.commandStatus.' + command.status | translate" />
             </td>
@@ -124,11 +129,11 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
             <td mat-cell *matCellDef="let command">{{ command.result }}</td>
           </ng-container>
           <ng-container matColumnDef="sent">
-            <th mat-header-cell *matHeaderCellDef>{{ 'printers.colSent' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'printers.colSent' | translate }}</th>
             <td mat-cell *matCellDef="let command" class="neo-nowrap">{{ command.createdAt | dateTime }}</td>
           </ng-container>
           <ng-container matColumnDef="completed">
-            <th mat-header-cell *matHeaderCellDef>{{ 'printers.colCompleted' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'printers.colCompleted' | translate }}</th>
             <td mat-cell *matCellDef="let command" class="neo-nowrap">{{ command.completedAt | dateTime }}</td>
           </ng-container>
 
@@ -136,6 +141,13 @@ import { StatusChipComponent } from '../../shared/status-chip.component';
           <tr mat-row *matRowDef="let row; columns: columns"></tr>
         </table>
       </div>
+      <app-money-pager
+        [total]="table.total()"
+        [page]="table.page()"
+        [pageSize]="table.pageSize"
+        countKey="common.rows"
+        (go)="table.go($event)"
+      />
     }
   `,
   styles: `
@@ -171,6 +183,14 @@ export class KioskCommandsComponent implements OnInit {
   readonly columns = ['type', 'status', 'result', 'sent', 'completed'];
 
   readonly commands = signal<KioskCommand[] | null>(null);
+
+  /** Sorted by a header, twenty rows a page (T-424). */
+  readonly table = new ClientTable(computed(() => this.commands() ?? []), {
+    type: (row) => row.type,
+    status: (row) => row.status,
+    sent: (row) => new Date(row.createdAt),
+    completed: (row) => (row.completedAt ? new Date(row.completedAt) : null),
+  });
   readonly problem = signal<Problem | null>(null);
   readonly busy = signal<KioskCommandPath | null>(null);
 

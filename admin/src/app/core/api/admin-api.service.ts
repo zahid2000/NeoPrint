@@ -369,6 +369,10 @@ export class AdminApiService {
       params = params.set('code', filter.code.trim());
     }
 
+    if (filter.sort) {
+      params = params.set('sort', filter.sort);
+    }
+
     return this.http.get<PrintJobPage>('/api/admin/print-jobs', { params });
   }
 

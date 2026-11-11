@@ -29,7 +29,12 @@ public sealed record PaymentFilter(
     bool? HadError,
     Guid? JobId,
     string? Search,
-    IReadOnlyCollection<Guid>? PaymentIds = null);
+    IReadOnlyCollection<Guid>? PaymentIds = null,
+    ListSort? Sort = null)
+{
+    /// <summary>The columns the list orders by (T-424); without one, newest first.</summary>
+    public static readonly string[] SortFields = ["createdAt", "amount"];
+}
 
 /// <param name="Refund"><c>pending</c> for a refund on its way, <c>failed</c> for one that did not go through.</param>
 public sealed record ListPaymentsQuery(
@@ -45,7 +50,8 @@ public sealed record ListPaymentsQuery(
     string? Refund,
     string? Search,
     int Page,
-    int PageSize) : IRequest<AdminPaymentPage>;
+    int PageSize,
+    string? Sort = null) : IRequest<AdminPaymentPage>;
 
 public sealed record GetAdminPaymentQuery(Guid AdminUserId, Guid PaymentId) : IRequest<AdminPaymentDetail>;
 
@@ -166,6 +172,7 @@ public sealed class AdminPaymentHandlers :
 
         var page = Math.Max(1, request.Page);
         var size = Math.Clamp(request.PageSize, 1, MaxPageSize);
+        var sort = ListSort.Parse(request.Sort, PaymentFilter.SortFields);
         var (scope, codes) = await ScopeAsync(request.AdminUserId, request.KioskId, cancellationToken).ConfigureAwait(false);
 
         if (scope is { Count: 0 })
@@ -201,7 +208,8 @@ public sealed class AdminPaymentHandlers :
             request.HadError,
             await JobBySearchAsync(request.Search, cancellationToken).ConfigureAwait(false),
             request.Search?.Trim(),
-            paymentIds);
+            paymentIds,
+            sort);
 
         var (items, total) = await _payments.SearchAsync(filter, (page - 1) * size, size, cancellationToken).ConfigureAwait(false);
         var jobs = (await _jobs.ListByIdsAsync([.. items.Where(p => p.JobId is not null).Select(p => p.JobId!.Value)], cancellationToken).ConfigureAwait(false))

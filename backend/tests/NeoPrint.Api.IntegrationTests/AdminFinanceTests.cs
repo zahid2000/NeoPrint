@@ -38,6 +38,23 @@ public sealed class AdminFinanceTests
         row.GetProperty("kioskCode").GetString().Should().Be(kiosk.KioskCode);
         row.GetProperty("amount").GetDecimal().Should().Be(price);
 
+        // Ordered by a column, either way (T-424); the amount is the stored money's.
+        foreach (var sort in new[] { "amount", "-amount", "createdAt", "-createdAt" })
+        {
+            var sorted = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/payments?sort={sort}&pageSize=100");
+            var amounts = sorted.GetProperty("items").EnumerateArray().Select(p => p.GetProperty("amount").GetDecimal()).ToList();
+            if (sort == "amount")
+            {
+                amounts.Should().BeInAscendingOrder();
+            }
+            else if (sort == "-amount")
+            {
+                amounts.Should().BeInDescendingOrder();
+            }
+        }
+
+        (await admin.GetAsync("/api/admin/payments?sort=card")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
         // The six-digit job code in the search box finds it too.
         var jobCode = row.GetProperty("jobCode").GetString();
         (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/payments?search={jobCode}"))

@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatSortModule } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
@@ -8,11 +9,13 @@ import { firstValueFrom } from 'rxjs';
 import { MonitoringApiService } from '../../core/api/monitoring-api.service';
 import { AboutKiosk, HubEvents } from '../../core/realtime/hub-events';
 import { liveRefresh } from '../../core/realtime/live-refresh';
+import { ClientTable, rank } from '../../shared/client-table';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
+import { PagerComponent } from '../money/money-shared';
 import { ServiceTask } from '../operator/operator.models';
 
 /** A task's status in the tone the design system gives it: waiting, under way, over. */
@@ -35,7 +38,9 @@ export const taskStatusTones: Readonly<Record<string, StatusTone>> = {
   imports: [
     FormsModule,
     MatButtonToggleModule,
+    MatSortModule,
     MatTableModule,
+    PagerComponent,
     TranslatePipe,
     DateTimePipe,
     EmptyStateComponent,
@@ -66,9 +71,9 @@ export const taskStatusTones: Readonly<Record<string, StatusTone>> = {
       />
     } @else {
       <div class="neo-table-wrapper">
-        <table mat-table class="neo-table" [dataSource]="tasks()!">
+        <table mat-table class="neo-table" [dataSource]="table.rows()" matSort (matSortChange)="table.onSort($event)">
           <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.tasks.colType' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.tasks.colType' | translate }}</th>
             <td mat-cell *matCellDef="let task">
               {{ 'operator.taskType.' + task.type | translate }}
               @if (task.notes) {
@@ -77,13 +82,13 @@ export const taskStatusTones: Readonly<Record<string, StatusTone>> = {
             </td>
           </ng-container>
           <ng-container matColumnDef="priority">
-            <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.tasks.colPriority' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.tasks.colPriority' | translate }}</th>
             <td mat-cell *matCellDef="let task">
               <app-status-chip [status]="task.priority" [text]="'operator.priority.' + task.priority | translate" />
             </td>
           </ng-container>
           <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.tasks.colStatus' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.tasks.colStatus' | translate }}</th>
             <td mat-cell *matCellDef="let task">
               <app-status-chip
                 [status]="task.status"
@@ -93,7 +98,7 @@ export const taskStatusTones: Readonly<Record<string, StatusTone>> = {
             </td>
           </ng-container>
           <ng-container matColumnDef="assignee">
-            <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.tasks.colAssignee' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.tasks.colAssignee' | translate }}</th>
             <td mat-cell *matCellDef="let task">
               @if (task.assignedToName) {
                 {{ task.assignedToName }}
@@ -103,11 +108,11 @@ export const taskStatusTones: Readonly<Record<string, StatusTone>> = {
             </td>
           </ng-container>
           <ng-container matColumnDef="created">
-            <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.tasks.colCreated' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.tasks.colCreated' | translate }}</th>
             <td mat-cell *matCellDef="let task" class="neo-nowrap">{{ task.createdAt | dateTime }}</td>
           </ng-container>
           <ng-container matColumnDef="due">
-            <th mat-header-cell *matHeaderCellDef>{{ 'monitoring.tasks.colDue' | translate }}</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'monitoring.tasks.colDue' | translate }}</th>
             <td mat-cell *matCellDef="let task" class="neo-nowrap">{{ task.dueAt | dateTime }}</td>
           </ng-container>
 
@@ -115,6 +120,13 @@ export const taskStatusTones: Readonly<Record<string, StatusTone>> = {
           <tr mat-row *matRowDef="let row; columns: columns"></tr>
         </table>
       </div>
+      <app-money-pager
+        [total]="table.total()"
+        [page]="table.page()"
+        [pageSize]="table.pageSize"
+        countKey="common.rows"
+        (go)="table.go($event)"
+      />
     }
   `,
   styleUrl: './kiosk-tab.scss',
@@ -129,6 +141,16 @@ export class KioskTasksComponent implements OnInit {
 
   readonly openOnly = signal(true);
   readonly tasks = signal<readonly ServiceTask[] | null>(null);
+
+  /** Sorted by a header, twenty rows a page (T-424). */
+  readonly table = new ClientTable(computed(() => this.tasks() ?? []), {
+    type: (row) => row.type,
+    priority: (row) => rank(['Critical', 'High', 'Normal', 'Low'], row.priority),
+    status: (row) => row.status,
+    assignee: (row) => row.assignedToName,
+    created: (row) => new Date(row.createdAt),
+    due: (row) => (row.dueAt ? new Date(row.dueAt) : null),
+  });
   readonly problem = signal<Problem | null>(null);
 
   constructor() {

@@ -19,6 +19,7 @@ import { provideNeoDates } from '../../shared/date-input';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
+import { rememberFilters } from '../../shared/remembered-filters';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
@@ -105,7 +106,7 @@ export function diff(before: string | null | undefined, after: string | null | u
     <div class="neo-page">
       <app-page-header [title]="'ops.audit.title' | translate" [description]="'ops.audit.description' | translate" />
 
-      <app-filter-bar>
+      <app-filter-bar [active]="activeFilters()" (clear)="clear()">
         <mat-form-field>
           <mat-label>{{ 'ops.audit.action' | translate }}</mat-label>
           <input matInput [placeholder]="'ops.audit.actionHint' | translate" [ngModel]="action()" (ngModelChange)="action.set($event)" (keyup.enter)="apply()" />
@@ -266,6 +267,14 @@ export class AuditLogComponent {
   readonly adminUserId = signal<string | null>(null);
   readonly from = signal<Date | null>(null);
   readonly to = signal<Date | null>(null);
+
+  /** How many filters are set, for the filter bar (T-424). */
+  readonly activeFilters = computed(
+    () => [this.action().trim() !== '', this.entityType().trim() !== '', this.entityId().trim() !== '', this.adminUserId() !== null, this.from() !== null || this.to() !== null].filter(Boolean).length,
+  );
+
+  /** Back on the page, the list is as it was left (T-424). */
+  protected readonly keptFilters = rememberFilters('audit-log', { action: this.action, entityType: this.entityType, entityId: this.entityId, adminUserId: this.adminUserId, from: this.from, to: this.to }, { dates: ['from', 'to'] });
   readonly page = signal(1);
   readonly rows = signal<readonly AuditLogEntry[] | null>(null);
   readonly total = signal(0);

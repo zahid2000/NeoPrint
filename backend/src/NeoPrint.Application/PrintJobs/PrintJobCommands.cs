@@ -74,7 +74,8 @@ public sealed record ListPrintJobsQuery(
     DateTime? To,
     string? JobCode,
     int Page,
-    int PageSize) : IRequest<PrintJobPage>;
+    int PageSize,
+    string? Sort = null) : IRequest<PrintJobPage>;
 
 /// <summary>One job with its history, for the admin.</summary>
 public sealed record GetPrintJobDetailQuery(Guid AdminUserId, Guid JobId) : IRequest<PrintJobDetail>;

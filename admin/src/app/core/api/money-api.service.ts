@@ -78,6 +78,7 @@ export class MoneyApiService {
     params = withOptional(params, 'hadError', filter.hadError || null);
     params = withOptional(params, 'refund', filter.refund);
     params = withOptional(params, 'search', filter.search?.trim());
+    params = withOptional(params, 'sort', filter.sort);
 
     return this.http.get<Page<PaymentRow>>('/api/admin/payments', { params });
   }

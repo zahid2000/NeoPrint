@@ -77,3 +77,24 @@ function compare(a: SortValue, b: SortValue): number {
   }
   return String(a).localeCompare(String(b), 'az', { numeric: true, sensitivity: 'base' });
 }
+
+/**
+ * The `sort` a server-paged list sends (T-424): `total` for smallest first,
+ * `-total` for largest first, nothing for the list's own order (newest first).
+ */
+export function serverSort(sort: Sort): string | null {
+  if (!sort.active || sort.direction === '') {
+    return null;
+  }
+  return sort.direction === 'desc' ? `-${sort.active}` : sort.active;
+}
+
+/**
+ * A word's place in a fixed order - a severity, a priority - so a column of
+ * them sorts by weight, not by spelling (T-424). One the order does not know
+ * goes last.
+ */
+export function rank(order: readonly string[], value: string | null | undefined): number | null {
+  const index = value ? order.indexOf(value) : -1;
+  return index < 0 ? null : index;
+}

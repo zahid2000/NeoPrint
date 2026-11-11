@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, Injector, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -19,7 +20,9 @@ import { AdminHubService } from '../../core/realtime/admin-hub.service';
 import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
+import { serverSort } from '../../shared/client-table';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
+import { rememberFilters } from '../../shared/remembered-filters';
 import { provideNeoDates } from '../../shared/date-input';
 import { DateTimePipe, MoneyPipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
@@ -57,6 +60,7 @@ const endOfDay = (date: Date | null): string | null =>
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    MatSortModule,
     MatTableModule,
     TranslatePipe,
     PageHeaderComponent,
@@ -82,7 +86,7 @@ const endOfDay = (date: Date | null): string | null =>
         <app-error-banner [problem]="problem" effect="jobs.loadFailedEffect" (retry)="load()" />
       }
 
-      <app-filter-bar>
+      <app-filter-bar [active]="activeFilters()" (clear)="clearFilters()">
         <mat-form-field>
           <mat-label>{{ 'jobs.filterCode' | translate }}</mat-label>
           <mat-icon matPrefix>search</mat-icon>
@@ -165,9 +169,17 @@ const endOfDay = (date: Date | null): string | null =>
         }
       } @else if (jobs().length > 0) {
         <div class="neo-table-wrapper">
-          <table mat-table class="neo-table" [dataSource]="jobs()">
+          <table
+            mat-table
+            class="neo-table"
+            [dataSource]="jobs()"
+            matSort
+            [matSortActive]="sort().active"
+            [matSortDirection]="sort().direction"
+            (matSortChange)="onSort($event)"
+          >
             <ng-container matColumnDef="code">
-              <th mat-header-cell *matHeaderCellDef>{{ 'jobs.colCode' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header="code">{{ 'jobs.colCode' | translate }}</th>
               <td mat-cell *matCellDef="let job">
                 <strong>{{ job.jobCode }}</strong>
               </td>
@@ -199,7 +211,7 @@ const endOfDay = (date: Date | null): string | null =>
               <td mat-cell *matCellDef="let job">{{ job.selectedPages }} × {{ job.copies }}</td>
             </ng-container>
             <ng-container matColumnDef="total">
-              <th mat-header-cell *matHeaderCellDef>{{ 'jobs.colTotal' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header="total">{{ 'jobs.colTotal' | translate }}</th>
               <td mat-cell *matCellDef="let job">
                 {{ job.total | money }}
                 @if (job.paymentSkipped) {
@@ -208,11 +220,11 @@ const endOfDay = (date: Date | null): string | null =>
               </td>
             </ng-container>
             <ng-container matColumnDef="created">
-              <th mat-header-cell *matHeaderCellDef>{{ 'jobs.colCreated' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header="createdAt">{{ 'jobs.colCreated' | translate }}</th>
               <td mat-cell *matCellDef="let job" class="neo-nowrap">{{ job.createdAt | dateTime }}</td>
             </ng-container>
             <ng-container matColumnDef="finished">
-              <th mat-header-cell *matHeaderCellDef>{{ 'jobs.colFinished' | translate }}</th>
+              <th mat-header-cell *matHeaderCellDef mat-sort-header="finishedAt">{{ 'jobs.colFinished' | translate }}</th>
               <td mat-cell *matCellDef="let job" class="neo-nowrap">
                 @if (job.finishedAt) {
                   {{ job.finishedAt | dateTime }}
@@ -291,6 +303,7 @@ export class PrintJobsComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly hub = inject(AdminHubService);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
 
   /** Set when the list sits in a kiosk's Orders tab: the kiosk filter is fixed. */
   readonly kioskId = input<string | undefined>(undefined);
@@ -310,6 +323,9 @@ export class PrintJobsComponent implements OnInit {
   readonly from = signal<Date | null>(null);
   readonly to = signal<Date | null>(null);
 
+  /** The column the server orders by (T-424); none for newest first. */
+  readonly sort = signal<Sort>({ active: '', direction: '' });
+
   readonly embedded = computed(() => !!this.kioskId());
 
   readonly columns = computed(() =>
@@ -320,14 +336,18 @@ export class PrintJobsComponent implements OnInit {
 
   readonly pages = computed(() => Math.max(1, Math.ceil(this.total() / pageSize)));
 
-  readonly filtersActive = computed(
+  /** How many filters are set, for the filter bar (T-424). */
+  readonly activeFilters = computed(
     () =>
-      this.code().trim() !== '' ||
-      this.statuses().length > 0 ||
-      (!this.embedded() && this.kiosk() !== null) ||
-      this.from() !== null ||
-      this.to() !== null,
+      [
+        this.code().trim() !== '',
+        this.statuses().length > 0,
+        !this.embedded() && this.kiosk() !== null,
+        this.from() !== null || this.to() !== null,
+      ].filter(Boolean).length,
   );
+
+  readonly filtersActive = computed(() => this.activeFilters() > 0);
 
   /** The filters the last request used, so an unchanged code field does not reload on blur. */
   private lastQuery = '';
@@ -356,6 +376,15 @@ export class PrintJobsComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // The whole page keeps its filters; a kiosk's Orders tab starts clean (T-424).
+    if (!this.embedded()) {
+      rememberFilters(
+        'print-jobs',
+        { code: this.code, statuses: this.statuses, kiosk: this.kiosk, from: this.from, to: this.to },
+        { injector: this.injector, dates: ['from', 'to'] },
+      );
+    }
+
     if (!this.embedded() && this.auth.can(Permissions.kiosksView)) {
       firstValueFrom(this.api.listKiosks())
         .then((kiosks) => this.kiosks.set(kiosks))
@@ -369,6 +398,12 @@ export class PrintJobsComponent implements OnInit {
   search(): void {
     this.page.set(1);
     void this.load();
+  }
+
+  /** A header pressed: the server orders the whole list, from the first page. */
+  onSort(sort: Sort): void {
+    this.sort.set(sort);
+    this.search();
   }
 
   go(page: number): void {
@@ -401,6 +436,7 @@ export class PrintJobsComponent implements OnInit {
       code: this.code(),
       from: startOfDay(this.from()),
       to: endOfDay(this.to()),
+      sort: serverSort(this.sort()),
       page: this.page(),
       pageSize,
     };

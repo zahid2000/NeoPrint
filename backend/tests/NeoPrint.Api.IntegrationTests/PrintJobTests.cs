@@ -415,6 +415,31 @@ public sealed class PrintJobTests
     }
 
     [DockerFact]
+    public async Task The_admin_list_sorts_by_a_column_and_refuses_an_unknown_one()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await ReadyKioskAsync("sort");
+        var small = (await PlacedAsync(kiosk.Client, 1)).GetProperty("id").GetGuid();
+        var large = (await PlacedAsync(kiosk.Client, 5)).GetProperty("id").GetGuid();
+        var middle = (await PlacedAsync(kiosk.Client, 3)).GetProperty("id").GetGuid();
+
+        async Task<Guid[]> IdsAsync(string sort)
+            => [.. (await admin.GetFromJsonAsync<JsonElement>($"/api/admin/print-jobs?kioskId={kiosk.KioskId}&sort={sort}"))
+                .GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetGuid())];
+
+        (await IdsAsync("total")).Should().Equal(small, middle, large);
+        (await IdsAsync("-total")).Should().Equal(large, middle, small);
+        (await IdsAsync("createdAt")).Should().Equal(small, large, middle);
+
+        // A column the list does not know is the caller's mistake, said plainly (T-424).
+        var wrong = await admin.GetAsync($"/api/admin/print-jobs?kioskId={kiosk.KioskId}&sort=password");
+        wrong.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await wrong.Content.ReadAsStringAsync()).Should().Contain("sort");
+    }
+
+    [DockerFact]
     public async Task The_admin_lists_filters_and_cancels_jobs()
     {
         if (Skip) { return; }

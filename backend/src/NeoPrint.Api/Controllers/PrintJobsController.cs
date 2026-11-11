@@ -259,6 +259,7 @@ public sealed class AdminPrintJobsController : ControllerBase
         [FromQuery] string? code,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] string? sort = null,
         CancellationToken cancellationToken = default)
     {
         var statuses = status?
@@ -269,7 +270,7 @@ public sealed class AdminPrintJobsController : ControllerBase
             .ToList();
 
         return Ok(await _sender.Send(
-            new ListPrintJobsQuery(AdminId, kioskId, statuses, from?.ToUniversalTime(), to?.ToUniversalTime(), code, page, pageSize),
+            new ListPrintJobsQuery(AdminId, kioskId, statuses, from?.ToUniversalTime(), to?.ToUniversalTime(), code, page, pageSize, sort),
             cancellationToken));
     }
 

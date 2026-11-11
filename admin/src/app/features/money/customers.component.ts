@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,6 +14,7 @@ import { CustomerRow } from '../../core/api/step4.models';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
+import { rememberFilters } from '../../shared/remembered-filters';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
@@ -59,7 +60,7 @@ const pageSize = 20;
         />
       }
 
-      <app-filter-bar>
+      <app-filter-bar [active]="activeFilters()" (clear)="clearFilters()">
         <mat-form-field>
           <mat-label>{{ 'customers.filterSearch' | translate }}</mat-label>
           <mat-icon matPrefix>search</mat-icon>
@@ -160,6 +161,14 @@ export class CustomersComponent implements OnInit {
   readonly page = signal(1);
   readonly search = signal('');
   readonly status = signal<string | null>(null);
+
+  /** How many filters are set, for the filter bar (T-424). */
+  readonly activeFilters = computed(
+    () => [this.search().trim() !== '', this.status() !== null].filter(Boolean).length,
+  );
+
+  /** Back on the page, the list is as it was left (T-424). */
+  protected readonly keptFilters = rememberFilters('customers', { search: this.search, status: this.status });
   readonly loading = signal(true);
   readonly problem = signal<Problem | null>(null);
 
@@ -176,6 +185,13 @@ export class CustomersComponent implements OnInit {
 
     this.page.set(1);
     void this.load();
+  }
+
+  /** "Təmizlə" in the filter bar: every filter off (T-424). */
+  clearFilters(): void {
+    this.search.set('');
+    this.status.set(null);
+    this.apply(true);
   }
 
   go(page: number): void {

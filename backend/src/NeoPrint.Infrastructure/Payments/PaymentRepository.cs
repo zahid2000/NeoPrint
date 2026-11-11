@@ -1,5 +1,6 @@
 using MongoDB.Driver;
 
+using NeoPrint.Application.Common;
 using NeoPrint.Application.Payments;
 using NeoPrint.Domain.Payments;
 using NeoPrint.Infrastructure.Persistence;
@@ -105,13 +106,32 @@ public sealed class PaymentRepository : IPaymentRepository
 
         var total = await _context.Payments.CountDocumentsAsync(where, cancellationToken).ConfigureAwait(false);
         var items = await _context.Payments.Find(where)
-            .SortByDescending(payment => payment.CreatedAt)
+            .Sort(Order(filter.Sort))
             .Skip(skip)
             .Limit(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return (items, total);
+    }
+
+    /// <summary>The admin list's order (T-424); the id breaks ties so pages never overlap.</summary>
+    /// <remarks>
+    /// Money is stored as a document (<see cref="MoneySerializer"/>), so the
+    /// amount is sorted by its stored path rather than an expression.
+    /// </remarks>
+    private static SortDefinition<Payment> Order(ListSort? sort)
+    {
+        var by = Builders<Payment>.Sort;
+        var descending = sort?.Descending ?? true;
+
+        SortDefinition<Payment> primary = sort?.Field switch
+        {
+            "amount" => descending ? by.Descending("Amount.amount") : by.Ascending("Amount.amount"),
+            _ => descending ? by.Descending(payment => payment.CreatedAt) : by.Ascending(payment => payment.CreatedAt),
+        };
+
+        return by.Combine(primary, descending ? by.Descending(payment => payment.Id) : by.Ascending(payment => payment.Id));
     }
 
     public async Task<IReadOnlyList<Payment>> ListPaidAsync(

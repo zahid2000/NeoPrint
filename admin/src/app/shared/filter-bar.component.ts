@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
@@ -16,7 +16,8 @@ const storageKey = (path: string): string => `neo.filters.${path}`;
  *
  * It opens and closes (T-424): closed, it is one line - "Filtrlər", how many
  * are set - and the table moves up. Each page remembers the choice in this
- * browser; a page with a filter set opens it.
+ * browser; a page with a filter set opens it. With a filter set, "Təmizlə"
+ * beside the toggle takes them all off at once (a page that listens).
  */
 @Component({
   selector: 'app-filter-bar',
@@ -24,6 +25,7 @@ const storageKey = (path: string): string => `neo.filters.${path}`;
   imports: [MatButtonModule, MatIconModule, TranslatePipe],
   template: `
     <div class="filters" role="search" [class.filters--closed]="!open()">
+      <div class="filters__head">
       <button
         mat-button
         type="button"
@@ -38,6 +40,13 @@ const storageKey = (path: string): string => `neo.filters.${path}`;
         }
         <mat-icon iconPositionEnd class="filters__chevron">expand_more</mat-icon>
       </button>
+      @if (active() > 0 && clearable()) {
+        <button mat-button type="button" class="filters__clear" (click)="clear.emit()">
+          <mat-icon>filter_list_off</mat-icon>
+          {{ 'common.filtersClear' | translate }}
+        </button>
+      }
+      </div>
       @if (open()) {
         <div class="filters__fields">
           <ng-content />
@@ -60,8 +69,11 @@ const storageKey = (path: string): string => `neo.filters.${path}`;
       padding-bottom: var(--space-2);
     }
 
-    .filters__toggle {
-      align-self: flex-start;
+    .filters__head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-items: center;
     }
 
     .filters__chevron {
@@ -122,6 +134,12 @@ export class FilterBarComponent {
 
   /** How many filters are set now; a page that knows says so, and the bar opens for it. */
   readonly active = input(0);
+
+  /** Whether the page takes its filters off on "Təmizlə"; a page that cannot hides it. */
+  readonly clearable = input(true);
+
+  /** "Təmizlə": the page sets every filter back to none. */
+  readonly clear = output<void>();
 
   private readonly chosen = signal<boolean | null>(read(this.path));
 

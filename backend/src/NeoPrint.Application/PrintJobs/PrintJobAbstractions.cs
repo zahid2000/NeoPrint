@@ -1,3 +1,4 @@
+using NeoPrint.Application.Common;
 using NeoPrint.Domain.PrintJobs;
 
 namespace NeoPrint.Application.PrintJobs;
@@ -94,7 +95,12 @@ public sealed record PrintJobFilter(
     IReadOnlyCollection<PrintJobStatus>? Statuses,
     DateTime? From,
     DateTime? To,
-    string? JobCode);
+    string? JobCode,
+    ListSort? Sort = null)
+{
+    /// <summary>The columns the list orders by (T-424); without one, newest first.</summary>
+    public static readonly string[] SortFields = ["createdAt", "finishedAt", "total", "code"];
+}
 
 /// <summary>
 /// A kiosk's queue in Redis: a sorted set <c>queue:{kioskId}</c> of job ids,

@@ -18,6 +18,7 @@ import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
+import { rememberFilters } from '../../shared/remembered-filters';
 import { DateTimePipe, MoneyPipe } from '../../shared/format.pipes';
 import { NotifyService } from '../../shared/notify.service';
 import { PageHeaderComponent } from '../../shared/page-header.component';
@@ -128,7 +129,7 @@ const pageSize = 20;
         <app-error-banner [problem]="problem" effect="fiscal.loadFailedEffect" (retry)="load()" />
       }
 
-      <app-filter-bar>
+      <app-filter-bar [active]="activeFilters()" (clear)="clearFilters()">
         <mat-form-field>
           <mat-label>{{ 'fiscal.filterStatus' | translate }}</mat-label>
           <mat-select [ngModel]="status()" (ngModelChange)="status.set($event); apply()">
@@ -284,6 +285,14 @@ export class FiscalComponent implements OnInit {
   readonly page = signal(1);
   readonly status = signal<string | null>(null);
   readonly type = signal<string | null>(null);
+
+  /** How many filters are set, for the filter bar (T-424). */
+  readonly activeFilters = computed(
+    () => [this.status() !== null, this.type() !== null].filter(Boolean).length,
+  );
+
+  /** Back on the page, the list is as it was left (T-424). */
+  protected readonly keptFilters = rememberFilters('fiscal', { status: this.status, type: this.type });
   readonly loading = signal(true);
   readonly problem = signal<Problem | null>(null);
   readonly retrying = signal<string | null>(null);
@@ -325,6 +334,13 @@ export class FiscalComponent implements OnInit {
   apply(): void {
     this.page.set(1);
     void this.load();
+  }
+
+  /** "Təmizlə" in the filter bar: every filter off (T-424). */
+  clearFilters(): void {
+    this.status.set(null);
+    this.type.set(null);
+    this.apply();
   }
 
   go(page: number): void {

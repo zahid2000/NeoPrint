@@ -36,6 +36,7 @@ error
 error_outline
 expand_more
 filter_list
+filter_list_off
 forward_to_inbox
 group
 history

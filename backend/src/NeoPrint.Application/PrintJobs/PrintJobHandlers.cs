@@ -563,6 +563,7 @@ public sealed class AdminPrintJobHandlers :
 
         var page = Math.Max(1, request.Page);
         var size = Math.Clamp(request.PageSize, 1, 100);
+        var sort = ListSort.Parse(request.Sort, PrintJobFilter.SortFields);
 
         if (scope.Count == 0)
         {
@@ -571,7 +572,7 @@ public sealed class AdminPrintJobHandlers :
 
         var (items, total) = await _jobs
             .SearchAsync(
-                new PrintJobFilter(scope, request.Statuses, request.From, request.To, request.JobCode?.Trim()),
+                new PrintJobFilter(scope, request.Statuses, request.From, request.To, request.JobCode?.Trim(), sort),
                 (page - 1) * size,
                 size,
                 cancellationToken)

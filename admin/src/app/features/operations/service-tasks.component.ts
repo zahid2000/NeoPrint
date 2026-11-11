@@ -22,6 +22,7 @@ import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
+import { rememberFilters } from '../../shared/remembered-filters';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { NotifyService } from '../../shared/notify.service';
 import { PageHeaderComponent } from '../../shared/page-header.component';
@@ -94,7 +95,7 @@ const pageSize = 20;
         </div>
       }
 
-      <app-filter-bar>
+      <app-filter-bar [active]="activeFilters()" (clear)="clearFilters()">
         <mat-button-toggle-group [attr.aria-label]="'monitoring.filter' | translate" [ngModel]="view()" (ngModelChange)="setView($event)">
           <mat-button-toggle value="open">{{ 'ops.tasks.viewOpen' | translate }}</mat-button-toggle>
           <mat-button-toggle value="closed">{{ 'ops.tasks.viewClosed' | translate }}</mat-button-toggle>
@@ -208,6 +209,14 @@ export class ServiceTasksComponent {
   readonly view = signal<TaskView>('open');
   readonly kioskId = signal<string | null>(null);
   readonly unassigned = signal(false);
+
+  /** How many filters are set, for the filter bar (T-424). */
+  readonly activeFilters = computed(
+    () => [this.kioskId() !== null, this.unassigned()].filter(Boolean).length,
+  );
+
+  /** Back on the page, the list is as it was left (T-424). */
+  protected readonly keptFilters = rememberFilters('service-tasks', { view: this.view, kioskId: this.kioskId, unassigned: this.unassigned });
   readonly page = signal(1);
   readonly rows = signal<readonly ServiceTaskDetail[] | null>(null);
   readonly total = signal(0);
@@ -241,6 +250,12 @@ export class ServiceTasksComponent {
   setUnassigned(unassigned: boolean): void {
     this.unassigned.set(unassigned);
     this.restart();
+  }
+
+  /** "Təmizlə" in the filter bar: every filter off (T-424). */
+  clearFilters(): void {
+    this.unassigned.set(false);
+    this.setKiosk(null);
   }
 
   go(page: number): void {

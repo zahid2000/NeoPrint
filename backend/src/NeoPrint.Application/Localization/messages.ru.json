@@ -31,6 +31,7 @@
   "common.concurrentChange": "Эти данные изменил кто-то другой. Обновите страницу и повторите.",
   "common.illegalTransition": "Это действие невозможно в текущем состоянии ({from} → {to}).",
   "common.languageInvalid": "Язык может быть az, en или ru.",
+  "common.sortInvalid": "Этот список нельзя сортировать по этому столбцу. Можно по: {fields}.",
   "conversion.failed": "Не удалось преобразовать документ в PDF. Файл может быть повреждён или защищён паролем.",
   "conversion.formatRetired": "Формат '{format}' больше не поддерживается.",
   "conversion.imageToPdfFailed": "Не удалось преобразовать изображение в PDF.",

@@ -55,6 +55,8 @@ export interface PaymentFilter {
   /** `pending` or `failed`. */
   readonly refund?: string | null;
   readonly search?: string;
+  /** `amount` smallest first, `-amount` largest first (T-424); none for newest first. */
+  readonly sort?: string | null;
   readonly page: number;
   readonly pageSize: number;
 }

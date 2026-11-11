@@ -96,6 +96,8 @@ export interface PrintJobFilter {
   readonly from?: string | null;
   readonly to?: string | null;
   readonly code?: string | null;
+  /** `total` smallest first, `-total` largest first (T-424); none for newest first. */
+  readonly sort?: string | null;
   readonly page: number;
   readonly pageSize: number;
 }

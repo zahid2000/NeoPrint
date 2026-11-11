@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -16,6 +16,7 @@ import { liveRefresh } from '../../core/realtime/live-refresh';
 import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
+import { rememberFilters } from '../../shared/remembered-filters';
 import { DateTimePipe, MoneyPipe } from '../../shared/format.pipes';
 import { NotifyService } from '../../shared/notify.service';
 import { PageHeaderComponent } from '../../shared/page-header.component';
@@ -60,7 +61,7 @@ const pageSize = 20;
         <app-error-banner [problem]="problem" effect="receipts.loadFailedEffect" (retry)="load()" />
       }
 
-      <app-filter-bar>
+      <app-filter-bar [active]="activeFilters()" (clear)="clearFilters()">
         <mat-form-field>
           <mat-label>{{ 'receipts.filterNumber' | translate }}</mat-label>
           <mat-icon matPrefix>search</mat-icon>
@@ -166,6 +167,14 @@ export class ReceiptsComponent implements OnInit {
   readonly total = signal(0);
   readonly page = signal(1);
   readonly number = signal('');
+
+  /** How many filters are set, for the filter bar (T-424). */
+  readonly activeFilters = computed(
+    () => [this.number().trim() !== ''].filter(Boolean).length,
+  );
+
+  /** Back on the page, the list is as it was left (T-424). */
+  protected readonly keptFilters = rememberFilters('receipts', { number: this.number });
   readonly loading = signal(true);
   readonly busy = signal<string | null>(null);
   readonly problem = signal<Problem | null>(null);
@@ -186,6 +195,13 @@ export class ReceiptsComponent implements OnInit {
       return;
     }
 
+    this.page.set(1);
+    void this.load();
+  }
+
+  /** "Təmizlə" in the filter bar: every filter off (T-424). */
+  clearFilters(): void {
+    this.number.set('');
     this.page.set(1);
     void this.load();
   }

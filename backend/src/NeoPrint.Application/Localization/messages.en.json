@@ -31,6 +31,7 @@
   "common.concurrentChange": "Somebody else changed this. Reload it and try again.",
   "common.illegalTransition": "This is not possible in the current state ({from} → {to}).",
   "common.languageInvalid": "The language can be az, en or ru.",
+  "common.sortInvalid": "This list cannot be sorted by that column. It can be sorted by: {fields}.",
   "conversion.failed": "The document could not be converted to PDF. The file may be damaged or password-protected.",
   "conversion.formatRetired": "The '{format}' format is no longer supported.",
   "conversion.imageToPdfFailed": "The image could not be converted to PDF.",
