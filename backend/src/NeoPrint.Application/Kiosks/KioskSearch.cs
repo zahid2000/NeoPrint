@@ -192,7 +192,7 @@ public sealed class KioskSearchHandlers :
     private readonly IKioskSearch _search;
     private readonly IKioskRepository _kiosks;
     private readonly IPrintJobRepository _jobs;
-    private readonly IPricingProfileRepository _profiles;
+    private readonly Pricing.KioskPricing _pricing;
     private readonly ISettingsReader _settings;
     private readonly IClock _clock;
 
@@ -200,14 +200,14 @@ public sealed class KioskSearchHandlers :
         IKioskSearch search,
         IKioskRepository kiosks,
         IPrintJobRepository jobs,
-        IPricingProfileRepository profiles,
+        Pricing.KioskPricing pricing,
         ISettingsReader settings,
         IClock clock)
     {
         _search = search;
         _kiosks = kiosks;
         _jobs = jobs;
-        _profiles = profiles;
+        _pricing = pricing;
         _settings = settings;
         _clock = clock;
     }
@@ -271,11 +271,9 @@ public sealed class KioskSearchHandlers :
             paper.Add(await PaperAsync(kiosk, size, cancellationToken).ConfigureAwait(false));
         }
 
-        var profile = (kiosk.PricingProfileId is { } profileId
-                          ? await _profiles.FindByIdAsync(profileId, cancellationToken).ConfigureAwait(false)
-                          : null)
-                      ?? await _profiles.FindDefaultAsync(cancellationToken).ConfigureAwait(false);
-        var table = profile?.ToPriceTable();
+        // The prices charged there now, a running campaign on them (T-436).
+        var (profile, campaign) = await _pricing.ForAsync(kiosk, _clock.UtcNow, cancellationToken).ConfigureAwait(false);
+        var table = campaign is null ? profile.ToPriceTable() : campaign.Apply(profile.ToPriceTable());
 
         return new PublicKioskDetail(
             kiosk.Id,
@@ -288,16 +286,7 @@ public sealed class KioskSearchHandlers :
             new PrinterCapabilitiesDto(capabilities.Color, capabilities.Duplex, capabilities.A3),
             paper,
             queue.Count,
-            table is null
-                ? null
-                : new KioskPricesDto(
-                    profile!.Name,
-                    table.BwPerSide,
-                    table.ColorPerSide,
-                    table.PaperMultipliers,
-                    table.MinOrder,
-                    [.. table.Tiers.Select(tier => new KioskPriceTierDto(tier.MinSides, tier.DiscountPercent))],
-                    table.Currency),
+            KioskPricesDto.From(profile.Name, table),
             KioskPhotoUrls.For(kiosk));
     }
 

@@ -146,4 +146,86 @@ public sealed class PriceCalculatorTests
         price.PaperMultiplier.Should().Be(2m);
         price.Currency.Should().Be("AZN");
     }
+
+    // -----------------------------------------------------------------------
+    // T-436: tiers that name a price, the graduated ladder, campaigns
+    // -----------------------------------------------------------------------
+
+    /// <summary>The owner's example: up to 50 at 15 qəpik, 51-100 at 13, above 100 at 11 (colour 40 / 35 / 30).</summary>
+    private static PriceTable Ladder(TierMode mode, decimal campaign = 0m) => new(
+        BwPerSide: 0.15m,
+        ColorPerSide: 0.40m,
+        PaperMultipliers: new Dictionary<string, decimal> { ["A4"] = 1m, ["A3"] = 2m },
+        MinOrder: 0.20m,
+        Tiers: [new PriceTier(51, 0m, 0.13m, 0.35m), new PriceTier(101, 0m, 0.11m, 0.30m)],
+        TierMode: mode,
+        CampaignPercent: campaign,
+        CampaignName: campaign > 0 ? "Noyabr" : null);
+
+    [Theory]
+    [InlineData(50, 7.50)]    // 50 * 0.15
+    [InlineData(51, 6.63)]    // 51 * 0.13
+    [InlineData(120, 13.20)]  // 120 * 0.11
+    public void A_whole_order_tier_that_names_a_price_charges_every_side_at_it(int pages, decimal expected)
+    {
+        PriceCalculator.Quote(Ladder(TierMode.WholeOrder), Spec(pages)).FinalPrice.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(50, 7.50)]    // 50 * 0.15
+    [InlineData(51, 7.63)]    // 7.50 + 1 * 0.13
+    [InlineData(120, 16.20)]  // 7.50 + 50 * 0.13 + 20 * 0.11
+    public void A_graduated_ladder_charges_each_band_at_its_own_rate(int pages, decimal expected)
+    {
+        var price = PriceCalculator.Quote(Ladder(TierMode.Graduated), Spec(pages));
+
+        price.FinalPrice.Should().Be(expected);
+        price.BasePrice.Should().Be(pages * 0.15m);
+        price.VolumeDiscount.Should().Be(price.BasePrice - expected);
+    }
+
+    [Fact]
+    public void A_graduated_ladder_uses_the_colour_rates_and_the_paper_multiplier()
+    {
+        // (50 * 0.40 + 10 * 0.35) * 2 = 47.00
+        PriceCalculator.Quote(Ladder(TierMode.Graduated), Spec(60, color: true, paper: "A3")).FinalPrice.Should().Be(47.00m);
+    }
+
+    [Fact]
+    public void A_graduated_percentage_ladder_discounts_each_band()
+    {
+        var table = Default() with { TierMode = TierMode.Graduated };
+
+        // 49 * 0.10 + 50 * 0.09 + 21 * 0.085 = 4.90 + 4.50 + 1.785 = 11.185 -> 11.18 (half to even)
+        PriceCalculator.Quote(table, Spec(120)).FinalPrice.Should().Be(11.18m);
+    }
+
+    [Fact]
+    public void A_campaign_percentage_comes_after_the_ladder_and_before_the_minimum()
+    {
+        var price = PriceCalculator.Quote(Ladder(TierMode.WholeOrder, campaign: 20m), Spec(120));
+
+        // 13.20 - 20% = 10.56
+        price.CampaignPercent.Should().Be(20m);
+        price.CampaignDiscount.Should().Be(2.64m);
+        price.CampaignName.Should().Be("Noyabr");
+        price.FinalPrice.Should().Be(10.56m);
+
+        // 1 side: 0.15 - 20% = 0.12, under the 0.20 minimum.
+        var small = PriceCalculator.Quote(Ladder(TierMode.WholeOrder, campaign: 20m), Spec(1));
+        small.MinimumApplied.Should().BeTrue();
+        small.FinalPrice.Should().Be(0.20m);
+    }
+
+    [Fact]
+    public void Percentage_tiers_price_exactly_as_before()
+    {
+        // The arithmetic every existing order was priced with.
+        var price = PriceCalculator.Quote(Default(), Spec(100));
+
+        price.DiscountPercent.Should().Be(15m);
+        price.VolumeDiscount.Should().Be(1.50m);
+        price.FinalPrice.Should().Be(8.50m);
+        price.CampaignDiscount.Should().Be(0m);
+    }
 }

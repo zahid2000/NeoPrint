@@ -48,7 +48,7 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
     private readonly ISettingsReader _settings;
     private readonly IFeatureFlagEvaluator _features;
     private readonly IClock _clock;
-    private readonly Pricing.IPricingProfileRepository _profiles;
+    private readonly Pricing.KioskPricing _pricing;
     private readonly Kiosks.KioskBrandingResolver _branding;
 
     public GetKioskConfigHandler(
@@ -57,11 +57,11 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
         ISettingsReader settings,
         IFeatureFlagEvaluator features,
         IClock clock,
-        Pricing.IPricingProfileRepository profiles,
+        Pricing.KioskPricing pricing,
         Kiosks.KioskBrandingResolver branding)
     {
         _branding = branding;
-        _profiles = profiles;
+        _pricing = pricing;
         _devices = devices;
         _kiosks = kiosks;
         _settings = settings;
@@ -115,12 +115,9 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
             .EvaluateAllAsync(FeaturePlatform.Kiosk, kiosk.Id, userId: null, cancellationToken)
             .ConfigureAwait(false);
 
-        var profile = (kiosk.PricingProfileId is { } profileId
-                          ? await _profiles.FindByIdAsync(profileId, cancellationToken).ConfigureAwait(false)
-                          : null)
-                      ?? await _profiles.FindDefaultAsync(cancellationToken).ConfigureAwait(false);
-
-        var table = profile?.ToPriceTable();
+        // The prices charged there now, a running campaign on them (T-436).
+        var (profile, campaign) = await _pricing.ForAsync(kiosk, _clock.UtcNow, cancellationToken).ConfigureAwait(false);
+        var table = campaign is null ? profile.ToPriceTable() : campaign.Apply(profile.ToPriceTable());
 
         var allowed = await _settings.GetAsync(SettingKeys.FilesAllowedFormats, cancellationToken).ConfigureAwait(false);
 
@@ -159,16 +156,7 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
                 .GetIntAsync(SettingKeys.KioskConfigCacheTtlHours, 24, cancellationToken)
                 .ConfigureAwait(false),
             _clock.UtcNow,
-            table is null
-                ? null
-                : new KioskPricesDto(
-                    profile!.Name,
-                    table.BwPerSide,
-                    table.ColorPerSide,
-                    table.PaperMultipliers,
-                    table.MinOrder,
-                    [.. table.Tiers.Select(tier => new KioskPriceTierDto(tier.MinSides, tier.DiscountPercent))],
-                    table.Currency),
+            KioskPricesDto.From(profile.Name, table),
             // Empty means the whole catalogue, as on upload (plan section 2.2).
             string.IsNullOrWhiteSpace(allowed)
                 ? null

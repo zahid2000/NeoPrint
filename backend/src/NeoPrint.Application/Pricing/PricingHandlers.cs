@@ -30,10 +30,20 @@ public sealed class PricingHandlers :
     private readonly IAuditWriter _audit;
     private readonly IClock _clock;
     private readonly Promos.PromoService _promos;
+    private readonly KioskPricing _pricing;
+    private readonly PrintJobs.IKioskNotifier _notifier;
 
     public PricingHandlers(
-        IPricingProfileRepository profiles, IKioskRepository kiosks, IAuditWriter audit, IClock clock, Promos.PromoService promos)
+        IPricingProfileRepository profiles,
+        IKioskRepository kiosks,
+        IAuditWriter audit,
+        IClock clock,
+        Promos.PromoService promos,
+        KioskPricing pricing,
+        PrintJobs.IKioskNotifier notifier)
     {
+        _pricing = pricing;
+        _notifier = notifier;
         _profiles = profiles;
         _kiosks = kiosks;
         _audit = audit;
@@ -49,11 +59,17 @@ public sealed class PricingHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var profile = await ProfileForKioskAsync(request.KioskId, cancellationToken).ConfigureAwait(false);
+        var kiosk = request.KioskId is { } kioskId
+            ? await _kiosks.FindByIdAsync(kioskId, cancellationToken).ConfigureAwait(false) ?? throw new NotFoundException("kiosk")
+            : null;
+
+        // The kiosk's profile, or the default one (plan section 2.3), and the
+        // campaign running there (T-436).
+        var (profile, campaign) = await _pricing.ForAsync(kiosk, _clock.UtcNow, cancellationToken).ConfigureAwait(false);
 
         // The same code the snapshot uses, so a quote and the price taken when
         // the order is placed a minute later cannot disagree.
-        var snapshot = Price(() => PriceSnapshot.Take(profile, request.Options.ToSpec(), _clock.UtcNow));
+        var snapshot = Price(() => PriceSnapshot.Take(profile, campaign, request.Options.ToSpec(), _clock.UtcNow));
 
         if (string.IsNullOrWhiteSpace(request.PromoCode))
         {
@@ -74,26 +90,6 @@ public sealed class PricingHandlers :
             promo.Discount.Amount,
             (snapshot.Total - promo.Discount).Amount,
             promo.Refusal is { } refusal ? Localization.Messages.Write(refusal) : null);
-    }
-
-    /// <summary>The kiosk's own profile, or the default one (plan section 2.3).</summary>
-    private async Task<PricingProfile> ProfileForKioskAsync(Guid? kioskId, CancellationToken cancellationToken)
-    {
-        if (kioskId is { } id)
-        {
-            var kiosk = await _kiosks.FindByIdAsync(id, cancellationToken).ConfigureAwait(false)
-                ?? throw new NotFoundException("kiosk");
-
-            if (kiosk.PricingProfileId is { } profileId
-                && await _profiles.FindByIdAsync(profileId, cancellationToken).ConfigureAwait(false) is { } own)
-            {
-                return own;
-            }
-        }
-
-        return await _profiles.FindDefaultAsync(cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException(
-                "There is no default pricing profile. The seeder creates one; it has been removed from the database.");
     }
 
     // -----------------------------------------------------------------------
@@ -150,6 +146,9 @@ public sealed class PricingHandlers :
         await AuditAsync(request.AdminUserId, "pricing.profile.update", profile, before, request.Ip, cancellationToken)
             .ConfigureAwait(false);
 
+        // The kiosks' screens show the new prices at once (T-436), not after a restart.
+        await _notifier.AllKiosksConfigChangedAsync(cancellationToken).ConfigureAwait(false);
+
         return Map(profile, await _profiles.CountKiosksAsync(cancellationToken).ConfigureAwait(false));
     }
 
@@ -198,6 +197,7 @@ public sealed class PricingHandlers :
 
             await AuditAsync(request.AdminUserId, "pricing.profile.default", profile, null, request.Ip, cancellationToken)
                 .ConfigureAwait(false);
+            await _notifier.AllKiosksConfigChangedAsync(cancellationToken).ConfigureAwait(false);
         }
 
         return Map(profile, await _profiles.CountKiosksAsync(cancellationToken).ConfigureAwait(false));
@@ -233,6 +233,7 @@ public sealed class PricingHandlers :
                         Reason: null),
                     cancellationToken)
                 .ConfigureAwait(false);
+            await _notifier.KioskConfigChangedAsync(kiosk.Id, cancellationToken).ConfigureAwait(false);
         }
 
         return await DetailAsync(profile, cancellationToken).ConfigureAwait(false);
@@ -317,8 +318,9 @@ public sealed class PricingHandlers :
         profile.PaperMultipliers = new Dictionary<string, decimal>(
             input.PaperMultipliers ?? new Dictionary<string, decimal>(), StringComparer.Ordinal);
         profile.VolumeTiers = [.. (input.VolumeTiers ?? [])
-            .Select(t => new VolumeTier { MinSides = t.MinSides, DiscountPercent = t.DiscountPercent })
+            .Select(t => t.ToTier())
             .OrderBy(t => t.MinSides)];
+        profile.TierMode = input.TierMode;
     }
 
     private static T Price<T>(Func<T> compute)
@@ -341,10 +343,11 @@ public sealed class PricingHandlers :
         profile.ColorPricePerSide.Amount,
         profile.MinOrder.Amount,
         new Dictionary<string, decimal>(profile.PaperMultipliers, StringComparer.Ordinal),
-        [.. profile.VolumeTiers.OrderBy(t => t.MinSides).Select(t => new VolumeTierDto(t.MinSides, t.DiscountPercent))],
+        [.. profile.VolumeTiers.OrderBy(t => t.MinSides).Select(VolumeTierDto.From)],
         counts.GetValueOrDefault(profile.Id),
         profile.UpdatedAt,
-        profile.RowVersion);
+        profile.RowVersion,
+        profile.TierMode);
 
     private static string Snapshot(PricingProfile profile) => JsonSerializer.Serialize(new
     {
@@ -353,7 +356,8 @@ public sealed class PricingHandlers :
         ColorPricePerSide = profile.ColorPricePerSide.Amount,
         MinOrder = profile.MinOrder.Amount,
         profile.PaperMultipliers,
-        VolumeTiers = profile.VolumeTiers.Select(t => new { t.MinSides, t.DiscountPercent }),
+        VolumeTiers = profile.VolumeTiers.Select(t => new { t.MinSides, t.DiscountPercent, t.BwPricePerSide, t.ColorPricePerSide }),
+        profile.TierMode,
     });
 
     private Task AuditAsync(

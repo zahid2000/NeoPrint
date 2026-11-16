@@ -150,10 +150,19 @@ export type StorageSyncOperation = 'pause' | 'resume' | 'cancel' | 'retry-failed
 // Pricing
 // ---------------------------------------------------------------------------
 
+/**
+ * A ladder step: a percentage off, or - with both prices set - the price of a
+ * side from this many sides on (T-436).
+ */
 export interface VolumeTier {
   readonly minSides: number;
   readonly discountPercent: number;
+  readonly bwPricePerSide?: number | null;
+  readonly colorPricePerSide?: number | null;
 }
+
+/** How a ladder is read (T-436): all sides at the tier reached, or each band at its own rate. */
+export type TierMode = 'WholeOrder' | 'Graduated';
 
 export interface PricingProfileInput {
   readonly name: string;
@@ -162,6 +171,7 @@ export interface PricingProfileInput {
   readonly minOrder: number;
   readonly paperMultipliers: Readonly<Record<string, number>>;
   readonly volumeTiers: readonly VolumeTier[];
+  readonly tierMode: TierMode;
 }
 
 export interface PricingProfile extends PricingProfileInput {
@@ -211,6 +221,39 @@ export interface PriceBreakdown {
   readonly minimumApplied: boolean;
   readonly finalPrice: number;
   readonly currency: string;
+  readonly campaignPercent?: number;
+  readonly campaignDiscount?: number;
+  readonly campaignName?: string | null;
+}
+
+export type CampaignKind = 'Percent' | 'Price';
+
+/** Running, still to come, past its end, or switched off - as of the request. */
+export type CampaignState = 'Running' | 'Scheduled' | 'Ended' | 'Off';
+
+/** A pricing campaign as the panel edits it (T-436). */
+export interface PricingCampaignInput {
+  readonly name: string;
+  readonly kind: CampaignKind;
+  readonly percent: number;
+  readonly bwPricePerSide: number | null;
+  readonly colorPricePerSide: number | null;
+  readonly volumeTiers: readonly VolumeTier[];
+  readonly tierMode: TierMode;
+  /** Null for "from now". */
+  readonly startsAt: string | null;
+  /** Null for "until switched off". */
+  readonly endsAt: string | null;
+  /** Empty for every kiosk. */
+  readonly kioskIds: readonly string[];
+  readonly isActive: boolean;
+}
+
+export interface PricingCampaign extends PricingCampaignInput {
+  readonly id: string;
+  readonly state: CampaignState;
+  readonly updatedAt: string;
+  readonly revision: number;
 }
 
 // ---------------------------------------------------------------------------

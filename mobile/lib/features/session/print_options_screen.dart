@@ -446,6 +446,36 @@ class _OptionsState extends ConsumerState<_Options> {
                             ],
                           ),
                         ],
+                        // The campaign running at the kiosk (T-436).
+                        if (quote.campaignName case final campaign?
+                            when campaign.isNotEmpty) ...[
+                          const SizedBox(height: Spacing.x1),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.campaign_outlined,
+                                size: Spacing.x4,
+                                color: tokens
+                                    .forTone(StatusTone.success)
+                                    .foreground,
+                              ),
+                              const SizedBox(width: Spacing.x1),
+                              Expanded(
+                                child: Text(
+                                  quote.campaignDiscount > 0
+                                      ? l10n.quoteCampaignDiscount(
+                                          campaign,
+                                          formatMoney(
+                                            quote.campaignDiscount,
+                                            language: language,
+                                          ),
+                                        )
+                                      : l10n.quoteCampaign(campaign),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
             ),

@@ -7,6 +7,7 @@ block
 build
 calculate
 call
+campaign
 cancel
 card_giftcard
 check_circle
@@ -34,6 +35,7 @@ edit_note
 engineering
 error
 error_outline
+event_busy
 expand_more
 filter_list
 filter_list_off
@@ -64,6 +66,7 @@ network_check
 notifications_active
 open_in_new
 pause
+pause_circle
 payments
 people
 person_add
@@ -73,6 +76,7 @@ person_search
 picture_as_pdf
 pin
 play_arrow
+play_circle
 post_add
 print
 print_disabled

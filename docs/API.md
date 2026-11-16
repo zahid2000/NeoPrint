@@ -1442,7 +1442,7 @@ etdirir.
 
 ---
 
-## Qiymət (`/api/pricing`, `/api/admin/pricing-profiles`)
+## Qiymət (`/api/pricing`, `/api/admin/pricing-profiles`, `/api/admin/pricing-campaigns`)
 
 ### `POST /api/pricing/quote`
 
@@ -1457,17 +1457,22 @@ etdirir.
 }
 ```
 
-→ `{ profileId, profileName, price: { pages, sides, sheets, copies, color, duplex, paper, pricePerSide, paperMultiplier, basePrice, discountPercent, volumeDiscount, promoDiscount, bonusPages, minimumApplied, finalPrice, currency } }`
+→ `{ profileId, profileName, price: { pages, sides, sheets, copies, color, duplex, paper, pricePerSide, paperMultiplier, basePrice, discountPercent, volumeDiscount, promoDiscount, bonusPages, minimumApplied, finalPrice, currency, campaignPercent, campaignDiscount, campaignName } }` — `campaign*` kioskda işləyən kampaniyadır (T-436), yoxdursa `0` / `null`.
 
 Formul (plan 2.3), yuvarlaqlaşdırma 2 onluq, half-to-even:
 
 ```
-sides  = ceil(pageCount / pagesPerSheet) * copies
-sheets = duplex ? ceil(sides / 2) : sides
-base   = sides * qiymət(rəng) * kağızƏmsalı
-endirim = ən böyük pillə (sides >= MinSides) — pillələr toplanmır
-final  = max(MinOrder, base − endirim)
+sides   = ceil(pageCount / pagesPerSheet) * copies
+sheets  = duplex ? ceil(sides / 2) : sides
+base    = sides * qiymət(rəng) * kağızƏmsalı
+dərəcə(pillə) = qiymət pilləsi ? pillənin öz qiyməti(rəng) : qiymət(rəng) * (1 − faiz / 100)
+WholeOrder: bütün üzlər çatılan ən böyük pillənin dərəcəsi ilə
+Graduated : hər aralıq öz pilləsinin dərəcəsi ilə (ilk pilləyə qədər — əsas qiymət), toplanır
+pilləli = yuxarıdakı * kağızƏmsalı
+final   = max(MinOrder, pilləli − kampaniya faizi)
 ```
+
+Pillə (T-436) ya faizdir (`discountPercent`), ya da — `bwPricePerSide` və `colorPricePerSide` ikisi də verilibsə — üzün öz qiymətidir. Profilin `tierMode`-u (`WholeOrder` | `Graduated`) pillələrin necə oxunduğunu deyir. `WholeOrder` + faiz pilləsi əvvəlki hesablamanı dəyişmədən saxlayır.
 
 Hesablama `NeoPrint.Pricing`-dədir və **kiosk da eyni kodu işlədir** — ekranda
 görünən qiymət tutulanla eynidir. Sifariş yaradılanda qiymət **snapshot** kimi
@@ -1480,12 +1485,47 @@ dəyişmir.
 |---|---|---|
 | `GET` | `/api/admin/pricing-profiles` | Siyahı, hər profilə bağlı kiosk sayı ilə; default birinci |
 | `GET` | `…/{id}` | Profil + bu profillə qiymətlənən kiosklar (default profil üçün öz profili olmayanlar da) |
-| `POST` | `…` | Yarat. A4 əmsalı məcburi, qiymətlər mənfi ola bilməz, endirim 0–100 arası (sərhədlər daxil deyil), pillə üz sayları unikal |
+| `POST` | `…` | Yarat. A4 əmsalı məcburi, qiymətlər mənfi ola bilməz, endirim 0–100 arası (sərhədlər daxil deyil), pillə üz sayları unikal. `volumeTiers[]`: `{ minSides, discountPercent, bwPricePerSide?, colorPricePerSide? }` (qiymət pilləsində iki qiymət də, `pricing.tierPricesRequired`); `tierMode`: `WholeOrder` (default) / `Graduated` |
 | `PUT` | `…/{id}` | Redaktə. Əvvəlki dəyərlər `History`-yə yazılır, `revision` artır; iki admin eyni anda redaktə etsə ikincisi `409` alır |
 | `DELETE` | `…/{id}` | Default profil və kioska bağlı profil silinmir (`400`, neçə kioska bağlı olduğu yazılır) |
 | `POST` | `…/{id}/default` | Default et — həmişə tam olaraq bir default qalır |
 | `POST` | `…/{id}/assign` | `{ "kioskIds": [...] }` — bir neçə kiosku eyni anda bu profilə bağla (plan Bölmə 6) |
 | `POST` | `…/calculate` | Kalkulyator: `{ "profileId" }` və ya saxlanmamış `{ "draft": {...} }` + `options` → qiymət təfərrüatı |
+
+Profil redaktə olunanda, default dəyişəndə və kiosk profilə bağlananda kiosklara `KioskConfigChanged` göndərilir — ekrandakı qiymət dərhal yenilənir (T-436).
+
+### Kampaniyalar (`pricing.manage`, T-436)
+
+Kod yazılmır: kampaniya işlədiyi müddətdə seçilmiş kiosklarda hər sifarişin qiymətini müəyyən edir; promokod bunun üstündən tətbiq olunur. Sifarişin snapshot-unda `campaignId` və `campaignName` saxlanılır.
+
+| Metod | Yol | Məna |
+|---|---|---|
+| `GET` | `/api/admin/pricing-campaigns` | Siyahı: əvvəl işləyənlər, sonra gözləyənlər; hər birində `state` — `Running` / `Scheduled` / `Ended` / `Off` |
+| `GET` | `…/{id}` | Bir kampaniya; yoxdursa `404 notFound.pricingCampaign` |
+| `POST` | `…` | Yarat (`Idempotency-Key`) |
+| `PUT` | `…/{id}` | Redaktə; `revision` ilə, eyni anda iki redaktədə ikincisi `409` |
+| `DELETE` | `…/{id}` | Sil — kiosklar dərhal profilin qiymətinə qayıdır; bu kampaniya ilə verilmiş sifarişlər dəyişmir |
+
+```json
+{
+  "name": "Noyabr",                 // müştəri görür; 1–80 simvol
+  "kind": "Percent",                // Percent | Price
+  "percent": 20,                    // Percent: 0 < x < 100
+  "bwPricePerSide": null,           // Price: hər ikisi məcburi, ≥ 0
+  "colorPricePerSide": null,
+  "volumeTiers": [],                // Price: öz pillələri (profil formatında), boş ola bilər
+  "tierMode": "WholeOrder",         // Price: pillələrin oxunuşu
+  "startsAt": null,                 // null — indidən
+  "endsAt": null,                   // null — müddətsiz; startsAt-dan sonra olmalıdır
+  "kioskIds": [],                   // boş — bütün kiosklar; tanınmayan kiosk → 400
+  "isActive": true
+}
+```
+
+- **Bir kioskda eyni anda bir kampaniya:** kioska aid olan bütün kiosklara aid olanı üstələyir, sonra ən son başlayan, sonra ən yeni.
+- **Faiz kampaniyası** profilin və pillələrinin hesabladığı məbləğdən çıxılır, minimum sifarişdən əvvəl. **Qiymət kampaniyası** profilin üz qiymətlərini və pillələrini əvəz edir; minimum sifariş və kağız əmsalları profildən qalır.
+- Yaradılanda, dəyişəndə, silinəndə və başlanğıc / son vaxtı çatanda (hər dəqiqə `pricing-campaign-boundaries` işi) bütün kiosklara `KioskConfigChanged` gedir. Kiosk konfiqurasiyasının `prices` bloku kampaniyanı artıq daşıyır: `tiers[].bwPerSide/colorPerSide`, `tierMode`, `campaignPercent`, `campaignName`.
+- Audit: `pricing.campaign.create` / `update` / `delete`.
 
 ---
 

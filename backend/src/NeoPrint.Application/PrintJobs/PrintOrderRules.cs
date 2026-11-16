@@ -24,15 +24,15 @@ public sealed class PrintOrderRules
     /// <summary>Attempts at drawing a job code nobody holds before giving up.</summary>
     private const int CodeAttempts = 8;
 
-    private readonly IPricingProfileRepository _profiles;
+    private readonly KioskPricing _pricing;
     private readonly IPrintJobRepository _jobs;
     private readonly ISettingsReader _settings;
     private readonly ILogger<PrintOrderRules> _logger;
 
     public PrintOrderRules(
-        IPricingProfileRepository profiles, IPrintJobRepository jobs, ISettingsReader settings, ILogger<PrintOrderRules> logger)
+        KioskPricing pricing, IPrintJobRepository jobs, ISettingsReader settings, ILogger<PrintOrderRules> logger)
     {
-        _profiles = profiles;
+        _pricing = pricing;
         _jobs = jobs;
         _settings = settings;
         _logger = logger;
@@ -84,13 +84,14 @@ public sealed class PrintOrderRules
         await EnsureWithinLimitsAsync(kiosk, pageCount, cancellationToken).ConfigureAwait(false);
         EnsurePrinterCan(kiosk, options);
 
-        var profile = await ProfileOfAsync(kiosk, cancellationToken).ConfigureAwait(false);
+        // The kiosk's profile and the campaign running there now (T-436).
+        var (profile, campaign) = await _pricing.ForAsync(kiosk, now, cancellationToken).ConfigureAwait(false);
 
         PriceSnapshot price;
 
         try
         {
-            price = PriceSnapshot.Take(profile, options.ToSpec(pageCount), now);
+            price = PriceSnapshot.Take(profile, campaign, options.ToSpec(pageCount), now);
         }
         catch (PricingException exception)
         {
@@ -210,17 +211,6 @@ public sealed class PrintOrderRules
 
             throw new DomainException("printJobs.notEnoughPaper");
         }
-    }
-
-    private async Task<PricingProfile> ProfileOfAsync(Kiosk kiosk, CancellationToken cancellationToken)
-    {
-        var profile = kiosk.PricingProfileId is { } id
-            ? await _profiles.FindByIdAsync(id, cancellationToken).ConfigureAwait(false)
-            : null;
-
-        return profile
-               ?? await _profiles.FindDefaultAsync(cancellationToken).ConfigureAwait(false)
-               ?? throw new NotFoundException("pricingProfile");
     }
 
     private static ValidationException Invalid(string field, string key, params (string Name, object? Value)[] arguments)

@@ -546,6 +546,65 @@ void main() {
       ),
     );
 
+    testWidgets('a campaign, price tiers and the graduated ladder are said '
+        'in words (T-436)', (tester) async {
+      final prices = KioskPrices.fromJson({
+        'bwPerSide': 0.15,
+        'colorPerSide': 0.4,
+        'paperMultipliers': {'A4': 1, 'A3': 2},
+        'minOrder': 0.2,
+        'tiers': [
+          {
+            'minSides': 51,
+            'discountPercent': 0,
+            'bwPerSide': 0.13,
+            'colorPerSide': 0.35,
+          },
+        ],
+        'tierMode': 'Graduated',
+        'campaignName': 'Noyabr',
+        'campaignPercent': 20,
+      });
+      expect(prices.tiers.single.namesPrices, isTrue);
+
+      await tester.pumpWidget(
+        app(
+          const KioskDetailScreen(idOrCode: 'KSK-9002'),
+          FakeKiosks(
+            [],
+            details: {
+              'KSK-9002': KioskDetail(
+                summary: elmler,
+                color: true,
+                duplex: false,
+                a3: true,
+                paper: const [],
+                queueLength: 0,
+                prices: prices,
+              ),
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kampaniya: Noyabr — −20%'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('51 üzdən: ağ-qara 0,13\u00a0₼, rəngli 0,35\u00a0₼'),
+        200,
+      );
+      expect(
+        find.text('51 üzdən: ağ-qara 0,13\u00a0₼, rəngli 0,35\u00a0₼'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Pillələr aralıq-aralıq hesablanır: hər hissə öz pilləsinin qiyməti ilə.',
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('shows what it can do, prices, queue and paper in words', (
       tester,
     ) async {

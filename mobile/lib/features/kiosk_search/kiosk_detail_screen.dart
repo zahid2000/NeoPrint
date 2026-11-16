@@ -188,7 +188,19 @@ class _Detail extends StatelessWidget {
     final language = Localizations.localeOf(context).languageCode;
     final a3Times = prices.paperMultipliers['A3'];
 
+    final campaign = prices.campaignName;
+
     return [
+      // The campaign running here (T-436): first, so it is not missed.
+      if (campaign != null && campaign.isNotEmpty)
+        _PriceRow(
+          label: prices.campaignPercent > 0
+              ? l10n.kioskPriceCampaignPercent(
+                  campaign,
+                  formatNumber(prices.campaignPercent, language: language),
+                )
+              : l10n.kioskPriceCampaign(campaign),
+        ),
       _PriceRow(
         label: l10n.kioskPriceBw,
         value: formatMoney(prices.bwPerSide, language: language),
@@ -207,11 +219,19 @@ class _Detail extends StatelessWidget {
       ),
       for (final tier in prices.tiers)
         _PriceRow(
-          label: l10n.kioskPriceTier(
-            tier.minSides,
-            formatNumber(tier.discountPercent, language: language),
-          ),
+          label: tier.namesPrices
+              ? l10n.kioskPriceTierPrices(
+                  tier.minSides,
+                  formatMoney(tier.bwPerSide!, language: language),
+                  formatMoney(tier.colorPerSide!, language: language),
+                )
+              : l10n.kioskPriceTier(
+                  tier.minSides,
+                  formatNumber(tier.discountPercent, language: language),
+                ),
         ),
+      if (prices.graduated && prices.tiers.isNotEmpty)
+        _PriceRow(label: l10n.kioskPriceGraduated),
       const SizedBox(height: Spacing.x1),
       Text(l10n.kioskPricesHint, style: Theme.of(context).textTheme.bodySmall),
     ];

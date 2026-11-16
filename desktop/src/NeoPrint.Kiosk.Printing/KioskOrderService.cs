@@ -98,13 +98,7 @@ public sealed class KioskOrderService
             return null;
         }
 
-        var table = new PriceTable(
-            prices.BwPerSide,
-            prices.ColorPerSide,
-            prices.PaperMultipliers,
-            prices.MinOrder,
-            [.. prices.Tiers.Select(tier => new PriceTier(tier.MinSides, tier.DiscountPercent))],
-            prices.Currency);
+        var table = prices.ToPriceTable();
 
         PriceBreakdown price;
 

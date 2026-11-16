@@ -896,5 +896,13 @@
   "notFound.operatorLogin": "Этот QR не найден или не относится к вашим киоскам.",
   "users.photoEmpty": "Изображение не выбрано. Выберите его снова.",
   "users.photoTooLarge": "Изображение слишком большое: не больше {maxMb} МБ. Выберите другое.",
-  "users.photoNotImage": "Этот файл не изображение. Выберите JPEG, PNG или WebP."
+  "users.photoNotImage": "Этот файл не изображение. Выберите JPEG, PNG или WebP.",
+  "notFound.pricingCampaign": "Кампания не найдена.",
+  "pricing.tierPricesRequired": "Для ценовой ступени укажите цену чёрно-белой и цветной стороны (0 или больше).",
+  "pricing.tierModeInvalid": "Неизвестный способ расчёта ступеней.",
+  "pricing.campaignNameRequired": "Укажите название кампании (до 80 символов).",
+  "pricing.campaignKindInvalid": "Неизвестный тип кампании.",
+  "pricing.campaignPercentRange": "Скидка должна быть больше 0 и меньше 100 процентов.",
+  "pricing.campaignPricesRequired": "Для ценовой кампании укажите цену чёрно-белой и цветной стороны (0 или больше).",
+  "pricing.campaignDatesOrder": "Окончание должно быть позже начала."
 }

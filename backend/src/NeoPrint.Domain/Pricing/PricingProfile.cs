@@ -3,14 +3,54 @@ using NeoPrint.Pricing;
 
 namespace NeoPrint.Domain.Pricing;
 
-/// <summary>One step of the volume discount ladder (plan section 2.3).</summary>
+/// <summary>One step of the volume ladder (plan section 2.3; T-436).</summary>
+/// <remarks>
+/// Either a discount in percent, or - when both prices are set - the price
+/// of a side from this many sides on ("from 51 sides, 13 qəpik").
+/// </remarks>
 public sealed class VolumeTier
 {
     /// <summary>Sides from which this tier applies.</summary>
     public int MinSides { get; set; }
 
-    /// <summary>Discount in percent. A percentage, not an amount.</summary>
+    /// <summary>Discount in percent. A percentage, not an amount; 0 on a price tier.</summary>
     public decimal DiscountPercent { get; set; }
+
+    /// <summary>A black and white side's price from <see cref="MinSides"/> on; null on a percentage tier.</summary>
+    public decimal? BwPricePerSide { get; set; }
+
+    /// <summary>A colour side's price from <see cref="MinSides"/> on; null on a percentage tier.</summary>
+    public decimal? ColorPricePerSide { get; set; }
+
+    public bool IsPrice => BwPricePerSide is not null || ColorPricePerSide is not null;
+
+    public PriceTier ToPriceTier() => IsPrice
+        ? new PriceTier(MinSides, 0m, BwPricePerSide, ColorPricePerSide)
+        : new PriceTier(MinSides, DiscountPercent);
+
+    /// <summary>The ladder's problems, as (field, message key) - a profile's and a campaign's alike.</summary>
+    public static IEnumerable<(string Field, string Message)> Check(IReadOnlyCollection<VolumeTier> tiers)
+    {
+        if (tiers.Any(t => t.MinSides < 1))
+        {
+            yield return ("volumeTiers", "pricing.tierMinimum");
+        }
+
+        if (tiers.Any(t => !t.IsPrice && (t.DiscountPercent <= 0 || t.DiscountPercent >= 100)))
+        {
+            yield return ("volumeTiers", "pricing.tierDiscountRange");
+        }
+
+        if (tiers.Any(t => t.IsPrice && (t.BwPricePerSide is not { } bw || t.ColorPricePerSide is not { } color || bw < 0 || color < 0)))
+        {
+            yield return ("volumeTiers", "pricing.tierPricesRequired");
+        }
+
+        if (tiers.GroupBy(t => t.MinSides).Any(g => g.Count() > 1))
+        {
+            yield return ("volumeTiers", "pricing.tierDuplicate");
+        }
+    }
 }
 
 /// <summary>
@@ -57,6 +97,9 @@ public sealed class PricingProfile : Entity
         new() { MinSides = 100, DiscountPercent = 15m },
     ];
 
+    /// <summary>How the ladder is read: the whole order at one tier, or band by band (T-436).</summary>
+    public TierMode TierMode { get; set; } = TierMode.WholeOrder;
+
     public Guid? UpdatedBy { get; set; }
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -77,7 +120,8 @@ public sealed class PricingProfile : Entity
         ColorPricePerSide.Amount,
         new Dictionary<string, decimal>(PaperMultipliers, StringComparer.Ordinal),
         MinOrder.Amount,
-        [.. VolumeTiers.OrderBy(t => t.MinSides).Select(t => new PriceTier(t.MinSides, t.DiscountPercent))]);
+        [.. VolumeTiers.OrderBy(t => t.MinSides).Select(t => t.ToPriceTier())],
+        TierMode: TierMode);
 
     /// <summary>
     /// Checks the values an administrator entered.
@@ -109,19 +153,11 @@ public sealed class PricingProfile : Entity
             problems.Add(("paperMultipliers", "pricing.multiplierPositive"));
         }
 
-        if (VolumeTiers.Any(t => t.MinSides < 1))
-        {
-            problems.Add(("volumeTiers", "pricing.tierMinimum"));
-        }
+        problems.AddRange(VolumeTier.Check(VolumeTiers));
 
-        if (VolumeTiers.Any(t => t.DiscountPercent <= 0 || t.DiscountPercent >= 100))
+        if (!Enum.IsDefined(TierMode))
         {
-            problems.Add(("volumeTiers", "pricing.tierDiscountRange"));
-        }
-
-        if (VolumeTiers.GroupBy(t => t.MinSides).Any(g => g.Count() > 1))
-        {
-            problems.Add(("volumeTiers", "pricing.tierDuplicate"));
+            problems.Add(("tierMode", "pricing.tierModeInvalid"));
         }
 
         return problems;

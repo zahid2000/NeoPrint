@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
@@ -20,6 +21,7 @@ import {
   PricingKiosk,
   PricingProfile,
   PricingProfileInput,
+  TierMode,
 } from '../../core/api/step2.models';
 import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
@@ -30,12 +32,15 @@ import { DateTimePipe, MoneyPipe } from '../../shared/format.pipes';
 import { NotifyService } from '../../shared/notify.service';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
-
-/** A volume tier as the form edits it. */
-interface TierDraft {
-  minSides: number;
-  discountPercent: number;
-}
+import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
+import { PricingCampaignsComponent } from './pricing-campaigns.component';
+import {
+  TierDraft,
+  TierLadderComponent,
+  tierFromApi,
+  tierProblems,
+  tiersToApi,
+} from './tier-ladder.component';
 
 /** The profile form: plain values, so empty inputs are allowed while typing. */
 interface ProfileDraft {
@@ -46,6 +51,7 @@ interface ProfileDraft {
   a4: number;
   a3: number;
   tiers: TierDraft[];
+  tierMode: TierMode;
 }
 
 const emptyDraft = (): ProfileDraft => ({
@@ -56,6 +62,7 @@ const emptyDraft = (): ProfileDraft => ({
   a4: 1,
   a3: 2,
   tiers: [],
+  tierMode: 'WholeOrder',
 });
 
 /**
@@ -76,8 +83,12 @@ const emptyDraft = (): ProfileDraft => ({
     MatProgressSpinnerModule,
     MatSelectModule,
     MatSlideToggleModule,
+    MatTabsModule,
     MatTooltipModule,
     TranslatePipe,
+    TabArrowsDirective,
+    TierLadderComponent,
+    PricingCampaignsComponent,
     PageHeaderComponent,
     ErrorBannerComponent,
     EmptyStateComponent,
@@ -93,6 +104,9 @@ export class PricingComponent {
   private readonly dialog = inject(MatDialog);
   private readonly notify = inject(NotifyService);
   private readonly translate = inject(TranslateService);
+
+  /** "Profillər" or "Kampaniyalar" (T-436). */
+  readonly tab = signal(0);
 
   readonly profiles = signal<PricingProfile[]>([]);
   readonly loading = signal(true);
@@ -151,17 +165,7 @@ export class PricingComponent {
       found.push('pricing.invalid.multiplier');
     }
 
-    if (draft.tiers.some((tier) => !(tier.minSides >= 1) || !Number.isInteger(tier.minSides))) {
-      found.push('pricing.invalid.tierSides');
-    }
-
-    if (draft.tiers.some((tier) => !(tier.discountPercent > 0 && tier.discountPercent < 100))) {
-      found.push('pricing.invalid.tierPercent');
-    }
-
-    if (new Set(draft.tiers.map((tier) => tier.minSides)).size !== draft.tiers.length) {
-      found.push('pricing.invalid.tierDuplicate');
-    }
+    found.push(...tierProblems(draft.tiers));
 
     return found;
   });
@@ -252,27 +256,6 @@ export class PricingComponent {
   update<K extends keyof ProfileDraft>(key: K, value: ProfileDraft[K]): void {
     this.draft.update((draft) => ({ ...draft, [key]: value }));
     this.quote.set(null);
-  }
-
-  addTier(): void {
-    const tiers = this.draft().tiers;
-    const next = tiers.length === 0 ? 50 : Math.max(...tiers.map((tier) => tier.minSides)) * 2;
-
-    this.update('tiers', [...tiers, { minSides: next, discountPercent: 5 }]);
-  }
-
-  updateTier(index: number, key: keyof TierDraft, value: number): void {
-    this.update(
-      'tiers',
-      this.draft().tiers.map((tier, i) => (i === index ? { ...tier, [key]: value } : tier)),
-    );
-  }
-
-  removeTier(index: number): void {
-    this.update(
-      'tiers',
-      this.draft().tiers.filter((_, i) => i !== index),
-    );
   }
 
   revert(): void {
@@ -453,7 +436,8 @@ export class PricingComponent {
       minOrder: profile.minOrder,
       a4: profile.paperMultipliers['A4'] ?? 1,
       a3: profile.paperMultipliers['A3'] ?? 2,
-      tiers: profile.volumeTiers.map((tier) => ({ ...tier })),
+      tiers: profile.volumeTiers.map(tierFromApi),
+      tierMode: profile.tierMode ?? 'WholeOrder',
     };
   }
 
@@ -464,7 +448,8 @@ export class PricingComponent {
       colorPricePerSide: draft.color,
       minOrder: draft.minOrder,
       paperMultipliers: { A4: draft.a4, A3: draft.a3 },
-      volumeTiers: [...draft.tiers].sort((a, b) => a.minSides - b.minSides),
+      volumeTiers: tiersToApi(draft.tiers),
+      tierMode: draft.tierMode,
     };
   }
 

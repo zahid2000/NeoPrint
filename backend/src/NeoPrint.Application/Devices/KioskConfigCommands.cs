@@ -73,9 +73,32 @@ public sealed record KioskPricesDto(
     IReadOnlyDictionary<string, decimal> PaperMultipliers,
     decimal MinOrder,
     IReadOnlyList<KioskPriceTierDto> Tiers,
-    string Currency);
+    string Currency,
+    NeoPrint.Pricing.TierMode TierMode = NeoPrint.Pricing.TierMode.WholeOrder,
+    decimal CampaignPercent = 0m,
+    string? CampaignName = null)
+{
+    /// <summary>The rates a kiosk charges now, the running campaign already on them (T-436).</summary>
+    public static KioskPricesDto From(string profileName, NeoPrint.Pricing.PriceTable table)
+    {
+        ArgumentNullException.ThrowIfNull(table);
 
-public sealed record KioskPriceTierDto(int MinSides, decimal DiscountPercent);
+        return new(
+            profileName,
+            table.BwPerSide,
+            table.ColorPerSide,
+            table.PaperMultipliers,
+            table.MinOrder,
+            [.. table.Tiers.Select(tier => new KioskPriceTierDto(tier.MinSides, tier.DiscountPercent, tier.BwPerSide, tier.ColorPerSide))],
+            table.Currency,
+            table.TierMode,
+            table.CampaignPercent,
+            table.CampaignName);
+    }
+}
+
+/// <param name="BwPerSide">Set, with <paramref name="ColorPerSide"/>, on a tier that names its prices (T-436).</param>
+public sealed record KioskPriceTierDto(int MinSides, decimal DiscountPercent, decimal? BwPerSide = null, decimal? ColorPerSide = null);
 
 public sealed record PrinterCapabilitiesDto(bool Color, bool Duplex, bool A3);
 

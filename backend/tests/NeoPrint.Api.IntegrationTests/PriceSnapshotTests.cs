@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 using NeoPrint.Domain.Common;
@@ -122,6 +123,51 @@ public sealed class PriceSnapshotTests
             // The profile as saved now prices the same order differently.
             var current = await profiles.Find(p => p.Id == profile.Id).FirstAsync();
             PriceSnapshot.Take(current, Order, DateTime.UtcNow).Price.FinalPrice.Should().Be(150.00m);
+        }
+        finally
+        {
+            await new MongoClient(_fixture.MongoConnectionString).DropDatabaseAsync(database.DatabaseNamespace.DatabaseName);
+        }
+    }
+
+    /// <summary>
+    /// An order priced before price tiers and campaigns (T-436) is stored
+    /// without their fields: it still reads, and recomputes to its price.
+    /// </summary>
+    [DockerFact]
+    public async Task A_snapshot_stored_before_campaigns_still_reads_and_one_with_a_campaign_keeps_it()
+    {
+        var database = new MongoClient(_fixture.MongoConnectionString)
+            .GetDatabase($"neoprint-pricing-{Guid.NewGuid():N}");
+
+        try
+        {
+            var raw = database.GetCollection<BsonDocument>("orders");
+            var orders = database.GetCollection<OrderDocument>("orders");
+
+            var old = new OrderDocument { Id = Guid.NewGuid(), Snapshot = PriceSnapshot.Take(Profile(), Order, DateTime.UtcNow) };
+            var document = old.ToBsonDocument();
+            var snapshot = document["Snapshot"].AsBsonDocument;
+            snapshot["Rates"].AsBsonDocument.Remove("TierMode");
+            snapshot["Rates"].AsBsonDocument.Remove("CampaignPercent");
+            snapshot["Price"].AsBsonDocument.Remove("CampaignPercent");
+            snapshot["Price"].AsBsonDocument.Remove("CampaignDiscount");
+            await raw.InsertOneAsync(document);
+
+            var legacy = await orders.Find(o => o.Id == old.Id).FirstAsync();
+            legacy.Snapshot.Price.FinalPrice.Should().Be(51.00m);
+            legacy.Snapshot.Rates.TierMode.Should().Be(TierMode.WholeOrder);
+            legacy.Snapshot.CampaignId.Should().BeNull();
+            legacy.Snapshot.Recompute().FinalPrice.Should().Be(51.00m);
+
+            var campaign = new PricingCampaign { Name = "Noyabr", Kind = CampaignKind.Percent, Percent = 10m };
+            var priced = new OrderDocument { Id = Guid.NewGuid(), Snapshot = PriceSnapshot.Take(Profile(), campaign, Order, DateTime.UtcNow) };
+            await orders.InsertOneAsync(priced);
+
+            var reloaded = await orders.Find(o => o.Id == priced.Id).FirstAsync();
+            reloaded.Snapshot.CampaignName.Should().Be("Noyabr");
+            reloaded.Snapshot.Price.FinalPrice.Should().Be(45.90m, "51.00 less 10%");
+            reloaded.Snapshot.Recompute().Should().Be(reloaded.Snapshot.Price);
         }
         finally
         {

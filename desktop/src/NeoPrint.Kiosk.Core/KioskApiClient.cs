@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 
 using NeoPrint.Kiosk.Platform.Abstractions;
+using NeoPrint.Pricing;
 
 namespace NeoPrint.Kiosk.Core;
 
@@ -115,9 +116,26 @@ public sealed record KioskPrices(
     IReadOnlyDictionary<string, decimal> PaperMultipliers,
     decimal MinOrder,
     IReadOnlyList<KioskPriceTier> Tiers,
-    string Currency);
+    string Currency,
+    TierMode TierMode = TierMode.WholeOrder,
+    decimal CampaignPercent = 0m,
+    string? CampaignName = null)
+{
+    /// <summary>The rates the shared calculator prices with - the backend's own formula (T-436).</summary>
+    public PriceTable ToPriceTable() => new(
+        BwPerSide,
+        ColorPerSide,
+        PaperMultipliers,
+        MinOrder,
+        [.. Tiers.Select(tier => new PriceTier(tier.MinSides, tier.DiscountPercent, tier.BwPerSide, tier.ColorPerSide))],
+        Currency,
+        TierMode,
+        CampaignPercent,
+        CampaignName);
+}
 
-public sealed record KioskPriceTier(int MinSides, decimal DiscountPercent);
+/// <param name="BwPerSide">Set, with <paramref name="ColorPerSide"/>, on a tier that names its prices (T-436).</param>
+public sealed record KioskPriceTier(int MinSides, decimal DiscountPercent, decimal? BwPerSide = null, decimal? ColorPerSide = null);
 
 public sealed record PrinterCapabilityFlags(bool Color, bool Duplex, bool A3);
 

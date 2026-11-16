@@ -1130,6 +1130,14 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
             detail += " · " + T("options.discount", quote.Price.DiscountPercent.ToString("0.##", CultureInfo.InvariantCulture));
         }
 
+        // The campaign running here (T-436): its name, and its percentage when it is one.
+        if (!string.IsNullOrWhiteSpace(quote.Price.CampaignName))
+        {
+            detail += " · " + (quote.Price.CampaignPercent > 0
+                ? T("options.campaignPercent", quote.Price.CampaignName, quote.Price.CampaignPercent.ToString("0.##", CultureInfo.InvariantCulture))
+                : T("options.campaign", quote.Price.CampaignName));
+        }
+
         if (quote.Price.MinimumApplied)
         {
             detail += " · " + T("options.minimum");

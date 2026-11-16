@@ -437,6 +437,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         jobs => jobs.RunAsync(CancellationToken.None),
         Cron.Minutely());
 
+    // Pricing campaigns that started or ended: kiosks fetch their prices again (T-436).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Pricing.CampaignBoundaryJob>(
+        NeoPrint.Infrastructure.Pricing.CampaignBoundaryJob.RecurringId,
+        job => job.RunAsync(CancellationToken.None),
+        Cron.Minutely());
+
     // Rollouts to chosen kiosks that every one of them installed are done (T-381).
     recurring.AddOrUpdate<NeoPrint.Infrastructure.Releases.RolloutCompletionJob>(
         NeoPrint.Infrastructure.Releases.RolloutCompletionJob.RecurringId,

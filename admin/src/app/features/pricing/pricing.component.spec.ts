@@ -17,6 +17,7 @@ const standard: PricingProfile = {
   minOrder: 0.2,
   paperMultipliers: { A4: 1, A3: 2 },
   volumeTiers: [{ minSides: 50, discountPercent: 10 }],
+  tierMode: 'WholeOrder',
   kioskCount: 2,
   updatedAt: '2026-09-27T10:00:00Z',
   revision: 3,
@@ -57,18 +58,48 @@ describe('PricingComponent', () => {
   it('opens the default profile with its values on the form', () => {
     expect(component.selectedId()).toBe('p1');
     expect(component.draft().color).toBe(0.3);
-    expect(component.draft().tiers).toEqual([{ minSides: 50, discountPercent: 10 }]);
+    expect(component.draft().tiers).toEqual([
+      { minSides: 50, kind: 'Percent', discountPercent: 10, bw: 0, color: 0 },
+    ]);
+    expect(component.draft().tierMode).toBe('WholeOrder');
     expect(component.dirty()).toBe(false);
   });
 
   it('says what is wrong before the server is asked', () => {
-    component.addTier();
-    component.updateTier(1, 'minSides', 50);
-    component.updateTier(1, 'discountPercent', 120);
+    component.update('tiers', [
+      ...component.draft().tiers,
+      { minSides: 50, kind: 'Percent', discountPercent: 120, bw: 0, color: 0 },
+      { minSides: 80, kind: 'Price', discountPercent: 0, bw: -1, color: 0.3 },
+    ]);
 
     expect(component.problems()).toContain('pricing.invalid.tierDuplicate');
     expect(component.problems()).toContain('pricing.invalid.tierPercent');
+    expect(component.problems()).toContain('pricing.invalid.tierPrices');
     expect(component.canSave()).toBe(false);
+  });
+
+  it('sends a price tier with its prices only, and how the ladder is read (T-436)', async () => {
+    component.update('tiers', [
+      ...component.draft().tiers,
+      { minSides: 101, kind: 'Price', discountPercent: 5, bw: 0.11, color: 0.3 },
+    ]);
+    component.update('tierMode', 'Graduated');
+
+    const saving = component.save();
+    const request = backend.expectOne('/api/admin/pricing-profiles/p1');
+
+    expect(request.request.body.tierMode).toBe('Graduated');
+    expect(request.request.body.volumeTiers).toEqual([
+      { minSides: 50, discountPercent: 10 },
+      { minSides: 101, discountPercent: 0, bwPricePerSide: 0.11, colorPricePerSide: 0.3 },
+    ]);
+
+    request.flush(standard);
+    await settle(fixture);
+    backend.expectOne('/api/admin/pricing-profiles').flush([standard]);
+    await settle(fixture);
+    backend.expectOne('/api/admin/pricing-profiles/p1').flush({ profile: standard, kiosks: [] });
+    await saving;
   });
 
   it('prices an order with the values still on the form', async () => {
@@ -108,8 +139,10 @@ describe('PricingComponent', () => {
   });
 
   it('sends the tiers in order when saving', async () => {
-    component.addTier();
-    component.updateTier(1, 'minSides', 20);
+    component.update('tiers', [
+      ...component.draft().tiers,
+      { minSides: 20, kind: 'Percent', discountPercent: 5, bw: 0, color: 0 },
+    ]);
 
     const saving = component.save();
     const request = backend.expectOne('/api/admin/pricing-profiles/p1');

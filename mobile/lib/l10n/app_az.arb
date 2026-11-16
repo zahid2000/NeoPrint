@@ -822,6 +822,41 @@
       "percent": { "type": "String" }
     }
   },
+  "kioskPriceTierPrices": "{sides} üzdən: ağ-qara {bw}, rəngli {color}",
+  "@kioskPriceTierPrices": {
+    "placeholders": {
+      "sides": { "type": "int" },
+      "bw": { "type": "String" },
+      "color": { "type": "String" }
+    }
+  },
+  "kioskPriceGraduated": "Pillələr aralıq-aralıq hesablanır: hər hissə öz pilləsinin qiyməti ilə.",
+  "kioskPriceCampaign": "Kampaniya: {name}",
+  "@kioskPriceCampaign": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "kioskPriceCampaignPercent": "Kampaniya: {name} — −{percent}%",
+  "@kioskPriceCampaignPercent": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "percent": { "type": "String" }
+    }
+  },
+  "quoteCampaign": "Kampaniya qiyməti: {name}",
+  "@quoteCampaign": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "quoteCampaignDiscount": "Kampaniya ({name}): −{amount}",
+  "@quoteCampaignDiscount": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "amount": { "type": "String" }
+    }
+  },
   "kioskPricesHint": "Yekun qiymət sifariş verəndə hesablanır.",
   "kioskQueue": "Növbə",
   "queueTitle": "Çap növbəsi",

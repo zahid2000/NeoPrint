@@ -65,6 +65,11 @@ const SERVER_VALUES = {
     except: { None: 'the reason is shown only when a reward is held' },
   },
   'referrals.outcome.': { values: ['Waiting', 'Rewarded', 'Held'] },
+  // Pricing campaigns and tiers (T-436): the kind is a backend enum; the ladder's
+  // mode lives in backend/shared (TierMode), the state is worked out per request.
+  'campaigns.kindHint.': { enum: 'CampaignKind' },
+  'pricing.tierModeHint.': { values: ['WholeOrder', 'Graduated'] },
+  'campaigns.state.': { values: ['Running', 'Scheduled', 'Ended', 'Off'] },
   'storage.health.': { enum: 'StorageHealthStatus' },
   'storage.role.': { enum: 'StorageProviderRole' },
   'storage.sync.status.': { enum: 'StorageSyncStatus' },

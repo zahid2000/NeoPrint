@@ -32,7 +32,15 @@ public interface IPricingProfileRepository
 // Shapes
 // ---------------------------------------------------------------------------
 
-public sealed record VolumeTierDto(int MinSides, decimal DiscountPercent);
+/// <summary>A ladder step: a percentage, or - with both prices - the price of a side (T-436).</summary>
+public sealed record VolumeTierDto(int MinSides, decimal DiscountPercent, decimal? BwPricePerSide = null, decimal? ColorPricePerSide = null)
+{
+    public static VolumeTierDto From(VolumeTier tier) => new(tier.MinSides, tier.DiscountPercent, tier.BwPricePerSide, tier.ColorPricePerSide);
+
+    public VolumeTier ToTier() => BwPricePerSide is null && ColorPricePerSide is null
+        ? new VolumeTier { MinSides = MinSides, DiscountPercent = DiscountPercent }
+        : new VolumeTier { MinSides = MinSides, BwPricePerSide = BwPricePerSide, ColorPricePerSide = ColorPricePerSide };
+}
 
 /// <summary>A profile as the panel edits it.</summary>
 public sealed record PricingProfileInput(
@@ -41,7 +49,8 @@ public sealed record PricingProfileInput(
     decimal ColorPricePerSide,
     decimal MinOrder,
     IReadOnlyDictionary<string, decimal> PaperMultipliers,
-    IReadOnlyList<VolumeTierDto> VolumeTiers);
+    IReadOnlyList<VolumeTierDto> VolumeTiers,
+    TierMode TierMode = TierMode.WholeOrder);
 
 public sealed record PricingProfileResponse(
     Guid Id,
@@ -54,7 +63,8 @@ public sealed record PricingProfileResponse(
     IReadOnlyList<VolumeTierDto> VolumeTiers,
     int KioskCount,
     DateTime UpdatedAt,
-    int Revision);
+    int Revision,
+    TierMode TierMode = TierMode.WholeOrder);
 
 /// <summary>A kiosk as the profile page lists it.</summary>
 public sealed record PricingKioskDto(Guid Id, string Code, string Name, Guid? PricingProfileId);
@@ -74,7 +84,7 @@ public sealed record PrintOptionsDto(
     public PrintSpec ToSpec() => new(PageCount, PagesPerSheet, Copies, Duplex, Color, Paper);
 }
 
-/// <summary>A quote: the price, how it was arrived at, and which profile produced it.</summary>
+/// <summary>A quote: the price, how it was arrived at, and which profile (and campaign, T-436) produced it.</summary>
 /// <param name="AmountDue">What is paid: the price less the promo code, before any bonus pages.</param>
 /// <param name="PromoRefusal">Why the code does not apply, in the caller's language.</param>
 public sealed record QuoteResponse(

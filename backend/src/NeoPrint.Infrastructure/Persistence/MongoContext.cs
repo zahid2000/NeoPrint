@@ -114,6 +114,9 @@ public sealed class MongoContext
 
     public MongoSet<AdminSetting> AdminSettings => Set<AdminSetting>("admin_settings");
     public MongoSet<PricingProfile> PricingProfiles => Set<PricingProfile>("pricing_profiles");
+
+    /// <summary>Pricing campaigns (T-436).</summary>
+    public MongoSet<PricingCampaign> PricingCampaigns => Set<PricingCampaign>("pricing_campaigns");
     public MongoSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>("feature_flags");
     public MongoSet<Domain.Storage.StorageProvider> StorageProviders => Set<Domain.Storage.StorageProvider>("storage_providers");
     public MongoSet<Domain.Files.StoredFile> Files => Set<Domain.Files.StoredFile>("files");
@@ -355,6 +358,9 @@ public sealed class MongoContext
         await CreateAsync(PricingProfiles,
             (Builders<PricingProfile>.IndexKeys.Ascending(p => p.Name), Unique("ux_pricing_profiles_name")),
             (Builders<PricingProfile>.IndexKeys.Ascending(p => p.IsDefault), Named("ix_pricing_profiles_default")));
+
+        await CreateAsync(PricingCampaigns,
+            (Builders<PricingCampaign>.IndexKeys.Ascending(c => c.IsActive), Named("ix_pricing_campaigns_active")));
 
         await CreateAsync(FeatureFlags,
             (Builders<FeatureFlag>.IndexKeys.Ascending(f => f.Key), Unique("ux_feature_flags_key")));

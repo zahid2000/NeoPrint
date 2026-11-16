@@ -896,5 +896,13 @@
   "notFound.operatorLogin": "This QR was not found, or it is not one of your kiosks.",
   "users.photoEmpty": "No picture was chosen. Choose it again.",
   "users.photoTooLarge": "The picture is too large: it can be up to {maxMb} MB. Choose another one.",
-  "users.photoNotImage": "This file is not a picture. Choose a JPEG, PNG or WebP picture."
+  "users.photoNotImage": "This file is not a picture. Choose a JPEG, PNG or WebP picture.",
+  "notFound.pricingCampaign": "Campaign not found.",
+  "pricing.tierPricesRequired": "A price tier needs both the black and white and the colour side price (0 or more).",
+  "pricing.tierModeInvalid": "Unknown way of reading the tiers.",
+  "pricing.campaignNameRequired": "Enter the campaign name (up to 80 characters).",
+  "pricing.campaignKindInvalid": "Unknown campaign type.",
+  "pricing.campaignPercentRange": "The discount must be above 0 and below 100 percent.",
+  "pricing.campaignPricesRequired": "A price campaign needs both the black and white and the colour side price (0 or more).",
+  "pricing.campaignDatesOrder": "The end must come after the start."
 }

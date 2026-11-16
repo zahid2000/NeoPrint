@@ -27,15 +27,25 @@ public sealed record PriceSnapshot(
     PriceTable Rates,
     PrintSpec Spec,
     PriceBreakdown Price,
-    DateTime TakenAt)
+    DateTime TakenAt,
+    Guid? CampaignId = null,
+    string? CampaignName = null)
 {
     /// <summary>Prices a specification against a profile, as of now.</summary>
     public static PriceSnapshot Take(PricingProfile profile, PrintSpec spec, DateTime now)
+        => Take(profile, campaign: null, spec, now);
+
+    /// <summary>
+    /// Prices a specification against a profile and the campaign running at
+    /// the kiosk (T-436), as of now; the campaign's name and id are kept with
+    /// the rates, for the audit trail.
+    /// </summary>
+    public static PriceSnapshot Take(PricingProfile profile, PricingCampaign? campaign, PrintSpec spec, DateTime now)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(spec);
 
-        var rates = profile.ToPriceTable();
+        var rates = campaign is null ? profile.ToPriceTable() : campaign.Apply(profile.ToPriceTable());
 
         return new PriceSnapshot(
             profile.Id,
@@ -44,7 +54,9 @@ public sealed record PriceSnapshot(
             rates,
             spec,
             PriceCalculator.Quote(rates, spec),
-            now);
+            now,
+            campaign?.Id,
+            campaign?.Name);
     }
 
     /// <summary>What the customer pays.</summary>

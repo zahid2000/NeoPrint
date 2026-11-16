@@ -98,16 +98,29 @@ final class KioskPaper {
   final int? sheets;
 }
 
+/// A ladder step: a percentage off, or - with both prices - the price of a
+/// side from [minSides] on (T-436).
 final class PriceTier {
-  const PriceTier({required this.minSides, required this.discountPercent});
+  const PriceTier({
+    required this.minSides,
+    required this.discountPercent,
+    this.bwPerSide,
+    this.colorPerSide,
+  });
 
   factory PriceTier.fromJson(Map<String, dynamic> json) => PriceTier(
     minSides: json['minSides'] as int,
-    discountPercent: (json['discountPercent'] as num).toDouble(),
+    discountPercent: (json['discountPercent'] as num? ?? 0).toDouble(),
+    bwPerSide: (json['bwPerSide'] as num?)?.toDouble(),
+    colorPerSide: (json['colorPerSide'] as num?)?.toDouble(),
   );
 
   final int minSides;
   final double discountPercent;
+  final double? bwPerSide;
+  final double? colorPerSide;
+
+  bool get namesPrices => bwPerSide != null && colorPerSide != null;
 }
 
 /// The rates of the kiosk's pricing profile. The order is priced again on the
@@ -119,6 +132,9 @@ final class KioskPrices {
     required this.paperMultipliers,
     required this.minOrder,
     required this.tiers,
+    this.graduated = false,
+    this.campaignName,
+    this.campaignPercent = 0,
   });
 
   factory KioskPrices.fromJson(Map<String, dynamic> json) => KioskPrices(
@@ -134,6 +150,9 @@ final class KioskPrices {
       for (final tier in json['tiers'] as List<dynamic>? ?? const [])
         PriceTier.fromJson(tier as Map<String, dynamic>),
     ],
+    graduated: json['tierMode'] == 'Graduated',
+    campaignName: json['campaignName'] as String?,
+    campaignPercent: (json['campaignPercent'] as num? ?? 0).toDouble(),
   );
 
   final double bwPerSide;
@@ -143,6 +162,17 @@ final class KioskPrices {
   final Map<String, double> paperMultipliers;
   final double minOrder;
   final List<PriceTier> tiers;
+
+  /// Each band of sides at its own tier, added up - not the whole order at
+  /// the tier it reaches (T-436).
+  final bool graduated;
+
+  /// The campaign running at the kiosk now, if any (T-436); these prices
+  /// already are its own when it names prices.
+  final String? campaignName;
+
+  /// Its percentage off, when it is one; 0 otherwise.
+  final double campaignPercent;
 }
 
 /// One kiosk for a customer: what it can do, what it costs, how busy it is.

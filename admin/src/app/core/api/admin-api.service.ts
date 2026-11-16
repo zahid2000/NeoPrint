@@ -9,6 +9,8 @@ import {
   KioskDetail,
   KioskDeviceHistoryItem,
   PriceBreakdown,
+  PricingCampaign,
+  PricingCampaignInput,
   PricingProfile,
   PricingProfileDetail,
   PricingProfileInput,
@@ -757,6 +759,23 @@ export class AdminApiService {
 
   deletePricingProfile(id: string, reason: string): Observable<void> {
     return this.http.delete<void>(`/api/admin/pricing-profiles/${id}`, withReason(reason));
+  }
+
+  /** Pricing campaigns (T-436). */
+  listPricingCampaigns(): Observable<PricingCampaign[]> {
+    return this.http.get<PricingCampaign[]>('/api/admin/pricing-campaigns');
+  }
+
+  createPricingCampaign(body: PricingCampaignInput): Observable<PricingCampaign> {
+    return this.http.post<PricingCampaign>('/api/admin/pricing-campaigns', body, idempotent());
+  }
+
+  updatePricingCampaign(id: string, body: PricingCampaignInput): Observable<PricingCampaign> {
+    return this.http.put<PricingCampaign>(`/api/admin/pricing-campaigns/${id}`, body);
+  }
+
+  deletePricingCampaign(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/admin/pricing-campaigns/${id}`);
   }
 
   makeDefaultPricingProfile(id: string): Observable<PricingProfile> {

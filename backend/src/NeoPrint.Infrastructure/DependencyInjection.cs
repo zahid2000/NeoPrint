@@ -356,6 +356,9 @@ public static class DependencyInjection
         services.AddScoped<NeoPrint.Application.Files.IFileRepository, FileRepository>();
         services.AddScoped<NeoPrint.Application.Dashboard.IFileStatistics, FileStatisticsReader>();
         services.AddScoped<NeoPrint.Application.Pricing.IPricingProfileRepository, PricingProfileRepository>();
+        services.AddScoped<NeoPrint.Application.Pricing.IPricingCampaignRepository, PricingCampaignRepository>();
+        services.AddScoped<NeoPrint.Application.Pricing.KioskPricing>();
+        services.AddScoped<NeoPrint.Infrastructure.Pricing.CampaignBoundaryJob>();
 
         // Conversion. The converters are singletons - they hold no per-request
         // state - and the service is scoped because it writes through the

@@ -896,5 +896,13 @@
   "notFound.operatorLogin": "Bu QR tapılmadı və ya sizin kiosklarınızdan birinə aid deyil.",
   "users.photoEmpty": "Şəkil seçilməyib. Şəkli yenidən seçin.",
   "users.photoTooLarge": "Şəkil çox böyükdür: ən çox {maxMb} MB ola bilər. Başqa şəkil seçin.",
-  "users.photoNotImage": "Bu fayl şəkil deyil. JPEG, PNG və ya WebP şəkil seçin."
+  "users.photoNotImage": "Bu fayl şəkil deyil. JPEG, PNG və ya WebP şəkil seçin.",
+  "notFound.pricingCampaign": "Kampaniya tapılmadı.",
+  "pricing.tierPricesRequired": "Qiymətli pillədə həm ağ-qara, həm rəngli səhifənin qiyməti yazılmalıdır (0 və ya daha çox).",
+  "pricing.tierModeInvalid": "Pillələrin hesablanma üsulu tanınmadı.",
+  "pricing.campaignNameRequired": "Kampaniyanın adını yazın (80 simvola qədər).",
+  "pricing.campaignKindInvalid": "Kampaniyanın növü tanınmadı.",
+  "pricing.campaignPercentRange": "Endirim faizi 0-dan böyük, 100-dən kiçik olmalıdır.",
+  "pricing.campaignPricesRequired": "Qiymət kampaniyasında ağ-qara və rəngli səhifənin qiyməti yazılmalıdır (0 və ya daha çox).",
+  "pricing.campaignDatesOrder": "Bitmə vaxtı başlanğıcdan sonra olmalıdır."
 }

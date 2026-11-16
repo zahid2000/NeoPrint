@@ -104,6 +104,8 @@ final class OrderQuote {
     required this.sheets,
     required this.volumeDiscount,
     required this.discountPercent,
+    this.campaignName,
+    this.campaignDiscount = 0,
   });
 
   factory OrderQuote.fromJson(Map<String, dynamic> json) {
@@ -115,6 +117,8 @@ final class OrderQuote {
       sheets: price['sheets'] as int,
       volumeDiscount: (price['volumeDiscount'] as num? ?? 0).toDouble(),
       discountPercent: (price['discountPercent'] as num? ?? 0).toDouble(),
+      campaignName: price['campaignName'] as String?,
+      campaignDiscount: (price['campaignDiscount'] as num? ?? 0).toDouble(),
     );
   }
 
@@ -123,6 +127,12 @@ final class OrderQuote {
   final int sheets;
   final double volumeDiscount;
   final double discountPercent;
+
+  /// The campaign that priced the order (T-436), if any.
+  final String? campaignName;
+
+  /// What its percentage took off; 0 for a campaign of prices or none.
+  final double campaignDiscount;
 }
 
 /// The order placed in a session: what pays it.
