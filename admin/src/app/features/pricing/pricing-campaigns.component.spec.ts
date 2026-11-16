@@ -2,7 +2,6 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -38,7 +37,6 @@ const providers = () => [
   provideHttpClient(),
   provideHttpClientTesting(),
   provideRouter([]),
-  provideNoopAnimations(),
   provideTranslateService({ fallbackLang: 'az', lang: 'az' }),
 ];
 
