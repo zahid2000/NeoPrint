@@ -38,7 +38,7 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $tool = Join-Path $repo 'tools\release-sign'
 $keyDir = Join-Path $env:USERPROFILE '.neoprint\release-keys\staging'
-$dll = Join-Path $tool 'bin\Release\net8.0\release-sign.dll'
+$dll = Join-Path $tool 'bin\Release\net10.0\release-sign.dll'
 $stagingKeysFile = Join-Path $repo 'desktop\src\NeoPrint.Kiosk.Core\Updates\KeySets\ReleaseKeys.staging.cs'
 
 function Say([string]$text) { Write-Host $text }
@@ -68,7 +68,7 @@ function Invoke-ReleaseSign([string[]]$arguments) {
 # ---------------------------------------------------------------- 1. Proqramlar
 Step '1/5  Lazımi proqramlar yoxlanılır'
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
-    Stop-With '.NET SDK tapılmadı.' '.NET 8 SDK quraşdırın (https://dotnet.microsoft.com/download) və terminalı yenidən açın.'
+    Stop-With '.NET SDK tapılmadı.' '.NET 10 SDK quraşdırın (https://dotnet.microsoft.com/download) və terminalı yenidən açın.'
 }
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     Stop-With 'GitHub CLI (gh) tapılmadı.' 'GitHub CLI quraşdırın (https://cli.github.com), sonra "gh auth login" əmrini işlədin.'

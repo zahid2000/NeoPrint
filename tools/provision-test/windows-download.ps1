@@ -52,7 +52,7 @@ try {
         Compress-Archive -Path (Join-Path $out "*") -DestinationPath (Join-Path $rel "neoprint-kiosk-$component-$version-win-x64-staging.zip")
     }
     dotnet build (Join-Path $root "tools\release-sign") -c Release -v q | Out-Null
-    $sign = Join-Path $root "tools\release-sign\bin\Release\net8.0\release-sign.dll"
+    $sign = Join-Path $root "tools\release-sign\bin\Release\net10.0\release-sign.dll"
     foreach ($component in @("App", "Agent")) {
         $name = "neoprint-kiosk-$($component.ToLowerInvariant())-$version-win-x64-staging.zip"
         dotnet $sign manifest --package (Join-Path $rel $name) --component $component --platform win-x64 --key-set staging `

@@ -18,9 +18,12 @@ mənbə və səbəblə burada qeyd olunur.
 
 | Paket | Versiya | Lisenziya | Mənbə | Niyə lazımdır |
 |---|---|---|---|---|
-| `Microsoft.AspNetCore.*` (JwtBearer, SignalR, DataProtection, HealthChecks, Identity.Core, Caching.StackExchangeRedis) | 8.0.34 | MIT | Microsoft | Platforma: auth, real-time, keş, sağlamlıq, şifrə hash-i |
-| `Microsoft.Extensions.Hosting(.WindowsServices/.Systemd/.Http)` | 8.0.1 | MIT | Microsoft | Host, Agent servisi, `HttpClient` fabriki |
-| `Microsoft.AspNetCore.SignalR.StackExchangeRedis` | 8.0.34 | MIT | Microsoft | SignalR backplane (çoxlu API instansiyası) |
+| `Microsoft.AspNetCore.*` (JwtBearer, SignalR, DataProtection, HealthChecks, Identity.Core, Caching.StackExchangeRedis) | 10.0.15 | MIT | Microsoft | Platforma: auth, real-time, keş, sağlamlıq, şifrə hash-i |
+| `Microsoft.Extensions.Hosting(.WindowsServices/.Systemd/.Http)` | 10.0.15 | MIT | Microsoft | Host, Agent servisi, `HttpClient` fabriki |
+| `Microsoft.AspNetCore.SignalR.StackExchangeRedis` | 10.0.15 | MIT | Microsoft | SignalR backplane (çoxlu API instansiyası) |
+| `System.IdentityModel.Tokens.Jwt` | 8.19.2 | MIT | Microsoft | JwtBearer 10.0.15-in tələb etdiyi versiyaya pin (T-443) |
+| `System.Security.Cryptography.Pkcs` (tranzitiv pin) | 10.0.15 | MIT | Microsoft | PDFsharp və MimeKit-in gətirdiyi köhnə versiya zəiflik səbəbindən yuxarı pin (T-443) |
+| `Newtonsoft.Json` (tranzitiv pin) | 13.0.4 | MIT | James Newton-King | Hangfire.Core-un gətirdiyi 11.0.1 zəiflik səbəbindən yuxarı pin (T-443) |
 | `MongoDB.Driver` | 3.12.0 | Apache-2.0 | MongoDB Inc. (rəsmi) | Verilənlər bazası drayveri; MIT alternativi yoxdur |
 | `StackExchange.Redis` | 2.13.17 | MIT | StackExchange | Keş, lock, sessiya, SignalR backplane |
 | `AWSSDK.S3` | 4.0.103.3 | Apache-2.0 | Amazon (rəsmi) | S3 SigV4 imzalama (istənilən S3-uyğun provayder) |
@@ -34,7 +37,7 @@ mənbə və səbəblə burada qeyd olunur.
 | `SkiaSharp`, `SkiaSharp.NativeAssets.Linux` | 2.88.9 | MIT | Microsoft | Şəkil emalı, şəkil → PDF, preview; `NeoPrint.Layout`-da şəkillərin 300 DPI-a endirilməsi və EXIF oriyentasiyası. Avalonia 11.3 ilə eyni versiya. Backend-də yalnız converter alətində (`NeoPrint.Converter`) işlənir — API prosesində yox (T-051, ADR-0005) |
 | `QRCoder` | 1.8.0 | MIT | Raffael Herrmann | QR generasiya |
 | `Swashbuckle.AspNetCore` | 7.3.2 | MIT | domaindrivendev | Swagger UI — **yalnız Development mühitində** qeydiyyatdan keçir |
-| `System.Management` | 8.0.0 | MIT | Microsoft | Windows WMI (kiosk telemetriyası) |
+| `System.Management` | 10.0.15 | MIT | Microsoft | Windows WMI (kiosk telemetriyası) |
 
 ## Kiosk (Avalonia)
 
@@ -42,7 +45,7 @@ mənbə və səbəblə burada qeyd olunur.
 |---|---|---|---|---|
 | `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`, `Avalonia.Fonts.Inter`, `Avalonia.Diagnostics` | 11.3.22 | MIT | AvaloniaUI | Kiosk UI (Windows + Linux eyni kod bazası) |
 | `CommunityToolkit.Mvvm` | 8.4.2 | MIT | Microsoft | MVVM |
-| `Microsoft.AspNetCore.SignalR.Client` | 8.0.34 | MIT | Microsoft | Real-time |
+| `Microsoft.AspNetCore.SignalR.Client` | 10.0.15 | MIT | Microsoft | Real-time |
 | `Lextm.SharpSnmpLib` | 12.5.7 | MIT | Lex Li | Şəbəkə printerlərinin SNMP telemetriyası |
 
 ## Test
@@ -55,7 +58,7 @@ mənbə və səbəblə burada qeyd olunur.
 | `FluentAssertions` | **7.2.2** | Apache-2.0 | Dennis Doomen | Assertion-lar. **v8+ kommersiyadır — yüksəldilmir** |
 | `coverlet.collector` | 6.0.4 | MIT | coverlet | Coverage (Domain üçün ≥ 80% tələbi) |
 | `Testcontainers(.Redis/.RabbitMq)` | 4.15.0 | MIT | Testcontainers | Integration testlər. Obyekt saxlaması üçün modul yoxdur: RustFS ümumi `ContainerBuilder` ilə qaldırılır. `Testcontainers.Minio` istinadı çıxarılıb (image-lər anonim çəkilmir). **`Testcontainers.MongoDb` 2026-10-24-də silindi (T-307):** onun replica set init mərhələsi arabir "Address already in use" ilə düşürdü (T-299); MongoDB indi ümumi `ContainerBuilder` ilə, init-siz qaldırılır |
-| `Microsoft.AspNetCore.Mvc.Testing` | 8.0.34 | MIT | Microsoft | API integration testləri |
+| `Microsoft.AspNetCore.Mvc.Testing` | 10.0.15 | MIT | Microsoft | API integration testləri |
 | `Avalonia.Headless.XUnit` | 11.3.22 | MIT | AvaloniaUI | Kiosk ViewModel / UI testləri |
 
 > **Mock kitabxanası yoxdur** (Bölmə 11) — bütün test ikiliyi əl ilə yazılmış fake-lərdir.

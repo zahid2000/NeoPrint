@@ -34,7 +34,7 @@ const api = process.env.NEOPRINT_API ?? 'http://localhost:5080';
 const password = process.env.NEOPRINT_DEV_PASSWORD ?? 'DevTest!2026';
 const shots = process.argv[2] ? resolve(process.argv[2]) : null;
 const repo = resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
-const tool = join(repo, 'tools', 'release-sign', 'bin', 'Debug', 'net8.0', 'release-sign.dll');
+const tool = join(repo, 'tools', 'release-sign', 'bin', 'Debug', 'net10.0', 'release-sign.dll');
 
 const failures = [];
 const check = (ok, text) => {

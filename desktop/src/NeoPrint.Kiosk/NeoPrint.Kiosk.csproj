@@ -9,13 +9,13 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <!--
-      net8.0-windows on Windows, plain net8.0 on Linux. A net8.0 assembly
-      cannot reference a net8.0-windows one, so the framework follows the
-      platform the package is for; the shared projects stay net8.0
+      net10.0-windows on Windows, plain net10.0 on Linux. A net10.0 assembly
+      cannot reference a net10.0-windows one, so the framework follows the
+      platform the package is for; the shared projects stay net10.0
       (plan section 7.6).
     -->
-    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' != 'linux-x64'">net8.0-windows</TargetFramework>
-    <TargetFramework Condition="'$(TargetFramework)' == ''">net8.0</TargetFramework>
+    <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows')) And '$(RuntimeIdentifier)' != 'linux-x64'">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(TargetFramework)' == ''">net10.0</TargetFramework>
     <RootNamespace>NeoPrint.Kiosk</RootNamespace>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>

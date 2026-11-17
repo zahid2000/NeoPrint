@@ -103,7 +103,7 @@ jobs:
         run: |
           set -eu
           for project in NeoPrint.Kiosk NeoPrint.Kiosk.Agent; do
-            dotnet tools/release-sign/bin/Release/net8.0/release-sign.dll check-build --dir "out/$project" --key-set ${{ matrix.key_set }}
+            dotnet tools/release-sign/bin/Release/net10.0/release-sign.dll check-build --dir "out/$project" --key-set ${{ matrix.key_set }}
           done
 
       - name: Archive (zip on Windows, tar.gz on Linux - it keeps the execute bits)
@@ -129,7 +129,7 @@ jobs:
         run: |
           set -eu
           while IFS='=' read -r component file; do
-            dotnet tools/release-sign/bin/Release/net8.0/release-sign.dll manifest \
+            dotnet tools/release-sign/bin/Release/net10.0/release-sign.dll manifest \
               --package "dist/$file" \
               --component "$component" \
               --platform ${{ matrix.rid }}               --key-set ${{ matrix.key_set }} \

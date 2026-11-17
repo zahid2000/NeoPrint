@@ -200,7 +200,7 @@ if [ -f "$staging_keys/current.private.pem" ]; then
     rel="$work/rel"
     mkdir -p "$rel"
     dotnet build "$(win "$root/tools/release-sign")" -c Release -v q >/dev/null
-    sign() { dotnet "$(win "$root/tools/release-sign/bin/Release/net8.0/release-sign.dll")" "$@"; }
+    sign() { dotnet "$(win "$root/tools/release-sign/bin/Release/net10.0/release-sign.dll")" "$@"; }
     for component in app agent; do
         name="neoprint-kiosk-$component-$dl-linux-x64-staging.tar.gz"
         tar -czf "$rel/$name" -C "$work/stick/package/$component" .
