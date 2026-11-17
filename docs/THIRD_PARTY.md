@@ -77,6 +77,8 @@ düzəldildi (`DECISIONS.md`).
 | `dio` | 5.7.0 | MIT | HTTP, token yeniləmə, yükləmə proqresi |
 | `web_socket_channel` | 3.0.1 | BSD-3-Clause (Dart komandası) | Öz SignalR klientimizin nəqliyyatı |
 | `intl` | 0.20.3 | BSD-3-Clause (Dart komandası) | Lokalizasiya |
+| `material_ui` | 1.11.1 | BSD-3-Clause (Flutter komandası, flutter.dev) | Material vidjetləri — Flutter 3.50-də SDK-dan ayrıca paketə çıxarıldı (`package:flutter/material.dart` köhnəlib; T-444) |
+| `cupertino_ui` | 1.1.7 | BSD-3-Clause (Flutter komandası, flutter.dev) | Cupertino lokalizasiyası — `material_ui` vidjetləri onu axtarır (2026-11-17 təsdiqləndi, T-444) |
 | `file_picker` | 13.1.0 | MIT | Fayllarım: yüklənəcək faylın seçimi (Addım 2) |
 | `camera` | 0.12.1 | BSD-3-Clause (Flutter komandası) | Fayllarım: şəkil çəkib yükləmə (Addım 2); kioskun ödəniş QR-ını oxumaq üçün kamera axını (Addım 4) |
 | `google_mlkit_barcode_scanning` | 0.16.1 (+ `google_mlkit_commons` 0.13.0) | MIT | Kioskun ödəniş QR-ını telefonun özündə oxumaq — Google ML Kit, şəbəkəsiz (Addım 4, plan Bölmə 2.0). Yalnız Android və iOS; web-də ödəniş `neoprint://pay/{id}` linki ilə açılır |

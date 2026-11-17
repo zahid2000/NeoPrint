@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:neoprint/core/l10n/app_delegates.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:neoprint/features/profile/profile_photo.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
@@ -16,7 +17,7 @@ void main() {
     child: MaterialApp(
       theme: AppTheme.light(),
       locale: const Locale('az'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: const Scaffold(
         body: Center(child: ProfileAvatar(initials: 'ZM')),

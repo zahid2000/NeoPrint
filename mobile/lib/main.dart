@@ -1,11 +1,9 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_localizations/flutter_localizations.dart'
-    hide GlobalMaterialLocalizations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/l10n/app_delegates.dart';
 import 'core/l10n/app_language.dart';
 import 'core/l10n/language_controller.dart';
-import 'core/l10n/material_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'l10n/app_localizations.dart';
@@ -40,15 +38,7 @@ class NeoPrintApp extends ConsumerWidget {
       // it is one of the three, and Azerbaijani otherwise.
       locale: language.followsPhone ? null : Locale(language.code),
       supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        AppMaterialLocalizationsDelegate(),
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        // Deprecated in 3.50 for cupertino_ui, not yet approved (T-444).
-        // ignore: deprecated_member_use
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      localizationsDelegates: appLocalizationsDelegates,
       localeResolutionCallback: (deviceLocale, _) =>
           Locale(resolveLanguageCode(deviceLocale)),
     );

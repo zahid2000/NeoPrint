@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:neoprint/core/l10n/app_delegates.dart';
 import 'package:neoprint/core/auth/auth_controller.dart';
 import 'package:neoprint/core/auth/auth_models.dart';
 import 'package:neoprint/core/platform/system_share.dart';
@@ -70,7 +71,7 @@ Widget app(MyReferral data, FakeShare share, {required bool canShare}) =>
       child: MaterialApp(
         theme: AppTheme.light(),
         locale: const Locale('az'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: const ReferralScreen(),
       ),

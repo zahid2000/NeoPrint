@@ -295,7 +295,7 @@ jobs:
       # As in ci.yml: from the official repository, no third-party action.
       - name: Install the Flutter SDK
         run: |
-          git clone --depth 1 --branch 3.47.7 https://github.com/flutter/flutter.git "$RUNNER_TOOL_CACHE/flutter"
+          git clone --depth 1 --branch 3.50.0 https://github.com/flutter/flutter.git "$RUNNER_TOOL_CACHE/flutter"
           echo "$RUNNER_TOOL_CACHE/flutter/bin" >> "$GITHUB_PATH"
           echo "$RUNNER_TOOL_CACHE/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
 

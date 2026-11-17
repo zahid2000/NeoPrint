@@ -1,8 +1,6 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_localizations/flutter_localizations.dart'
-    hide GlobalMaterialLocalizations;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:neoprint/core/l10n/material_localizations.dart';
+import 'package:neoprint/core/l10n/app_delegates.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
 
 /// T-156: the date picker names the weekdays (CLDR gives Azerbaijani 1–7).
@@ -12,15 +10,7 @@ void main() {
       MaterialApp(
         locale: locale,
         supportedLocales: AppLocalizations.supportedLocales,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          AppMaterialLocalizationsDelegate(),
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          // Deprecated in 3.50 for cupertino_ui, not yet approved (T-444).
-          // ignore: deprecated_member_use
-          GlobalCupertinoLocalizations.delegate,
-        ],
+        localizationsDelegates: appLocalizationsDelegates,
         home: Builder(
           builder: (context) => TextButton(
             onPressed: () => showDatePicker(

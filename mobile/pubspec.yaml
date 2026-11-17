@@ -31,6 +31,9 @@ dependencies:
   # Material widgets, moved out of the Flutter SDK in 3.50 (BSD-3, Flutter
   # team, flutter.dev; T-444): package:flutter/material.dart is deprecated.
   material_ui: 1.11.1
+  # Its Cupertino counterpart (same team, BSD-3; approved 2026-11-17, T-444):
+  # the Cupertino localizations the Material widgets look up.
+  cupertino_ui: 1.1.7
 
   # Dates, numbers and money formatting (BSD-3, Dart team).
   intl: 0.20.3

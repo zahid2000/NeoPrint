@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neoprint/core/l10n/app_delegates.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
 import 'package:neoprint/features/jobs/claims_screen.dart';
 import 'package:neoprint/features/jobs/jobs_controller.dart';
@@ -48,7 +49,7 @@ Widget app(FakeClaims claims) => ProviderScope(
   child: MaterialApp(
     theme: AppTheme.light(),
     locale: const Locale('az'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: appLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: const ClaimsScreen(),
   ),
