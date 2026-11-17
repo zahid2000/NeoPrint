@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neoprint/core/l10n/app_delegates.dart';
 import 'package:neoprint/core/network/api_client.dart';
 import 'package:neoprint/core/realtime/user_hub.dart';
 import 'package:neoprint/core/realtime/user_hub_provider.dart';
@@ -80,7 +81,7 @@ Widget app(
   child: MaterialApp(
     theme: theme ?? AppTheme.light(),
     locale: const Locale('az'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: appLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: const FilesScreen(),
   ),

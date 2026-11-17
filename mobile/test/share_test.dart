@@ -1,9 +1,10 @@
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:neoprint/core/l10n/app_delegates.dart';
 import 'package:neoprint/core/auth/auth_controller.dart';
 import 'package:neoprint/core/auth/auth_models.dart';
 import 'package:neoprint/core/network/api_client.dart';
@@ -114,7 +115,7 @@ Widget sendApp(FakeShares shares, UserFile? sending) => ProviderScope(
   child: MaterialApp.router(
     theme: AppTheme.light(),
     locale: const Locale('az'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: appLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     routerConfig: GoRouter(
       initialLocation: '/send',
@@ -272,7 +273,7 @@ void main() {
         child: MaterialApp(
           theme: AppTheme.light(),
           locale: const Locale('az'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: const SharesScreen(),
         ),
