@@ -54,6 +54,9 @@ describe('translations', () => {
   /** Words that are the same in every language: brands, abbreviations, units. */
   const sameInEveryLanguage = new Set([
     'NeoPrint',
+    // The chat apps' own names (T-438).
+    'WhatsApp',
+    'Telegram',
     'NeoPrint admin',
     'NeoPrint operator',
     'Email',
