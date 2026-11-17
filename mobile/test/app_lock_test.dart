@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neoprint/core/l10n/app_delegates.dart';
 import 'package:neoprint/core/auth/auth_controller.dart';
 import 'package:neoprint/core/auth/auth_models.dart';
 import 'package:neoprint/core/security/app_lock.dart';
@@ -244,7 +245,7 @@ void main() {
           child: MaterialApp(
             locale: const Locale('az'),
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             home: PinScreen(mode: mode),
           ),
         ),

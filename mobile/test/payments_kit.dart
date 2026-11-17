@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:neoprint/core/l10n/app_delegates.dart';
 import 'package:neoprint/shared/paging.dart';
 import 'package:neoprint/core/auth/auth_controller.dart';
 import 'package:neoprint/core/auth/auth_models.dart';
@@ -202,7 +203,7 @@ Widget step4App(Widget home, {List<Override> overrides = const []}) =>
       child: MaterialApp(
         theme: AppTheme.light(),
         locale: const Locale('az'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: home,
       ),

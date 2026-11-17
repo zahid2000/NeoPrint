@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:neoprint/core/l10n/app_delegates.dart';
 import 'package:neoprint/features/kiosk_search/kiosk_models.dart';
 import 'package:neoprint/features/home/near_kiosks.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
@@ -194,7 +195,7 @@ void main() {
           child: MaterialApp.router(
             theme: AppTheme.light(),
             locale: const Locale('az'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             routerConfig: router,
           ),
@@ -659,7 +660,7 @@ void main() {
             child: MaterialApp.router(
               theme: AppTheme.light(),
               locale: const Locale('az'),
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              localizationsDelegates: appLocalizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
               routerConfig: router,
             ),
@@ -697,7 +698,7 @@ void main() {
           child: MaterialApp(
             theme: AppTheme.light(),
             locale: const Locale('az'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: const WalletHistoryScreen(),
           ),

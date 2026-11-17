@@ -2,11 +2,12 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:neoprint/core/l10n/app_delegates.dart';
 import 'package:neoprint/core/realtime/user_hub.dart';
 import 'package:neoprint/core/realtime/user_hub_provider.dart';
 import 'package:neoprint/core/theme/app_theme.dart';
@@ -99,7 +100,7 @@ Widget host(Widget home, FakeScannerRepository repository) => ProviderScope(
   child: MaterialApp(
     theme: AppTheme.light(),
     locale: const Locale('az'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    localizationsDelegates: appLocalizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: home,
   ),

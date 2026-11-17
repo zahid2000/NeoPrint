@@ -7,7 +7,7 @@
 // `admin/src/styles/tokens.css` and
 // `desktop/src/NeoPrint.Kiosk/Styles/Tokens.axaml`.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// The brand and neutral scale, light theme.
 abstract final class LightPalette {

@@ -2217,3 +2217,13 @@ Layihə .NET 10-a keçdi (ADR-0008). Hər inkişaf maşınında bir dəfə:
 4. Docker imicini yenidən qurun: `docker compose build api`.
 
 Yol dəyişiklikləri: `bin/Debug/net8.0/` → `bin/Debug/net10.0/` (məs. `release-sign.dll`, kiosk ekran şəkilləri `bin/Debug/net10.0-windows/screens/`).
+
+## Flutter 3.50-yə keçid (T-444, 2026-11-17)
+
+Mobil tətbiq Flutter **3.50.0** ilə qurulur (CI və deploy da). Bir dəfə:
+
+1. `flutter upgrade` (stable kanalda 3.50.x olmalıdır), `flutter --version` ilə yoxlayın.
+2. `cd mobile && flutter pub get` — yeni `material_ui` və `cupertino_ui` paketləri gəlir.
+3. Android build ilk dəfə Gradle 9.5.1-i yükləyir (bir neçə dəqiqə).
+
+Yeni testdə `MaterialApp`-a `localizationsDelegates: appLocalizationsDelegates` verin (`package:neoprint/core/l10n/app_delegates.dart`), `AppLocalizations.localizationsDelegates` yox — o köhnə tipləri verir və Material vidjetləri lokalizasiya tapmır.
