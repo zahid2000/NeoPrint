@@ -365,6 +365,13 @@ export class ShellComponent {
       group: 'configuration',
     },
     {
+      path: '/contact',
+      labelKey: 'nav.contact',
+      icon: 'support_agent',
+      permissions: [Permissions.settingsManage],
+      group: 'configuration',
+    },
+    {
       path: '/legal',
       labelKey: 'nav.legal',
       icon: 'description',

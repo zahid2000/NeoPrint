@@ -164,6 +164,14 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () => context.push(Routes.claims),
                 ),
 
+              // The hotline and the chats the panel switched on (T-438).
+              ListTile(
+                leading: const Icon(Icons.contact_support_outlined),
+                title: Text(l10n.contactTitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(Routes.contact),
+              ),
+
               // The language, the PIN and privacy (T-395).
               ListTile(
                 leading: const Icon(Icons.settings_outlined),

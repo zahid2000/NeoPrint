@@ -147,6 +147,9 @@ public sealed class MongoContext
     /// <summary>What kiosks say on their welcome screen and footer (T-387): the default and per kiosk.</summary>
     public MongoSet<Domain.Kiosks.KioskBranding> KioskBrandings => Set<Domain.Kiosks.KioskBranding>("kiosk_branding");
 
+    /// <summary>The app's "Əlaqə" channels, one document (T-438).</summary>
+    public MongoSet<Domain.Support.ContactSettings> ContactSettings => Set<Domain.Support.ContactSettings>("contact_settings");
+
     /// <summary>An operator at a kiosk, by the one-off QR the kiosk showed (T-392).</summary>
     public MongoSet<Domain.Kiosks.OperatorKioskLogin> OperatorKioskLogins => Set<Domain.Kiosks.OperatorKioskLogin>("operator_kiosk_logins");
     public MongoSet<Domain.PrintJobs.PreparedPrint> PreparedPrints => Set<Domain.PrintJobs.PreparedPrint>("prepared_prints");

@@ -70,7 +70,9 @@ class MainActivity : FlutterActivity() {
     /**
      * A second channel: a link opened in the phone's browser - the
      * "Məlumatlarımı yüklə" archive, which is too large to pass through the
-     * app (docs/DECISIONS.md T-147). Only http and https.
+     * app (docs/DECISIONS.md T-147) - and the "Əlaqə" links (T-438): a
+     * number to dial and an email to write. Only http, https, tel and mailto;
+     * a number is put on the dialler, never called.
      */
     private fun registerBrowser(flutterEngine: FlutterEngine) {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BROWSER_CHANNEL)
@@ -78,13 +80,19 @@ class MainActivity : FlutterActivity() {
                 val url = call.argument<String>("url")
                 val uri = url?.let(Uri::parse)
 
-                if (call.method != "open" || uri == null || uri.scheme !in setOf("http", "https")) {
-                    result.error("BAD_ARGUMENT", "an http(s) url is required", null)
+                if (call.method != "open" || uri == null || uri.scheme !in setOf("http", "https", "tel", "mailto")) {
+                    result.error("BAD_ARGUMENT", "an http(s), tel or mailto url is required", null)
                     return@setMethodCallHandler
                 }
 
+                val intent = when (uri.scheme) {
+                    "tel" -> Intent(Intent.ACTION_DIAL, uri)
+                    "mailto" -> Intent(Intent.ACTION_SENDTO, uri)
+                    else -> Intent(Intent.ACTION_VIEW, uri)
+                }
+
                 try {
-                    startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    startActivity(intent)
                     result.success(true)
                 } catch (error: ActivityNotFoundException) {
                     result.success(false)

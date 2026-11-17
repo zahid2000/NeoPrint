@@ -32,7 +32,8 @@
   "print-jobs/7d351843-74e5-452f-b6c4-e3c344f889bc",
   "payments/5d3ad532-0f1d-4254-8733-313ce562792c",
   "customers/8a16e4e8-e0f2-438b-9e45-a3f98999048c",
-  "kiosk-screen"
+  "kiosk-screen",
+  "contact"
  ],
  "api": {
   "POST /api/auth/admin/login": {
@@ -2982,6 +2983,32 @@
    ],
    "maxLength": 160,
    "updatedAt": null
-  }
+  },
+  "GET /api/admin/contact-channels": [
+   {
+    "kind": "Phone",
+    "value": "*1234",
+    "isActive": true,
+    "link": "tel:%2A1234"
+   },
+   {
+    "kind": "WhatsApp",
+    "value": "+994 50 000 00 00",
+    "isActive": true,
+    "link": "https://wa.me/994500000000"
+   },
+   {
+    "kind": "Telegram",
+    "value": "",
+    "isActive": false,
+    "link": null
+   },
+   {
+    "kind": "Email",
+    "value": "help@example.test",
+    "isActive": false,
+    "link": "mailto:help@example.test"
+   }
+  ]
  }
 }

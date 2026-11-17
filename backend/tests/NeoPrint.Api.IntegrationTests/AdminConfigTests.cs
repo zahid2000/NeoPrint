@@ -498,6 +498,54 @@ public sealed class AdminConfigTests
     }
 
     [DockerFact]
+    public async Task The_apps_contact_channels_are_the_ones_the_panel_switched_on()
+    {
+        if (Skip) { return; }
+
+        using var anonymous = _fixture.CreateApiClient();
+        using var admin = await SuperAdminAsync();
+
+        try
+        {
+            var saved = await admin.PutAsJsonAsync("/api/admin/contact-channels", new
+            {
+                channels = new object[]
+                {
+                    new { kind = "Phone", value = "*1234", isActive = true },
+                    new { kind = "WhatsApp", value = "+994 50 123 45 67", isActive = true },
+                    new { kind = "Telegram", value = "@neoprint_az", isActive = false },
+                    new { kind = "Email", value = "help@neoprint.example", isActive = true },
+                },
+            });
+            saved.StatusCode.Should().Be(HttpStatusCode.OK, await saved.Content.ReadAsStringAsync());
+            var all = await saved.Content.ReadFromJsonAsync<JsonElement>();
+            all.GetArrayLength().Should().Be(4);
+            all[2].GetProperty("link").GetString().Should().Be("https://t.me/neoprint_az", "the panel sees the link of a switched-off one too");
+
+            // The app: only the active ones, with the link to open.
+            var shown = await anonymous.GetFromJsonAsync<JsonElement>("/api/contact");
+            shown.EnumerateArray().Select(c => c.GetProperty("kind").GetString()).Should().Equal("Phone", "WhatsApp", "Email");
+            shown[1].GetProperty("link").GetString().Should().Be("https://wa.me/994501234567");
+
+            // A link anywhere else is refused and nothing changes.
+            var wrong = await admin.PutAsJsonAsync("/api/admin/contact-channels", new
+            {
+                channels = new object[] { new { kind = "WhatsApp", value = "https://evil.example/chat", isActive = true } },
+            });
+            wrong.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            (await anonymous.GetFromJsonAsync<JsonElement>("/api/contact")).GetArrayLength().Should().Be(3);
+
+            // Not for an anonymous caller to change.
+            (await anonymous.PutAsJsonAsync("/api/admin/contact-channels", new { channels = Array.Empty<object>() }))
+                .StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+        finally
+        {
+            await admin.PutAsJsonAsync("/api/admin/contact-channels", new { channels = Array.Empty<object>() });
+        }
+    }
+
+    [DockerFact]
     public async Task An_unknown_setting_is_refused_before_anything_is_written()
     {
         if (Skip) { return; }

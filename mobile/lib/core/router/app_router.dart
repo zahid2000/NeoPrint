@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/contact/contact_screen.dart';
 import '../../features/auth/confirm_email_screen.dart';
 import '../../features/auth/register_screen.dart';
 import '../../features/auth/sign_in_screen.dart';
@@ -120,6 +121,7 @@ abstract final class Routes {
   static const walletHistory = '/wallet-history';
   static const receipts = '/receipts';
   static const claims = '/claims';
+  static const contact = '/contact';
   static const myQr = '/my-qr';
   static const prepared = '/prepared';
   static const prepare = '/prepare';
@@ -382,6 +384,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ],
       if (Readiness.printJobs)
         GoRoute(path: Routes.claims, builder: (_, __) => const ClaimsScreen()),
+      GoRoute(path: Routes.contact, builder: (_, __) => const ContactScreen()),
       // The personal QR and files prepared for a kiosk (plan section 9.4).
       if (Readiness.personalQr) ...[
         GoRoute(path: Routes.myQr, builder: (_, __) => const MyQrScreen()),

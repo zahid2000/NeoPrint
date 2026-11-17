@@ -29,6 +29,9 @@ void main() {
   // Brands, abbreviations and words Azerbaijani shares with English.
   const sameInEveryLanguage = {
     'NeoPrint',
+    // The chat apps' own names (T-438).
+    'WhatsApp',
+    'Telegram',
     'Email',
     'PDF',
     'QR',

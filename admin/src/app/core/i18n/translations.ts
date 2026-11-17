@@ -13,6 +13,7 @@ import { jobsTranslations } from './jobs.i18n';
 import { kiosksTranslations } from './kiosks.i18n';
 import { kioskPhotoTranslations } from './kiosk-photo.i18n';
 import { kioskBrandingTranslations } from './kiosk-branding.i18n';
+import { contactTranslations } from './contact.i18n';
 import { kioskSessionsTranslations } from './kiosk-sessions.i18n';
 import { pricingTranslations } from './pricing.i18n';
 import { settingsTranslations } from './settings.i18n';
@@ -1146,6 +1147,7 @@ const pages: readonly PageTranslations[] = [
   kiosksTranslations,
   kioskPhotoTranslations,
   kioskBrandingTranslations,
+  contactTranslations,
   kioskSessionsTranslations,
   jobsTranslations,
   featuresTranslations,

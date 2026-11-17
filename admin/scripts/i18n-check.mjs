@@ -70,6 +70,9 @@ const SERVER_VALUES = {
   'campaigns.kindHint.': { enum: 'CampaignKind' },
   'pricing.tierModeHint.': { values: ['WholeOrder', 'Graduated'] },
   'campaigns.state.': { values: ['Running', 'Scheduled', 'Ended', 'Off'] },
+  // The app's contact channels (T-438): the backend's ContactKind.
+  'contact.kind.': { enum: 'ContactKind' },
+  'contact.hint.': { enum: 'ContactKind' },
   'storage.health.': { enum: 'StorageHealthStatus' },
   'storage.role.': { enum: 'StorageProviderRole' },
   'storage.sync.status.': { enum: 'StorageSyncStatus' },

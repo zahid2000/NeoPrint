@@ -724,6 +724,26 @@
   "claimReplyLabel": "NeoPrint-in cavabı",
   "profileReceipts": "Qəbzlər",
   "profileClaims": "Müraciətlərim",
+  "contactTitle": "Əlaqə",
+  "contactHint": "Sualınız və ya probleminiz varsa, bizə buradan yazın və ya zəng edin.",
+  "contactPhone": "Qaynar xətt",
+  "contactWhatsApp": "WhatsApp",
+  "contactTelegram": "Telegram",
+  "contactEmail": "E-poçt",
+  "contactEmpty": "Əlaqə kanalları hələ əlavə olunmayıb",
+  "contactEmptyHint": "Sifarişlə bağlı problem üçün \"Müraciətlərim\"dən yazın.",
+  "contactLoadFailed": "Əlaqə kanalları yüklənmədi: {reason}",
+  "@contactLoadFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "contactOpenFailed": "Telefonda bunu açan tətbiq tapılmadı. Özünüz yazın: {value}",
+  "@contactOpenFailed": {
+    "placeholders": {
+      "value": { "type": "String" }
+    }
+  },
   "noticeSuspected": "Çapınızın nəticəsi dəqiqləşdirilir. Pulunuz itməyib.",
 
   "payPromoAdd": "Promokodunuz var?",

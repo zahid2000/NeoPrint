@@ -1,0 +1,62 @@
+import type { PageTranslations } from './page-translations';
+
+/** The "Əlaqə" page (T-438): how customers reach the company from the app. */
+export const contactTranslations: PageTranslations = {
+  az: {
+    'nav.contact': 'Əlaqə',
+    'contact.title': 'Əlaqə',
+    'contact.description':
+      'Tətbiqin "Əlaqə" bölməsində müştəriyə göstərilən kanallar. Aktiv olanlar tətbiqdə görünür; deaktiv olan saxlanılır, amma göstərilmir.',
+    'contact.kind.Phone': 'Qaynar xətt',
+    'contact.kind.WhatsApp': 'WhatsApp',
+    'contact.kind.Telegram': 'Telegram',
+    'contact.kind.Email': 'E-poçt',
+    'contact.hint.Phone': 'Nömrə, məs. +994 12 345 67 89 və ya *1234',
+    'contact.hint.WhatsApp': 'Nömrə (+994501234567) və ya wa.me linki',
+    'contact.hint.Telegram': 'İstifadəçi adı (@neoprint), nömrə və ya t.me linki',
+    'contact.hint.Email': 'məs. help@neoprint.az',
+    'contact.active': 'Tətbiqdə göstər',
+    'contact.opens': 'Tətbiq açır: {{link}}',
+    'contact.notShown': 'Tətbiqdə görünmür',
+    'contact.saved': 'Əlaqə kanalları saxlanıldı. Tətbiq onları bir dəqiqə ərzində göstərəcək.',
+    'contact.failedEffect': 'Kanallar saxlanmadı — tətbiqdə əvvəlki kanallar görünür.',
+  },
+  en: {
+    'nav.contact': 'Contact',
+    'contact.title': 'Contact',
+    'contact.description':
+      'The channels the app shows customers under "Contact". Active ones show in the app; an inactive one is kept but not shown.',
+    'contact.kind.Phone': 'Hotline',
+    'contact.kind.WhatsApp': 'WhatsApp',
+    'contact.kind.Telegram': 'Telegram',
+    'contact.kind.Email': 'Email',
+    'contact.hint.Phone': 'A number, e.g. +994 12 345 67 89 or *1234',
+    'contact.hint.WhatsApp': 'A number (+994501234567) or a wa.me link',
+    'contact.hint.Telegram': 'A username (@neoprint), a number or a t.me link',
+    'contact.hint.Email': 'e.g. help@neoprint.az',
+    'contact.active': 'Show in the app',
+    'contact.opens': 'The app opens: {{link}}',
+    'contact.notShown': 'Not shown in the app',
+    'contact.saved': 'Contact channels saved. The app shows them within a minute.',
+    'contact.failedEffect': 'The channels were not saved - the app shows the previous ones.',
+  },
+  ru: {
+    'nav.contact': 'Контакты',
+    'contact.title': 'Контакты',
+    'contact.description':
+      'Каналы, которые приложение показывает клиенту в разделе «Контакты». Активные видны в приложении; неактивный сохраняется, но не показывается.',
+    'contact.kind.Phone': 'Горячая линия',
+    'contact.kind.WhatsApp': 'WhatsApp',
+    'contact.kind.Telegram': 'Telegram',
+    'contact.kind.Email': 'Эл. почта',
+    'contact.hint.Phone': 'Номер, напр. +994 12 345 67 89 или *1234',
+    'contact.hint.WhatsApp': 'Номер (+994501234567) или ссылка wa.me',
+    'contact.hint.Telegram': 'Имя пользователя (@neoprint), номер или ссылка t.me',
+    'contact.hint.Email': 'напр. help@neoprint.az',
+    'contact.active': 'Показывать в приложении',
+    'contact.opens': 'Приложение откроет: {{link}}',
+    'contact.notShown': 'Не показывается в приложении',
+    'contact.saved': 'Каналы сохранены. Приложение покажет их в течение минуты.',
+    'contact.failedEffect': 'Каналы не сохранены — в приложении видны прежние.',
+  },
+};

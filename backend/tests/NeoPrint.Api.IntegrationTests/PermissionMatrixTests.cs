@@ -70,6 +70,8 @@ public sealed class PermissionMatrixTests
         "POST api/devices/register", "POST api/devices/challenge", "POST api/devices/token",
         // What the app and the kiosk show before anybody signs in.
         "GET api/legal/{docType}", "GET api/map/config", "GET api/features", "GET api/files/formats",
+        // The app's "Əlaqə": the hotline and the chats the panel switched on (T-438).
+        "GET api/contact",
         // The payment provider's callbacks; their signature is the check.
         "POST api/payments/callback/{provider}",
         // By a random id from a QR, with no personal data (plan sections 2.9, 2.12).

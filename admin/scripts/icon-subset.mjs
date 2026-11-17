@@ -45,6 +45,11 @@ const EXTRA = [
   'contrast',
   'bolt',
   'shield',
+  // contact-channels.component.ts: each channel's icon, by its kind (T-438)
+  'call',
+  'chat',
+  'send',
+  'mail',
 ];
 
 function files(dir) {

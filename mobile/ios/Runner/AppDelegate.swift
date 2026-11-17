@@ -212,7 +212,8 @@ final class HeicConverter: NSObject {
 }
 
 /// A link opened in Safari: the "Məlumatlarımı yüklə" archive, too large to
-/// pass through the app (docs/DECISIONS.md T-147). Only http and https.
+/// pass through the app (docs/DECISIONS.md T-147) - and the "Əlaqə" links
+/// (T-438): a number to dial, an email to write. Only http, https, tel, mailto.
 final class BrowserOpener: NSObject {
   static let channelName = "az.neoprint/browser"
 
@@ -224,9 +225,9 @@ final class BrowserOpener: NSObject {
         let arguments = call.arguments as? [String: Any],
         let text = arguments["url"] as? String,
         let url = URL(string: text),
-        url.scheme == "https" || url.scheme == "http"
+        ["https", "http", "tel", "mailto"].contains(url.scheme ?? "")
       else {
-        result(FlutterError(code: "BAD_ARGUMENT", message: "an http(s) url is required", details: nil))
+        result(FlutterError(code: "BAD_ARGUMENT", message: "an http(s), tel or mailto url is required", details: nil))
         return
       }
 

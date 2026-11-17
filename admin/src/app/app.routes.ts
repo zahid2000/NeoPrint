@@ -345,6 +345,15 @@ export const routes: Routes = [
           ),
       },
       {
+        // The app's "Əlaqə" channels (T-438).
+        path: 'contact',
+        canActivate: [permissionGuard(Permissions.settingsManage)],
+        loadComponent: () =>
+          import('./features/contact/contact-channels.component').then(
+            (m) => m.ContactChannelsComponent,
+          ),
+      },
+      {
         path: 'legal',
         canActivate: [permissionGuard(Permissions.legalManage)],
         loadComponent: () =>

@@ -315,6 +315,14 @@ export interface KioskBrandingView {
   defaultLayout?: KioskScreenLayout | null;
 }
 
+/** One way customers reach the company (T-438); `link` is what the app opens, from the server. */
+export interface ContactChannel {
+  kind: 'Phone' | 'WhatsApp' | 'Telegram' | 'Email';
+  value: string;
+  isActive: boolean;
+  link: string | null;
+}
+
 /** How the welcome screen is arranged (T-441). */
 export interface KioskScreenLayout {
   /** usb, phone, code - all three, in their order. */
@@ -695,6 +703,17 @@ export class AdminApiService {
 
   removeKioskBrandingImage(kioskId: string | null): Observable<KioskBrandingView> {
     return this.http.delete<KioskBrandingView>(`${this.brandingPath(kioskId)}/image`);
+  }
+
+  /** The app's "Əlaqə" channels, every kind (T-438). */
+  contactChannels(): Observable<ContactChannel[]> {
+    return this.http.get<ContactChannel[]>('/api/admin/contact-channels');
+  }
+
+  setContactChannels(channels: readonly ContactChannel[]): Observable<ContactChannel[]> {
+    return this.http.put<ContactChannel[]>('/api/admin/contact-channels', {
+      channels: channels.map(({ kind, value, isActive }) => ({ kind, value, isActive })),
+    });
   }
 
   /** Null goes back to the default's arrangement (or, for the default, the kiosk's own). */
