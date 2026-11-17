@@ -141,6 +141,8 @@ export interface CampaignDialogData {
         <app-tier-ladder
           [tiers]="tiers()"
           [mode]="tierMode()"
+          [baseBw]="bw()"
+          [baseColor]="color()"
           (tiersChange)="tiers.set($event)"
           (modeChange)="tierMode.set($event)"
         />

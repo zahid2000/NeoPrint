@@ -177,6 +177,8 @@
                   <app-tier-ladder
                     [tiers]="draft().tiers"
                     [mode]="draft().tierMode"
+                    [baseBw]="draft().bw"
+                    [baseColor]="draft().color"
                     (tiersChange)="update('tiers', $event)"
                     (modeChange)="update('tierMode', $event)"
                   />
