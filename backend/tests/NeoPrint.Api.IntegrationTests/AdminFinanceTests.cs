@@ -140,9 +140,10 @@ public sealed class AdminFinanceTests
         {
             var page = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/payments?sort={sort}&pageSize=100");
             var amounts = page.GetProperty("items").EnumerateArray().Select(p => p.GetProperty("amount").GetDecimal()).ToList();
-            amounts.Should().Contain(0.07m);
             if (ascending)
             {
+                // The smallest first: the old payment is on the first page whatever else is there.
+                amounts.Should().Contain(0.07m);
                 amounts.Should().BeInAscendingOrder();
             }
             else
