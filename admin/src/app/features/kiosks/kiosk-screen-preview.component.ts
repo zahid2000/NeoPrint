@@ -364,8 +364,18 @@ export class KioskScreenPreviewComponent {
       document.addEventListener('fullscreenchange', onFullscreen);
       stops.push(() => document.removeEventListener('fullscreenchange', onFullscreen));
 
-      const ticker = setInterval(() => this.now.set(new Date()), 30_000);
-      stops.push(() => clearInterval(ticker));
+      // A chain of timeouts, not an interval: each step checks the preview is
+      // still on the page, so a timer never outlives it whatever destroys it.
+      let tick: ReturnType<typeof setTimeout> | undefined;
+      const step = () => {
+        if (destroyed || !stage.isConnected) {
+          return;
+        }
+        this.now.set(new Date());
+        tick = setTimeout(step, 30_000);
+      };
+      tick = setTimeout(step, 30_000);
+      stops.push(() => clearTimeout(tick));
     });
   }
 
