@@ -1,17 +1,11 @@
 import {
-  CdkDrag,
-  CdkDragDrop,
-  CdkDragPlaceholder,
-  CdkDropList,
-  moveItemInArray,
-} from '@angular/cdk/drag-drop';
-import {
   ChangeDetectionStrategy,
   Component,
   Directive,
   computed,
   input,
   output,
+  signal,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -40,6 +34,83 @@ export const featureOrder = (layout: KioskScreenLayout): string[] => [
 
 type Texts = Record<string, Record<string, string>>;
 
+/** The item being dragged, if any: which group it is in and where it stood. */
+let dragged: { group: string; index: number } | null = null;
+
+/** One item moved in a list: a copy, the item at `from` now at `to`. */
+export const moveItem = <T>(list: readonly T[], from: number, to: number): T[] => {
+  const copy = [...list];
+  const [item] = copy.splice(from, 1);
+  copy.splice(to, 0, item);
+  return copy;
+};
+
+/**
+ * An item that can be dragged onto another of its group (T-441), with the
+ * browser's own drag and drop - no library: the CDK's drag-drop kept the
+ * panel's test run from ending. The dragged item fades; the one under it is
+ * outlined; dropping moves the dragged one to its place.
+ */
+@Directive({
+  selector: '[appReorder]',
+  host: {
+    '[attr.draggable]': 'reorderEnabled() ? "true" : null',
+    '[class.reorder--dragging]': 'dragging()',
+    '[class.reorder--target]': 'target()',
+    '(dragstart)': 'start($event)',
+    '(dragover)': 'over($event)',
+    '(dragleave)': 'target.set(false)',
+    '(drop)': 'drop($event)',
+    '(dragend)': 'end()',
+  },
+})
+export class ReorderDirective {
+  readonly group = input.required<string>({ alias: 'appReorder' });
+  readonly reorderIndex = input.required<number>();
+  readonly reorderEnabled = input(false);
+  readonly reorderMoved = output<{ from: number; to: number }>();
+
+  readonly dragging = signal(false);
+  readonly target = signal(false);
+
+  start(event: DragEvent): void {
+    if (!this.reorderEnabled()) {
+      return;
+    }
+    dragged = { group: this.group(), index: this.reorderIndex() };
+    event.dataTransfer?.setData('text/plain', this.group());
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+    this.dragging.set(true);
+  }
+
+  over(event: DragEvent): void {
+    if (dragged?.group === this.group() && this.reorderEnabled()) {
+      event.preventDefault();
+      this.target.set(dragged.index !== this.reorderIndex());
+    }
+  }
+
+  drop(event: DragEvent): void {
+    this.target.set(false);
+    if (dragged?.group !== this.group() || !this.reorderEnabled()) {
+      return;
+    }
+    event.preventDefault();
+    if (dragged.index !== this.reorderIndex()) {
+      this.reorderMoved.emit({ from: dragged.index, to: this.reorderIndex() });
+    }
+    dragged = null;
+  }
+
+  end(): void {
+    dragged = null;
+    this.dragging.set(false);
+    this.target.set(false);
+  }
+}
+
 /** What a part of the preview needs: the texts and the language shown. */
 @Directive()
 abstract class PreviewPart {
@@ -58,30 +129,6 @@ abstract class PreviewPart {
 }
 
 /** What can be dragged (T-441) says so, and where it lands shows as a dashed slot. */
-const ARRANGING = `
-  .editable .cdk-drag {
-    cursor: grab;
-    outline: 3px dashed transparent;
-    outline-offset: var(--space-2);
-    border-radius: var(--kiosk-radius-sm);
-  }
-
-  .editable .cdk-drag:hover {
-    outline-color: var(--kiosk-brand-300);
-  }
-
-  .slot {
-    flex: 1;
-    border: 3px dashed var(--kiosk-brand-300);
-    border-radius: var(--kiosk-radius-lg);
-    background: var(--kiosk-brand-50);
-  }
-
-  .cdk-drag-animating,
-  .cdk-drop-list-dragging .cdk-drag:not(.cdk-drag-placeholder) {
-    transition: transform var(--motion-base) var(--motion-easing);
-  }
-`;
 
 const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone', code: 'qr_code_2' };
 
@@ -93,25 +140,30 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone', co
 @Component({
   selector: 'app-kiosk-preview-home',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkDrag, CdkDragPlaceholder, CdkDropList, MatIconModule],
+  imports: [MatIconModule, ReorderDirective],
   template: `
-    <div
-      class="hero"
-      [class.editable]="editable()"
-      cdkDropList
-      cdkDropListOrientation="horizontal"
-      [cdkDropListDisabled]="!editable()"
-      (cdkDropListDropped)="heroDropped($event)"
-    >
-      @for (part of heroParts(); track part) {
+    <div class="hero">
+      @for (part of heroParts(); track part; let i = $index) {
         @if (part === 'text') {
-          <div class="hero__text" cdkDrag [cdkDragScale]="scale()">
+          <div
+            class="hero__text"
+            appReorder="hero"
+            [reorderIndex]="i"
+            [reorderEnabled]="editable()"
+            (reorderMoved)="heroMoved()"
+          >
             <p class="hero__title">{{ text('heroTitle') }}</p>
             <p class="muted">{{ text('heroSubtitle') }}</p>
-            <div *cdkDragPlaceholder class="slot"></div>
           </div>
         } @else {
-          <div class="hero__art" cdkDrag [cdkDragScale]="scale()" data-art>
+          <div
+            class="hero__art"
+            appReorder="hero"
+            [reorderIndex]="i"
+            [reorderEnabled]="editable()"
+            (reorderMoved)="heroMoved()"
+            data-art
+          >
             @if (imageUrl(); as src) {
               <img [src]="src" alt="" />
             } @else {
@@ -119,22 +171,21 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone', co
               <span class="hero__paper"><mat-icon aria-hidden="true">description</mat-icon></span>
               <mat-icon class="hero__printer" aria-hidden="true">print</mat-icon>
             }
-            <div *cdkDragPlaceholder class="slot slot--art"></div>
           </div>
         }
       }
     </div>
 
-    <div
-      class="cards"
-      [class.editable]="editable()"
-      cdkDropList
-      cdkDropListOrientation="horizontal"
-      [cdkDropListDisabled]="!editable()"
-      (cdkDropListDropped)="cardDropped($event)"
-    >
-      @for (card of layout().cards; track card) {
-        <div class="card" cdkDrag [cdkDragScale]="scale()" [attr.data-card]="card">
+    <div class="cards">
+      @for (card of layout().cards; track card; let i = $index) {
+        <div
+          class="card"
+          appReorder="cards"
+          [reorderIndex]="i"
+          [reorderEnabled]="editable()"
+          (reorderMoved)="cardMoved($event)"
+          [attr.data-card]="card"
+        >
           <span class="tile"
             ><mat-icon aria-hidden="true">{{ cardIcon(card) }}</mat-icon></span
           >
@@ -143,7 +194,6 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone', co
           @if (card !== 'phone') {
             <mat-icon class="card__arrow" aria-hidden="true">arrow_forward</mat-icon>
           }
-          <div *cdkDragPlaceholder class="slot"></div>
         </div>
       }
     </div>
@@ -197,8 +247,7 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone', co
         overflow-wrap: anywhere;
       }
 
-      .hero__art,
-      .slot--art {
+      .hero__art {
         position: relative;
         display: flex;
         flex: none;
@@ -315,8 +364,27 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone', co
         height: var(--kiosk-icon-md);
         font-size: var(--kiosk-icon-md);
       }
+
+      [draggable='true'] {
+        cursor: grab;
+        outline: 3px dashed transparent;
+        outline-offset: var(--space-2);
+        border-radius: var(--kiosk-radius-sm);
+      }
+
+      [draggable='true']:hover,
+      .reorder--target {
+        outline-color: var(--kiosk-brand-300);
+      }
+
+      .reorder--target {
+        background: var(--kiosk-brand-50);
+      }
+
+      .reorder--dragging {
+        opacity: 0.4;
+      }
     `,
-    ARRANGING,
   ],
 })
 export class KioskPreviewHomeComponent extends PreviewPart {
@@ -335,16 +403,13 @@ export class KioskPreviewHomeComponent extends PreviewPart {
     return CARD_ICONS[card] ?? 'help';
   }
 
-  heroDropped(event: CdkDragDrop<unknown>): void {
-    if (event.previousIndex !== event.currentIndex) {
-      this.layoutChange.emit({ ...this.layout(), imageLeft: !this.layout().imageLeft });
-    }
+  /** Two parts: one dropped on the other changes the picture's side. */
+  heroMoved(): void {
+    this.layoutChange.emit({ ...this.layout(), imageLeft: !this.layout().imageLeft });
   }
 
-  cardDropped(event: CdkDragDrop<unknown>): void {
-    const cards = [...this.layout().cards];
-    moveItemInArray(cards, event.previousIndex, event.currentIndex);
-    this.layoutChange.emit({ ...this.layout(), cards });
+  cardMoved({ from, to }: { from: number; to: number }): void {
+    this.layoutChange.emit({ ...this.layout(), cards: moveItem(this.layout().cards, from, to) });
   }
 }
 
@@ -503,14 +568,7 @@ const FEATURE_ICONS: Record<string, string> = {
 @Component({
   selector: 'app-kiosk-preview-footer',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    CdkDrag,
-    CdkDragPlaceholder,
-    CdkDropList,
-    MatIconModule,
-    MatTooltipModule,
-    TranslatePipe,
-  ],
+  imports: [ReorderDirective, MatIconModule, MatTooltipModule, TranslatePipe],
   template: `
     <span class="start">
       <span class="qr"><mat-icon aria-hidden="true">qr_code_2</mat-icon></span>
@@ -519,19 +577,14 @@ const FEATURE_ICONS: Record<string, string> = {
         <span class="hotline"><mat-icon aria-hidden="true">call</mat-icon>{{ hotline }}</span>
       }
     </span>
-    <div
-      class="features"
-      [class.editable]="editable()"
-      cdkDropList
-      cdkDropListOrientation="horizontal"
-      [cdkDropListDisabled]="!editable()"
-      (cdkDropListDropped)="dropped($event)"
-    >
-      @for (feature of features(); track feature) {
+    <div class="features">
+      @for (feature of features(); track feature; let i = $index) {
         <span
           class="feature"
-          cdkDrag
-          [cdkDragScale]="scale()"
+          appReorder="features"
+          [reorderIndex]="i"
+          [reorderEnabled]="editable()"
+          (reorderMoved)="dropped($event)"
           [class.feature--hidden]="!shown(feature)"
           [attr.data-feature]="feature"
         >
@@ -553,7 +606,6 @@ const FEATURE_ICONS: Record<string, string> = {
               }}</mat-icon>
             </button>
           }
-          <div *cdkDragPlaceholder class="slot"></div>
         </span>
       }
     </div>
@@ -690,8 +742,27 @@ const FEATURE_ICONS: Record<string, string> = {
       .chip mat-icon {
         color: var(--kiosk-success-500);
       }
+
+      [draggable='true'] {
+        cursor: grab;
+        outline: 3px dashed transparent;
+        outline-offset: var(--space-2);
+        border-radius: var(--kiosk-radius-sm);
+      }
+
+      [draggable='true']:hover,
+      .reorder--target {
+        outline-color: var(--kiosk-brand-300);
+      }
+
+      .reorder--target {
+        background: var(--kiosk-brand-50);
+      }
+
+      .reorder--dragging {
+        opacity: 0.4;
+      }
     `,
-    ARRANGING,
   ],
 })
 export class KioskPreviewFooterComponent extends PreviewPart {
@@ -719,9 +790,8 @@ export class KioskPreviewFooterComponent extends PreviewPart {
   }
 
   /** The order of every feature changes; the hidden ones stay hidden. */
-  dropped(event: CdkDragDrop<unknown>): void {
-    const order = this.features().slice();
-    moveItemInArray(order, event.previousIndex, event.currentIndex);
+  dropped({ from, to }: { from: number; to: number }): void {
+    const order = moveItem(this.features(), from, to);
     this.layoutChange.emit({
       ...this.layout(),
       features: order.filter((feature) => this.shown(feature)),
