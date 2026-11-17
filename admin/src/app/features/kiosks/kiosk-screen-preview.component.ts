@@ -342,7 +342,9 @@ export class KioskScreenPreviewComponent {
     });
 
     afterNextRender(() => {
-      if (destroyed) {
+      // Without ResizeObserver (a test's DOM) there is no size to fit to:
+      // nothing is started, so nothing can outlive the preview.
+      if (destroyed || typeof ResizeObserver === 'undefined') {
         return;
       }
 
@@ -353,11 +355,9 @@ export class KioskScreenPreviewComponent {
           this.scale.set(Math.min(width / DESIGN_WIDTH, height / DESIGN_HEIGHT));
         }
       };
-      if (typeof ResizeObserver !== 'undefined') {
-        const observer = new ResizeObserver(fit);
-        observer.observe(stage);
-        stops.push(() => observer.disconnect());
-      }
+      const observer = new ResizeObserver(fit);
+      observer.observe(stage);
+      stops.push(() => observer.disconnect());
       fit();
 
       const onFullscreen = () => this.fullscreen.set(document.fullscreenElement === stage);
