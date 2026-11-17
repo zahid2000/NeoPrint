@@ -49,3 +49,27 @@ export const KIOSK_BUILT_IN_TEXTS: Readonly<
     ru: 'Документы защищены',
   },
 };
+
+/**
+ * The kiosk's own words around the welcome screen that the panel does not set
+ * (T-441): the queue panel, the printer's state and "cancel by code", for the
+ * preview to look as the kiosk does. The same as the kiosk app's `queue.*`,
+ * `home.ready` and `home.cancelByCode` (desktop/src/NeoPrint.Kiosk/Localization/Strings.cs).
+ * `{0}` and `{1}` are filled as the kiosk fills them.
+ */
+export const KIOSK_CHROME_TEXTS: Readonly<
+  Record<string, Readonly<Record<'az' | 'en' | 'ru', string>>>
+> = {
+  queueTitle: { az: 'Növbə', en: 'Queue', ru: 'Очередь' },
+  statusPrinting: { az: 'Çap olunur', en: 'Printing', ru: 'Печатается' },
+  statusQueued: { az: 'Növbədə', en: 'Queued', ru: 'В очереди' },
+  progress: { az: '{0} / {1} səhifə', en: '{0} / {1} pages', ru: '{0} / {1} стр.' },
+  finishAt: { az: 'Hazır ≈ {0}', en: 'Ready ≈ {0}', ru: 'Готово ≈ {0}' },
+  pages: { az: '{0} səhifə', en: '{0} pages', ru: '{0} страниц' },
+  ready: { az: 'Printer hazırdır', en: 'Printer ready', ru: 'Принтер готов' },
+  cancelByCode: {
+    az: 'Sifariş kodu ilə ləğv et',
+    en: 'Cancel with a job code',
+    ru: 'Отменить по коду задания',
+  },
+};

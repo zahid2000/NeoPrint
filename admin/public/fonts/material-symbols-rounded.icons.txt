@@ -2,8 +2,10 @@ add
 add_photo_alternate
 admin_panel_settings
 arrow_back
+arrow_forward
 assignment
 block
+bolt
 build
 calculate
 call
@@ -18,6 +20,7 @@ cloud_off
 cloud_upload
 confirmation_number
 content_copy
+contrast
 crisis_alert
 dark_mode
 dashboard
@@ -39,10 +42,14 @@ event_busy
 expand_more
 filter_list
 filter_list_off
+format_list_numbered
 forward_to_inbox
+fullscreen
+fullscreen_exit
 group
 history
 hourglass_empty
+hourglass_top
 inbox
 info
 insights
@@ -65,6 +72,7 @@ more_vert
 network_check
 notifications_active
 open_in_new
+pan_tool
 pause
 pause_circle
 payments
@@ -74,7 +82,6 @@ person_check
 person_off
 person_search
 picture_as_pdf
-pin
 play_arrow
 play_circle
 post_add

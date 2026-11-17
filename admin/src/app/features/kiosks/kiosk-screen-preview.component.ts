@@ -1,21 +1,60 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 
+import { KioskScreenLayout } from '../../core/api/admin-api.service';
+import {
+  KioskPreviewFooterComponent,
+  KioskPreviewHomeComponent,
+  KioskPreviewQueueComponent,
+  STANDARD_LAYOUT,
+} from './kiosk-screen-preview.parts';
+
+export { STANDARD_LAYOUT, featureOrder, sameLayout } from './kiosk-screen-preview.parts';
+
+/** The kiosk's 1920x1080 design (desktop Tokens.axaml DesignWidth / DesignHeight). */
+const DESIGN_WIDTH = 1920;
+const DESIGN_HEIGHT = 1080;
+
+const pad = (value: number): string => value.toString().padStart(2, '0');
+const time = (value: Date): string => `${pad(value.getHours())}:${pad(value.getMinutes())}`;
+
 /**
- * How a kiosk's welcome screen looks with the texts and picture being edited
- * (T-422): the kiosk's current design, small - header, the big line with the
- * picture beside it, the three ways in, and the footer with its four
- * features and the help line. It follows every keystroke; the language is
- * chosen above it.
+ * The kiosk's welcome screen as the kiosk draws it (T-422, T-441): the header,
+ * the welcome screen, the queue panel beside it and the footer - at the
+ * kiosk's own 1920x1080 and scaled to fit, so it is the kiosk's screen, only
+ * smaller. It follows every keystroke; the language is chosen above it; it
+ * opens full screen. With `editable`, the ways in, the picture and the
+ * footer's features are dragged into place.
  */
 @Component({
   selector: 'app-kiosk-screen-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonToggleModule, MatIconModule, TranslatePipe],
+  imports: [
+    KioskPreviewFooterComponent,
+    KioskPreviewHomeComponent,
+    KioskPreviewQueueComponent,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatIconModule,
+    TranslatePipe,
+  ],
   template: `
-    <div class="preview__bar">
+    <div class="bar">
       <h3>{{ 'kioskBranding.preview' | translate }}</h3>
       <mat-button-toggle-group
         hideSingleSelectionIndicator
@@ -27,52 +66,76 @@ import { TranslatePipe } from '@ngx-translate/core';
           <mat-button-toggle [value]="code">{{ code.toUpperCase() }}</mat-button-toggle>
         }
       </mat-button-toggle-group>
+      <button mat-stroked-button type="button" (click)="toggleFullscreen()">
+        <mat-icon>fullscreen</mat-icon>
+        {{ 'kioskBranding.fullscreen' | translate }}
+      </button>
     </div>
+    @if (editable()) {
+      <p class="neo-caption hint">
+        <mat-icon aria-hidden="true">pan_tool</mat-icon>
+        {{ 'kioskBranding.dragHint' | translate }}
+      </p>
+    }
 
-    <div class="screen" role="img" [attr.aria-label]="'kioskBranding.preview' | translate">
-      <div class="screen__header">
-        <span class="screen__logo"><mat-icon aria-hidden="true">print</mat-icon></span>
-        <strong>NeoPrint</strong>
-      </div>
-
-      <div class="screen__hero">
-        <div>
-          <p class="screen__title">{{ text('heroTitle') }}</p>
-          <p class="screen__subtitle">{{ text('heroSubtitle') }}</p>
-        </div>
-        <div class="screen__art">
-          @if (imageUrl(); as src) {
-            <img [src]="src" alt="" />
-          } @else {
-            <mat-icon aria-hidden="true">print</mat-icon>
-          }
-        </div>
-      </div>
-
-      <div class="screen__cards">
-        @for (card of cards; track card.key) {
-          <div class="screen__card">
-            <mat-icon aria-hidden="true">{{ card.icon }}</mat-icon>
-            <strong>{{ text(card.key + 'Title') }}</strong>
-            <span>{{ text(card.key + 'Hint') }}</span>
-          </div>
-        }
-      </div>
-
-      <div class="screen__footer">
-        @if (text('hotline'); as hotline) {
-          <span class="screen__hotline"
-            ><mat-icon aria-hidden="true">call</mat-icon>{{ hotline }}</span
-          >
-        }
-        @for (feature of features; track feature) {
-          <span class="screen__feature">
-            <strong>{{ text(feature) }}</strong>
-            <span>{{ text(feature + 'Hint') }}</span>
+    <div #stage class="stage" [class.stage--full]="fullscreen()">
+      @if (fullscreen()) {
+        <button mat-flat-button type="button" class="exit" (click)="toggleFullscreen()">
+          <mat-icon>fullscreen_exit</mat-icon>
+          {{ 'kioskBranding.exitFullscreen' | translate }}
+        </button>
+      }
+      <div
+        class="surface"
+        role="img"
+        [attr.aria-label]="'kioskBranding.preview' | translate"
+        [style.transform]="'scale(' + scale() + ')'"
+      >
+        <!-- The mark and the name, the kiosk's name; "AZ ▾", the clock and the date. -->
+        <div class="header">
+          <span class="logo"><mat-icon aria-hidden="true">print</mat-icon></span>
+          <strong class="brand">NeoPrint</strong>
+          <span class="name">{{ kioskName() ?? '' }}</span>
+          <span class="lang">
+            <mat-icon aria-hidden="true">language</mat-icon>
+            {{ language().toUpperCase() }}
+            <mat-icon aria-hidden="true">expand_more</mat-icon>
           </span>
-        }
+          <span class="clock">
+            <strong>{{ clock() }}</strong>
+            <span>{{ date() }}</span>
+          </span>
+        </div>
+
+        <div class="middle">
+          <app-kiosk-preview-home
+            [texts]="texts()"
+            [language]="language()"
+            [imageUrl]="imageUrl()"
+            [layout]="layout()"
+            [editable]="editable()"
+            [scale]="scale()"
+            (layoutChange)="layoutChange.emit($event)"
+          />
+          <app-kiosk-preview-queue
+            [texts]="texts()"
+            [language]="language()"
+            [soon]="soon()"
+            [finishAt]="later()"
+          />
+        </div>
+
+        <app-kiosk-preview-footer
+          [texts]="texts()"
+          [language]="language()"
+          [layout]="layout()"
+          [editable]="editable()"
+          [scale]="scale()"
+          (layoutChange)="layoutChange.emit($event)"
+        />
       </div>
     </div>
+    <p class="neo-caption note">{{ 'kioskBranding.previewNote' | translate }}</p>
   `,
   styles: `
     :host {
@@ -81,164 +144,224 @@ import { TranslatePipe } from '@ngx-translate/core';
       gap: var(--space-2);
     }
 
-    .preview__bar {
+    .bar {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-2);
       align-items: center;
-      justify-content: space-between;
-
-      h3 {
-        margin: 0;
-      }
     }
 
-    .screen {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      padding: var(--space-3);
-      border: 1px solid var(--neutral-200);
-      border-radius: var(--radius-md);
-      background: var(--brand-50);
-      font-size: var(--font-size-caption);
-      overflow: hidden;
+    .bar h3 {
+      margin: 0 auto 0 0;
     }
 
-    .screen__header {
+    .hint,
+    .note {
       display: flex;
-      gap: var(--space-2);
+      gap: var(--space-1);
       align-items: center;
+      margin: 0;
     }
 
-    // Icons at the panel's own size; the picture's stand-in larger.
-    mat-icon {
+    .hint mat-icon {
       width: var(--icon-size);
       height: var(--icon-size);
       font-size: var(--icon-size);
     }
 
-    .screen__art mat-icon {
-      width: var(--font-size-display);
-      height: var(--font-size-display);
-      font-size: var(--font-size-display);
+    // The kiosk's screen, 16:9, with the 1920x1080 surface scaled into it.
+    .stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      border: 1px solid var(--neutral-200);
+      border-radius: var(--radius-md);
+      background: var(--kiosk-neutral-0);
     }
 
-    .screen__logo {
-      display: inline-flex;
-      padding: var(--space-1);
-      border-radius: var(--radius-sm);
-      background: var(--brand-500);
-      color: var(--neutral-0);
-    }
-
-    .screen__hero {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 30%;
-      gap: var(--space-3);
-      align-items: center;
-    }
-
-    .screen__title {
-      margin: 0;
-      font-size: var(--font-size-body);
-      font-weight: var(--font-weight-semibold);
-      line-height: 1.2;
-      overflow-wrap: anywhere;
-    }
-
-    .screen__subtitle {
-      margin: var(--space-1) 0 0;
-      color: var(--neutral-600);
-    }
-
-    // The kiosk's card the picture fills (T-421).
-    .screen__art {
+    .stage--full {
       display: flex;
       align-items: center;
       justify-content: center;
-      aspect-ratio: 4 / 3;
-      border-radius: var(--radius-md);
-      background: var(--neutral-0);
-      overflow: hidden;
-      color: var(--brand-300);
-
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
+      border: 0;
+      border-radius: 0;
+      background: var(--kiosk-neutral-900);
     }
 
-    .screen__cards {
+    .exit {
+      position: absolute;
+      top: var(--space-4);
+      right: var(--space-4);
+      z-index: 1;
+    }
+
+    .surface {
+      position: absolute;
+      top: 0;
+      left: 0;
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: var(--space-2);
+      grid-template-rows: var(--kiosk-header-height) minmax(0, 1fr) var(--kiosk-footer-height);
+      width: var(--kiosk-design-width);
+      height: var(--kiosk-design-height);
+      transform-origin: top left;
+      background: linear-gradient(var(--kiosk-brand-50), var(--kiosk-neutral-0) 70%);
+      color: var(--kiosk-neutral-900);
+      font-size: var(--kiosk-font-size-body);
+      line-height: 1.25;
     }
 
-    .screen__card {
+    .stage--full .surface {
+      position: static;
+      flex: none;
+      transform-origin: center;
+    }
+
+    mat-icon {
+      flex: none;
+    }
+
+    .surface mat-icon {
+      width: var(--kiosk-icon-sm);
+      height: var(--kiosk-icon-sm);
+      font-size: var(--kiosk-icon-sm);
+    }
+
+    .header {
       display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
-      padding: var(--space-2);
-      border-radius: var(--radius-sm);
-      background: var(--neutral-0);
-      overflow-wrap: anywhere;
-
-      mat-icon {
-        color: var(--brand-500);
-      }
-
-      span {
-        color: var(--neutral-600);
-      }
-    }
-
-    .screen__footer {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2) var(--space-4);
-      padding-top: var(--space-2);
-      border-top: 1px solid var(--neutral-200);
-    }
-
-    .screen__feature {
-      display: flex;
-      flex-direction: column;
-
-      span {
-        color: var(--neutral-600);
-      }
-    }
-
-    // The help line: red, bold, behind a phone (T-420).
-    .screen__hotline {
-      display: inline-flex;
-      gap: var(--space-1);
+      gap: var(--space-4);
       align-items: center;
-      color: var(--danger-500);
+      padding: 0 var(--space-8);
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--kiosk-logo-size);
+      height: var(--kiosk-logo-size);
+      border-radius: var(--kiosk-radius-sm);
+      background: var(--kiosk-brand-500);
+      color: var(--kiosk-neutral-0);
+    }
+
+    .surface .logo mat-icon {
+      width: var(--kiosk-icon-md);
+      height: var(--kiosk-icon-md);
+      font-size: var(--kiosk-icon-md);
+    }
+
+    .brand {
+      font-size: var(--kiosk-font-size-h1);
+    }
+
+    .name {
+      flex: 1;
+      margin-left: var(--space-8);
+      overflow: hidden;
+      color: var(--kiosk-neutral-600);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .lang {
+      display: inline-flex;
+      gap: var(--space-2);
+      align-items: center;
+      min-height: var(--kiosk-touch-target);
+      padding: 0 var(--space-6);
+      border: 1px solid var(--kiosk-neutral-200);
+      border-radius: var(--kiosk-radius-sm);
+      background: var(--kiosk-neutral-0);
+      font-size: var(--kiosk-font-size-body-small);
       font-weight: var(--font-weight-semibold);
+    }
+
+    .clock {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin-left: var(--space-8);
+    }
+
+    .clock strong {
+      font-size: var(--kiosk-font-size-h2);
+    }
+
+    .clock span {
+      color: var(--kiosk-neutral-600);
+      font-size: var(--kiosk-font-size-caption);
+    }
+
+    .middle {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) var(--kiosk-queue-width);
+      min-height: 0;
     }
   `,
 })
 export class KioskScreenPreviewComponent {
+  private readonly destroyRef = inject(DestroyRef);
+
   /** What each text says now, by key and language - typed, default or the kiosk's own. */
   readonly texts = input.required<Record<string, Record<string, string>>>();
   readonly imageUrl = input<string | null>(null);
+  readonly layout = input<KioskScreenLayout>(STANDARD_LAYOUT);
+  /** The arrangement can be dragged (T-441). */
+  readonly editable = input(false);
+  /** One kiosk's name in the header; empty for the default. */
+  readonly kioskName = input<string | null>(null);
+
+  readonly layoutChange = output<KioskScreenLayout>();
 
   readonly languages = ['az', 'en', 'ru'] as const;
   readonly language = signal<string>('az');
+  readonly fullscreen = signal(false);
+  readonly scale = signal(0.5);
+  readonly now = signal(new Date());
 
-  readonly cards = [
-    { key: 'usb', icon: 'usb' },
-    { key: 'phone', icon: 'qr_code_2' },
-    { key: 'code', icon: 'pin' },
-  ] as const;
-  readonly features = ['featureSizes', 'featureColor', 'featureFast', 'featureSafe'] as const;
+  private readonly stage = viewChild.required<ElementRef<HTMLElement>>('stage');
 
-  private readonly current = computed(() => this.texts());
+  readonly clock = computed(() => time(this.now()));
+  readonly soon = computed(() => time(new Date(this.now().getTime() + 2 * 60_000)));
+  readonly later = computed(() => time(new Date(this.now().getTime() + 6 * 60_000)));
+  readonly date = computed(() => {
+    const now = this.now();
+    return `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
+  });
 
-  text(key: string): string {
-    return this.current()[key]?.[this.language()] ?? '';
+  constructor() {
+    afterNextRender(() => {
+      const stage = this.stage().nativeElement;
+      const fit = () => {
+        const { width, height } = stage.getBoundingClientRect();
+        if (width > 0 && height > 0) {
+          this.scale.set(Math.min(width / DESIGN_WIDTH, height / DESIGN_HEIGHT));
+        }
+      };
+      const observer = new ResizeObserver(fit);
+      observer.observe(stage);
+      fit();
+
+      const onFullscreen = () => this.fullscreen.set(document.fullscreenElement === stage);
+      document.addEventListener('fullscreenchange', onFullscreen);
+
+      const ticker = setInterval(() => this.now.set(new Date()), 30_000);
+
+      this.destroyRef.onDestroy(() => {
+        observer.disconnect();
+        document.removeEventListener('fullscreenchange', onFullscreen);
+        clearInterval(ticker);
+      });
+    });
+  }
+
+  async toggleFullscreen(): Promise<void> {
+    const stage = this.stage().nativeElement;
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else if (stage.requestFullscreen) {
+      await stage.requestFullscreen();
+    }
   }
 }

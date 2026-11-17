@@ -18,14 +18,22 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
-import { AdminApiService, KioskBrandingView } from '../../core/api/admin-api.service';
+import {
+  AdminApiService,
+  KioskBrandingView,
+  KioskScreenLayout,
+} from '../../core/api/admin-api.service';
 import { confirmAction } from '../../shared/confirm.dialog';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { NotifyService } from '../../shared/notify.service';
 import { Problem, toProblem } from '../../shared/problem';
 import { KIOSK_BUILT_IN_TEXTS } from './kiosk-branding.defaults';
 import { shrinkPhoto } from './kiosk-photo.component';
-import { KioskScreenPreviewComponent } from './kiosk-screen-preview.component';
+import {
+  KioskScreenPreviewComponent,
+  STANDARD_LAYOUT,
+  sameLayout,
+} from './kiosk-screen-preview.component';
 
 export const BRANDING_LANGUAGES = ['az', 'en', 'ru'] as const;
 type Language = (typeof BRANDING_LANGUAGES)[number];
@@ -86,7 +94,11 @@ function empty(): Texts {
   template: `
     <section class="branding">
       <header>
-        <h2>{{ (kioskId() ? 'kioskBranding.kioskTitle' : 'kioskBranding.title') | translate }}</h2>
+        @if (showHeading()) {
+          <h2>
+            {{ (kioskId() ? 'kioskBranding.kioskTitle' : 'kioskBranding.title') | translate }}
+          </h2>
+        }
         <p class="neo-caption">
           {{ (kioskId() ? 'kioskBranding.kioskHint' : 'kioskBranding.hint') | translate }}
         </p>
@@ -99,6 +111,17 @@ function empty(): Texts {
           [retryable]="false"
         />
       }
+
+      <!-- The kiosk's screen as it will look, arranged by dragging (T-422, T-441). -->
+      <app-kiosk-screen-preview
+        class="branding__preview"
+        [texts]="texts()"
+        [imageUrl]="imageUrl()"
+        [layout]="layout()"
+        [editable]="canEdit() && !busy()"
+        [kioskName]="kioskName()"
+        (layoutChange)="arrange($event)"
+      />
 
       <div class="branding__layout">
         <div class="branding__form">
@@ -186,7 +209,7 @@ function empty(): Texts {
               <button
                 mat-button
                 type="button"
-                [disabled]="busy() || atDefaults()"
+                [disabled]="busy() || (atDefaults() && atDefaultLayout())"
                 (click)="reset()"
               >
                 <mat-icon>restart_alt</mat-icon>
@@ -196,7 +219,7 @@ function empty(): Texts {
                 mat-flat-button
                 color="primary"
                 type="button"
-                [disabled]="busy() || !dirty()"
+                [disabled]="busy() || (!dirty() && !layoutDirty())"
                 (click)="save()"
               >
                 @if (busy()) {
@@ -207,13 +230,6 @@ function empty(): Texts {
             </div>
           }
         </div>
-
-        <!-- How the welcome screen looks with these texts (T-422). -->
-        <app-kiosk-screen-preview
-          class="branding__preview"
-          [texts]="texts()"
-          [imageUrl]="imageUrl()"
-        />
       </div>
     </section>
   `,
@@ -292,7 +308,7 @@ function empty(): Texts {
     // and each field keeps room to read what it says (T-422).
     .branding__row {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
       gap: var(--space-2);
       align-items: start;
     }
@@ -310,10 +326,7 @@ function empty(): Texts {
     }
 
     .branding__layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
-      gap: var(--space-6);
-      align-items: start;
+      display: block;
     }
 
     .branding__form {
@@ -323,26 +336,10 @@ function empty(): Texts {
       min-width: 0;
     }
 
-    // Stays in sight while the texts are typed.
-    .branding__preview {
-      position: sticky;
-      top: var(--space-4);
-    }
-
     .branding__save {
       display: flex;
       gap: var(--space-2);
       justify-content: flex-end;
-    }
-
-    @media (max-width: 1200px) {
-      .branding__layout {
-        grid-template-columns: 1fr;
-      }
-
-      .branding__preview {
-        position: static;
-      }
     }
 
     @media (max-width: 900px) {
@@ -366,6 +363,10 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
   /** One kiosk's own; without it, the default for every kiosk. */
   readonly kioskId = input<string | null>(null);
   readonly canEdit = input(false);
+  /** Off where the page's own heading already names it ("Kiosk ekranı"). */
+  readonly showHeading = input(true);
+  /** One kiosk's name, for the preview's header. */
+  readonly kioskName = input<string | null>(null);
 
   readonly groups = BRANDING_GROUPS;
   readonly languages = BRANDING_LANGUAGES;
@@ -374,6 +375,11 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
   readonly view = signal<KioskBrandingView | null>(null);
   readonly texts = signal<Texts>(empty());
   readonly dirty = signal(false);
+  /** How the screen is arranged as shown now (T-441): set here, else the default's, else the kiosk's own. */
+  readonly layout = signal<KioskScreenLayout>(STANDARD_LAYOUT);
+  readonly layoutDirty = signal(false);
+  /** What the screen falls back to without an arrangement set here. */
+  private readonly fallbackLayout = computed(() => this.view()?.defaultLayout ?? STANDARD_LAYOUT);
   readonly busy = signal(false);
   readonly problem = signal<Problem | null>(null);
   readonly imageUrl = signal<string | null>(null);
@@ -418,6 +424,13 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
     );
   });
 
+  readonly atDefaultLayout = computed(() => sameLayout(this.layout(), this.fallbackLayout()));
+
+  arrange(layout: KioskScreenLayout): void {
+    this.layout.set(layout);
+    this.layoutDirty.set(true);
+  }
+
   /** "Standarta qaytar" (T-422): every text back to the default, saved at once. */
   async reset(): Promise<void> {
     const text = (key: string): string => this.translate.instant(key) as string;
@@ -432,6 +445,9 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
     }
 
     this.texts.set(this.filled({}));
+    this.dirty.set(true);
+    this.layout.set(this.fallbackLayout());
+    this.layoutDirty.set(true);
     await this.save();
   }
 
@@ -442,6 +458,21 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
 
   async save(): Promise<void> {
     await this.run(async () => {
+      // The arrangement: one the same as the fallback is not kept here, so
+      // the kiosk follows the default when it changes (T-441).
+      if (this.layoutDirty()) {
+        const layout = this.layout();
+        const keep = sameLayout(layout, this.fallbackLayout()) ? null : layout;
+        const view = await firstValueFrom(this.api.setKioskBrandingLayout(this.kioskId(), keep));
+        this.view.set(view);
+        this.layout.set(view.layout ?? view.defaultLayout ?? STANDARD_LAYOUT);
+        this.layoutDirty.set(false);
+      }
+      if (!this.dirty()) {
+        this.notify.success('kioskBranding.saved');
+        return;
+      }
+
       // A text the same as the default is not kept here: the kiosk follows
       // the default when it changes (T-422).
       const values: Record<string, Record<string, string>> = {};
@@ -508,6 +539,10 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
   /** The answer in place; the typed texts stay when only the picture changed. */
   private apply(view: KioskBrandingView, withTexts = true): void {
     this.view.set(view);
+    if (withTexts) {
+      this.layout.set(view.layout ?? view.defaultLayout ?? STANDARD_LAYOUT);
+      this.layoutDirty.set(false);
+    }
     if (withTexts) {
       this.texts.set(this.filled(view.texts ?? {}));
       this.dirty.set(false);

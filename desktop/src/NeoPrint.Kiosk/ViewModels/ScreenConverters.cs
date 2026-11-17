@@ -114,6 +114,23 @@ public static class ScreenConverters
     /// </remarks>
     public static readonly IValueConverter QrImage = new QrImageConverter();
 
+    /// <summary>A footer feature's icon (T-441), from Styles/Icons.axaml by the feature's key.</summary>
+    public static readonly IValueConverter FeatureIcon = new FuncValueConverter<string?, Geometry?>(key =>
+    {
+        var name = key switch
+        {
+            "featureSizes" => "IconDocument",
+            "featureColor" => "IconContrast",
+            "featureFast" => "IconBolt",
+            "featureSafe" => "IconShield",
+            _ => null,
+        };
+
+        return name is not null && Avalonia.Application.Current?.TryGetResource(name, null, out var icon) == true
+            ? icon as Geometry
+            : null;
+    });
+
     /// <summary>
     /// A picture kept on disk (the welcome screen's, T-387). One that does not
     /// open is no picture: the drawing stays rather than the screen failing.

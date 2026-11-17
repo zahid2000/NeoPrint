@@ -37,6 +37,14 @@ const EXTRA = [
   // tab-arrows.directive.ts: the arrows beside tabs that do not fit (T-423)
   'chevron_left',
   'chevron_right',
+  // kiosk-screen-preview.parts.ts: the kiosk's cards and footer features, by key (T-441)
+  'usb',
+  'smartphone',
+  'qr_code_2',
+  'description',
+  'contrast',
+  'bolt',
+  'shield',
 ];
 
 function files(dir) {

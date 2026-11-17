@@ -387,7 +387,11 @@
       <!-- What this kiosk's welcome screen says, with its preview: a tab of its own (T-422, T-387). -->
       <mat-tab [label]="'kiosks.tabScreen' | translate">
         <section class="neo-card editor__card editor__tab">
-          <app-kiosk-branding [kioskId]="current.id" [canEdit]="canEdit()" />
+          <app-kiosk-branding
+            [kioskId]="current.id"
+            [canEdit]="canEdit()"
+            [kioskName]="current.name"
+          />
         </section>
       </mat-tab>
 

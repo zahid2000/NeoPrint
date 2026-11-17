@@ -44,6 +44,9 @@ public sealed class KioskBranding : Entity
     /// <summary>The picture beside the big line; null leaves the printer drawing.</summary>
     public KioskPhoto? Image { get; private set; }
 
+    /// <summary>How the screen is arranged (T-441); null follows the default, then the kiosk's own.</summary>
+    public KioskScreenLayout? Layout { get; private set; }
+
     public DateTime UpdatedAt { get; set; }
 
     public bool IsDefault => Id == DefaultId;
@@ -97,6 +100,23 @@ public sealed class KioskBranding : Entity
         }
 
         Texts = kept;
+        UpdatedAt = utcNow;
+        return [];
+    }
+
+    /// <summary>
+    /// Puts this arrangement in place (T-441); null drops it, and the screen
+    /// follows the default again.
+    /// </summary>
+    /// <returns>What is wrong with it; nothing is changed then.</returns>
+    public IReadOnlyList<string> SetLayout(KioskScreenLayout? layout, DateTime utcNow)
+    {
+        if (layout?.Problems() is { Count: > 0 } problems)
+        {
+            return problems;
+        }
+
+        Layout = layout;
         UpdatedAt = utcNow;
         return [];
     }

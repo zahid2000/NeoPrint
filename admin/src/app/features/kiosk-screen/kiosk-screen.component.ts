@@ -11,12 +11,12 @@ import { KioskBrandingComponent } from '../kiosks/kiosk-branding.component';
   template: `
     <div class="kiosk-screen">
       <h1>{{ 'nav.kioskScreen' | translate }}</h1>
-      <app-kiosk-branding [canEdit]="true" />
+      <app-kiosk-branding [canEdit]="true" [showHeading]="false" />
     </div>
   `,
   styles: `
     .kiosk-screen {
-      max-width: 1200px;
+      max-width: 1400px;
     }
   `,
 })

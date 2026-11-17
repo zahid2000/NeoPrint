@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
+using NeoPrint.Kiosk.Core;
+
 namespace NeoPrint.Kiosk.ViewModels;
 
 /// <summary>
@@ -47,6 +49,25 @@ public sealed partial class MainWindowViewModel
 
     public string FeatureSafeHint => Brand("featureSafeHint");
 
+    /// <summary>How the panel arranged the welcome screen (T-441), else the kiosk's own.</summary>
+    private KioskScreenLayout ScreenLayout => KioskScreenLayout.Effective(_branding?.Layout);
+
+    /// <summary>The column of each way in, in the order the panel set.</summary>
+    public int UsbColumn => ScreenLayout.ColumnOf("usb");
+
+    public int PhoneColumn => ScreenLayout.ColumnOf("phone");
+
+    public int CodeColumn => ScreenLayout.ColumnOf("code");
+
+    /// <summary>The picture on the left of the big line: column 0, else 2 (the text is column 1).</summary>
+    public bool HeroImageLeft => ScreenLayout.ImageLeft;
+
+    public int HeroArtColumn => HeroImageLeft ? 0 : 2;
+
+    /// <summary>What the footer says the kiosk offers: the ones the panel shows, in its order.</summary>
+    public IReadOnlyList<FooterFeature> FooterFeatures
+        => [.. (ScreenLayout.Features ?? KioskScreenLayout.FeatureKeys).Select(key => new FooterFeature(key, Brand(key), Brand(key + "Hint")))];
+
     /// <summary>What the panel's words reach (T-387): told again when a configuration brings new ones.</summary>
     private static readonly string[] BrandedProperties =
     [
@@ -54,6 +75,8 @@ public sealed partial class MainWindowViewModel
         nameof(CodeCardHint), nameof(PhoneCardTitle), nameof(PhoneCardHint), nameof(FeatureSizesTitle),
         nameof(FeatureSizesHint), nameof(FeatureColorTitle), nameof(FeatureColorHint), nameof(FeatureFastTitle),
         nameof(FeatureFastHint), nameof(FeatureSafeTitle), nameof(FeatureSafeHint), nameof(Hotline),
+        nameof(UsbColumn), nameof(PhoneColumn), nameof(CodeColumn), nameof(HeroImageLeft), nameof(HeroArtColumn),
+        nameof(FooterFeatures),
     ];
 
     [RelayCommand]
@@ -74,3 +97,6 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(PrinterStatusText));
     }
 }
+
+/// <summary>One of the footer's features (T-441): its key (for the icon) and its words in the language on now.</summary>
+public sealed record FooterFeature(string Key, string Title, string Hint);

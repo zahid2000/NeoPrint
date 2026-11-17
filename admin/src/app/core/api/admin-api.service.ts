@@ -309,6 +309,19 @@ export interface KioskBrandingView {
   keys: string[];
   maxLength: number;
   updatedAt: string | null;
+  /** The arrangement set here (T-441); null follows the default, then the kiosk's own. */
+  layout?: KioskScreenLayout | null;
+  /** For one kiosk, the default's arrangement. */
+  defaultLayout?: KioskScreenLayout | null;
+}
+
+/** How the welcome screen is arranged (T-441). */
+export interface KioskScreenLayout {
+  /** usb, phone, code - all three, in their order. */
+  cards: string[];
+  /** The footer's features shown, in their order; one left out is hidden. */
+  features: string[];
+  imageLeft: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -682,6 +695,14 @@ export class AdminApiService {
 
   removeKioskBrandingImage(kioskId: string | null): Observable<KioskBrandingView> {
     return this.http.delete<KioskBrandingView>(`${this.brandingPath(kioskId)}/image`);
+  }
+
+  /** Null goes back to the default's arrangement (or, for the default, the kiosk's own). */
+  setKioskBrandingLayout(
+    kioskId: string | null,
+    layout: KioskScreenLayout | null,
+  ): Observable<KioskBrandingView> {
+    return this.http.put<KioskBrandingView>(`${this.brandingPath(kioskId)}/layout`, { layout });
   }
 
   kioskBrandingImage(kioskId: string | null): Observable<Blob> {

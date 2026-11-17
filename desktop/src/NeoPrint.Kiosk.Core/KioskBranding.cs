@@ -8,9 +8,11 @@ namespace NeoPrint.Kiosk.Core;
 /// </summary>
 /// <param name="Texts">Key → language → text. A key or a language absent: the kiosk's own words.</param>
 /// <param name="ImageVersion">The picture's version; null without one (the printer drawing stays).</param>
+/// <param name="Layout">How the screen is arranged (T-441); null keeps the kiosk's own.</param>
 public sealed record KioskBranding(
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? Texts,
-    long? ImageVersion)
+    long? ImageVersion,
+    KioskScreenLayout? Layout = null)
 {
     /// <summary>The text set for this key in this language, if any.</summary>
     public string? Text(string key, string language)
@@ -20,6 +22,46 @@ public sealed record KioskBranding(
            && !string.IsNullOrWhiteSpace(text)
             ? text
             : null;
+}
+
+/// <summary>
+/// How the welcome screen is arranged, as the panel dragged it (T-441): the
+/// three ways in in their order, the footer's features shown in theirs, and
+/// the side of the picture.
+/// </summary>
+public sealed record KioskScreenLayout(IReadOnlyList<string>? Cards, IReadOnlyList<string>? Features, bool ImageLeft)
+{
+    public static readonly IReadOnlyList<string> CardKeys = ["usb", "phone", "code"];
+
+    public static readonly IReadOnlyList<string> FeatureKeys = ["featureSizes", "featureColor", "featureFast", "featureSafe"];
+
+    /// <summary>The kiosk's own arrangement, as before T-441.</summary>
+    public static readonly KioskScreenLayout Standard = new(CardKeys, FeatureKeys, false);
+
+    /// <summary>
+    /// What the screen shows: this one, or the kiosk's own where it would leave
+    /// a way in out or name something the kiosk does not know - an older or a
+    /// newer backend never breaks the screen.
+    /// </summary>
+    public static KioskScreenLayout Effective(KioskScreenLayout? layout)
+    {
+        if (layout is null)
+        {
+            return Standard;
+        }
+
+        var cards = layout.Cards is { Count: 3 } given && CardKeys.All(given.Contains) ? given : CardKeys;
+        var features = layout.Features is { } shown
+            && shown.Distinct(StringComparer.Ordinal).Count() == shown.Count
+            && shown.All(FeatureKeys.Contains)
+                ? shown
+                : FeatureKeys;
+
+        return new KioskScreenLayout(cards, features, layout.ImageLeft);
+    }
+
+    /// <summary>The column of a way in on the screen, 0 to 2.</summary>
+    public int ColumnOf(string card) => Math.Max(0, (Cards ?? CardKeys).ToList().IndexOf(card));
 }
 
 /// <summary>

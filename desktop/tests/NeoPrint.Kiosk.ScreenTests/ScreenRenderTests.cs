@@ -411,6 +411,16 @@ public sealed partial class ScreenRenderTests : IDisposable
                 shell.Activation.IsBackendReachable = false;
             })),
             ("04-home", Shell(language, KioskScreen.Home)),
+            // Arranged in the panel (T-441): code first, the picture on the left, two features.
+            ("04-home-arranged", Shell(language, KioskScreen.Home, shell =>
+            {
+                shell.ApplyConfiguration(new KioskConfiguration(
+                    Guid.NewGuid(), "KSK-9002", "Elmlər Akademiyası metrosu, giriş zalı", "Online", language, shell.SelectedPrinterName,
+                    new PrinterCapabilityFlags(true, true, true), [], null, 5, 50, 200, null,
+                    new Dictionary<string, PaperStockLevel>(), new Dictionary<string, bool>(), 15, 24, DateTime.UtcNow,
+                    Branding: new KioskBranding(null, null, new KioskScreenLayout(["code", "usb", "phone"], ["featureFast", "featureSafe"], ImageLeft: true))));
+                shell.Screen = KioskScreen.Home;
+            })),
             ("05-home-no-flash-empty-queue", Shell(language, KioskScreen.Home, shell =>
             {
                 shell.CanPrintFromFlash = false;

@@ -16,9 +16,18 @@ export const kioskBrandingTranslations: PageTranslations = {
     'kioskBranding.builtIn': 'Kioskun öz mətni',
     'kioskBranding.reset': 'Standarta qaytar',
     'kioskBranding.resetTitle': 'Mətnlər standarta qaytarılsın?',
-    'kioskBranding.resetExplanation': 'Bütün mətnlər kioskun standart mətnlərinə qayıdır və dərhal saxlanılır. Şəkil dəyişmir.',
+    'kioskBranding.resetExplanation':
+      'Bütün mətnlər kioskun standart mətnlərinə qayıdır və dərhal saxlanılır. Şəkil dəyişmir.',
     'kioskBranding.preview': 'Önizləmə',
     'kioskBranding.previewLanguage': 'Önizləmənin dili',
+    'kioskBranding.fullscreen': 'Tam ekran',
+    'kioskBranding.exitFullscreen': 'Tam ekrandan çıx',
+    'kioskBranding.dragHint':
+      'Kartları, şəkli və aşağıdakı yazıları siçanla sürüşdürüb yerini dəyişin; göz ikonu yazını gizlədir və ya qaytarır. Sonra "Yadda saxla".',
+    'kioskBranding.hideFeature': 'Kioskda gizlət',
+    'kioskBranding.showFeature': 'Kioskda göstər',
+    'kioskBranding.previewNote':
+      'Saat, növbə və QR nümunədir — kioskda real dəyərlər görünür. Yeni yerləşdirməni kioskun yeni versiyası göstərir.',
     'kioskBranding.imageTitle': 'Ana ekranın şəkli',
     'kioskBranding.imageAlt': 'Ana ekranın şəkli',
     'kioskBranding.imageOwn': 'Böyük başlığın yanında bu şəkil göstərilir.',
@@ -64,9 +73,18 @@ export const kioskBrandingTranslations: PageTranslations = {
     'kioskBranding.builtIn': "The kiosk's own words",
     'kioskBranding.reset': 'Back to the defaults',
     'kioskBranding.resetTitle': 'Put the texts back to the defaults?',
-    'kioskBranding.resetExplanation': 'Every text goes back to the kiosk default and is saved at once. The picture stays.',
+    'kioskBranding.resetExplanation':
+      'Every text goes back to the kiosk default and is saved at once. The picture stays.',
     'kioskBranding.preview': 'Preview',
     'kioskBranding.previewLanguage': 'Preview language',
+    'kioskBranding.fullscreen': 'Full screen',
+    'kioskBranding.exitFullscreen': 'Exit full screen',
+    'kioskBranding.dragHint':
+      'Drag the cards, the picture and the words along the bottom to move them; the eye hides a feature or brings it back. Then "Save".',
+    'kioskBranding.hideFeature': 'Hide on the kiosk',
+    'kioskBranding.showFeature': 'Show on the kiosk',
+    'kioskBranding.previewNote':
+      'The clock, the queue and the QR are examples - the kiosk shows its own. A new arrangement shows on the kiosk’s new version.',
     'kioskBranding.imageTitle': 'Welcome screen picture',
     'kioskBranding.imageAlt': 'Welcome screen picture',
     'kioskBranding.imageOwn': 'This picture is shown beside the big title.',
@@ -114,9 +132,18 @@ export const kioskBrandingTranslations: PageTranslations = {
     'kioskBranding.builtIn': 'Текст самого киоска',
     'kioskBranding.reset': 'Вернуть стандартные',
     'kioskBranding.resetTitle': 'Вернуть стандартные тексты?',
-    'kioskBranding.resetExplanation': 'Все тексты вернутся к стандартным текстам киоска и сразу сохранятся. Изображение не меняется.',
+    'kioskBranding.resetExplanation':
+      'Все тексты вернутся к стандартным текстам киоска и сразу сохранятся. Изображение не меняется.',
     'kioskBranding.preview': 'Предпросмотр',
     'kioskBranding.previewLanguage': 'Язык предпросмотра',
+    'kioskBranding.fullscreen': 'Во весь экран',
+    'kioskBranding.exitFullscreen': 'Выйти из полноэкранного режима',
+    'kioskBranding.dragHint':
+      'Перетаскивайте карточки, картинку и надписи внизу, чтобы поменять их местами; «глаз» скрывает надпись или возвращает её. Затем «Сохранить».',
+    'kioskBranding.hideFeature': 'Скрыть на киоске',
+    'kioskBranding.showFeature': 'Показать на киоске',
+    'kioskBranding.previewNote':
+      'Часы, очередь и QR — пример, на киоске реальные значения. Новое расположение показывает новая версия киоска.',
     'kioskBranding.imageTitle': 'Изображение главного экрана',
     'kioskBranding.imageAlt': 'Изображение главного экрана',
     'kioskBranding.imageOwn': 'Это изображение показывается рядом с большим заголовком.',

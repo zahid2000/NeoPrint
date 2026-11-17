@@ -4,6 +4,13 @@
              x:Class="NeoPrint.Kiosk.Views.HomeView"
              x:DataType="vm:MainWindowViewModel">
 
+    <UserControl.Styles>
+        <!-- The picture on the left (T-441): the big line keeps its distance from it. -->
+        <Style Selector="StackPanel.after-art">
+            <Setter Property="Margin" Value="{DynamicResource GapStart8}" />
+        </Style>
+    </UserControl.Styles>
+
     <!--
         Screen 1 (plan section 7.3; the poster's "1. Welcome", T-371): the big line
         and a printer on the right, the ways a file comes in as cards with an
@@ -36,21 +43,24 @@
             </Grid>
         </Border>
 
-        <!-- The big line on the left, the printer on the right (the poster's hero). -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" IsVisible="{Binding !HasRefundNotice}">
-            <StackPanel Spacing="{DynamicResource Space4}" VerticalAlignment="Center">
+        <!-- The big line on the left, the printer on the right (the poster's hero) - or the
+             picture on the left, as the panel arranged it (T-441). -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding !HasRefundNotice}">
+            <StackPanel Grid.Column="1" Spacing="{DynamicResource Space4}" VerticalAlignment="Center"
+                        Classes.after-art="{Binding HeroImageLeft}">
                 <TextBlock Text="{Binding HeroTitle}" Classes="hero" TextWrapping="Wrap" MaxWidth="820" HorizontalAlignment="Left" />
                 <TextBlock Text="{Binding HeroSubtitle}" Classes="muted" TextWrapping="Wrap" />
             </StackPanel>
             <!-- The panel's picture (T-387), else the printer drawing. It fills its card
                  edge to edge, on white (T-421): an odd-sized or see-through picture no
                  longer leaves bands or dark patches beside it. -->
-            <Border Grid.Column="1" Classes="hero-image" IsVisible="{Binding HasHeroImage}"
+            <Panel Grid.Column="{Binding HeroArtColumn}">
+            <Border Classes="hero-image" IsVisible="{Binding HasHeroImage}"
                     Width="{DynamicResource HeroArtWidth}" Height="{DynamicResource HeroArtHeight}">
                 <Image Stretch="UniformToFill"
                        Source="{Binding HeroImagePath, Converter={x:Static vm:ScreenConverters.FileImage}}" />
             </Border>
-            <Panel Grid.Column="1" Classes="hero-art" IsVisible="{Binding !HasHeroImage}">
+            <Panel Classes="hero-art" IsVisible="{Binding !HasHeroImage}">
                 <Ellipse Fill="{DynamicResource Brand100}" Width="300" Height="300" />
                 <Border Classes="hero-paper" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="{DynamicResource GapAbove12}">
                     <PathIcon Data="{StaticResource IconDocument}" Width="72" Height="72" Foreground="{DynamicResource Brand300}" />
@@ -58,12 +68,14 @@
                 <PathIcon Data="{StaticResource IconPrint}" Width="200" Height="200" Foreground="{DynamicResource Brand500}"
                           VerticalAlignment="Bottom" Margin="{DynamicResource GapBelow6}" />
             </Panel>
+            </Panel>
         </Grid>
 
-        <!-- The ways a file comes in, in the poster's order: USB, phone, print code. -->
+        <!-- The ways a file comes in, in the poster's order - USB, phone, print code - or
+             in the order the panel set (T-441). -->
         <Grid Grid.Row="2" ColumnDefinitions="*,*,*" ColumnSpacing="{DynamicResource Space6}"
               IsVisible="{Binding CanPrintFromFlash}">
-            <Button Grid.Column="0" Classes="source" Command="{Binding PrintFromUsbCommand}">
+            <Button Grid.Column="{Binding UsbColumn}" Classes="source" Command="{Binding PrintFromUsbCommand}">
                 <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Space2}">
                     <Border Classes="icon-tile">
                         <PathIcon Data="{StaticResource IconUsb}" Width="40" Height="40" Foreground="{DynamicResource Brand500}" />
@@ -76,7 +88,7 @@
             </Button>
 
             <!-- Done on the phone, so a card and not a button: the scanner reads it. -->
-            <Border Grid.Column="1" Classes="source-info">
+            <Border Grid.Column="{Binding PhoneColumn}" Classes="source-info">
                 <Grid RowDefinitions="Auto,Auto,*" RowSpacing="{DynamicResource Space2}">
                     <Border Classes="icon-tile">
                         <PathIcon Data="{StaticResource IconPhone}" Width="40" Height="40" Foreground="{DynamicResource Brand500}" />
@@ -87,7 +99,7 @@
             </Border>
 
             <!-- The app's "Çap kodu" (T-345): the personal QR as six digits. -->
-            <Button Grid.Column="2" Classes="source" Command="{Binding PrintByCodeCommand}">
+            <Button Grid.Column="{Binding CodeColumn}" Classes="source" Command="{Binding PrintByCodeCommand}">
                 <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Space2}">
                     <Border Classes="icon-tile">
                         <PathIcon Data="{StaticResource IconQrCode}" Width="40" Height="40" Foreground="{DynamicResource Brand500}" />

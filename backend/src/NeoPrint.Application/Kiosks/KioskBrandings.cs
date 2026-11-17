@@ -38,6 +38,23 @@ public sealed record SetKioskBrandingTextsCommand(
 public sealed record SetKioskBrandingImageCommand(Guid? KioskId, byte[] Content, Guid AdminUserId, string? Ip)
     : IRequest<KioskBrandingView>;
 
+/// <summary>How the screen is arranged (T-441); null drops it and the default's is followed again.</summary>
+public sealed record SetKioskBrandingLayoutCommand(Guid? KioskId, KioskScreenLayoutDto? Layout, Guid AdminUserId, string? Ip)
+    : IRequest<KioskBrandingView>;
+
+/// <summary>
+/// The welcome screen's arrangement (T-441): the ways in in their order, the
+/// footer's features shown in theirs, and the picture's side.
+/// </summary>
+public sealed record KioskScreenLayoutDto(IReadOnlyList<string> Cards, IReadOnlyList<string> Features, bool ImageLeft)
+{
+    public static KioskScreenLayoutDto? From(KioskScreenLayout? layout)
+        => layout is null ? null : new([.. layout.Cards], [.. layout.Features], layout.ImageLeft);
+
+    public KioskScreenLayout ToDomain()
+        => new() { Cards = [.. Cards ?? []], Features = [.. Features ?? []], ImageLeft = ImageLeft };
+}
+
 public sealed record RemoveKioskBrandingImageCommand(Guid? KioskId, Guid AdminUserId, string? Ip) : IRequest<KioskBrandingView>;
 
 /// <summary>The picture of the default or of one kiosk, as stored - for the panel's preview.</summary>
@@ -50,6 +67,8 @@ public sealed record GetDeviceBrandingImageQuery(Guid DeviceId) : IRequest<Kiosk
 /// <param name="Defaults">For a kiosk, what the default says - the panel shows it where the kiosk has nothing of its own.</param>
 /// <param name="Image">The picture set here, if any.</param>
 /// <param name="DefaultImage">For a kiosk, the default's picture, if any.</param>
+/// <param name="Layout">The arrangement set here (T-441), if any.</param>
+/// <param name="DefaultLayout">For a kiosk, the default's arrangement, if any.</param>
 public sealed record KioskBrandingView(
     Guid? KioskId,
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Texts,
@@ -58,16 +77,21 @@ public sealed record KioskBrandingView(
     KioskPhotoInfo? DefaultImage,
     IReadOnlyList<string> Keys,
     int MaxLength,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    KioskScreenLayoutDto? Layout = null,
+    KioskScreenLayoutDto? DefaultLayout = null);
 
 /// <summary>
 /// What a kiosk's configuration carries (T-387): every text worked out per
 /// language - its own, else the default's; a key absent means "the kiosk's
-/// own words". The picture's version changes with every new picture.
+/// own words". The picture's version changes with every new picture. The
+/// arrangement (T-441) is the kiosk's own, else the default's; null keeps the
+/// kiosk's built-in one.
 /// </summary>
 public sealed record KioskBrandingDto(
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Texts,
-    long? ImageVersion);
+    long? ImageVersion,
+    KioskScreenLayoutDto? Layout = null);
 
 /// <summary>Works out a kiosk's words from its own document and the default.</summary>
 public sealed class KioskBrandingResolver
@@ -99,7 +123,10 @@ public sealed class KioskBrandingResolver
             }
         }
 
-        return new KioskBrandingDto(texts, (own?.Image ?? fallback?.Image)?.Version);
+        return new KioskBrandingDto(
+            texts,
+            (own?.Image ?? fallback?.Image)?.Version,
+            KioskScreenLayoutDto.From(own?.Layout ?? fallback?.Layout));
     }
 
     /// <summary>The picture a kiosk shows: its own, else the default's.</summary>
@@ -113,6 +140,7 @@ public sealed class KioskBrandingHandlers :
     IRequestHandler<SetKioskBrandingTextsCommand, KioskBrandingView>,
     IRequestHandler<SetKioskBrandingImageCommand, KioskBrandingView>,
     IRequestHandler<RemoveKioskBrandingImageCommand, KioskBrandingView>,
+    IRequestHandler<SetKioskBrandingLayoutCommand, KioskBrandingView>,
     IRequestHandler<GetKioskBrandingImageQuery, KioskPhotoContent?>,
     IRequestHandler<GetDeviceBrandingImageQuery, KioskPhotoContent?>
 {
@@ -251,6 +279,42 @@ public sealed class KioskBrandingHandlers :
         return await ViewAsync(id, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<KioskBrandingView> Handle(SetKioskBrandingLayoutCommand request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var id = await ScopeAsync(request.KioskId, request.AdminUserId, cancellationToken).ConfigureAwait(false);
+        var branding = await LoadAsync(id, cancellationToken).ConfigureAwait(false);
+        var before = branding.Layout is null ? null : JsonSerializer.Serialize(branding.Layout);
+        var layout = request.Layout?.ToDomain();
+
+        // The same arrangement again (a retried save): nothing to write or tell.
+        if ((layout is null && branding.Layout is null) || (layout is not null && branding.Layout is not null && layout.SameAs(branding.Layout)))
+        {
+            return await ViewAsync(id, cancellationToken).ConfigureAwait(false);
+        }
+
+        var wrong = branding.SetLayout(layout, _clock.UtcNow);
+        if (wrong.Count > 0)
+        {
+            throw new ValidationException([.. wrong.Select(key => new ValidationError("layout", key))]);
+        }
+
+        await _brandings.SaveAsync(branding, cancellationToken).ConfigureAwait(false);
+        await AuditAsync(
+                request.AdminUserId,
+                "kiosks.branding-layout",
+                id,
+                before,
+                branding.Layout is null ? null : JsonSerializer.Serialize(branding.Layout),
+                request.Ip,
+                cancellationToken)
+            .ConfigureAwait(false);
+        await TellAsync(id, cancellationToken).ConfigureAwait(false);
+
+        return await ViewAsync(id, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<KioskPhotoContent?> Handle(GetKioskBrandingImageQuery request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -315,7 +379,9 @@ public sealed class KioskBrandingHandlers :
             Info(fallback?.Image),
             KioskBranding.Keys,
             KioskBranding.MaxLength,
-            own?.UpdatedAt);
+            own?.UpdatedAt,
+            KioskScreenLayoutDto.From(own?.Layout),
+            id == KioskBranding.DefaultId ? null : KioskScreenLayoutDto.From(fallback?.Layout));
     }
 
     private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Texts(KioskBranding? branding)

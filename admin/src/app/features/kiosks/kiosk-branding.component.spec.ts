@@ -92,8 +92,51 @@ describe('KioskBrandingComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.texts()['heroTitle']['az']).toBe('Sənədlərinizi burada çap edin');
+    expect(fixture.componentInstance.texts()['heroTitle']['az']).toBe(
+      'Sənədlərinizi burada çap edin',
+    );
     expect(fixture.componentInstance.atDefaults()).toBe(true);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Kiosk ekranı');
+  });
+  it('saves the arrangement dragged on the preview, and one the same as the default as none (T-441)', async () => {
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(KioskBrandingComponent);
+    fixture.componentRef.setInput('kioskId', 'k-1');
+    fixture.componentRef.setInput('canEdit', true);
+    fixture.detectChanges();
+
+    const fallback = {
+      cards: ['code', 'usb', 'phone'],
+      features: ['featureFast'],
+      imageLeft: true,
+    };
+    http.expectOne('/api/admin/kiosks/k-1/branding').flush(view({ defaultLayout: fallback }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const component = fixture.componentInstance;
+    expect(component.layout()).toEqual(fallback);
+    expect(component.atDefaultLayout()).toBe(true);
+
+    const own = { ...fallback, cards: ['phone', 'code', 'usb'] };
+    component.arrange(own);
+    expect(component.layoutDirty()).toBe(true);
+
+    let saving = component.save();
+    let put = http.expectOne('/api/admin/kiosks/k-1/branding/layout');
+    expect(put.request.method).toBe('PUT');
+    expect(put.request.body).toEqual({ layout: own });
+    put.flush(view({ layout: own, defaultLayout: fallback }));
+    await saving;
+    expect(component.layoutDirty()).toBe(false);
+    expect(component.layout()).toEqual(own);
+
+    // Back to the default's arrangement: the kiosk follows the default again.
+    component.arrange(fallback);
+    saving = component.save();
+    put = http.expectOne('/api/admin/kiosks/k-1/branding/layout');
+    expect(put.request.body).toEqual({ layout: null });
+    put.flush(view({ layout: null, defaultLayout: fallback }));
+    await saving;
   });
 });

@@ -35,6 +35,42 @@ public sealed class BrandingTests : IDisposable
         new Dictionary<string, PaperStockLevel>(), new Dictionary<string, bool>(), 15, 24, DateTime.UtcNow, Branding: branding);
 
     [Fact]
+    public void The_screen_is_arranged_as_the_panel_set_and_the_kiosks_own_way_without_it()
+    {
+        var model = new MainWindowViewModel { Language = "az" };
+        model.UsbColumn.Should().Be(0);
+        model.CodeColumn.Should().Be(2);
+        model.HeroArtColumn.Should().Be(2, "the picture is on the right by default");
+        model.FooterFeatures.Select(f => f.Key).Should().Equal(KioskScreenLayout.FeatureKeys);
+
+        var told = new List<string?>();
+        model.PropertyChanged += (_, e) => told.Add(e.PropertyName);
+        model.ApplyConfiguration(Configuration(new KioskBranding(
+            null, null, new KioskScreenLayout(["code", "usb", "phone"], ["featureSafe"], ImageLeft: true))));
+
+        model.CodeColumn.Should().Be(0);
+        model.UsbColumn.Should().Be(1);
+        model.PhoneColumn.Should().Be(2);
+        model.HeroArtColumn.Should().Be(0);
+        model.FooterFeatures.Should().ContainSingle()
+            .Which.Should().Be(new FooterFeature("featureSafe", Strings.Get("az", "home.featureSafe"), Strings.Get("az", "home.featureSafeHint")));
+        told.Should().Contain([nameof(MainWindowViewModel.CodeColumn), nameof(MainWindowViewModel.FooterFeatures)]);
+    }
+
+    [Theory]
+    [InlineData("usb,phone")]
+    [InlineData("usb,usb,code")]
+    [InlineData("usb,phone,camera")]
+    public void An_arrangement_that_would_drop_a_way_in_keeps_the_kiosks_own_cards(string cards)
+    {
+        var layout = KioskScreenLayout.Effective(new KioskScreenLayout(cards.Split(','), ["featureFast", "featureNew"], ImageLeft: true));
+
+        layout.Cards.Should().Equal(KioskScreenLayout.CardKeys);
+        layout.Features.Should().Equal(KioskScreenLayout.FeatureKeys, "a feature this kiosk does not know is not drawn as an empty one");
+        layout.ImageLeft.Should().BeTrue();
+    }
+
+    [Fact]
     public void The_panels_words_show_in_their_language_and_the_kiosks_own_where_none_was_set()
     {
         var model = new MainWindowViewModel { Language = "az" };

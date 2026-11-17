@@ -58,6 +58,12 @@ public sealed class AdminKioskBrandingController : ControllerBase
     public async Task<ActionResult<KioskBrandingView>> RemoveDefaultImage(CancellationToken cancellationToken)
         => Ok(await _sender.Send(new RemoveKioskBrandingImageCommand(null, AdminId, _currentUser.Ip), cancellationToken));
 
+    /// <summary>The screen's arrangement for every kiosk (T-441); a null layout goes back to the kiosk's own.</summary>
+    [HttpPut("kiosk-branding/layout")]
+    [HasPermission(Permissions.SettingsManage)]
+    public async Task<ActionResult<KioskBrandingView>> SetDefaultLayout([FromBody] KioskBrandingLayoutInput input, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SetKioskBrandingLayoutCommand(null, input.Layout, AdminId, _currentUser.Ip), cancellationToken));
+
     [HttpGet("kiosk-branding/image")]
     [HasPermission(Permissions.SettingsManage)]
     public async Task<IActionResult> DefaultImage(CancellationToken cancellationToken)
@@ -87,6 +93,12 @@ public sealed class AdminKioskBrandingController : ControllerBase
     public async Task<ActionResult<KioskBrandingView>> RemoveImage(Guid id, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new RemoveKioskBrandingImageCommand(id, AdminId, _currentUser.Ip), cancellationToken));
 
+    /// <summary>One kiosk's own arrangement (T-441); a null layout follows the default again.</summary>
+    [HttpPut("kiosks/{id:guid}/branding/layout")]
+    [HasPermission(Permissions.KiosksEdit)]
+    public async Task<ActionResult<KioskBrandingView>> SetLayout(Guid id, [FromBody] KioskBrandingLayoutInput input, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(new SetKioskBrandingLayoutCommand(id, input.Layout, AdminId, _currentUser.Ip), cancellationToken));
+
     [HttpGet("kiosks/{id:guid}/branding/image")]
     [HasPermission(Permissions.KiosksView)]
     public async Task<IActionResult> Image(Guid id, CancellationToken cancellationToken)
@@ -115,3 +127,6 @@ public sealed record KioskBrandingTextsInput(Dictionary<string, Dictionary<strin
             pair => (IReadOnlyDictionary<string, string?>)(pair.Value ?? []),
             StringComparer.Ordinal);
 }
+
+/// <summary>The arrangement to keep (T-441); null to follow the default (or the kiosk's own) again.</summary>
+public sealed record KioskBrandingLayoutInput(KioskScreenLayoutDto? Layout);
