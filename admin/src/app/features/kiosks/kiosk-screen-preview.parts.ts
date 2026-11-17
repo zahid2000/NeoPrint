@@ -8,7 +8,6 @@ import {
   signal,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { KioskScreenLayout } from '../../core/api/admin-api.service';
@@ -570,7 +569,7 @@ const FEATURE_ICONS: Record<string, string> = {
 @Component({
   selector: 'app-kiosk-preview-footer',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReorderDirective, MatIconModule, MatTooltipModule, TranslatePipe],
+  imports: [ReorderDirective, MatIconModule, TranslatePipe],
   template: `
     <span class="start">
       <span class="qr"><mat-icon aria-hidden="true">qr_code_2</mat-icon></span>
@@ -600,7 +599,7 @@ const FEATURE_ICONS: Record<string, string> = {
               type="button"
               class="eye"
               [attr.aria-label]="eyeLabel(feature) | translate"
-              [matTooltip]="eyeLabel(feature) | translate"
+              [attr.title]="eyeLabel(feature) | translate"
               (click)="toggle(feature)"
             >
               <mat-icon aria-hidden="true">{{
