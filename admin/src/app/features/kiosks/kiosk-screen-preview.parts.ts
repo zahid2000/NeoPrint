@@ -129,27 +129,6 @@ abstract class PreviewPart {
 }
 
 /** What can be dragged (T-441) says so, and where it lands shows as a dashed slot. */
-const ARRANGING = `
-  [draggable='true'] {
-    cursor: grab;
-    outline: 3px dashed transparent;
-    outline-offset: var(--space-2);
-    border-radius: var(--kiosk-radius-sm);
-  }
-
-  [draggable='true']:hover,
-  .reorder--target {
-    outline-color: var(--kiosk-brand-300);
-  }
-
-  .reorder--target {
-    background: var(--kiosk-brand-50);
-  }
-
-  .reorder--dragging {
-    opacity: 0.4;
-  }
-`;
 
 const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone', code: 'qr_code_2' };
 
@@ -385,8 +364,27 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone', co
         height: var(--kiosk-icon-md);
         font-size: var(--kiosk-icon-md);
       }
+
+      [draggable='true'] {
+        cursor: grab;
+        outline: 3px dashed transparent;
+        outline-offset: var(--space-2);
+        border-radius: var(--kiosk-radius-sm);
+      }
+
+      [draggable='true']:hover,
+      .reorder--target {
+        outline-color: var(--kiosk-brand-300);
+      }
+
+      .reorder--target {
+        background: var(--kiosk-brand-50);
+      }
+
+      .reorder--dragging {
+        opacity: 0.4;
+      }
     `,
-    ARRANGING,
   ],
 })
 export class KioskPreviewHomeComponent extends PreviewPart {
@@ -744,8 +742,27 @@ const FEATURE_ICONS: Record<string, string> = {
       .chip mat-icon {
         color: var(--kiosk-success-500);
       }
+
+      [draggable='true'] {
+        cursor: grab;
+        outline: 3px dashed transparent;
+        outline-offset: var(--space-2);
+        border-radius: var(--kiosk-radius-sm);
+      }
+
+      [draggable='true']:hover,
+      .reorder--target {
+        outline-color: var(--kiosk-brand-300);
+      }
+
+      .reorder--target {
+        background: var(--kiosk-brand-50);
+      }
+
+      .reorder--dragging {
+        opacity: 0.4;
+      }
     `,
-    ARRANGING,
   ],
 })
 export class KioskPreviewFooterComponent extends PreviewPart {
