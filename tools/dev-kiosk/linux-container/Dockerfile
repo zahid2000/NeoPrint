@@ -16,7 +16,7 @@
 # /opt/neoprint/{app,agent,provisioning}/versions/<version> and a "current"
 # link each. The agent is the main process and starts the UI; run.sh starts the
 # agent again when it exits, as systemd does, with the same guard before it.
-FROM mcr.microsoft.com/dotnet/runtime:8.0
+FROM mcr.microsoft.com/dotnet/runtime:10.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       xvfb xdotool imagemagick libx11-6 libice6 libsm6 libfontconfig1 libxrandr2 libxi6 libxcursor1 \

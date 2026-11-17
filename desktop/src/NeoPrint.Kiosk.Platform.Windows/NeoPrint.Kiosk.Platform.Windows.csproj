@@ -2,12 +2,12 @@
 
   <!--
     Windows implementations: the spooler, WMI, CNG and the registry
-    (plan section 7.6). Targets net8.0-windows and is included in the win-x64
+    (plan section 7.6). Targets net10.0-windows and is included in the win-x64
     publish only.
   -->
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>NeoPrint.Kiosk.Platform.Windows</RootNamespace>
     <!-- System.Drawing.Printing for PrintDocument (plan section 7.4): part of the
          Windows Desktop runtime, not a package. -->

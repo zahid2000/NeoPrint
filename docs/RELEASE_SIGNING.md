@@ -29,7 +29,7 @@ Staging açarının parolu açarın yanındakı `passphrase.txt`-dədir: bu, pro
 
 Test serverinə staging paketi yükləmək üçün **bir əmr** kifayətdir. Skript açarı yoxlayır (yoxdursa yaradır), son CI paketlərini endirir, imzalayır, yoxlayır və panelə hansı faylların yüklənəcəyini yazır. Heç nə serverə göndərilmir, özəl açar kompüterdən çıxmır.
 
-**Bir dəfə lazım olanlar:** .NET 8 SDK, GitHub CLI (`gh`) və `gh auth login` ilə giriş, repo kompüterdə.
+**Bir dəfə lazım olanlar:** .NET 10 SDK, GitHub CLI (`gh`) və `gh auth login` ilə giriş, repo kompüterdə.
 
 **Əmr** (PowerShell, repo qovluğunda):
 
@@ -240,8 +240,8 @@ Bir buraxılışda 6 production paketi var (3 komponent × 2 platforma) — 6 d�
 ```bash
 gh run download <run-id> -n kiosk-release-0.8.0-linux-x64-staging -D "$TEMP/rel"
 dotnet build tools/release-sign
-dotnet tools/release-sign/bin/Debug/net8.0/release-sign.dll sign-staging --dir "$TEMP/rel"
-dotnet tools/release-sign/bin/Debug/net8.0/release-sign.dll verify --key-set staging \
+dotnet tools/release-sign/bin/Debug/net10.0/release-sign.dll sign-staging --dir "$TEMP/rel"
+dotnet tools/release-sign/bin/Debug/net10.0/release-sign.dll verify --key-set staging \
   --manifest "$TEMP/rel/neoprint-kiosk-agent-0.8.0-linux-x64-staging.tar.gz.manifest.json" \
   --package "$TEMP/rel/neoprint-kiosk-agent-0.8.0-linux-x64-staging.tar.gz"
 ```

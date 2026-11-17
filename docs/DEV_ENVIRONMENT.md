@@ -1836,7 +1836,7 @@ pwsh -NoProfile -File tools\release-sign\production-check.ps1 -SelfTest
 - **Anonim ən son buraxılış:** `curl http://localhost:5080/api/releases/latest/agent/linux-x64` — development staging açarı
   ilə işlədiyi üçün **həmişə `404`** (yalnız production imzalı, dərc olunmuş buraxılış göstərilir; `docs/API.md`).
 - **Kiosk ekranları 1280×1024-də** (pilot cihazı): `dotnet test desktop/tests/NeoPrint.Kiosk.ScreenTests` — şəkillər
-  `bin/Debug/net8.0-windows/screens/1280x1024-*.png`; sənəddə `docs/screenshots/step-7b/t329/`.
+  `bin/Debug/net10.0-windows/screens/1280x1024-*.png`; sənəddə `docs/screenshots/step-7b/t329/`.
 - **Tələ:** `tools/dev-kiosk/build-linux-kiosk.sh`-i `MSYS_NO_PATHCONV=1` ilə işlətməyin (`make-release.sh` kimi) —
   yollarını özü çevirir.
 
@@ -2077,7 +2077,7 @@ curl -fsSL -o pdfium.tgz \
   "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8066/pdfium-win-x64.tgz"
 echo "739a57d597d864297909cc40a2411eba728490c76a0fa25e3ea299c7f6b07020  pdfium.tgz" | sha256sum -c -
 mkdir -p pdfium && tar -xzf pdfium.tgz -C pdfium
-cp pdfium/bin/pdfium.dll backend/tests/NeoPrint.Api.IntegrationTests/bin/Debug/net8.0/
+cp pdfium/bin/pdfium.dll backend/tests/NeoPrint.Api.IntegrationTests/bin/Debug/net10.0/
 ```
 
 `dotnet clean`-dən sonra DLL-i yenidən köçürün (bin qovluğu silinir).
@@ -2183,7 +2183,7 @@ Production açarları yalnız layihə sahibinin oflayn kompüterindədir (`docs/
 
 ```bash
 dotnet build tools/release-sign
-T="dotnet tools/release-sign/bin/Debug/net8.0/release-sign.dll"
+T="dotnet tools/release-sign/bin/Debug/net10.0/release-sign.dll"
 dotnet publish desktop/src/NeoPrint.Kiosk.Agent -c Release -r linux-x64 --self-contained false -p:ReleaseKeySet=staging -o "$TEMP/rs/out"
 $T check-build --dir "$TEMP/rs/out" --key-set staging            # build-də yalnız staging dəsti
 (cd "$TEMP/rs/out" && tar -czf ../agent-staging.tar.gz .)
@@ -2206,3 +2206,14 @@ cd admin && node e2e/releases.mjs                          # şəkillərlə: nod
 
 Skript öz versiyası ilə paket yığır, staging açarı ilə imzalayır (`sign-staging`), panelin API-sinə yükləyir; dəyişdirilmiş paketin və başqa dəstin paketinin rədd olunmasını, iki atılacaq kioskdan yalnız yayımın çatdığına paketin təklif olunmasını, bayt-bayt endirilməsini və `release-sign verify` ilə staging kioskunun qəbul, production kioskunun rədd etməsini, yeniləmə statusunun paneldə görünməsini və geri çəkməni yoxlayır. Sonda kiosklarını, buraxılışını və yayımlarını silir. Dev stack-in API-si `Releases__KeySet=staging`-dir (`docker-compose.yml`).
 
+
+## .NET 10-a keçid (T-443, 2026-11-17)
+
+Layihə .NET 10-a keçdi (ADR-0008). Hər inkişaf maşınında bir dəfə:
+
+1. **.NET 10 SDK** quraşdırın (10.0.100 və ya yuxarı): <https://dotnet.microsoft.com/download/dotnet/10.0> — "SDK", Windows x64. .NET 8 və 9 SDK-ları silmək lazım deyil.
+2. Yoxlayın: `dotnet --list-sdks` siyahısında `10.0.x` olmalıdır; repo kökündə `dotnet --version` `10.0.x` göstərir (`global.json`).
+3. Köhnə build qalıqlarını təmizləyin (`bin/Debug/net8.0*` qovluqları artıq işlədilmir): `git clean -xdf -- backend desktop tools/release-sign` — **diqqət:** bu, həmin qovluqlarda commit olunmamış faylları da silir.
+4. Docker imicini yenidən qurun: `docker compose build api`.
+
+Yol dəyişiklikləri: `bin/Debug/net8.0/` → `bin/Debug/net10.0/` (məs. `release-sign.dll`, kiosk ekran şəkilləri `bin/Debug/net10.0-windows/screens/`).

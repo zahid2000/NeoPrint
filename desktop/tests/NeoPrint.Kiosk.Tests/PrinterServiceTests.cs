@@ -266,7 +266,7 @@ public sealed class PrinterServiceTests
 
         public Task<(int ExitCode, string Output)> RunAsync(string program, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
         {
-            var command = string.Join(' ', [program, .. arguments]);
+            var command = string.Join(' ', (string[])[program, .. arguments]);
             Calls.Add(command);
 
             if (_sequences.TryGetValue(command, out var sequence))

@@ -2,12 +2,12 @@
 
   <!--
     The interfaces behind which everything platform-specific sits
-    (plan section 7.6). Deliberately dependency-free and net8.0, so both the
+    (plan section 7.6). Deliberately dependency-free and net10.0, so both the
     Windows and the Linux implementation can reference it.
   -->
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>NeoPrint.Kiosk.Platform.Abstractions</RootNamespace>
   </PropertyGroup>
 

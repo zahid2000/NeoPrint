@@ -89,7 +89,7 @@ RUN set -eux; \
 # ---------------------------------------------------------------------------
 # Stage 3 — build the .NET application.
 # ---------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
 WORKDIR /build
 
@@ -112,7 +112,7 @@ RUN dotnet publish backend/src/NeoPrint.Api/NeoPrint.Api.csproj \
 # ---------------------------------------------------------------------------
 # Stage 4 — runtime.
 # ---------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
