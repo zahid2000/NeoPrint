@@ -70,7 +70,7 @@ function Test-Package([string] $Agent, [string] $File, [string] $ManifestFile, [
 function Assert-ProductionBuild([string] $Root, [string] $Out) {
     $agent = Publish-ProductionAgent $Root $Out
     Invoke-Dotnet build (Join-Path $Root "tools\release-sign") -c Release -v q | Out-Null
-    & dotnet (Join-Path $Root "tools\release-sign\bin\Release\net8.0\release-sign.dll") check-build --dir $Out --key-set production | Out-Null
+    & dotnet (Join-Path $Root "tools\release-sign\bin\Release\net10.0\release-sign.dll") check-build --dir $Out --key-set production | Out-Null
     Check ($LASTEXITCODE -eq 0) "the production build carries the production key set and nothing of staging"
     return $agent
 }
@@ -113,7 +113,7 @@ try {
 
         Step "two throwaway key pairs (release-sign keygen)"
         Invoke-Dotnet build (Join-Path $copy "tools\release-sign") -c Release -v q | Out-Null
-        $sign = Join-Path $copy "tools\release-sign\bin\Release\net8.0\release-sign.dll"
+        $sign = Join-Path $copy "tools\release-sign\bin\Release\net10.0\release-sign.dll"
         $keyDir = Join-Path $work "keys"
         $passphrase = [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(24))
         foreach ($name in @("current", "next")) {

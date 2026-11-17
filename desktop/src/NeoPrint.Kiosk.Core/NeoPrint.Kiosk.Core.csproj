@@ -3,12 +3,12 @@
   <!--
     Everything the kiosk does that is not UI and not platform-specific: the
     backend client, device enrollment, settings, telemetry and the real-time
-    connection. Stays net8.0 and touches no platform API directly
+    connection. Stays net10.0 and touches no platform API directly
     (plan section 7.6).
   -->
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>NeoPrint.Kiosk.Core</RootNamespace>
   </PropertyGroup>
 

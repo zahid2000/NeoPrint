@@ -12,7 +12,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>NeoPrint.Converter</RootNamespace>
     <UseAppHost>false</UseAppHost>
 
@@ -21,6 +21,18 @@
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
     <TieredPGO>false</TieredPGO>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      On .NET 10 Microsoft.Extensions.Logging.Abstractions and
+      DependencyInjection.Abstractions (PDFsharp needs them) are part of the
+      ASP.NET Core shared framework, so the API's output - where this tool is
+      started from - no longer carries them (T-443). The tool takes them from
+      that framework too. Only libraries: the sandbox and the network-less
+      container are what limit the tool, and they stay as they are.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- MIT, empira (official): page operations on a PDF. -->

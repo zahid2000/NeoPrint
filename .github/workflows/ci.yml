@@ -128,7 +128,7 @@ jobs:
           key: nuget-desktop-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', 'desktop/**/*.csproj') }}
           restore-keys: nuget-desktop-${{ runner.os }}-
 
-      # The Windows platform project targets net8.0-windows. Compiling that TFM
+      # The Windows platform project targets net10.0-windows. Compiling that TFM
       # on Linux needs the reference assemblies, which this property pulls in;
       # it changes nothing on the Windows leg.
       - name: Restore
@@ -155,10 +155,10 @@ jobs:
           set -eu
           for set in production staging; do
             dotnet publish desktop/src/NeoPrint.Kiosk.Agent -c Release -r linux-x64 --self-contained false               -p:ReleaseKeySet=$set -o "out/agent-$set" -v q
-            dotnet tools/release-sign/bin/Release/net8.0/release-sign.dll check-build --dir "out/agent-$set" --key-set $set
+            dotnet tools/release-sign/bin/Release/net10.0/release-sign.dll check-build --dir "out/agent-$set" --key-set $set
           done
           # And the check itself catches the wrong set.
-          if dotnet tools/release-sign/bin/Release/net8.0/release-sign.dll check-build --dir out/agent-staging --key-set production; then
+          if dotnet tools/release-sign/bin/Release/net10.0/release-sign.dll check-build --dir out/agent-staging --key-set production; then
             echo "check-build passed a staging build as production"; exit 1
           fi
 

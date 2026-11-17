@@ -4,7 +4,7 @@
 
 | Qovluq | Nədir | Texnologiya |
 |---|---|---|
-| `backend/` | Mərkəzi API, real-time, ödəniş, fiskal, bildiriş | .NET 8 |
+| `backend/` | Mərkəzi API, real-time, ödəniş, fiskal, bildiriş | .NET 10 |
 | `desktop/` | Kiosk tətbiqi (sensor ekranlı terminal, Windows və Linux) | Avalonia UI 11 |
 | `mobile/` | İstifadəçi mobil tətbiqi | Flutter 3 |
 | `admin/` | Admin web paneli + Operator paneli (PWA) | Angular |
@@ -23,7 +23,7 @@ Yeganə spesifikasiya: [`docs/NeoPrint-PLAN.md`](docs/NeoPrint-PLAN.md). İş qa
 | Flutter / Dart | Flutter 3 stable | `mobile/` |
 | git | 2.39+ | |
 
-> .NET 9 SDK quraşdırılıbsa da layihə `global.json` sayəsində həmişə .NET 8 ilə build olunur.
+> Layihə `global.json` sayəsində .NET 10 SDK ilə build olunur (ADR-0008, T-443); .NET 10 SDK quraşdırılmalıdır.
 
 ---
 

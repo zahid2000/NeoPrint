@@ -51,7 +51,7 @@ package="neoprint-kiosk-$component-$version-linux-x64-staging.tar.gz"
 tar --force-local -czf "$out/$package" -C "$build/files" .
 
 dotnet build "$root/tools/release-sign" -c Release -nologo -v q >/dev/null
-tool="dotnet $root/tools/release-sign/bin/Release/net8.0/release-sign.dll"
+tool="dotnet $root/tools/release-sign/bin/Release/net10.0/release-sign.dll"
 $tool manifest --package "$out/$package" --component "$name" --platform linux-x64 --key-set staging \
   --version "$version" --min-agent-version 0.1.0 --commit "$(git -C "$root" rev-parse --short HEAD)" --out "$out/$package.manifest.json" >/dev/null
 $tool sign-staging --manifest "$out/$package.manifest.json" --package "$out/$package" | tail -1

@@ -34,7 +34,6 @@ public static class AggregateWriter
         where TEntity : Entity
     {
         ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(collection);
         ArgumentNullException.ThrowIfNull(entity);
 
         var expected = entity.RowVersion;
@@ -68,7 +67,6 @@ public static class AggregateWriter
         where TEntity : Entity
     {
         ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(collection);
         ArgumentNullException.ThrowIfNull(entity);
 
         await collection.InsertOneAsync(entity, cancellationToken: cancellationToken).ConfigureAwait(false);

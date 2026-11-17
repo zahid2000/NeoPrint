@@ -21,7 +21,7 @@ if command -v cygpath >/dev/null 2>&1; then root="$(cygpath -w "$root")"; fi
 MSYS_NO_PATHCONV=1 docker run --rm \
   -v "$root:/src:ro" \
   -v neoprint-nuget:/root/.nuget/packages \
-  mcr.microsoft.com/dotnet/sdk:8.0 \
+  mcr.microsoft.com/dotnet/sdk:10.0 \
   bash -c '
     set -euo pipefail
     apt-get update -qq >/dev/null

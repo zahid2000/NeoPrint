@@ -331,7 +331,21 @@ export class KioskScreenPreviewComponent {
   });
 
   constructor() {
+    // Everything started below is stopped here - registered first, so a
+    // preview destroyed before its first render leaves no timer behind (a
+    // live interval kept the panel's test run from ever ending).
+    let destroyed = false;
+    const stops: (() => void)[] = [];
+    this.destroyRef.onDestroy(() => {
+      destroyed = true;
+      stops.forEach((stop) => stop());
+    });
+
     afterNextRender(() => {
+      if (destroyed) {
+        return;
+      }
+
       const stage = this.stage().nativeElement;
       const fit = () => {
         const { width, height } = stage.getBoundingClientRect();
@@ -339,20 +353,19 @@ export class KioskScreenPreviewComponent {
           this.scale.set(Math.min(width / DESIGN_WIDTH, height / DESIGN_HEIGHT));
         }
       };
-      const observer = new ResizeObserver(fit);
-      observer.observe(stage);
+      if (typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(fit);
+        observer.observe(stage);
+        stops.push(() => observer.disconnect());
+      }
       fit();
 
       const onFullscreen = () => this.fullscreen.set(document.fullscreenElement === stage);
       document.addEventListener('fullscreenchange', onFullscreen);
+      stops.push(() => document.removeEventListener('fullscreenchange', onFullscreen));
 
       const ticker = setInterval(() => this.now.set(new Date()), 30_000);
-
-      this.destroyRef.onDestroy(() => {
-        observer.disconnect();
-        document.removeEventListener('fullscreenchange', onFullscreen);
-        clearInterval(ticker);
-      });
+      stops.push(() => clearInterval(ticker));
     });
   }
 

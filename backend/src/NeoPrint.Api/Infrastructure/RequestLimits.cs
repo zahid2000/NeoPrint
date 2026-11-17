@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using NeoPrint.Application.Abstractions;
 using NeoPrint.Application.Localization;
 
-using IPNetwork = Microsoft.AspNetCore.HttpOverrides.IPNetwork;
+using IPNetwork = System.Net.IPNetwork;
 
 namespace NeoPrint.Api.Infrastructure;
 
@@ -109,7 +109,7 @@ public static class RequestLimits
 
         foreach (var network in Networks(configuration))
         {
-            options.KnownNetworks.Add(network);
+            options.KnownIPNetworks.Add(network);
         }
     }
 
