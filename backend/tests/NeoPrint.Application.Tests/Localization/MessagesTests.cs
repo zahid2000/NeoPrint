@@ -14,7 +14,7 @@ public sealed partial class MessagesTests
     private static readonly string[] OtherLanguages = ["en", "ru"];
 
     /// <summary>Audit actions passed through a helper, where the statement does not say "audit".</summary>
-    private static readonly HashSet<string> OtherCodes = new(["kiosks.limits"], StringComparer.Ordinal);
+    private static readonly HashSet<string> OtherCodes = new(["kiosks.limits", "telegram.me" /* a host the contact links may name (T-438) */], StringComparer.Ordinal);
 
     [Fact]
     public void Every_language_has_every_key()

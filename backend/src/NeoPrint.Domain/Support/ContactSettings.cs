@@ -91,7 +91,7 @@ public sealed partial class ContactSettings : Entity
 
             if (value.Length > MaxValueLength || Link(kind, value) is null)
             {
-                wrong.Add((kind, "contact.invalid" + kind));
+                wrong.Add((kind, InvalidKey(kind)));
                 continue;
             }
 
@@ -137,6 +137,15 @@ public sealed partial class ContactSettings : Entity
             _ => null,
         };
     }
+
+    /// <summary>The message for a value of this kind that makes no link - spelled out, so the catalogs can be checked.</summary>
+    private static string InvalidKey(ContactKind kind) => kind switch
+    {
+        ContactKind.Phone => "contact.invalidPhone",
+        ContactKind.WhatsApp => "contact.invalidWhatsApp",
+        ContactKind.Telegram => "contact.invalidTelegram",
+        _ => "contact.invalidEmail",
+    };
 
     /// <summary>A number as it is dialled: no spaces, dashes or brackets.</summary>
     private static string Dialled(string text)
