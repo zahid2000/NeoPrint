@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter_localizations/flutter_localizations.dart'
+    hide GlobalMaterialLocalizations;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:neoprint/core/l10n/material_localizations.dart';
 import 'package:neoprint/l10n/app_localizations.dart';
@@ -16,6 +17,8 @@ void main() {
           AppMaterialLocalizationsDelegate(),
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
+          // Deprecated in 3.50 for cupertino_ui, not yet approved (T-444).
+          // ignore: deprecated_member_use
           GlobalCupertinoLocalizations.delegate,
         ],
         home: Builder(

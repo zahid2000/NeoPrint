@@ -2,7 +2,7 @@
 // MapLibre, so the screen is tested on what it does with a map - the pins it
 // asks for, the attribution, the fallback - and the real drawing is checked
 // on the emulator.
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:neoprint/core/network/api_client.dart';
 import 'package:neoprint/features/kiosk_search/map/kiosk_map_engine.dart';
 import 'package:neoprint/features/kiosk_search/map/map_config.dart';
