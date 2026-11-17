@@ -108,8 +108,7 @@ public static class SkiaDocuments
 
         var lineHeight = Size * 1.35f;
         var usable = A4.Width - (2 * Margin);
-        using var measure = new SKPaint { Typeface = typeface, TextSize = Size };
-        var lines = Wrap(text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\t', ' '), measure, usable);
+        var lines = Wrap(text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\t', ' '), font, usable);
         var perPage = (int)((A4.Height - (2 * Margin)) / lineHeight);
 
         using var stream = new SKFileWStream(pdfPath);
@@ -236,7 +235,7 @@ public static class SkiaDocuments
         ]);
     }
 
-    private static List<string> Wrap(string text, SKPaint font, float width)
+    private static List<string> Wrap(string text, SKFont font, float width)
     {
         var lines = new List<string>();
 

@@ -167,7 +167,7 @@ public static class LayoutRenderer
                     Math.Max(1, (int)Math.Round(source.Height * scale)),
                     source.ColorType,
                     source.AlphaType),
-                SKFilterQuality.High)
+                new SKSamplingOptions(SKCubicResampler.Mitchell)) // SKFilterQuality.High in SkiaSharp 3 (T-445)
             : null;
 
         var final = resized ?? source;

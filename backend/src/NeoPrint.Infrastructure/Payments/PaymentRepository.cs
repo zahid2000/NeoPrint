@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 using NeoPrint.Application.Common;
@@ -105,6 +106,12 @@ public sealed class PaymentRepository : IPaymentRepository
         }
 
         var total = await _context.Payments.CountDocumentsAsync(where, cancellationToken).ConfigureAwait(false);
+
+        if (filter.Sort?.Field == "amount")
+        {
+            return (await ByAmountAsync(where, filter.Sort.Descending, skip, take, cancellationToken).ConfigureAwait(false), total);
+        }
+
         var items = await _context.Payments.Find(where)
             .Sort(Order(filter.Sort))
             .Skip(skip)
@@ -114,6 +121,41 @@ public sealed class PaymentRepository : IPaymentRepository
 
         return (items, total);
     }
+
+    /// <summary>
+    /// The admin list by amount (T-424), by the amount the list shows: the money
+    /// part of a split payment (<c>Parts</c>: external + wallet, as
+    /// <c>AdminPaymentRow</c> takes it), else the payment's amount - a document,
+    /// or a plain number on a payment written before Money existed. Sorting by
+    /// <c>Amount.amount</c> alone ordered split payments by a figure the list
+    /// does not show.
+    /// </summary>
+    private async Task<List<Payment>> ByAmountAsync(
+        FilterDefinition<Payment> where, bool descending, int skip, int take, CancellationToken cancellationToken)
+    {
+        var direction = descending ? -1 : 1;
+
+        return await _context.Payments.Aggregate()
+            .Match(where)
+            .AppendStage<Payment>(new BsonDocument("$addFields", new BsonDocument("_amountForSort", ShownAmount)))
+            .Sort(new BsonDocument { { "_amountForSort", direction }, { "_id", direction } })
+            .Skip(skip)
+            .Limit(take)
+            .AppendStage<Payment>(new BsonDocument("$unset", "_amountForSort"))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private static readonly BsonDocument ShownAmount = new("$cond", new BsonArray
+    {
+        new BsonDocument("$ifNull", new BsonArray { "$Parts", false }),
+        new BsonDocument("$add", new BsonArray
+        {
+            new BsonDocument("$ifNull", new BsonArray { "$Parts.External.amount", 0 }),
+            new BsonDocument("$ifNull", new BsonArray { "$Parts.Wallet.amount", 0 }),
+        }),
+        new BsonDocument("$ifNull", new BsonArray { "$Amount.amount", "$Amount" }),
+    });
 
     /// <summary>The admin list's order (T-424); the id breaks ties so pages never overlap.</summary>
     /// <remarks>

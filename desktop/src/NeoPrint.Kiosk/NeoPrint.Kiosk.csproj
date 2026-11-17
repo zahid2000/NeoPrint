@@ -47,10 +47,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <PackageReference Include="Avalonia.Diagnostics" />
-  </ItemGroup>
-
   <!--
     The settings files have to sit next to the executable: a console or desktop
     project does not copy them the way the Web SDK does, so without this the

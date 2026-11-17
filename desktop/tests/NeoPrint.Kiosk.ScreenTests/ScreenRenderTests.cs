@@ -7,6 +7,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 
@@ -110,7 +111,7 @@ public sealed partial class ScreenRenderTests : IDisposable
 
                 var frame = window.CaptureRenderedFrame();
                 frame.Should().NotBeNull($"{name} draws");
-                frame!.Save(Path.Combine(Pictures, $"{prefix}-{name}.png"));
+                frame!.Save(Path.Combine(Pictures, $"{prefix}-{name}.png"), PngBitmapEncoderOptions.Default);
                 drawn++;
 
                 problems.AddRange(Inspect(window, width, height).Select(problem => $"{prefix} / {name}: {problem}"));
