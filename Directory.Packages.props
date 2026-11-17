@@ -80,9 +80,9 @@
     <PackageVersion Include="QuestPDF" Version="2026.9.0" />
     <!-- MIT, empira (official) -->
     <PackageVersion Include="PDFsharp" Version="6.2.4" />
-    <!-- MIT, Microsoft. Kept at 2.88.x to match Avalonia 11.3's own SkiaSharp dependency. -->
-    <PackageVersion Include="SkiaSharp" Version="2.88.9" />
-    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="2.88.9" />
+    <!-- MIT, Microsoft. 3.119.x: the version Avalonia 12 is built on (T-445). -->
+    <PackageVersion Include="SkiaSharp" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
     <!-- MIT -->
     <PackageVersion Include="QRCoder" Version="1.8.0" />
   </ItemGroup>
@@ -94,12 +94,11 @@
 
   <ItemGroup Label="Kiosk (Avalonia)">
     <!-- MIT -->
-    <PackageVersion Include="Avalonia" Version="11.3.22" />
-    <PackageVersion Include="Avalonia.Desktop" Version="11.3.22" />
-    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.22" />
-    <PackageVersion Include="Avalonia.Fonts.Inter" Version="11.3.22" />
-    <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.22" />
-    <PackageVersion Include="Avalonia.Headless.XUnit" Version="11.3.22" />
+    <PackageVersion Include="Avalonia" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Headless.XUnit" Version="12.1.6" />
     <!-- MIT, Microsoft -->
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <!-- MIT — SNMP for network printers -->
@@ -109,10 +108,12 @@
   <ItemGroup Label="Tests">
     <!-- Apache-2.0 -->
     <PackageVersion Include="xunit" Version="2.9.3" />
+    <!-- Apache-2.0. The kiosk tests: Avalonia.Headless.XUnit 12 runs on xUnit v3 (T-445). -->
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <!-- Apache-2.0. FluentAssertions v8+ is commercially licensed. -->
     <PackageVersion Include="FluentAssertions" Version="7.2.2" />
     <!-- MIT -->
-    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Testcontainers" Version="4.15.0" />

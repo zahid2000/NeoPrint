@@ -34,7 +34,7 @@ mənbə və səbəblə burada qeyd olunur.
 | `Hangfire.Mongo` | 1.16.3 | MIT | sergeyzwezdin | Hangfire üçün Mongo storage. Paketin nuspec-ində lisenziya elan olunmur; MIT layihə deposundakı `LICENSE` faylı ilə təsdiqləndi və `allowlist.json` → `packageLicenses`-ə yazıldı |
 | `QuestPDF` | 2026.9.0 | **Community** | QuestPDF | Qəbz və hesabat PDF-ləri. **Şərt:** illik gəliri 1M USD-dən az olan şirkətlər üçün pulsuzdur. Bu şərt pozulduqda kommersiya lisenziyası alınmalıdır — `allowlist.json`-da adla istisna |
 | `PDFsharp` | 6.2.4 | MIT | empira (rəsmi) | PDF səhifə əməliyyatları, tərtibat PDF-i (`NeoPrint.Layout` — backend və kiosk eyni renderer, Addım 6) |
-| `SkiaSharp`, `SkiaSharp.NativeAssets.Linux` | 2.88.9 | MIT | Microsoft | Şəkil emalı, şəkil → PDF, preview; `NeoPrint.Layout`-da şəkillərin 300 DPI-a endirilməsi və EXIF oriyentasiyası. Avalonia 11.3 ilə eyni versiya. Backend-də yalnız converter alətində (`NeoPrint.Converter`) işlənir — API prosesində yox (T-051, ADR-0005) |
+| `SkiaSharp`, `SkiaSharp.NativeAssets.Linux` | 3.119.4 | MIT | Microsoft | Şəkil emalı, şəkil → PDF, preview; `NeoPrint.Layout`-da şəkillərin 300 DPI-a endirilməsi və EXIF oriyentasiyası. Avalonia 11.3 ilə eyni versiya. Backend-də yalnız converter alətində (`NeoPrint.Converter`) işlənir — API prosesində yox (T-051, ADR-0005) |
 | `QRCoder` | 1.8.0 | MIT | Raffael Herrmann | QR generasiya |
 | `Swashbuckle.AspNetCore` | 7.3.2 | MIT | domaindrivendev | Swagger UI — **yalnız Development mühitində** qeydiyyatdan keçir |
 | `System.Management` | 10.0.15 | MIT | Microsoft | Windows WMI (kiosk telemetriyası) |
@@ -43,7 +43,7 @@ mənbə və səbəblə burada qeyd olunur.
 
 | Paket | Versiya | Lisenziya | Mənbə | Niyə lazımdır |
 |---|---|---|---|---|
-| `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`, `Avalonia.Fonts.Inter`, `Avalonia.Diagnostics` | 11.3.22 | MIT | AvaloniaUI | Kiosk UI (Windows + Linux eyni kod bazası) |
+| `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`, `Avalonia.Fonts.Inter` | 12.1.6 | MIT | AvaloniaUI | Kiosk UI (Windows + Linux eyni kod bazası) |
 | `CommunityToolkit.Mvvm` | 8.4.2 | MIT | Microsoft | MVVM |
 | `Microsoft.AspNetCore.SignalR.Client` | 10.0.15 | MIT | Microsoft | Real-time |
 | `Lextm.SharpSnmpLib` | 12.5.7 | MIT | Lex Li | Şəbəkə printerlərinin SNMP telemetriyası |
@@ -52,14 +52,15 @@ mənbə və səbəblə burada qeyd olunur.
 
 | Paket | Versiya | Lisenziya | Mənbə | Niyə lazımdır |
 |---|---|---|---|---|
-| `xunit` | 2.9.3 | Apache-2.0 | .NET Foundation | Test framework |
-| `xunit.runner.visualstudio` | 2.8.2 | MIT | .NET Foundation | Test runner |
+| `xunit` | 2.9.3 | Apache-2.0 | .NET Foundation | Test framework (backend) |
+| `xunit.v3` | 3.2.2 | Apache-2.0 | .NET Foundation | Kiosk testləri — `Avalonia.Headless.XUnit` 12 xUnit v3 üzərindədir (2026-11-17 təsdiqləndi, T-445) |
+| `xunit.runner.visualstudio` | 3.1.5 | MIT | .NET Foundation | Test runner |
 | `Microsoft.NET.Test.Sdk` | 17.14.1 | MIT | Microsoft | Test host |
 | `FluentAssertions` | **7.2.2** | Apache-2.0 | Dennis Doomen | Assertion-lar. **v8+ kommersiyadır — yüksəldilmir** |
 | `coverlet.collector` | 6.0.4 | MIT | coverlet | Coverage (Domain üçün ≥ 80% tələbi) |
 | `Testcontainers(.Redis/.RabbitMq)` | 4.15.0 | MIT | Testcontainers | Integration testlər. Obyekt saxlaması üçün modul yoxdur: RustFS ümumi `ContainerBuilder` ilə qaldırılır. `Testcontainers.Minio` istinadı çıxarılıb (image-lər anonim çəkilmir). **`Testcontainers.MongoDb` 2026-10-24-də silindi (T-307):** onun replica set init mərhələsi arabir "Address already in use" ilə düşürdü (T-299); MongoDB indi ümumi `ContainerBuilder` ilə, init-siz qaldırılır |
 | `Microsoft.AspNetCore.Mvc.Testing` | 10.0.15 | MIT | Microsoft | API integration testləri |
-| `Avalonia.Headless.XUnit` | 11.3.22 | MIT | AvaloniaUI | Kiosk ViewModel / UI testləri |
+| `Avalonia.Headless.XUnit` | 12.1.6 | MIT | AvaloniaUI | Kiosk ViewModel / UI testləri |
 
 > **Mock kitabxanası yoxdur** (Bölmə 11) — bütün test ikiliyi əl ilə yazılmış fake-lərdir.
 
