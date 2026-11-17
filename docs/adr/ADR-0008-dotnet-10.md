@@ -16,6 +16,8 @@ Plan (Bölmə 2.0, 7.6) backend və kiosk üçün .NET 8 yazır. .NET 8-in rəsm
 - Docker: `dotnet/sdk:10.0`, `dotnet/aspnet:10.0` (əsası Ubuntu 24.04; LibreOffice / Ghostscript / şriftlər eyni adlarla qurulur), dev kiosk konteyneri `dotnet/runtime:10.0`.
 - .NET 10 SDK tranzitiv paketləri də audit edir: köhnə tranzitiv `System.Security.Cryptography.Pkcs` (PDFsharp, MimeKit) və `Newtonsoft.Json` (Hangfire) təhlükəsiz versiyalara pin olundu.
 
+- **Konvertor (ADR-0005):** .NET 10-da `Microsoft.Extensions.Logging.Abstractions` və `DependencyInjection.Abstractions` ASP.NET Core paylaşılan framework-ünün hissəsidir, API-nin çıxışında (konvertor oradan başladılır) artıq yoxdur. Konvertora `FrameworkReference Microsoft.AspNetCore.App` verildi — yalnız kitabxanalar; izolyasiya (sandbox, şəbəkəsiz konteyner, limitlər) dəyişmir. Bunsuz PDF redaktəsi və tərtibat render-i `FileNotFoundException` ilə düşürdü (CI-da 7 test).
+
 ### Alternatives
 
 - .NET 8-də qalmaq — dəstəksiz runtime, yeni zəifliklər bağlanmır. Rədd edildi.
