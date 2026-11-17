@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
+using Microsoft.Extensions.DependencyInjection;
+
 using static NeoPrint.Api.IntegrationTests.PaymentTestKit;
 
 namespace NeoPrint.Api.IntegrationTests;
@@ -95,6 +97,59 @@ public sealed class AdminFinanceTests
 
         (await admin.GetAsync("/api/admin/vouchers")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await admin.GetAsync($"/api/admin/reports/revenue?from={today}&to=2020-01-01")).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [DockerFact]
+    public async Task Payments_sort_by_the_amount_the_list_shows_an_old_plain_amount_too()
+    {
+        if (Skip) { return; }
+
+        using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+        using var kiosk = await ReadyKioskAsync(_fixture, "admin-money-legacy");
+        var (_, paymentId, _) = await PaidBankJobAsync(_fixture, kiosk);
+
+        // Settled first: the payment is written again as it is paid, and that would undo the change below.
+        for (var tries = 0; tries < 50; tries++)
+        {
+            var list = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/payments?pageSize=100");
+            if (list.GetProperty("items").EnumerateArray().Any(p => p.GetProperty("id").GetGuid() == paymentId && p.GetProperty("status").GetString() == "Paid"))
+            {
+                break;
+            }
+
+            await Task.Delay(200);
+        }
+
+        // As a payment written before Money existed: the amount a plain number.
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<NeoPrint.Infrastructure.Persistence.MongoContext>();
+            var changed = await context.Payments.UpdateOneAsync(
+                MongoDB.Driver.Builders<NeoPrint.Domain.Payments.Payment>.Filter.Eq(p => p.Id, paymentId),
+                new MongoDB.Driver.BsonDocumentUpdateDefinition<NeoPrint.Domain.Payments.Payment>(
+                    new MongoDB.Bson.BsonDocument
+                    {
+                        { "$set", new MongoDB.Bson.BsonDocument("Amount", new MongoDB.Bson.BsonDecimal128(0.07m)) },
+                        { "$unset", new MongoDB.Bson.BsonDocument("Parts", "") },
+                    }));
+            changed.MatchedCount.Should().Be(1, "the payment is found by its id");
+            changed.ModifiedCount.Should().Be(1);
+        }
+
+        foreach (var (sort, ascending) in new[] { ("amount", true), ("-amount", false) })
+        {
+            var page = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/payments?sort={sort}&pageSize=100");
+            var amounts = page.GetProperty("items").EnumerateArray().Select(p => p.GetProperty("amount").GetDecimal()).ToList();
+            amounts.Should().Contain(0.07m);
+            if (ascending)
+            {
+                amounts.Should().BeInAscendingOrder();
+            }
+            else
+            {
+                amounts.Should().BeInDescendingOrder();
+            }
+        }
     }
 
     [DockerFact]
