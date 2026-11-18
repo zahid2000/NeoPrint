@@ -21,6 +21,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/router/app_router.dart';
 import '../files/file_models.dart';
 import '../files/files_controller.dart';
+import '../../shared/widgets/image_viewer.dart';
 import 'claim_photos.dart';
 import 'jobs_controller.dart';
 import 'jobs_repository.dart';
@@ -550,14 +551,24 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
                 Stack(
                   key: ValueKey(photo.idempotencyKey),
                   children: [
-                    ClipRRect(
+                    // Tapped, the picture opens full screen (T-446).
+                    InkWell(
                       borderRadius: BorderRadius.circular(Radii.md),
-                      child: Image.memory(
-                        photo.jpeg,
-                        width: Spacing.x16,
-                        height: Spacing.x16,
-                        fit: BoxFit.cover,
-                        semanticLabel: l10n.reportPhotoLabel(index + 1),
+                      onTap: () => showImageViewer(
+                        context,
+                        images: [for (final p in _photos) p.jpeg],
+                        initial: index,
+                        label: l10n.reportPhotoLabel,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(Radii.md),
+                        child: Image.memory(
+                          photo.jpeg,
+                          width: Spacing.x16,
+                          height: Spacing.x16,
+                          fit: BoxFit.cover,
+                          semanticLabel: l10n.reportPhotoLabel(index + 1),
+                        ),
                       ),
                     ),
                     Positioned(

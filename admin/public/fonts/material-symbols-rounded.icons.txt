@@ -17,6 +17,7 @@ chat
 check_circle
 chevron_left
 chevron_right
+close
 cloud
 cloud_off
 cloud_upload
