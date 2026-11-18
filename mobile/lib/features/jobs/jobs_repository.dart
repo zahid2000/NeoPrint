@@ -1,3 +1,6 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+
 import '../../core/network/api_client.dart';
 import '../../core/network/idempotency.dart';
 
@@ -149,6 +152,7 @@ final class MyClaim {
     required this.status,
     this.reply,
     required this.createdAt,
+    this.photoCount = 0,
   });
 
   factory MyClaim.fromJson(Map<String, dynamic> json) => MyClaim(
@@ -158,6 +162,7 @@ final class MyClaim {
     status: json['status'] as String,
     reply: json['reply'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
+    photoCount: (json['photoCount'] as num?)?.toInt() ?? 0,
   );
 
   final String id;
@@ -168,6 +173,9 @@ final class MyClaim {
   final String status;
   final String? reply;
   final DateTime createdAt;
+
+  /// Pictures added to it (T-438); the panel shows them, the app counts them.
+  final int photoCount;
 }
 
 /// The user's jobs and their claims (plan sections 6, 2.5).
@@ -219,7 +227,8 @@ class JobsRepository {
         parse: (_) {},
       );
 
-  Future<void> report(
+  /// The new claim's id, for its pictures.
+  Future<String> report(
     String jobId,
     String text, {
     required String idempotencyKey,
@@ -228,6 +237,21 @@ class JobsRepository {
     path: 'api/me/claims',
     headers: {idempotencyKeyHeader: idempotencyKey},
     body: {'jobId': jobId, 'text': text},
+    parse: (json) => (json as Map<String, dynamic>)['id'] as String,
+  );
+
+  /// A picture on one's own claim (T-438): a JPEG the app has shrunk.
+  Future<void> addClaimPhoto(
+    String claimId,
+    Uint8List jpeg, {
+    required String idempotencyKey,
+  }) => _api.send(
+    method: 'POST',
+    path: 'api/me/claims/$claimId/photos',
+    headers: {idempotencyKeyHeader: idempotencyKey},
+    body: FormData.fromMap({
+      'image': MultipartFile.fromBytes(jpeg, filename: 'photo.jpg'),
+    }),
     parse: (_) {},
   );
 }

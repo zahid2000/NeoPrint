@@ -28,6 +28,7 @@ import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { DecisionDialogComponent, DecisionDialogData } from './decision-dialog.component';
 import { PagerComponent } from './money-shared';
+import { ClaimPhotosComponent } from './claim-photos.component';
 import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
 
 /**
@@ -54,6 +55,7 @@ import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
     EmptyStateComponent,
     StatusChipComponent,
     PagerComponent,
+    ClaimPhotosComponent,
     DateTimePipe,
     MoneyPipe,
   ],
@@ -223,6 +225,9 @@ import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
               <h3 class="neo-caption">{{ 'suspected.claims' | translate }}</h3>
               @for (c of inv.claims; track c.id) {
                 <p class="money__item">{{ c.createdAt | dateTime }} · {{ c.text }}</p>
+                @if (c.photoCount) {
+                  <app-claim-photos [claimId]="c.id" [count]="c.photoCount" />
+                }
               } @empty {
                 <p class="neo-muted">{{ 'suspected.noClaims' | translate }}</p>
               }
@@ -260,6 +265,9 @@ import { TabArrowsDirective } from '../../shared/tab-arrows.directive';
                 />
               </div>
               <p>{{ c.text }}</p>
+              @if (c.photoCount) {
+                <app-claim-photos [claimId]="c.id" [count]="c.photoCount" />
+              }
               @if (c.contact) {
                 <p class="neo-caption">
                   {{ 'claims.contact' | translate: { contact: c.contact } }}

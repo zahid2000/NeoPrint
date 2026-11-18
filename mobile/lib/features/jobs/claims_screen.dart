@@ -148,6 +148,23 @@ class _ClaimCardState extends ConsumerState<_ClaimCard> {
             ),
             const SizedBox(height: Spacing.x2),
             Text(claim.text, style: theme.textTheme.bodyMedium),
+            if (claim.photoCount > 0) ...[
+              const SizedBox(height: Spacing.x1),
+              Row(
+                children: [
+                  Icon(
+                    Icons.photo_outlined,
+                    size: Spacing.x4,
+                    color: context.tokens.neutral600,
+                  ),
+                  const SizedBox(width: Spacing.x1),
+                  Text(
+                    l10n.claimPhotos(claim.photoCount),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ],
             if (claim.reply?.isNotEmpty ?? false) ...[
               const SizedBox(height: Spacing.x3),
               Text(l10n.claimReplyLabel, style: theme.textTheme.titleSmall),

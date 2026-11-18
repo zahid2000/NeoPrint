@@ -71,6 +71,28 @@ public sealed class MyClaimsController : ControllerBase
         return Ok(await _sender.Send(new OpenAppClaimCommand(UserId, request.JobId, request.Text), cancellationToken));
     }
 
+    /// <summary>A picture added to the claim (T-438): multipart, field <c>image</c>.</summary>
+    [HttpPost("{id:guid}/photos")]
+    [Idempotent]
+    [RequestSizeLimit(PhotoRequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = PhotoRequestBytes)]
+    public async Task<ActionResult<SupportClaimView>> AddPhoto(Guid id, IFormFile? image, CancellationToken cancellationToken)
+    {
+        var bytes = Array.Empty<byte>();
+        if (image is not null)
+        {
+            await using var stream = image.OpenReadStream();
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            bytes = buffer.ToArray();
+        }
+
+        return Ok(await _sender.Send(new AddMyClaimPhotoCommand(UserId, id, bytes), cancellationToken));
+    }
+
+    /// <summary>The picture's limit plus room for the form around it.</summary>
+    private const long PhotoRequestBytes = ClaimPhotoHandlers.MaxBytes + (64 * 1024);
+
     /// <summary>"Müraciəti davam etdir": an answered claim is open again (T-385).</summary>
     [HttpPost("{id:guid}/reopen")]
     [Idempotent]
@@ -118,6 +140,12 @@ public sealed class AdminClaimsController : ControllerBase
 
         return Ok(await _sender.Send(new AnswerClaimCommand(AdminId, id, request.Reply, Ip), cancellationToken));
     }
+
+    /// <summary>A claim's picture (T-438), by its place on the claim; within the account's kiosks.</summary>
+    [HttpGet("{id:guid}/photos/{index:int}")]
+    [HasPermission(Permissions.JobsView)]
+    public async Task<IActionResult> Photo(Guid id, int index, CancellationToken cancellationToken)
+        => KioskPhotoResults.Of(this, await _sender.Send(new GetClaimPhotoQuery(AdminId, id, index), cancellationToken));
 
     [HttpPost("{id:guid}/close")]
     [KioskScoped(RecordKind.SupportClaim)]

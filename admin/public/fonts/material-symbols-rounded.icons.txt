@@ -6,6 +6,7 @@ arrow_forward
 assignment
 block
 bolt
+broken_image
 build
 calculate
 call

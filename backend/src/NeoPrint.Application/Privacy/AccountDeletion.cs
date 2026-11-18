@@ -85,6 +85,7 @@ public sealed class AccountDeletionHandlers :
     private readonly FileEraser _eraser;
     private readonly IDataExportRepository _exports;
     private readonly IFileStorage _storage;
+    private readonly Support.ISupportClaimRepository _claims;
     private readonly ISettingsReader _settings;
     private readonly ISender _sender;
     private readonly IClock _clock;
@@ -101,6 +102,7 @@ public sealed class AccountDeletionHandlers :
         FileEraser eraser,
         IDataExportRepository exports,
         IFileStorage storage,
+        Support.ISupportClaimRepository claims,
         ISettingsReader settings,
         ISender sender,
         IClock clock,
@@ -113,6 +115,7 @@ public sealed class AccountDeletionHandlers :
         _records = records;
         _wallets = wallets;
         _files = files;
+        _claims = claims;
         _eraser = eraser;
         _exports = exports;
         _storage = storage;
@@ -232,6 +235,27 @@ public sealed class AccountDeletionHandlers :
         {
             await _storage.DeleteAsync(Users.ProfilePhotoHandlers.Stored(photo.Object), StorageBucket.Files, cancellationToken)
                 .ConfigureAwait(false);
+        }
+
+        // Pictures on support claims (T-438): what the customer photographed goes with the words.
+        for (var skip = 0; ; skip += Batch)
+        {
+            var claims = await _claims.ListForUserAsync(user.Id, Batch, cancellationToken, skip).ConfigureAwait(false);
+            foreach (var claim in claims.Where(c => c.Photos.Count > 0))
+            {
+                foreach (var removed in claim.RemovePhotos())
+                {
+                    await _storage.DeleteAsync(Users.ProfilePhotoHandlers.Stored(removed.Object), StorageBucket.Files, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                await _claims.UpdateAsync(claim, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (claims.Count < Batch)
+            {
+                break;
+            }
         }
 
         await _records.ScrubAsync(user.Id, cancellationToken).ConfigureAwait(false);

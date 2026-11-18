@@ -302,6 +302,13 @@ export class MoneyApiService {
     return this.http.post<Claim>(`/api/admin/support/claims/${id}/close`, {}, idempotent());
   }
 
+  /** A claim's picture (T-438), by its place on the claim. */
+  claimPhoto(id: string, index: number): Observable<Blob> {
+    return this.http.get(`/api/admin/support/claims/${id}/photos/${index}`, {
+      responseType: 'blob',
+    });
+  }
+
   // ---------------------------------------------------------------------
   // Money figures
   // ---------------------------------------------------------------------

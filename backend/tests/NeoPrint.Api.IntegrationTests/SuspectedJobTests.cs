@@ -261,7 +261,27 @@ public sealed class SuspectedJobTests
         mine.StatusCode.Should().Be(HttpStatusCode.OK);
         var claimId = (await mine.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
 
+        // A picture of what went wrong (T-438): a picture by its bytes, the claim's owner only.
+        var photo = await PhotoAsync(user.Client, claimId, TinyPng);
+        photo.StatusCode.Should().Be(HttpStatusCode.OK, await photo.Content.ReadAsStringAsync());
+        (await photo.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("photoCount").GetInt32().Should().Be(1);
+        (await PhotoAsync(user.Client, claimId, "not a picture"u8.ToArray())).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        using (var stranger = await TestUsers.ConfirmedAsync(_fixture))
+        {
+            (await PhotoAsync(stranger.Client, claimId, TinyPng)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        }
+
         using var admin = await TestKiosks.SuperAdminAsync(_fixture);
+
+        // The panel sees it, as stored and unsniffed; the user never gets it back from here.
+        var seen = await admin.GetAsync($"/api/admin/support/claims/{claimId}/photos/0");
+        seen.StatusCode.Should().Be(HttpStatusCode.OK);
+        seen.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
+        seen.Headers.GetValues("X-Content-Type-Options").Should().Contain("nosniff");
+        (await seen.Content.ReadAsByteArrayAsync()).Should().Equal(TinyPng);
+        (await admin.GetAsync($"/api/admin/support/claims/{claimId}/photos/1")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await user.Client.GetAsync($"/api/admin/support/claims/{claimId}/photos/0")).StatusCode.Should().BeOneOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden);
+
         var card = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/print-jobs/{jobId}/investigation");
         card.GetProperty("claims").GetArrayLength().Should().Be(2);
         card.GetProperty("claims").EnumerateArray()
@@ -296,6 +316,24 @@ public sealed class SuspectedJobTests
         (await ClaimIncidentsAsync(claimId, open: true)).Should().BeEmpty("closing it closes the incident");
         (await ClaimAsync(admin, $"/api/admin/support/claims/{claimId}/answer", new { reply = "Yenə" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await ClaimAsync(user.Client, $"/api/me/claims/{claimId}/reopen", new { })).StatusCode.Should().Be(HttpStatusCode.Conflict, "a closed claim stays closed");
+        (await PhotoAsync(user.Client, claimId, TinyPng)).StatusCode.Should().Be(HttpStatusCode.Conflict, "a closed claim takes no pictures");
+    }
+
+    private static readonly byte[] TinyPng =
+    [
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+    ];
+
+    private static async Task<HttpResponseMessage> PhotoAsync(HttpClient client, Guid claimId, byte[] bytes)
+    {
+        var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(bytes);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        form.Add(file, "image", "photo.png");
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/me/claims/{claimId}/photos") { Content = form };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
+        return await client.SendAsync(request);
     }
 
     private async Task<List<Incident>> ClaimIncidentsAsync(Guid claimId, bool open)

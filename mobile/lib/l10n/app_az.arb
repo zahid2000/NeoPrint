@@ -462,6 +462,34 @@
   "reportField": "Mesajınız",
   "reportSend": "Göndər",
   "reportSent": "Müraciətiniz göndərildi. Cavabı “Müraciətlərim” bölməsində görəcəksiniz.",
+  "claimPhotos": "{count} şəkil",
+  "@claimPhotos": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "reportPhotosHint": "İstəsəniz, nə baş verdiyinin şəklini əlavə edin (ən çoxu {max}).",
+  "@reportPhotosHint": {
+    "placeholders": {
+      "max": { "type": "int" }
+    }
+  },
+  "reportPhotoCamera": "Kamera",
+  "reportPhotoGallery": "Qalereya",
+  "reportPhotoRemove": "Şəkli çıxar",
+  "reportPhotoLabel": "Şəkil {n}",
+  "@reportPhotoLabel": {
+    "placeholders": {
+      "n": { "type": "int" }
+    }
+  },
+  "reportPhotoUnreadable": "Bu şəkli oxumaq olmadı. Başqa şəkil seçin.",
+  "reportSentPhotosFailed": "Müraciət göndərildi, amma {count} şəkil göndərilmədi. Müraciətlərimdən yenidən yazın.",
+  "@reportSentPhotosFailed": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "reportEmpty": "Mesaj boş ola bilməz.",
   "scanTitle": "Kioskda ödə",
   "scanInstruction": "Kioskdakı “NeoPrint tətbiqi” QR kodunu çərçivəyə salın.",

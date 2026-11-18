@@ -7,6 +7,7 @@ import '../../core/network/api_client.dart';
 import '../../core/realtime/user_hub_provider.dart';
 import '../../shared/paging.dart';
 import 'jobs_repository.dart';
+import 'claim_photos.dart';
 
 final jobsRepositoryProvider = Provider<JobsRepository>(
   (ref) => JobsRepository(ref.watch(apiClientProvider)),
@@ -110,19 +111,41 @@ class MyJobsController extends AsyncNotifier<Paged<MyJob>> {
   }
 
   /// "Problem barədə bildir". Returns why it was refused, or null.
-  Future<ApiException?> report(
+  /// The claim, then each picture with a key of its own (T-438). The
+  /// claim's failure is the answer; a picture that did not go is counted in
+  /// [ClaimReport.photosFailed] - the claim is sent all the same.
+  Future<ClaimReport> report(
     String jobId,
     String text, {
     required String idempotencyKey,
+    List<ClaimPhotoDraft> photos = const [],
   }) async {
+    final repository = ref.read(jobsRepositoryProvider);
+    final String claimId;
     try {
-      await ref
-          .read(jobsRepositoryProvider)
-          .report(jobId, text, idempotencyKey: idempotencyKey);
-      ref.invalidate(myClaimsProvider);
-      return null;
+      claimId = await repository.report(
+        jobId,
+        text,
+        idempotencyKey: idempotencyKey,
+      );
     } on ApiException catch (error) {
-      return error;
+      return ClaimReport(error: error);
     }
+
+    var failed = 0;
+    for (final photo in photos) {
+      try {
+        await repository.addClaimPhoto(
+          claimId,
+          photo.jpeg,
+          idempotencyKey: photo.idempotencyKey,
+        );
+      } on ApiException {
+        failed++;
+      }
+    }
+
+    ref.invalidate(myClaimsProvider);
+    return ClaimReport(photosFailed: failed);
   }
 }

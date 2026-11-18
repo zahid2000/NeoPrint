@@ -86,7 +86,8 @@ public sealed record SupportClaimView(
     string Status,
     string? Reply,
     DateTime? RepliedAt,
-    DateTime CreatedAt)
+    DateTime CreatedAt,
+    int PhotoCount = 0)
 {
     public static SupportClaimView From(SupportClaim claim)
     {
@@ -104,7 +105,8 @@ public sealed record SupportClaimView(
             claim.Status.ToString(),
             claim.Reply,
             claim.RepliedAt,
-            claim.CreatedAt);
+            claim.CreatedAt,
+            claim.Photos?.Count ?? 0);
     }
 }
 

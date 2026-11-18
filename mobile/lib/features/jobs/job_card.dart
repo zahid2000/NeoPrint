@@ -1,4 +1,9 @@
 import 'package:material_ui/material_ui.dart';
+
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format/formats.dart';
@@ -15,6 +20,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_router.dart';
 import '../files/file_models.dart';
+import '../files/files_controller.dart';
+import 'claim_photos.dart';
 import 'jobs_controller.dart';
 import 'jobs_repository.dart';
 
@@ -393,10 +400,54 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
   bool _busy = false;
   String? _error;
 
+  /// What the customer photographed (T-438), shrunk, at most [maxPhotos].
+  final _photos = <ClaimPhotoDraft>[];
+  static const maxPhotos = 3;
+
   @override
   void dispose() {
     _text.dispose();
     super.dispose();
+  }
+
+  Future<void> _addPhoto({required bool camera}) async {
+    final l10n = AppLocalizations.of(context);
+    Uint8List? bytes;
+
+    if (camera) {
+      final path = await context.push<String>(Routes.filesCamera);
+      if (path == null) {
+        return;
+      }
+      bytes = await File(path).readAsBytes();
+    } else {
+      final picked = await FilePicker.pickFile(type: FileType.image);
+      if (picked == null) {
+        return;
+      }
+      var path = kIsWeb ? null : picked.path;
+      // A HEIC photo is made a JPEG first, as for the profile picture.
+      if (path != null &&
+          phoneConvertedExtensions.contains(extensionOf(picked.name))) {
+        path = await ref.read(heicConverterProvider).toJpeg(path);
+      }
+      bytes = path != null
+          ? await File(path).readAsBytes()
+          : await picked.xFile.readAsBytes();
+    }
+
+    final jpeg = await shrinkClaimPhoto(bytes);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      if (jpeg == null) {
+        _error = l10n.reportPhotoUnreadable;
+      } else if (_photos.length < maxPhotos) {
+        _photos.add(ClaimPhotoDraft(jpeg));
+        _error = null;
+      }
+    });
   }
 
   Future<void> _send() async {
@@ -413,18 +464,32 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
       _error = null;
     });
 
-    final error = await ref
+    final result = await ref
         .read(myJobsProvider.notifier)
-        .report(widget.job.id, text, idempotencyKey: _key);
+        .report(
+          widget.job.id,
+          text,
+          idempotencyKey: _key,
+          photos: List.of(_photos),
+        );
 
     if (!mounted) {
       return;
     }
 
+    final error = result.error;
     if (error == null) {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop();
-      messenger.showSnackBar(SnackBar(content: Text(l10n.reportSent)));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            result.photosFailed == 0
+                ? l10n.reportSent
+                : l10n.reportSentPhotosFailed(result.photosFailed),
+          ),
+        ),
+      );
     } else {
       setState(() {
         _busy = false;
@@ -468,6 +533,60 @@ class _ReportSheetState extends ConsumerState<_ReportSheet> {
             maxLength: maxLength,
             enabled: !_busy,
             decoration: InputDecoration(labelText: l10n.reportField),
+          ),
+          const SizedBox(height: Spacing.x2),
+          // Pictures of what went wrong (T-438): up to three, removable.
+          Text(
+            l10n.reportPhotosHint(maxPhotos),
+            style: theme.textTheme.bodySmall,
+          ),
+          const SizedBox(height: Spacing.x2),
+          Wrap(
+            spacing: Spacing.x2,
+            runSpacing: Spacing.x2,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              for (final (index, photo) in _photos.indexed)
+                Stack(
+                  key: ValueKey(photo.idempotencyKey),
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(Radii.md),
+                      child: Image.memory(
+                        photo.jpeg,
+                        width: Spacing.x16,
+                        height: Spacing.x16,
+                        fit: BoxFit.cover,
+                        semanticLabel: l10n.reportPhotoLabel(index + 1),
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: IconButton.filledTonal(
+                        visualDensity: VisualDensity.compact,
+                        tooltip: l10n.reportPhotoRemove,
+                        onPressed: _busy
+                            ? null
+                            : () => setState(() => _photos.removeAt(index)),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ),
+                  ],
+                ),
+              if (_photos.length < maxPhotos && !_busy) ...[
+                OutlinedButton.icon(
+                  onPressed: () => _addPhoto(camera: true),
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: Text(l10n.reportPhotoCamera),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _addPhoto(camera: false),
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: Text(l10n.reportPhotoGallery),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: Spacing.x3),
           NeoPrimaryButton(

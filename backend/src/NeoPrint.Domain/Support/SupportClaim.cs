@@ -1,4 +1,5 @@
 using NeoPrint.Domain.Common;
+using NeoPrint.Domain.Files;
 
 namespace NeoPrint.Domain.Support;
 
@@ -91,6 +92,44 @@ public sealed class SupportClaim : Entity
 
     public void Close() => Status = ClaimStatus.Closed;
 
+    /// <summary>The most pictures one claim carries (T-438).</summary>
+    public const int MaxPhotos = 3;
+
+    /// <summary>
+    /// Pictures the customer added in the app (T-438): what they saw - a jam,
+    /// a blank page. Encrypted in storage; shown to admins only.
+    /// </summary>
+    public List<ClaimPhoto> Photos { get; set; } = [];
+
+    /// <summary>A picture added; refused on a closed claim or past <see cref="MaxPhotos"/>.</summary>
+    public ClaimPhoto AddPhoto(FileObject stored, string contentType, DateTime now)
+    {
+        ArgumentNullException.ThrowIfNull(stored);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
+
+        if (Status == ClaimStatus.Closed)
+        {
+            throw new DomainException("support.claimClosed");
+        }
+
+        if (Photos.Count >= MaxPhotos)
+        {
+            throw new DomainException(UserMessage.Of("support.photoLimit", ("max", MaxPhotos)));
+        }
+
+        var photo = new ClaimPhoto { Object = stored, ContentType = contentType, AddedAt = now };
+        Photos.Add(photo);
+        return photo;
+    }
+
+    /// <summary>The pictures gone, as the account is erased; hands them back for their objects to be deleted.</summary>
+    public IReadOnlyList<ClaimPhoto> RemovePhotos()
+    {
+        var removed = Photos.ToList();
+        Photos = [];
+        return removed;
+    }
+
     /// <summary>
     /// The customer carries an answered claim on (T-385): it is open again for
     /// the admins. A closed one stays closed - that was the admin's decision.
@@ -105,4 +144,14 @@ public sealed class SupportClaim : Entity
         Status = ClaimStatus.Open;
         ReopenCount++;
     }
+}
+
+/// <summary>One picture on a claim: the encrypted object and what it is.</summary>
+public sealed class ClaimPhoto
+{
+    public FileObject Object { get; set; } = null!;
+
+    public string ContentType { get; set; } = string.Empty;
+
+    public DateTime AddedAt { get; set; }
 }

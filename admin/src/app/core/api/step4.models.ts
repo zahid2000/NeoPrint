@@ -389,6 +389,8 @@ export interface Claim {
   readonly reply?: string;
   readonly repliedAt?: string;
   readonly createdAt: string;
+  /** Pictures the customer added in the app (T-438). */
+  readonly photoCount?: number;
 }
 
 export interface SuspectedInvestigation {
