@@ -29,6 +29,7 @@ describe('ImageViewerDialog', () => {
     viewer.go(-1);
     viewer.go(-1);
     expect(viewer.url()).toBe('a');
+    fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('1 / 3');
 
     viewer.ref.close();
