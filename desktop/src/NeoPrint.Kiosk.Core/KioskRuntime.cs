@@ -145,6 +145,26 @@ public sealed class KioskRuntime
     /// </summary>
     public string? ServerStatus { get; private set; }
 
+    /// <summary>
+    /// When the kiosk wakes from the night's sleep it is going into (T-448);
+    /// every heartbeat says so until it is awake again, so one sent in the
+    /// moment before the sleep does not tell the backend it is up.
+    /// </summary>
+    public DateTime? SleepingUntil { get; private set; }
+
+    private bool _lastPrinterOnline = true;
+    private string? _lastPrinterProblem;
+
+    /// <summary>Tells the backend the kiosk sleeps until <paramref name="wakeAtUtc"/> (T-448).</summary>
+    public Task<bool> AnnounceSleepAsync(DateTime wakeAtUtc, CancellationToken cancellationToken = default)
+    {
+        SleepingUntil = wakeAtUtc;
+        return BeatAsync(_lastPrinterOnline, cancellationToken, _lastPrinterProblem);
+    }
+
+    /// <summary>Awake again: the next heartbeat is an ordinary one.</summary>
+    public void Woke() => SleepingUntil = null;
+
     /// <param name="printerProblem">
     /// What is wrong when the printer is not ready, as a message key
     /// (<c>printer.outOfPaper</c>): the backend pauses the kiosk and opens the
@@ -152,6 +172,9 @@ public sealed class KioskRuntime
     /// </param>
     public async Task<bool> BeatAsync(bool printerOnline, CancellationToken cancellationToken = default, string? printerProblem = null)
     {
+        _lastPrinterOnline = printerOnline;
+        _lastPrinterProblem = printerProblem;
+
         try
         {
             var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -165,7 +188,8 @@ public sealed class KioskRuntime
                     cancellationToken,
                     SafeMode,
                     printerOnline ? null : printerProblem,
-                    _configuration is null ? null : provisioningVersion)
+                    _configuration is null ? null : provisioningVersion,
+                    SleepingUntil)
                 .ConfigureAwait(false);
 
             IsBackendReachable = true;

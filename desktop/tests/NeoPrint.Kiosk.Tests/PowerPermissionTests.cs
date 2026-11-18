@@ -51,7 +51,7 @@ public sealed partial class PowerPermissionTests
     }
 
     [Fact]
-    public void On_linux_the_kiosk_account_may_reboot_open_maintenance_and_run_the_converter_and_nothing_else()
+    public void On_linux_the_kiosk_account_may_reboot_open_maintenance_run_the_converter_and_sleep_and_nothing_else()
     {
         var kiosk = SudoersRules().Where(rule => rule.StartsWith("$KIOSK_USER ", StringComparison.Ordinal)).ToList();
 
@@ -60,7 +60,34 @@ public sealed partial class PowerPermissionTests
             "$KIOSK_USER ALL=(root) NOPASSWD: /usr/bin/systemctl start neoprint-maintenance.service",
             "$KIOSK_USER ALL=(root) NOPASSWD: /usr/bin/systemctl reboot",
             "$KIOSK_USER ALL=($CONVERT_USER) NOPASSWD: $LIB_ROOT/neoprint-convert",
+            // The night's sleep (T-448): one root-owned helper, which checks its one argument itself.
+            "$KIOSK_USER ALL=(root) NOPASSWD: $LIB_ROOT/neoprint-sleep",
         ]);
+    }
+
+    [Fact]
+    public void The_sleep_helper_suspends_to_memory_for_one_night_at_most_and_nothing_else()
+    {
+        var helper = File.ReadAllText(Path.Combine(Desktop, "provisioning", "linux", "neoprint-sleep"));
+
+        // One argument, digits only, 10 minutes to 24 hours ahead.
+        helper.Should().Contain("""[ $# -ne 1 ] || ! [[ "$1" =~ ^[0-9]{9,11}$ ]]""");
+        helper.Should().Contain("""[ "$wake" -lt $((now + 600)) ] || [ "$wake" -gt $((now + 86400)) ]""");
+
+        // Sleep to memory with the clock set to wake it: never off, never hibernate.
+        helper.Should().Contain("""exec "$rtcwake" -m mem -t "$wake" """.TrimEnd());
+        Regex.IsMatch(helper, "-m (off|disk|no|disable|show)").Should().BeFalse();
+        Regex.IsMatch(helper, "poweroff|halt|shutdown|systemctl").Should().BeFalse();
+
+        var script = File.ReadAllText(Path.Combine(Desktop, "provisioning", "linux", "provision.sh"));
+        script.Should().Contain(
+            """install -o root -g root -m 755 "$script_dir/neoprint-sleep" "$LIB_ROOT/neoprint-sleep" """.TrimEnd(),
+            "the helper is root's and nobody else may change it");
+
+        // Windows: sleep, not hibernate, wake events on.
+        var windows = File.ReadAllText(Path.Combine(Desktop, "src", "NeoPrint.Kiosk.Platform.Windows", "WindowsPlatform.cs"));
+        Regex.Matches(windows, @"return SetSuspendState\(([^)]*)\)").Select(match => match.Groups[1].Value)
+            .Should().Equal("false, false, false");
     }
 
     [Fact]

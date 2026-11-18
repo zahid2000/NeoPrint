@@ -1,0 +1,40 @@
+#!/bin/bash
+# ---------------------------------------------------------------------------
+# The kiosk's night sleep (T-448): sets the clock alarm and suspends to
+# memory; returns once the machine is awake again.
+#
+#   sudo -n /usr/local/lib/neoprint/neoprint-sleep <wake time>
+#
+# The kiosk UI runs it - its sudo rule names this file and nothing like it -
+# after a quiet stretch in the night window the panel sets. The only argument
+# is the wake time in seconds since 1970 (UTC), 10 minutes to 24 hours ahead:
+# the kiosk can ask for one night's sleep and no more. The kiosk session
+# (cage) has no screen lock, so the kiosk screen is back with no password.
+# ---------------------------------------------------------------------------
+set -euo pipefail
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "neoprint-sleep: run it through sudo." >&2
+    exit 1
+fi
+if [ $# -ne 1 ] || ! [[ "$1" =~ ^[0-9]{9,11}$ ]]; then
+    echo "usage: neoprint-sleep <wake time, seconds since 1970 UTC>" >&2
+    exit 64
+fi
+
+wake="$1"
+now="$(date +%s)"
+if [ "$wake" -lt $((now + 600)) ] || [ "$wake" -gt $((now + 86400)) ]; then
+    echo "neoprint-sleep: the wake time must be 10 minutes to 24 hours ahead." >&2
+    exit 65
+fi
+
+# A machine without suspend to memory stays awake; the kiosk does not ask again that night.
+if ! grep -qw mem /sys/power/state 2>/dev/null; then
+    echo "neoprint-sleep: this machine cannot sleep (no 'mem' in /sys/power/state)." >&2
+    exit 69
+fi
+
+rtcwake="$(command -v rtcwake || echo /usr/sbin/rtcwake)"
+echo "neoprint-sleep: sleeping until $(date -u -d "@$wake" '+%Y-%m-%dT%H:%M:%SZ')"
+exec "$rtcwake" -m mem -t "$wake"

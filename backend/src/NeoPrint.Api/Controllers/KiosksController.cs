@@ -230,20 +230,23 @@ public sealed class KiosksController : ControllerBase
                 _currentUser.Ip,
                 request.SafeMode,
                 request.PrinterProblem,
-                request.ProvisioningVersion),
+                request.ProvisioningVersion,
+                request.SleepingUntil),
             cancellationToken));
     }
 
     /// <param name="SafeMode">The kiosk UI started in safe mode after a crash loop (plan section 7.12).</param>
     /// <param name="PrinterProblem">What is wrong when the printer is not ready, as a message key (<c>printer.outOfPaper</c>).</param>
     /// <param name="ProvisioningVersion">The provisioning scripts' version (T-317).</param>
+    /// <param name="SleepingUntil">The last heartbeat before the night's sleep: when the kiosk wakes itself (T-448).</param>
     public sealed record HeartbeatRequest(
         string? AppVersion,
         string? AgentVersion,
         bool PrinterOnline,
         bool SafeMode = false,
         string? PrinterProblem = null,
-        string? ProvisioningVersion = null);
+        string? ProvisioningVersion = null,
+        DateTime? SleepingUntil = null);
 }
 
 public sealed record KioskPrinterTelemetryRequest(IReadOnlyList<PrinterTelemetryReport>? Printers);

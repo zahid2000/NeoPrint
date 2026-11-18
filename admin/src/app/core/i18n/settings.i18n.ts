@@ -114,6 +114,12 @@ export const settingsTranslations: PageTranslations = {
       'Mobil (onlayn) satışlar üçün fiskal terminalın identifikatoru.',
     'settings.description.Kiosk.UpdateWindow':
       'Kioskların avtomatik yenilənməsinə icazə verilən saat aralığı.',
+    'settings.description.Kiosk.SleepEnabled':
+      'Kiosk gecə uzun müddət boş qalanda yuxu rejiminə keçir və aralığın sonunda özü oyanır. İşləyərkən heç vaxt yatmır.',
+    'settings.description.Kiosk.SleepWindow':
+      'Gecə yuxusunun saat aralığı (kioskun yerli saatı), məs. 23:00-06:00: kiosk yalnız bu aralıqda yatır və aralığın sonunda oyanır.',
+    'settings.description.Kiosk.SleepAfterIdleMinutes':
+      'Gecə aralığında kiosk bu qədər dəqiqə müştərisiz və çapsız qalandan sonra yatır (5–240).',
     'settings.description.Update.CheckIntervalMinutes':
       'Kiosk yeni versiyanı bu intervalla yoxlayır.',
     'settings.description.Update.HealthTimeoutMinutes':
@@ -230,6 +236,12 @@ export const settingsTranslations: PageTranslations = {
     'settings.description.Fiscal.OnlineTerminalId':
       'The fiscal terminal identifier for mobile (online) sales.',
     'settings.description.Kiosk.UpdateWindow': 'The hours in which kiosks may update themselves.',
+    'settings.description.Kiosk.SleepEnabled':
+      'At night a kiosk that stays idle goes to sleep and wakes itself at the end of the window. It never sleeps while it works.',
+    'settings.description.Kiosk.SleepWindow':
+      'The night window (the kiosk\'s local time), e.g. 23:00-06:00: the kiosk sleeps only within it and wakes at its end.',
+    'settings.description.Kiosk.SleepAfterIdleMinutes':
+      'In the night window the kiosk sleeps after this many minutes with no customer and nothing printing (5–240).',
     'settings.description.Update.CheckIntervalMinutes':
       'How often the kiosk checks for a new version.',
     'settings.description.Update.HealthTimeoutMinutes':
@@ -350,6 +362,12 @@ export const settingsTranslations: PageTranslations = {
       'Идентификатор фискального терминала для мобильных (онлайн) продаж.',
     'settings.description.Kiosk.UpdateWindow':
       'Часы, в которые киоскам разрешено обновляться автоматически.',
+    'settings.description.Kiosk.SleepEnabled':
+      'Ночью простаивающий киоск переходит в спящий режим и сам просыпается в конце интервала. Во время работы он не засыпает.',
+    'settings.description.Kiosk.SleepWindow':
+      'Ночной интервал (местное время киоска), например 23:00-06:00: киоск засыпает только в нём и просыпается в его конце.',
+    'settings.description.Kiosk.SleepAfterIdleMinutes':
+      'В ночном интервале киоск засыпает после стольких минут без клиентов и печати (5–240).',
     'settings.description.Update.CheckIntervalMinutes':
       'Как часто киоск проверяет наличие новой версии.',
     'settings.description.Update.HealthTimeoutMinutes':

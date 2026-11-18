@@ -120,6 +120,12 @@
                 <mat-icon aria-hidden="true">warning</mat-icon>
                 {{ 'kiosks.counterUnsetRow' | translate }}
               </p>
+            } @else if (sleepsUntil(kiosk); as wake) {
+              <!-- Asleep for the night, as its last heartbeat said (T-448): not offline. -->
+              <p class="neo-row-note" data-note="asleep">
+                <mat-icon aria-hidden="true">bedtime</mat-icon>
+                {{ 'kiosks.sleepingRow' | translate: { time: (wake | dateTime) } }}
+              </p>
             }
           </td>
         </ng-container>

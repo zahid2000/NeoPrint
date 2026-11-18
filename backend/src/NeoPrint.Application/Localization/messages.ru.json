@@ -573,6 +573,7 @@
   "settings.valueEmpty": "Значение не может быть пустым.",
   "settings.valueInteger": "Значение должно быть целым числом.",
   "settings.valueRange": "Значение должно быть от {min} до {max}.",
+  "settings.valueTimeRange": "Значение должно быть двумя разными временами в формате \"ЧЧ:мм-ЧЧ:мм\" (например, 23:00-06:00).",
   "settings.valueSeverity": "Значение должно быть Critical, High или Medium.",
   "settings.mapStyleUrl": "Адрес стиля карты должен быть полным адресом, начинающимся с https.",
   "settings.mapAttribution": "Атрибуция должна состоять из частей «текст|https-адрес» (через «;»), а ссылку OpenStreetMap (https://www.openstreetmap.org/copyright) удалить нельзя.",

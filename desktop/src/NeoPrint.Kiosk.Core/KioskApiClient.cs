@@ -88,7 +88,8 @@ public sealed record KioskConfiguration(
     int IdleResetSeconds = 90,
     int TelemetrySeconds = 30,
     KioskUpdateSettings? Update = null,
-    KioskBranding? Branding = null)
+    KioskBranding? Branding = null,
+    KioskSleepSettings? Sleep = null)
 {
     /// <summary>
     /// Whether a feature flag is on for this kiosk (plan section 2.16, T-160). A key
@@ -511,13 +512,15 @@ public sealed partial class KioskApiClient
         CancellationToken cancellationToken = default,
         bool safeMode = false,
         string? printerProblem = null,
-        string? provisioningVersion = null)
+        string? provisioningVersion = null,
+        DateTime? sleepingUntil = null)
     {
         using var request = await CreateAuthenticatedRequestAsync(
             HttpMethod.Post, "api/kiosks/heartbeat", cancellationToken).ConfigureAwait(false);
 
+        // sleepingUntil: the night's sleep (T-448) - set on the beats before it, when the kiosk wakes.
         request.Content = JsonContent.Create(
-            new { appVersion, agentVersion, printerOnline, safeMode, printerProblem, provisioningVersion }, options: JsonOptions);
+            new { appVersion, agentVersion, printerOnline, safeMode, printerProblem, provisioningVersion, sleepingUntil }, options: JsonOptions);
 
         using var response = await Sent(_http.SendAsync(request, cancellationToken), cancellationToken).ConfigureAwait(false);
 

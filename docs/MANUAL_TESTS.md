@@ -400,3 +400,18 @@ Kabel çıxarılanda və ya `adb` yenidən başlayanda yönləndirmə itir — (
 | 14 | **Mobil tətbiq: barmaq izi / üz (T-270).** S24-də barmaq izi qeydiyyatdadır. Mobil tətbiqdə giriş → PIN qurun → "Barmaq izi və ya üz ilə açılsın?" → "Bəli". Tətbiqi tam bağlayıb açın | Sistemin barmaq izi dialoqu özü açılır; barmaq toxunanda tətbiq açılır. "PIN yazacağam" basılsa PIN klaviaturası qalır. Profil → "PIN və biometrika"-da açar söndürülüb-yandırıla bilir | **Yalnız real telefonda** — emulyatorda barmaq izi qeydiyyatı yoxlanmayıb |
 | 15 | **Mobil tətbiq: 5 dəqiqə arxa fon (T-270).** Tətbiqi açın, ana ekrana keçin, 5 dəqiqədən çox gözləyin, qayıdın; sonra 1 dəqiqəlik keçidlə təkrarlayın | Birinci halda PIN (və ya barmaq izi) soruşulur, ikincidə soruşulmur | Emulyatorda da yoxlanıla bilər |
 | 16 | **iOS: PIN və Face ID (T-270, T-187).** iPhone-da build → giriş → PIN → Face ID təklifi | Face ID icazə sorğusu "NeoPrint-i PIN yazmadan açmaq üçün" mətni ilə; qalanı Android kimi | **Yalnız real iPhone-da** — iOS kodu Mac-siz yazılıb, build edilməyib |
+
+## MT-10. Addım 7B — kioskun gecə yuxusu real cihazda (T-448)
+
+Yalnız real cihazda yoxlanılır: konteyner və emulyator yatıb oyana bilmir. Kiosk `0.9.0-m20.12`-dən yeni olmalı, Linux-da provisioning **0.8.0** (yeni provisioning paketi və ya `sudo provision.sh --repair`).
+Sınaq üçün gecəni gözləməyin: paneldə **Tənzimləmələr → Kiosk** bölməsində `Kiosk.SleepWindow`-u indidən 20–30 dəqiqəlik aralığa (məs. indi 14:05-dirsə `14:00-14:35`), `Kiosk.SleepAfterIdleMinutes`-i `5` edin. Sınaqdan sonra `23:00-06:00` və `30`-a qaytarın.
+
+| № | Addım | Gözlənilən | Harada |
+|---|---|---|---|
+| 1 | Kiosk ana ekranda, heç kim toxunmur, növbə boşdur; 5 dəqiqə gözləyin | Kiosk yatır: ekran sönür, cihaz yuxuya keçir. Paneldə kiosklar siyahısında status dəyişmir, altında "Gecə yuxusunda · oyanır: …" | **Real cihaz** |
+| 2 | Aralığın sonunu gözləyin | Cihaz özü oyanır, **şifrə soruşmadan** kiosk ekranı qayıdır; ≤ 1 dəqiqədə "Gecə yuxusunda" qeydi itir, incident açılmır | **Real cihaz** |
+| 3 | Aralıq daxilində kioskda sifariş başladın, 5 dəqiqədən çox ekranda qalın | Kiosk yatmır; müştəri ekranı tərk edəndən 5 dəqiqə sonra yatır | **Real cihaz** |
+| 4 | Aralıq daxilində çap gedərkən (və ya növbədə iş varkən) | İş bitməyincə yatmır | **Real cihaz** |
+| 5 | `Kiosk.SleepEnabled` → `false` | Aralıqda da yatmır | **Real cihaz** |
+| 6 | Yatmış kioskun elektrik / şəbəkə kabelini çıxarın, aralığın sonundan 10 dəqiqə keçsin | Paneldə kiosk "Əlaqə yoxdur", `ConnectionLost` incident-i açılır (oyanmadı) | **Real cihaz** |
+| 7 | Linux: kioskun terminalında `sudo journalctl -u neoprint-kiosk | grep -i sleep` (və ya `/var/log/neoprint`) | "the kiosk sleeps until …" və "awake again" sətirləri; yuxu alınmasa "could not sleep" — onda `cat /sys/power/state`-də `mem` olmalıdır, BIOS-da "Wake on RTC" / "RTC Alarm" aktiv olmalıdır | **Real cihaz** |

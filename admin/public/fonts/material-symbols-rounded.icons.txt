@@ -4,6 +4,7 @@ admin_panel_settings
 arrow_back
 arrow_forward
 assignment
+bedtime
 block
 bolt
 broken_image

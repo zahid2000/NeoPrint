@@ -97,6 +97,11 @@ export interface KioskListItem {
   readonly pricingProfileId?: string | null;
   /** Since when the kiosk runs in safe mode after a crash loop (plan section 7.12). */
   readonly safeModeSince?: string | null;
+  /**
+   * Until when the kiosk sleeps for the night, as its last heartbeat said
+   * (T-448); null while it is awake.
+   */
+  readonly sleepingUntil?: string | null;
   readonly paperA4Current?: number | null;
   readonly paperA4Capacity?: number | null;
   /** False while nobody has recorded what is in the A4 tray (T-258). */

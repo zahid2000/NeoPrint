@@ -406,6 +406,36 @@ public sealed class KioskOutageTests
     }
 
     [DockerFact]
+    public async Task A_kiosk_asleep_for_the_night_is_not_offline_until_it_should_have_woken()
+    {
+        if (Skip) { return; }
+
+        using var kiosk = await ReadyKioskAsync(_fixture, "outage-asleep");
+
+        // T-448: the last heartbeat before the night's sleep says when it wakes.
+        var morning = DateTime.UtcNow.AddHours(6);
+        var response = await kiosk.Client.PostAsJsonAsync(
+            "/api/kiosks/heartbeat", new { appVersion = "0.7.0", printerOnline = true, sleepingUntil = morning });
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        (await KioskAsync(kiosk.KioskId)).SleepingUntil.Should().BeCloseTo(morning, TimeSpan.FromSeconds(1));
+
+        await LastHeardAsync(kiosk.KioskId, DateTime.UtcNow.AddHours(-3));
+
+        (await SendAsync(new MarkKioskOfflineCommand(kiosk.KioskId))).Should().BeFalse("it is asleep, as it said");
+        (await KioskAsync(kiosk.KioskId)).Status.Should().Be(KioskStatus.Online);
+        (await IncidentsAsync(kiosk.KioskId)).Should().BeEmpty();
+
+        // Awake again: an ordinary heartbeat clears the sleep, and silence is silence again.
+        await BeatAsync(kiosk, printerOnline: true);
+        (await KioskAsync(kiosk.KioskId)).SleepingUntil.Should().BeNull();
+
+        await LastHeardAsync(kiosk.KioskId, DateTime.UtcNow.AddMinutes(-5));
+
+        (await SendAsync(new MarkKioskOfflineCommand(kiosk.KioskId))).Should().BeTrue();
+        (await IncidentsAsync(kiosk.KioskId)).Should().ContainSingle().Which.Type.Should().Be(IncidentType.ConnectionLost);
+    }
+
+    [DockerFact]
     public async Task The_monitors_sweep_takes_every_silent_kiosk_offline_and_leaves_the_ones_that_call_in()
     {
         if (Skip) { return; }

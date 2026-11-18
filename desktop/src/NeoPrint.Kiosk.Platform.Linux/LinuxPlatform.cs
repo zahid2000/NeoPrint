@@ -294,6 +294,53 @@ public sealed class LinuxSystemControl : ISystemControl
     }
 }
 
+/// <summary>
+/// The night's sleep on Linux (T-448): the root-owned helper the provisioning
+/// script installs - the kiosk account may run it through sudo and nothing
+/// else of the kind - sets the clock alarm and suspends (<c>rtcwake -m mem</c>);
+/// it returns once the machine is awake. The kiosk session (cage) has no
+/// screen lock, so the kiosk screen is back with no password.
+/// </summary>
+[SupportedOSPlatform("linux")]
+public sealed class LinuxSystemSleep : ISystemSleep
+{
+    public const string Helper = "/usr/local/lib/neoprint/neoprint-sleep";
+
+    public async Task<bool> SleepUntilAsync(DateTime wakeAtUtc, CancellationToken cancellationToken = default)
+    {
+        // A machine provisioned before T-448 has no helper: it stays awake.
+        if (!File.Exists(Helper))
+        {
+            return false;
+        }
+
+        var epoch = new DateTimeOffset(DateTime.SpecifyKind(wakeAtUtc, DateTimeKind.Utc)).ToUnixTimeSeconds();
+
+        var start = new ProcessStartInfo
+        {
+            FileName = "sudo",
+            UseShellExecute = false,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+        };
+        start.ArgumentList.Add("-n");
+        start.ArgumentList.Add(Helper);
+        start.ArgumentList.Add(epoch.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start the sleep helper.");
+
+        // Read both, or a full pipe would hold the helper up.
+        var output = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var error = process.StandardError.ReadToEndAsync(cancellationToken);
+
+        // Not cancelled with the kiosk: a machine asleep is not stopped half way.
+        await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+        await Task.WhenAll(output, error).ConfigureAwait(false);
+
+        return process.ExitCode == 0;
+    }
+}
+
 /// <summary>Reads <c>lsblk -J</c>; plain parsing, testable on any platform.</summary>
 public static class RemovableBlockDevices
 {

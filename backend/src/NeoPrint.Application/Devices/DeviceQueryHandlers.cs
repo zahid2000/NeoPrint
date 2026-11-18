@@ -144,7 +144,8 @@ public sealed class ListKiosksHandler : IRequestHandler<ListKiosksQuery, IReadOn
                 kiosk.SafeModeSince,
                 kiosk.PaperStock.TryGetValue("A4", out var paper) ? paper.Current : null,
                 paper?.Capacity,
-                paper?.IsCounted))
+                paper?.IsCounted,
+                kiosk.SleepingUntil))
             .ToList();
     }
 }

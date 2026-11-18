@@ -394,6 +394,12 @@ public sealed class ReleaseTests : IDisposable
         update.GetProperty("maxIdleWaitMinutes").GetInt32().Should().BePositive();
         update.GetProperty("healthTimeoutMinutes").GetInt32().Should().BePositive();
         update.GetProperty("keepVersions").GetInt32().Should().BePositive();
+
+        // The night's sleep comes with it too (T-448).
+        var sleep = (await api.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("sleep");
+        sleep.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        sleep.GetProperty("window").GetString().Should().MatchRegex(@"^\d{2}:\d{2}-\d{2}:\d{2}$");
+        sleep.GetProperty("afterIdleMinutes").GetInt32().Should().BePositive();
     }
 
     [DockerFact]

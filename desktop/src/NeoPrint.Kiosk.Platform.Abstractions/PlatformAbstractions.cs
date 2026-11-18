@@ -138,6 +138,22 @@ public interface ISystemControl
     Task OpenMaintenanceAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// The kiosk's night sleep (T-448): the machine is put to sleep with its
+/// clock set to wake it, and comes back to the kiosk screen with no password -
+/// Linux through the root-owned <c>neoprint-sleep</c> helper (<c>rtcwake</c>),
+/// Windows through a wake timer and the system's sleep.
+/// </summary>
+public interface ISystemSleep
+{
+    /// <summary>
+    /// Sleeps until <paramref name="wakeAtUtc"/> and returns once the machine
+    /// is awake again.
+    /// </summary>
+    /// <returns>False when the machine could not be put to sleep: it stayed awake.</returns>
+    Task<bool> SleepUntilAsync(DateTime wakeAtUtc, CancellationToken cancellationToken = default);
+}
+
 /// <summary>A connected printer, as the kiosk sees it (plan section 7.7).</summary>
 /// <param name="Name">Queue name, which is what printing uses.</param>
 /// <param name="DriverName">Driver, shown to the administrator.</param>

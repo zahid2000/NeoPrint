@@ -248,6 +248,28 @@ public sealed class Kiosk : Entity
     /// <summary>Whether safe mode took the kiosk from Online to Maintenance, and so gives it back.</summary>
     public bool SafeModeSetMaintenance { get; private set; }
 
+    /// <summary>The longest night sleep a kiosk may announce (T-448).</summary>
+    public static readonly TimeSpan MaxSleep = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// Until when the kiosk said it sleeps (T-448): its last heartbeat before
+    /// the night's sleep carries the time it wakes itself. Null while it is
+    /// awake - every other heartbeat clears it. A silent kiosk that announced
+    /// this is not offline until the time has passed.
+    /// </summary>
+    public DateTime? SleepingUntil { get; private set; }
+
+    /// <summary>
+    /// What the heartbeat says about sleep (T-448). A time in the past or more
+    /// than <see cref="MaxSleep"/> ahead is not taken: a kiosk cannot hide
+    /// itself from the offline monitor for longer than a night.
+    /// </summary>
+    public void ReportSleep(DateTime? until, DateTime utcNow)
+        => SleepingUntil = until is { } wake && wake > utcNow && wake - utcNow <= MaxSleep ? wake : null;
+
+    /// <summary>Asleep as announced, the <paramref name="grace"/> for waking up included.</summary>
+    public bool IsAsleep(DateTime utcNow, TimeSpan grace) => SleepingUntil is { } wake && utcNow < wake + grace;
+
     /// <summary>
     /// Since when an administrator has the kiosk paused (plan section 7.8,
     /// <c>Pause</c>); null when they do not. While it is set the kiosk takes

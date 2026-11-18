@@ -21,6 +21,7 @@ import { liveRefresh } from '../../core/realtime/live-refresh';
 import { BytesPipe, CountPipe, DateTimePipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
+import { isAsleep } from '../../shared/kiosk-sleep';
 
 /** Why a kiosk needs looking at, most urgent first. */
 export type AttentionReason =
@@ -48,7 +49,9 @@ export interface KioskAttention {
 export const staleHeartbeatMs = 5 * 60 * 1000;
 
 const isSilent = (kiosk: KioskListItem, now: number): boolean =>
-  !!kiosk.lastHeartbeatAt && now - new Date(kiosk.lastHeartbeatAt).getTime() > staleHeartbeatMs;
+  !!kiosk.lastHeartbeatAt &&
+  now - new Date(kiosk.lastHeartbeatAt).getTime() > staleHeartbeatMs &&
+  !isAsleep(kiosk, now);
 
 /**
  * The status the dashboard counts a kiosk under: its stored status, except

@@ -401,6 +401,24 @@ public sealed class FakeSystemMetrics : ISystemMetrics
     public Task<SystemSnapshot> ReadAsync(CancellationToken cancellationToken = default) => Task.FromResult(Snapshot);
 }
 
+/// <summary>
+/// The night's sleep on a developer machine or in a test (T-448): never
+/// sleeps unless told to, and counts what it was asked.
+/// </summary>
+public sealed class FakeSystemSleep : ISystemSleep
+{
+    /// <summary>Whether a sleep "works"; off on a developer machine, which must not sleep.</summary>
+    public bool Works { get; set; }
+
+    public List<DateTime> Asked { get; } = [];
+
+    public Task<bool> SleepUntilAsync(DateTime wakeAtUtc, CancellationToken cancellationToken = default)
+    {
+        Asked.Add(wakeAtUtc);
+        return Task.FromResult(Works);
+    }
+}
+
 /// <summary>Records what it was asked to do, for tests.</summary>
 public sealed class FakeSystemControl : ISystemControl
 {

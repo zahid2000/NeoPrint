@@ -563,6 +563,8 @@ Activation ekranına qayıdır.
 **Backend secret-i yoxdur** — admin PIN-i kiosk üçün yalnız PBKDF2 hash kimi
 gedir, cihaz onunla tutuşdurur (Bölmə 2.13, 7.11).
 
+`sleep: { enabled, window, afterIdleMinutes }` (T-448) — gecə yuxusu: `Kiosk.SleepEnabled` (standart `true`), `Kiosk.SleepWindow` (`"23:00-06:00"`, kioskun yerli saatı; kiosk aralığın sonunda oyanır), `Kiosk.SleepAfterIdleMinutes` (30; ayar `5–240` aralığında, `"SS:dd-SS:dd"` formatı yoxlanır — `settings.valueTimeRange`, `settings.valueRange`). Bu ayarlar dəyişəndə kiosklar konfiqurasiyanı dərhal yenidən çəkir (T-326).
+
 `cacheTtlHours` — backend əlçatmaz olanda bu konfiqurasiya nə qədər müddət
 etibarlıdır. Müddət keçəndən sonra kiosk sifariş qəbul etmir
 (`docs/OFFLINE_BEHAVIOR.md`). `serverTime` cihazın saatı sürüşəndə istinad
@@ -576,8 +578,10 @@ Kiosk token, `Idempotency-Key` — **paketin** açarı (itən cavabdan sonra eyn
 
 ### `POST /api/kiosks/heartbeat`
 
-`{ "appVersion", "agentVersion", "printerOnline", "safeMode", "printerProblem" }` →
+`{ "appVersion", "agentVersion", "printerOnline", "safeMode", "printerProblem", "sleepingUntil" }` →
 `{ "status", "nextInSeconds", "configurationChangedAt", "serverTime" }`
+
+**Gecə yuxusu (T-448).** `sleepingUntil` (UTC) — kiosk gecə yuxusuna gedir və bu vaxt özü oyanır; yatmazdan əvvəlki heartbeat-lərdə gəlir. Backend onu `Kiosk.SleepingUntil`-də saxlayır; keçmiş vaxt və ya 24 saatdan uzaq vaxt qəbul olunmur (`null` sayılır). `sleepingUntil`-siz hər heartbeat onu silir. `KioskHeartbeatMonitor` yatan kiosku **oyanma vaxtı + 10 dəqiqəyə** qədər `Offline` etmir və incident açmır; vaxtında oyanmayan kiosk adi qaydada `Offline` olur (`ConnectionLost`). İctimai kiosk axtarışında yatan kiosk əlçatmazdır (son heartbeat köhnədir).
 
 **Printerin vəziyyəti (plan 9.6, ssenari A; T-209).** `printerOnline: false` — seçilmiş printer çap edə
 bilmir; `printerProblem` nə olduğunu mesaj açarı ilə deyir (`printer.offline`, `printer.outOfPaper`,
@@ -2426,8 +2430,9 @@ Hamısı **qlobal** resursdur: `releases.view` / `releases.manage` `Permissions.
 | `GET /api/releases/{id}/download` | Paket — yalnız bu kioska indi təklif olunursa; əks halda `404 notFound.release`. `Range: bytes=N-` (T-321) — yarımçıq endirmə davam edir: `206` + `Content-Range`; başqa forma və ya ölçüdən böyük `N` — `416` |
 | `POST /api/kiosks/me/update-status` | `{ component, version, status, messageKey? }` — `STATE_MACHINES.md` "Update" (M17-də `WaitingForIdle`, `Draining` əlavə olundu); versiya SemVer deyilsə `400`; kataloqda olmayan `messageKey` saxlanmır; `204`. `Failed` / `RolledBack` → High incident `UpdateFailed` (kiosk + komponent + versiya + status ilə bir dəfə; `messageKey = updates.rolledBackByAdmin` istisna). `RolledBack` versiya həmin kioska bir daha təklif olunmur — admin "İndi yenilə" (`update-now`) siyahını təmizləyir. **Paket yoxlamadan keçməyibsə** (`Failed` + `updates.signatureRefused` / `packageMismatch` / `refused.wrongTarget` / `refused.malformedManifest`, T-326) — `UpdateFailed` deyil, High **`UpdatePackageRejected`**: kiosk + buraxılış (bu serverdə belə buraxılış yoxdursa — bir "naməlum") + səbəb üzrə bir açıq incident, təkrar hesabat sayğacı (`occurrences`, `lastSeenAt`) artırır; bir kiosk üçün saatda birdən çox email getmir (sonrakılar `quiet` — yalnız panel); buraxılış həmin kioska bir daha təklif olunmur ("İndi yenilə"yə qədər) |
 | `POST /api/kiosks/me/logs?commandId=` | Gövdə: gzip sıxılmış mətn sətirləri, ən çox `Logs.MaxUploadMb` (standart 10, sıxılmış) — artığı `413 kioskLogs.tooLarge`, gzip deyilsə `400 kioskLogs.notGzip`, açılmış ölçü 20 qatdan çox — `413`. Backend hər sətri yenidən təmizləyir (`LogRedactor`: token, şifrə, açar, şəxsi QR, telefon, e-poçt, uzun kodlanmış bloklar), şifrəli storage-da `Logs.RetentionDays` (standart 30) saxlayır, sonra gündəlik `kiosk-logs-purge` işi silir (T-321) |
-| `POST /api/kiosks/heartbeat` | əlavə `provisioningVersion` sahəsi |
-| `GET /api/kiosks/me/config` | əlavə `update { window, checkIntervalMinutes, healthTimeoutMinutes, keepVersions, maxIdleWaitMinutes, maxLogUploadMb }` (T-321) |
+| `POST /api/kiosks/heartbeat` | əlavə `provisioningVersion` sahəsi; T-448: `sleepingUntil` (gecə yuxusu, yuxarıda) |
+| `GET /api/kiosks/me/config` | əlavə `update { window, checkIntervalMinutes, healthTimeoutMinutes, keepVersions, maxIdleWaitMinutes, maxLogUploadMb }` (T-321); T-448: `sleep { enabled, window, afterIdleMinutes }` |
+| `GET /api/admin/kiosks`, `GET /api/admin/kiosks/{id}` | T-448: əlavə `sleepingUntil` — kiosk gecə yuxusundadır, bu vaxt oyanır; oyaqdırsa `null` |
 
 **`/hubs/kiosk`:** `UpdateAvailable { kioskId }` (hamıya — `Guid.Empty`). **`/hubs/admin`** (`releases.view` olanlara): `ReleasesChanged`, `KioskUpdateReported` (kiosk versiyası görünüşü); kioskun özünü görənlərə (kiosk əhatəsi, T-326): `KioskUpdateChanged { kioskId }`. `GET /api/admin/releases`-də hər yayımda `progress { installed, ready, updating, rolledBack, failed, notes }` — yayımın çatdığı kiosklar bu versiyaya görə; `notes` (T-361) — hələ quraşdırmamış və səbəb bildirmiş kiosklar, ən çox 10: `{ kioskId, kioskCode, status, message }` (məs. `WaitingForIdle` + "Printerdə çap olunan iş var…"). Incident görünüşündə `occurrences`, `lastSeenAt`.
 

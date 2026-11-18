@@ -76,7 +76,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$ProvisioningVersion = "0.5.0"
+$ProvisioningVersion = "0.6.0"
 
 $InstallRoot = "C:\Program Files\NeoPrint"
 $DataRoot    = "C:\ProgramData\NeoPrint"
@@ -490,6 +490,15 @@ Set-RegistryValue "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Control Panel\Deskt
 & powercfg /change standby-timeout-ac 0 | Out-Null
 & powercfg /change hibernate-timeout-ac 0 | Out-Null
 & powercfg /hibernate off | Out-Null
+
+# The night's sleep (T-448): Windows never sleeps by itself (above); the kiosk
+# puts itself to sleep at night when idle and a wake timer brings it back - so
+# wake timers are allowed, and waking asks for no password.
+& powercfg /setacvalueindex SCHEME_MIN SUB_SLEEP RTCWAKE 1 | Out-Null
+& powercfg /setdcvalueindex SCHEME_MIN SUB_SLEEP RTCWAKE 1 | Out-Null
+& powercfg /setacvalueindex SCHEME_MIN SUB_NONE CONSOLELOCK 0 | Out-Null
+& powercfg /setdcvalueindex SCHEME_MIN SUB_NONE CONSOLELOCK 0 | Out-Null
+& powercfg /setactive SCHEME_MIN | Out-Null
 
 # --- Windows Update --------------------------------------------------------
 Set-Step 8 "updates, printing and time"

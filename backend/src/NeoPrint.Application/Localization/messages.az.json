@@ -573,6 +573,7 @@
   "settings.valueEmpty": "Dəyər boş ola bilməz.",
   "settings.valueInteger": "Dəyər tam ədəd olmalıdır.",
   "settings.valueRange": "Dəyər {min} ilə {max} arasında olmalıdır.",
+  "settings.valueTimeRange": "Dəyər \"SS:dd-SS:dd\" formatında iki fərqli saat olmalıdır (məs. 23:00-06:00).",
   "settings.valueSeverity": "Dəyər Critical, High və ya Medium olmalıdır.",
   "settings.mapStyleUrl": "Xəritənin stil ünvanı https ilə başlayan tam ünvan olmalıdır.",
   "settings.mapAttribution": "Atribusiya \"mətn|https-ünvan\" hissələrindən ibarət olmalıdır (\";\" ilə ayrılır) və OpenStreetMap keçidi (https://www.openstreetmap.org/copyright) silinə bilməz.",

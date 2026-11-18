@@ -306,6 +306,110 @@ public sealed partial class WindowsSystemControl : ISystemControl
     private static extern bool ExitWindowsEx(uint flags, uint reason);
 }
 
+/// <summary>
+/// The night's sleep on Windows (T-448): a waitable timer that may wake the
+/// machine, then the system's sleep (S3); the call returns once the machine
+/// is awake. The provisioning script allows wake timers and turns the
+/// password on wake-up off (<c>CONSOLELOCK 0</c>), so the kiosk screen is
+/// back by itself. A machine that has only Modern Standby does not sleep
+/// this way - the call fails and the kiosk stays awake.
+/// </summary>
+[SupportedOSPlatform("windows")]
+public sealed class WindowsSystemSleep : ISystemSleep
+{
+    public Task<bool> SleepUntilAsync(DateTime wakeAtUtc, CancellationToken cancellationToken = default)
+        // Not cancelled with the kiosk: a machine asleep is not stopped half way.
+        => Task.Run(() => Sleep(wakeAtUtc), CancellationToken.None);
+
+    private static bool Sleep(DateTime wakeAtUtc)
+    {
+        using var timer = CreateWaitableTimerW(IntPtr.Zero, true, null);
+        if (timer.IsInvalid)
+        {
+            return false;
+        }
+
+        // A positive due time is an absolute UTC FILETIME; resume: wake the machine.
+        var due = DateTime.SpecifyKind(wakeAtUtc, DateTimeKind.Utc).ToFileTimeUtc();
+        if (!SetWaitableTimer(timer, ref due, 0, IntPtr.Zero, IntPtr.Zero, true))
+        {
+            return false;
+        }
+
+        // The kiosk account holds the shutdown privilege; it has to be switched on to sleep.
+        if (!EnableShutdownPrivilege())
+        {
+            return false;
+        }
+
+        // Sleep, not hibernate; wake events stay on - the timer above is one.
+        return SetSuspendState(false, false, false);
+    }
+
+    private static bool EnableShutdownPrivilege()
+    {
+        const uint AdjustPrivileges = 0x0020;
+        const uint Query = 0x0008;
+        const uint Enabled = 0x00000002;
+
+        if (!OpenProcessToken(Process.GetCurrentProcess().Handle, AdjustPrivileges | Query, out var token))
+        {
+            return false;
+        }
+
+        using (token)
+        {
+            if (!LookupPrivilegeValueW(null, "SeShutdownPrivilege", out var luid))
+            {
+                return false;
+            }
+
+            var privileges = new TokenPrivileges { Count = 1, Luid = luid, Attributes = Enabled };
+            return AdjustTokenPrivileges(token, false, ref privileges, 0, IntPtr.Zero, IntPtr.Zero)
+                   && Marshal.GetLastWin32Error() == 0;
+        }
+    }
+
+    // TOKEN_PRIVILEGES with one LUID_AND_ATTRIBUTES: the LUID sits at offset 4.
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    private struct TokenPrivileges
+    {
+        public uint Count;
+        public long Luid;
+        public uint Attributes;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern Microsoft.Win32.SafeHandles.SafeWaitHandle CreateWaitableTimerW(IntPtr attributes, bool manualReset, string? name);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern bool SetWaitableTimer(
+        Microsoft.Win32.SafeHandles.SafeWaitHandle timer, ref long dueTime, int period, IntPtr completion, IntPtr argument, bool resume);
+
+    [DllImport("powrprof.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    private static extern bool SetSuspendState(
+        [MarshalAs(UnmanagedType.U1)] bool hibernate,
+        [MarshalAs(UnmanagedType.U1)] bool force,
+        [MarshalAs(UnmanagedType.U1)] bool disableWakeEvent);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern bool OpenProcessToken(IntPtr process, uint access, out Microsoft.Win32.SafeHandles.SafeAccessTokenHandle token);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern bool LookupPrivilegeValueW(string? system, string name, out long luid);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern bool AdjustTokenPrivileges(
+        Microsoft.Win32.SafeHandles.SafeAccessTokenHandle token, bool disableAll, ref TokenPrivileges state, uint length, IntPtr previous, IntPtr returnLength);
+}
+
 /// <summary>Removable drives on Windows.</summary>
 [SupportedOSPlatform("windows")]
 public sealed class WindowsRemovableDriveWatcher : IRemovableDriveWatcher

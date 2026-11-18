@@ -104,6 +104,12 @@ public sealed class UpdateCoordinator
         _downloader = new ReleaseDownloader(api, paths, downloadKilobytesPerSecond, logger, _delay);
     }
 
+    /// <summary>
+    /// A check, a download, a package waiting for its moment or being applied:
+    /// the kiosk does not go to sleep for the night meanwhile (T-448).
+    /// </summary>
+    public bool IsBusy => _running.CurrentCount == 0;
+
     /// <summary>What the agent wrote about the machine; null while there is no agent (a developer machine).</summary>
     public AgentState? Agent => AgentFiles.Read<AgentState>(_paths.StateFile);
 

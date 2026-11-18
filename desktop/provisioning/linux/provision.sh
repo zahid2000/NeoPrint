@@ -35,7 +35,7 @@
 # ---------------------------------------------------------------------------
 set -Eeuo pipefail
 
-PROVISIONING_VERSION="0.7.0"
+PROVISIONING_VERSION="0.8.0"
 
 API_URL=""
 ENROLLMENT_TOKEN=""
@@ -102,7 +102,7 @@ fi
 # --dry-run (the container kiosk's ReapplyProvisioning, T-321): the scripts are
 # all here and readable, and nothing on the machine is changed.
 if [ "$DRY_RUN" -eq 1 ]; then
-    for file in systemd/neoprint-agent.service systemd/neoprint-kiosk.service systemd/neoprint-firstboot.service neoprint-agent-guard neoprint-reprovision neoprint-convert neoprint-firstboot neoprint-enroll neoprint-service-pin neoprint-maintenance prepare-image.sh; do
+    for file in systemd/neoprint-agent.service systemd/neoprint-kiosk.service systemd/neoprint-firstboot.service neoprint-agent-guard neoprint-reprovision neoprint-convert neoprint-firstboot neoprint-enroll neoprint-service-pin neoprint-maintenance neoprint-sleep prepare-image.sh; do
         [ -r "$script_dir/$file" ] || { echo "[provision dry-run] missing: $file" >&2; exit 1; }
     done
     echo "[provision dry-run] NeoPrint kiosk provisioning $PROVISIONING_VERSION (repair: $REPAIR): every script is in place; nothing was changed"
@@ -468,6 +468,10 @@ install -o root -g root -m 755 "$script_dir/neoprint-convert" "$LIB_ROOT/neoprin
 # ---------------------------------------------------------------------------
 step 9 "sudo rules"
 
+# The night's sleep (T-448): root's, and the kiosk account may run it - one
+# argument, the wake time, which the helper checks itself.
+install -o root -g root -m 755 "$script_dir/neoprint-sleep" "$LIB_ROOT/neoprint-sleep"
+
 # Written beside, checked, and only then put in place: a broken sudoers file
 # would lock every account out of sudo.
 sudoers_new="$BACKUP_DIR/sudoers.neoprint"
@@ -490,6 +494,8 @@ $SERVICE_USER ALL=(root) NOPASSWD: /usr/sbin/cupsenable
 # The UI: service access from the admin menu, a reboot, and the converter sandbox.
 $KIOSK_USER ALL=(root) NOPASSWD: /usr/bin/systemctl start neoprint-maintenance.service
 $KIOSK_USER ALL=(root) NOPASSWD: /usr/bin/systemctl reboot
+# The night's sleep (T-448): sets the clock alarm and suspends.
+$KIOSK_USER ALL=(root) NOPASSWD: $LIB_ROOT/neoprint-sleep
 $KIOSK_USER ALL=($CONVERT_USER) NOPASSWD: $LIB_ROOT/neoprint-convert
 CONF
 visudo -c -f "$sudoers_new" >/dev/null

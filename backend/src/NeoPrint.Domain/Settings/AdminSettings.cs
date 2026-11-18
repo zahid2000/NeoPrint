@@ -164,6 +164,9 @@ public static class SettingKeys
     public const string AnalyticsRetentionDays = "Analytics.RetentionDays";
     public const string FiscalOnlineTerminalId = "Fiscal.OnlineTerminalId";
     public const string KioskUpdateWindow = "Kiosk.UpdateWindow";
+    public const string KioskSleepEnabled = "Kiosk.SleepEnabled";
+    public const string KioskSleepWindow = "Kiosk.SleepWindow";
+    public const string KioskSleepAfterIdleMinutes = "Kiosk.SleepAfterIdleMinutes";
     public const string UpdateCheckIntervalMinutes = "Update.CheckIntervalMinutes";
     public const string UpdateHealthTimeoutMinutes = "Update.HealthTimeoutMinutes";
     public const string UpdateKeepVersions = "Update.KeepVersions";
@@ -244,6 +247,9 @@ public static class SettingKeys
         new(AnalyticsRetentionDays, "180", SettingValueType.Integer, "Analitika hadisələrinin saxlanma müddəti"),
         new(FiscalOnlineTerminalId, "", SettingValueType.String, "Mobil (onlayn) satışlar üçün fiskal terminal ID"),
         new(KioskUpdateWindow, "02:00-05:00", SettingValueType.TimeRange, "Kiosk avtomatik yenilənməsinin icazəli saat aralığı"),
+        new(KioskSleepEnabled, "true", SettingValueType.Boolean, "Kiosk gecə boş qalanda yuxu rejiminə keçir və özü oyanır"),
+        new(KioskSleepWindow, "23:00-06:00", SettingValueType.TimeRange, "Gecə yuxusunun saat aralığı (kioskun yerli saatı): kiosk yalnız bu aralıqda yatır və aralığın sonunda oyanır"),
+        new(KioskSleepAfterIdleMinutes, "30", SettingValueType.Integer, "Gecə aralığında kiosk bu qədər dəqiqə boş qalandan sonra yatır"),
         new(UpdateCheckIntervalMinutes, "15", SettingValueType.Integer, "Agent-in yeni versiya yoxlama intervalı"),
         new(UpdateHealthTimeoutMinutes, "5", SettingValueType.Integer, "Yeniləmədən sonra sağlamlıq gözləmə müddəti"),
         new(UpdateKeepVersions, "3", SettingValueType.Integer, "Kioskda saxlanılan versiya sayı"),

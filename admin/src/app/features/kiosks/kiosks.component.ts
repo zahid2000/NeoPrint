@@ -18,6 +18,7 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { FilterBarComponent } from '../../shared/filter-bar.component';
 import { DateTimePipe } from '../../shared/format.pipes';
+import { isAsleep } from '../../shared/kiosk-sleep';
 import { KioskMapComponent, MapMarker } from '../../shared/kiosk-map.component';
 import { PageHeaderComponent } from '../../shared/page-header.component';
 import { StatusChipComponent, StatusTone } from '../../shared/status-chip.component';
@@ -98,6 +99,11 @@ export class KiosksComponent {
   readonly view = signal<'list' | 'map'>('list');
 
   readonly columns = ['code', 'name', 'status', 'address', 'version', 'heartbeat'];
+
+  /** When a kiosk asleep for the night wakes (T-448); null while it is awake. */
+  sleepsUntil(kiosk: KioskListItem): string | null {
+    return isAsleep(kiosk, Date.now()) ? (kiosk.sleepingUntil ?? null) : null;
+  }
 
   /** A kiosk that serves with an A4 tray nobody has counted (T-264). One with no device serves nobody. */
   counterUnset(kiosk: KioskListItem): boolean {

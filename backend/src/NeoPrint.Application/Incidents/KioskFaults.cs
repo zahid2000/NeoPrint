@@ -497,11 +497,20 @@ public sealed class KioskFaultHandlers :
     /// that is Offline already has been dealt with; one nobody activated, or
     /// that was taken out of service, is not expected to call.
     /// </summary>
+    /// <remarks>
+    /// A kiosk asleep for the night, as its last heartbeat said, is quiet on
+    /// purpose (T-448) - until the time it wakes itself and
+    /// <see cref="WakeGrace"/> have passed: one that did not wake is offline.
+    /// </remarks>
     private static bool IsSilent(Kiosk kiosk, DateTime now, TimeSpan silentAfter)
         => kiosk.ActiveDeviceId is not null
            && kiosk.Status is KioskStatus.Online or KioskStatus.Paused or KioskStatus.NotConfigured or KioskStatus.Maintenance
            && kiosk.LastHeartbeatAt is { } heartbeat
-           && now - heartbeat > silentAfter;
+           && now - heartbeat > silentAfter
+           && !kiosk.IsAsleep(now, WakeGrace);
+
+    /// <summary>How long a kiosk has, after the time it said it wakes, to call in (T-448).</summary>
+    public static readonly TimeSpan WakeGrace = TimeSpan.FromMinutes(10);
 
     private async Task<TimeSpan> SilentAfterAsync(CancellationToken cancellationToken)
         => TimeSpan.FromSeconds(Math.Max(

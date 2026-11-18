@@ -31,6 +31,9 @@ public static class KioskConfigSettings
         SettingKeys.KioskIdleResetSeconds,
         SettingKeys.KioskTelemetrySeconds,
         SettingKeys.KioskUpdateWindow,
+        SettingKeys.KioskSleepEnabled,
+        SettingKeys.KioskSleepWindow,
+        SettingKeys.KioskSleepAfterIdleMinutes,
         SettingKeys.LogsMaxUploadMb,
         SettingKeys.PaperBlockWhenInsufficient,
         SettingKeys.QueueDisplayLimit,
@@ -172,7 +175,12 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
                 await _settings.GetIntAsync(SettingKeys.UpdateMaxIdleWaitMinutes, 30, cancellationToken).ConfigureAwait(false),
                 await _settings.GetIntAsync(SettingKeys.LogsMaxUploadMb, 10, cancellationToken).ConfigureAwait(false)),
             // The welcome screen's words and picture, set in the panel (T-387).
-            await _branding.ResolveAsync(kiosk.Id, cancellationToken).ConfigureAwait(false));
+            await _branding.ResolveAsync(kiosk.Id, cancellationToken).ConfigureAwait(false),
+            // The night's sleep (T-448).
+            new KioskSleepSettingsDto(
+                await _settings.GetBoolAsync(SettingKeys.KioskSleepEnabled, true, cancellationToken).ConfigureAwait(false),
+                await _settings.GetAsync(SettingKeys.KioskSleepWindow, cancellationToken).ConfigureAwait(false) ?? "23:00-06:00",
+                await _settings.GetIntAsync(SettingKeys.KioskSleepAfterIdleMinutes, 30, cancellationToken).ConfigureAwait(false)));
     }
 }
 
@@ -253,6 +261,9 @@ public sealed class KioskHeartbeatHandler : IRequestHandler<KioskHeartbeatComman
         var wasInSafeMode = kiosk.SafeModeSince is not null;
 
         kiosk.LastHeartbeatAt = now;
+
+        // The night's sleep (T-448): announced on the last beat before it, cleared by any other.
+        kiosk.ReportSleep(request.SleepingUntil, now);
         kiosk.AppVersion = device.AppVersion;
         kiosk.AgentVersion = device.AgentVersion;
 

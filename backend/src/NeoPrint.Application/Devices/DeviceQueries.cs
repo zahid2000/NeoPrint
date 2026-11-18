@@ -74,7 +74,8 @@ public sealed record KioskListItem(
     DateTime? SafeModeSince = null,
     int? PaperA4Current = null,
     int? PaperA4Capacity = null,
-    bool? PaperA4Counted = null);
+    bool? PaperA4Counted = null,
+    DateTime? SleepingUntil = null);
 
 /// <summary>
 /// The kiosks an administrator's scope covers (plan section 8A.2).

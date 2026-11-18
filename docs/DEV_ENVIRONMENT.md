@@ -1739,6 +1739,15 @@ bash tools/staging/staging.sh down     # dayandır
 - `docker-compose.yml`-də `NEOPRINT_*` dəyişənləri (konteyner adı, portlar, seed faylı, OpenBao qovluğu, rejim) yalnız
   staging üçündür; development-də heç birini verməyin.
 
+## 7z-0. Kioskun gecə yuxusu (T-448)
+
+Kiosk gecə aralığında (`Kiosk.SleepWindow`, standart `23:00-06:00`) `Kiosk.SleepAfterIdleMinutes` (30) boş qalanda yatır və aralığın sonunda özü oyanır; işləyərkən, çap / növbə / yeniləmə varkən yatmır. Ayarlar: panel → **Tənzimləmələr → Kiosk** (`Kiosk.SleepEnabled` ilə söndürülür).
+
+- **Linux kioskda** yuxu kök köməkçisi ilə işləyir (`/usr/local/lib/neoprint/neoprint-sleep`, provisioning **0.8.0**). Köhnə provisioning-li kiosk yatmır (köməkçi yoxdur) — yeni versiya yayılarkən **provisioning paketini də** yükləyib yayın (ardıcıllıq Agent → Provisioning → App); Agent onu imzasını yoxlayıb root köməkçisi ilə quraşdırır və `provision.sh --repair` işlədir. Kioskdakı köhnə `provisioning/current`-in `--repair`-i köməkçini gətirmir — onda hələ köhnə skriptlər var.
+- Cihazın yata bildiyini yoxlamaq: `cat /sys/power/state` — içində `mem` olmalıdır. Yatıb oyanmırsa BIOS-da "Wake on RTC" / "RTC Alarm" aktiv edin.
+- Developer maşınında (`Kiosk:Lockdown = false`, `start-kiosk.ps1`) kiosk heç vaxt yatmır.
+- Real cihazda yoxlama addımları: `docs/MANUAL_TESTS.md` MT-10 (gecəni gözləmədən — aralığı indiki saata çəkməklə).
+
 ## 7z-1. Addım 7B — real Linux kioskunu yeni versiyaya yeniləmək (T-359)
 
 Flaşdan (`make-stick.sh`, 7y) quraşdırılmış kiosk **yenidən quraşdırılmır**: yeni versiyanı imzalı paketlə Agent özü

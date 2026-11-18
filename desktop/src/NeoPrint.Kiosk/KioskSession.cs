@@ -273,6 +273,21 @@ public sealed class KioskSession
             _ = RunGuardedAsync("printer telemetry", () => SendPrinterTelemetryAsync(runtime, reporter, api, token), token);
             _ = RunGuardedAsync("updates", () => updates.RunAsync(token), token);
 
+            // The night's sleep (T-448), on a locked-down kiosk only: a developer's machine never sleeps.
+            if (_services.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value.Lockdown)
+            {
+                var nightSleep = new NightSleepCoordinator(
+                    _services.GetRequiredService<ISystemSleep>(),
+                    updateHost,
+                    () => runtime.Configuration?.Sleep,
+                    () => updates.IsBusy,
+                    (wakeAt, ct) => runtime.AnnounceSleepAsync(wakeAt, ct),
+                    runtime.Woke,
+                    _services.GetRequiredService<IClock>(),
+                    _logger);
+                _ = RunGuardedAsync("night sleep", () => nightSleep.RunAsync(token), token);
+            }
+
             // The health check after an update (docs/KIOSK_UPDATES.md step 9): connected,
             // a heartbeat answered, the printers looked at, and not in safe mode.
             Action beat = () =>

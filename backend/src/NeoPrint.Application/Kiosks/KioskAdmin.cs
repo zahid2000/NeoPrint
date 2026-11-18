@@ -82,7 +82,8 @@ public sealed record KioskDetail(
     DateTime CreatedAt,
     int Revision,
     DateTime? SafeModeSince = null,
-    string? PhotoUrl = null);
+    string? PhotoUrl = null,
+    DateTime? SleepingUntil = null);
 
 /// <summary>A new kiosk, as the "Kiosk yarat" form sends it.</summary>
 /// <param name="Code">Empty: the next <c>KSK-XXXX</c> is generated.</param>
@@ -690,7 +691,8 @@ public sealed class KioskAdminHandlers :
             kiosk.CreatedAt,
             kiosk.RowVersion,
             kiosk.SafeModeSince,
-            kiosk.Photo is { } photo ? $"api/admin/kiosks/{kiosk.Id}/photo?v={photo.Version}" : null);
+            kiosk.Photo is { } photo ? $"api/admin/kiosks/{kiosk.Id}/photo?v={photo.Version}" : null,
+            kiosk.SleepingUntil);
     }
 
     /// <summary>What the audit log keeps: never the PIN hash.</summary>

@@ -44,7 +44,17 @@ public sealed record KioskConfigResponse(
     int IdleResetSeconds = 90,
     int TelemetrySeconds = 30,
     KioskUpdateSettingsDto? Update = null,
-    Kiosks.KioskBrandingDto? Branding = null);
+    Kiosks.KioskBrandingDto? Branding = null,
+    KioskSleepSettingsDto? Sleep = null);
+
+/// <summary>
+/// The kiosk's night sleep (T-448): it never sleeps while it works - only
+/// inside <paramref name="Window"/>, after <paramref name="AfterIdleMinutes"/>
+/// with no customer and nothing at the printer - and it wakes itself at the
+/// window's end.
+/// </summary>
+/// <param name="Window">The night, the kiosk's local time ("23:00-06:00").</param>
+public sealed record KioskSleepSettingsDto(bool Enabled, string Window, int AfterIdleMinutes);
 
 /// <summary>
 /// When and how the kiosk updates itself (plan section 7.12, T-321;
@@ -120,6 +130,7 @@ public sealed record GetKioskConfigQuery(Guid DeviceId) : IRequest<KioskConfigRe
 /// </remarks>
 /// <param name="SafeMode">The UI started in safe mode after a crash loop (plan section 7.12).</param>
 /// <param name="ProvisioningVersion">The provisioning scripts' version, once the agent reports it (T-317).</param>
+/// <param name="SleepingUntil">Set on the last heartbeat before the night's sleep: when the kiosk wakes itself (T-448).</param>
 public sealed record KioskHeartbeatCommand(
     Guid DeviceId,
     string? AppVersion,
@@ -128,7 +139,8 @@ public sealed record KioskHeartbeatCommand(
     string? Ip,
     bool SafeMode = false,
     string? PrinterProblem = null,
-    string? ProvisioningVersion = null) : IRequest<KioskHeartbeatResult>;
+    string? ProvisioningVersion = null,
+    DateTime? SleepingUntil = null) : IRequest<KioskHeartbeatResult>;
 
 /// <param name="NextInSeconds">
 /// When to send the next one, so the interval can be changed from the panel

@@ -11,7 +11,10 @@ public sealed record UpdateWindow(TimeOnly From, TimeOnly To)
     /// <summary>The setting's default, and what an unreadable value falls back to.</summary>
     public static readonly UpdateWindow Default = new(new TimeOnly(2, 0), new TimeOnly(5, 0));
 
-    public static UpdateWindow Parse(string? text)
+    public static UpdateWindow Parse(string? text) => TryParse(text) ?? Default;
+
+    /// <summary>"HH:mm-HH:mm" with two different times; null for anything else.</summary>
+    public static UpdateWindow? TryParse(string? text)
     {
         var parts = (text ?? string.Empty).Split('-', StringSplitOptions.TrimEntries);
         return parts.Length == 2
@@ -19,7 +22,7 @@ public sealed record UpdateWindow(TimeOnly From, TimeOnly To)
                && TimeOnly.TryParseExact(parts[1], "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var to)
                && from != to
             ? new UpdateWindow(from, to)
-            : Default;
+            : null;
     }
 
     /// <summary>Whether the local time is inside the window.</summary>

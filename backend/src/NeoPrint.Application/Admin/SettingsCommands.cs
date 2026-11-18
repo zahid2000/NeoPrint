@@ -91,6 +91,11 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
                     yield return new ValidationError(key, "settings.valueDecimal");
                     break;
 
+                // "HH:mm-HH:mm", two different times; one may run past midnight (T-448).
+                case SettingValueType.TimeRange when !IsTimeRange(value):
+                    yield return new ValidationError(key, "settings.valueTimeRange");
+                    break;
+
                 default:
                     break;
             }
@@ -101,6 +106,14 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
                 && attempts is < MinPrintAttempts or > MaxPrintAttempts)
             {
                 yield return new ValidationError(key, "settings.valueRange", ("min", MinPrintAttempts), ("max", MaxPrintAttempts));
+            }
+
+            // A kiosk that sleeps after a minute of quiet would sleep between customers (T-448).
+            if (key == SettingKeys.KioskSleepAfterIdleMinutes
+                && int.TryParse(value, out var idle)
+                && idle is < MinSleepIdleMinutes or > MaxSleepIdleMinutes)
+            {
+                yield return new ValidationError(key, "settings.valueRange", ("min", MinSleepIdleMinutes), ("max", MaxSleepIdleMinutes));
             }
 
             if (key == SettingKeys.NotificationMinSeverity && !Severities.Contains(value, StringComparer.Ordinal))
@@ -125,6 +138,21 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
     public const int MinPrintAttempts = 1;
 
     public const int MaxPrintAttempts = 10;
+
+    /// <summary>The quiet a kiosk waits for before its night sleep, in minutes (T-448).</summary>
+    public const int MinSleepIdleMinutes = 5;
+
+    public const int MaxSleepIdleMinutes = 240;
+
+    /// <summary>"HH:mm-HH:mm" with two different times.</summary>
+    public static bool IsTimeRange(string value)
+    {
+        var parts = value.Split('-', StringSplitOptions.TrimEntries);
+        return parts.Length == 2
+               && TimeOnly.TryParseExact(parts[0], "HH:mm", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var from)
+               && TimeOnly.TryParseExact(parts[1], "HH:mm", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var to)
+               && from != to;
+    }
 
     private static readonly string[] Severities = Enum.GetNames<NeoPrint.Domain.Incidents.IncidentSeverity>();
 }

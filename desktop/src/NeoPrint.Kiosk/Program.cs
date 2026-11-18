@@ -193,6 +193,7 @@ internal static class Program
             services.AddSingleton<IDeviceKeyStore, FakeDeviceKeyStore>();
             services.AddSingleton<IMachineFingerprintProvider, FakeMachineFingerprintProvider>();
             services.AddSingleton<ISystemControl, FakeSystemControl>();
+            services.AddSingleton<ISystemSleep, FakeSystemSleep>();
             services.AddSingleton<IRemovableDriveWatcher, FakeRemovableDriveWatcher>();
             services.AddSingleton<IKioskLockdown, FakeKioskLockdown>();
             useFakePrinter = true;
@@ -297,6 +298,7 @@ internal static class Program
         services.AddSingleton<IDeviceKeyStore, Platform.Windows.WindowsDeviceKeyStore>();
         services.AddSingleton<IMachineFingerprintProvider, Platform.Windows.WindowsMachineFingerprintProvider>();
         services.AddSingleton<ISystemControl, Platform.Windows.WindowsSystemControl>();
+        services.AddSingleton<ISystemSleep, Platform.Windows.WindowsSystemSleep>();
         services.AddSingleton<IRemovableDriveWatcher, Platform.Windows.WindowsRemovableDriveWatcher>();
         services.AddSingleton<IKioskLockdown, Platform.Windows.WindowsKioskLockdown>();
         services.AddSingleton<ISystemMetrics, Platform.Windows.WindowsSystemMetrics>();
@@ -308,6 +310,7 @@ internal static class Program
         services.AddSingleton<IDeviceKeyStore, FakeDeviceKeyStore>();
         services.AddSingleton<IMachineFingerprintProvider, FakeMachineFingerprintProvider>();
         services.AddSingleton<ISystemControl, FakeSystemControl>();
+        services.AddSingleton<ISystemSleep, FakeSystemSleep>();
         services.AddSingleton<IRemovableDriveWatcher, FakeRemovableDriveWatcher>();
         services.AddSingleton<IKioskLockdown, FakeKioskLockdown>();
 #endif
@@ -321,6 +324,7 @@ internal static class Program
         services.AddSingleton<IDeviceKeyStore, Platform.Linux.LinuxDeviceKeyStore>();
         services.AddSingleton<IMachineFingerprintProvider, Platform.Linux.LinuxMachineFingerprintProvider>();
         services.AddSingleton<ISystemControl, Platform.Linux.LinuxSystemControl>();
+        services.AddSingleton<ISystemSleep, Platform.Linux.LinuxSystemSleep>();
         services.AddSingleton<IRemovableDriveWatcher, Platform.Linux.LinuxRemovableDriveWatcher>();
         services.AddSingleton<IKioskLockdown, Platform.Linux.LinuxKioskLockdown>();
         services.AddSingleton<ISystemMetrics, Platform.Linux.LinuxSystemMetrics>();
@@ -333,6 +337,7 @@ internal static class Program
         services.AddSingleton<IDeviceKeyStore, FakeDeviceKeyStore>();
         services.AddSingleton<IMachineFingerprintProvider, FakeMachineFingerprintProvider>();
         services.AddSingleton<ISystemControl, FakeSystemControl>();
+        services.AddSingleton<ISystemSleep, FakeSystemSleep>();
         services.AddSingleton<IRemovableDriveWatcher, FakeRemovableDriveWatcher>();
         services.AddSingleton<IKioskLockdown, FakeKioskLockdown>();
 #endif
