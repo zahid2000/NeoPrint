@@ -1767,9 +1767,9 @@ powershell -ExecutionPolicy Bypass -File tools\release-sign\staging-quickstart.p
 
 - Bir versiya bir dəfə yüklənir: təkrar üçün yeni versiya (`0.9.0-m20.3` …).
 - Növbəti versiyalarda `min_agent_version` — kioskda **artıq quraşdırılmış** Agent versiyası.
-- Son yığılan: **`0.9.0-m20.5`** (`min_agent_version=0.9.0-m20.2`; T-361 yeniləmənin gözləmə səbəbi, T-368 qovluq
-  hüquqları, T-371 yeni dizaynın 1-ci və 2-ci hissələri). m20.4 ondan əvvəl yığılıb — yalnız m20.5-i yükləmək kifayətdir.
-  Növbəti: `0.9.0-m20.6`.
+- Son yığılan: **`0.9.0-m20.11`** (2026-11-18, iş `44381330528`, `min_agent_version=0.9.0-m20.2`; T-447 — pilləli
+  qiymət, ekran düzülüşü, .NET 10, Avalonia 12). Agent də .NET 10-dadır: əvvəl **Agent**, sonra **App** yüklənir.
+  Növbəti: `0.9.0-m20.12`.
 
 **Yeniləmə "Endirilir"-də qalırsa (T-368).** 0.9.0-m21-dən əvvəlki Agent UI-ın qovluqlarını (`downloads`, `requests`,
 `health`) özü, öz adına yaradırdı — UI onlara yaza bilmir; loqda `Access to the path '/var/lib/neoprint/updates/...' is
