@@ -35,7 +35,7 @@
 # ---------------------------------------------------------------------------
 set -Eeuo pipefail
 
-PROVISIONING_VERSION="0.8.0"
+PROVISIONING_VERSION="0.8.1"
 
 API_URL=""
 ENROLLMENT_TOKEN=""
@@ -384,6 +384,16 @@ install -m 644 "$script_dir/logind.conf.d/neoprint-kiosk.conf" /etc/systemd/logi
 
 # Ctrl+Alt+Del must not reboot a kiosk.
 systemctl mask ctrl-alt-del.target >/dev/null 2>&1 || true
+
+# Nothing but the kiosk's own night sleep puts the machine to sleep (T-449):
+# the desktop's and its login screen's automatic suspend after a few idle
+# minutes - the service access opens that desktop (T-334) - and any other
+# "systemctl suspend" find the sleep targets masked. The night sleep (T-448)
+# writes to /sys/power/state itself (rtcwake), past systemd, and still works.
+for target in sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target; do
+    keep "/etc/systemd/system/$target"
+    systemctl mask "$target" >/dev/null 2>&1 || true
+done
 
 cat >/etc/sysctl.d/99-neoprint-kiosk.conf <<'CONF'
 # NeoPrint kiosk: the SysRq combinations can kill processes and reboot.

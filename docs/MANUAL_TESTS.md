@@ -403,7 +403,7 @@ Kabel çıxarılanda və ya `adb` yenidən başlayanda yönləndirmə itir — (
 
 ## MT-10. Addım 7B — kioskun gecə yuxusu real cihazda (T-448)
 
-Yalnız real cihazda yoxlanılır: konteyner və emulyator yatıb oyana bilmir. Kiosk `0.9.0-m20.12`-dən yeni olmalı, Linux-da provisioning **0.8.0** (yeni provisioning paketi və ya `sudo provision.sh --repair`).
+Yalnız real cihazda yoxlanılır: konteyner və emulyator yatıb oyana bilmir. Kiosk `0.9.0-m20.13` və ya yeni olmalı, Linux-da provisioning **0.8.1** (yeni provisioning paketi və ya `sudo provision.sh --repair`).
 Sınaq üçün gecəni gözləməyin: paneldə **Tənzimləmələr → Kiosk** bölməsində `Kiosk.SleepWindow`-u indidən 20–30 dəqiqəlik aralığa (məs. indi 14:05-dirsə `14:00-14:35`), `Kiosk.SleepAfterIdleMinutes`-i `5` edin. Sınaqdan sonra `23:00-06:00` və `30`-a qaytarın.
 
 | № | Addım | Gözlənilən | Harada |
@@ -414,4 +414,5 @@ Sınaq üçün gecəni gözləməyin: paneldə **Tənzimləmələr → Kiosk** b
 | 4 | Aralıq daxilində çap gedərkən (və ya növbədə iş varkən) | İş bitməyincə yatmır | **Real cihaz** |
 | 5 | `Kiosk.SleepEnabled` → `false` | Aralıqda da yatmır | **Real cihaz** |
 | 6 | Yatmış kioskun elektrik / şəbəkə kabelini çıxarın, aralığın sonundan 10 dəqiqə keçsin | Paneldə kiosk "Əlaqə yoxdur", `ConnectionLost` incident-i açılır (oyanmadı) | **Real cihaz** |
+| 6a | **T-449.** Admin menyusundan "Servis girişi" → Ubuntu masaüstü; 30 dəqiqə heç nəyə toxunmayın | Ekran sönə və kilidlənə bilər (masaüstünün öz kilidi), amma kompüter **yatmır**: siçanı tərpədəndə ekran dərhal gəlir; `systemctl is-enabled suspend.target` → `masked` | **Real cihaz** |
 | 7 | Linux: kioskun terminalında `sudo journalctl -u neoprint-kiosk | grep -i sleep` (və ya `/var/log/neoprint`) | "the kiosk sleeps until …" və "awake again" sətirləri; yuxu alınmasa "could not sleep" — onda `cat /sys/power/state`-də `mem` olmalıdır, BIOS-da "Wake on RTC" / "RTC Alarm" aktiv olmalıdır | **Real cihaz** |

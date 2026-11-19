@@ -84,6 +84,14 @@ public sealed partial class PowerPermissionTests
             """install -o root -g root -m 755 "$script_dir/neoprint-sleep" "$LIB_ROOT/neoprint-sleep" """.TrimEnd(),
             "the helper is root's and nobody else may change it");
 
+        // T-449: nothing else puts the machine to sleep - the desktop's idle suspend
+        // finds the targets masked; the helper writes to /sys/power/state past systemd.
+        script.Should().Contain(
+            "for target in sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target; do");
+        script.Should().Contain("""systemctl mask "$target" """.TrimEnd());
+        File.ReadAllText(Path.Combine(Desktop, "provisioning", "linux", "logind.conf.d", "neoprint-kiosk.conf"))
+            .Should().Contain("IdleAction=ignore");
+
         // Windows: sleep, not hibernate, wake events on.
         var windows = File.ReadAllText(Path.Combine(Desktop, "src", "NeoPrint.Kiosk.Platform.Windows", "WindowsPlatform.cs"));
         Regex.Matches(windows, @"return SetSuspendState\(([^)]*)\)").Select(match => match.Groups[1].Value)
