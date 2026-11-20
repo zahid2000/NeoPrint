@@ -102,4 +102,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(result(), isNull, reason: 'the button is off');
   });
+
+  // T-450: a new file can be uploaded from the layout's file choice, the
+  // ways the files tab offers - but not a scan or a layout in a layout.
+  testWidgets('a new file is offered from the phone, a cloud app and the '
+      'camera', (tester) async {
+    await pump(tester, [document('hesabat.pdf', 2)]);
+
+    await tester.tap(find.text('Yeni fayl yüklə'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fayl seç'), findsOneWidget);
+    expect(find.text('Yeni tərtibat'), findsNothing);
+    expect(find.text('Buluddan əlavə et'), findsOneWidget);
+    expect(find.text('Şəkil çək'), findsOneWidget);
+    expect(find.text('Sənəd skanı'), findsNothing);
+  });
+
+  testWidgets('with no file ready, a new one can still be uploaded', (
+    tester,
+  ) async {
+    await pump(tester, []);
+
+    expect(find.text('Tərtibat üçün hazır fayl yoxdur'), findsOneWidget);
+    expect(find.text('Yeni fayl yüklə'), findsOneWidget);
+  });
 }

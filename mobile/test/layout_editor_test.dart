@@ -290,4 +290,92 @@ void main() {
       isTrue,
     );
   });
+
+  testWidgets('a second page is made by hand; left empty, it is not handed '
+      'back (T-451)', (tester) async {
+    final result = await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([picture]),
+        ],
+      ),
+      () async {
+        expect(find.text('Səhifə 1 / 1'), findsOneWidget);
+        await tester.tap(find.byTooltip('Səhifə əlavə et'));
+        await tester.pumpAndSettle();
+        expect(find.text('Səhifə 2 / 2'), findsOneWidget);
+        expect(find.textContaining('Boş səhifə saxlanılmır'), findsOneWidget);
+
+        await tester.tap(find.text('Hazır'));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    expect(result!.pages.length, 1);
+  });
+
+  testWidgets('a picture dragged off the bottom of the page goes onto a new '
+      'second page (T-451)', (tester) async {
+    final result = await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([picture]),
+        ],
+      ),
+      () async {
+        await tester.tap(find.byType(LayoutCanvas));
+        await tester.pumpAndSettle();
+        await tester.timedDrag(
+          find.byType(LayoutCanvas),
+          const Offset(0, 600),
+          const Duration(milliseconds: 600),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Səhifə 2 / 2'), findsOneWidget);
+        expect(find.textContaining('Şəkil keçirildi'), findsOneWidget);
+        // The note goes by itself.
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Hazır'));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    // The emptied first page is not handed back; the picture is on top.
+    expect(result!.pages.length, 1);
+    expect(result.pages.single.elements.single.yMm, 10);
+  });
+
+  testWidgets('a page with pictures is deleted only when the user says so '
+      '(T-451)', (tester) async {
+    final result = await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([picture]),
+          LayoutPage([picture]),
+        ],
+      ),
+      () async {
+        await tester.tap(find.byTooltip('Səhifəni sil'));
+        await tester.pumpAndSettle();
+        expect(find.text('Səhifə silinsin?'), findsOneWidget);
+        await tester.tap(find.widgetWithText(FilledButton, 'Sil'));
+        await tester.pumpAndSettle();
+        expect(find.text('Səhifə 1 / 1'), findsOneWidget);
+        expect(find.byTooltip('Səhifəni sil'), findsNothing);
+
+        await tester.tap(find.text('Hazır'));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    expect(result!.pages.length, 1);
+  });
 }

@@ -405,7 +405,7 @@ class _FileListState extends ConsumerState<_FileList> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final upload in widget.state.uploads) ...[
-                    _UploadCard(upload: upload),
+                    UploadCard(upload: upload),
                     const SizedBox(height: Spacing.x2),
                   ],
                   if (files.isEmpty && !paged.hasMore)
@@ -433,8 +433,9 @@ class _FileListState extends ConsumerState<_FileList> {
 }
 
 /// An upload on its way, or one that failed with the reason and a way out.
-class _UploadCard extends ConsumerWidget {
-  const _UploadCard({required this.upload});
+/// Also on the layout's file choice (T-450).
+class UploadCard extends ConsumerWidget {
+  const UploadCard({super.key, required this.upload});
 
   final UploadItem upload;
 

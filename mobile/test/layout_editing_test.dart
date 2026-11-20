@@ -305,4 +305,114 @@ void main() {
       },
     );
   });
+
+  group('pages (T-451)', () {
+    test('a page is added after the one shown, empty', () {
+      final added = LayoutEditing.addPage(project, 0);
+
+      expect(added.pages.length, 2);
+      expect(added.pages[0].elements, [card]);
+      expect(added.pages[1].elements, isEmpty);
+    });
+
+    test('a page is deleted with its pictures; the last one never is', () {
+      final two = LayoutEditing.addPage(project, 0);
+
+      expect(LayoutEditing.deletePage(two, 0).pages.single.elements, isEmpty);
+      expect(LayoutEditing.deletePage(project, 0).pages.single.elements, [
+        card,
+      ]);
+    });
+
+    test('pages left empty are not saved', () {
+      final saved = LayoutEditing.withoutEmptyPages(
+        LayoutEditing.addPage(LayoutEditing.addPage(project, 0), 0),
+      );
+
+      expect(saved.pages.length, 1);
+      expect(saved.pages.single.elements, [card]);
+    });
+
+    test('a picture let go inside the page stays there', () {
+      expect(LayoutEditing.carryOver(project, 0, 0), isNull);
+    });
+
+    test('a picture dragged off the bottom makes the second page and comes '
+        'in at its top margin, keeping x', () {
+      // Its centre at 280 + 27 = 307, past the 297 mm edge.
+      final off = LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([card.copyWith(yMm: 280)]),
+        ],
+      );
+
+      final (carried, page, index) = LayoutEditing.carryOver(off, 0, 0)!;
+
+      expect(page, 1);
+      expect(carried.pages.length, 2);
+      expect(carried.pages[0].elements, isEmpty);
+      final moved = carried.pages[1].elements[index];
+      expect((moved.xMm, moved.yMm), (50, 10));
+      expect(LayoutEditing.hasOffPage(carried), isFalse);
+    });
+
+    test('onto a second page that is there, over its pictures', () {
+      final off = LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([card.copyWith(yMm: 280)]),
+          const LayoutPage([card]),
+        ],
+      );
+
+      final (carried, page, index) = LayoutEditing.carryOver(off, 0, 0)!;
+
+      expect((page, index), (1, 1));
+      expect(carried.pages.length, 2);
+      expect(carried.pages[1].elements.length, 2);
+    });
+
+    test('dragged off the top of the second page, back to the first, at '
+        'its bottom margin', () {
+      final off = LayoutProject(
+        marginMm: 10,
+        pages: [
+          const LayoutPage([card]),
+          LayoutPage([card.copyWith(yMm: -40)]),
+        ],
+      );
+
+      final (carried, page, index) = LayoutEditing.carryOver(off, 1, 0)!;
+
+      expect(page, 0);
+      final moved = carried.pages[0].elements[index];
+      expect(moved.yMm + moved.heightMm, 297 - 10);
+    });
+
+    test('off the top of the first page there is nowhere to go', () {
+      final off = LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([card.copyWith(yMm: -40)]),
+        ],
+      );
+
+      expect(LayoutEditing.carryOver(off, 0, 0), isNull);
+    });
+
+    test('a turned picture comes in with its turned edge at the margin', () {
+      final off = LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([card.copyWith(yMm: 280, rotationDeg: 90)]),
+        ],
+      );
+
+      final (carried, _, index) = LayoutEditing.carryOver(off, 0, 0)!;
+
+      final box = LayoutGeometry.bounds(carried.pages[1].elements[index]);
+      expect(LayoutGeometry.round(box.top), 10);
+    });
+  });
 }

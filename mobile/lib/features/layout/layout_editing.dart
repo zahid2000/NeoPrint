@@ -56,6 +56,9 @@ abstract final class LayoutEditing {
   static const minSideMm = 1.0;
   static const maxSideMm = 1000.0;
 
+  /// Most pages one layout may have (backend `LayoutJson.MaxPages`).
+  static const maxPages = 50;
+
   /// Where a copy lands relative to the original.
   static const duplicateOffsetMm = 5.0;
 
@@ -497,6 +500,72 @@ abstract final class LayoutEditing {
         if (!chosen.contains(i)) element,
     ]);
     return arrange(_insertPage(kept, page + 1), page + 1, moved);
+  }
+
+  /// An empty page right after [page] (T-451: "Səhifə əlavə et"). It is
+  /// dropped on saving if it stays empty ([withoutEmptyPages]).
+  static LayoutProject addPage(LayoutProject project, int page) =>
+      _insertPage(project, page + 1);
+
+  /// [page] and its pictures removed; the last page is never removed.
+  static LayoutProject deletePage(LayoutProject project, int page) =>
+      project.pages.length <= 1
+      ? project
+      : project.copyWith(
+          pages: [
+            for (final (i, current) in project.pages.indexed)
+              if (i != page) current,
+          ],
+        );
+
+  /// The layout as it is saved: the backend refuses an empty page
+  /// (`layout.emptyPage`), so pages left empty are not sent (T-451).
+  static LayoutProject withoutEmptyPages(LayoutProject project) =>
+      project.copyWith(
+        pages: [
+          for (final page in project.pages)
+            if (page.elements.isNotEmpty) page,
+        ],
+      );
+
+  /// A picture dragged off the bottom of [page] - its centre past the
+  /// paper's lower edge - carried onto the next page, made when there is
+  /// none; dragged off the top of a later page, onto the one before (T-451).
+  /// It keeps its x and comes in at the margin on the side it entered from,
+  /// drawn over that page's pictures. Null when it did not leave the page.
+  static (LayoutProject, int page, int index)? carryOver(
+    LayoutProject project,
+    int page,
+    int index,
+  ) {
+    final (_, height) = project.pageSizeMm;
+    final element = project.pages[page].elements[index];
+    final centreY = element.yMm + element.heightMm / 2;
+    final down = centreY > height;
+    final up = centreY < 0 && page > 0;
+
+    if (!down && !up) {
+      return null;
+    }
+
+    final target = down ? page + 1 : page - 1;
+    final box = LayoutGeometry.bounds(element);
+    var y = down
+        ? element.yMm + (project.marginMm - box.top)
+        : element.yMm + (height - project.marginMm - box.bottom);
+    // Taller than the page: its centre in the middle instead.
+    if (y + element.heightMm / 2 < 0 || y + element.heightMm / 2 > height) {
+      y = (height - element.heightMm) / 2;
+    }
+    final carried = _rounded(element.copyWith(yMm: y));
+
+    var result = deleteMany(project, page, [index]);
+    if (target >= result.pages.length) {
+      result = _insertPage(result, target);
+    }
+    final elements = [...result.pages[target].elements, carried];
+    result = _withPage(result, target, elements);
+    return (result, target, elements.length - 1);
   }
 
   /// Every one of [indexes] removed.

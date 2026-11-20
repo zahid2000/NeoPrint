@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -11,8 +12,10 @@ import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_empty_state.dart';
 import '../../shared/widgets/neo_primary_button.dart';
 import '../files/file_models.dart';
+import '../files/file_sources.dart';
 import '../files/files_controller.dart';
 import '../files/files_repository.dart';
+import '../files/files_screen.dart' show UploadCard;
 import 'layout_editing.dart';
 import 'layout_editor_screen.dart';
 import 'layout_model.dart';
@@ -237,6 +240,8 @@ const layoutMaxSources = 24;
 
 /// "Yeni tərtibat": choose the files - and for a document, its pages - that
 /// go into a new layout. Every page chosen is a picture of its own (T-416).
+/// A new file can be uploaded from here - the phone, a cloud app, the
+/// camera - as on the files tab; it is chosen once it is ready (T-450).
 class LayoutSourcesScreen extends ConsumerStatefulWidget {
   const LayoutSourcesScreen({super.key});
 
@@ -248,6 +253,41 @@ class LayoutSourcesScreen extends ConsumerStatefulWidget {
 class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
   /// Chosen files: an image file as it is (null), a document's pages.
   final Map<String, Set<int>?> _chosen = {};
+
+  /// Files uploaded here and still being made ready: chosen when they are.
+  final Set<String> _awaiting = {};
+
+  /// "Yeni fayl yüklə" (T-450): the files tab's ways in, without the scan
+  /// and the new layout.
+  Future<void> _upload() async {
+    final source = await chooseFileSource(context, forLayout: true);
+    if (source == null || !mounted) {
+      return;
+    }
+    final file = await addFileFrom(context, ref, source);
+    if (file == null || !mounted) {
+      return;
+    }
+    if (canUseInLayout(file)) {
+      _choose(file, true);
+    } else {
+      setState(() => _awaiting.add(file.id));
+    }
+  }
+
+  /// An uploaded file that has become ready is chosen; one that failed
+  /// stays on the list, saying so.
+  void _settle(List<UserFile> files) {
+    for (final file in files) {
+      if (!_awaiting.contains(file.id)) {
+        continue;
+      }
+      if (canUseInLayout(file)) {
+        _awaiting.remove(file.id);
+        _choose(file, true);
+      }
+    }
+  }
 
   static bool _isImage(UserFile file) =>
       layoutImageExtensions.contains(file.extension);
@@ -296,24 +336,64 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
     final l10n = AppLocalizations.of(context);
     final tokens = context.tokens;
     final theme = Theme.of(context);
-    final files = ref
-        .watch(filesControllerProvider)
-        .files
-        .where(canUseInLayout)
-        .toList();
+    ref.listen(
+      filesControllerProvider.select((state) => state.files),
+      (_, files) => _settle(files),
+    );
+    final state = ref.watch(filesControllerProvider);
+    final files = state.files.where(canUseInLayout).toList();
+    final waiting = [
+      for (final file in state.files)
+        if (_awaiting.contains(file.id) && !canUseInLayout(file)) file,
+    ];
+    final busy = state.uploads.isNotEmpty || waiting.isNotEmpty;
     final tooMany = _count > layoutMaxSources;
+
+    final upload = OutlinedButton.icon(
+      onPressed: () => unawaited(_upload()),
+      icon: const Icon(Icons.upload_file),
+      label: Text(l10n.layoutPickUpload),
+    );
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.layoutPickTitle)),
-      body: files.isEmpty
+      body: files.isEmpty && !busy
           ? NeoEmptyState(
               icon: Icons.dashboard_customize_outlined,
               message: l10n.layoutPickEmpty,
               hint: l10n.layoutPickEmptyHint,
+              action: upload,
             )
           : ListView(
               padding: const EdgeInsets.all(Spacing.x4),
               children: [
+                upload,
+                const SizedBox(height: Spacing.x3),
+                for (final item in state.uploads) ...[
+                  UploadCard(upload: item),
+                  const SizedBox(height: Spacing.x2),
+                ],
+                for (final file in waiting)
+                  Card(
+                    margin: const EdgeInsets.only(bottom: Spacing.x2),
+                    child: ListTile(
+                      leading: file.status == FileStatus.failed
+                          ? Icon(Icons.error_outline, color: tokens.danger)
+                          : const SizedBox.square(
+                              dimension: Spacing.x6,
+                              child: CircularProgressIndicator(),
+                            ),
+                      title: Text(file.fileName),
+                      subtitle: Text(
+                        file.status == FileStatus.failed
+                            ? l10n.layoutPickFailed
+                            : l10n.layoutPickPreparing,
+                        style: file.status == FileStatus.failed
+                            ? TextStyle(color: tokens.danger)
+                            : null,
+                      ),
+                    ),
+                  ),
                 for (final file in files)
                   Card(
                     margin: const EdgeInsets.only(bottom: Spacing.x2),

@@ -157,6 +157,79 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
 
   List<LayoutElement> get _elements => _project.pages[_page].elements;
 
+  /// Pictures on every page together.
+  int get _pictureCount =>
+      _project.pages.fold(0, (sum, page) => sum + page.elements.length);
+
+  void _goTo(int page) => setState(() {
+    _page = page;
+    _selected = null;
+    _marked = const {};
+  });
+
+  /// An empty page after this one, shown at once (T-451).
+  void _addPage() {
+    _apply(LayoutEditing.addPage(_project, _page));
+    setState(() => _page++);
+  }
+
+  /// This page and its pictures; asked first when it has any (T-451).
+  Future<void> _deletePage() async {
+    if (_elements.isNotEmpty) {
+      final l10n = AppLocalizations.of(context);
+      final sure = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(l10n.layoutDeletePageTitle),
+          content: Text(l10n.layoutDeletePageBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.commonCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(l10n.layoutDelete),
+            ),
+          ],
+        ),
+      );
+      if (sure != true || !mounted) {
+        return;
+      }
+    }
+
+    final page = _page;
+    _apply(LayoutEditing.deletePage(_project, page));
+    setState(() => _page = page == 0 ? 0 : page - 1);
+  }
+
+  /// A picture let go past the bottom of the page goes onto the next one -
+  /// made if there is none - and past the top, onto the one before (T-451).
+  void _carryOver(int index) {
+    if (_project.pages.length >= LayoutEditing.maxPages &&
+        _page == _project.pages.length - 1) {
+      return;
+    }
+    final carried = LayoutEditing.carryOver(_project, _page, index);
+    if (carried == null) {
+      return;
+    }
+
+    final (project, page, select) = carried;
+    _apply(project, select: select);
+    setState(() => _page = page);
+
+    final l10n = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(l10n.layoutCarried(page + 1, project.pages.length)),
+        ),
+      );
+  }
+
   LayoutElement? get _current =>
       _selected != null && _selected! < _elements.length
       ? _elements[_selected!]
@@ -295,8 +368,11 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
   }
 
   Future<void> _done() async {
+    // A page left empty is not saved (T-451).
+    final project = LayoutEditing.withoutEmptyPages(_project);
+
     if (widget.mode == LayoutEditorMode.scan) {
-      Navigator.pop(context, _project);
+      Navigator.pop(context, project);
       return;
     }
 
@@ -318,8 +394,8 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
     try {
       final repository = ref.read(layoutRepositoryProvider);
       final UserFile saved = widget.mode == LayoutEditorMode.editFile
-          ? await repository.update(widget.fileId!, _project)
-          : await repository.create(_project, name!);
+          ? await repository.update(widget.fileId!, project)
+          : await repository.create(project, name!);
 
       unawaited(ref.read(filesControllerProvider.notifier).load());
 
@@ -480,43 +556,78 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                           : {..._marked, index};
                     }
                   }),
-                  onChanged: (index, element, {required done}) => setState(() {
-                    _project = LayoutEditing.replace(
-                      _project,
-                      _page,
-                      index,
-                      element,
-                    );
-                    _dirty = true;
-                  }),
+                  onChanged: (index, element, {required done}) {
+                    setState(() {
+                      _project = LayoutEditing.replace(
+                        _project,
+                        _page,
+                        index,
+                        element,
+                      );
+                      _dirty = true;
+                    });
+                    if (done) {
+                      _carryOver(index);
+                    }
+                  },
                 ),
               ),
-              if (_project.pages.length > 1)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      onPressed: _page > 0
-                          ? () => setState(() {
-                              _page--;
-                              _selected = null;
-                              _marked = const {};
-                            })
-                          : null,
-                      icon: const Icon(Icons.chevron_left),
+              // Pages (T-451): always here, so a second one can be made.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    tooltip: l10n.layoutPreviousPage,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _page > 0 ? () => _goTo(_page - 1) : null,
+                    icon: const Icon(Icons.chevron_left),
+                  ),
+                  Flexible(
+                    child: Text(
+                      l10n.layoutPageOf(_page + 1, _project.pages.length),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    Text(l10n.layoutPageOf(_page + 1, _project.pages.length)),
+                  ),
+                  IconButton(
+                    tooltip: l10n.layoutNextPage,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _page < _project.pages.length - 1
+                        ? () => _goTo(_page + 1)
+                        : null,
+                    icon: const Icon(Icons.chevron_right),
+                  ),
+                  IconButton(
+                    tooltip: l10n.layoutAddPage,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _project.pages.length < LayoutEditing.maxPages
+                        ? _addPage
+                        : null,
+                    icon: const Icon(Icons.post_add),
+                  ),
+                  if (_project.pages.length > 1)
                     IconButton(
-                      onPressed: _page < _project.pages.length - 1
-                          ? () => setState(() {
-                              _page++;
-                              _selected = null;
-                              _marked = const {};
-                            })
-                          : null,
-                      icon: const Icon(Icons.chevron_right),
+                      tooltip: l10n.layoutDeletePage,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => unawaited(_deletePage()),
+                      icon: Icon(
+                        Icons.delete_sweep_outlined,
+                        color: tokens.danger,
+                      ),
                     ),
-                  ],
+                ],
+              ),
+              if (_elements.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Spacing.x4),
+                  child: Text(
+                    widget.onAddPictures != null
+                        ? l10n.layoutPageEmpty
+                        : l10n.layoutPageEmptyScan,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: tokens.neutral600),
+                  ),
                 ),
               // Several pictures at once (T-430).
               if (_multi)
@@ -579,7 +690,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                         setState(() => _page++);
                       },
                     ),
-                    if (_marked.length < _elements.length)
+                    if (_marked.length < _pictureCount)
                       _Tool(
                         icon: Icons.delete_outline,
                         label: l10n.layoutDelete,
@@ -722,7 +833,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                             _selected = null;
                           }),
                         ),
-                      if (_elements.length > 1)
+                      if (_pictureCount > 1)
                         _Tool(
                           icon: Icons.delete_outline,
                           label: l10n.layoutDelete,
@@ -749,7 +860,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                       ? l10n.layoutSaving
                       : l10n.layoutSave,
                   busy: _saving,
-                  onPressed: offPage || _saving
+                  onPressed: offPage || _saving || _pictureCount == 0
                       ? null
                       : () => unawaited(_done()),
                 ),

@@ -33,7 +33,14 @@ enum FileSource {
 
 /// The ways in, as a bottom sheet: the files tab and "Fayllarımdan seç" in
 /// the Print tab (T-353) offer the same ones. Null when nothing was chosen.
-Future<FileSource?> chooseFileSource(BuildContext context) async {
+///
+/// [forLayout]: the layout's file choice (T-450) - only the ways that bring
+/// a file a layout can use: no scan (a saved scan is locked) and no new
+/// layout inside a layout.
+Future<FileSource?> chooseFileSource(
+  BuildContext context, {
+  bool forLayout = false,
+}) async {
   final l10n = AppLocalizations.of(context);
 
   return showModalBottomSheet<FileSource>(
@@ -68,7 +75,9 @@ Future<FileSource?> chooseFileSource(BuildContext context) async {
                 onTap: () => Navigator.pop(context, FileSource.camera),
               ),
             // The phone scanner (plan section 2.11): not on the web.
-            if (Readiness.documentScan && DocumentScanner.isSupportedPlatform)
+            if (!forLayout &&
+                Readiness.documentScan &&
+                DocumentScanner.isSupportedPlatform)
               ListTile(
                 leading: const Icon(Icons.document_scanner_outlined),
                 title: Text(l10n.filesScanDocument),
@@ -76,12 +85,13 @@ Future<FileSource?> chooseFileSource(BuildContext context) async {
                 onTap: () => Navigator.pop(context, FileSource.scan),
               ),
             // Pictures and PDF pages on one sheet (plan section 2.11).
-            ListTile(
-              leading: const Icon(Icons.dashboard_customize_outlined),
-              title: Text(l10n.filesNewLayout),
-              subtitle: Text(l10n.filesNewLayoutHint),
-              onTap: () => Navigator.pop(context, FileSource.layout),
-            ),
+            if (!forLayout)
+              ListTile(
+                leading: const Icon(Icons.dashboard_customize_outlined),
+                title: Text(l10n.filesNewLayout),
+                subtitle: Text(l10n.filesNewLayoutHint),
+                onTap: () => Navigator.pop(context, FileSource.layout),
+              ),
             const SizedBox(height: Spacing.x4),
           ],
         ),
@@ -90,14 +100,16 @@ Future<FileSource?> chooseFileSource(BuildContext context) async {
   );
 }
 
-/// Adds a file from [source].
+/// Adds a file from [source]. From the files tab, the file uploaded from
+/// the phone, a cloud app or the camera is returned (the layout's file
+/// choice selects it when it is ready, T-450); null otherwise.
 ///
 /// From the files tab ([thenPrint] false) the upload runs in
 /// [filesControllerProvider] and shows on the list. From the Print tab
 /// ([thenPrint] true) the user is printing (T-347): the chosen file uploads
 /// on its own screen, which opens the file's preview - and from there its
 /// print settings - once it is ready; a saved scan opens its preview at once.
-Future<void> addFileFrom(
+Future<UserFile?> addFileFrom(
   BuildContext context,
   WidgetRef ref,
   FileSource source, {
@@ -106,12 +118,12 @@ Future<void> addFileFrom(
   final l10n = AppLocalizations.of(context);
   final controller = ref.read(filesControllerProvider.notifier);
 
-  Future<void> send(PickedFile picked) async {
+  Future<UserFile?> send(PickedFile picked) async {
     if (thenPrint) {
       await context.push(Routes.printUpload, extra: picked);
-    } else {
-      await controller.upload(picked);
+      return null;
     }
+    return controller.upload(picked);
   }
 
   switch (source) {
@@ -126,7 +138,7 @@ Future<void> addFileFrom(
     case FileSource.scan:
       final outcome = await context.push<ScanOutcome>(Routes.filesScanner);
       if (!context.mounted) {
-        return;
+        return null;
       }
       if (outcome == ScanOutcome.saved) {
         if (thenPrint) {
@@ -138,25 +150,26 @@ Future<void> addFileFrom(
       } else if (outcome == ScanOutcome.useCamera) {
         final photo = await _photo(context);
         if (photo != null && context.mounted) {
-          await send(photo);
+          return send(photo);
         }
       }
     case FileSource.device:
       final picked = await _pickFile(ref);
       if (picked != null && context.mounted) {
-        await send(picked);
+        return send(picked);
       }
     case FileSource.cloud:
       final picked = await _pickCloud(context, ref);
       if (picked != null && context.mounted) {
-        await send(picked);
+        return send(picked);
       }
     case FileSource.camera:
       final photo = await _photo(context);
       if (photo != null && context.mounted) {
-        await send(photo);
+        return send(photo);
       }
   }
+  return null;
 }
 
 /// The scan just saved: the newest scan on the list, opened for printing.

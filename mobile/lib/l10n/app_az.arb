@@ -332,7 +332,25 @@
     }
   },
   "layoutPickEmpty": "Tərtibat üçün hazır fayl yoxdur",
-  "layoutPickEmptyHint": "Əvvəl şəkil və ya PDF yükləyin; saxlanılmış skanlar tərtibata əlavə olunmur.",
+  "layoutPickEmptyHint": "Cihazdan, buluddan və ya kamera ilə fayl yükləyin; saxlanılmış skanlar tərtibata əlavə olunmur.",
+  "layoutPickUpload": "Yeni fayl yüklə",
+  "layoutPickPreparing": "Hazırlanır — hazır olanda özü seçiləcək",
+  "layoutPickFailed": "Bu fayl açılmadı — tərtibata əlavə olunmur. Başqa fayl seçin.",
+  "layoutPreviousPage": "Əvvəlki səhifə",
+  "layoutNextPage": "Növbəti səhifə",
+  "layoutAddPage": "Səhifə əlavə et",
+  "layoutDeletePage": "Səhifəni sil",
+  "layoutDeletePageTitle": "Səhifə silinsin?",
+  "layoutDeletePageBody": "Səhifə üzərindəki şəkillərlə birlikdə silinəcək.",
+  "layoutPageEmpty": "Boş səhifə saxlanılmır: \"Fayl əlavə et\" ilə şəkil qoyun və ya şəkli əvvəlki səhifənin aşağı kənarından bura sürüşdürün.",
+  "layoutPageEmptyScan": "Boş səhifə saxlanılmır: şəkli əvvəlki səhifənin aşağı kənarından bura sürüşdürün.",
+  "layoutCarried": "Şəkil keçirildi: səhifə {n} / {total}",
+  "@layoutCarried": {
+    "placeholders": {
+      "n": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
   "filesEmpty": "Hələ faylınız yoxdur.",
   "filesEmptyHint": "Yüklədiyiniz fayllar burada saxlanılır və istənilən kioskda çap oluna bilər.",
   "filesLoadFailed": "Fayllar göstərilə bilmir.",
