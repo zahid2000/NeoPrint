@@ -77,7 +77,7 @@ Komissiyalar və müqavilə şərtləri ictimai deyil; onlar provayderdən sorğ
 
 ## 6. Nəticə və təklif
 
-- **Ən çox sənədləşən və sandbox-u açıq olan:** Azericard (bank vasitəsilə). Payriff-in rəsmi .NET SDK-sı var, amma callback imzalanmır.
+- **Ən çox sənədləşən və sandbox-u açıq olan:** Azericard (bank vasitəsilə). **2026-11-20 yeniləmə:** Azericard developer portalı və sandbox açıb — ətraflı analiz: `docs/AZERICARD.md` (T-452). Payriff-in rəsmi .NET SDK-sı var, amma callback imzalanmır.
 - **IPS QR** (Mərkəzi Bank) ən ucuz yol kimi təqdim olunur, amma merchant API-si yalnız bankdan alınar.
 - **e-kassa** üçün ilk addım — e-kassa.gov.az-dakı operator siyahısından kiosk üçün həll təklif edən 2–3 operatorla əlaqə.
 - Seçim **layihə sahibinindir**; adapterlər seçilmiş provayderin sandbox sənədi gələndən sonra yazılır (M25, M26).
