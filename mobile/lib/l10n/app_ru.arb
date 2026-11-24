@@ -236,8 +236,6 @@
   "layoutPickUpload": "Загрузить новый файл",
   "layoutPickPreparing": "Подготавливается — будет выбран, когда будет готов",
   "layoutPickFailed": "Этот файл не открылся, его нельзя добавить в макет. Выберите другой файл.",
-  "layoutPreviousPage": "Предыдущая страница",
-  "layoutNextPage": "Следующая страница",
   "layoutAddPage": "Добавить страницу",
   "layoutDeletePage": "Удалить страницу",
   "layoutDeletePageTitle": "Удалить страницу?",

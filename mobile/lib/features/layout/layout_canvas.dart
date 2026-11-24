@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/tokens.dart';
@@ -14,6 +15,10 @@ enum _Gesture { none, move, transform, resize }
 /// səhifə tərtibatı redaktoru"): rulers in millimetres, the paper with its
 /// margin and grid, the pictures, and the selection. One finger moves a
 /// picture, two fingers scale and turn it, a corner handle scales it.
+///
+/// Pages stand one under another in a scrolling list (T-453): a finger that
+/// comes down on a picture or a handle is the canvas's at once, anywhere
+/// else the list scrolls.
 class LayoutCanvas extends StatefulWidget {
   const LayoutCanvas({
     super.key,
@@ -25,7 +30,14 @@ class LayoutCanvas extends StatefulWidget {
     required this.onSelect,
     required this.onChanged,
     this.marked = const {},
+    this.highlighted = false,
   });
+
+  /// Room the rulers and the paper's border take besides the paper.
+  static const chrome = _LayoutCanvasState._ruler + 16;
+
+  /// The page being worked on, among several (T-453): its paper is framed.
+  final bool highlighted;
 
   /// Pictures chosen together (T-430): framed like the selected one.
   final Set<int> marked;
@@ -52,6 +64,9 @@ class _LayoutCanvasState extends State<LayoutCanvas> {
   static const _handleTouch = 28.0;
 
   _Gesture _gesture = _Gesture.none;
+
+  /// Fingers on the canvas: only the first one chooses.
+  int _pointers = 0;
 
   /// The picture this gesture started on (T-401). Not [LayoutCanvas.selected]:
   /// the parent learns of a new selection only on its next build, and the
@@ -123,6 +138,147 @@ class _LayoutCanvasState extends State<LayoutCanvas> {
     ];
   }
 
+  /// Whether [point] is on a corner handle of the selected picture.
+  bool _onHandle(Offset point, Rect paper, double scale) {
+    final selected = widget.selected;
+
+    return selected != null &&
+        selected < _elements.length &&
+        _corners(
+          _elements[selected],
+          paper,
+          scale,
+        ).any((corner) => (corner - point).distance <= _handleTouch);
+  }
+
+  /// Whether a finger coming down at [point] moves something here rather
+  /// than scrolling the pages (T-453).
+  bool _claims(Offset point, Rect paper, double scale) =>
+      _gesture != _Gesture.none ||
+      _onHandle(point, paper, scale) ||
+      _hit(_toMm(point, paper, scale)) != null;
+
+  /// The first finger chooses what is under it - a picture, or none - at
+  /// once, whether it then moves the picture or scrolls the pages.
+  void _down(Offset point, Rect paper, double scale) {
+    if (_pointers++ > 0 || _onHandle(point, paper, scale)) {
+      return;
+    }
+    widget.onSelect(_hit(_toMm(point, paper, scale)));
+  }
+
+  void _up() => _pointers = _pointers > 0 ? _pointers - 1 : 0;
+
+  void _scaleStart(ScaleStartDetails details, Rect paper, double scale) {
+    final selected = widget.selected;
+
+    // A corner handle of the selected picture resizes it.
+    if (selected != null &&
+        details.pointerCount == 1 &&
+        _onHandle(details.localFocalPoint, paper, scale)) {
+      _gesture = _Gesture.resize;
+      _index = selected;
+      _start = _elements[selected];
+      _startFocal = details.localFocalPoint;
+      return;
+    }
+
+    // Chosen already when the finger came down.
+    final hit = _hit(_toMm(details.localFocalPoint, paper, scale));
+
+    if (hit == null) {
+      _gesture = _Gesture.none;
+      _index = null;
+      return;
+    }
+
+    _gesture = details.pointerCount > 1 ? _Gesture.transform : _Gesture.move;
+    _index = hit;
+    _start = _elements[hit];
+    _startFocal = details.localFocalPoint;
+  }
+
+  void _scaleUpdate(ScaleUpdateDetails details, Rect paper, double scale) {
+    final index = _index;
+    final start = _start;
+
+    if (index == null || start == null || _gesture == _Gesture.none) {
+      return;
+    }
+
+    if (details.pointerCount > 1 && _gesture == _Gesture.move) {
+      // A second finger came down: scale and turn from here.
+      _gesture = _Gesture.transform;
+    }
+
+    switch (_gesture) {
+      case _Gesture.move:
+        final delta = (details.localFocalPoint - _startFocal) / scale;
+        final (moved, lines) = LayoutEditing.move(
+          widget.project,
+          widget.page,
+          index,
+          start,
+          delta.dx,
+          delta.dy,
+        );
+        setState(() => _snapLines = lines);
+        widget.onChanged(index, moved, done: false);
+      case _Gesture.transform:
+        var changed = LayoutEditing.scale(
+          start,
+          details.scale,
+          details.scale,
+          lockRatio: true,
+        );
+        changed = LayoutEditing.rotate(
+          changed,
+          details.rotation * 180 / math.pi,
+        );
+        widget.onChanged(index, changed, done: false);
+      case _Gesture.resize:
+        final centre =
+            paper.topLeft +
+            Offset(
+                  start.xMm + start.widthMm / 2,
+                  start.yMm + start.heightMm / 2,
+                ) *
+                scale;
+        final from = _startFocal - centre;
+        final to = details.localFocalPoint - centre;
+        final factorX = from.dx.abs() < 1 ? 1.0 : to.dx / from.dx;
+        final factorY = from.dy.abs() < 1 ? 1.0 : to.dy / from.dy;
+        final factor = to.distance / math.max(from.distance, 1);
+        widget.onChanged(
+          index,
+          widget.lockRatio
+              ? LayoutEditing.scale(start, factor, factor)
+              : LayoutEditing.scale(
+                  start,
+                  factorX.abs(),
+                  factorY.abs(),
+                  lockRatio: false,
+                ),
+          done: false,
+        );
+      case _Gesture.none:
+        break;
+    }
+  }
+
+  void _scaleEnd() {
+    final index = _index;
+    if (index != null && _gesture != _Gesture.none) {
+      widget.onChanged(index, _elements[index], done: true);
+    }
+    setState(() {
+      _gesture = _Gesture.none;
+      _index = null;
+      _start = null;
+      _snapLines = const [];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -132,156 +288,77 @@ class _LayoutCanvasState extends State<LayoutCanvas> {
         final size = constraints.biggest;
         final (paper, scale) = _paper(size);
 
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onScaleStart: (details) {
-            final mm = _toMm(details.localFocalPoint, paper, scale);
-            final selected = widget.selected;
-
-            // A corner handle of the selected picture resizes it.
-            if (selected != null &&
-                details.pointerCount == 1 &&
-                _corners(_elements[selected], paper, scale).any(
-                  (corner) =>
-                      (corner - details.localFocalPoint).distance <=
-                      _handleTouch,
-                )) {
-              _gesture = _Gesture.resize;
-              _index = selected;
-              _start = _elements[selected];
-              _startFocal = details.localFocalPoint;
-              return;
-            }
-
-            final hit = _hit(mm);
-            widget.onSelect(hit);
-
-            if (hit == null) {
-              _gesture = _Gesture.none;
-              _index = null;
-              return;
-            }
-
-            _gesture = details.pointerCount > 1
-                ? _Gesture.transform
-                : _Gesture.move;
-            _index = hit;
-            _start = _elements[hit];
-            _startFocal = details.localFocalPoint;
-          },
-          onScaleUpdate: (details) {
-            final index = _index;
-            final start = _start;
-
-            if (index == null || start == null || _gesture == _Gesture.none) {
-              return;
-            }
-
-            if (details.pointerCount > 1 && _gesture == _Gesture.move) {
-              // A second finger came down: scale and turn from here.
-              _gesture = _Gesture.transform;
-            }
-
-            switch (_gesture) {
-              case _Gesture.move:
-                final delta = (details.localFocalPoint - _startFocal) / scale;
-                final (moved, lines) = LayoutEditing.move(
-                  widget.project,
-                  widget.page,
-                  index,
-                  start,
-                  delta.dx,
-                  delta.dy,
-                );
-                setState(() => _snapLines = lines);
-                widget.onChanged(index, moved, done: false);
-              case _Gesture.transform:
-                var changed = LayoutEditing.scale(
-                  start,
-                  details.scale,
-                  details.scale,
-                  lockRatio: true,
-                );
-                changed = LayoutEditing.rotate(
-                  changed,
-                  details.rotation * 180 / math.pi,
-                );
-                widget.onChanged(index, changed, done: false);
-              case _Gesture.resize:
-                final centre =
-                    paper.topLeft +
-                    Offset(
-                          start.xMm + start.widthMm / 2,
-                          start.yMm + start.heightMm / 2,
-                        ) *
-                        scale;
-                final from = _startFocal - centre;
-                final to = details.localFocalPoint - centre;
-                final factorX = from.dx.abs() < 1 ? 1.0 : to.dx / from.dx;
-                final factorY = from.dy.abs() < 1 ? 1.0 : to.dy / from.dy;
-                final factor = to.distance / math.max(from.distance, 1);
-                widget.onChanged(
-                  index,
-                  widget.lockRatio
-                      ? LayoutEditing.scale(start, factor, factor)
-                      : LayoutEditing.scale(
-                          start,
-                          factorX.abs(),
-                          factorY.abs(),
-                          lockRatio: false,
-                        ),
-                  done: false,
-                );
-              case _Gesture.none:
-                break;
-            }
-          },
-          onScaleEnd: (_) {
-            final index = _index;
-            if (index != null && _gesture != _Gesture.none) {
-              widget.onChanged(index, _elements[index], done: true);
-            }
-            setState(() {
-              _gesture = _Gesture.none;
-              _index = null;
-              _start = null;
-              _snapLines = const [];
-            });
-          },
-          child: CustomPaint(
-            size: size,
-            painter: _CanvasPainter(
-              project: widget.project,
-              page: widget.page,
-              images: widget.images,
-              selected: widget.selected,
-              marked: widget.marked,
-              paper: paper,
-              scale: scale,
-              ruler: _ruler,
-              showGrid: _gesture != _Gesture.none,
-              snapLines: _snapLines,
-              colours: _Colours(
-                background: tokens.neutral100,
-                paper: LightPalette.neutral0,
-                paperEdge: tokens.neutral200,
-                margin: tokens.neutral400,
-                grid: tokens.neutral100,
-                ruler: tokens.neutral600,
-                selection: tokens.brand500,
-                snap: tokens.brand500,
-                warning: tokens.warning,
-                placeholder: tokens.neutral200,
-              ),
-              textStyle: Theme.of(context).textTheme.bodySmall!.copyWith(
-                color: tokens.neutral600,
-                fontFeatures: const [ui.FontFeature.tabularFigures()],
+        return Listener(
+          onPointerDown: (event) => _down(event.localPosition, paper, scale),
+          onPointerUp: (_) => _up(),
+          onPointerCancel: (_) => _up(),
+          child: RawGestureDetector(
+            behavior: HitTestBehavior.opaque,
+            gestures: {
+              _ClaimingScale:
+                  GestureRecognizerFactoryWithHandlers<_ClaimingScale>(
+                    _ClaimingScale.new,
+                    (recognizer) => recognizer
+                      ..claims = ((point) => _claims(point, paper, scale))
+                      ..onStart = ((details) =>
+                          _scaleStart(details, paper, scale))
+                      ..onUpdate = ((details) =>
+                          _scaleUpdate(details, paper, scale))
+                      ..onEnd = ((_) => _scaleEnd()),
+                  ),
+            },
+            child: CustomPaint(
+              size: size,
+              painter: _CanvasPainter(
+                project: widget.project,
+                page: widget.page,
+                images: widget.images,
+                selected: widget.selected,
+                marked: widget.marked,
+                paper: paper,
+                scale: scale,
+                ruler: _ruler,
+                showGrid: _gesture != _Gesture.none,
+                snapLines: _snapLines,
+                colours: _Colours(
+                  background: tokens.neutral100,
+                  paper: LightPalette.neutral0,
+                  paperEdge: widget.highlighted
+                      ? tokens.brand500
+                      : tokens.neutral200,
+                  margin: tokens.neutral400,
+                  grid: tokens.neutral100,
+                  ruler: tokens.neutral600,
+                  selection: tokens.brand500,
+                  snap: tokens.brand500,
+                  warning: tokens.warning,
+                  placeholder: tokens.neutral200,
+                ),
+                textStyle: Theme.of(context).textTheme.bodySmall!.copyWith(
+                  color: tokens.neutral600,
+                  fontFeatures: const [ui.FontFeature.tabularFigures()],
+                ),
               ),
             ),
           ),
         );
       },
     );
+  }
+}
+
+/// Scale and move that takes the finger at once when [claims] says it came
+/// down on something to move (T-453), before the page list can scroll.
+class _ClaimingScale extends ScaleGestureRecognizer {
+  bool Function(Offset point)? claims;
+
+  @override
+  void handleEvent(PointerEvent event) {
+    super.handleEvent(event);
+    if (event is PointerDownEvent &&
+        (claims?.call(event.localPosition) ?? false)) {
+      resolvePointer(event.pointer, GestureDisposition.accepted);
+    }
   }
 }
 

@@ -236,8 +236,6 @@
   "layoutPickUpload": "Upload a new file",
   "layoutPickPreparing": "Getting ready — it will be chosen when it is",
   "layoutPickFailed": "This file could not be opened and cannot go into a layout. Choose another file.",
-  "layoutPreviousPage": "Previous page",
-  "layoutNextPage": "Next page",
   "layoutAddPage": "Add page",
   "layoutDeletePage": "Delete page",
   "layoutDeletePageTitle": "Delete this page?",

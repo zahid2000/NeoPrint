@@ -336,8 +336,6 @@
   "layoutPickUpload": "Yeni fayl yüklə",
   "layoutPickPreparing": "Hazırlanır — hazır olanda özü seçiləcək",
   "layoutPickFailed": "Bu fayl açılmadı — tərtibata əlavə olunmur. Başqa fayl seçin.",
-  "layoutPreviousPage": "Əvvəlki səhifə",
-  "layoutNextPage": "Növbəti səhifə",
   "layoutAddPage": "Səhifə əlavə et",
   "layoutDeletePage": "Səhifəni sil",
   "layoutDeletePageTitle": "Səhifə silinsin?",

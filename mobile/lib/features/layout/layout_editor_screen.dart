@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -77,8 +78,17 @@ class LayoutEditorScreen extends ConsumerStatefulWidget {
 }
 
 class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
+  /// Room between two pages in the list (T-453).
+  static const _gap = Spacing.x2;
+
   late LayoutProject _project = widget.initial;
+
+  /// The page worked on: the tools and "Səhifə əlavə et" act on it.
   int _page = 0;
+  final _scroll = ScrollController();
+
+  /// One page's height in the list, with the room under it.
+  double _extent = 0;
   int? _selected;
 
   /// "Çoxlu seç" (T-430): a tap adds a picture to [_marked] or takes it out,
@@ -105,6 +115,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
 
   @override
   void dispose() {
+    _scroll.dispose();
     for (final image in _decoded.values) {
       image.dispose();
     }
@@ -170,7 +181,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
   /// An empty page after this one, shown at once (T-451).
   void _addPage() {
     _apply(LayoutEditing.addPage(_project, _page));
-    setState(() => _page++);
+    _show(_page + 1);
   }
 
   /// This page and its pictures; asked first when it has any (T-451).
@@ -201,8 +212,141 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
 
     final page = _page;
     _apply(LayoutEditing.deletePage(_project, page));
-    setState(() => _page = page == 0 ? 0 : page - 1);
+    _show(page == 0 ? 0 : page - 1);
   }
+
+  /// [page] becomes the one worked on and is scrolled into sight (T-453).
+  void _show(int page) {
+    setState(() => _page = page);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients || _extent == 0) {
+        return;
+      }
+      final position = _scroll.position;
+      final top = page * _extent;
+      final bottom = top + _extent - _gap;
+      if (top >= position.pixels &&
+          bottom <= position.pixels + position.viewportDimension) {
+        return;
+      }
+      unawaited(
+        _scroll.animateTo(
+          top.clamp(0, position.maxScrollExtent),
+          duration: Motion.base,
+          curve: Curves.easeOut,
+        ),
+      );
+    });
+  }
+
+  /// How much of [page] the list shows, from 0 to 1.
+  double _seen(int page, ScrollMetrics metrics) {
+    final height = _extent - _gap;
+    final top = page * _extent;
+    final shown =
+        math.min(top + height, metrics.pixels + metrics.viewportDimension) -
+        math.max(top, metrics.pixels);
+
+    return (shown / height).clamp(0, 1);
+  }
+
+  /// Scrolled to another page: once the page worked on is mostly out of
+  /// sight, the one most in sight takes its place (T-453).
+  bool _settled(ScrollEndNotification note) {
+    if (note.depth != 0 || _extent == 0) {
+      return false;
+    }
+    final metrics = note.metrics;
+    if (_seen(_page, metrics) >= 0.5) {
+      return false;
+    }
+
+    var best = _page;
+    for (var page = 0; page < _project.pages.length; page++) {
+      if (_seen(page, metrics) > _seen(best, metrics)) {
+        best = page;
+      }
+    }
+    if (best != _page) {
+      _goTo(best);
+    }
+    return false;
+  }
+
+  /// A finger came down on [page]: that page is worked on from now, and
+  /// [index] is the picture under it, if any.
+  void _select(int page, int? index) => setState(() {
+    if (page != _page) {
+      _page = page;
+      _selected = null;
+      _marked = const {};
+    }
+    if (!_multi) {
+      _selected = index;
+      return;
+    }
+    // Several at once: a tap adds or takes out (T-430).
+    _selected = null;
+    if (index != null) {
+      _marked = _marked.contains(index)
+          ? ({..._marked}..remove(index))
+          : {..._marked, index};
+    }
+  });
+
+  /// The pages one under another (T-453): each as wide as the screen, not
+  /// taller than the list, so the next one shows below it.
+  Widget _pageList(NeoPrintTokens tokens) => LayoutBuilder(
+    builder: (context, constraints) {
+      final (width, height) = _project.pageSizeMm;
+      const chrome = LayoutCanvas.chrome;
+      final fit = (constraints.maxWidth - chrome) * height / width + chrome;
+      final room = _project.pages.length > 1
+          ? constraints.maxHeight - Spacing.x8
+          : constraints.maxHeight;
+      final pageHeight = math.max(math.min(fit, room), chrome);
+      _extent = pageHeight + _gap;
+
+      return ColoredBox(
+        color: tokens.neutral100,
+        child: NotificationListener<ScrollEndNotification>(
+          onNotification: _settled,
+          child: ListView.builder(
+            controller: _scroll,
+            itemExtent: _extent,
+            itemCount: _project.pages.length,
+            itemBuilder: (context, page) => Padding(
+              padding: const EdgeInsets.only(bottom: _gap),
+              child: LayoutCanvas(
+                project: _project,
+                page: page,
+                images: _decoded,
+                selected: page == _page ? _selected : null,
+                lockRatio: _lockRatio,
+                marked: _multi && page == _page ? _marked : const {},
+                highlighted: page == _page && _project.pages.length > 1,
+                onSelect: (index) => _select(page, index),
+                onChanged: (index, element, {required done}) {
+                  setState(() {
+                    _project = LayoutEditing.replace(
+                      _project,
+                      page,
+                      index,
+                      element,
+                    );
+                    _dirty = true;
+                  });
+                  if (done) {
+                    _carryOver(index);
+                  }
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 
   /// A picture let go past the bottom of the page goes onto the next one -
   /// made if there is none - and past the top, onto the one before (T-451).
@@ -218,7 +362,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
 
     final (project, page, select) = carried;
     _apply(project, select: select);
-    setState(() => _page = page);
+    _show(page);
 
     final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context)
@@ -282,7 +426,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
 
     if (pictures.isNotEmpty) {
       _apply(LayoutTemplates.apply(template, pictures, _project.marginMm));
-      _page = 0;
+      _show(0);
     }
   }
 
@@ -535,67 +679,18 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                     message: l10n.layoutEdgeWarning,
                   ),
                 ),
-              Expanded(
-                child: LayoutCanvas(
-                  project: _project,
-                  page: _page,
-                  images: _decoded,
-                  selected: _selected,
-                  lockRatio: _lockRatio,
-                  marked: _multi ? _marked : const {},
-                  onSelect: (index) => setState(() {
-                    if (!_multi) {
-                      _selected = index;
-                      return;
-                    }
-                    // Several at once: a tap adds or takes out (T-430).
-                    _selected = null;
-                    if (index != null) {
-                      _marked = _marked.contains(index)
-                          ? ({..._marked}..remove(index))
-                          : {..._marked, index};
-                    }
-                  }),
-                  onChanged: (index, element, {required done}) {
-                    setState(() {
-                      _project = LayoutEditing.replace(
-                        _project,
-                        _page,
-                        index,
-                        element,
-                      );
-                      _dirty = true;
-                    });
-                    if (done) {
-                      _carryOver(index);
-                    }
-                  },
-                ),
-              ),
+              // Pages one under another, scrolled (T-453).
+              Expanded(child: _pageList(tokens)),
               // Pages (T-451): always here, so a second one can be made.
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    tooltip: l10n.layoutPreviousPage,
-                    visualDensity: VisualDensity.compact,
-                    onPressed: _page > 0 ? () => _goTo(_page - 1) : null,
-                    icon: const Icon(Icons.chevron_left),
-                  ),
                   Flexible(
                     child: Text(
                       l10n.layoutPageOf(_page + 1, _project.pages.length),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  IconButton(
-                    tooltip: l10n.layoutNextPage,
-                    visualDensity: VisualDensity.compact,
-                    onPressed: _page < _project.pages.length - 1
-                        ? () => _goTo(_page + 1)
-                        : null,
-                    icon: const Icon(Icons.chevron_right),
                   ),
                   IconButton(
                     tooltip: l10n.layoutAddPage,
@@ -687,7 +782,7 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                             _pictures,
                           ),
                         );
-                        setState(() => _page++);
+                        _show(_page + 1);
                       },
                     ),
                     if (_marked.length < _pictureCount)

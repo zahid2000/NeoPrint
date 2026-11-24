@@ -351,6 +351,76 @@ void main() {
     expect(result.pages.single.elements.single.yMm, 10);
   });
 
+  testWidgets('pages stand one under another and are reached by scrolling '
+      'from the paper, not by arrows (T-453)', (tester) async {
+    final result = await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([picture]),
+          LayoutPage([picture]),
+        ],
+      ),
+      () async {
+        expect(find.byIcon(Icons.chevron_left), findsNothing);
+        expect(find.byIcon(Icons.chevron_right), findsNothing);
+
+        final pages = find.byType(LayoutCanvas);
+        final first = tester.getTopLeft(pages.at(0));
+        final second = tester.getTopLeft(pages.at(1));
+        expect(second.dx, first.dx);
+        expect(second.dy, greaterThan(first.dy));
+        expect(find.text('Səhifə 1 / 2'), findsOneWidget);
+
+        // A finger on the paper beside the picture scrolls the pages.
+        await tester.dragFrom(
+          first + const Offset(10, 200),
+          const Offset(0, -500),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(pages.last).dy, lessThan(second.dy));
+        expect(find.text('Səhifə 2 / 2'), findsOneWidget);
+
+        await tester.tap(find.text('Hazır'));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    // Scrolling moved no picture.
+    expect(result!.pages.length, 2);
+    expect(result.pages[0].elements.single.yMm, picture.yMm);
+    expect(result.pages[1].elements.single.yMm, picture.yMm);
+  });
+
+  testWidgets('a page made by hand comes below the one worked on (T-453)', (
+    tester,
+  ) async {
+    await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([picture]),
+        ],
+      ),
+      () async {
+        final first = tester.getTopLeft(find.byType(LayoutCanvas).first);
+        await tester.tap(find.byTooltip('Səhifə əlavə et'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Səhifə 2 / 2'), findsOneWidget);
+        final pages = find.byType(LayoutCanvas);
+        expect(pages, findsNWidgets(2));
+        expect(
+          tester.getTopLeft(pages.at(1)).dy,
+          greaterThan(tester.getTopLeft(pages.at(0)).dy),
+        );
+        expect(tester.getTopLeft(pages.at(1)).dx, first.dx);
+      },
+    );
+  });
+
   testWidgets('a page with pictures is deleted only when the user says so '
       '(T-451)', (tester) async {
     final result = await openEditor(
