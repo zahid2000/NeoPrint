@@ -870,6 +870,24 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                         onPressed: () =>
                             _replace(LayoutEditing.rotate90(current)),
                       ),
+                      // Onto a new page under this one, alone (T-457): near
+                      // the front, so a 360 dp screen shows it unscrolled;
+                      // not when it is the page's only picture.
+                      if (_elements.length > 1 &&
+                          _project.pages.length < LayoutEditing.maxPages)
+                        _Tool(
+                          icon: Icons.note_add_outlined,
+                          label: l10n.layoutToNewPage,
+                          onPressed: () {
+                            _apply(
+                              LayoutEditing.moveToNewPage(_project, _page, [
+                                _selected!,
+                              ], _pictures),
+                              select: 0,
+                            );
+                            _show(_page + 1);
+                          },
+                        ),
                       if (picture != null && picture.hasRealSize)
                         _Tool(
                           icon: Icons.straighten,

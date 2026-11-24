@@ -474,6 +474,46 @@ void main() {
     ]);
   });
 
+  testWidgets('one chosen picture goes onto a new page under this one; the '
+      'page\'s only picture does not offer it (T-457)', (tester) async {
+    const other = LayoutElement(
+      image: 'p1.jpg',
+      xMm: 20,
+      yMm: 20,
+      widthMm: 30,
+      heightMm: 30,
+    );
+    final result = await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([other, picture]),
+        ],
+      ),
+      () async {
+        // The big picture in the middle.
+        await tester.tap(find.byType(LayoutCanvas));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Yeni səhifəyə'));
+        await tester.pumpAndSettle();
+        expect(find.text('Səhifə 2 / 2'), findsOneWidget);
+
+        // Alone on its new page, still chosen: nothing to move it from.
+        expect(find.text('90°'), findsOneWidget);
+        expect(find.text('Yeni səhifəyə'), findsNothing);
+
+        await tester.tap(find.text('Hazır'));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    expect(result!.pages.length, 2);
+    expect(result.pages[0].elements.single.toJson(), other.toJson());
+    expect(result.pages[1].elements.single.image, picture.image);
+    expect(result.pages[1].elements.single.rotationDeg, 0);
+  });
+
   testWidgets('a page made by hand comes below the one worked on (T-453)', (
     tester,
   ) async {
