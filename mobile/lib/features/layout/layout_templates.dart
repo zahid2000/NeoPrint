@@ -84,12 +84,26 @@ abstract final class LayoutTemplates {
     LayoutTemplate template,
     List<TemplatePicture> pictures,
     double marginMm,
-  ) {
+  ) => LayoutProject(
+    marginMm: marginMm,
+    pages: [page(template, pictures, marginMm)],
+  );
+
+  /// One page arranged by a template (T-455: the editor's "Şablon" acts on
+  /// the page worked on only), on a page of [pageSizeMm] - A4 portrait
+  /// unless told otherwise.
+  static LayoutPage page(
+    LayoutTemplate template,
+    List<TemplatePicture> pictures,
+    double marginMm, {
+    (double, double) pageSizeMm = (210, 297),
+  }) {
     if (pictures.isEmpty) {
       throw ArgumentError('A template needs at least one picture.');
     }
+    final size = pageSizeMm;
 
-    final page = switch (template) {
+    return switch (template) {
       LayoutTemplate.idFrontBack => _grid(
         1,
         math.min(2, pictures.length),
@@ -97,6 +111,7 @@ abstract final class LayoutTemplates {
         _cardGapMm,
         marginMm,
         repeat: false,
+        size: size,
       ),
       LayoutTemplate.grid2x2 => _grid(
         2,
@@ -105,6 +120,7 @@ abstract final class LayoutTemplates {
         _gridGapMm,
         marginMm,
         repeat: true,
+        size: size,
       ),
       LayoutTemplate.cards2x4 => _grid(
         2,
@@ -113,6 +129,7 @@ abstract final class LayoutTemplates {
         _gridGapMm,
         marginMm,
         repeat: true,
+        size: size,
       ),
       LayoutTemplate.photo3x4x6 => _grid(
         3,
@@ -121,6 +138,7 @@ abstract final class LayoutTemplates {
         _gridGapMm,
         marginMm,
         repeat: true,
+        size: size,
       ),
       LayoutTemplate.passportCentered => _grid(
         1,
@@ -129,10 +147,9 @@ abstract final class LayoutTemplates {
         0,
         marginMm,
         repeat: false,
+        size: size,
       ),
     };
-
-    return LayoutProject(marginMm: marginMm, pages: [page]);
   }
 
   /// Each picture on its own A4 page, centred, at real size or reduced to
@@ -161,9 +178,9 @@ abstract final class LayoutTemplates {
     double gapMm,
     double marginMm, {
     required bool repeat,
+    (double, double) size = (210, 297),
   }) {
-    const pageWidth = 210.0;
-    const pageHeight = 297.0;
+    final (pageWidth, pageHeight) = size;
 
     final count = repeat
         ? columns * rows

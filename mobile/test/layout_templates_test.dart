@@ -34,6 +34,19 @@ void main() {
     });
   }
 
+  test('a template on a landscape page is centred on that page (T-455)', () {
+    final page = LayoutTemplates.page(
+      LayoutTemplate.passportCentered,
+      const [TemplatePicture('p', 100, 50)],
+      10,
+      pageSizeMm: (297, 210),
+    );
+
+    final element = page.elements.single;
+    expect(element.xMm, 98.5);
+    expect(element.yMm, 80);
+  });
+
   test('the layout JSON reads back unchanged', () {
     final project = LayoutTemplates.apply(LayoutTemplate.idFrontBack, const [
       TemplatePicture('front', 85.6, 53.98),

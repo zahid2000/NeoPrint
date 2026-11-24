@@ -428,6 +428,52 @@ void main() {
     );
   });
 
+  testWidgets('a template arranges the page worked on only; the other '
+      'pages stay as they were (T-455)', (tester) async {
+    const second = LayoutElement(
+      image: 'p2.jpg',
+      xMm: 20,
+      yMm: 20,
+      widthMm: 40,
+      heightMm: 40,
+    );
+    final result = await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([picture]),
+          LayoutPage([second]),
+        ],
+      ),
+      () async {
+        // To the second page by scrolling from the paper.
+        final first = tester.getTopLeft(find.byType(LayoutCanvas).first);
+        await tester.dragFrom(
+          first + const Offset(10, 200),
+          const Offset(0, -500),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Səhifə 2 / 2'), findsOneWidget);
+
+        await tester.tap(find.byTooltip('Şablon'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('2 × 2'));
+        await tester.pumpAndSettle();
+        expect(find.text('Səhifə 2 / 2'), findsOneWidget);
+
+        await tester.tap(find.text('Hazır'));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    expect(result!.pages.length, 2);
+    expect(result.pages[0].elements.single.toJson(), picture.toJson());
+    expect(result.pages[1].elements.map((e) => e.image), [
+      for (var i = 0; i < 4; i++) 'p2.jpg',
+    ]);
+  });
+
   testWidgets('a page made by hand comes below the one worked on (T-453)', (
     tester,
   ) async {

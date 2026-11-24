@@ -411,14 +411,15 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
     child: Row(children: tools),
   );
 
+  /// Arranges the pictures of the page worked on - and only those, the
+  /// other pages stay as they are (T-455) - on that page, keeping the paper.
   void _template(LayoutTemplate template) {
+    final elements = _elements;
     final pictures = [
-      for (final name in _project.images)
+      for (final name in {for (final element in elements) element.image})
         () {
           final picture = _pictures[name];
-          final used = _project.pages
-              .expand((page) => page.elements)
-              .firstWhere((element) => element.image == name);
+          final used = elements.firstWhere((element) => element.image == name);
           return picture != null && picture.hasRealSize
               ? TemplatePicture(
                   name,
@@ -429,10 +430,24 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
         }(),
     ];
 
-    if (pictures.isNotEmpty) {
-      _apply(LayoutTemplates.apply(template, pictures, _project.marginMm));
-      _show(0);
+    if (pictures.isEmpty) {
+      return;
     }
+    final arranged = LayoutTemplates.page(
+      template,
+      pictures,
+      _project.marginMm,
+      pageSizeMm: _project.pageSizeMm,
+    );
+    _apply(
+      _project.copyWith(
+        pages: [
+          for (var page = 0; page < _project.pages.length; page++)
+            page == _page ? arranged : _project.pages[page],
+        ],
+      ),
+    );
+    _show(_page);
   }
 
   Future<void> _paperSheet() async {
@@ -645,6 +660,8 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
             PopupMenuButton<LayoutTemplate>(
               tooltip: l10n.layoutTemplate,
               icon: const Icon(Icons.grid_view),
+              // Nothing to arrange on an empty page (T-455).
+              enabled: _elements.isNotEmpty,
               onSelected: _template,
               itemBuilder: (_) => [
                 for (final (template, label) in [
