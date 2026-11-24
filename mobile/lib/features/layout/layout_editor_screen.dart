@@ -81,6 +81,9 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
   /// Room between two pages in the list (T-453).
   static const _gap = Spacing.x2;
 
+  /// The most of the screen's height one page takes (T-454).
+  static const _pageShare = 0.6;
+
   late LayoutProject _project = widget.initial;
 
   /// The page worked on: the tools and "Səhifə əlavə et" act on it.
@@ -301,9 +304,11 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
       final (width, height) = _project.pageSizeMm;
       const chrome = LayoutCanvas.chrome;
       final fit = (constraints.maxWidth - chrome) * height / width + chrome;
-      final room = _project.pages.length > 1
-          ? constraints.maxHeight - Spacing.x8
-          : constraints.maxHeight;
+      // Never from the list's own height (T-454): a banner, the size line
+      // or a toolbar coming and going would rescale the page - the rulers
+      // would jump and the picture under the finger would run off. The
+      // screen's height changes only when the phone is turned.
+      final room = MediaQuery.sizeOf(context).height * _pageShare;
       final pageHeight = math.max(math.min(fit, room), chrome);
       _extent = pageHeight + _gap;
 
@@ -666,6 +671,10 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Pages one under another, scrolled (T-453).
+              Expanded(child: _pageList(tokens)),
+              // Under the pages, not over them (T-454): coming while a
+              // picture is dragged, they must not push the pages down.
               if (offPage)
                 Padding(
                   padding: const EdgeInsets.all(Spacing.x2),
@@ -679,8 +688,6 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                     message: l10n.layoutEdgeWarning,
                   ),
                 ),
-              // Pages one under another, scrolled (T-453).
-              Expanded(child: _pageList(tokens)),
               // Pages (T-451): always here, so a second one can be made.
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

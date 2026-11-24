@@ -393,6 +393,41 @@ void main() {
     expect(result.pages[1].elements.single.yMm, picture.yMm);
   });
 
+  testWidgets('the page keeps its size and place when the tools, the size '
+      'line or a warning come and go (T-454)', (tester) async {
+    await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([picture]),
+        ],
+      ),
+      () async {
+        final page = find.byType(LayoutCanvas);
+        final before = tester.getRect(page);
+
+        // Chosen: the size line and the tools show under the pages.
+        await tester.tap(page);
+        await tester.pumpAndSettle();
+        expect(find.textContaining('100 × 100 mm'), findsOneWidget);
+        expect(tester.getRect(page), before);
+
+        // Held near the edge: the warning shows, the page does not move.
+        final gesture = await tester.startGesture(tester.getCenter(page));
+        for (var i = 0; i < 20; i++) {
+          await gesture.moveBy(const Offset(-6, 0));
+          await tester.pump();
+        }
+        expect(find.textContaining('printerin'), findsOneWidget);
+        expect(tester.getRect(page), before);
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.getRect(page), before);
+      },
+    );
+  });
+
   testWidgets('a page made by hand comes below the one worked on (T-453)', (
     tester,
   ) async {
