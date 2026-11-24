@@ -603,8 +603,10 @@ public sealed partial class PrintFlowViewModel
 
                 if (refunds.Count > 0)
                 {
-                    RefundText = RefundBody(refunds[0].Destination, refunds.Sum(r => r.Amount));
+                    // The QR first: the text makes HasRefund true, and the
+                    // card must not show without its QR (T-456).
                     RefundQr = refunds[0].StatusUrl;
+                    RefundText = RefundBody(refunds[0].Destination, refunds.Sum(r => r.Amount));
                     return;
                 }
 
@@ -631,8 +633,9 @@ public sealed partial class PrintFlowViewModel
             return false;
         }
 
-        RefundText = RefundBody(destination, amount);
+        // The QR before the text that makes HasRefund true (T-456).
         RefundQr = statusUrl;
+        RefundText = RefundBody(destination, amount);
         PrinterStopped = true;
         return true;
     }
