@@ -87,7 +87,7 @@
   "files.edit.pageFromOne": "Page numbers start at 1.",
   "files.edit.pageOnce": "Each page can be given once.",
   "files.edit.rotation": "Rotation must be 0, 90, 180 or 270 degrees.",
-  "files.edit.textOnly": "Text editing is for TXT files only.",
+  "files.edit.textOnly": "Text editing is for text files only (TXT, JSON, CSV, XML, HTML).",
   "files.edit.textTooLong": "The text is too long (at most 1,000,000 characters).",
   "files.emptyAfterConversion": "'{name}' gave {count} pages after conversion; the document is empty or damaged.",
   "files.formatDisabled": "The '{format}' format is not accepted at the moment.",

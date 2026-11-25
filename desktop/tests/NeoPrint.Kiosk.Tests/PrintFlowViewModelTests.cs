@@ -71,6 +71,29 @@ public sealed class PrintFlowViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task A_json_file_is_edited_in_the_text_editor_and_printed_as_edited()
+    {
+        // T-458: every plain text format has the text editor, not only TXT.
+        await File.WriteAllTextAsync(Path.Combine(_drive, "data.json"), "{\"ad\": \"Əli\"}\n");
+        var (flow, _) = await FlowAsync(allowedFormats: ["pdf", "txt", "json"]);
+        await flow.StartFromDriveAsync(new RemovableDrive(_drive, "USB", 1, 1));
+
+        await flow.OpenCommand.ExecuteAsync(flow.Entries.Single());
+
+        flow.Stage.Should().Be(FlowStage.Preview);
+        flow.IsText.Should().BeTrue();
+        flow.IsPaged.Should().BeFalse();
+        flow.TextContent.Should().Be("{\"ad\": \"Əli\"}\n");
+
+        await flow.EditCommand.ExecuteAsync(null);
+        flow.TextContent = string.Join('\n', Enumerable.Range(1, 120).Select(line => $"\"sətir {line}\""));
+        await flow.SaveEditCommand.ExecuteAsync(null);
+
+        flow.Stage.Should().Be(FlowStage.Preview);
+        flow.PageCount.Should().BeGreaterThan(1, "the edited text is what is printed now");
+    }
+
+    [Fact]
     public async Task A_pdf_goes_from_the_preview_to_a_price_and_into_the_queue()
     {
         var (flow, kit) = await FlowAsync();

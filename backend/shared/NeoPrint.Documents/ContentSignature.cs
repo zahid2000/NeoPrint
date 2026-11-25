@@ -130,12 +130,12 @@ public static class ContentSignature
         }
 
         // --- Text ---------------------------------------------------------
-        // Nothing binary matched. TXT, CSV, HTML and XML have no signature, so
+        // Nothing binary matched. TXT, JSON, CSV, HTML and XML have no signature, so
         // the rule is: it has to *look* like text, and then the extension says
         // which of them it is. A binary file cannot slip through as .txt this
         // way, which is the property that matters.
-        if (declared is { Group: FormatGroup.TextDocument or FormatGroup.Spreadsheet }
-            && declared.Extension is "txt" or "csv" or "html" or "htm" or "xml"
+        if (declared is not null
+            && FileFormats.IsPlainText(declared.Extension)
             && LooksLikeText(header))
         {
             return SignatureResult.Of(declared);

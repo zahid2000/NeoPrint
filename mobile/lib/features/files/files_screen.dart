@@ -19,6 +19,7 @@ import 'file_models.dart';
 import 'files_controller.dart';
 import 'file_sources.dart';
 import 'heic_converter.dart';
+import 'text_editor_screen.dart';
 import 'auto_delete_sheet.dart';
 import '../layout/layout_launcher.dart';
 import '../print_hub/print_next.dart';
@@ -161,6 +162,11 @@ class _FileCard extends ConsumerWidget {
           'schedule' => context.push(Routes.scheduleNew, extra: file),
           'placeOnPage' => openNewLayout(context, ref, [LayoutSource(file)]),
           'editLayout' => openLayoutFile(context, ref, file),
+          'editText' => Navigator.of(context).push(
+            MaterialPageRoute<bool>(
+              builder: (_) => TextEditorScreen(file: file),
+            ),
+          ),
           'share' => context.push(Routes.shareSend, extra: file),
           'download' => downloadFile(context, ref, file),
           'autoDelete' => showAutoDeleteSheet(context, file),
@@ -182,6 +188,16 @@ class _FileCard extends ConsumerWidget {
               child: ListTile(
                 leading: Icon(Icons.edit_outlined, color: tokens.brand500),
                 title: Text(l10n.filesEditLayout),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          // Plain text is edited as text (T-458).
+          if (flags.isOn(FeatureKey.txtEditor) && canEditText(file))
+            PopupMenuItem(
+              value: 'editText',
+              child: ListTile(
+                leading: Icon(Icons.edit_note_outlined, color: tokens.brand500),
+                title: Text(l10n.filesEditText),
                 contentPadding: EdgeInsets.zero,
               ),
             ),

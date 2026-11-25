@@ -265,14 +265,8 @@ public sealed class StoredFile : Entity
 
     // An edited version can be in another format than the upload (a DOCX
     // saved as PDF, a picture turned): the copy is named by what it holds.
-    private static string MediaTypeOf(string extension) => extension switch
-    {
-        "pdf" => "application/pdf",
-        "png" => "image/png",
-        "jpg" or "jpeg" => "image/jpeg",
-        "txt" => "text/plain",
-        _ => "application/octet-stream",
-    };
+    private static string MediaTypeOf(string extension)
+        => NeoPrint.Documents.FileFormats.Find(extension)?.MediaType ?? "application/octet-stream";
 
     /// <summary>Records the layout a new layout file was drawn from.</summary>
     public void StartLayout(string layoutJson, IReadOnlyList<LayoutAsset> assets)

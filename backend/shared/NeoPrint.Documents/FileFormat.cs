@@ -78,6 +78,9 @@ public static class FileFormats
         new("htm", "text/html", FormatGroup.TextDocument, ConversionRoute.LibreOffice, false),
         new("xml", "application/xml", FormatGroup.TextDocument, ConversionRoute.LibreOffice, false),
 
+        // Plain text with a structure; printed line for line, as typed (T-458).
+        new("json", "application/json", FormatGroup.TextDocument, ConversionRoute.LibreOffice, false),
+
         // Spreadsheets.
         new("xls", "application/vnd.ms-excel", FormatGroup.Spreadsheet, ConversionRoute.LibreOffice, false),
         new("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", FormatGroup.Spreadsheet, ConversionRoute.LibreOffice, false),
@@ -125,6 +128,21 @@ public static class FileFormats
 
         return ByExtension.GetValueOrDefault(extension.TrimStart('.').Trim());
     }
+
+    /// <summary>
+    /// Formats that are plain text, which the kiosk and the app edit in a text
+    /// editor (plan section 2.2, T-458). Office files are not among them: their
+    /// text sits inside a document that a text editor would destroy (T-459).
+    /// </summary>
+    public static bool IsPlainText(string? extension)
+        => Find(extension)?.Extension is "txt" or "json" or "csv" or "xml" or "html" or "htm";
+
+    /// <summary>
+    /// Plain text that prints as it reads, line for line, rather than being
+    /// laid out by LibreOffice the way a table (CSV) or a page (HTML) is.
+    /// </summary>
+    public static bool PrintsAsTyped(string? extension)
+        => Find(extension)?.Extension is "txt" or "json";
 
     /// <summary>Every extension, for the admin panel's format page.</summary>
     public static IReadOnlyList<string> Extensions => [.. ByExtension.Keys.Order(StringComparer.Ordinal)];

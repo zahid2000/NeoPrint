@@ -87,7 +87,7 @@
   "files.edit.pageFromOne": "Səhifə nömrəsi 1-dən başlayır.",
   "files.edit.pageOnce": "Hər səhifə bir dəfə göstərilə bilər.",
   "files.edit.rotation": "Fırlatma 0, 90, 180 və ya 270 dərəcə olmalıdır.",
-  "files.edit.textOnly": "Mətn redaktəsi yalnız TXT faylları üçündür.",
+  "files.edit.textOnly": "Mətn redaktəsi yalnız mətn faylları üçündür (TXT, JSON, CSV, XML, HTML).",
   "files.edit.textTooLong": "Mətn çox uzundur (ən çox 1 000 000 simvol).",
   "files.emptyAfterConversion": "'{name}' konvertasiyadan sonra {count} səhifə verdi; sənəd boş və ya zədəlidir.",
   "files.formatDisabled": "'{format}' formatı hazırda qəbul edilmir.",

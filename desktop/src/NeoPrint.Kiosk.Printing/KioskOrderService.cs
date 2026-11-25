@@ -85,6 +85,11 @@ public sealed class KioskOrderService
     public Task<PreparedDocument> OpenAsync(string path, string workFolder, CancellationToken cancellationToken)
         => _preparer.PrepareAsync(path, workFolder, cancellationToken);
 
+    /// <summary>A PDF of edited text, made the way the file's format is (T-458).</summary>
+    /// <exception cref="PrintingException">It cannot be printed; the key says why.</exception>
+    public Task ConvertTextAsync(string text, FileFormat format, string workFolder, string pdf, CancellationToken cancellationToken)
+        => _preparer.ConvertTextAsync(text, format, workFolder, pdf, cancellationToken);
+
     /// <summary>The price and the paper for these options, or null when the range does not fit the document.</summary>
     public OrderQuote? Quote(JobOptions options, int pageCount)
     {

@@ -167,6 +167,18 @@ final class FilePage {
 /// HEIC/HEIF is a mobile-only format, handled with the platform's own API).
 const phoneConvertedExtensions = {'heic', 'heif'};
 
+/// Plain text formats, edited in the text editor (plan section 2.2, T-458) -
+/// the backend's `FileFormats.IsPlainText`. Office files are not: their text
+/// sits inside a document a text editor would destroy (T-459).
+const textEditableExtensions = {'txt', 'json', 'csv', 'xml', 'html', 'htm'};
+
+/// Whether [file] opens in the text editor: plain text, converted, and not a
+/// saved scan.
+bool canEditText(UserFile file) =>
+    textEditableExtensions.contains(file.extension) &&
+    file.status == FileStatus.ready &&
+    !file.editLocked;
+
 /// The extension of a file name, lower case and without the dot.
 String extensionOf(String fileName) {
   final dot = fileName.lastIndexOf('.');

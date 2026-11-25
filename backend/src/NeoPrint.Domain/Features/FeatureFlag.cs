@@ -53,7 +53,7 @@ public sealed class FeatureFlag : Entity
         ("promo_codes", "Promokodlar", [FeaturePlatform.Kiosk, FeaturePlatform.Mobile]),
         ("layout_editor", "Səhifə tərtibatı redaktoru", [FeaturePlatform.Kiosk, FeaturePlatform.Mobile]),
         ("document_scan", "Mobil sənəd skanı", [FeaturePlatform.Mobile]),
-        ("txt_editor", "TXT redaktoru", [FeaturePlatform.Kiosk, FeaturePlatform.Mobile]),
+        ("txt_editor", "Mətn redaktoru (TXT, JSON, CSV, XML, HTML)", [FeaturePlatform.Kiosk, FeaturePlatform.Mobile]),
         ("data_export", "Məlumatlarımı yüklə", [FeaturePlatform.Mobile]),
     ];
 }

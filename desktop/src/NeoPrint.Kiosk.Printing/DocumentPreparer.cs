@@ -128,7 +128,7 @@ public sealed class DocumentPreparer
                 SkiaDocuments.ImageToPdf(input, pdf);
                 break;
 
-            case ConversionRoute.LibreOffice when format.Extension == "txt":
+            case ConversionRoute.LibreOffice when FileFormats.PrintsAsTyped(format.Extension):
                 SkiaDocuments.TextToPdf(await ReadTextAsync(input, cancellationToken).ConfigureAwait(false), pdf);
                 break;
 
@@ -152,6 +152,38 @@ public sealed class DocumentPreparer
         }
 
         return new PreparedDocument(pdf, pages, format, input);
+    }
+
+    /// <summary>
+    /// Makes a PDF of edited text (T-458) the way its own format is made one:
+    /// TXT and JSON line for line, CSV, XML and HTML through LibreOffice - so an
+    /// edited table still prints as a table, not as its commas.
+    /// </summary>
+    /// <exception cref="PrintingException">It cannot be made a PDF; the key says why.</exception>
+    public async Task ConvertTextAsync(
+        string text, FileFormat format, string workFolder, string pdf, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(format);
+
+        if (!FileFormats.IsPlainText(format.Extension))
+        {
+            throw new PrintingException("conversion.noConverter");
+        }
+
+        if (FileFormats.PrintsAsTyped(format.Extension))
+        {
+            SkiaDocuments.TextToPdf(text, pdf);
+            return;
+        }
+
+        // Its own name: LibreOffice writes the PDF next to it under the same
+        // stem, which must not be the PDF asked for.
+        var input = Path.Combine(
+            workFolder, Path.GetFileNameWithoutExtension(pdf) + "-text." + format.Extension);
+        await File.WriteAllTextAsync(input, text, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), cancellationToken)
+            .ConfigureAwait(false);
+        await ConvertWithLibreOfficeAsync(input, workFolder, pdf, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Pages in a PDF: PDFium when it is here, PDFsharp otherwise.</summary>

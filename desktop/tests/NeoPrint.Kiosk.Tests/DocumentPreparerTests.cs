@@ -110,6 +110,32 @@ public sealed class DocumentPreparerTests : IDisposable
         prepared.PageCount.Should().BeGreaterThan(1, "150 lines do not fit on one A4 page");
     }
 
+    [Fact]
+    public async Task Edited_text_is_made_a_pdf_the_way_its_own_format_is()
+    {
+        // T-458: JSON prints line for line, without LibreOffice...
+        var json = Path.Combine(Work(), "edited.pdf");
+        await Preparer().ConvertTextAsync(
+            "{\"ad\": \"Əli\"}", NeoPrint.Documents.FileFormats.Find("json")!, Path.GetDirectoryName(json)!, json, CancellationToken.None);
+        DocumentPreparer.PageCount(json).Should().Be(1);
+
+        // ...a CSV goes to LibreOffice as a CSV, so it still prints as a table.
+        var runner = new FixedRunner(new ConverterRun(ConverterRunOutcome.TimedOut, -1, string.Empty));
+        var work = Work();
+        var csv = () => Preparer(runner).ConvertTextAsync(
+            "ad,yaş\nƏli,30\n", NeoPrint.Documents.FileFormats.Find("csv")!, work, Path.Combine(work, "edited.pdf"), CancellationToken.None);
+
+        (await csv.Should().ThrowAsync<PrintingException>()).Which.MessageKey.Should().Be("conversion.timedOut");
+        var input = runner.Arguments[^1];
+        input.Should().EndWith(".csv");
+        (await File.ReadAllTextAsync(input)).Should().Be("ad,yaş\nƏli,30\n");
+
+        // An Office file is not edited as text (T-459).
+        var docx = () => Preparer().ConvertTextAsync(
+            "x", NeoPrint.Documents.FileFormats.Find("docx")!, work, Path.Combine(work, "x.pdf"), CancellationToken.None);
+        (await docx.Should().ThrowAsync<PrintingException>()).Which.MessageKey.Should().Be("conversion.noConverter");
+    }
+
     // T-096: the build carried no PDFium, so every preview page was blank and
     // only a PDF opened. The library now comes with the build - this test runs
     // from the same output and fails if it goes missing again.

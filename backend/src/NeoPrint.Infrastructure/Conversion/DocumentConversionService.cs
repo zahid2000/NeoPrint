@@ -137,7 +137,10 @@ public sealed class DocumentConversionService
             return;
         }
 
-        var inputPath = Path.Combine(workspace, $"input.{extension}");
+        // LibreOffice picks its reader by the name: JSON is opened as the
+        // plain text it is (T-458), not guessed at.
+        var inputPath = Path.Combine(
+            workspace, extension.Equals("json", StringComparison.OrdinalIgnoreCase) ? "input.txt" : $"input.{extension}");
 
         await using (var input = File.Create(inputPath))
         {

@@ -180,7 +180,7 @@ public static class SettingKeys
 
     /// <summary>The MVP file formats (plan section 2.2).</summary>
     public const string DefaultAllowedFormats =
-        "pdf,doc,docx,docm,dot,dotx,odt,ott,rtf,wps,txt,html,htm,xml," +
+        "pdf,doc,docx,docm,dot,dotx,odt,ott,rtf,wps,txt,html,htm,xml,json," +
         "xls,xlsx,xlsm,xltx,ods,csv," +
         "ppt,pptx,pps,ppsx,potx,odp," +
         "jpg,jpeg,png,bmp,gif,webp," +

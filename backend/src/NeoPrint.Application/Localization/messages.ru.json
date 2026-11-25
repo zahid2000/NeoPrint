@@ -87,7 +87,7 @@
   "files.edit.pageFromOne": "Номера страниц начинаются с 1.",
   "files.edit.pageOnce": "Каждую страницу можно указать один раз.",
   "files.edit.rotation": "Поворот должен быть 0, 90, 180 или 270 градусов.",
-  "files.edit.textOnly": "Редактирование текста доступно только для файлов TXT.",
+  "files.edit.textOnly": "Редактирование текста доступно только для текстовых файлов (TXT, JSON, CSV, XML, HTML).",
   "files.edit.textTooLong": "Текст слишком длинный (не более 1 000 000 символов).",
   "files.emptyAfterConversion": "После преобразования '{name}' содержит {count} стр.; документ пуст или повреждён.",
   "files.formatDisabled": "Формат '{format}' сейчас не принимается.",

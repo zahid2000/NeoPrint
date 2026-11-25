@@ -938,6 +938,42 @@ public sealed class FilesApiTests
     }
 
     [DockerFact]
+    public async Task A_json_file_is_edited_as_text_and_stays_json()
+    {
+        // T-458: every plain text format is edited in the text editor, and the
+        // edit keeps the file's own format.
+        using var user = await SignedInAsync();
+
+        var upload = await user.PostAsync(
+            "/api/files", Upload(Encoding.UTF8.GetBytes("{\"ad\": \"Əli\"}\n"), "data.json", "application/json"));
+        upload.StatusCode.Should().Be(HttpStatusCode.Created, await upload.Content.ReadAsStringAsync());
+        var id = (await upload.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        if (await ConvertAsync(id) != NeoPrint.Domain.Files.FileStatus.Ready)
+        {
+            using var scope = _fixture.Services.CreateScope();
+            var files = scope.ServiceProvider.GetRequiredService<NeoPrint.Application.Files.IFileRepository>();
+            var file = await files.FindByIdAsync(id);
+            var actor = NeoPrint.Domain.Common.ActorContext.System("test");
+
+            file!.BeginConversion(actor, DateTime.UtcNow);
+            file.Complete(file.Original, 1, actor, DateTime.UtcNow);
+            await files.UpdateAsync(file);
+        }
+
+        var edit = await user.PostAsJsonAsync($"/api/files/{id}/edit", new { text = "{\"ad\": \"Vəli\"}\n" });
+        edit.StatusCode.Should().Be(HttpStatusCode.OK, await edit.Content.ReadAsStringAsync());
+
+        Encoding.UTF8.GetString(await user.GetByteArrayAsync($"/api/files/{id}/versions/1/content"))
+            .Should().Be("{\"ad\": \"Vəli\"}\n");
+
+        var versions = await user.GetFromJsonAsync<JsonElement>($"/api/files/{id}/versions");
+        versions.EnumerateArray()
+            .Single(version => version.GetProperty("number").GetInt32() == 1)
+            .GetProperty("extension").GetString().Should().Be("json");
+    }
+
+    [DockerFact]
     public async Task Edits_that_cannot_apply_are_refused()
     {
         using var user = await SignedInAsync();

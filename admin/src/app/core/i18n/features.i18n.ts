@@ -36,7 +36,7 @@ export const featuresTranslations: PageTranslations = {
       'Telefon kamerası ilə sənədi skan edib PDF kimi saxlamaq.',
     'features.flag.txt_editor.name': 'Mətn faylı redaktoru',
     'features.flag.txt_editor.description':
-      'TXT faylını çapdan əvvəl kioskda və ya tətbiqdə düzəltmək.',
+      'Mətn faylını (TXT, JSON, CSV, XML, HTML) çapdan əvvəl kioskda və ya tətbiqdə düzəltmək.',
     'features.flag.data_export.name': 'Məlumatlarımı yüklə',
     'features.flag.data_export.description':
       'İstifadəçi hesabındakı bütün məlumatların arxivini tətbiqdən sifariş edə bilir.',
@@ -75,7 +75,7 @@ export const featuresTranslations: PageTranslations = {
       'A document is scanned with the phone camera and saved as a PDF.',
     'features.flag.txt_editor.name': 'Text file editor',
     'features.flag.txt_editor.description':
-      'A TXT file can be corrected at the kiosk or in the app before printing.',
+      'A text file (TXT, JSON, CSV, XML, HTML) can be corrected at the kiosk or in the app before printing.',
     'features.flag.data_export.name': 'Download my data',
     'features.flag.data_export.description':
       'A user can order an archive of all the data in their account from the app.',
@@ -114,7 +114,7 @@ export const featuresTranslations: PageTranslations = {
       'Документ сканируется камерой телефона и сохраняется как PDF.',
     'features.flag.txt_editor.name': 'Редактор текстовых файлов',
     'features.flag.txt_editor.description':
-      'TXT-файл можно исправить в киоске или в приложении перед печатью.',
+      'Текстовый файл (TXT, JSON, CSV, XML, HTML) можно исправить в киоске или в приложении перед печатью.',
     'features.flag.data_export.name': 'Скачать мои данные',
     'features.flag.data_export.description':
       'Пользователь может заказать в приложении архив всех данных своей учётной записи.',

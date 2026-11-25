@@ -443,7 +443,7 @@ FileKind fileKindOf(String extension) => switch (extension.toLowerCase()) {
   'heic' ||
   'tif' ||
   'tiff' => FileKind.image,
-  'txt' => FileKind.text,
+  'txt' || 'json' || 'xml' || 'html' || 'htm' => FileKind.text,
   _ => FileKind.other,
 };
 

@@ -62,6 +62,17 @@ class ListRepository implements FilesRepository {
     });
   }
 
+  final edits = <(String, String)>[];
+
+  @override
+  Future<String> currentText(String id) async => '{"ad": "Əli"}';
+
+  @override
+  Future<UserFile> editText(String id, String text) async {
+    edits.add((id, text));
+    return files.firstWhere((f) => f.id == id);
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -222,5 +233,39 @@ void main() {
 
     expect(find.text('hesabat.pdf'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a plain text file is edited as text from its menu (T-458)', (
+    tester,
+  ) async {
+    final repository = ListRepository([file(), file(name: 'data.json')]);
+    await tester.pumpWidget(app(const [], repository: repository));
+    await tester.pumpAndSettle();
+
+    // A PDF has no text editor.
+    await tester.tap(find.byTooltip('Əməliyyatlar').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Mətni redaktə et'), findsNothing);
+    await tester.tapAt(Offset.zero);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Əməliyyatlar').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mətni redaktə et'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mətn redaktoru'), findsOneWidget);
+    expect(find.text('{"ad": "Əli"}'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('textEditorField')),
+      '{"ad": "Vəli"}',
+    );
+    await tester.pump();
+    await tester.tap(find.text('Yadda saxla'));
+    await tester.pumpAndSettle();
+
+    expect(repository.edits.single, ('data.json', '{"ad": "Vəli"}'));
+    expect(find.text('Mətn redaktoru'), findsNothing);
   });
 }

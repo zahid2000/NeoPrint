@@ -256,7 +256,8 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
 
     public bool IsImage => _document?.Format.Group == FormatGroup.Image;
 
-    public bool IsText => _document?.Format.Extension == "txt";
+    /// <summary>Plain text, edited in the text editor: TXT, JSON, CSV, XML, HTML (T-458).</summary>
+    public bool IsText => FileFormats.IsPlainText(_document?.Format.Extension);
 
     public bool IsPaged => !IsImage && !IsText;
 
@@ -938,11 +939,15 @@ public sealed partial class PrintFlowViewModel : ViewModelBase
         {
             var edited = Path.Combine(folder, $"edited-{Guid.NewGuid():N}");
 
-            await Task.Run(() =>
+            var isText = IsText;
+
+            await Task.Run(async () =>
                 {
-                    if (IsText)
+                    if (isText)
                     {
-                        SkiaDocuments.TextToPdf(text, edited + ".pdf");
+                        // In the file's own format (T-458): a CSV still prints as a table.
+                        await _orders.ConvertTextAsync(text, document.Format, folder, edited + ".pdf", CancellationToken.None)
+                            .ConfigureAwait(false);
                     }
                     else if (IsImage)
                     {

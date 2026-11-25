@@ -43,7 +43,7 @@ public sealed record ImageEdit(int Rotate = 0, ImageCrop? Crop = null, bool Gray
 /// conversion).
 /// </param>
 /// <param name="Image">Image files.</param>
-/// <param name="Text">The new content of a TXT file.</param>
+/// <param name="Text">The new content of a plain text file: TXT, JSON, CSV, XML, HTML.</param>
 public sealed record FileEditInput(IReadOnlyList<PageEdit>? Pages, ImageEdit? Image, string? Text);
 
 /// <summary>A saved version, as the version list shows it.</summary>
@@ -376,7 +376,7 @@ public sealed class EditFileHandler :
             return (extension, new UserMessage("files.note.imageEdited").Encode());
         }
 
-        if (current?.Extension != "txt")
+        if (current is null || !FileFormats.IsPlainText(current.Extension))
         {
             throw Invalid("text", "files.edit.textOnly");
         }
@@ -385,7 +385,8 @@ public sealed class EditFileHandler :
         var bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(edit.Text!);
         await output.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
 
-        return ("txt", new UserMessage("files.note.textEdited").Encode());
+        // Kept in its own format: an edited CSV is still a table, a JSON still JSON.
+        return (current.Extension, new UserMessage("files.note.textEdited").Encode());
     }
 
     /// <summary>

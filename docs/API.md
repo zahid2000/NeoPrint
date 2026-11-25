@@ -1253,7 +1253,7 @@ qiymət redaktəyə uyğunlaşır. Gövdədə **yalnız biri**:
 { "pages": [ { "page": 3, "rotate": 90 }, { "page": 1, "rotate": 0 } ] }
 { "image": { "rotate": 90, "crop": { "x": 0, "y": 0, "width": 0.5, "height": 1 },
              "grayscale": true, "brightness": 10, "contrast": -5 } }
-{ "text": "TXT faylının yeni məzmunu" }
+{ "text": "mətn faylının yeni məzmunu" }
 ```
 
 - `pages` — nəticənin səhifələri, sırası ilə: göstərilməyən səhifə silinir, sıra
@@ -1262,7 +1262,7 @@ qiymət redaktəyə uyğunlaşır. Gövdədə **yalnız biri**:
 - `image` — yalnız şəkil faylları: kəsmə (0–1 nisbətlər), fırlatma, ağ-qara,
   parlaqlıq / kontrast (-100…100), bu ardıcıllıqla. JPEG/PNG/WebP öz formatında,
   qalanları PNG kimi yazılır.
-- `text` — yalnız TXT (ən çox 1 000 000 simvol).
+- `text` — yalnız düz mətn faylları: TXT, JSON, CSV, XML, HTML/HTM (ən çox 1 000 000 simvol, T-458). Versiya faylın öz formatında saxlanılır (CSV yenə CSV, JSON yenə JSON); Office faylları burada redaktə olunmur (`400 files.edit.textOnly`).
 - PS / PCL / XPS redaktə olunmur (`400`) — çapda səhifə aralığı seçilir.
 - Fayl `Ready` deyilsə `400`. "Səhifədə yerləşdir" `files/layout`-dadır (plan 2.11).
 - Saxlanılmış skan (`editLocked`) → `400 files.edit.scanLocked`; tərtibat faylı →

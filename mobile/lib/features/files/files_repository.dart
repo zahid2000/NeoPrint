@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -36,6 +37,38 @@ class FilesRepository {
     );
     return (bytes: bytes, mediaType: mediaType);
   }
+
+  /// The text of a plain text file as it is now (T-458): the newest edit,
+  /// or the upload when it was never edited.
+  Future<String> currentText(String id) async {
+    final versions = await _api.send<List<dynamic>>(
+      method: 'GET',
+      path: 'api/files/$id/versions',
+      parse: (json) => json as List<dynamic>,
+    );
+    final current = versions
+        .cast<Map<String, dynamic>>()
+        .where((version) => version['isCurrent'] == true)
+        .firstOrNull;
+    final bytes = await _api.send<Uint8List>(
+      method: 'GET',
+      path: current == null
+          ? 'api/files/$id/content'
+          : 'api/files/$id/versions/${current['number']}/content',
+      responseType: ResponseType.bytes,
+      parse: (data) => Uint8List.fromList(data as List<int>),
+    );
+    return utf8.decode(bytes, allowMalformed: true);
+  }
+
+  /// Saves new text as a new version of the file (`POST files/{id}/edit`);
+  /// the file is converted again, so its pages and price follow the edit.
+  Future<UserFile> editText(String id, String text) => _api.send(
+    method: 'POST',
+    path: 'api/files/$id/edit',
+    body: {'text': text},
+    parse: (json) => UserFile.fromJson(json as Map<String, dynamic>),
+  );
 
   /// One file of the user's, wherever it is on the list (T-413).
   Future<UserFile> get(String id) => _api.send(

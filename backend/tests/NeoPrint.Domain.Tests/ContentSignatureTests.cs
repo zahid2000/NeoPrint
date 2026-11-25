@@ -172,6 +172,30 @@ public sealed class ContentSignatureTests
     }
 
     [Fact]
+    public void A_json_file_is_text_and_a_binary_one_named_json_is_not()
+    {
+        // T-458: JSON is plain text with no signature of its own.
+        Identify(Bytes("{\"ad\": \"Əli\", \"yaş\": 30}\n"), "data.json")
+            .Format?.Extension.Should().Be("json");
+
+        Identify([0x7F, (byte)'E', (byte)'L', (byte)'F', 0x02, 0x01], "data.json")
+            .Recognised.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("notes.txt", true)]
+    [InlineData("data.json", true)]
+    [InlineData("people.csv", true)]
+    [InlineData("page.htm", true)]
+    [InlineData("feed.xml", true)]
+    [InlineData("report.docx", false)]
+    [InlineData("budget.xlsx", false)]
+    [InlineData("scan.pdf", false)]
+    [InlineData("photo.jpg", false)]
+    public void Only_plain_text_formats_are_edited_as_text(string name, bool plain)
+        => FileFormats.IsPlainText(Path.GetExtension(name)).Should().Be(plain);
+
+    [Fact]
     public void Text_with_a_nul_byte_is_not_text()
     {
         var withNul = Bytes("Salam").Concat<byte>([0x00]).Concat(Bytes("dünya")).ToArray();
@@ -229,6 +253,7 @@ public sealed class ContentSignatureTests
         [
             "pdf",
             "doc", "docx", "docm", "dot", "dotx", "odt", "ott", "rtf", "wps", "txt", "html", "htm", "xml",
+            "json", // T-458
             "xls", "xlsx", "xlsm", "xltx", "ods", "csv",
             "ppt", "pptx", "pps", "ppsx", "potx", "odp",
             "jpg", "jpeg", "png", "bmp", "gif", "webp",
