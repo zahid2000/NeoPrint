@@ -144,7 +144,7 @@ public sealed class FeatureFlagEvaluationTests
     [Fact]
     public void Every_mvp_flag_is_declared_with_at_least_one_platform()
     {
-        FeatureFlag.MvpFlags.Should().HaveCount(11);
+        FeatureFlag.MvpFlags.Should().HaveCount(12);
         FeatureFlag.MvpFlags.Should().OnlyContain(flag => flag.Platforms.Length > 0);
         FeatureFlag.MvpFlags.Select(flag => flag.Key).Should().OnlyHaveUniqueItems();
     }
@@ -158,7 +158,14 @@ public sealed class FeatureFlagEvaluationTests
         [
             "mobile_payment_at_kiosk", "user_qr_print", "mobile_session_print", "scheduled_print",
             "file_sharing", "referral", "promo_codes", "layout_editor", "document_scan",
-            "txt_editor", "data_export",
+            "txt_editor", "data_export", "office_editor",
         ]);
+    }
+
+    [Fact]
+    public void Only_the_office_editor_is_seeded_off_it_needs_collabora_running()
+    {
+        FeatureFlag.OffByDefault.Should().BeEquivalentTo(["office_editor"]);
+        FeatureFlag.OffByDefault.Should().OnlyContain(key => FeatureFlag.MvpFlags.Any(flag => flag.Key == key));
     }
 }

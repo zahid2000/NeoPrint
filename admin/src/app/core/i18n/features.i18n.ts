@@ -40,6 +40,9 @@ export const featuresTranslations: PageTranslations = {
     'features.flag.data_export.name': 'Məlumatlarımı yüklə',
     'features.flag.data_export.description':
       'İstifadəçi hesabındakı bütün məlumatların arxivini tətbiqdən sifariş edə bilir.',
+    'features.flag.office_editor.name': 'Office redaktoru',
+    'features.flag.office_editor.description':
+      'Word, Excel və PowerPoint faylını çapdan əvvəl kioskda və ya tətbiqdə redaktə etmək (Collabora). Serverdə Collabora konteyneri işləməlidir.',
     'features.technicalKey': 'Texniki açar',
     'features.platform.Kiosk': 'Kiosk',
     'features.platform.Mobile': 'Mobil tətbiq',
@@ -79,6 +82,9 @@ export const featuresTranslations: PageTranslations = {
     'features.flag.data_export.name': 'Download my data',
     'features.flag.data_export.description':
       'A user can order an archive of all the data in their account from the app.',
+    'features.flag.office_editor.name': 'Office editor',
+    'features.flag.office_editor.description':
+      'A Word, Excel or PowerPoint file can be edited at the kiosk or in the app before printing (Collabora). The Collabora container must run on the server.',
     'features.technicalKey': 'Technical key',
     'features.platform.Kiosk': 'Kiosk',
     'features.platform.Mobile': 'Mobile app',
@@ -118,6 +124,9 @@ export const featuresTranslations: PageTranslations = {
     'features.flag.data_export.name': 'Скачать мои данные',
     'features.flag.data_export.description':
       'Пользователь может заказать в приложении архив всех данных своей учётной записи.',
+    'features.flag.office_editor.name': 'Редактор Office',
+    'features.flag.office_editor.description':
+      'Файл Word, Excel или PowerPoint можно отредактировать в киоске или в приложении перед печатью (Collabora). На сервере должен работать контейнер Collabora.',
     'features.technicalKey': 'Технический ключ',
     'features.platform.Kiosk': 'Киоск',
     'features.platform.Mobile': 'Мобильное приложение',

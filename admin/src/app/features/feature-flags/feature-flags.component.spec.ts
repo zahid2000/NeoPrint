@@ -350,6 +350,7 @@ const mvpFlagKeys = [
   'document_scan',
   'txt_editor',
   'data_export',
+  'office_editor',
 ];
 
 describe('feature flag names', () => {

@@ -254,6 +254,7 @@ public static class FeatureKeys
     public const string FileSharing = "file_sharing";
     public const string Referral = "referral";
     public const string DataExport = "data_export";
+    public const string OfficeEditor = "office_editor";
 }
 
 /// <summary>

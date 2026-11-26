@@ -289,6 +289,18 @@ public sealed class FilesController : ControllerBase
         Guid id, [FromBody] FileEditInput edit, CancellationToken cancellationToken)
         => Ok(await _sender.Send(new EditFileCommand(UserId, id, edit), cancellationToken));
 
+    /// <summary>
+    /// Opens a Word, Excel or PowerPoint file in the Office editor (T-459): the
+    /// editor page on this origin and the token to post to it. A save there
+    /// is a new version, converted again as after any edit.
+    /// </summary>
+    [HttpPost("{id:guid}/office-session")]
+    public async Task<ActionResult<NeoPrint.Application.Office.OfficeEditStart>> OfficeSession(Guid id, CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        return Ok(await _sender.Send(new NeoPrint.Application.Office.StartOfficeEditCommand(UserId, id), cancellationToken));
+    }
+
     /// <summary>The saved versions, newest first.</summary>
     [HttpGet("{id:guid}/versions")]
     public async Task<ActionResult<IReadOnlyList<FileVersionItem>>> Versions(Guid id, CancellationToken cancellationToken)

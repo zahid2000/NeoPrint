@@ -307,6 +307,11 @@ services:
       # The development stack and the test server take staging release
       # packages; production takes production ones, the default (T-316, T-317).
       Releases__KeySet: staging
+      # The Office editor (T-459): Collabora inside the stack, for its
+      # discovery, and the API as Collabora calls it back (WOPI). With the
+      # "office" profile off, discovery fails and the editor says so.
+      Office__CollaboraUrl: http://collabora:9980
+      Office__WopiBaseUrl: http://api:8080
     ports:
       - "${NEOPRINT_PORT_API:-5080}:8080"
     volumes:
@@ -362,6 +367,41 @@ services:
       timeout: 5s
       retries: 4
       start_period: 20s
+    restart: unless-stopped
+
+  # The Office editor (T-459, plan Addım 9): Collabora Online CODE, only with
+  # the "office" profile (COMPOSE_PROFILES=office) - the test server turns it
+  # on, a development machine need not carry it. Kept small (docs/DECISIONS.md
+  # 2026-11-26): one process waiting instead of four, two threads a document,
+  # a document unloaded after ten idle minutes, and no autosave - a save is
+  # the editor's own button or leaving it, since every save is a new version
+  # that is converted again. Reached by the browser through the panel's nginx
+  # (/browser, /cool), by nothing else; it calls the API back at /wopi.
+  # Measured idle: about 425 MB.
+  collabora:
+    image: collabora/code:26.04.6.1.1@sha256:e8a9caffcd91ded3f2415ac5461b52b516a209d27633db6aa2bfbeef8d681660
+    container_name: ${NEOPRINT_NAME:-neoprint}-collabora
+    profiles: ["office"]
+    environment:
+      aliasgroup1: http://api:8080
+      dictionaries: en_US ru
+      extra_params: >-
+        --o:ssl.enable=false
+        --o:ssl.termination=${NEOPRINT_OFFICE_TLS_TERMINATION:-false}
+        --o:num_prespawn_children=1
+        --o:per_document.max_concurrency=2
+        --o:per_document.idlesave_duration_secs=0
+        --o:per_document.autosave_duration_secs=0
+        --o:per_document.always_save_on_exit=true
+        --o:per_document.background_autosave=false
+        --o:per_document.idle_timeout_secs=600
+        --o:welcome.enable=false
+        --o:home_mode.enable=true
+        --o:admin_console.enable=false
+        --o:fetch_update_check=0
+    cpus: 1
+    mem_limit: 1g
+    pids_limit: 512
     restart: unless-stopped
 
   # The panel and the API behind one origin: nginx proxies /api and /hubs to

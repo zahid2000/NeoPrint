@@ -309,7 +309,7 @@ public sealed class EditFileHandler :
 
             await _files.UpdateAsync(file, cancellationToken).ConfigureAwait(false);
 
-            await DeleteDroppedAsync(file, dropped, cancellationToken).ConfigureAwait(false);
+            await DeleteDroppedAsync(_storage, _logger, file, dropped, cancellationToken).ConfigureAwait(false);
 
             _logger.LogInformation(
                 "File {FileId} was edited: version {Version} ({Extension}).", file.Id, number, extension);
@@ -428,25 +428,25 @@ public sealed class EditFileHandler :
     /// it until the new version's conversion replaces it, and the conversion
     /// deletes it then.
     /// </remarks>
-    private async Task DeleteDroppedAsync(
-        StoredFile file, IReadOnlyList<FileVersion> dropped, CancellationToken cancellationToken)
+    internal static async Task DeleteDroppedAsync(
+        IFileStorage storage, ILogger logger, StoredFile file, IReadOnlyList<FileVersion> dropped, CancellationToken cancellationToken)
     {
         foreach (var version in dropped.Where(version => version.Object.Key != file.Pdf?.Key))
         {
             try
             {
-                await _storage.DeleteAsync(ToStored(version.Object), StorageBucket.Files, cancellationToken)
+                await storage.DeleteAsync(ToStored(version.Object), StorageBucket.Files, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     exception, "Version {Version} of file {FileId} could not be deleted.", version.Number, file.Id);
             }
         }
     }
 
-    private static StoredObject ToStored(FileObject stored) => new(
+    internal static StoredObject ToStored(FileObject stored) => new(
         stored.ProviderId, stored.Key, stored.Sha256, stored.EncryptedLength, stored.PlaintextLength, stored.KekId);
 
     private static ValidationException Invalid(string field, string key, params (string Name, object? Value)[] arguments)

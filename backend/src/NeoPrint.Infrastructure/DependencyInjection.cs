@@ -71,6 +71,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddHttpClient();
+        AddOffice(services, configuration);
 
         // Scoped: one id per request, consumed message or job run
         // (docs/OBSERVABILITY.md).
@@ -264,6 +265,17 @@ public static class DependencyInjection
     /// service account key, otherwise <see cref="Notifications.LoggingPushSender"/>
     /// - a missing or broken key never stops the service.
     /// </summary>
+    /// <summary>The Office editor (T-459): Collabora's discovery and the WOPI sessions.</summary>
+    private static void AddOffice(IServiceCollection services, IConfiguration configuration)
+    {
+        var office = configuration.GetSection(Application.Office.OfficeOptions.Section).Get<Application.Office.OfficeOptions>()
+                     ?? new Application.Office.OfficeOptions();
+        services.AddSingleton(office);
+        services.AddHttpClient(Office.CollaboraDiscovery.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(5));
+        services.AddSingleton<Application.Office.IOfficeDiscovery, Office.CollaboraDiscovery>();
+        services.AddScoped<Application.Office.IOfficeSessionStore, Office.RedisOfficeSessionStore>();
+    }
+
     private static void AddPush(IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<Application.Notifications.INotificationRepository, Notifications.NotificationRepository>();

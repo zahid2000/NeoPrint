@@ -301,8 +301,9 @@ public sealed class DatabaseSeeder
                 Key = flag.Key,
                 Description = flag.Description,
                 // Plan section 2.16: every MVP flag is on by default and can be
-                // turned off per kiosk during the pilot.
-                DefaultEnabled = true,
+                // turned off per kiosk during the pilot - but for one that
+                // needs a service a server may not run (T-459).
+                DefaultEnabled = !FeatureFlag.OffByDefault.Contains(flag.Key),
                 Platforms = [.. flag.Platforms],
                 RolloutPercent = 100,
             })
