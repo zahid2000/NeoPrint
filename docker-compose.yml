@@ -392,7 +392,7 @@ services:
         --o:per_document.max_concurrency=2
         --o:per_document.idlesave_duration_secs=0
         --o:per_document.autosave_duration_secs=0
-        --o:per_document.always_save_on_exit=true
+        --o:per_document.always_save_on_exit=false
         --o:per_document.background_autosave=false
         --o:per_document.idle_timeout_secs=600
         --o:welcome.enable=false

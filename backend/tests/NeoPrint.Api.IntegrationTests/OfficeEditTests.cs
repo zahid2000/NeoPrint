@@ -110,6 +110,21 @@ public sealed class OfficeEditTests
             (await wopi.PostAsync($"/wopi/files/{id:N}/contents?{query}", new ByteArrayContent(Docx("x"))))
                 .StatusCode.Should().Be(HttpStatusCode.NotImplemented);
 
+            // Leaving the editor without a change is answered, but not a version.
+            using (var untouched = new HttpRequestMessage(HttpMethod.Post, $"/wopi/files/{id:N}/contents?{query}")
+                   {
+                       Content = new ByteArrayContent(Docx("Original text")),
+                   })
+            {
+                untouched.Headers.Add("X-WOPI-Override", "PUT");
+                untouched.Headers.Add("X-COOL-WOPI-IsModifiedByUser", "false");
+                untouched.Headers.Add("X-COOL-WOPI-IsExitSave", "true");
+                (await wopi.SendAsync(untouched)).StatusCode.Should().Be(HttpStatusCode.OK);
+            }
+
+            (await wopi.GetFromJsonAsync<JsonElement>($"/wopi/files/{id:N}?{query}"))
+                .GetProperty("Version").GetString().Should().Be("0", "nothing was changed");
+
             var edited = Docx("Edited in Collabora");
             using (var put = new HttpRequestMessage(HttpMethod.Post, $"/wopi/files/{id:N}/contents?{query}")
                    {

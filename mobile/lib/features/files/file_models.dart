@@ -85,7 +85,8 @@ final class UserFile {
     this.hasLayout = false,
     this.documentType,
     this.realSizePaper,
-  });
+    String? currentExtension,
+  }) : currentExtension = currentExtension ?? extension;
 
   factory UserFile.fromJson(Map<String, dynamic> json) => UserFile(
     id: json['id'] as String,
@@ -106,11 +107,16 @@ final class UserFile {
     hasLayout: json['hasLayout'] as bool? ?? false,
     documentType: json['documentType'] as String?,
     realSizePaper: json['realSizePaper'] as String?,
+    currentExtension: json['currentExtension'] as String?,
   );
 
   final String id;
   final String fileName;
   final String extension;
+
+  /// The format of the current version: a page edit makes a PDF of a
+  /// document (T-459). The original extension when the server did not say.
+  final String currentExtension;
   final FileSourceKind source;
   final FileStatus status;
 
@@ -175,9 +181,26 @@ const textEditableExtensions = {'txt', 'json', 'csv', 'xml', 'html', 'htm'};
 /// Whether [file] opens in the text editor: plain text, converted, and not a
 /// saved scan.
 bool canEditText(UserFile file) =>
-    textEditableExtensions.contains(file.extension) &&
+    textEditableExtensions.contains(file.currentExtension) &&
     file.status == FileStatus.ready &&
     !file.editLocked;
+
+/// Word, Excel and PowerPoint documents and their OpenDocument kin, edited
+/// in the Office editor (plan section 2.2, Addım 9; T-459) - the backend's
+/// `OfficeFormats.IsEditable`. Macro-enabled files and Works are left out.
+const officeEditableExtensions = {
+  'doc', 'docx', 'dot', 'dotx', 'odt', 'ott', 'rtf', //
+  'xls', 'xlsx', 'xltx', 'ods', //
+  'ppt', 'pptx', 'pps', 'ppsx', 'potx', 'odp',
+};
+
+/// Whether [file] opens in the Office editor: its current version is an
+/// Office document, it is converted, and it is not a saved scan or a layout.
+bool canEditOffice(UserFile file) =>
+    officeEditableExtensions.contains(file.currentExtension) &&
+    file.status == FileStatus.ready &&
+    !file.editLocked &&
+    file.source != FileSourceKind.layout;
 
 /// The extension of a file name, lower case and without the dot.
 String extensionOf(String fileName) {
@@ -185,4 +208,28 @@ String extensionOf(String fileName) {
   return dot < 0 || dot == fileName.length - 1
       ? ''
       : fileName.substring(dot + 1).toLowerCase();
+}
+
+/// An Office editor session (`POST files/{id}/office-session`, T-459).
+final class OfficeSession {
+  const OfficeSession({
+    required this.editorPath,
+    required this.accessToken,
+    required this.accessTokenTtl,
+  });
+
+  factory OfficeSession.fromJson(Map<String, dynamic> json) => OfficeSession(
+    editorPath: json['editorPath'] as String,
+    accessToken: json['accessToken'] as String,
+    accessTokenTtl: (json['accessTokenTtl'] as num).toInt(),
+  );
+
+  /// The editor page on the API's own origin, its document already named.
+  final String editorPath;
+
+  /// Posted to the page, never put in its address.
+  final String accessToken;
+
+  /// When the token stops working, in Unix milliseconds.
+  final int accessTokenTtl;
 }

@@ -37,6 +37,7 @@ public interface IFileRepository
 /// <param name="EditLocked">A saved scan or a copy of one: printed, never edited (docs/DECISIONS.md 2026-10-05).</param>
 /// <param name="HasLayout">A layout that "Tərtibatı redaktə et" can open again.</param>
 /// <param name="DocumentType">The scanner's document type, for a scan.</param>
+/// <param name="CurrentExtension">The format of the current version: a page edit makes a PDF of a document (T-459).</param>
 /// <param name="RealSizePaper">A scan or layout: printed at 100% on this paper, one page to a sheet (plan section 2.11).</param>
 public sealed record UserFileResult(
     Guid Id,
@@ -57,7 +58,8 @@ public sealed record UserFileResult(
     string? DocumentType = null,
     double? PhysicalWidthMm = null,
     double? PhysicalHeightMm = null,
-    string? RealSizePaper = null);
+    string? RealSizePaper = null,
+    string? CurrentExtension = null);
 
 /// <summary>A page of a user's files.</summary>
 public sealed record FileListResult(IReadOnlyList<UserFileResult> Items, long Total);

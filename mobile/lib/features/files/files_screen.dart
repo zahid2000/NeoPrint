@@ -19,6 +19,7 @@ import 'file_models.dart';
 import 'files_controller.dart';
 import 'file_sources.dart';
 import 'heic_converter.dart';
+import 'office_editor_screen.dart';
 import 'text_editor_screen.dart';
 import 'auto_delete_sheet.dart';
 import '../layout/layout_launcher.dart';
@@ -167,6 +168,11 @@ class _FileCard extends ConsumerWidget {
               builder: (_) => TextEditorScreen(file: file),
             ),
           ),
+          'editOffice' => Navigator.of(context).push(
+            MaterialPageRoute<bool>(
+              builder: (_) => OfficeEditorScreen(file: file),
+            ),
+          ),
           'share' => context.push(Routes.shareSend, extra: file),
           'download' => downloadFile(context, ref, file),
           'autoDelete' => showAutoDeleteSheet(context, file),
@@ -198,6 +204,16 @@ class _FileCard extends ConsumerWidget {
               child: ListTile(
                 leading: Icon(Icons.edit_note_outlined, color: tokens.brand500),
                 title: Text(l10n.filesEditText),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          // Word, Excel and PowerPoint in Collabora Online (T-459).
+          if (canOpenOfficeEditor(flags, file))
+            PopupMenuItem(
+              value: 'editOffice',
+              child: ListTile(
+                leading: Icon(Icons.edit_document, color: tokens.brand500),
+                title: Text(l10n.filesEditOffice),
                 contentPadding: EdgeInsets.zero,
               ),
             ),

@@ -90,6 +90,7 @@ düzəldildi (`DECISIONS.md`).
 | `geolocator` | 14.1.1 | MIT | "Yaxınımda" — istifadəçinin yeri (Addım 5); Android / iOS / web implementasiyaları Baseflow-un öz paketləridir |
 | `firebase_core` | 4.15.0 | BSD-3-Clause (Google, FlutterFire) | Push üçün Firebase-in işə salınması (Addım 5, T-146, plan 2.0). Konfiqurasiya `lib/firebase_options.dart`-dadır (public identifikatorlar); Gradle `google-services` plagini istifadə olunmur |
 | `firebase_messaging` | 16.7.0 | BSD-3-Clause (Google, FlutterFire) | Push qəbulu: FCM token, ön planda gələn mesaj, toxunulan push (Addım 5, T-146). Göndərmə backend-in öz FCM HTTP v1 klientindədir — FirebaseAdmin yoxdur |
+| `webview_flutter` | 4.14.1 | BSD-3-Clause (Flutter team) | Office redaktoru — Collabora Online səhifəsi (plan 2.2, Addım 9, T-459; plan paketi adı ilə göstərir). Yalnız Android / iOS; web versiyasında redaktor yoxdur. Token səhifəyə POST ilə göndərilir |
 | `flutter_lints` | 5.0.0 | BSD-3-Clause | Lint qaydaları (dev) |
 
 **Firebase JS SDK 12.19.0** (Apache-2.0, Google) — paket deyil, mobil tətbiqin **web build-i** onu iş vaxtı

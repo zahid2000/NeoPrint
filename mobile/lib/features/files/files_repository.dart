@@ -70,6 +70,14 @@ class FilesRepository {
     parse: (json) => UserFile.fromJson(json as Map<String, dynamic>),
   );
 
+  /// Opens [id] in the Office editor (`POST files/{id}/office-session`,
+  /// T-459): the editor page on the API's origin and the token to post to it.
+  Future<OfficeSession> officeSession(String id) => _api.send(
+    method: 'POST',
+    path: 'api/files/$id/office-session',
+    parse: (json) => OfficeSession.fromJson(json as Map<String, dynamic>),
+  );
+
   /// One file of the user's, wherever it is on the list (T-413).
   Future<UserFile> get(String id) => _api.send(
     method: 'GET',

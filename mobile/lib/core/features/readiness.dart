@@ -53,4 +53,8 @@ abstract final class Readiness {
   /// Reading the legal documents from the profile and before accepting them
   /// - step 5 (T-152).
   static const bool legalDocuments = true;
+
+  /// "Redaktə et" for Word, Excel and PowerPoint files in Collabora Online -
+  /// step 9 (T-459). Phones only; the web build never shows it.
+  static const bool officeEditor = true;
 }

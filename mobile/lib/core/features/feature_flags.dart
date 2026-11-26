@@ -17,6 +17,7 @@ abstract final class FeatureKey {
   static const fileSharing = 'file_sharing';
   static const referral = 'referral';
   static const txtEditor = 'txt_editor';
+  static const officeEditor = 'office_editor';
 }
 
 /// The backend's answer to "which features are on for me" (`GET api/features`).

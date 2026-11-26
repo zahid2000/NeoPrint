@@ -213,7 +213,8 @@ public sealed class UploadFileHandler : IRequestHandler<UploadFileCommand, UserF
         file.DocumentType,
         file.PhysicalWidthMm,
         file.PhysicalHeightMm,
-        file.RealSizePaper);
+        file.RealSizePaper,
+        file.CurrentExtension);
 }
 /// <summary>
 /// A stream that replays bytes already read, then continues with the rest.

@@ -88,6 +88,13 @@ public sealed class WopiController : ControllerBase
             return StatusCode(StatusCodes.Status501NotImplemented);
         }
 
+        // A save of a document nobody changed - leaving the editor, a "Save"
+        // with nothing typed - would be a new version and a conversion for nothing.
+        if (string.Equals(Request.Headers["X-COOL-WOPI-IsModifiedByUser"], "false", StringComparison.OrdinalIgnoreCase))
+        {
+            return Ok();
+        }
+
         var result = await _sender.Send(new WopiPutFileCommand(token, id, Request.Body), cancellationToken);
 
         return result switch

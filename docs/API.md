@@ -1176,7 +1176,8 @@ işləyir. `Ready` olandan sonra `pageCount` doludur.
 (`Pending` / `Converting` / `Ready` / `Failed`), `failureReason`, `sizeBytes`,
 `pageCount`, `isSensitive`, `autoDelete`, `versionCount`, `createdAt`,
 `editLocked` (saxlanılmış skan — yalnız çap, Addım 6), `hasLayout` ("Tərtibatı
-redaktə et" açılır), `documentType`, `physicalWidthMm`, `physicalHeightMm` (skan).
+redaktə et" açılır), `documentType`, `physicalWidthMm`, `physicalHeightMm` (skan),
+`currentExtension` (cari versiyanın formatı — səhifə redaktəsindən sonra sənəd `pdf` olur; Office redaktoru buna baxır, T-459).
 
 ### `GET /api/files/{id}/content`
 

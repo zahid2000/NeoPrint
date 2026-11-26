@@ -17,6 +17,7 @@ import '../files/file_sources.dart';
 import '../files/files_controller.dart';
 import '../files/files_repository.dart';
 import '../files/files_screen.dart' show UploadCard;
+import '../files/office_editor_screen.dart';
 import '../files/text_editor_screen.dart';
 import 'layout_editing.dart';
 import 'layout_editor_screen.dart';
@@ -306,6 +307,20 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
     }
   }
 
+  /// "Redaktə et" (T-459): an Office document edited before it goes into
+  /// the layout - unchosen and chosen again once it is ready, as above.
+  Future<void> _editOffice(UserFile file) async {
+    final left = await Navigator.of(context, rootNavigator: true).push<bool>(
+      MaterialPageRoute(builder: (_) => OfficeEditorScreen(file: file)),
+    );
+    if ((left ?? false) && mounted) {
+      setState(() {
+        _chosen.remove(file.id);
+        _awaiting.add(file.id);
+      });
+    }
+  }
+
   static bool _isImage(UserFile file) =>
       layoutImageExtensions.contains(file.extension);
 
@@ -359,6 +374,7 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
     );
     final state = ref.watch(filesControllerProvider);
     final textEditor = ref.watch(featureOnProvider(FeatureKey.txtEditor));
+    final flags = ref.watch(featureFlagsProvider);
     final files = state.files.where(canUseInLayout).toList();
     final waiting = [
       for (final file in state.files)
@@ -437,6 +453,22 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
                                 onPressed: () => unawaited(_editText(file)),
                                 icon: const Icon(Icons.edit_note_outlined),
                                 label: Text(l10n.filesEditText),
+                              ),
+                            ),
+                          ),
+                        if (canOpenOfficeEditor(flags, file))
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Padding(
+                              padding: const EdgeInsetsDirectional.only(
+                                start: Spacing.x2,
+                                bottom: Spacing.x2,
+                              ),
+                              child: TextButton.icon(
+                                key: ValueKey('layoutEditOffice-${file.id}'),
+                                onPressed: () => unawaited(_editOffice(file)),
+                                icon: const Icon(Icons.edit_document),
+                                label: Text(l10n.filesEditOffice),
                               ),
                             ),
                           ),
