@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,10 +17,13 @@ import '../../l10n/app_localizations.dart';
 import '../../shared/api_error_text.dart';
 import '../../shared/widgets/neo_banner.dart';
 import '../../shared/widgets/neo_design.dart';
+import '../layout/layout_launcher.dart';
 import '../print_hub/print_next.dart';
 import '../print_hub/print_start.dart';
 import 'file_models.dart';
 import 'files_controller.dart';
+import 'office_editor_screen.dart';
+import 'text_editor_screen.dart';
 
 /// "Fayla baxış" (T-342, T-347; the design's screen 5): the pages as the
 /// backend renders them (plan section 2.0: the server's PDFium image of the
@@ -139,6 +143,31 @@ class _FilePreviewScreenState extends ConsumerState<FilePreviewScreen> {
     }
   }
 
+  /// Opens [file] in [editor]. A save is a new version, converted again: the
+  /// preview follows the list, which shows it being prepared.
+  void _edit(PreviewEditor editor, UserFile file) {
+    switch (editor) {
+      case PreviewEditor.layout:
+        unawaited(openLayoutFile(context, ref, file));
+      case PreviewEditor.office:
+        unawaited(
+          Navigator.of(context).push(
+            MaterialPageRoute<bool>(
+              builder: (_) => OfficeEditorScreen(file: file),
+            ),
+          ),
+        );
+      case PreviewEditor.text:
+        unawaited(
+          Navigator.of(context).push(
+            MaterialPageRoute<bool>(
+              builder: (_) => TextEditorScreen(file: file),
+            ),
+          ),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -150,6 +179,7 @@ class _FilePreviewScreenState extends ConsumerState<FilePreviewScreen> {
         Readiness.fileSharing &&
         ref.watch(featureOnProvider(FeatureKey.fileSharing));
     final language = Localizations.localeOf(context).languageCode;
+    final editor = previewEditorFor(ref.watch(featureFlagsProvider), file);
 
     final details = [
       if (file.pageCount > 0) l10n.filesPageCount(file.pageCount),
@@ -281,6 +311,16 @@ class _FilePreviewScreenState extends ConsumerState<FilePreviewScreen> {
                     ? () => setState(() => _turns = (_turns + 1) % 4)
                     : null,
               ),
+              // T-463: the editor this file's format opens in, if any.
+              if (editor != null)
+                _Action(
+                  key: const ValueKey('filePreviewEdit'),
+                  icon: Icons.edit_outlined,
+                  label: l10n.filePreviewEdit,
+                  onTap: file.status == FileStatus.ready
+                      ? () => _edit(editor, file)
+                      : null,
+                ),
               if (sharing)
                 _Action(
                   icon: Icons.share_outlined,
@@ -332,9 +372,36 @@ class _FilePreviewScreenState extends ConsumerState<FilePreviewScreen> {
   }
 }
 
+/// Which editor "Redaktə et" on the preview opens (T-463).
+enum PreviewEditor { office, text, layout }
+
+/// The editor [file]'s format opens in, or null when it has none - a PDF, a
+/// picture, a saved scan. Decided by the format alone, so the action is
+/// there, disabled, while the file is still being prepared.
+PreviewEditor? previewEditorFor(FeatureFlags flags, UserFile file) {
+  if (file.hasLayout) {
+    return PreviewEditor.layout;
+  }
+  if (file.editLocked || file.source == FileSourceKind.layout) {
+    return null;
+  }
+  if (!kIsWeb &&
+      Readiness.officeEditor &&
+      flags.isOn(FeatureKey.officeEditor) &&
+      officeEditableExtensions.contains(file.currentExtension)) {
+    return PreviewEditor.office;
+  }
+  if (flags.isOn(FeatureKey.txtEditor) &&
+      textEditableExtensions.contains(file.currentExtension)) {
+    return PreviewEditor.text;
+  }
+  return null;
+}
+
 /// One of the round actions under the file's name.
 class _Action extends StatelessWidget {
   const _Action({
+    super.key,
     required this.icon,
     required this.label,
     required this.onTap,
