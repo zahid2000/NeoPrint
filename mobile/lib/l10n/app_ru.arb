@@ -127,6 +127,7 @@
   "filesFromCloudHint": "Google Drive, OneDrive или Dropbox",
   "filesWhichCloud": "Из какого облака?",
   "filesNoCloudApp": "На телефоне нет приложения Google Drive, OneDrive или Dropbox — открываются файлы телефона.",
+  "filesTooManyAtOnce": "За раз загружается не больше {count} файлов — загружаются первые {count}, остальные выберите потом.",
   "filesCloudTooLarge": "Файл слишком большой — выберите файл меньше 200 МБ.",
   "filesCloudFailed": "{app} не передал файл. Попробуйте ещё раз или сохраните файл на телефон и добавьте через «Выбрать файл».",
   "filesPickFileHint": "PDF, Word, Excel, PowerPoint, изображения и др.",

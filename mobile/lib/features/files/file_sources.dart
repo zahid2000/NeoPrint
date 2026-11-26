@@ -100,16 +100,23 @@ Future<FileSource?> chooseFileSource(
   );
 }
 
-/// Adds a file from [source]. From the files tab, the file uploaded from
-/// the phone, a cloud app or the camera is returned (the layout's file
-/// choice selects it when it is ready, T-450); null otherwise.
+/// The most files "Fayl seç" uploads at once (T-464).
+const maxFilesAtOnce = 20;
+
+/// How many of them upload at the same time; the rest wait their turn.
+const parallelUploads = 3;
+
+/// Adds files from [source]. From the files tab, the files uploaded from the
+/// phone (several at once, T-464), a cloud app or the camera are returned
+/// (the layout's file choice selects them when they are ready, T-450);
+/// nothing otherwise.
 ///
 /// From the files tab ([thenPrint] false) the upload runs in
 /// [filesControllerProvider] and shows on the list. From the Print tab
 /// ([thenPrint] true) the user is printing (T-347): the chosen file uploads
 /// on its own screen, which opens the file's preview - and from there its
 /// print settings - once it is ready; a saved scan opens its preview at once.
-Future<UserFile?> addFileFrom(
+Future<List<UserFile>> addFileFrom(
   BuildContext context,
   WidgetRef ref,
   FileSource source, {
@@ -118,12 +125,13 @@ Future<UserFile?> addFileFrom(
   final l10n = AppLocalizations.of(context);
   final controller = ref.read(filesControllerProvider.notifier);
 
-  Future<UserFile?> send(PickedFile picked) async {
+  Future<List<UserFile>> send(PickedFile picked) async {
     if (thenPrint) {
       await context.push(Routes.printUpload, extra: picked);
-      return null;
+      return const [];
     }
-    return controller.upload(picked);
+    final file = await controller.upload(picked);
+    return [?file];
   }
 
   switch (source) {
@@ -138,7 +146,7 @@ Future<UserFile?> addFileFrom(
     case FileSource.scan:
       final outcome = await context.push<ScanOutcome>(Routes.filesScanner);
       if (!context.mounted) {
-        return null;
+        return const [];
       }
       if (outcome == ScanOutcome.saved) {
         if (thenPrint) {
@@ -154,10 +162,27 @@ Future<UserFile?> addFileFrom(
         }
       }
     case FileSource.device:
-      final picked = await _pickFile(ref);
-      if (picked != null && context.mounted) {
-        return send(picked);
+      // Printing goes on with one file; the files tab takes several.
+      if (thenPrint) {
+        final picked = await _pickFiles(ref, multiple: false);
+        if (picked.isNotEmpty && context.mounted) {
+          return send(picked.first);
+        }
+        break;
       }
+      final picked = await _pickFiles(ref, multiple: true);
+      if (picked.isEmpty || !context.mounted) {
+        break;
+      }
+      if (picked.length > maxFilesAtOnce) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.filesTooManyAtOnce(maxFilesAtOnce))),
+        );
+      }
+      return controller.uploadAll(
+        picked.take(maxFilesAtOnce).toList(),
+        parallel: parallelUploads,
+      );
     case FileSource.cloud:
       final picked = await _pickCloud(context, ref);
       if (picked != null && context.mounted) {
@@ -169,7 +194,7 @@ Future<UserFile?> addFileFrom(
         return send(photo);
       }
   }
-  return null;
+  return const [];
 }
 
 /// The scan just saved: the newest scan on the list, opened for printing.
@@ -219,7 +244,7 @@ Future<PickedFile?> _pickCloud(BuildContext context, WidgetRef ref) async {
 
   if (apps.isEmpty) {
     messenger.showSnackBar(SnackBar(content: Text(l10n.filesNoCloudApp)));
-    return _pickFile(ref);
+    return (await _pickFiles(ref, multiple: false)).firstOrNull;
   }
 
   final app = apps.length == 1
@@ -283,8 +308,12 @@ Future<PickedFile?> _pickCloud(BuildContext context, WidgetRef ref) async {
 }
 
 /// The system picker, filtered to the formats the installation accepts
-/// now - plus HEIC, which the phone converts before upload.
-Future<PickedFile?> _pickFile(WidgetRef ref) async {
+/// now - plus HEIC, which the phone converts before upload. Several files
+/// when [multiple] (T-464); nothing when the user chose none.
+Future<List<PickedFile>> _pickFiles(
+  WidgetRef ref, {
+  required bool multiple,
+}) async {
   Set<String>? accepted;
 
   try {
@@ -294,20 +323,21 @@ Future<PickedFile?> _pickFile(WidgetRef ref) async {
     accepted = null;
   }
 
-  final file = await FilePicker.pickFile(
-    type: accepted == null ? FileType.any : FileType.custom,
-    allowedExtensions: accepted == null
-        ? null
-        : [...accepted, ...phoneConvertedExtensions],
-  );
+  final type = accepted == null ? FileType.any : FileType.custom;
+  final extensions = accepted == null
+      ? null
+      : [...accepted, ...phoneConvertedExtensions];
 
-  if (file == null) {
-    return null;
-  }
+  final files = multiple
+      ? await FilePicker.pickFiles(type: type, allowedExtensions: extensions)
+      : [?await FilePicker.pickFile(type: type, allowedExtensions: extensions)];
 
-  return PickedFile(
-    name: file.name,
-    path: kIsWeb ? null : file.path,
-    readBytes: file.xFile.readAsBytes,
-  );
+  return [
+    for (final file in files)
+      PickedFile(
+        name: file.name,
+        path: kIsWeb ? null : file.path,
+        readBytes: file.xFile.readAsBytes,
+      ),
+  ];
 }

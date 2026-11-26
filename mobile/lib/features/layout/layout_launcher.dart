@@ -267,14 +267,16 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
     if (source == null || !mounted) {
       return;
     }
-    final file = await addFileFrom(context, ref, source);
-    if (file == null || !mounted) {
+    final files = await addFileFrom(context, ref, source);
+    if (!mounted) {
       return;
     }
-    if (canUseInLayout(file)) {
-      _choose(file, true);
-    } else {
-      setState(() => _awaiting.add(file.id));
+    for (final file in files) {
+      if (canUseInLayout(file)) {
+        _choose(file, true);
+      } else {
+        setState(() => _awaiting.add(file.id));
+      }
     }
   }
 

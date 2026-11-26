@@ -158,6 +158,10 @@
   "filesFromCloudHint": "Google Drive, OneDrive və ya Dropbox",
   "filesWhichCloud": "Hansı buluddan?",
   "filesNoCloudApp": "Telefonda Google Drive, OneDrive və ya Dropbox tətbiqi yoxdur — telefonun faylları açılır.",
+  "filesTooManyAtOnce": "Bir dəfəyə ən çox {count} fayl yüklənir — ilk {count} fayl yüklənir, qalanlarını sonra seçin.",
+  "@filesTooManyAtOnce": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "filesCloudTooLarge": "Fayl çox böyükdür — 200 MB-dan kiçik fayl seçin.",
   "filesCloudFailed": "{app} faylı vermədi. Yenidən cəhd edin və ya faylı telefona yükləyib \"Fayl seç\" ilə əlavə edin.",
   "@filesCloudFailed": {

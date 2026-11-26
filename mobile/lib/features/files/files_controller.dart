@@ -238,6 +238,29 @@ class FilesController extends Notifier<FilesState> {
     }
   }
 
+  /// Uploads [files] (T-464): each gets its card on the list at once, and
+  /// [parallel] of them go up at a time. The files saved, in the order they
+  /// were given; one that failed shows its reason on its own card.
+  Future<List<UserFile>> uploadAll(
+    List<PickedFile> files, {
+    int parallel = 3,
+  }) async {
+    final saved = List<UserFile?>.filled(files.length, null);
+    var next = 0;
+
+    Future<void> worker() async {
+      while (next < files.length) {
+        final index = next++;
+        saved[index] = await upload(files[index]);
+      }
+    }
+
+    await Future.wait([
+      for (var i = 0; i < parallel && i < files.length; i++) worker(),
+    ]);
+    return [for (final file in saved) ?file];
+  }
+
   /// Uploads [file]; the saved file, or null when it failed or was
   /// cancelled (the reason is on its row in [FilesState.uploads]).
   Future<UserFile?> upload(PickedFile file) async {
