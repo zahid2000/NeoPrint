@@ -440,6 +440,41 @@
   "previewFit": "Səhifəni sığdır",
   "cameraTitle": "Şəkil çək",
   "cameraCapture": "Çək",
+  "cameraDone": "Hazır",
+  "cameraCount": "{count} şəkil",
+  "@cameraCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "cameraFull": "Bir dəfəyə ən çox {count} şəkil — \"Hazır\"a basın.",
+  "@cameraFull": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "cameraDrop": "Bu şəkli at",
+  "cameraDiscardTitle": "Çəkilən {count} şəkil atılsın?",
+  "@cameraDiscardTitle": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "cameraDiscard": "At",
+  "cameraKeepShooting": "Davam et",
+  "photosAsTitle": "{count} şəkli necə saxlayaq?",
+  "@photosAsTitle": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "photosAsPdf": "Bir PDF faylı",
+  "photosAsPdfHint": "Hər şəkil ayrıca səhifədə",
+  "photosAsLayout": "Tərtibatda aç",
+  "photosAsLayoutHint": "Yerləşdirin, ölçüsünü dəyişin, sonra saxlayın",
+  "photosAsSeparate": "Ayrı şəkillər kimi",
+  "photosPreparing": "Şəkillər hazırlanır…",
+  "photosNotReady": "Bu şəkillər hazırlanmadı və əlavə olunmadı: {names}. Fayllarımda səbəbinə baxın.",
+  "@photosNotReady": {
+    "placeholders": { "names": { "type": "String" } }
+  },
+  "photosPdfName": "Şəkillər {date}",
+  "@photosPdfName": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "photosPdfSaved": "PDF hazırdır — Fayllarımda.",
   "cameraNoCamera": "Bu cihazda kamera tapılmadı.",
   "cameraPermission": "Kameraya icazə verilməyib. Telefonun ayarlarından icazə verib yenidən cəhd edin.",
   "cameraFailed": "Kamera açılmadı. Yenidən cəhd edin.",

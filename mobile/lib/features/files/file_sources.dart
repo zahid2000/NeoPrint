@@ -116,11 +116,16 @@ const parallelUploads = 3;
 /// ([thenPrint] true) the user is printing (T-347): the chosen file uploads
 /// on its own screen, which opens the file's preview - and from there its
 /// print settings - once it is ready; a saved scan opens its preview at once.
+///
+/// Several photos from the camera (T-466) are asked about on the files tab -
+/// one PDF, a layout, or separate pictures; for a layout ([forLayout]) they
+/// are uploaded and returned.
 Future<List<UserFile>> addFileFrom(
   BuildContext context,
   WidgetRef ref,
   FileSource source, {
   bool thenPrint = false,
+  bool forLayout = false,
 }) async {
   final l10n = AppLocalizations.of(context);
   final controller = ref.read(filesControllerProvider.notifier);
@@ -189,12 +194,115 @@ Future<List<UserFile>> addFileFrom(
         return send(picked);
       }
     case FileSource.camera:
-      final photo = await _photo(context);
-      if (photo != null && context.mounted) {
-        return send(photo);
+      // Printing goes on with one photo.
+      if (thenPrint) {
+        final photo = await _photo(context);
+        if (photo != null && context.mounted) {
+          return send(photo);
+        }
+        break;
+      }
+      final photos = await _photos(context);
+      if (photos.isEmpty || !context.mounted) {
+        break;
+      }
+      if (photos.length == 1 || forLayout) {
+        return controller.uploadAll(photos, parallel: parallelUploads);
+      }
+      final keep = await _askPhotosAs(context, photos.length);
+      if (!context.mounted) {
+        break;
+      }
+      final uploaded = await controller.uploadAll(
+        photos,
+        parallel: parallelUploads,
+      );
+      if (!context.mounted || uploaded.isEmpty) {
+        break;
+      }
+      switch (keep) {
+        case PhotosAs.separate:
+          return uploaded;
+        case PhotosAs.pdf:
+          await savePhotosAsPdf(context, ref, uploaded);
+        case PhotosAs.layout:
+          await openPhotosInLayout(context, ref, uploaded);
       }
   }
   return const [];
+}
+
+/// What several photos become (T-466).
+enum PhotosAs { pdf, layout, separate }
+
+/// "N şəkli necə saxlayaq?": answered, never dismissed - the photos are
+/// taken and would be lost.
+Future<PhotosAs> _askPhotosAs(BuildContext context, int count) async {
+  final l10n = AppLocalizations.of(context);
+  final choice = await showModalBottomSheet<PhotosAs>(
+    context: context,
+    isDismissible: false,
+    enableDrag: false,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              Spacing.x4,
+              0,
+              Spacing.x4,
+              Spacing.x2,
+            ),
+            child: Text(
+              l10n.photosAsTitle(count),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          ListTile(
+            key: const ValueKey('photosAsPdf'),
+            leading: const Icon(Icons.picture_as_pdf_outlined),
+            title: Text(l10n.photosAsPdf),
+            subtitle: Text(l10n.photosAsPdfHint),
+            onTap: () => Navigator.pop(context, PhotosAs.pdf),
+          ),
+          ListTile(
+            key: const ValueKey('photosAsLayout'),
+            leading: const Icon(Icons.dashboard_customize_outlined),
+            title: Text(l10n.photosAsLayout),
+            subtitle: Text(l10n.photosAsLayoutHint),
+            onTap: () => Navigator.pop(context, PhotosAs.layout),
+          ),
+          ListTile(
+            key: const ValueKey('photosAsSeparate'),
+            leading: const Icon(Icons.photo_library_outlined),
+            title: Text(l10n.photosAsSeparate),
+            onTap: () => Navigator.pop(context, PhotosAs.separate),
+          ),
+          const SizedBox(height: Spacing.x4),
+        ],
+      ),
+    ),
+  );
+  return choice ?? PhotosAs.separate;
+}
+
+/// Several photos from the camera (T-466); none when the user went back.
+Future<List<PickedFile>> _photos(BuildContext context) async {
+  final paths = await context.push<List<String>>(
+    '${Routes.filesCamera}?multiple=1',
+  );
+  final stamp = DateTime.now().millisecondsSinceEpoch;
+  return [
+    for (final (i, path) in (paths ?? const <String>[]).indexed)
+      PickedFile(
+        name: 'photo-$stamp-${i + 1}.jpg',
+        path: path,
+        readBytes: () => throw UnsupportedError('Camera photos have a path.'),
+      ),
+  ];
 }
 
 /// The scan just saved: the newest scan on the list, opened for printing.

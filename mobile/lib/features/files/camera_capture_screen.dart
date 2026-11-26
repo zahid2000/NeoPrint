@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -7,13 +10,20 @@ import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/neo_empty_state.dart';
 
-/// Takes one photo to upload (plan section 8.2: "kamera").
+/// Takes a photo to upload (plan section 8.2: "kamera") - or several, when
+/// [multiple] (T-466).
 ///
-/// Pops with the photo's path, or with nothing when the user goes back. The
-/// document scanner with its edge detection is a separate screen (plan
-/// section 2.11); this is the plain camera.
+/// Pops with the photo's path - with the list of paths when [multiple] - or
+/// with nothing when the user goes back. The document scanner with its edge
+/// detection is a separate screen (plan section 2.11); this is the plain
+/// camera.
 class CameraCaptureScreen extends StatefulWidget {
-  const CameraCaptureScreen({super.key});
+  const CameraCaptureScreen({super.key, this.multiple = false});
+
+  final bool multiple;
+
+  /// The most photos one go takes: as many as one layout takes from files.
+  static const maxPhotos = 24;
 
   @override
   State<CameraCaptureScreen> createState() => _CameraCaptureScreenState();
@@ -26,6 +36,9 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
   CameraController? _controller;
   _CameraProblem? _problem;
   bool _capturing = false;
+
+  /// The photos taken so far, when several are taken.
+  final _photos = <String>[];
 
   @override
   void initState() {
@@ -111,7 +124,15 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     try {
       final photo = await controller.takePicture();
 
-      if (mounted) {
+      if (!mounted) {
+        return;
+      }
+      if (widget.multiple) {
+        setState(() {
+          _photos.add(photo.path);
+          _capturing = false;
+        });
+      } else {
         Navigator.of(context).pop(photo.path);
       }
     } on CameraException {
@@ -124,10 +145,49 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
     }
   }
 
+  /// Going back with photos taken asks first: they would be lost.
+  Future<void> _leave() async {
+    final l10n = AppLocalizations.of(context);
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.cameraDiscardTitle(_photos.length)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.cameraDiscard),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cameraKeepShooting),
+          ),
+        ],
+      ),
+    );
+    if ((discard ?? false) && mounted) {
+      _photos.clear();
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final controller = _controller;
+
+    return PopScope(
+      canPop: _photos.isEmpty,
+      onPopInvokedWithResult: (popped, _) {
+        if (!popped) {
+          unawaited(_leave());
+        }
+      },
+      child: _scaffold(l10n, controller),
+    );
+  }
+
+  Widget _scaffold(AppLocalizations l10n, CameraController? controller) {
+    final full = _photos.length >= CameraCaptureScreen.maxPhotos;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.cameraTitle)),
@@ -157,26 +217,134 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
         null => Column(
           children: [
             Expanded(child: Center(child: CameraPreview(controller!))),
+            if (widget.multiple && _photos.isNotEmpty) _strip(l10n),
+            if (widget.multiple && full)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  Spacing.x6,
+                  Spacing.x3,
+                  Spacing.x6,
+                  0,
+                ),
+                child: Text(
+                  l10n.cameraFull(CameraCaptureScreen.maxPhotos),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.all(Spacing.x6),
-              child: SizedBox(
-                width: double.infinity,
-                height: Sizes.controlHeight,
-                child: FilledButton.icon(
-                  onPressed: _capturing ? null : _capture,
-                  icon: _capturing
-                      ? const SizedBox.square(
-                          dimension: Spacing.x4,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.photo_camera),
-                  label: Text(l10n.cameraCapture),
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: Sizes.controlHeight,
+                      child: FilledButton.icon(
+                        key: const ValueKey('cameraCapture'),
+                        onPressed: _capturing || full ? null : _capture,
+                        icon: _capturing
+                            ? const SizedBox.square(
+                                dimension: Spacing.x4,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.photo_camera),
+                        label: Text(l10n.cameraCapture),
+                      ),
+                    ),
+                  ),
+                  if (widget.multiple) ...[
+                    const SizedBox(width: Spacing.x3),
+                    SizedBox(
+                      height: Sizes.controlHeight,
+                      child: OutlinedButton.icon(
+                        key: const ValueKey('cameraDone'),
+                        onPressed: _photos.isEmpty || _capturing
+                            ? null
+                            : () =>
+                                  Navigator.of(context)
+                                      .pop(List<String>.of(_photos)),
+                        icon: const Icon(Icons.check),
+                        label: Text(l10n.cameraDone),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
         ),
       },
+    );
+  }
+
+  /// The photos taken, newest last; each can be dropped.
+  Widget _strip(AppLocalizations l10n) {
+    final tokens = context.tokens;
+    const size = 64.0;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Spacing.x4, Spacing.x3, Spacing.x4, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.cameraCount(_photos.length),
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+          const SizedBox(height: Spacing.x2),
+          SizedBox(
+            height: size,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _photos.length,
+              separatorBuilder: (_, __) => const SizedBox(width: Spacing.x2),
+              itemBuilder: (_, index) => Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(Radii.sm),
+                    child: Image.file(
+                      File(_photos[index]),
+                      width: size,
+                      height: size,
+                      fit: BoxFit.cover,
+                      cacheWidth: 192,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: size,
+                        height: size,
+                        color: tokens.neutral200,
+                      ),
+                    ),
+                  ),
+                  PositionedDirectional(
+                    top: 0,
+                    end: 0,
+                    child: Material(
+                      color: tokens.neutral900.withValues(alpha: 0.6),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        key: ValueKey('cameraDrop-$index'),
+                        customBorder: const CircleBorder(),
+                        onTap: () => setState(() => _photos.removeAt(index)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(Spacing.x1),
+                          child: Icon(
+                            Icons.close,
+                            size: Spacing.x4,
+                            color: tokens.neutral0,
+                            semanticLabel: l10n.cameraDrop,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

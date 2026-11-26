@@ -421,7 +421,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // tab and from the Print tab alike (T-347).
       GoRoute(
         path: Routes.filesCamera,
-        builder: (_, __) => const CameraCaptureScreen(),
+        // ?multiple=1: several photos, popped as a list (T-466).
+        builder: (_, state) => CameraCaptureScreen(
+          multiple: state.uri.queryParameters['multiple'] == '1',
+        ),
       ),
       GoRoute(
         path: Routes.filesScanner,

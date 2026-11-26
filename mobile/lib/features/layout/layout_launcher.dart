@@ -95,6 +95,137 @@ Future<void> openNewLayout(
   }
 }
 
+/// How long photos just uploaded are waited for, to be made ready (T-466).
+const photosReadyTimeout = Duration(minutes: 2);
+
+/// [files] once the server has made them ready, behind "Şəkillər
+/// hazırlanır…"; one that failed or took too long is named and left out.
+Future<List<UserFile>> _whenReady(
+  BuildContext context,
+  WidgetRef ref,
+  List<UserFile> files,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final navigator = Navigator.of(context, rootNavigator: true);
+  final repository = ref.read(filesRepositoryProvider);
+  final clock = Stopwatch()..start();
+
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => PopScope(
+      canPop: false,
+      child: AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: Spacing.x4),
+            Expanded(child: Text(l10n.photosPreparing)),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  final ready = <UserFile>[];
+  final missing = <String>[];
+  try {
+    for (final file in files) {
+      var current = file;
+      while (current.status != FileStatus.ready &&
+          current.status != FileStatus.failed &&
+          clock.elapsed < photosReadyTimeout) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+        try {
+          current = await repository.get(file.id);
+        } on ApiException {
+          // A moment of no network: ask again.
+        }
+      }
+      if (current.status == FileStatus.ready) {
+        ready.add(current);
+      } else {
+        missing.add(current.fileName);
+      }
+    }
+  } finally {
+    navigator.pop();
+  }
+
+  if (missing.isNotEmpty) {
+    messenger.showSnackBar(
+      SnackBar(content: Text(l10n.photosNotReady(missing.join(', ')))),
+    );
+  }
+  return ready;
+}
+
+/// "Bir PDF faylı" (T-466): the photos, a page each, saved as one layout
+/// file - a PDF that prints and opens again in the editor. The separate
+/// photo files then go: the layout keeps its own copy of every picture.
+Future<void> savePhotosAsPdf(
+  BuildContext context,
+  WidgetRef ref,
+  List<UserFile> photos,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final files = ref.read(filesRepositoryProvider);
+  final layouts = ref.read(layoutRepositoryProvider);
+
+  final ready = await _whenReady(context, ref, photos);
+  if (ready.isEmpty || !context.mounted) {
+    return;
+  }
+
+  final sources = [for (final file in ready) LayoutSource(file)];
+  final saved = await _withProgress(context, () async {
+    final (_, pictures) = await _loadSources(files, sources);
+    final project = LayoutEditing.onePerPage(
+      const LayoutProject(marginMm: 10, pages: [LayoutPage([])]),
+      0,
+      [for (final source in sources) pictures[source.name]!],
+    );
+    final now = DateTime.now();
+    final name = l10n.photosPdfName(
+      '${now.year}-${_two(now.month)}-${_two(now.day)} '
+      '${_two(now.hour)}-${_two(now.minute)}',
+    );
+    return layouts.create(project, name);
+  });
+  if (saved == null) {
+    return;
+  }
+
+  for (final photo in ready) {
+    try {
+      await files.delete(photo.id);
+    } on ApiException {
+      // Left on the list: the user can delete it, nothing is lost.
+    }
+  }
+  await ref.read(filesControllerProvider.notifier).load();
+  messenger.showSnackBar(SnackBar(content: Text(l10n.photosPdfSaved)));
+}
+
+/// "Tərtibatda aç" (T-466): the photos in the layout editor, a page each.
+Future<void> openPhotosInLayout(
+  BuildContext context,
+  WidgetRef ref,
+  List<UserFile> photos,
+) async {
+  final ready = await _whenReady(context, ref, photos);
+  if (ready.isEmpty || !context.mounted) {
+    return;
+  }
+  await openNewLayout(context, ref, [
+    for (final file in ready) LayoutSource(file),
+  ]);
+}
+
+String _two(int value) => value.toString().padLeft(2, '0');
+
 /// Opens a layout file again ("Tərtibatı redaktə et"); a save is a new version.
 Future<void> openLayoutFile(
   BuildContext context,
@@ -266,7 +397,7 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
     if (source == null || !mounted) {
       return;
     }
-    final files = await addFileFrom(context, ref, source);
+    final files = await addFileFrom(context, ref, source, forLayout: true);
     if (!mounted) {
       return;
     }
