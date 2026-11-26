@@ -52,6 +52,7 @@ Widget app(
       session, {
       required onLoading,
       required onFailed,
+      required link,
     }) {
       WidgetsBinding.instance.addPostFrameCallback((_) => onLoading(false));
       return const Center(child: Text('Collabora'));

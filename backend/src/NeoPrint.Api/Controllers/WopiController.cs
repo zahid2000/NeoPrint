@@ -39,31 +39,37 @@ public sealed class WopiController : ControllerBase
             return Unauthorized();
         }
 
-        return new JsonResult(
-            new Dictionary<string, object>
-            {
-                ["BaseFileName"] = info.BaseFileName,
-                ["Size"] = info.Size,
-                ["OwnerId"] = info.OwnerId,
-                ["UserId"] = info.UserId,
-                ["UserFriendlyName"] = info.UserFriendlyName,
-                ["Version"] = info.Version,
-                ["LastModifiedTime"] = info.LastModifiedTime.ToString("O", CultureInfo.InvariantCulture),
-                ["UserCanWrite"] = info.UserCanWrite,
-                ["SupportsUpdate"] = true,
-                ["SupportsLocks"] = false,
-                ["UserCanNotWriteRelative"] = true,
-                ["UserCanRename"] = false,
-                // Printed at a kiosk, priced and paid there: not from the editor.
-                ["DisablePrint"] = true,
-                ["HidePrintOption"] = true,
-                ["DisableExport"] = true,
-                ["HideExportOption"] = true,
-                ["DisableCopy"] = false,
-                ["EnableShare"] = false,
-                ["DisableInactiveMessages"] = true,
-            },
-            Exact);
+        var fields = new Dictionary<string, object>
+        {
+            ["BaseFileName"] = info.BaseFileName,
+            ["Size"] = info.Size,
+            ["OwnerId"] = info.OwnerId,
+            ["UserId"] = info.UserId,
+            ["UserFriendlyName"] = info.UserFriendlyName,
+            ["Version"] = info.Version,
+            ["LastModifiedTime"] = info.LastModifiedTime.ToString("O", CultureInfo.InvariantCulture),
+            ["UserCanWrite"] = info.UserCanWrite,
+            ["SupportsUpdate"] = true,
+            ["SupportsLocks"] = false,
+            ["UserCanNotWriteRelative"] = true,
+            ["UserCanRename"] = false,
+            // Printed at a kiosk, priced and paid there: not from the editor.
+            ["DisablePrint"] = true,
+            ["HidePrintOption"] = true,
+            ["DisableExport"] = true,
+            ["HideExportOption"] = true,
+            ["DisableCopy"] = false,
+            ["EnableShare"] = false,
+            ["DisableInactiveMessages"] = true,
+        };
+
+        // The app listens on the editor page for "Doc_ModifiedStatus" (T-465).
+        if (info.PostMessageOrigin is { } origin)
+        {
+            fields["PostMessageOrigin"] = origin;
+        }
+
+        return new JsonResult(fields, Exact);
     }
 
     /// <summary>GetFile.</summary>

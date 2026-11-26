@@ -41,7 +41,12 @@ public interface IOfficeDiscovery
 }
 
 /// <summary>One person editing one file, for <see cref="OfficeSessions.Lifetime"/>.</summary>
-public sealed record OfficeSession(Guid FileId, Guid UserId, string UserName, DateTime ExpiresAt);
+/// <param name="Origin">
+/// The public origin the editor page is loaded from: Collabora tells the app
+/// through it whether the document has changes (T-465). Null on a session
+/// made before it was kept.
+/// </param>
+public sealed record OfficeSession(Guid FileId, Guid UserId, string UserName, DateTime ExpiresAt, string? Origin = null);
 
 /// <summary>
 /// The WOPI access tokens (plan: "30 dəq-lik WOPI access token"). A token is
@@ -59,10 +64,23 @@ public interface IOfficeSessionStore
 public static class OfficeSessions
 {
     public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// An http(s) origin - scheme, host and port, nothing else - or null.
+    /// Anything else is dropped, never handed to Collabora.
+    /// </summary>
+    public static string? Origin(string? value)
+        => Uri.TryCreate(value, UriKind.Absolute, out var uri)
+           && uri.Scheme is "http" or "https"
+           && uri.PathAndQuery == "/"
+           && string.IsNullOrEmpty(uri.UserInfo)
+            ? uri.GetLeftPart(UriPartial.Authority)
+            : null;
 }
 
 /// <summary><c>POST files/{id}/office-session</c>: opens a file in the Office editor.</summary>
-public sealed record StartOfficeEditCommand(Guid UserId, Guid FileId) : IRequest<OfficeEditStart>;
+/// <param name="Origin">Where the request came in (scheme and host), which is where the editor page is loaded from.</param>
+public sealed record StartOfficeEditCommand(Guid UserId, Guid FileId, string? Origin = null) : IRequest<OfficeEditStart>;
 
 /// <param name="EditorPath">The editor page on the API's own origin, <c>WOPISrc</c> filled in.</param>
 /// <param name="AccessToken">Posted to the page as <c>access_token</c>, never put in its URL.</param>
@@ -81,7 +99,8 @@ public sealed record WopiFileInfo(
     string UserFriendlyName,
     bool UserCanWrite,
     string Version,
-    DateTime LastModifiedTime);
+    DateTime LastModifiedTime,
+    string? PostMessageOrigin = null);
 
 /// <summary>WOPI <c>GetFile</c>: the file as it is now.</summary>
 public sealed record WopiGetFileQuery(string? Token, Guid FileId) : IRequest<WopiContent?>;
@@ -211,7 +230,9 @@ public sealed class OfficeEditHandlers :
 
         var expires = _clock.UtcNow + OfficeSessions.Lifetime;
         var token = await _sessions
-            .CreateAsync(new OfficeSession(file.Id, user.Id, user.FullName ?? user.PublicId, expires), cancellationToken)
+            .CreateAsync(
+                new OfficeSession(file.Id, user.Id, user.FullName ?? user.PublicId, expires, OfficeSessions.Origin(request.Origin)),
+                cancellationToken)
             .ConfigureAwait(false);
 
         var source = Uri.EscapeDataString($"{_options.WopiBaseUrl.TrimEnd('/')}/wopi/files/{file.Id:N}");
@@ -244,7 +265,8 @@ public sealed class OfficeEditHandlers :
             UserCanWrite: true,
             // Changes with every save, so Collabora knows its copy is current.
             Version: (file.LatestVersion?.Number ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture),
-            file.LatestVersion?.CreatedAt ?? file.CreatedAt);
+            file.LatestVersion?.CreatedAt ?? file.CreatedAt,
+            session.Origin);
     }
 
     public async Task<WopiContent?> Handle(WopiGetFileQuery request, CancellationToken cancellationToken)

@@ -102,6 +102,9 @@ public sealed class OfficeEditTests
             info.GetProperty("DisablePrint").GetBoolean().Should().BeTrue("printing is paid for at a kiosk");
             info.GetProperty("Version").GetString().Should().Be("0");
 
+            // Collabora tells the page whether the document has changes, on the origin it was opened from (T-465).
+            info.GetProperty("PostMessageOrigin").GetString().Should().Be("http://localhost");
+
             // GetFile: the document as uploaded.
             var original = await wopi.GetByteArrayAsync($"/wopi/files/{id:N}/contents?{query}");
             original.Should().Equal(Docx("Original text"));

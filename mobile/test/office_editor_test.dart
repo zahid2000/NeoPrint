@@ -53,6 +53,12 @@ class FixedFlags extends FeatureFlagsController {
 /// Where the editor page would load, and with which token.
 final opened = <(Uri, String)>[];
 
+/// The editor's link to the app, as the screen handed it to the page.
+OfficeEditorLink? lastLink;
+
+/// How many times the app asked the editor to save.
+var saveRequests = 0;
+
 Widget app(OfficeRepository repository, {bool officeEditor = true}) =>
     ProviderScope(
       overrides: [
@@ -66,8 +72,13 @@ Widget app(OfficeRepository repository, {bool officeEditor = true}) =>
           session, {
           required onLoading,
           required onFailed,
+          required link,
         }) {
           opened.add((page, session.accessToken));
+          lastLink = link
+            ..save = () async {
+              saveRequests++;
+            };
           // The page loaded: the progress bar goes.
           WidgetsBinding.instance.addPostFrameCallback((_) => onLoading(false));
           return const Center(child: Text('Collabora'));
@@ -108,7 +119,95 @@ Future<void> openMenu(WidgetTester tester, int index) async {
 }
 
 void main() {
-  setUp(opened.clear);
+  setUp(() {
+    opened.clear();
+    lastLink = null;
+    saveRequests = 0;
+  });
+
+  test('the page\'s messages reach the app, and nothing else does', () {
+    final link = OfficeEditorLink();
+    final saves = <bool>[];
+    link.saves.stream.listen(saves.add);
+
+    officeEditorMessage(link, '{"modified": true}');
+    expect(link.modified.value, isTrue);
+    officeEditorMessage(link, '{"modified": false}');
+    expect(link.modified.value, isFalse);
+
+    officeEditorMessage(link, 'not json');
+    officeEditorMessage(link, '[1, 2]');
+    officeEditorMessage(link, '{"modified": "yes"}');
+    expect(link.modified.value, isFalse);
+
+    officeEditorMessage(link, '{"saved": true}');
+    return Future<void>.delayed(Duration.zero, () => expect(saves, [true]));
+  });
+
+  testWidgets('X closes at once while nothing has changed; a change brings '
+      'the save icon, which saves', (tester) async {
+    final repository = OfficeRepository([office('hesabat.docx')]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+    await openMenu(tester, 0);
+    await tester.tap(find.text('Redaktə et'));
+    await tester.pumpAndSettle();
+
+    // Typing in the document: Collabora says it is modified.
+    lastLink!.modified.value = true;
+    await tester.pump();
+    expect(find.byKey(const ValueKey('officeEditorClose')), findsNothing);
+    expect(find.byKey(const ValueKey('officeEditorSave')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('officeEditorSave')));
+    await tester.pump();
+    expect(saveRequests, 1);
+
+    // Collabora answers: saved.
+    lastLink!.saves.add(true);
+    await tester.pump();
+    await tester.pump();
+    expect(
+      find.text('Saxlandı. Fayl yenidən çapa hazırlanır.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('officeEditorClose')), findsOneWidget);
+
+    // Nothing changed since: X leaves without asking.
+    await tester.tap(find.byKey(const ValueKey('officeEditorClose')));
+    await tester.pumpAndSettle();
+    expect(find.text('Redaktordan çıxılsın?'), findsNothing);
+    expect(find.text('Collabora'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a save that fails says so and keeps the save icon', (
+    tester,
+  ) async {
+    final repository = OfficeRepository([office('hesabat.docx')]);
+    await tester.pumpWidget(app(repository));
+    await tester.pumpAndSettle();
+    await openMenu(tester, 0);
+    await tester.tap(find.text('Redaktə et'));
+    await tester.pumpAndSettle();
+
+    lastLink!.modified.value = true;
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('officeEditorSave')));
+    await tester.pump();
+    lastLink!.saves.add(false);
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.text(
+        'Saxlanmadı. Dəyişiklikləriniz redaktorda qalır — bir az sonra yenidən saxlayın.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('officeEditorSave')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
 
   test('only Word, Excel and PowerPoint documents open in the editor', () {
     expect(canEditOffice(office('hesabat.docx')), isTrue);

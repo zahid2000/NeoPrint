@@ -298,7 +298,7 @@ public sealed class FilesController : ControllerBase
     public async Task<ActionResult<NeoPrint.Application.Office.OfficeEditStart>> OfficeSession(Guid id, CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
-        return Ok(await _sender.Send(new NeoPrint.Application.Office.StartOfficeEditCommand(UserId, id), cancellationToken));
+        return Ok(await _sender.Send(new NeoPrint.Application.Office.StartOfficeEditCommand(UserId, id, $"{Request.Scheme}://{Request.Host}"), cancellationToken));
     }
 
     /// <summary>The saved versions, newest first.</summary>

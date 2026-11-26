@@ -1296,8 +1296,8 @@ Redaktorda "Saxla" (və ya redaktordan çıxış) faylın **öz formatında** ye
 (`files.note.officeEdited`), fayl əvvəlki redaktələr kimi yenidən çevrilir. Avtomatik saxlama söndürülüb.
 
 **WOPI host (`/wopi/files/{id}`)** — yalnız stack daxilində Collabora üçündür, nginx onu xaricə ötürmür:
-`GET` CheckFileInfo (çap / ixrac / paylaşma söndürülüb, `SupportsLocks=false`),
-`GET contents` GetFile, `POST contents` + `X-WOPI-Override: PUT` PutFile. Hər çağırış sessiyanın
+`GET` CheckFileInfo (çap / ixrac / paylaşma söndürülüb, `SupportsLocks=false`; `PostMessageOrigin` — sessiyanın açıldığı ictimai origin, tətbiq redaktor səhifəsində `Doc_ModifiedStatus` / `Action_Save_Resp` mesajlarını dinləyir, T-465),
+`GET contents` GetFile, `POST contents` + `X-WOPI-Override: PUT` PutFile (`X-COOL-WOPI-IsModifiedByUser: false` olan saxlama versiya yaratmır). Hər çağırış sessiyanın
 `access_token`-ini tələb edir və yalnız öz faylını açır (başqa halda `401`); Lock və qalanları `501`.
 
 ### `GET /api/files/{id}/versions`
