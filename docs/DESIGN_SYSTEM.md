@@ -242,7 +242,7 @@ Minimum: mobil və admin-də heç bir oxunmalı mətn 12 px-dən, kioskda 20 px-
 - *Mobil giriş:* faylın menyusunda "Redaktə et" (`edit_document`, `brand500`) — mətn redaktorunun yerində, çünki düz mətn faylı Office faylı deyil. "Tərtibat üçün fayllar" ekranında Office faylının kartında eyni yerdə `TextButton` "Redaktə et" (T-460 kimi; saxlandıqdan sonra fayl "Hazırlanır" sətrinə düşür). Web versiyasında yoxdur.
 - *Mobil ekran:* app bar-da "Redaktə et", altında fayl adı (`bodySmall`, `neutral600`, bir sətir), solda bağlama düyməsi (`close`). Gövdə: bütün ekranı tutan Collabora redaktoru (öz alətlər sırası, öz "Saxla" düyməsi). Səhifə yüklənərkən app bar-ın altında `LinearProgressIndicator`. Sessiya və ya səhifə açılmayanda gövdədə `NeoBanner.error` (serverin mətni, məs. `office.unavailable`; səhifə yüklənməyəndə "Redaktor açılmadı. İnternet bağlantınızı yoxlayın və yenidən cəhd edin — fayl dəyişməyib.") və "Yenidən cəhd et". Bağlayanda dialoq: "Redaktordan çıxılsın?", mətn "Dəyişikliklər çıxışda saxlanılır və fayl yenidən çapa hazırlanır.", düymələr "Redaktəyə qayıt" (mətn düyməsi) və "Çıx" (primary). Çıxandan sonra fayl siyahısı yenilənir.
 - *Saxlama:* yalnız redaktordakı "Saxla" ilə və çıxışda; avtomatik saxlama yoxdur. Hər saxlama faylın öz formatında yeni versiyadır, fayl yenidən çevrilir.
-- *Kiosk:* (T-459-un kiosk hissəsi) — ayrıca yazılacaq.
+- *Kiosk:* hələ yoxdur — T-462 təxirə salınıb (`DECISIONS.md` 2026-11-26). Kioskda Office faylında "Redaktə et" göstərilmir, fayl əvvəlki kimi çap olunur.
 
 **Mobil: fayl paylaşımı (Addım 6, plan 8.2; `DECISIONS.md` 2026-10-05).**
 
