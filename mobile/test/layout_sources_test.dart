@@ -30,8 +30,9 @@ UserFile document(String name, int pages) => UserFile.fromJson({
 void main() {
   Future<List<LayoutSource>? Function()> pump(
     WidgetTester tester,
-    List<UserFile> files,
-  ) async {
+    List<UserFile> files, {
+    ListRepository? repository,
+  }) async {
     tester.view
       ..physicalSize = const Size(400, 1600)
       ..devicePixelRatio = 1;
@@ -41,7 +42,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          filesRepositoryProvider.overrideWithValue(ListRepository(files)),
+          filesRepositoryProvider.overrideWithValue(
+            repository ?? ListRepository(files),
+          ),
           userHubEventsProvider.overrideWithValue(const Stream.empty()),
         ],
         child: MaterialApp(
@@ -126,5 +129,37 @@ void main() {
 
     expect(find.text('Tərtibat üçün hazır fayl yoxdur'), findsOneWidget);
     expect(find.text('Yeni fayl yüklə'), findsOneWidget);
+  });
+
+  // T-460: a plain text file is edited from the layout's file choice too;
+  // a PDF is not.
+  testWidgets('a plain text file can be edited before it goes into a layout', (
+    tester,
+  ) async {
+    final repository = ListRepository([
+      document('hesabat.pdf', 2),
+      document('data.json', 1),
+    ]);
+    await pump(tester, [], repository: repository);
+
+    expect(
+      find.byKey(const ValueKey('layoutEditText-hesabat.pdf')),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const ValueKey('layoutEditText-data.json')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Mətn redaktoru'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('textEditorField')),
+      '{"ad": "Vəli"}',
+    );
+    await tester.pump();
+    await tester.tap(find.text('Yadda saxla'));
+    await tester.pumpAndSettle();
+
+    expect(repository.edits.single, ('data.json', '{"ad": "Vəli"}'));
+    expect(find.text('Mətn redaktoru'), findsNothing);
+    expect(find.text('Tərtibat üçün fayllar'), findsWidgets);
   });
 }

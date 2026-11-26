@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/features/feature_flags.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/tokens.dart';
 import '../../l10n/app_localizations.dart';
@@ -16,6 +17,7 @@ import '../files/file_sources.dart';
 import '../files/files_controller.dart';
 import '../files/files_repository.dart';
 import '../files/files_screen.dart' show UploadCard;
+import '../files/text_editor_screen.dart';
 import 'layout_editing.dart';
 import 'layout_editor_screen.dart';
 import 'layout_model.dart';
@@ -289,6 +291,21 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
     }
   }
 
+  /// "Mətni redaktə et" (T-460): a plain text file edited before it goes
+  /// into the layout. The edit is converted again and its pages may change,
+  /// so it is unchosen and chosen again once it is ready.
+  Future<void> _editText(UserFile file) async {
+    final saved = await Navigator.of(context, rootNavigator: true).push<bool>(
+      MaterialPageRoute(builder: (_) => TextEditorScreen(file: file)),
+    );
+    if ((saved ?? false) && mounted) {
+      setState(() {
+        _chosen.remove(file.id);
+        _awaiting.add(file.id);
+      });
+    }
+  }
+
   static bool _isImage(UserFile file) =>
       layoutImageExtensions.contains(file.extension);
 
@@ -341,6 +358,7 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
       (_, files) => _settle(files),
     );
     final state = ref.watch(filesControllerProvider);
+    final textEditor = ref.watch(featureOnProvider(FeatureKey.txtEditor));
     final files = state.files.where(canUseInLayout).toList();
     final waiting = [
       for (final file in state.files)
@@ -406,6 +424,22 @@ class _LayoutSourcesScreenState extends ConsumerState<LayoutSourcesScreen> {
                           subtitle: Text(l10n.filesPageCount(file.pageCount)),
                           onChanged: (on) => _choose(file, on ?? false),
                         ),
+                        if (textEditor && canEditText(file))
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Padding(
+                              padding: const EdgeInsetsDirectional.only(
+                                start: Spacing.x2,
+                                bottom: Spacing.x2,
+                              ),
+                              child: TextButton.icon(
+                                key: ValueKey('layoutEditText-${file.id}'),
+                                onPressed: () => unawaited(_editText(file)),
+                                icon: const Icon(Icons.edit_note_outlined),
+                                label: Text(l10n.filesEditText),
+                              ),
+                            ),
+                          ),
                         if (_chosen[file.id] case final pages?
                             when file.pageCount > 1)
                           Padding(
