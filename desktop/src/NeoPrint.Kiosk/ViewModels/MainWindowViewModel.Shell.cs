@@ -57,8 +57,6 @@ public sealed partial class MainWindowViewModel
 
     public int PhoneColumn => ScreenLayout.ColumnOf("phone");
 
-    public int CodeColumn => ScreenLayout.ColumnOf("code");
-
     /// <summary>The picture on the left of the big line: column 0, else 2 (the text is column 1).</summary>
     public bool HeroImageLeft => ScreenLayout.ImageLeft;
 
@@ -71,11 +69,11 @@ public sealed partial class MainWindowViewModel
     /// <summary>What the panel's words reach (T-387): told again when a configuration brings new ones.</summary>
     private static readonly string[] BrandedProperties =
     [
-        nameof(HeroTitle), nameof(HeroSubtitle), nameof(UsbCardTitle), nameof(UsbCardHint), nameof(CodeCardTitle),
-        nameof(CodeCardHint), nameof(PhoneCardTitle), nameof(PhoneCardHint), nameof(FeatureSizesTitle),
+        nameof(HeroTitle), nameof(HeroSubtitle), nameof(UsbCardTitle), nameof(UsbCardHint),
+        nameof(PhoneCardTitle), nameof(PhoneCardHint), nameof(FeatureSizesTitle),
         nameof(FeatureSizesHint), nameof(FeatureColorTitle), nameof(FeatureColorHint), nameof(FeatureFastTitle),
         nameof(FeatureFastHint), nameof(FeatureSafeTitle), nameof(FeatureSafeHint), nameof(Hotline),
-        nameof(UsbColumn), nameof(PhoneColumn), nameof(CodeColumn), nameof(HeroImageLeft), nameof(HeroArtColumn),
+        nameof(UsbColumn), nameof(PhoneColumn), nameof(HeroImageLeft), nameof(HeroArtColumn),
         nameof(FooterFeatures),
     ];
 

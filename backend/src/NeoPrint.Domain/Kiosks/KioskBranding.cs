@@ -29,11 +29,14 @@ public sealed class KioskBranding : Entity
     public static readonly IReadOnlyList<string> Keys =
     [
         "heroTitle", "heroSubtitle",
-        "usbTitle", "usbHint", "phoneTitle", "phoneHint", "codeTitle", "codeHint",
+        "usbTitle", "usbHint", "phoneTitle", "phoneHint",
         "featureSizes", "featureSizesHint", "featureColor", "featureColorHint",
         "featureFast", "featureFastHint", "featureSafe", "featureSafeHint",
         "hotline",
     ];
+
+    /// <summary>Texts of the retired "Çap kodu" card (T-461): skipped, not refused.</summary>
+    public static readonly IReadOnlyList<string> RetiredKeys = ["codeTitle", "codeHint"];
 
     /// <summary>The languages a text is written in (plan section 2.1).</summary>
     public static readonly IReadOnlyList<string> Languages = ["az", "en", "ru"];
@@ -65,6 +68,11 @@ public sealed class KioskBranding : Entity
 
         foreach (var (key, byLanguage) in texts)
         {
+            if (RetiredKeys.Contains(key, StringComparer.Ordinal))
+            {
+                continue;
+            }
+
             if (!Keys.Contains(key, StringComparer.Ordinal))
             {
                 wrong.Add(key);

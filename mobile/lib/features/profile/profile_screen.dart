@@ -11,7 +11,6 @@ import '../../core/features/readiness.dart';
 import '../../core/router/app_router.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/widgets/neo_design.dart';
-import '../sharing/shares_screen.dart';
 import 'profile_photo.dart';
 
 /// The profile tab (plan section 8.2).
@@ -101,12 +100,12 @@ class ProfileScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    // The same code as a QR, for someone to read with their
-                    // phone (T-393).
+                    // The one personal QR (T-461): the kiosk's, and what a
+                    // friend reads to send a file (T-393).
                     IconButton(
-                      tooltip: l10n.sharesMyQr,
+                      tooltip: l10n.myQrTitle,
                       icon: Icon(Icons.qr_code_2, color: tokens.brand500),
-                      onPressed: () => showMyQrSheet(context, user.publicId),
+                      onPressed: () => context.push(Routes.myQr),
                     ),
                     IconButton(
                       tooltip: l10n.profileCopy,

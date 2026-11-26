@@ -15,7 +15,7 @@ public sealed class KioskScreenLayoutTests
         var branding = new KioskBranding { Id = KioskBranding.DefaultId };
         var layout = new KioskScreenLayout
         {
-            Cards = ["code", "usb", "phone"],
+            Cards = ["phone", "usb"],
             Features = ["featureFast", "featureSizes"],
             ImageLeft = true,
         };
@@ -27,9 +27,9 @@ public sealed class KioskScreenLayoutTests
     }
 
     [Theory]
-    [InlineData("usb,phone")]
+    [InlineData("usb")]
     [InlineData("usb,phone,phone")]
-    [InlineData("usb,phone,code,code")]
+    [InlineData("phone,phone")]
     [InlineData("usb,phone,camera")]
     public void A_way_in_cannot_be_dropped_doubled_or_made_up(string cards)
     {
@@ -39,8 +39,18 @@ public sealed class KioskScreenLayoutTests
         var wrong = branding.SetLayout(new KioskScreenLayout { Cards = [.. cards.Split(',')] }, Now.AddMinutes(1));
 
         wrong.Should().Equal("kiosks.layoutCards");
-        branding.Layout!.Cards.Should().Equal("usb", "phone", "code");
+        branding.Layout!.Cards.Should().Equal("usb", "phone");
         branding.UpdatedAt.Should().Be(Now);
+    }
+
+    [Fact]
+    public void A_layout_saved_with_the_retired_print_code_card_is_read_without_it()
+    {
+        // T-461: the "Çap kodu" card is gone; a layout kept before still works.
+        var layout = new KioskScreenLayout { Cards = ["code", "phone", "usb"] };
+
+        layout.Cards.Should().Equal("phone", "usb");
+        layout.Problems().Should().BeEmpty();
     }
 
     [Fact]

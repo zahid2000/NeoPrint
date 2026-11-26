@@ -202,6 +202,13 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             return;
           }
 
+          // The personal QR (T-461): the share screen asks who it is.
+          if (code case UserQrCode(code: final personal)) {
+            _done = true;
+            context.pop(personal);
+            return;
+          }
+
           if (!_foreign) {
             setState(() => _foreign = true);
           }
@@ -224,7 +231,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             _done = true;
             context.pushReplacement(Routes.kiosk(code));
             return;
-          case KioskCode() || ShareCode() || ForeignCode():
+          case KioskCode() || ShareCode() || UserQrCode() || ForeignCode():
             if (!_foreign) {
               setState(() => _foreign = true);
             }

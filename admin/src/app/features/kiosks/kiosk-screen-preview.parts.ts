@@ -16,7 +16,7 @@ import { KIOSK_CHROME_TEXTS } from './kiosk-branding.defaults';
 
 /** The kiosk's own arrangement, as it was before T-441. */
 export const STANDARD_LAYOUT: KioskScreenLayout = {
-  cards: ['usb', 'phone', 'code'],
+  cards: ['usb', 'phone'],
   features: ['featureSizes', 'featureColor', 'featureFast', 'featureSafe'],
   imageLeft: false,
 };
@@ -130,11 +130,11 @@ abstract class PreviewPart {
 
 /** What can be dragged (T-441) says so, and where it lands shows as a dashed slot. */
 
-const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone', code: 'qr_code_2' };
+const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone' };
 
 /**
  * The welcome screen in the preview (T-441): the big line and the picture,
- * the three ways in and "cancel by code". The picture and the cards are
+ * the ways in and "cancel by code". The picture and the cards are
  * dragged into place when `editable`.
  */
 @Component({
@@ -300,7 +300,7 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone', co
 
       .cards {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: var(--space-6);
       }
 

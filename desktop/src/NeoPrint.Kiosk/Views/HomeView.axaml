@@ -71,9 +71,9 @@
             </Panel>
         </Grid>
 
-        <!-- The ways a file comes in, in the poster's order - USB, phone, print code - or
+        <!-- The ways a file comes in, in the poster's order - USB, then the phone - or
              in the order the panel set (T-441). -->
-        <Grid Grid.Row="2" ColumnDefinitions="*,*,*" ColumnSpacing="{DynamicResource Space6}"
+        <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Space6}"
               IsVisible="{Binding CanPrintFromFlash}">
             <Button Grid.Column="{Binding UsbColumn}" Classes="source" Command="{Binding PrintFromUsbCommand}">
                 <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Space2}">
@@ -97,19 +97,6 @@
                     <TextBlock Grid.Row="2" Text="{Binding PhoneCardHint}" Classes="muted" TextWrapping="Wrap" />
                 </Grid>
             </Border>
-
-            <!-- The app's "Çap kodu" (T-345): the personal QR as six digits. -->
-            <Button Grid.Column="{Binding CodeColumn}" Classes="source" Command="{Binding PrintByCodeCommand}">
-                <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="{DynamicResource Space2}">
-                    <Border Classes="icon-tile">
-                        <PathIcon Data="{StaticResource IconQrCode}" Width="40" Height="40" Foreground="{DynamicResource Brand500}" />
-                    </Border>
-                    <TextBlock Grid.Row="1" Text="{Binding CodeCardTitle}" Classes="h2" TextWrapping="Wrap" Margin="{DynamicResource GapAbove2}" />
-                    <TextBlock Grid.Row="2" Text="{Binding CodeCardHint}" Classes="muted" FontWeight="Normal" TextWrapping="Wrap" />
-                    <PathIcon Grid.Row="3" Data="{StaticResource IconArrowForward}" Width="32" Height="32"
-                              HorizontalAlignment="Right" Foreground="{DynamicResource Brand500}" />
-                </Grid>
-            </Button>
         </Grid>
 
         <!-- Cancelling by code: quiet words under the cards, not a fourth card. -->

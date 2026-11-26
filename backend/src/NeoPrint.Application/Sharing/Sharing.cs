@@ -59,8 +59,15 @@ public sealed record SaveShareCommand(Guid UserId, Guid ShareId) : IRequest<User
 public sealed record GetSharePageImageQuery(Guid UserId, Guid ShareId, int Page, int? Width, string? IfNoneMatch)
     : IRequest<FilePageImage>;
 
-/// <summary><c>GET shares/qr.png</c>: the QR others scan to send this user a file.</summary>
-public sealed record GetMyShareQrQuery(Guid UserId) : IRequest<byte[]>;
+/// <summary>
+/// <c>POST shares/recipient-by-qr</c> (T-461): the recipient of a share read
+/// from their personal QR - the one QR a user has, the kiosk's too. Its age
+/// does not matter here: it only names the user, and their id is not secret.
+/// </summary>
+public sealed record GetShareRecipientByQrQuery(Guid UserId, string? Code) : IRequest<ShareRecipient>;
+
+/// <param name="PublicId">The recipient's id, <c>NP-XXXXXX</c>.</param>
+public sealed record ShareRecipient(string PublicId);
 
 /// <summary>One share in a list.</summary>
 /// <param name="OtherPublicId">The recipient's id in "sent", the sender's in "received".</param>
@@ -88,13 +95,10 @@ public sealed partial class ShareHandlers :
     IRequestHandler<ListReceivedSharesQuery, IReadOnlyList<ShareView>>,
     IRequestHandler<SaveShareCommand, UserFileResult>,
     IRequestHandler<GetSharePageImageQuery, FilePageImage>,
-    IRequestHandler<GetMyShareQrQuery, byte[]>
+    IRequestHandler<GetShareRecipientByQrQuery, ShareRecipient>
 {
     /// <summary>How many shares a list returns, newest first.</summary>
     public const int ListSize = 100;
-
-    /// <summary>What the share QR holds: the app opens the share screen with the recipient filled in.</summary>
-    public const string QrPrefix = "neoprint://share/";
 
     private readonly IShareRepository _shares;
     private readonly IFileRepository _files;
@@ -103,7 +107,7 @@ public sealed partial class ShareHandlers :
     private readonly IPageRenderer _renderer;
     private readonly IPagePreviewCache _previews;
     private readonly FileIntake _intake;
-    private readonly IQrImages _qr;
+    private readonly UserQrCodes _qrCodes;
     private readonly ISender _sender;
     private readonly IClock _clock;
     private readonly ILogger<ShareHandlers> _logger;
@@ -116,7 +120,7 @@ public sealed partial class ShareHandlers :
         IPageRenderer renderer,
         IPagePreviewCache previews,
         FileIntake intake,
-        IQrImages qr,
+        UserQrCodes qrCodes,
         ISender sender,
         IClock clock,
         ILogger<ShareHandlers> logger)
@@ -128,7 +132,7 @@ public sealed partial class ShareHandlers :
         _renderer = renderer;
         _previews = previews;
         _intake = intake;
-        _qr = qr;
+        _qrCodes = qrCodes;
         _sender = sender;
         _clock = clock;
         _logger = logger;
@@ -358,14 +362,26 @@ public sealed partial class ShareHandlers :
             .ConfigureAwait(false);
     }
 
-    public async Task<byte[]> Handle(GetMyShareQrQuery request, CancellationToken cancellationToken)
+    public async Task<ShareRecipient> Handle(GetShareRecipientByQrQuery request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var user = await _users.FindByIdAsync(request.UserId, cancellationToken).ConfigureAwait(false)
-            ?? throw new NotFoundException("user");
+        var (reading, userId) = _qrCodes.Read(request.Code, _clock.UtcNow, int.MaxValue);
+        var user = reading == UserQrReading.Invalid
+            ? null
+            : await _users.FindByIdAsync(userId, cancellationToken).ConfigureAwait(false);
 
-        return _qr.Png(QrPrefix + user.PublicId);
+        if (user is not { CanSignIn: true, DeletedAt: null })
+        {
+            throw new DomainException("shares.qrInvalid");
+        }
+
+        if (user.Id == request.UserId)
+        {
+            throw new DomainException("shares.toSelf");
+        }
+
+        return new ShareRecipient(user.PublicId);
     }
 
     // Someone else's share is "not found": the answer does not confirm it exists.

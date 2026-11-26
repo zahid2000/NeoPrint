@@ -2006,12 +2006,6 @@ Plan 9.4; layihə sahibinin qərarı `DECISIONS.md` (T-144). Qiymət həmişə k
 `UserQr.RotationSeconds` (60) müddətində keçərli; tətbiq vaxtı bitməzdən əvvəl yenisini alır. `qr.png` eyni kodu PNG kimi qaytarır,
 bitmə vaxtı `X-Qr-Expires-At` başlığındadır. Hər iki cavab `Cache-Control: no-store`.
 
-### `GET /api/users/me/print-code` (`User`, T-345)
-
-→ `{ code, expiresAt }`. `code` 6 rəqəmdir (başdakı sıfırlar saxlanılır) və QR-ın kioskda yazılan əvəzidir.
-Kod 10 dəqiqə və bir dəfə keçərlidir. Bu müddətdə eyni kod qaytarılır, kiosk istifadə edəndən sonra isə yenisi.
-Cavab: `Cache-Control: no-store`. Kioskda: aşağıdakı `pending-for-user`.
-
 ### `/api/prepared-prints` (`User`)
 
 - `GET` → `{ items: [{ kind, id, fileId, fileName, pages, preset?, options?, state, kioskId?, kioskCode?, kioskName?, amount?, currency?, jobCode?, createdAt, collectBy? }] }`.
@@ -2032,9 +2026,7 @@ Cavab: `Cache-Control: no-store`. Kioskda: aşağıdakı `pending-for-user`.
   `grant` — yalnız **bu kiosk** və bu istifadəçi üçün 5 dəqiqəlik icazə (Redis `userqr:{grant}`), hər istifadədə uzanır. Kod URL-ə düşməsin deyə `POST`.
   `here: false` — başqa kiosk üçün ödənilmiş sifariş (göstərilir, burada çap olunmur).
 
-  **"Çap kodu" (T-345).** `code` 6 rəqəmdirsə (boşluq və ya defis ola bilər), QR yox, tətbiqin "Çap kodu" sayılır. Kod birdəfəlikdir: düzgündürsə götürülür və cavab QR-dakı kimidir.
-  - Tanınmayan və ya artıq işlənmiş kod: `409 userQr.codeInvalid`.
-  - Bir kiosk 10 dəqiqədə 10 səhv kod yazıbsa, sonra düzgün kod da rədd edilir: `409 userQr.tooManyCodes`.
+  **"Çap kodu" (T-345) T-461 ilə yığışdırılıb:** kiosk faylları yalnız şəxsi QR ilə açır, 6 rəqəmli kod artıq qəbul olunmur.
   - Kod log-a yazılmır.
 
 - `GET /api/print-jobs/pending-for-user` (`X-User-Qr-Grant` başlığı) — eyni siyahı; icazə bitib və ya başqa kioskundur → `409 userQr.grantExpired`.
@@ -2095,8 +2087,8 @@ ilə yaranır. Kolleksiya `file_shares`.
   kilidi və real ölçü kağızı keçir; avtomatik silinmə alıcının default qaydası ilə (həssas → `AfterPrint`). Yenidən
   çağırış nüsxə varsa **eyni nüsxəni** qaytarır; yarıda qalmış saxlama eyni id ilə davam edir. Kvota dolubsa
   `400 files.quotaFull`; `Gone` / `Changed` → `409`. Göndərənin sonradan silməsi saxlanmış nüsxəyə təsir etmir.
-- `GET /qr.png` — istifadəçinin "mənə fayl göndər" QR-ı: `neoprint://share/NP-XXXXXX` (tətbiq skan edəndə paylaşım
-  ekranı alıcı doldurulmuş açılır).
+- `POST /recipient-by-qr` `{ code }` → `{ publicId }` (T-461) — istifadəçinin yeganə QR-ı (şəxsi QR, `NPU:...`, kioskdakı ilə eyni) alıcını göstərir. QR-ın yaşı burada nəzərə alınmır (yalnız istifadəçini adlandırır, `NP-` ID gizli deyil). Kod URL-də deyil, sorğunun gövdəsində göndərilir ki, loqa düşməsin.
+  Tanınmayan və ya saxta QR: `409 shares.qrInvalid`; öz QR-ı: `409 shares.toSelf`. Əvvəlki `GET /qr.png` (`neoprint://share/NP-...`) silinib; tətbiq köhnə çap olunmuş `neoprint://share/` QR-larını hələ də oxuyur.
 - Hesab silinəndə (`AccountDeletionJob`) istifadəçinin hər iki istiqamətdəki paylaşımları silinir.
 
 ---

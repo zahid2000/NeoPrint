@@ -84,17 +84,23 @@ public sealed class SharesController : ControllerBase
             : File(image.Png!, "image/png");
     }
 
-    /// <summary>The QR others scan to send this user a file: <c>neoprint://share/NP-XXXXXX</c>.</summary>
-    [HttpGet("qr.png")]
-    public async Task<IActionResult> Qr(CancellationToken cancellationToken)
+    /// <summary>
+    /// The recipient named by a personal QR the app read (T-461): the user's
+    /// one QR, the kiosk's too. In the body, so the code is never in a URL.
+    /// </summary>
+    [HttpPost("recipient-by-qr")]
+    public async Task<ActionResult<ShareRecipient>> RecipientByQr(RecipientByQrRequest request, CancellationToken cancellationToken)
     {
-        Response.Headers.CacheControl = "private, max-age=3600";
-        return File(await _sender.Send(new GetMyShareQrQuery(UserId), cancellationToken), "image/png");
+        ArgumentNullException.ThrowIfNull(request);
+        return Ok(await _sender.Send(new GetShareRecipientByQrQuery(UserId, request.Code), cancellationToken));
     }
 }
 
 /// <param name="ToPublicId">The recipient's id, <c>NP-XXXXXX</c>.</param>
 /// <param name="Message">An optional note, at most 200 characters.</param>
+/// <param name="Code">What the QR holds: <c>NPU:...</c>.</param>
+public sealed record RecipientByQrRequest(string? Code);
+
 public sealed record SendShareRequest(Guid FileId, string? ToPublicId, string? Message, bool ConfirmSensitive);
 
 public sealed record ShareList(IReadOnlyList<ShareView> Items);

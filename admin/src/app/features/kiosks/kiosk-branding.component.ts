@@ -43,7 +43,7 @@ export const BRANDING_GROUPS: readonly { titleKey: string; keys: readonly string
   { titleKey: 'kioskBranding.groupHome', keys: ['heroTitle', 'heroSubtitle'] },
   {
     titleKey: 'kioskBranding.groupCards',
-    keys: ['usbTitle', 'usbHint', 'phoneTitle', 'phoneHint', 'codeTitle', 'codeHint'],
+    keys: ['usbTitle', 'usbHint', 'phoneTitle', 'phoneHint'],
   },
   {
     titleKey: 'kioskBranding.groupFeatures',

@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,7 +57,7 @@ class FakeShares implements ShareRepository {
       (page ?? 1) == 1 ? sentItems : const [];
 
   @override
-  Future<Uint8List> myQr() async => Uint8List(0);
+  Future<String> recipientByQr(String code) async => 'NP-7KQ2MX';
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -155,6 +153,16 @@ void main() {
       '/shares/send?to=NP-7KQ2MX',
     );
     expect(appLinkLocation(Uri.parse('neoprint://shares')), '/shares');
+  });
+
+  // T-461: the one personal QR names a recipient too; a broken one does not.
+  test('the personal QR is read as a user to send a file to', () {
+    const personal = 'NPU:0123456789abcdef0123456789abcdef:1764140000:AbC-_x9';
+    expect(
+      ScannedCode.parse(personal),
+      isA<UserQrCode>().having((code) => code.code, 'code', personal),
+    );
+    expect(ScannedCode.parse('NPU:abc:1:x'), isA<ForeignCode>());
   });
 
   test('a share reads its availability', () {

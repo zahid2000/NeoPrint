@@ -94,8 +94,6 @@ const SERVER_VALUES = {
       'usbHint',
       'phoneTitle',
       'phoneHint',
-      'codeTitle',
-      'codeHint',
       'featureSizes',
       'featureSizesHint',
       'featureColor',

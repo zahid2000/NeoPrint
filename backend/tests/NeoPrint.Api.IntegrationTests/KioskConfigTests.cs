@@ -659,35 +659,36 @@ public sealed class KioskConfigTests
             (config.GetProperty("branding").TryGetProperty("layout", out var none) && none.ValueKind != JsonValueKind.Null)
                 .Should().BeFalse();
 
-            // The default: code first, the picture on the left, two features.
+            // The default: the phone first, the picture on the left, two features.
             var defaults = await admin.PutAsJsonAsync("/api/admin/kiosk-branding/layout", new
             {
-                layout = new { cards = new[] { "code", "usb", "phone" }, features = new[] { "featureFast", "featureSafe" }, imageLeft = true },
+                layout = new { cards = new[] { "phone", "usb" }, features = new[] { "featureFast", "featureSafe" }, imageLeft = true },
             });
             defaults.StatusCode.Should().Be(HttpStatusCode.OK, await defaults.Content.ReadAsStringAsync());
 
             var layout = (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("branding").GetProperty("layout");
-            layout.GetProperty("cards").EnumerateArray().Select(c => c.GetString()).Should().Equal("code", "usb", "phone");
+            layout.GetProperty("cards").EnumerateArray().Select(c => c.GetString()).Should().Equal("phone", "usb");
             layout.GetProperty("features").EnumerateArray().Select(f => f.GetString()).Should().Equal("featureFast", "featureSafe");
             layout.GetProperty("imageLeft").GetBoolean().Should().BeTrue();
 
             // This kiosk's own wins; the panel sees the default beside it.
             var own = await admin.PutAsJsonAsync($"/api/admin/kiosks/{kioskId}/branding/layout", new
             {
-                layout = new { cards = new[] { "phone", "code", "usb" }, features = Array.Empty<string>(), imageLeft = false },
+                // As a panel from before T-461 sends it, with the "Çap kodu" card: kept without it.
+                layout = new { cards = new[] { "usb", "code", "phone" }, features = Array.Empty<string>(), imageLeft = false },
             });
             own.StatusCode.Should().Be(HttpStatusCode.OK, await own.Content.ReadAsStringAsync());
             var view = await own.Content.ReadFromJsonAsync<JsonElement>();
-            view.GetProperty("layout").GetProperty("cards")[0].GetString().Should().Be("phone");
+            view.GetProperty("layout").GetProperty("cards").EnumerateArray().Select(c => c.GetString()).Should().Equal("usb", "phone");
             view.GetProperty("defaultLayout").GetProperty("imageLeft").GetBoolean().Should().BeTrue();
             layout = (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("branding").GetProperty("layout");
-            layout.GetProperty("cards")[0].GetString().Should().Be("phone");
+            layout.GetProperty("cards")[0].GetString().Should().Be("usb");
             layout.GetProperty("features").GetArrayLength().Should().Be(0);
 
             // A way in dropped changes nothing.
             var wrong = await admin.PutAsJsonAsync($"/api/admin/kiosks/{kioskId}/branding/layout", new
             {
-                layout = new { cards = new[] { "usb", "phone" }, features = Array.Empty<string>(), imageLeft = false },
+                layout = new { cards = new[] { "usb" }, features = Array.Empty<string>(), imageLeft = false },
             });
             wrong.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
@@ -695,7 +696,7 @@ public sealed class KioskConfigTests
             (await admin.PutAsJsonAsync($"/api/admin/kiosks/{kioskId}/branding/layout", new { layout = (object?)null }))
                 .StatusCode.Should().Be(HttpStatusCode.OK);
             layout = (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("branding").GetProperty("layout");
-            layout.GetProperty("cards")[0].GetString().Should().Be("code");
+            layout.GetProperty("cards")[0].GetString().Should().Be("phone");
         }
         finally
         {

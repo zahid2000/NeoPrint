@@ -106,7 +106,7 @@ describe('KioskBrandingComponent', () => {
     fixture.detectChanges();
 
     const fallback = {
-      cards: ['code', 'usb', 'phone'],
+      cards: ['phone', 'usb'],
       features: ['featureFast'],
       imageLeft: true,
     };
@@ -118,7 +118,7 @@ describe('KioskBrandingComponent', () => {
     expect(component.layout()).toEqual(fallback);
     expect(component.atDefaultLayout()).toBe(true);
 
-    const own = { ...fallback, cards: ['phone', 'code', 'usb'] };
+    const own = { ...fallback, cards: ['usb', 'phone'] };
     component.arrange(own);
     expect(component.layoutDirty()).toBe(true);
 

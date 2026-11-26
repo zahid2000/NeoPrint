@@ -16,7 +16,6 @@ import '../../shared/widgets/neo_empty_state.dart';
 import '../../shared/widgets/neo_load_more.dart';
 import '../../shared/widgets/neo_status_chip.dart';
 import 'share_models.dart';
-import 'share_repository.dart';
 import 'shares_controller.dart';
 
 /// "Paylaşılanlar" (docs/DESIGN_SYSTEM.md, "Mobil: fayl paylaşımı"): what was
@@ -204,111 +203,13 @@ class _MyIdCard extends ConsumerWidget {
                   label: Text(l10n.sharesCopy),
                 ),
                 TextButton.icon(
-                  onPressed: () => showMyQrSheet(context, publicId),
+                  onPressed: () => context.push(Routes.myQr),
                   icon: const Icon(Icons.qr_code_2),
-                  label: Text(l10n.sharesMyQr),
+                  label: Text(l10n.myQrTitle),
                 ),
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The user's own code as a QR, made by the server (here and in the profile,
-/// T-393).
-Future<void> showMyQrSheet(BuildContext context, String publicId) =>
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => _QrSheet(publicId: publicId),
-    );
-
-class _QrSheet extends ConsumerStatefulWidget {
-  const _QrSheet({required this.publicId});
-
-  final String publicId;
-
-  @override
-  ConsumerState<_QrSheet> createState() => _QrSheetState();
-}
-
-class _QrSheetState extends ConsumerState<_QrSheet> {
-  late Future<Uint8List> _qr = ref.read(shareRepositoryProvider).myQr();
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          Spacing.x4,
-          0,
-          Spacing.x4,
-          Spacing.x6,
-        ),
-        child: FutureBuilder<Uint8List>(
-          future: _qr,
-          builder: (context, snapshot) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(widget.publicId, style: theme.textTheme.titleLarge),
-              const SizedBox(height: Spacing.x4),
-              if (snapshot.hasError)
-                Column(
-                  children: [
-                    NeoBanner.error(
-                      message: l10n.sharesQrFailed(
-                        snapshot.error is ApiException
-                            ? apiErrorText(
-                                l10n,
-                                snapshot.error! as ApiException,
-                              )
-                            : l10n.errorServer,
-                      ),
-                    ),
-                    const SizedBox(height: Spacing.x3),
-                    OutlinedButton(
-                      onPressed: () => setState(
-                        () => _qr = ref.read(shareRepositoryProvider).myQr(),
-                      ),
-                      child: Text(l10n.commonRetry),
-                    ),
-                  ],
-                )
-              else if (!snapshot.hasData)
-                const Padding(
-                  padding: EdgeInsets.all(Spacing.x8),
-                  child: CircularProgressIndicator(),
-                )
-              else
-                // On white in both themes: a QR needs its light background to scan.
-                Container(
-                  padding: const EdgeInsets.all(Spacing.x4),
-                  decoration: BoxDecoration(
-                    color: Functional.qrBackground,
-                    borderRadius: BorderRadius.circular(Radii.md),
-                  ),
-                  child: Image.memory(
-                    snapshot.data!,
-                    width: MediaQuery.sizeOf(context).width * 0.6,
-                    height: MediaQuery.sizeOf(context).width * 0.6,
-                    filterQuality: FilterQuality.none,
-                    semanticLabel: l10n.sharesMyQr,
-                  ),
-                ),
-              const SizedBox(height: Spacing.x4),
-              Text(
-                l10n.sharesQrHint,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium,
-              ),
-            ],
-          ),
         ),
       ),
     );

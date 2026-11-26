@@ -26,12 +26,12 @@ public sealed record KioskBranding(
 
 /// <summary>
 /// How the welcome screen is arranged, as the panel dragged it (T-441): the
-/// three ways in in their order, the footer's features shown in theirs, and
+/// ways in in their order, the footer's features shown in theirs, and
 /// the side of the picture.
 /// </summary>
 public sealed record KioskScreenLayout(IReadOnlyList<string>? Cards, IReadOnlyList<string>? Features, bool ImageLeft)
 {
-    public static readonly IReadOnlyList<string> CardKeys = ["usb", "phone", "code"];
+    public static readonly IReadOnlyList<string> CardKeys = ["usb", "phone"];
 
     public static readonly IReadOnlyList<string> FeatureKeys = ["featureSizes", "featureColor", "featureFast", "featureSafe"];
 
@@ -50,7 +50,9 @@ public sealed record KioskScreenLayout(IReadOnlyList<string>? Cards, IReadOnlyLi
             return Standard;
         }
 
-        var cards = layout.Cards is { Count: 3 } given && CardKeys.All(given.Contains) ? given : CardKeys;
+        // The "Çap kodu" card a backend from before T-461 may still name is left out.
+        var given = layout.Cards?.Where(CardKeys.Contains).ToList();
+        var cards = given is { } kept && kept.Count == CardKeys.Count && CardKeys.All(kept.Contains) ? kept : CardKeys;
         var features = layout.Features is { } shown
             && shown.Distinct(StringComparer.Ordinal).Count() == shown.Count
             && shown.All(FeatureKeys.Contains)
@@ -60,7 +62,7 @@ public sealed record KioskScreenLayout(IReadOnlyList<string>? Cards, IReadOnlyLi
         return new KioskScreenLayout(cards, features, layout.ImageLeft);
     }
 
-    /// <summary>The column of a way in on the screen, 0 to 2.</summary>
+    /// <summary>The column of a way in on the screen, 0 or 1.</summary>
     public int ColumnOf(string card) => Math.Max(0, (Cards ?? CardKeys).ToList().IndexOf(card));
 }
 

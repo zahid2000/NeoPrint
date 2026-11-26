@@ -30,12 +30,6 @@ export const KIOSK_BUILT_IN_TEXTS: Readonly<
     en: 'Hold "My QR code" in the app to the scanner',
     ru: 'Поднесите «Мой QR-код» из приложения к сканеру',
   },
-  codeTitle: { az: 'Çap kodu', en: 'Print code', ru: 'Код печати' },
-  codeHint: {
-    az: 'Tətbiqdə hazırladığınız faylları açın',
-    en: 'Open the files you prepared in the app',
-    ru: 'Откройте файлы, подготовленные в приложении',
-  },
   featureSizes: { az: 'A4 və A3', en: 'A4 / A3', ru: 'A4 / A3' },
   featureSizesHint: { az: 'Dəstəklənir', en: 'Supported', ru: 'Поддерживается' },
   featureColor: { az: 'Rəngli və qara-ağ', en: 'Colour and black & white', ru: 'Цветная и ч/б' },

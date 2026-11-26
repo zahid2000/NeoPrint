@@ -184,9 +184,13 @@ sealed class ScannedCode {
     caseSensitive: false,
   );
 
+  /// The personal QR (backend `UserQrCodes`): `NPU:{user}:{issued}:{mac}`.
+  static final _userQr = RegExp(r'^NPU:[0-9a-f]{32}:[0-9]+:[A-Za-z0-9_-]+$');
+
   /// `neoprint://pay/{id}` is an order to pay, `neoprint://kiosk/{code}` a
   /// kiosk to open a session at (plan section 2.9), `neoprint://share/{id}`
-  /// a user to send a file to; anything else is not ours.
+  /// a user to send a file to, as does `NPU:...` - the user's one personal
+  /// QR (T-461); anything else is not ours.
   static ScannedCode parse(String raw) {
     final text = raw.trim();
 
@@ -200,6 +204,10 @@ sealed class ScannedCode {
 
     if (_shareLink.firstMatch(text) case final share?) {
       return ShareCode(share.group(1)!.toUpperCase());
+    }
+
+    if (_userQr.hasMatch(text)) {
+      return UserQrCode(text);
     }
 
     return const ForeignCode();
@@ -225,6 +233,14 @@ final class ShareCode extends ScannedCode {
   const ShareCode(this.publicId);
 
   final String publicId;
+}
+
+/// A user's personal QR (T-461): at a kiosk it opens their files; in the
+/// app, who a file goes to - the server names them.
+final class UserQrCode extends ScannedCode {
+  const UserQrCode(this.code);
+
+  final String code;
 }
 
 /// A bank QR or any other code: not something this app pays.

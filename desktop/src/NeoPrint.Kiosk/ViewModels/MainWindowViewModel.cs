@@ -191,8 +191,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public string CancelByCodeText => T("home.cancelByCode");
 
-    public string PrintByCodeText => T("home.printByCode");
-
     // The welcome screen as the design draws it (T-341): a big line, the
     // ways a file comes in as cards, and what the kiosk offers right now.
     public string HeroTitle => Brand("heroTitle");
@@ -202,10 +200,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public string UsbCardTitle => Brand("usbTitle");
 
     public string UsbCardHint => Brand("usbHint");
-
-    public string CodeCardTitle => Brand("codeTitle");
-
-    public string CodeCardHint => Brand("codeHint");
 
     public string PhoneCardTitle => Brand("phoneTitle");
 
@@ -475,12 +469,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public event Action? PrintFromUsbRequested;
 
     public event Action? CancelByCodeRequested;
-
-    /// <summary>"Çap kodu ilə" (T-345): the keypad for the app's code.</summary>
-    public event Action? PrintByCodeRequested;
-
-    [RelayCommand]
-    private void PrintByCode() => PrintByCodeRequested?.Invoke();
 
     [RelayCommand]
     private void PrintFromUsb() => PrintFromUsbRequested?.Invoke();

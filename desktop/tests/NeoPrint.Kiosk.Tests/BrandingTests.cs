@@ -39,27 +39,26 @@ public sealed class BrandingTests : IDisposable
     {
         var model = new MainWindowViewModel { Language = "az" };
         model.UsbColumn.Should().Be(0);
-        model.CodeColumn.Should().Be(2);
+        model.PhoneColumn.Should().Be(1);
         model.HeroArtColumn.Should().Be(2, "the picture is on the right by default");
         model.FooterFeatures.Select(f => f.Key).Should().Equal(KioskScreenLayout.FeatureKeys);
 
         var told = new List<string?>();
         model.PropertyChanged += (_, e) => told.Add(e.PropertyName);
         model.ApplyConfiguration(Configuration(new KioskBranding(
-            null, null, new KioskScreenLayout(["code", "usb", "phone"], ["featureSafe"], ImageLeft: true))));
+            null, null, new KioskScreenLayout(["phone", "usb"], ["featureSafe"], ImageLeft: true))));
 
-        model.CodeColumn.Should().Be(0);
+        model.PhoneColumn.Should().Be(0);
         model.UsbColumn.Should().Be(1);
-        model.PhoneColumn.Should().Be(2);
         model.HeroArtColumn.Should().Be(0);
         model.FooterFeatures.Should().ContainSingle()
             .Which.Should().Be(new FooterFeature("featureSafe", Strings.Get("az", "home.featureSafe"), Strings.Get("az", "home.featureSafeHint")));
-        told.Should().Contain([nameof(MainWindowViewModel.CodeColumn), nameof(MainWindowViewModel.FooterFeatures)]);
+        told.Should().Contain([nameof(MainWindowViewModel.PhoneColumn), nameof(MainWindowViewModel.FooterFeatures)]);
     }
 
     [Theory]
-    [InlineData("usb,phone")]
-    [InlineData("usb,usb,code")]
+    [InlineData("usb")]
+    [InlineData("usb,usb")]
     [InlineData("usb,phone,camera")]
     public void An_arrangement_that_would_drop_a_way_in_keeps_the_kiosks_own_cards(string cards)
     {
@@ -68,6 +67,14 @@ public sealed class BrandingTests : IDisposable
         layout.Cards.Should().Equal(KioskScreenLayout.CardKeys);
         layout.Features.Should().Equal(KioskScreenLayout.FeatureKeys, "a feature this kiosk does not know is not drawn as an empty one");
         layout.ImageLeft.Should().BeTrue();
+    }
+
+    [Fact]
+    public void A_layout_from_a_backend_before_T_461_names_the_print_code_card_and_it_is_left_out()
+    {
+        var layout = KioskScreenLayout.Effective(new KioskScreenLayout(["code", "phone", "usb"], null, ImageLeft: false));
+
+        layout.Cards.Should().Equal("phone", "usb");
     }
 
     [Fact]

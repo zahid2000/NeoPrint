@@ -214,16 +214,36 @@ public sealed class ShareApiTests
         }
     }
 
-    [PdfiumFact]
-    public async Task The_share_qr_names_the_user()
+    [DockerFact]
+    public async Task The_personal_qr_names_the_recipient_of_a_share_however_old_it_is()
     {
-        using var user = await TestUsers.ConfirmedAsync(_fixture);
+        using var sender = await TestUsers.ConfirmedAsync(_fixture);
+        using var recipient = await TestUsers.ConfirmedAsync(_fixture);
 
-        var qr = await user.Client.GetAsync("/api/shares/qr.png");
+        // The one QR a user has (T-461): the kiosk's, read by a friend's app.
+        var qr = await recipient.Client.GetFromJsonAsync<JsonElement>("/api/users/me/qr");
+        var fresh = qr.GetProperty("code").GetString()!;
+        var old = _fixture.Services.GetRequiredService<NeoPrint.Application.UserQr.UserQrCodes>()
+            .Issue(recipient.Id, DateTime.UtcNow.AddDays(-3));
 
-        qr.StatusCode.Should().Be(HttpStatusCode.OK);
-        qr.Content.Headers.ContentType!.MediaType.Should().Be("image/png");
-        ShareHandlers.QrPrefix.Should().Be("neoprint://share/");
+        foreach (var code in new[] { fresh, old })
+        {
+            var found = await sender.Client.PostAsJsonAsync("/api/shares/recipient-by-qr", new { code });
+            found.StatusCode.Should().Be(HttpStatusCode.OK, await found.Content.ReadAsStringAsync());
+            (await found.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("publicId").GetString()
+                .Should().Be(await PublicIdAsync(recipient.Id));
+        }
+
+        // Tampered with, or not ours at all: said so; one's own: not to oneself.
+        var tampered = fresh[..^2] + (fresh.EndsWith("AA", StringComparison.Ordinal) ? "BB" : "AA");
+        foreach (var code in new[] { tampered, "neoprint://share/NP-7KQ2MX", "https://example.com" })
+        {
+            var refused = await sender.Client.PostAsJsonAsync("/api/shares/recipient-by-qr", new { code });
+            (await refused.Content.ReadAsStringAsync()).Should().Contain("shares.qrInvalid");
+        }
+
+        var self = await recipient.Client.PostAsJsonAsync("/api/shares/recipient-by-qr", new { code = fresh });
+        (await self.Content.ReadAsStringAsync()).Should().Contain("shares.toSelf");
     }
 
     // -----------------------------------------------------------------------

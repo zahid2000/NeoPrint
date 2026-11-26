@@ -81,11 +81,39 @@ class _ShareSendScreenState extends ConsumerState<ShareSendScreen> {
       MaterialPageRoute(builder: (_) => const ScanScreen(pickShareId: true)),
     );
 
-    if (id != null && mounted) {
+    if (id == null || !mounted) {
+      return;
+    }
+
+    if (PublicId.isValid(id)) {
       setState(() {
         _recipient.text = id;
         _recipientError = null;
       });
+      return;
+    }
+
+    // The recipient's personal QR (T-461): the server says who it is.
+    final l10n = AppLocalizations.of(context);
+    setState(() => _busy = true);
+    try {
+      final publicId = await ref
+          .read(shareRepositoryProvider)
+          .recipientByQr(id);
+      if (mounted) {
+        setState(() {
+          _recipient.text = publicId;
+          _recipientError = null;
+        });
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        setState(() => _recipientError = apiErrorText(l10n, error));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 

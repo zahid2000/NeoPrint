@@ -555,13 +555,6 @@ public sealed class KioskSession
             _model.Screen = KioskScreen.Flow;
         };
 
-        Action printByCode = () =>
-        {
-            Touch();
-            flow.StartPrintCode();
-            _model.Screen = KioskScreen.Flow;
-        };
-
         Action<string> userQr = async code =>
         {
             Touch();
@@ -572,14 +565,12 @@ public sealed class KioskSession
         _model.PrintFromUsbRequested += printFromUsb;
         _model.CancelByCodeRequested += cancelByCode;
         _model.UserQrRequested += userQr;
-        _model.PrintByCodeRequested += printByCode;
 
         unsubscribe.Add(() =>
         {
             _model.PrintFromUsbRequested -= printFromUsb;
             _model.CancelByCodeRequested -= cancelByCode;
             _model.UserQrRequested -= userQr;
-            _model.PrintByCodeRequested -= printByCode;
         });
     }
 

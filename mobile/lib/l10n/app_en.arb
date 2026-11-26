@@ -368,8 +368,6 @@
   "sharesSent": "Sent",
   "sharesMyId": "Your ID",
   "sharesCopy": "Copy",
-  "sharesMyQr": "My QR code",
-  "sharesQrHint": "Whoever wants to send you a file scans this code in the NeoPrint app",
   "sharesQrFailed": "The QR code did not load: {reason}",
   "sharesLoadFailed": "The list did not load: {reason}",
   "sharesReceivedEmpty": "Nobody has sent you a file yet",
@@ -992,6 +990,5 @@
   "schedTabUpcoming": "Upcoming",
   "schedTabPast": "Past",
   "schedPastEmpty": "No finished scheduled prints yet",
-  "myQrCodeTitle": "Print code",
-  "myQrCodeHint": "If the kiosk's scanner cannot read the QR, choose \"With a print code\" at the kiosk and type this code. Good for 10 minutes and once."
+  "myQrShareHint": "A friend can scan this QR on the \"Share a file\" screen of the app to send you a file."
 }

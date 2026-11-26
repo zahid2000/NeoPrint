@@ -77,11 +77,11 @@ class ShareRepository {
     parse: (data) => Uint8List.fromList(data as List<int>),
   );
 
-  /// The QR others scan to send this user a file.
-  Future<Uint8List> myQr() => _api.send(
-    method: 'GET',
-    path: 'api/shares/qr.png',
-    responseType: ResponseType.bytes,
-    parse: (data) => Uint8List.fromList(data as List<int>),
+  /// Who a personal QR names (T-461): their `NP-` id, to send a file to.
+  Future<String> recipientByQr(String code) => _api.send(
+    method: 'POST',
+    path: 'api/shares/recipient-by-qr',
+    body: {'code': code},
+    parse: (json) => (json as Map<String, dynamic>)['publicId'] as String,
   );
 }
