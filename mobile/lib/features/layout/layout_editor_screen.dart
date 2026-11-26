@@ -161,12 +161,46 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
       return;
     }
 
-    // Many at once go on new pages after this one (T-430).
-    final project = added.length == 1
-        ? LayoutEditing.add(_project, _page, added.single)
-        : LayoutEditing.arrangePaged(_project, _page, added);
-    _apply(project, select: project.pages[_page].elements.length - 1);
+    // One goes on this page; several, a page each after it (T-467).
+    if (added.length == 1) {
+      final project = LayoutEditing.add(_project, _page, added.single);
+      _apply(project, select: project.pages[_page].elements.length - 1);
+    } else {
+      // The first of them: this page when it was empty, else the next one.
+      final first = _elements.isEmpty ? _page : _page + 1;
+      _apply(LayoutEditing.onePerPage(_project, _page, added));
+      _show(first);
+    }
     await _decode(images);
+  }
+
+  /// Every picture on one page (T-467: "Hamısını bir səhifəyə"), asked
+  /// first: where each one was is not kept.
+  Future<void> _gatherOnOnePage() async {
+    final l10n = AppLocalizations.of(context);
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.layoutGatherTitle),
+        content: Text(l10n.layoutGatherBody(_pictureCount)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            key: const ValueKey('layoutGatherConfirm'),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.layoutGather),
+          ),
+        ],
+      ),
+    );
+    if (sure != true || !mounted) {
+      return;
+    }
+    _apply(LayoutEditing.gatherOnOnePage(_project, _pictures));
+    _show(0);
   }
 
   List<LayoutElement> get _elements => _project.pages[_page].elements;
@@ -724,6 +758,14 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                         : null,
                     icon: const Icon(Icons.post_add),
                   ),
+                  if (_project.pages.length > 1)
+                    IconButton(
+                      key: const ValueKey('layoutGather'),
+                      tooltip: l10n.layoutGather,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => unawaited(_gatherOnOnePage()),
+                      icon: const Icon(Icons.grid_view_outlined),
+                    ),
                   if (_project.pages.length > 1)
                     IconButton(
                       tooltip: l10n.layoutDeletePage,

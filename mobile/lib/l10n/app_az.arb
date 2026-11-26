@@ -364,6 +364,12 @@
   "layoutDeletePage": "Səhifəni sil",
   "layoutDeletePageTitle": "Səhifə silinsin?",
   "layoutDeletePageBody": "Səhifə üzərindəki şəkillərlə birlikdə silinəcək.",
+  "layoutGather": "Hamısını bir səhifəyə",
+  "layoutGatherTitle": "Hamısı bir səhifəyə yığılsın?",
+  "layoutGatherBody": "{count} şəkil bir vərəqdə bərabər düzüləcək, boş qalan səhifələr silinəcək. Şəkillərin indiki yeri saxlanmır.",
+  "@layoutGatherBody": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "layoutPageEmpty": "Boş səhifə saxlanılmır: \"Fayl əlavə et\" ilə şəkil qoyun və ya şəkli əvvəlki səhifənin aşağı kənarından bura sürüşdürün.",
   "layoutPageEmptyScan": "Boş səhifə saxlanılmır: şəkli əvvəlki səhifənin aşağı kənarından bura sürüşdürün.",
   "layoutCarried": "Şəkil keçirildi: səhifə {n} / {total}",

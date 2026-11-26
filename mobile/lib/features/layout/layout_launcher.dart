@@ -70,12 +70,11 @@ Future<void> openNewLayout(
   final (images, pictures) = loaded;
 
   const empty = LayoutProject(marginMm: 10, pages: [LayoutPage([])]);
-  // One picture as large as fits; several side by side, small (T-402).
-  final project = sources.length == 1
-      ? LayoutEditing.add(empty, 0, pictures[sources.single.name]!)
-      : LayoutEditing.arrangePaged(empty, 0, [
-          for (final source in sources) pictures[source.name]!,
-        ]);
+  // Each picture on a page of its own, as large as fits (T-467); the user
+  // gathers them on one page in the editor when that is wanted.
+  final project = LayoutEditing.onePerPage(empty, 0, [
+    for (final source in sources) pictures[source.name]!,
+  ]);
 
   final saved = await navigator.push<UserFile>(
     MaterialPageRoute(

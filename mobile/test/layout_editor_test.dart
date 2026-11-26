@@ -393,6 +393,51 @@ void main() {
     expect(result.pages[1].elements.single.yMm, picture.yMm);
   });
 
+  testWidgets('"Hamısını bir səhifəyə" gathers the pages, after asking '
+      '(T-467)', (tester) async {
+    const other = LayoutElement(
+      image: 'p1.jpg',
+      xMm: 20,
+      yMm: 20,
+      widthMm: 80,
+      heightMm: 80,
+    );
+    final result = await openEditor(
+      tester,
+      const LayoutProject(
+        marginMm: 10,
+        pages: [
+          LayoutPage([picture]),
+          LayoutPage([other]),
+        ],
+      ),
+      () async {
+        // Asked first; "Ləğv et" keeps the pages.
+        await tester.tap(find.byKey(const ValueKey('layoutGather')));
+        await tester.pumpAndSettle();
+        expect(find.text('Hamısı bir səhifəyə yığılsın?'), findsOneWidget);
+        await tester.tap(find.text('Ləğv et'));
+        await tester.pumpAndSettle();
+        expect(find.text('Səhifə 1 / 2'), findsOneWidget);
+
+        await tester.tap(find.byKey(const ValueKey('layoutGather')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('layoutGatherConfirm')));
+        await tester.pumpAndSettle();
+
+        // One page left: the action goes with the others.
+        expect(find.text('Səhifə 1 / 1'), findsOneWidget);
+        expect(find.byKey(const ValueKey('layoutGather')), findsNothing);
+
+        await tester.tap(find.text('Hazır'));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    expect(result!.pages, hasLength(1));
+    expect(result.pages.single.elements, hasLength(2));
+  });
+
   testWidgets('the page keeps its size and place when the tools, the size '
       'line or a warning come and go (T-454)', (tester) async {
     await openEditor(

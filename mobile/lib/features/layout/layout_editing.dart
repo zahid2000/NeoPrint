@@ -425,6 +425,46 @@ abstract final class LayoutEditing {
     return result;
   }
 
+  /// [pictures] one a page, each as large as fits (T-467): the first on
+  /// [page] when it is empty, otherwise on a new page after it; the rest on
+  /// new pages after that, in order. Past [maxPages] the rest share the
+  /// last page.
+  static LayoutProject onePerPage(
+    LayoutProject project,
+    int page,
+    List<EditorPicture> pictures,
+  ) {
+    var result = project;
+    var at = page;
+    for (final (i, picture) in pictures.indexed) {
+      final reuse = i == 0 && result.pages[at].elements.isEmpty;
+      if (!reuse) {
+        if (result.pages.length >= maxPages) {
+          return arrange(result, at, pictures.sublist(i));
+        }
+        at++;
+        result = _insertPage(result, at);
+      }
+      result = add(result, at, picture);
+    }
+    return result;
+  }
+
+  /// Every picture of every page gathered on one page (T-467: "Hamısını bir
+  /// səhifəyə"), laid out in equal cells in the order of the pages; the
+  /// other pages go.
+  static LayoutProject gatherOnOnePage(
+    LayoutProject project,
+    Map<String, EditorPicture> pictures,
+  ) {
+    final all = [
+      for (final current in project.pages)
+        for (final element in current.elements) _pictureOf(element, pictures),
+    ];
+    final one = project.copyWith(pages: [const LayoutPage([])]);
+    return arrange(one, 0, all);
+  }
+
   /// [source]'s size and turn given to [indexes] (T-430: "Stili ver"). Each
   /// keeps its own shape - as wide as [source], as tall as its picture is -
   /// and its centre.

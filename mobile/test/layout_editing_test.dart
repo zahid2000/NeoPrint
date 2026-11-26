@@ -415,4 +415,76 @@ void main() {
       expect(LayoutGeometry.round(box.top), 10);
     });
   });
+
+  group('one page each (T-467)', () {
+    const empty = LayoutProject(marginMm: 10, pages: [LayoutPage([])]);
+    final pictures = [
+      for (var i = 0; i < 3; i++)
+        EditorPicture(name: 'f$i', aspect: i.isEven ? 0.75 : 1.4),
+    ];
+
+    test('several files go a page each, each as large as fits', () {
+      final laid = LayoutEditing.onePerPage(empty, 0, pictures);
+
+      expect(laid.pages, hasLength(3));
+      expect(laid.pages.map((page) => page.elements.single.image), [
+        'f0',
+        'f1',
+        'f2',
+      ]);
+      // As large as a single picture added on its own.
+      final alone = LayoutEditing.add(empty, 0, pictures[1]);
+      expect(
+        laid.pages[1].elements.single.widthMm,
+        alone.pages[0].elements.single.widthMm,
+      );
+      expect(LayoutEditing.hasOffPage(laid), isFalse);
+    });
+
+    test('on a page that has pictures, the new ones start after it', () {
+      final start = LayoutEditing.add(
+        LayoutEditing.addPage(empty, 0),
+        0,
+        const EditorPicture(name: 'old', aspect: 1),
+      );
+      final laid = LayoutEditing.onePerPage(
+        start,
+        0,
+        pictures.take(2).toList(),
+      );
+
+      expect(
+        laid.pages.map((page) => page.elements.map((e) => e.image).toList()),
+        [
+          ['old'],
+          ['f0'],
+          ['f1'],
+          <String>[],
+        ],
+      );
+    });
+
+    test('past the most pages the rest share the last page', () {
+      final many = [
+        for (var i = 0; i < LayoutEditing.maxPages + 2; i++)
+          EditorPicture(name: 'm$i', aspect: 1),
+      ];
+      final laid = LayoutEditing.onePerPage(empty, 0, many);
+
+      expect(laid.pages, hasLength(LayoutEditing.maxPages));
+      expect(laid.pages.last.elements, hasLength(3));
+      expect(LayoutEditing.hasOffPage(laid), isFalse);
+    });
+
+    test('"Hamısını bir səhifəyə" gathers every page on one, in order', () {
+      final laid = LayoutEditing.onePerPage(empty, 0, pictures);
+      final one = LayoutEditing.gatherOnOnePage(laid, {
+        for (final picture in pictures) picture.name: picture,
+      });
+
+      expect(one.pages, hasLength(1));
+      expect(one.pages.single.elements.map((e) => e.image), ['f0', 'f1', 'f2']);
+      expect(LayoutEditing.hasOffPage(one), isFalse);
+    });
+  });
 }
