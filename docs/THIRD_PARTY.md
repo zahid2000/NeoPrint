@@ -164,6 +164,7 @@ Bölmə 2.0 qaydası 1-ə görə aşağıdakılar üçün paket **əlavə edilmi
 | Zenko CloudServer | Apache-2.0 | **İstifadə edilmir** (2026-09-27-dən) — image-lər uzun müddətdir yenilənmir, istifadəsi çətindir (`DECISIONS.md`) |
 | OpenBao | MPL-2.0 | Secret idarəsi (Linux Foundation) |
 | LibreOffice (headless) | MPL-2.0 | Office → PDF |
+| Collabora Online CODE (`collabora/code:26.04.6.1.1`, digest ilə pinlənib) | MPL-2.0 | Word / Excel / PowerPoint redaktoru (plan 2.2, Addım 9; T-459). Ayrıca konteyner, compose profili `office` — yalnız lazım olan serverdə işə düşür; WOPI host öz kodumuzdur. `cpus: 1`, `mem_limit: 1g`, boş halda ~425 MB (lokal ölçülüb). Admin paneldə `office_editor` flag-i ilə yandırılır (default söndürülü). Layihə sahibi 2026-11-26-da təsdiqləyib. CODE versiyası development / kiçik quraşdırma üçündür: eyni anda çox sayda sənəd açılanda Collabora xəbərdarlıq göstərir — pilot üçün kifayətdir, genişlənmədə kommersiya lisenziyası (Collabora Online) nəzərdən keçirilməlidir |
 | Ghostscript (+ GhostPCL, GhostXPS) | AGPL-3.0 | PS / EPS / PCL / PRN / XPS → PDF (ayrıca proses, dəyişdirilmədən) |
 | PDFium native kitabxanası (`bblanchon/pdfium-binaries`, `chromium/8066`; backend Dockerfile-da, CI-də və kiosk build-ində (`NeoPrint.Kiosk.csproj`) pinlənib, hər yükləmə SHA-256 ilə yoxlanılır — T-100) | BSD-3 / Apache-2.0 (Google PDFium) | Səhifə sayı və səhifə şəkilləri. Yalnız hazır binary götürülür; wrapper öz kodumuzdur (`NeoPrint.Pdfium`) |
 | CUPS | Apache-2.0 | Linux çap |

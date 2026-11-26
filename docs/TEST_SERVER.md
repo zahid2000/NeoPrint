@@ -84,6 +84,12 @@ Tələblər: Ubuntu 22.04, 24.04 və ya 26.04 (26.04.1 LTS-də yoxlanılıb); **
 təkbaşına 2 GB-a qədər götürə bilər). Bu rəqəmlər hesablamadır, bu serverdə
 ölçülməyib.
 
+**Office redaktoru (T-459):** test serverində Collabora Online da işləyir
+(`.env`-də `COMPOSE_PROFILES=office`, deploy skripti özü yazır). Boş halda ~425 MB,
+limiti 1 GB-dır — yaddaş azdırsa `.env`-dən `COMPOSE_PROFILES` sətrini silib
+`docker compose up -d --remove-orphans` edin, sonra admin paneldə "Office redaktoru"
+söndürülü qalsın. Collabora olmayanda redaktor açılmır, qalan hər şey işləyir.
+
 ### 2. Deploy üçün SSH açarı yaradın
 
 Workflow serverə parolla yox, yalnız bu iş üçün yaradılmış açarla daxil olur.

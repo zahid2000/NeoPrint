@@ -1274,6 +1274,31 @@ silinir. Əvəz olunan çevrilmiş PDF də silinir.
 
 Bu faylla verilmiş sifariş hələ bitməyibsə → `409 files.inUseByOrder` (sifariş qiymətləndirildiyi PDF-i çap edir).
 
+### `POST /api/files/{id}/office-session` (T-459)
+
+Word / Excel / PowerPoint faylını (və OpenDocument qohumlarını; makrolu `docm`, `xlsm` və `wps` xaric)
+Collabora Online redaktorunda açır. `office_editor` flag-i söndürülüdürsə (default) → `404`.
+
+→ `{ "editorPath", "accessToken", "accessTokenTtl" }`, `Cache-Control: no-store`.
+
+- `editorPath` — redaktor səhifəsi **API-nin öz origin-ində** (`/browser/{hash}/cool.html?WOPISrc=...`);
+  admin nginx `/browser/`, `/cool/.../ws` və `/cool/clipboard`-u Collabora-ya ötürür.
+- `accessToken` — səhifəyə `POST` forması ilə `access_token` kimi göndərilir, **URL-ə yazılmır**.
+  Təsadüfi, şəffaf olmayan tokendir; Redis-də yalnız SHA-256 həşi saxlanılır, 30 dəqiqə yaşayır.
+- `accessTokenTtl` — tokenin bitmə vaxtı, Unix millisaniyə (WOPI belə istəyir).
+
+Xətalar: `400 office.notOffice` (cari versiya Office sənədi deyil, məs. səhifə redaktəsindən sonra PDF),
+`400 files.edit.notReady` / `scanLocked` / `useLayoutEditor`, `409 files.inUseByOrder`,
+`409 office.unavailable` (Collabora bu serverdə işləmir və ya başlayır).
+
+Redaktorda "Saxla" (və ya redaktordan çıxış) faylın **öz formatında** yeni versiyadır
+(`files.note.officeEdited`), fayl əvvəlki redaktələr kimi yenidən çevrilir. Avtomatik saxlama söndürülüb.
+
+**WOPI host (`/wopi/files/{id}`)** — yalnız stack daxilində Collabora üçündür, nginx onu xaricə ötürmür:
+`GET` CheckFileInfo (çap / ixrac / paylaşma söndürülüb, `SupportsLocks=false`),
+`GET contents` GetFile, `POST contents` + `X-WOPI-Override: PUT` PutFile. Hər çağırış sessiyanın
+`access_token`-ini tələb edir və yalnız öz faylını açır (başqa halda `401`); Lock və qalanları `501`.
+
 ### `GET /api/files/{id}/versions`
 
 → `[ { "number", "extension", "sizeBytes", "createdAt", "note", "isCurrent" } ]`, yenisi əvvəldə.
