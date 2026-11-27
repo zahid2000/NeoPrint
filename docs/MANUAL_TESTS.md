@@ -433,3 +433,5 @@ qovluğunda `ffmpeg-n8.1-latest-win64-lgpl-8.1.zip`). Panel → Funksiya açarla
 | 7 | `Camera.RetentionDays` → `1`; `sealed`-də adı 2 gün əvvələ düşən boş fayl yaradın (məs. `20261101T100000Z-60.npcam`) | 5 dəqiqə ərzində silinir | **Real cihaz** |
 | 8 | Flag-i söndürün | Nişan itir, FFmpeg dayanır (`writing/` boşalır); köhnə yazılar saxlama müddəti bitəndə silinir | **Real cihaz** |
 | 9 | Kiosk tətbiqini tapşırıq menecerindən / `kill -9` ilə öldürün | Yeni başlanğıcda köhnə FFmpeg dayandırılır, kamera yenə yazır | **Real cihaz** |
+| 10 | `Camera.Mode` = `Continuous`, kioskun önündə 5 dəqiqə heç kim olmasın, sonra 5 dəqiqə hərəkət edin; `sealed`-dəki faylların ölçüsünə baxın | Boş dəqiqələr bir neçə on KB, hərəkətli dəqiqələr bir neçə MB (T-487); nəticəni `docs/KIOSK_CAMERA.md`-dəki cədvəllə müqayisə edin, xüsusən Windows-da | **Real cihaz** |
+| 11 | `Camera.Quality` → `Low`, sonra `High` (paneldə siyahıdan) | FFmpeg hər dəfə yenidən başlayır; Low faylları Medium-dan təxminən yarı ölçüdə, High daha böyük | **Real cihaz** |

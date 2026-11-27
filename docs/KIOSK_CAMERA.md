@@ -24,6 +24,9 @@ admindən verilən gün sayı qədər kioskun diskində saxlanılsın. Məqsəd 
 | `Camera.MaxDiskGb` | 20 | 1–500 | Görüntünün ən çox tuta biləcəyi yer; dolanda ən köhnəsi silinir |
 | `Camera.Resolution` | `1280x720` | `640x480`, `1280x720`, `1920x1080` | Kadrın ölçüsü |
 | `Camera.Fps` | 10 | 2–30 | Saniyədə kadr sayı |
+| `Camera.Quality` | `Medium` | `Low` / `Medium` / `High` | Sıxılma dərəcəsi (T-486): aşağı keyfiyyət az yer tutur |
+
+Rejim, ölçü və keyfiyyət paneldə açılan siyahıdan seçilir.
 
 Dəyişiklik kiosklara dərhal gedir: konfiqurasiya yenilənir. Ölçü və ya kadr sayı
 dəyişəndə FFmpeg yenidən başlayır. Kiosk hədləri özü də yoxlayır (31 gündən çox
@@ -44,11 +47,27 @@ saxlamır), dəyişdirilmiş backend də onu buna məcbur edə bilməz.
   3. `libx264` (Ubuntu-nun öz `ffmpeg` paketi).
   Heç biri yoxdursa kamera yazmır, səbəb kimi `noRecorder` göstərilir.
 - Fayllar:
-  - Saat dəqiqəsi ilə bölünən 1 dəqiqəlik fragmented MP4. Elektrik kəsiləndə də
-    yarımçıq fayl oynadılır.
+  - Saat dəqiqəsi ilə bölünən 1 dəqiqəlik fragmented MP4. Hər 2 saniyə diskə yazılır, ona
+    görə elektrik kəsiləndə də yarımçıq fayl oynadılır.
   - Səs yazılmır.
-  - Bitrate: 720p, 10 kadr/san üçün ~1,2 Mbit/s. Fasiləsiz yazılışda gündə ~5 GB-a qədər,
-    `Activity` rejimində adətən 0,3–1 GB.
+- **Sıxılma** (T-487):
+  - Əvvəlki kadrla eyni olan kadr atılır (`mpdecimate`). Ən azı 5 saniyədə bir kadr qalır
+    ki, vaxt axsın.
+  - Kodlayıcı sabit keyfiyyət rejimində işləyir, üstündə tavan var. CRF: Low 32, Medium 28,
+    High 23. Tavan 720p, 10 kadr/san üçün 600 / 1020 / 1800 kbit/s.
+  - Ölçülüb (Ubuntu FFmpeg, `libx264`, 720p, bir dəqiqə):
+
+    | Səhnə | Əvvəl | Medium | Low |
+    |---|---|---|---|
+    | Boş kiosk (tərpənməz) | ~1,4 MB | **~30–40 KB** | ~5 KB |
+    | Daim hərəkət | ~9 MB | ~7,6 MB | ~4,6 MB |
+
+  - Fasiləsiz yazılışda boş saatlar demək olar yer tutmur. Gün ərzində yer, əsasən,
+    kioskun önündə hərəkət olan vaxt qədərdir.
+  - Şifrəli faylı zip ilə sıxmaq yer qazandırmır, çünki video artıq sıxılıb.
+  - Kodlayıcı "irəli baxma" buferindən istifadə etmir (`zerolatency`). Tərpənməz
+    səhnədə kadr 5 saniyədə bir gəlir, irəli baxan kodlayıcı dəqiqələrlə videonu yaddaşda
+    saxlayardı, elektrik kəsiləndə isə o itərdi. Bu, sınaqda görüldü.
 - Qovluq `CameraDirectory`:
   - Linux: `/var/lib/neoprint/camera`, `kiosk:kiosk 700`.
   - Windows: `C:\ProgramData\NeoPrint\camera`.

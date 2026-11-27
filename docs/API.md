@@ -557,13 +557,13 @@ Activation ekranına qayıdır.
   "paperStock": { "A4": { "capacity", "current" } },
   "features": { "scan.enabled": true },
   "heartbeatSeconds", "cacheTtlHours", "serverTime",
-  "camera": { "mode", "retentionDays", "maxDiskGb", "resolution", "fps", "keyId", "publicKey" }
+  "camera": { "mode", "retentionDays", "maxDiskGb", "resolution", "fps", "keyId", "publicKey", "quality" }
 }
 ```
 
 - `camera` (T-482): **yalnız `kiosk_camera` flag-i bu kiosk üçün açıq olanda**; yoxdursa (və ya `null`) kiosk
   yazmır. `mode` `Activity` / `Continuous`, `retentionDays` 1–31 (default 2), `maxDiskGb` 1–500 (20),
-  `resolution` `640x480` / `1280x720` / `1920x1080`, `fps` 2–30 (10) — `Camera.*` ayarları, server yenidən
+  `resolution` `640x480` / `1280x720` / `1920x1080`, `fps` 2–30 (10), `quality` `Low` / `Medium` / `High` (`Medium`, T-486) — `Camera.*` ayarları, server yenidən
   sərhədləyir. `keyId` + `publicKey` (X.509 SubjectPublicKeyInfo, base64): backend-in kamera açıq açarı (RSA-3072) —
   kiosk görüntünü onunla bağlayır, aça bilmir; gizli açar backend-dən çıxmır (`docs/KIOSK_CAMERA.md`).
 
