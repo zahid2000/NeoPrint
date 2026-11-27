@@ -73,6 +73,10 @@ dependencies:
   # plan section 2.2, Addım 9; T-459). Android and iOS only.
   webview_flutter: 4.14.1
 
+  # Unhandled errors to the self-hosted GlitchTip (MIT, Sentry; plan step 8
+  # "Monitorinq", T-478). Started only with the DSN the API hands out.
+  sentry_flutter: 10.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

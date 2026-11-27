@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/error_tracking/error_tracking.dart';
 import 'core/l10n/app_delegates.dart';
 import 'core/l10n/app_language.dart';
 import 'core/l10n/language_controller.dart';
@@ -11,6 +14,10 @@ import 'shared/widgets/system_bar_frame.dart';
 
 void main() {
   runApp(const ProviderScope(child: NeoPrintApp()));
+
+  // Error tracking (T-478) starts beside the app, never before it: the first
+  // screen does not wait for the API to say where errors go.
+  unawaited(startErrorTracking());
 }
 
 /// The NeoPrint mobile application (plan section 8).
