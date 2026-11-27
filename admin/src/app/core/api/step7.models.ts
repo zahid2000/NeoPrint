@@ -520,4 +520,7 @@ export interface MonitoringStatus {
   readonly metricsEnabled: boolean;
   readonly grafanaUrl: string | null;
   readonly countedAt: string | null;
+  /** T-478: the API reports its unhandled errors to GlitchTip. */
+  readonly errorTrackingEnabled: boolean;
+  readonly glitchTipUrl: string | null;
 }

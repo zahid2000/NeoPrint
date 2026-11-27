@@ -8,6 +8,7 @@ bedtime
 block
 bolt
 broken_image
+bug_report
 build
 calculate
 call

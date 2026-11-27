@@ -42,7 +42,13 @@ describe('SystemMonitoringComponent (T-477)', () => {
 
   it('links to Grafana and to each dashboard when metrics flow', async () => {
     setUp();
-    const fixture = await render({ metricsEnabled: true, grafanaUrl: 'https://grafana.example.test/', countedAt: '2026-11-27T10:00:00Z' });
+    const fixture = await render({
+      metricsEnabled: true,
+      grafanaUrl: 'https://grafana.example.test/',
+      countedAt: '2026-11-27T10:00:00Z',
+      errorTrackingEnabled: true,
+      glitchTipUrl: 'https://errors.example.test',
+    });
 
     expect(host(fixture).textContent).toContain('Metrikalar göndərilir');
     expect(host(fixture).querySelector<HTMLAnchorElement>('[data-test="open"]')?.href).toBe('https://grafana.example.test/');
@@ -54,11 +60,40 @@ describe('SystemMonitoringComponent (T-477)', () => {
 
   it('says what is missing when metrics are off and Grafana is not configured', async () => {
     setUp();
-    const fixture = await render({ metricsEnabled: false, grafanaUrl: null, countedAt: null });
+    const fixture = await render({
+      metricsEnabled: false,
+      grafanaUrl: null,
+      countedAt: null,
+      errorTrackingEnabled: false,
+      glitchTipUrl: null,
+    });
 
     expect(host(fixture).textContent).toContain('Metrikalar göndərilmir');
     expect(host(fixture).textContent).toContain('Monitoring__OtlpEndpoint');
     expect(host(fixture).querySelector('[data-test="open"]')).toBeNull();
     expect(host(fixture).querySelector('[data-test="no-grafana"]')).not.toBeNull();
+    expect(host(fixture).textContent).toContain('Xətalar göndərilmir');
+    expect(host(fixture).querySelector('[data-test="test-error"]')).toBeNull();
+    expect(host(fixture).querySelector('[data-test="open-glitchtip"]')).toBeNull();
+  });
+
+  it('sends a test error to GlitchTip and says where to find it (T-478)', async () => {
+    setUp();
+    const fixture = await render({
+      metricsEnabled: true,
+      grafanaUrl: null,
+      countedAt: null,
+      errorTrackingEnabled: true,
+      glitchTipUrl: 'https://errors.example.test',
+    });
+    expect(host(fixture).querySelector<HTMLAnchorElement>('[data-test="open-glitchtip"]')?.href).toBe('https://errors.example.test/');
+
+    host(fixture).querySelector<HTMLButtonElement>('[data-test="test-error"]')!.click();
+    const request = backend.expectOne('/api/admin/monitoring/test-error');
+    expect(request.request.method).toBe('POST');
+    request.flush({ eventId: '0123456789abcdef0123456789abcdef' });
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(document.body.textContent).toContain('Sınaq xətası göndərildi (01234567…)');
   });
 });

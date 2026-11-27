@@ -7,7 +7,7 @@ export const systemMonitoringTranslations: PageTranslations = {
 
     'sysmon.title': 'Monitorinq',
     'sysmon.description':
-      'Serverin vəziyyətini göstərən qrafiklər Grafana-dadır: API gecikməsi və xətaları, növbələr, refund, fiskal, storage, kiosklar və incident-lər.',
+      'Serverin vəziyyətini göstərən qrafiklər Grafana-dadır: API gecikməsi və xətaları, növbələr, refund, fiskal, storage, kiosklar və incident-lər. Gözlənilməz xətaların təfərrüatı GlitchTip-dədir.',
     'sysmon.open': 'Grafana-nı aç',
     'sysmon.loginNote': 'Grafana-nın öz girişi var. İstifadəçi və parolu serverin administratoru verir.',
     'sysmon.loadFailedEffect': 'Monitorinqin vəziyyəti göstərilə bilmir. Sistemin işinə və metrikaların yığılmasına təsir etmir.',
@@ -23,6 +23,16 @@ export const systemMonitoringTranslations: PageTranslations = {
     'sysmon.dash.api': 'API — ünvanlar üzrə gecikmə və xətalar, resurslar',
     'sysmon.dash.queues': 'Növbələr — RabbitMQ və dead-letter növbələri',
     'sysmon.dash.operations': 'Əməliyyatlar — refund, fiskal, storage, kiosk və incident sayları',
+    'sysmon.errors.title': 'Xəta izləmə (GlitchTip)',
+    'sysmon.errors.on': 'Xətalar GlitchTip-ə göndərilir',
+    'sysmon.errors.off': 'Xətalar göndərilmir',
+    'sysmon.errors.offHint':
+      'API-nin GlitchTip ünvanı (ErrorTracking__ApiDsn) qurulmayıb. Gözlənilməz xətalar yalnız log-da qalır. Qurulma qaydası docs/MONITORING.md-dədir.',
+    'sysmon.errors.open': 'GlitchTip-i aç',
+    'sysmon.errors.test': 'Sınaq xətası göndər',
+    'sysmon.errors.testSent': 'Sınaq xətası göndərildi ({{id}}…). Bir dəqiqə ərzində GlitchTip-də "NeoPrint API" layihəsində görünməlidir.',
+    'sysmon.errors.loginNote':
+      'API, kiosklar, mobil tətbiq və bu panel gözlənilməz xətalarını GlitchTip-ə göndərir. İstifadəçi adı, e-poçt, IP və sorğunun məzmunu göndərilmir. GlitchTip-in öz girişi var.',
   },
   en: {
     'nav.systemMonitoring': 'Monitoring',
@@ -45,6 +55,16 @@ export const systemMonitoringTranslations: PageTranslations = {
     'sysmon.dash.api': 'API — latency and errors by endpoint, resources',
     'sysmon.dash.queues': 'Queues — RabbitMQ and the dead-letter queues',
     'sysmon.dash.operations': 'Operations — refund, fiscal, storage, kiosk and incident counts',
+    'sysmon.errors.title': 'Error tracking (GlitchTip)',
+    'sysmon.errors.on': 'Errors are sent to GlitchTip',
+    'sysmon.errors.off': 'Errors are not sent',
+    'sysmon.errors.offHint':
+      'The API has no GlitchTip address (ErrorTracking__ApiDsn). Unexpected errors stay in the log only. docs/MONITORING.md says how to set it up.',
+    'sysmon.errors.open': 'Open GlitchTip',
+    'sysmon.errors.test': 'Send a test error',
+    'sysmon.errors.testSent': 'Test error sent ({{id}}…). It should show in GlitchTip under "NeoPrint API" within a minute.',
+    'sysmon.errors.loginNote':
+      'The API, the kiosks, the app and this panel send their unexpected errors to GlitchTip. No user name, e-mail, IP or request content is sent. GlitchTip has its own sign-in.',
   },
   ru: {
     'nav.systemMonitoring': 'Мониторинг',
@@ -67,5 +87,15 @@ export const systemMonitoringTranslations: PageTranslations = {
     'sysmon.dash.api': 'API — задержки и ошибки по эндпоинтам, ресурсы',
     'sysmon.dash.queues': 'Очереди — RabbitMQ и очереди недоставленных сообщений',
     'sysmon.dash.operations': 'Операции — возвраты, фискальные чеки, хранилище, киоски и инциденты',
+    'sysmon.errors.title': 'Отслеживание ошибок (GlitchTip)',
+    'sysmon.errors.on': 'Ошибки отправляются в GlitchTip',
+    'sysmon.errors.off': 'Ошибки не отправляются',
+    'sysmon.errors.offHint':
+      'У API нет адреса GlitchTip (ErrorTracking__ApiDsn). Непредвиденные ошибки остаются только в логе. Как настроить — в docs/MONITORING.md.',
+    'sysmon.errors.open': 'Открыть GlitchTip',
+    'sysmon.errors.test': 'Отправить тестовую ошибку',
+    'sysmon.errors.testSent': 'Тестовая ошибка отправлена ({{id}}…). В течение минуты она появится в GlitchTip в проекте «NeoPrint API».',
+    'sysmon.errors.loginNote':
+      'API, киоски, мобильное приложение и эта панель отправляют непредвиденные ошибки в GlitchTip. Имя пользователя, e-mail, IP и содержимое запросов не отправляются. У GlitchTip свой вход.',
   },
 };

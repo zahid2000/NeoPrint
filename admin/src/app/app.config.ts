@@ -15,6 +15,7 @@ import { SwUpdate, provideServiceWorker } from '@angular/service-worker';
 import { TranslateService, provideTranslateService } from '@ngx-translate/core';
 
 import { routes } from './app.routes';
+import { provideErrorTracking } from './core/error-tracking/error-tracking';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthService } from './core/auth/auth.service';
 import { ThemeService } from './core/theme/theme.service';
@@ -141,5 +142,8 @@ export const appConfig: ApplicationConfig = {
     }),
 
     provideAppInitializer(initialiseApp),
+
+    // Unhandled errors to GlitchTip once main.ts has started it (T-478).
+    provideErrorTracking(),
   ],
 };

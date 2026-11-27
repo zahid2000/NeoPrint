@@ -9,6 +9,7 @@ import { MonitoringStatus } from '../../core/api/step7.models';
 import { ErrorBannerComponent } from '../../shared/error-banner.component';
 import { DateTimePipe } from '../../shared/format.pipes';
 import { PageHeaderComponent } from '../../shared/page-header.component';
+import { NotifyService } from '../../shared/notify.service';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 
@@ -22,8 +23,9 @@ const dashboards = [
 
 /**
  * "Monitorinq" (plan step 8, T-477; docs/MONITORING.md): whether the API's
- * metrics flow, and the way to Grafana - which has its own sign-in, so this
- * page holds no chart and no password.
+ * metrics flow, and the way to Grafana; whether errors reach GlitchTip, and a
+ * test error to prove it (T-478). Both have their own sign-in, so this page
+ * holds no chart and no password.
  */
 @Component({
   selector: 'app-system-monitoring',
@@ -76,6 +78,30 @@ const dashboards = [
             </div>
           }
         </section>
+
+        <!-- Error tracking (T-478) -->
+        <section class="neo-card sysmon__card" data-test="errors">
+          <h2 class="sysmon__heading">{{ 'sysmon.errors.title' | translate }}</h2>
+          @if (s.errorTrackingEnabled) {
+            <app-status-chip status="errors-on" toneOverride="success" iconOverride="check_circle" [text]="'sysmon.errors.on' | translate" />
+          } @else {
+            <app-status-chip status="errors-off" toneOverride="warning" iconOverride="cloud_off" [text]="'sysmon.errors.off' | translate" />
+            <p class="neo-caption">{{ 'sysmon.errors.offHint' | translate }}</p>
+          }
+          <div class="neo-actions">
+            @if (s.glitchTipUrl; as url) {
+              <a mat-stroked-button data-test="open-glitchtip" [href]="url" target="_blank" rel="noopener noreferrer">
+                <mat-icon>open_in_new</mat-icon>{{ 'sysmon.errors.open' | translate }}
+              </a>
+            }
+            @if (s.errorTrackingEnabled) {
+              <button mat-stroked-button type="button" data-test="test-error" [disabled]="sending()" (click)="sendTestError()">
+                <mat-icon>bug_report</mat-icon>{{ 'sysmon.errors.test' | translate }}
+              </button>
+            }
+          </div>
+          <p class="neo-caption">{{ 'sysmon.errors.loginNote' | translate }}</p>
+        </section>
       }
     </div>
   `,
@@ -103,12 +129,14 @@ const dashboards = [
 })
 export class SystemMonitoringComponent implements OnInit {
   private readonly api = inject(OperationsApiService);
+  private readonly notify = inject(NotifyService);
 
   readonly dashboards = dashboards;
   readonly trailingSlash = /\/+$/;
 
   readonly status = signal<MonitoringStatus | null>(null);
   readonly problem = signal<Problem | null>(null);
+  readonly sending = signal(false);
 
   ngOnInit(): void {
     void this.load();
@@ -120,6 +148,19 @@ export class SystemMonitoringComponent implements OnInit {
       this.problem.set(null);
     } catch (error) {
       this.problem.set(toProblem(error));
+    }
+  }
+
+  /** One error on purpose, to see the whole way to GlitchTip work (T-478). */
+  async sendTestError(): Promise<void> {
+    this.sending.set(true);
+    try {
+      const sent = await firstValueFrom(this.api.monitoringTestError());
+      this.notify.success('sysmon.errors.testSent', { id: sent.eventId.slice(0, 8) });
+    } catch (error) {
+      this.notify.error(toProblem(error).message);
+    } finally {
+      this.sending.set(false);
     }
   }
 }

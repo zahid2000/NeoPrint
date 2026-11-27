@@ -31,6 +31,8 @@ COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
 # step), so an own tile server is a setting of the container, not a new image.
 COPY content-security-policy.conf.template /etc/nginx/templates/content-security-policy.conf.template
 ENV NEOPRINT_MAP_ORIGIN=https://tiles.openfreemap.org
+# Where the panel reports its errors (T-478): GlitchTip's address, or nothing.
+ENV NEOPRINT_ERRORS_ORIGIN=""
 ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx/snippets
 COPY --from=build /src/dist/admin/browser /usr/share/nginx/html
 

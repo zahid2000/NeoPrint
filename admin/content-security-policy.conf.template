@@ -5,4 +5,6 @@
 # <style> elements. MapLibre draws in a worker served from here (/maplibre/)
 # and turns images into blobs. Not sent with /api/: the Hangfire panel there
 # has inline scripts of its own and sits behind its own login.
-add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${NEOPRINT_MAP_ORIGIN}; font-src 'self' data:; connect-src 'self' ${NEOPRINT_MAP_ORIGIN}; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+# NEOPRINT_ERRORS_ORIGIN (T-478): GlitchTip, where the panel reports its
+# unhandled errors; empty when error tracking is off.
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: ${NEOPRINT_MAP_ORIGIN}; font-src 'self' data:; connect-src 'self' ${NEOPRINT_MAP_ORIGIN} ${NEOPRINT_ERRORS_ORIGIN}; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;

@@ -204,6 +204,11 @@ export class OperationsApiService {
     return this.http.get<MonitoringStatus>('/api/admin/monitoring');
   }
 
+  /** Sends one error to GlitchTip on purpose (T-478); answers with the id it is shown under. */
+  monitoringTestError(): Observable<{ eventId: string }> {
+    return this.http.post<{ eventId: string }>('/api/admin/monitoring/test-error', null);
+  }
+
   systemJobs(): Observable<SystemJobs> {
     return this.http.get<SystemJobs>('/api/admin/system/jobs');
   }
