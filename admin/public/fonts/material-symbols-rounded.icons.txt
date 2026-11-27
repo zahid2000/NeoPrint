@@ -73,6 +73,7 @@ mail
 manage_search
 map
 menu
+monitoring
 more_vert
 network_check
 notifications_active

@@ -167,40 +167,40 @@ public sealed class OperationalMetricsCollector : BackgroundService
         var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
 
         var refunds = await GroupAsync(
-            context.Refunds.WithoutSession,
+            context.Refunds,
             Builders<Refund>.Filter.Ne(refund => refund.Status, RefundStatus.Succeeded),
             refund => refund.Status,
             [RefundStatus.Pending, RefundStatus.Processing, RefundStatus.Failed],
             cancellationToken).ConfigureAwait(false);
 
         var receipts = await GroupAsync(
-            context.FiscalReceipts.WithoutSession,
+            context.FiscalReceipts,
             Builders<FiscalReceipt>.Filter.Ne(receipt => receipt.Status, FiscalReceiptStatus.Issued),
             receipt => receipt.Status,
             [FiscalReceiptStatus.Pending, FiscalReceiptStatus.Failed],
             cancellationToken).ConfigureAwait(false);
 
-        var refundFailed = await context.Payments.WithoutSession
+        var refundFailed = await context.Payments
             .CountDocumentsAsync(payment => payment.Status == PaymentStatus.RefundFailed, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        var syncFailures = await context.StorageSyncFailures.WithoutSession
+        var syncFailures = await context.StorageSyncFailures
             .CountDocumentsAsync(failure => failure.ResolvedAt == null, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        var unhealthy = await context.StorageProviders.WithoutSession
+        var unhealthy = await context.StorageProviders
             .CountDocumentsAsync(provider => provider.HealthStatus == StorageHealthStatus.Unhealthy, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
         var incidents = await GroupAsync(
-            context.Incidents.WithoutSession,
+            context.Incidents,
             Builders<Incident>.Filter.Ne(incident => incident.Status, IncidentStatus.Resolved),
             incident => incident.Severity,
             Enum.GetValues<IncidentSeverity>(),
             cancellationToken).ConfigureAwait(false);
 
         var kiosks = await GroupAsync(
-            context.Kiosks.WithoutSession,
+            context.Kiosks,
             Builders<Kiosk>.Filter.Empty,
             kiosk => kiosk.Status,
             Enum.GetValues<KioskStatus>(),
@@ -223,7 +223,7 @@ public sealed class OperationalMetricsCollector : BackgroundService
     /// zero instead of disappearing from the graph.
     /// </summary>
     private static async Task<IReadOnlyDictionary<string, long>> GroupAsync<TDocument, TKey>(
-        IMongoCollection<TDocument> collection,
+        MongoSet<TDocument> collection,
         FilterDefinition<TDocument> filter,
         System.Linq.Expressions.Expression<Func<TDocument, TKey>> key,
         IEnumerable<TKey> always,
