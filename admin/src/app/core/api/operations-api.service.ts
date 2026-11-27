@@ -15,6 +15,7 @@ import {
   ServiceTaskSummary,
   SupplyAlertRow,
   SystemJobs,
+  MonitoringStatus,
 } from './step7.models';
 
 /** A write that must not happen twice if it is sent again. */
@@ -196,6 +197,12 @@ export class OperationsApiService {
   }
 
   // --- background jobs (plan section 6, T-215) -----------------------------
+
+  // --- monitoring (plan step 8, T-477) ------------------------------------
+
+  monitoringStatus(): Observable<MonitoringStatus> {
+    return this.http.get<MonitoringStatus>('/api/admin/monitoring');
+  }
 
   systemJobs(): Observable<SystemJobs> {
     return this.http.get<SystemJobs>('/api/admin/system/jobs');

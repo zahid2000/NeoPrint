@@ -514,3 +514,10 @@ export interface SystemJobs {
   readonly runs: Readonly<Partial<Record<SystemJobName, JobRunSummary>>>;
   readonly analytics: { readonly today: number; readonly week: number; readonly kiosks: readonly RejectedEvents[] };
 }
+
+/** "Monitorinq" (plan step 8, T-477): whether metrics flow, and where Grafana is. */
+export interface MonitoringStatus {
+  readonly metricsEnabled: boolean;
+  readonly grafanaUrl: string | null;
+  readonly countedAt: string | null;
+}

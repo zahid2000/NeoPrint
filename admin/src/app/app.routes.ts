@@ -298,6 +298,12 @@ export const routes: Routes = [
           import('./features/operations/system-jobs.component').then((m) => m.SystemJobsComponent),
       },
       {
+        path: 'system-monitoring',
+        canActivate: [permissionGuard(Permissions.monitoringView)],
+        loadComponent: () =>
+          import('./features/operations/system-monitoring.component').then((m) => m.SystemMonitoringComponent),
+      },
+      {
         path: 'releases',
         canActivate: [permissionGuard(Permissions.releasesView)],
         loadComponent: () =>

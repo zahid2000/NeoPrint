@@ -211,6 +211,13 @@ export class ShellComponent {
       group: 'administration',
     },
     {
+      path: '/system-monitoring',
+      labelKey: 'nav.systemMonitoring',
+      icon: 'monitoring',
+      permissions: [Permissions.monitoringView],
+      group: 'administration',
+    },
+    {
       path: '/releases',
       labelKey: 'nav.releases',
       icon: 'deployed_code',
