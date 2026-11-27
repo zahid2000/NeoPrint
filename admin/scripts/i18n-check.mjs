@@ -185,6 +185,19 @@ const SERVER_VALUES = {
   },
   'supplies.paper': { values: ['A4', 'A3'] },
   'settings.description.': { settings: true },
+  // The settings picked from a list (T-486): SETTING_CHOICES in settings.component.ts.
+  'settings.choice.': {
+    values: [
+      'Camera.Mode.Activity',
+      'Camera.Mode.Continuous',
+      'Camera.Resolution.640x480',
+      'Camera.Resolution.1280x720',
+      'Camera.Resolution.1920x1080',
+      'Camera.Quality.Low',
+      'Camera.Quality.Medium',
+      'Camera.Quality.High',
+    ],
+  },
   'features.flag.': { flags: true, suffixes: ['.name', '.description'] },
   'language.': { values: ['az', 'en', 'ru'] },
   // The kiosk and printer pages (T-212).

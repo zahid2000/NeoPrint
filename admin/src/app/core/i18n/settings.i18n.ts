@@ -130,6 +130,16 @@ export const settingsTranslations: PageTranslations = {
       'Görüntünün ölçüsü: 640x480, 1280x720 və ya 1920x1080. Böyük ölçü diskdə çox yer tutur.',
     'settings.description.Camera.Fps':
       'Saniyədə kadr sayı (2–30). 10 kadr adətən kifayətdir; çox kadr diskdə çox yer tutur.',
+    'settings.description.Camera.Quality':
+      'Kamera görüntüsünün keyfiyyəti. Aşağı — ən az yer (orta keyfiyyətin təxminən yarısı), üzlər uzaqdan seçilməyə bilər; Orta — adi istifadə; Yüksək — ən aydın, ən çox yer. Tərpənməz kadrlar hər halda saxlanmır, boş kiosk demək olar yer tutmur.',
+    'settings.choice.Camera.Mode.Activity': 'Yalnız kioskda kimsə olanda',
+    'settings.choice.Camera.Mode.Continuous': 'Fasiləsiz',
+    'settings.choice.Camera.Resolution.640x480': '640 × 480 (az yer)',
+    'settings.choice.Camera.Resolution.1280x720': '1280 × 720 (HD, orta yer)',
+    'settings.choice.Camera.Resolution.1920x1080': '1920 × 1080 (Full HD, çox yer)',
+    'settings.choice.Camera.Quality.Low': 'Aşağı — ən az yer',
+    'settings.choice.Camera.Quality.Medium': 'Orta',
+    'settings.choice.Camera.Quality.High': 'Yüksək — ən aydın',
     'settings.description.Update.CheckIntervalMinutes':
       'Kiosk yeni versiyanı bu intervalla yoxlayır.',
     'settings.description.Update.HealthTimeoutMinutes':
@@ -262,6 +272,16 @@ export const settingsTranslations: PageTranslations = {
       'The picture size: 640x480, 1280x720 or 1920x1080. A larger size takes more disk.',
     'settings.description.Camera.Fps':
       'Frames per second (2–30). 10 is usually enough; more frames take more disk.',
+    'settings.description.Camera.Quality':
+      'The camera footage quality. Low - least space (about half of Medium), faces may not be clear from afar; Medium - everyday use; High - sharpest, most space. Still frames are never stored, so an empty kiosk takes almost no space.',
+    'settings.choice.Camera.Mode.Activity': 'Only while somebody is at the kiosk',
+    'settings.choice.Camera.Mode.Continuous': 'Continuous',
+    'settings.choice.Camera.Resolution.640x480': '640 × 480 (little space)',
+    'settings.choice.Camera.Resolution.1280x720': '1280 × 720 (HD, medium space)',
+    'settings.choice.Camera.Resolution.1920x1080': '1920 × 1080 (Full HD, much space)',
+    'settings.choice.Camera.Quality.Low': 'Low - least space',
+    'settings.choice.Camera.Quality.Medium': 'Medium',
+    'settings.choice.Camera.Quality.High': 'High - sharpest',
     'settings.description.Update.CheckIntervalMinutes':
       'How often the kiosk checks for a new version.',
     'settings.description.Update.HealthTimeoutMinutes':
@@ -398,6 +418,16 @@ export const settingsTranslations: PageTranslations = {
       'Размер изображения: 640x480, 1280x720 или 1920x1080. Больший размер занимает больше места.',
     'settings.description.Camera.Fps':
       'Кадров в секунду (2–30). Обычно хватает 10; больше кадров — больше места на диске.',
+    'settings.description.Camera.Quality':
+      'Качество видео камеры. Низкое — меньше всего места (примерно половина среднего), лица издалека могут быть неразличимы; Среднее — обычное использование; Высокое — самое чёткое, больше всего места. Неподвижные кадры не сохраняются, поэтому пустой киоск почти не занимает места.',
+    'settings.choice.Camera.Mode.Activity': 'Только когда у киоска кто-то есть',
+    'settings.choice.Camera.Mode.Continuous': 'Непрерывно',
+    'settings.choice.Camera.Resolution.640x480': '640 × 480 (мало места)',
+    'settings.choice.Camera.Resolution.1280x720': '1280 × 720 (HD, среднее место)',
+    'settings.choice.Camera.Resolution.1920x1080': '1920 × 1080 (Full HD, много места)',
+    'settings.choice.Camera.Quality.Low': 'Низкое — меньше всего места',
+    'settings.choice.Camera.Quality.Medium': 'Среднее',
+    'settings.choice.Camera.Quality.High': 'Высокое — самое чёткое',
     'settings.description.Update.CheckIntervalMinutes':
       'Как часто киоск проверяет наличие новой версии.',
     'settings.description.Update.HealthTimeoutMinutes':

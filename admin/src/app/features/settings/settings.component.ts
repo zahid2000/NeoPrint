@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -16,6 +17,17 @@ import { firstValueFrom } from 'rxjs';
 import { AdminApiService, PlatformSetting } from '../../core/api/admin-api.service';
 import { defaultLanguage, translations } from '../../core/i18n/translations';
 import { describeError } from '../login/login.component';
+
+/**
+ * Settings that take one of a few words (T-486): picked from a list, each
+ * word explained in the panel's language, so nothing has to be typed - the
+ * backend refuses any other word anyway.
+ */
+export const SETTING_CHOICES: Readonly<Record<string, readonly string[]>> = {
+  'Camera.Mode': ['Activity', 'Continuous'],
+  'Camera.Resolution': ['640x480', '1280x720', '1920x1080'],
+  'Camera.Quality': ['Low', 'Medium', 'High'],
+};
 
 /** Settings grouped by the prefix of their key, as the panel shows them. */
 interface SettingGroup {
@@ -42,6 +54,7 @@ interface SettingGroup {
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
+    MatSelectModule,
     MatTooltipModule,
     TranslatePipe,
   ],
@@ -153,6 +166,11 @@ export class SettingsComponent {
   /** Whether a group holds anything the operator has edited. */
   groupHasChanges(group: SettingGroup): boolean {
     return group.settings.some((setting) => this.isChanged(setting));
+  }
+
+  /** The words a setting may take, or null when it is typed. */
+  choicesOf(setting: PlatformSetting): readonly string[] | null {
+    return SETTING_CHOICES[setting.key] ?? null;
   }
 
   /** Puts a setting back to the value it was documented with. */

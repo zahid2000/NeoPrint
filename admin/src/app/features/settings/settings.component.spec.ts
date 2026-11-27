@@ -210,4 +210,24 @@ describe('SettingsComponent', () => {
 
     failing.verify();
   });
+
+  it('offers the camera quality as a list, not a text box (T-486)', () => {
+    const quality: PlatformSetting = {
+      key: 'Camera.Quality',
+      value: 'Medium',
+      defaultValue: 'Medium',
+      valueType: 'String',
+      description: 'Kamera keyfiyyəti',
+      isDefault: true,
+      updatedAt: null,
+      updatedBy: null,
+    };
+    const limit = settings.find((setting) => setting.key === 'Queue.DisplayLimit')!;
+
+    expect(component.choicesOf(quality)).toEqual(['Low', 'Medium', 'High']);
+    expect(component.choicesOf(limit)).toBeNull();
+
+    component.set(quality, 'Low');
+    expect(component.isChanged(quality)).toBe(true);
+  });
 });
