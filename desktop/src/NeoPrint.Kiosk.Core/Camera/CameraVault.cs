@@ -78,6 +78,9 @@ public sealed class CameraVault
     /// <summary>The sealed minutes.</summary>
     public string SealedDirectory => Path.Combine(Root, "sealed");
 
+    /// <summary>The sealed minutes already on the file server (T-485): kept here too, until their own time.</summary>
+    public string SentDirectory => Path.Combine(SealedDirectory, "sent");
+
     /// <summary>The file name pattern FFmpeg is given (<c>-strftime 1</c>, the machine's local time).</summary>
     public string WritingPattern => Path.Combine(WritingDirectory, WritingPrefix + "%Y%m%dT%H%M%S.mp4");
 
@@ -85,6 +88,7 @@ public sealed class CameraVault
     {
         Directory.CreateDirectory(WritingDirectory);
         Directory.CreateDirectory(SealedDirectory);
+        Directory.CreateDirectory(SentDirectory);
     }
 
     /// <summary>
@@ -217,6 +221,36 @@ public sealed class CameraVault
     public IReadOnlyList<SealedSegment> Between(DateTime fromUtc, DateTime toUtc)
         => [.. SealedSegments().Where(segment => segment.Start < toUtc && segment.End > fromUtc)];
 
+    /// <summary>The sealed minutes not yet on the file server, oldest first (T-485).</summary>
+    public IReadOnlyList<SealedSegment> Unsent()
+    {
+        if (!Directory.Exists(SealedDirectory))
+        {
+            return [];
+        }
+
+        return [.. new DirectoryInfo(SealedDirectory).EnumerateFiles("*" + SealedExtension, SearchOption.TopDirectoryOnly)
+            .Select(file => ParseSealed(file.FullName, file.Length))
+            .OfType<SealedSegment>()
+            .OrderBy(segment => segment.Start)];
+    }
+
+    /// <summary>The file server has it: it moves aside, and stays here until its own time.</summary>
+    public void MarkSent(SealedSegment segment)
+    {
+        ArgumentNullException.ThrowIfNull(segment);
+
+        Directory.CreateDirectory(SentDirectory);
+        try
+        {
+            File.Move(segment.Path, Path.Combine(SentDirectory, Path.GetFileName(segment.Path)), overwrite: true);
+        }
+        catch (FileNotFoundException)
+        {
+            // Pruned in the meantime.
+        }
+    }
+
     /// <summary>A sealed segment's file name says when it starts and how long it is: <c>20261127T101500Z-60.npcam</c>.</summary>
     public static string SealedName(DateTime startUtc, TimeSpan length)
         => startUtc.ToString(SealedFormat, CultureInfo.InvariantCulture) + "-"
@@ -279,7 +313,7 @@ public sealed class CameraVault
 
         var segments = new List<SealedSegment>();
 
-        foreach (var file in new DirectoryInfo(SealedDirectory).EnumerateFiles("*" + SealedExtension))
+        foreach (var file in new DirectoryInfo(SealedDirectory).EnumerateFiles("*" + SealedExtension, SearchOption.AllDirectories))
         {
             if (ParseSealed(file.FullName, file.Length) is { } segment)
             {

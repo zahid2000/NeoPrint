@@ -12,6 +12,7 @@ namespace NeoPrint.Kiosk.Core.Camera;
 /// <param name="KeyId">The backend's camera key, named in every sealed segment.</param>
 /// <param name="PublicKey">Its public half, X.509 SubjectPublicKeyInfo (DER), base64: the kiosk can seal, never open.</param>
 /// <param name="Quality"><c>Low</c>, <c>Medium</c> or <c>High</c> (<c>Camera.Quality</c>, T-486).</param>
+/// <param name="Archive">Send each sealed minute to the backend too, for the file server the panel chose (T-485).</param>
 public sealed record KioskCameraSettings(
     string Mode = KioskCameraSettings.Activity,
     int RetentionDays = 2,
@@ -20,7 +21,8 @@ public sealed record KioskCameraSettings(
     int Fps = 10,
     string? KeyId = null,
     string? PublicKey = null,
-    string Quality = "Medium")
+    string Quality = "Medium",
+    bool Archive = false)
 {
     /// <summary>Only while somebody is at the kiosk, <see cref="CameraVault.ActivityMargin"/> either side.</summary>
     public const string Activity = "Activity";

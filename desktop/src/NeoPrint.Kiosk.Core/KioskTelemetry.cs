@@ -66,9 +66,12 @@ public sealed record TelemetryCameraPart(
     long? StoredBytes,
     int? Segments,
     DateTime? OldestAt,
-    DateTime? LastSegmentAt)
+    DateTime? LastSegmentAt,
+    int? Unsent = null,
+    DateTime? LastSentAt = null)
 {
-    public static TelemetryCameraPart From(Camera.CameraStatus status)
+    /// <param name="unsent">Minutes not yet on the file server; null while none go there (T-485).</param>
+    public static TelemetryCameraPart From(Camera.CameraStatus status, int? unsent = null, DateTime? lastSentAt = null)
     {
         ArgumentNullException.ThrowIfNull(status);
 
@@ -81,7 +84,9 @@ public sealed record TelemetryCameraPart(
             status.Storage.Bytes,
             status.Storage.Segments,
             status.Storage.OldestAt,
-            status.Storage.NewestAt);
+            status.Storage.NewestAt,
+            unsent,
+            lastSentAt);
     }
 }
 
@@ -201,7 +206,7 @@ public sealed class TelemetrySources
     public Func<bool?> Ghostscript { get; init; } = () => null;
 
     /// <summary>The camera, or null on a kiosk that has no recorder running (T-482).</summary>
-    public Func<Camera.CameraStatus?> Camera { get; init; } = () => null;
+    public Func<TelemetryCameraPart?> Camera { get; init; } = () => null;
 }
 
 /// <summary>Puts one telemetry report together (plan section 7.9).</summary>
@@ -271,7 +276,7 @@ public sealed class KioskTelemetryCollector
                 sources.Ghostscript(),
                 _runtime.ConfigurationFetchedAt,
                 FeatureFingerprint(_runtime.Configuration?.Features)),
-            sources.Camera() is { } camera ? TelemetryCameraPart.From(camera) : null);
+            sources.Camera());
     }
 
     /// <summary>

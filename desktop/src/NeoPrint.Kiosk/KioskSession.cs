@@ -286,10 +286,19 @@ public sealed class KioskSession
             });
             cameraRun = RunGuardedAsync("camera", () => camera.RunAsync(token), token);
 
+            // The camera's minutes to the file server the panel chose (T-485).
+            var archive = new CameraArchiveUploader(
+                new CameraVault(_services.GetRequiredService<IAppPaths>().CameraDirectory, _services.GetRequiredService<IClock>(), _logger),
+                () => runtime.Configuration?.Camera,
+                (segment, ct) => api.SendCameraSegmentAsync(segment, ct),
+                _services.GetRequiredService<IClock>(),
+                _logger);
+            _ = RunGuardedAsync("camera archive", () => archive.RunAsync(token), token);
+
             _ = RunGuardedAsync("printer reports", () => ReportPrintersAsync(reporter, token), token);
             _ = RunGuardedAsync("analytics", () => SendAnalyticsAsync(api, token), token);
             _ = RunGuardedAsync("flash uploads", () => SendUploadsAsync(orders, token), token);
-            _ = RunGuardedAsync("telemetry", () => SendTelemetryAsync(runtime, hub, commands, drives, api, camera, token), token);
+            _ = RunGuardedAsync("telemetry", () => SendTelemetryAsync(runtime, hub, commands, drives, api, camera, archive, token), token);
             _ = RunGuardedAsync("printer telemetry", () => SendPrinterTelemetryAsync(runtime, reporter, api, token), token);
             _ = RunGuardedAsync("updates", () => updates.RunAsync(token), token);
 
@@ -366,6 +375,7 @@ public sealed class KioskSession
         IRemovableDriveWatcher drives,
         KioskApiClient api,
         CameraRecorder camera,
+        CameraArchiveUploader archive,
         CancellationToken cancellationToken)
     {
         var collector = _services.GetRequiredService<KioskTelemetryCollector>();
@@ -387,7 +397,7 @@ public sealed class KioskSession
             LastCrashAt = () => crashes.LastCrashAt,
             LibreOffice = () => ProgramExists(converters.LibreOfficeExecutable),
             Ghostscript = () => ProgramExists(converters.GhostscriptFor("ps")),
-            Camera = () => camera.Status,
+            Camera = () => TelemetryCameraPart.From(camera.Status, archive.Unsent, archive.LastSentAt),
         };
 
         while (!cancellationToken.IsCancellationRequested)
