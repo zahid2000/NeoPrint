@@ -764,7 +764,9 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
                       tooltip: l10n.layoutGather,
                       visualDensity: VisualDensity.compact,
                       onPressed: () => unawaited(_gatherOnOnePage()),
-                      icon: const Icon(Icons.grid_view_outlined),
+                      // Not grid_view: that is the template menu above and
+                      // "Bərabər düz" (T-471).
+                      icon: const Icon(Icons.compress),
                     ),
                   if (_project.pages.length > 1)
                     IconButton(

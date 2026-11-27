@@ -232,46 +232,14 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.all(Spacing.x6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: Sizes.controlHeight,
-                      child: FilledButton.icon(
-                        key: const ValueKey('cameraCapture'),
-                        onPressed: _capturing || full ? null : _capture,
-                        icon: _capturing
-                            ? const SizedBox.square(
-                                dimension: Spacing.x4,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.photo_camera),
-                        label: Text(l10n.cameraCapture),
-                      ),
-                    ),
-                  ),
-                  if (widget.multiple) ...[
-                    const SizedBox(width: Spacing.x3),
-                    SizedBox(
-                      height: Sizes.controlHeight,
-                      child: OutlinedButton.icon(
-                        key: const ValueKey('cameraDone'),
-                        onPressed: _photos.isEmpty || _capturing
-                            ? null
-                            : () =>
-                                  Navigator.of(context)
-                                      .pop(List<String>.of(_photos)),
-                        icon: const Icon(Icons.check),
-                        label: Text(l10n.cameraDone),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+            CameraShutterRow(
+              multiple: widget.multiple,
+              capturing: _capturing,
+              full: full,
+              onCapture: _capture,
+              onDone: _photos.isEmpty
+                  ? null
+                  : () => Navigator.of(context).pop(List<String>.of(_photos)),
             ),
           ],
         ),
@@ -343,6 +311,73 @@ class _CameraCaptureScreenState extends State<CameraCaptureScreen>
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The shutter and, taking several, "Hazırdır" beside it (T-466).
+///
+/// Both buttons are Expanded: the theme's buttons are full width, and an
+/// unbounded one in a row laid nothing out - the shutter went with it
+/// (T-470).
+class CameraShutterRow extends StatelessWidget {
+  const CameraShutterRow({
+    required this.multiple,
+    required this.capturing,
+    required this.full,
+    required this.onCapture,
+    required this.onDone,
+    super.key,
+  });
+
+  final bool multiple;
+  final bool capturing;
+  final bool full;
+  final VoidCallback onCapture;
+
+  /// Null while there is nothing to hand back.
+  final VoidCallback? onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.all(Spacing.x6),
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: Sizes.controlHeight,
+              child: FilledButton.icon(
+                key: const ValueKey('cameraCapture'),
+                onPressed: capturing || full ? null : onCapture,
+                icon: capturing
+                    ? const SizedBox.square(
+                        dimension: Spacing.x4,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.photo_camera),
+                label: Text(l10n.cameraCapture),
+              ),
+            ),
+          ),
+          if (multiple) ...[
+            const SizedBox(width: Spacing.x3),
+            Expanded(
+              child: SizedBox(
+                height: Sizes.controlHeight,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('cameraDone'),
+                  onPressed: capturing ? null : onDone,
+                  icon: const Icon(Icons.check),
+                  label: Text(l10n.cameraDone),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
