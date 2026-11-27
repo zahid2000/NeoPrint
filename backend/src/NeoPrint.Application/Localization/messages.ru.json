@@ -924,5 +924,6 @@
   "pricing.campaignKindInvalid": "Неизвестный тип кампании.",
   "pricing.campaignPercentRange": "Скидка должна быть больше 0 и меньше 100 процентов.",
   "pricing.campaignPricesRequired": "Для ценовой кампании укажите цену чёрно-белой и цветной стороны (0 или больше).",
-  "pricing.campaignDatesOrder": "Окончание должно быть позже начала."
+  "pricing.campaignDatesOrder": "Окончание должно быть позже начала.",
+  "monitoring.errorTrackingOff": "Отслеживание ошибок выключено: у API нет адреса GlitchTip (ErrorTracking__ApiDsn). Тестовая ошибка не отправлена. Как настроить — в docs/MONITORING.md."
 }

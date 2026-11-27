@@ -56,6 +56,10 @@ services:
   grafana:
     ports: !reset []
 
+  # Error tracking (T-478): only through Caddy (errors.<host>), behind its own login.
+  glitchtip:
+    ports: !reset []
+
   api:
     build: !reset null
     image: ${NEOPRINT_API_IMAGE:?set by deploy.sh}

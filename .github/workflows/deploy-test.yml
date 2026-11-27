@@ -232,8 +232,9 @@ jobs:
           chmod 600 ~/.ssh/config
 
       # Only what the server needs to run the stack: the compose files, the
-      # init scripts they mount, and the seed example the init is checked
-      # against. No source code and nothing secret.
+      # init scripts they mount, the seed example the init is checked
+      # against, and the GlitchTip bootstrap (T-478). No source code and
+      # nothing secret.
       - name: Upload the stack definition
         run: |
           tar -czf - \
@@ -242,6 +243,7 @@ jobs:
             openbao \
             docker \
             deploy/test-server \
+            tools/monitoring/glitchtip-bootstrap.sh \
             | ssh neoprint-test "mkdir -p '$SERVER_DIR' && tar -xzf - -C '$SERVER_DIR'"
 
       - name: Deploy

@@ -50,6 +50,7 @@ Domen hələ yoxdur, ona görə serverin IP-sindən `sslip.io` adı düzəlir:
 | Test APK | `https://<HOST>/download/neoprint-test.apk` |
 | Mailpit (qeydiyyat və şifrə kodları) | `https://mail.<HOST>/` — parolla |
 | Grafana (monitorinq, T-477) | `https://grafana.<HOST>/` — Grafana-nın öz girişi |
+| GlitchTip (xəta izləmə, T-478) | `https://errors.<HOST>/` — GlitchTip-in öz girişi |
 | Dev endpoint-ləri (mock bank və s.) | `https://<HOST>/api/dev/...` — parolla |
 
 Swagger, MongoDB, Redis, RabbitMQ, RustFS və OpenBao kənardan açılmır
@@ -91,8 +92,8 @@ limiti 1 GB-dır — yaddaş azdırsa `.env`-dən `COMPOSE_PROFILES` sətrini si
 `docker compose up -d --remove-orphans` edin, sonra admin paneldə "Office redaktoru"
 söndürülü qalsın. Collabora olmayanda redaktor açılmır, qalan hər şey işləyir.
 
-**Monitorinq (T-477):** OpenTelemetry Collector, Prometheus və Grafana da işləyir
-(`COMPOSE_PROFILES=office,monitoring`). Boş halda ~360 MB, limitlər cəmi ~800 MB.
+**Monitorinq (T-477, T-478):** OpenTelemetry Collector, Prometheus, Grafana və GlitchTip
+(+ öz PostgreSQL-i) da işləyir (`COMPOSE_PROFILES=office,monitoring`). Boş halda ~600 MB, limitlər cəmi ~1,6 GB.
 Yaddaş azdırsa `monitoring`-i həmin sətirdən çıxarıb `docker compose up -d --remove-orphans`
 edin. API metrikası göndərə bilmir, amma işləməyə davam edir ([`MONITORING.md`](MONITORING.md)).
 
@@ -250,7 +251,8 @@ cat .test-server/credentials                                          # Mailpit 
 | Admin / Operator / Maliyyə | `dev-admin@` / `dev-operator@` / `dev-finance@neoprint.local` | eyni |
 | Mobil istifadəçi (email təsdiqlənib) | `dev-user@neoprint.local` | eyni |
 | Mailpit və dev endpoint-ləri | `TEST_TOOLS_USER` | `TEST_TOOLS_PASSWORD` |
-| Grafana (monitorinq) | `GRAFANA_ADMIN_USER` (`admin`) | `GRAFANA_ADMIN_PASSWORD` — yalnız Grafana ilk qalxanda tətbiq olunur; Grafana-da dəyişsəniz yenisi qalır |
+| Grafana (monitorinq) | `.test-server/monitoring/grafana.env` → `GF_SECURITY_ADMIN_USER` (`admin`) | `GF_SECURITY_ADMIN_PASSWORD` — yalnız Grafana ilk qalxanda tətbiq olunur; Grafana-da dəyişsəniz yenisi qalır |
+| GlitchTip (xəta izləmə) | `.test-server/monitoring/glitchtip-admin` → `GLITCHTIP_ADMIN_EMAIL` | `GLITCHTIP_ADMIN_PASSWORD` |
 
 Test kioskları və qalan hər şey lokal mühitdəki kimidir
 (`DEV_ENVIRONMENT.md` bölmə 4 və 5).

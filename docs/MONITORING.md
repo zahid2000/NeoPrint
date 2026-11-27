@@ -29,6 +29,57 @@ OpenTelemetry Collector  ──►  Prometheus  ◄── RabbitMQ (rabbitmq_pro
   biri işləmir, stack-in qalan hissəsi də dəyişmir. Yaddaş limitləri: kollektor
   160 MB, Prometheus 256 MB, Grafana 384 MB (lokal ölçü, boş halda: təxminən 80 + 60 + 220 MB).
 
+## Xəta izləmə (GlitchTip, T-478)
+
+```
+API ─────────────(daxili şəbəkə)──────────┐
+kiosk, mobil tətbiq, admin paneli ─ HTTPS ─┤──►  GlitchTip  (+ öz PostgreSQL-i)
+                                            │
+   DSN-i hər klient API-dən alır: GET /api/error-tracking/{admin|mobile|kiosk}
+```
+
+- **GlitchTip** (MIT) Sentry protokolunu başa düşür. Dörd yerdə Sentry SDK-ları işləyir:
+  - backend: `Sentry.AspNetCore`;
+  - kiosk: `Sentry`;
+  - mobil: `sentry_flutter`;
+  - admin: `@sentry/angular`.
+- Hər klientin GlitchTip-də ayrıca layihəsi var: "NeoPrint API", "NeoPrint Kiosk", "NeoPrint Mobile", "NeoPrint Admin".
+- **DSN gizli məlumat deyil.** O, klientə yalnız öz layihəsinə xəta göndərməyə imkan verir və hər brauzerdə və telefonda olur.
+  - Klientlər DSN-i girişdən əvvəl API-dən alır, ona görə giriş ekranındakı çöküş də çatır.
+  - API-nin öz DSN-i (`ErrorTracking__ApiDsn`) verilmir.
+- DSN boşdursa (lokal default), xəta izləmə sönülüdür və heç nə göndərilmir. Tətbiqlər əvvəlki kimi işləyir.
+- **Göndərilən:** xəta və onun stack-i, mühit, versiya.
+- **Göndərilməyən:**
+  - istifadəçi, e-poçt, IP, cookie, başlıqlar, sorğunun gövdəsi, query string;
+  - breadcrumb-lar, yəni xətadan əvvəl istifadəçinin etdikləri;
+  - kioskun maşın adı;
+  - ekran şəkli.
+- Hər SDK-da `beforeSend` bu sahələri təmizləyir, testlərlə yoxlanılır.
+- Xətalar 30 gün saxlanılır (`GLITCHTIP_MAX_EVENT_LIFE_DAYS`).
+- Admin paneli → "Monitorinq" → **"Sınaq xətası göndər"**: API bir sınaq xətası göndərir. O, bir dəqiqə ərzində GlitchTip-də "NeoPrint API" layihəsində görünür. Bütün yolun işlədiyini belə yoxlamaq olar.
+- GlitchTip bir proses kimi işləyir (`SERVER_ROLE=all_in_one`), Valkey olmadan (növbə PostgreSQL-dədir).
+  - Limitlər: GlitchTip 512 MB, PostgreSQL 256 MB.
+  - Boş halda təxminən 170 + 75 MB (lokal ölçü).
+
+### Qurulma: `tools/monitoring/glitchtip-bootstrap.sh`
+
+Skript bunları yaradır, əgər yoxdursa:
+- admini;
+- "NeoPrint" təşkilatını;
+- dörd layihəni.
+
+Sonra DSN-ləri env faylına yazır. Təkrar işlədiləndə heç nəyi dəyişmir.
+Test serverində `deploy.sh` onu hər deploy-da özü işlədir. Lokal:
+
+```bash
+docker compose --profile monitoring up -d
+GLITCHTIP_ADMIN_EMAIL=admin@neoprint.local GLITCHTIP_ADMIN_PASSWORD='<parol>'   bash tools/monitoring/glitchtip-bootstrap.sh .env.error-tracking --profile monitoring
+NEOPRINT_ERROR_TRACKING_ENV=./.env.error-tracking docker compose up -d api admin
+```
+
+`.env.error-tracking` gitignore-dadır. Bu dəyişəni hər dəfə yazmamaq üçün
+`NEOPRINT_ERROR_TRACKING_ENV=./.env.error-tracking` sətrini `.env`-ə əlavə edin.
+
 ## Dashboard-lar
 
 | Dashboard | Nə göstərir |
@@ -64,6 +115,7 @@ docker compose --profile monitoring up -d
 |---|---|
 | Grafana | http://localhost:3000 — `admin` / `admin`, ilk girişdə yeni parol istəyir |
 | Prometheus | http://localhost:9090 — yalnız bu kompüterdən (127.0.0.1) |
+| GlitchTip | http://localhost:8000 — bootstrap skriptinə verdiyiniz e-poçt / parol |
 
 Ancaq API-ni Visual Studio / `dotnet run` ilə işlədirsinizsə, metrikaları
 kollektora göndərmək üçün `Monitoring__OtlpEndpoint`-ə `http://localhost:4318/`
@@ -73,14 +125,23 @@ Compose-dakı API metrikaları özü göndərir.
 ## Test serveri
 
 - Profil `deploy.sh` tərəfindən yandırılır: `.env`-də `COMPOSE_PROFILES=office,monitoring`.
-- Grafana: `https://grafana.<HOST>/`. Bu ünvanı yalnız Caddy açır, giriş Grafana-nın
-  öz loginidir. İstifadəçi və parol serverdə `.test-server/credentials` faylındadır
-  (`GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`). Parolu `deploy.sh` təsadüfi
-  yaradır və heç yerdə çap etmir.
-- Bu parol yalnız Grafana-nın bazası ilk dəfə yarananda tətbiq olunur. Sonra
-  Grafana-da dəyişdirsəniz, yeni parol qalır.
+- **Grafana:** `https://grafana.<HOST>/`.
+  - Bu ünvanı yalnız Caddy açır, giriş Grafana-nın öz loginidir.
+  - İstifadəçi və parol serverdə `.test-server/monitoring/grafana.env` faylındadır (`GF_SECURITY_ADMIN_*`).
+  - Parolu `deploy.sh` təsadüfi yaradır və heç yerdə çap etmir. Monitorinqin ilk deploy-unda parol
+    `.test-server/credentials`-ə yazılmışdı. Növbəti deploy həmin parolu bu fayla köçürür.
+  - Parol yalnız Grafana-nın bazası ilk dəfə yarananda tətbiq olunur. Sonra Grafana-da dəyişdirsəniz, yeni parol qalır.
+- **GlitchTip:** `https://errors.<HOST>/`. Giriş GlitchTip-in özündədir.
+  - E-poçt və parol serverdə `.test-server/monitoring/glitchtip-admin` faylındadır.
+  - Qeydiyyat bağlıdır. Yeni istifadəçini admin GlitchTip-in özündə dəvət edir.
+  - Bazanın parolu və `SECRET_KEY` `.test-server/monitoring/glitchtip.env` faylındadır.
+  - DSN-lər `.test-server/monitoring/error-tracking.env` faylındadır və API-yə buradan verilir.
+  - Kiosklar, telefon və panel xətaları bu ünvana göndərir, ona görə o, test alətlərinin parolu ilə bağlı deyil.
+- Bu fayllar bir dəfə yaranır və serverdən çıxmır. Repodakı `docker/monitoring/dev-secrets` yalnız lokal üçündür.
+  Serverdə `.env`-dəki `NEOPRINT_MONITORING_SECRETS_DIR` və `NEOPRINT_ERROR_TRACKING_ENV` başqa yerə göstərir.
 - Prometheus kənardan açılmır.
-- Yaddaş azdırsa: `.env`-də `COMPOSE_PROFILES`-dən `monitoring`-i çıxarın və
+- Yaddaş: monitorinq servisləri boş halda təxminən 600 MB tutur (Grafana yığımı ~360 MB, GlitchTip ~250 MB).
+  Yaddaş azdırsa: `.env`-də `COMPOSE_PROFILES`-dən `monitoring`-i çıxarın və
   `docker compose up -d --remove-orphans` edin.
 
 ## Alert-lər

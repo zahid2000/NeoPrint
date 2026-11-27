@@ -286,6 +286,12 @@ services:
         condition: service_healthy
       rustfs-init:
         condition: service_completed_successfully
+    # Where the API, the kiosk, the app and the panel report their errors
+    # (T-478): ErrorTracking__*Dsn. Empty in development; on the test server
+    # the file tools/monitoring/glitchtip-bootstrap.sh writes. A DSN is not a
+    # secret - every client holds its own.
+    env_file:
+      - ${NEOPRINT_ERROR_TRACKING_ENV:-./docker/monitoring/dev-secrets/error-tracking.env}
     # Bootstrap only. Every secret comes from OpenBao (plan section 2.13):
     # nothing below is a secret, and no NEOPRINT_* variable is set here.
     environment:
@@ -317,6 +323,7 @@ services:
       Monitoring__OtlpEndpoint: http://otel-collector:4318/
       # Where the admin panel's "Monitorinq" page sends the browser.
       Monitoring__GrafanaUrl: ${NEOPRINT_GRAFANA_URL:-http://localhost:3000}
+      Monitoring__GlitchTipUrl: ${NEOPRINT_GLITCHTIP_URL:-http://localhost:8000}
     ports:
       - "${NEOPRINT_PORT_API:-5080}:8080"
     volumes:
@@ -458,12 +465,12 @@ services:
     depends_on:
       prometheus:
         condition: service_healthy
+    # The first administrator (GF_SECURITY_ADMIN_*), used only when Grafana's
+    # database is created. Development: admin / admin; the test server: a
+    # random one deploy.sh wrote (docs/MONITORING.md).
+    env_file:
+      - ${NEOPRINT_MONITORING_SECRETS_DIR:-./docker/monitoring/dev-secrets}/grafana.env
     environment:
-      # The first administrator. Only used when Grafana's database is created;
-      # on the test server deploy.sh passes a random one (docs/MONITORING.md).
-      # Locally: admin / admin, and Grafana asks for a new one at first login.
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ${NEOPRINT_GRAFANA_ADMIN_PASSWORD:-admin}
       GF_SERVER_ROOT_URL: ${NEOPRINT_GRAFANA_URL:-http://localhost:3000}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_AUTH_ANONYMOUS_ENABLED: "false"
@@ -487,6 +494,66 @@ services:
     mem_limit: 384m
     restart: unless-stopped
 
+  # Error tracking (plan step 8, T-478): self-hosted GlitchTip (MIT), which
+  # speaks the Sentry protocol - the API, the kiosk, the app and the panel
+  # report their unhandled errors to it with the Sentry SDKs. Web and worker
+  # in one process (all_in_one) and no Valkey: the task queue lives in its
+  # own PostgreSQL, so the two containers stay under about 600 MB.
+  # Locally: http://localhost:8000, the first user is made by
+  # tools/monitoring/glitchtip-bootstrap.sh (docs/MONITORING.md).
+  glitchtip-db:
+    image: postgres:17.12-alpine
+    container_name: ${NEOPRINT_NAME:-neoprint}-glitchtip-db
+    profiles: ["monitoring"]
+    command: ["postgres", "-c", "max_locks_per_transaction=512"]
+    # POSTGRES_PASSWORD, with GlitchTip's DATABASE_URL and SECRET_KEY:
+    # development values here, random ones on the test server (deploy.sh).
+    env_file:
+      - ${NEOPRINT_MONITORING_SECRETS_DIR:-./docker/monitoring/dev-secrets}/glitchtip.env
+    environment:
+      POSTGRES_USER: glitchtip
+      POSTGRES_DB: glitchtip
+    volumes:
+      - glitchtip-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U glitchtip -d glitchtip"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    mem_limit: 256m
+    restart: unless-stopped
+
+  glitchtip:
+    image: glitchtip/glitchtip:6.2.6
+    container_name: ${NEOPRINT_NAME:-neoprint}-glitchtip
+    profiles: ["monitoring"]
+    depends_on:
+      glitchtip-db:
+        condition: service_healthy
+    env_file:
+      - ${NEOPRINT_MONITORING_SECRETS_DIR:-./docker/monitoring/dev-secrets}/glitchtip.env
+    environment:
+      SERVER_ROLE: all_in_one
+      # Empty: no Valkey, the queue and the cache are in PostgreSQL.
+      VALKEY_URL: ""
+      GLITCHTIP_DOMAIN: ${NEOPRINT_GLITCHTIP_URL:-http://localhost:8000}
+      DEFAULT_FROM_EMAIL: glitchtip@neoprint.local
+      EMAIL_URL: smtp://mailpit:1025
+      # Accounts are made by the administrator, nobody signs themselves up.
+      ENABLE_USER_REGISTRATION: "false"
+      ENABLE_ORGANIZATION_CREATION: "false"
+      # Errors are kept 30 days.
+      GLITCHTIP_MAX_EVENT_LIFE_DAYS: "30"
+      VTASKS_CONCURRENCY: "4"
+      DATABASE_POOL_MAX_SIZE: "5"
+    ports:
+      - "127.0.0.1:${NEOPRINT_PORT_GLITCHTIP:-8000}:8000"
+    volumes:
+      - glitchtip-uploads:/code/uploads
+    mem_limit: 512m
+    restart: unless-stopped
+
   # The panel and the API behind one origin: nginx proxies /api and /hubs to
   # the backend, so the SameSite=Strict refresh cookie works and no CORS
   # configuration is needed (plan section 8A.1).
@@ -498,6 +565,9 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    environment:
+      # GlitchTip, for the panel's Content-Security-Policy (T-478).
+      NEOPRINT_ERRORS_ORIGIN: ${NEOPRINT_GLITCHTIP_URL:-http://localhost:8000}
     ports:
       - "${NEOPRINT_PORT_ADMIN:-8080}:80"
     healthcheck:
@@ -530,3 +600,5 @@ volumes:
   rustfs-secondary-data:
   prometheus-data:
   grafana-data:
+  glitchtip-db-data:
+  glitchtip-uploads:

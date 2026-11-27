@@ -64,3 +64,14 @@ mail.{$NEOPRINT_HOST} {
 grafana.{$NEOPRINT_HOST} {
 	reverse_proxy grafana:3000
 }
+
+# GlitchTip: the errors the API, the kiosks, the app and the panel report
+# (T-478). Its own login - .test-server/monitoring/glitchtip-admin on the
+# server. The clients send their errors here too, so it is not behind the
+# test tools' password.
+errors.{$NEOPRINT_HOST} {
+	request_body {
+		max_size 40MB
+	}
+	reverse_proxy glitchtip:8000
+}

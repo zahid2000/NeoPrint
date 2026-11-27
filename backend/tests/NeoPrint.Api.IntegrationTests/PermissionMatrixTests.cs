@@ -70,6 +70,8 @@ public sealed class PermissionMatrixTests
         "POST api/devices/register", "POST api/devices/challenge", "POST api/devices/token",
         // What the app and the kiosk show before anybody signs in.
         "GET api/legal/{docType}", "GET api/map/config", "GET api/features", "GET api/files/formats",
+        // Where a client reports a crash, also from its sign-in screen; a DSN is public by design (T-478).
+        "GET api/error-tracking/{client}",
         // The app's "Əlaqə": the hotline and the chats the panel switched on (T-438).
         "GET api/contact",
         // The payment provider's callbacks; their signature is the check.
@@ -214,6 +216,7 @@ public sealed class PermissionMatrixTests
         new("GET", "api/admin/system/jobs", Permissions.SystemJobsView),
         new("POST", "api/admin/hangfire-session", Permissions.SystemJobsView),
         new("GET", "api/admin/monitoring", Permissions.MonitoringView),
+        new("POST", "api/admin/monitoring/test-error", Permissions.MonitoringView),
         new("GET", "api/admin/operator/kiosks", Permissions.OperatorPanel),
         new("GET", "api/admin/operator/kiosks/{id:guid}", Permissions.OperatorPanel, Target.TheirKiosk),
 

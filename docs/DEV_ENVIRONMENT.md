@@ -1734,9 +1734,11 @@ node tools/monitoring/dashboards.mjs                       # dashboard JSON-lar�
 
 - Grafana: http://localhost:3000 — `admin` / `admin`, ilk girişdə yeni parol istəyir. Ana səhifə "NeoPrint — Ümumi baxış".
 - Prometheus: http://localhost:9090 (yalnız 127.0.0.1).
+- GlitchTip (xəta izləmə, T-478): http://localhost:8000. Hesab, layihələr və DSN-lər bir əmrlə yaranır
+  (`tools/monitoring/glitchtip-bootstrap.sh`, `MONITORING.md` "Qurulma"). DSN-siz (default) heç bir klient xəta göndərmir.
 - Admin panelində "Monitorinq" (`monitoring.view`, SuperAdmin-də var) Grafana-ya keçid verir.
 - Lokal mühitinizdə etməli olduğunuz: heç nə məcburi deyil. Monitorinqi görmək istəyirsinizsə yuxarıdakı əmr.
-  Yaddaş: üç servis boş halda ~360 MB.
+  Yaddaş: hamısı boş halda ~600 MB (Grafana yığımı ~360 MB, GlitchTip ~250 MB).
 - Ətraflı: [`MONITORING.md`](MONITORING.md).
 
 ## 7z. Addım 7B — M20: staging bu maşında (T-335, T-169)

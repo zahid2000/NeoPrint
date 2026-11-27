@@ -924,5 +924,6 @@
   "pricing.campaignKindInvalid": "Kampaniyanın növü tanınmadı.",
   "pricing.campaignPercentRange": "Endirim faizi 0-dan böyük, 100-dən kiçik olmalıdır.",
   "pricing.campaignPricesRequired": "Qiymət kampaniyasında ağ-qara və rəngli səhifənin qiyməti yazılmalıdır (0 və ya daha çox).",
-  "pricing.campaignDatesOrder": "Bitmə vaxtı başlanğıcdan sonra olmalıdır."
+  "pricing.campaignDatesOrder": "Bitmə vaxtı başlanğıcdan sonra olmalıdır.",
+  "monitoring.errorTrackingOff": "Xəta izləmə söndürülüb: API-nin GlitchTip ünvanı (ErrorTracking__ApiDsn) qurulmayıb. Sınaq xətası göndərilmədi. Qurulma qaydası docs/MONITORING.md-dədir."
 }

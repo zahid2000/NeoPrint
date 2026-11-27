@@ -50,6 +50,13 @@ Alert yalnız `Error`-a qurulur, ona görə qayda rəddi `Error` yazılmır. ASP
 Bu kateqoriya `Program.cs`-də söndürülüb, çünki səviyyəni handler seçir (T-132,
 `RefusalLoggingTests`).
 
+## Xəta izləmə (T-478)
+
+İşlənməmiş xətalar backend, kiosk, mobil və admindən self-hosted GlitchTip-ə gedir
+(Sentry SDK-ları, [`MONITORING.md`](MONITORING.md)). Aşağıdakı "Do not log" siyahısı
+oraya göndərilənə də aiddir. SDK-lar istifadəçini, IP-ni, cookie-ləri, başlıqları,
+sorğu gövdəsini, query string-i və breadcrumb-ları göndərmədən əvvəl silir.
+
 ## Do not log
 
 -   passwords

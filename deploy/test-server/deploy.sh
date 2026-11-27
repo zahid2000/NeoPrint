@@ -173,17 +173,49 @@ if [ ! -f "$CREDENTIALS_FILE" ]; then
     rm -f "$CADDY_STATE_DIR/tools-auth.caddy"
 fi
 
-# Grafana's first administrator (T-477). Added to a credentials file written
-# before monitoring existed, too. Grafana takes it only when its database is
-# created; changed later in Grafana, the new one stays.
-if ! grep -q '^GRAFANA_ADMIN_PASSWORD=' "$CREDENTIALS_FILE"; then
-    log "adding Grafana's administrator password to .test-server/credentials"
-    printf 'GRAFANA_ADMIN_USER=admin\nGRAFANA_ADMIN_PASSWORD=%s\n' "$(random_hex 16)" >>"$CREDENTIALS_FILE"
+# Monitoring's own credentials (T-477, T-478), each written once: Grafana's
+# first administrator, GlitchTip's database password and secret key. Compose
+# reads them as env files (NEOPRINT_MONITORING_SECRETS_DIR in .env), so the
+# development ones in docker/monitoring/dev-secrets never reach this server.
+# Grafana and PostgreSQL take theirs only when their database is created.
+MONITORING_DIR="$STATE_DIR/monitoring"
+mkdir -p "$MONITORING_DIR"
+chmod 700 "$MONITORING_DIR"
+
+if [ ! -f "$MONITORING_DIR/grafana.env" ]; then
+    log "writing Grafana's administrator to .test-server/monitoring/grafana.env"
+    # The first deployment with Grafana kept its password in credentials;
+    # Grafana's database already holds that one, so it is the one carried over.
+    grafana_password="$(sed -n 's/^GRAFANA_ADMIN_PASSWORD=//p' "$CREDENTIALS_FILE")"
+    [ -n "$grafana_password" ] || grafana_password="$(random_hex 16)"
+    printf 'GF_SECURITY_ADMIN_USER=admin\nGF_SECURITY_ADMIN_PASSWORD=%s\n' "$grafana_password" >"$MONITORING_DIR/grafana.env"
+    grafana_password=""
+    chmod 600 "$MONITORING_DIR/grafana.env"
 fi
-# In this script's environment only, for Compose to put into the container;
-# never in .env, which is readable and holds no secret.
-NEOPRINT_GRAFANA_ADMIN_PASSWORD="$(sed -n 's/^GRAFANA_ADMIN_PASSWORD=//p' "$CREDENTIALS_FILE")"
-export NEOPRINT_GRAFANA_ADMIN_PASSWORD
+
+if [ ! -f "$MONITORING_DIR/glitchtip.env" ]; then
+    log "writing GlitchTip's database password and secret key to .test-server/monitoring/glitchtip.env"
+    glitchtip_db="$(random_hex 24)"
+    printf 'POSTGRES_PASSWORD=%s\nDATABASE_URL=postgres://glitchtip:%s@glitchtip-db:5432/glitchtip\nSECRET_KEY=%s\n' \
+        "$glitchtip_db" "$glitchtip_db" "$(random_hex 32)" >"$MONITORING_DIR/glitchtip.env"
+    chmod 600 "$MONITORING_DIR/glitchtip.env"
+    glitchtip_db=""
+fi
+
+# GlitchTip's administrator (T-478): made by the bootstrap below, once.
+if [ ! -f "$MONITORING_DIR/glitchtip-admin" ]; then
+    log "writing GlitchTip's administrator to .test-server/monitoring/glitchtip-admin"
+    printf 'GLITCHTIP_ADMIN_EMAIL=admin@neoprint.local\nGLITCHTIP_ADMIN_PASSWORD=%s\n' "$(random_hex 16)" \
+        >"$MONITORING_DIR/glitchtip-admin"
+    chmod 600 "$MONITORING_DIR/glitchtip-admin"
+fi
+
+# The DSNs the API hands out. Empty until GlitchTip has its projects (step 7),
+# so the first "up" has a file to read.
+if [ ! -f "$MONITORING_DIR/error-tracking.env" ]; then
+    cp docker/monitoring/dev-secrets/error-tracking.env "$MONITORING_DIR/error-tracking.env"
+    chmod 600 "$MONITORING_DIR/error-tracking.env"
+fi
 
 if [ ! -f "$CADDY_STATE_DIR/tools-auth.caddy" ]; then
     tools_user="$(sed -n 's/^TEST_TOOLS_USER=//p' "$CREDENTIALS_FILE")"
@@ -219,7 +251,10 @@ NEOPRINT_ACME_EMAIL=$NEOPRINT_ACME_EMAIL
 # Monitoring (T-477): the collector, Prometheus and Grafana.
 COMPOSE_PROFILES=office,monitoring
 NEOPRINT_OFFICE_TLS_TERMINATION=true
+NEOPRINT_MONITORING_SECRETS_DIR=./.test-server/monitoring
 NEOPRINT_GRAFANA_URL=https://grafana.$NEOPRINT_HOST
+NEOPRINT_GLITCHTIP_URL=https://errors.$NEOPRINT_HOST
+NEOPRINT_ERROR_TRACKING_ENV=./.test-server/monitoring/error-tracking.env
 EOF
 chmod 644 "$RELEASE_FILE"
 
@@ -299,6 +334,24 @@ while :; do
     sleep 5
 done
 
+# ---------------------------------------------------------------------------
+# 7. Error tracking (T-478): GlitchTip's organisation and projects, and the
+#    DSNs the API hands out. Not fatal - the stack works without it.
+# ---------------------------------------------------------------------------
+if (
+    set -a
+    # shellcheck disable=SC1091
+    . "$MONITORING_DIR/glitchtip-admin"
+    set +a
+    bash tools/monitoring/glitchtip-bootstrap.sh "$MONITORING_DIR/error-tracking.env" \
+        --project-directory "$PROJECT_DIR" -f docker-compose.yml -f deploy/test-server/compose.override.yml
+); then
+    # A changed DSN file recreates the API (and only then).
+    compose up --detach --quiet-pull >/dev/null 2>&1 || log "WARNING: could not restart the API with the DSNs"
+else
+    log "WARNING: GlitchTip could not be set up; errors are not tracked (docs/MONITORING.md)"
+fi
+
 # The images of earlier deployments, once nothing runs from them.
 "${DOCKER[@]}" image prune --force >/dev/null 2>&1 || true
 
@@ -306,5 +359,6 @@ log "done"
 log "panel:      https://$NEOPRINT_HOST/"
 log "API:        https://$NEOPRINT_HOST/api/"
 log "mail:       https://mail.$NEOPRINT_HOST/   (user and password: .test-server/credentials on the server)"
-log "grafana:    https://grafana.$NEOPRINT_HOST/   (GRAFANA_ADMIN_* in .test-server/credentials on the server)"
+log "grafana:    https://grafana.$NEOPRINT_HOST/   (GF_SECURITY_ADMIN_* in .test-server/monitoring/grafana.env on the server)"
+log "glitchtip:  https://errors.$NEOPRINT_HOST/    (GLITCHTIP_ADMIN_* in .test-server/monitoring/glitchtip-admin on the server)"
 log "passwords:  docs/TEST_SERVER.md says where each one is on the server"

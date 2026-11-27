@@ -380,6 +380,9 @@ builder.Services.AddCors(options => options.AddPolicy(
 // nothing is registered unless Monitoring:OtlpEndpoint is set.
 builder.Services.AddNeoPrintMonitoring(builder.Configuration, builder.Environment);
 
+// Unhandled errors to GlitchTip (T-478): nothing unless ErrorTracking:ApiDsn is set.
+builder.WebHost.AddNeoPrintErrorTracking(builder.Configuration, builder.Environment);
+
 var app = builder.Build();
 
 // ---------------------------------------------------------------------------

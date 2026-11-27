@@ -2332,11 +2332,26 @@ göndərirmi, Grafana harada açılır, "Əməliyyatlar" göstəriciləri son d�
 (Grafana-nın öz girişi var, `docs/MONITORING.md`).
 
 ```json
-{ "metricsEnabled": true, "grafanaUrl": "https://grafana.<host>", "countedAt": "2026-11-27T13:21:00Z" }
+{ "metricsEnabled": true, "grafanaUrl": "https://grafana.<host>", "countedAt": "2026-11-27T13:21:00Z",
+  "errorTrackingEnabled": true, "glitchTipUrl": "https://errors.<host>" }
 ```
 
 `grafanaUrl` — `Monitoring__GrafanaUrl`; http(s) ünvanı deyilsə və ya qurulmayıbsa `null`. `metricsEnabled` —
-`Monitoring__OtlpEndpoint` qurulub. `countedAt` — metrikalar sönülüdürsə və ya hələ sayılmayıbsa `null`.
+`Monitoring__OtlpEndpoint` qurulub. `countedAt` — metrikalar sönülüdürsə və ya hələ sayılmayıbsa `null`. `errorTrackingEnabled` — API xətalarını GlitchTip-ə
+göndərir (T-478). `glitchTipUrl` — `Monitoring__GlitchTipUrl`.
+
+### `POST /api/admin/monitoring/test-error`
+
+`monitoring.view` (T-478). API GlitchTip-ə bir sınaq xətası göndərir (`MonitoringTestException`) və onun id-sini qaytarır:
+`{ "eventId": "0e0e73ec…" }`. Xəta izləmə sönülüdürsə: `409`, `monitoring.errorTrackingOff`.
+
+### `GET /api/error-tracking/{client}`
+
+Anonim (T-478). `client`: `admin`, `mobile`, `kiosk` (başqası → `404`; API-nin öz DSN-i verilmir). Klient
+işlənməmiş xətalarını hara göndərəcəyini buradan öyrənir:
+`{ "dsn": "https://<açar>@errors.<host>/3", "environment": "Development" }`. Xəta izləmə sönülüdürsə və ya DSN
+düzgün ünvan deyilsə, `dsn` olmur. DSN gizli məlumat deyil: klientə yalnız öz GlitchTip layihəsinə xəta göndərməyə
+imkan verir. 5 dəqiqə keşlənir.
 
 ### `GET /api/admin/system/jobs`
 

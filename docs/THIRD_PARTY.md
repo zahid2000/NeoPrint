@@ -38,6 +38,7 @@ mənbə və səbəblə burada qeyd olunur.
 | `QRCoder` | 1.8.0 | MIT | Raffael Herrmann | QR generasiya |
 | `OpenTelemetry.Extensions.Hosting` | 1.21.0 | Apache-2.0 | OpenTelemetry (CNCF) | API metrikalarının OpenTelemetry Collector-a göndərilməsi (plan Addım 8 "Monitorinq", T-477; plan paketi adı ilə göstərir: "OpenTelemetry (.NET SDK — Apache-2.0, CNCF)"). Yalnız `Monitoring__OtlpEndpoint` qurulanda qoşulur |
 | `OpenTelemetry.Exporter.OpenTelemetryProtocol` | 1.21.0 | Apache-2.0 | OpenTelemetry (CNCF) | Yuxarıdakının OTLP/HTTP ixracatçısı (T-477) |
+| `Sentry.AspNetCore` (+ `Sentry`, `Sentry.Extensions.Logging`) | 6.13.0 | MIT | Sentry | API-nin işlənməmiş xətaları self-hosted GlitchTip-ə (plan Addım 8 "Monitorinq": "Sentry SDK-ları (MIT)", T-478). Yalnız `ErrorTracking__ApiDsn` qurulanda qoşulur. PII, sorğu gövdəsi və breadcrumb-lar göndərilmir. 7.x xətti noyabrda çıxıb və hələ yenidir, ona görə 6.x seçildi |
 | `Swashbuckle.AspNetCore` | 7.3.2 | MIT | domaindrivendev | Swagger UI — **yalnız Development mühitində** qeydiyyatdan keçir |
 | `System.Management` | 10.0.15 | MIT | Microsoft | Windows WMI (kiosk telemetriyası) |
 
@@ -46,6 +47,7 @@ mənbə və səbəblə burada qeyd olunur.
 | Paket | Versiya | Lisenziya | Mənbə | Niyə lazımdır |
 |---|---|---|---|---|
 | `Avalonia`, `Avalonia.Desktop`, `Avalonia.Themes.Fluent`, `Avalonia.Fonts.Inter` | 12.1.6 | MIT | AvaloniaUI | Kiosk UI (Windows + Linux eyni kod bazası) |
+| `Sentry` | 6.13.0 | MIT | Sentry | Kioskun işlənməmiş xətaları GlitchTip-ə (T-478). DSN API-dən gəlir (universal build-də heç nə yoxdur). Maşın adı, istifadəçi və breadcrumb göndərilmir |
 | `CommunityToolkit.Mvvm` | 8.4.2 | MIT | Microsoft | MVVM |
 | `Microsoft.AspNetCore.SignalR.Client` | 10.0.15 | MIT | Microsoft | Real-time |
 | `Lextm.SharpSnmpLib` | 12.5.7 | MIT | Lex Li | Şəbəkə printerlərinin SNMP telemetriyası |
@@ -76,6 +78,7 @@ düzəldildi (`DECISIONS.md`).
 | Paket | Versiya | Lisenziya | İstifadə |
 |---|---|---|---|
 | `flutter_riverpod` | 2.6.1 | MIT | State management |
+| `sentry_flutter` | 10.4.0 | MIT | Mobil tətbiqin işlənməmiş xətaları GlitchTip-ə (plan Addım 8, T-478). DSN API-dən gəlir və tətbiq açılandan sonra başlayır. İstifadəçi, ekran şəkli, view tree və breadcrumb göndərilmir |
 | `go_router` | 14.6.2 | BSD-3-Clause (Flutter komandası) | Naviqasiya, deep link-lər |
 | `dio` | 5.7.0 | MIT | HTTP, token yeniləmə, yükləmə proqresi |
 | `web_socket_channel` | 3.0.1 | BSD-3-Clause (Dart komandası) | Öz SignalR klientimizin nəqliyyatı |
@@ -109,6 +112,7 @@ Birbaşa asılılıqlar (`admin/package.json`), versiyalar pinli.
 | Paket | Versiya | Lisenziya | İstifadə |
 |---|---|---|---|
 | `@angular/common` | 21.2.23 | MIT | Angular |
+| `@sentry/angular` | 10.78.0 | MIT | Panelin işlənməmiş xətaları GlitchTip-ə (plan Addım 8, T-478). DSN API-dən gəlir. Breadcrumbs inteqrasiyası çıxarılıb, istifadəçi / sorğu sahələri təmizlənir. 11.x xətti hələ yenidir |
 | `@angular/compiler` | 21.2.23 | MIT | Angular |
 | `@angular/core` | 21.2.23 | MIT | Angular |
 | `@angular/forms` | 21.2.23 | MIT | Angular |
@@ -171,6 +175,7 @@ Bölmə 2.0 qaydası 1-ə görə aşağıdakılar üçün paket **əlavə edilmi
 | Ghostscript (+ GhostPCL, GhostXPS) | AGPL-3.0 | PS / EPS / PCL / PRN / XPS → PDF (ayrıca proses, dəyişdirilmədən) |
 | OpenTelemetry Collector Contrib (`otel/opentelemetry-collector-contrib:0.165.0`) | Apache-2.0 | Monitorinq (plan Addım 8, T-477): API-dən OTLP qəbul edir, Prometheus-a açır. Compose profili `monitoring`, `mem_limit: 160m` |
 | Prometheus (`prom/prometheus:v3.16.0`) | Apache-2.0 | Metrika bazası (T-477): 30 gün, ən çox 2 GB. Profil `monitoring`, `mem_limit: 256m` |
+| GlitchTip (`glitchtip/glitchtip:6.2.6`) + PostgreSQL (`postgres:17.12-alpine`) | MIT / PostgreSQL License | Xəta izləmə (plan Addım 8, T-478): Sentry protokolu ilə xəta qəbul edir. `all_in_one`, Valkey-siz, profil `monitoring`, limitlər 512 MB + 256 MB. Qeydiyyat bağlıdır |
 | Grafana (`grafana/grafana:13.3.1`) | AGPL-3.0 (server kimi, dəyişdirilmədən — plan 2.0) | Dashboard-lar (T-477), repodan provision olunur. Profil `monitoring`, `mem_limit: 384m`. `grafana/grafana-oss` image-i 13.0.2-dən sonra yenilənmir, OSS versiya artıq `grafana/grafana`-dır |
 | PDFium native kitabxanası (`bblanchon/pdfium-binaries`, `chromium/8066`; backend Dockerfile-da, CI-də və kiosk build-ində (`NeoPrint.Kiosk.csproj`) pinlənib, hər yükləmə SHA-256 ilə yoxlanılır — T-100) | BSD-3 / Apache-2.0 (Google PDFium) | Səhifə sayı və səhifə şəkilləri. Yalnız hazır binary götürülür; wrapper öz kodumuzdur (`NeoPrint.Pdfium`) |
 | CUPS | Apache-2.0 | Linux çap |

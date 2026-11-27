@@ -924,5 +924,6 @@
   "pricing.campaignKindInvalid": "Unknown campaign type.",
   "pricing.campaignPercentRange": "The discount must be above 0 and below 100 percent.",
   "pricing.campaignPricesRequired": "A price campaign needs both the black and white and the colour side price (0 or more).",
-  "pricing.campaignDatesOrder": "The end must come after the start."
+  "pricing.campaignDatesOrder": "The end must come after the start.",
+  "monitoring.errorTrackingOff": "Error tracking is off: the API has no GlitchTip address (ErrorTracking__ApiDsn). No test error was sent. docs/MONITORING.md says how to set it up."
 }
