@@ -89,7 +89,8 @@ public sealed record KioskConfiguration(
     int TelemetrySeconds = 30,
     KioskUpdateSettings? Update = null,
     KioskBranding? Branding = null,
-    KioskSleepSettings? Sleep = null)
+    KioskSleepSettings? Sleep = null,
+    Camera.KioskCameraSettings? Camera = null)
 {
     /// <summary>
     /// Whether a feature flag is on for this kiosk (plan section 2.16, T-160). A key

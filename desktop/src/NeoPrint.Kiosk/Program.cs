@@ -212,6 +212,10 @@ internal static class Program
         services.TryAddSingleton<ISystemMetrics, FakeSystemMetrics>();
         services.TryAddSingleton<IConverterProcessRunner, PlainConverterRunner>();
 
+        // The camera (T-482): the machine's FFmpeg and camera; a test picture with Kiosk:FakeCamera.
+        services.AddSingleton<NeoPrint.Kiosk.Core.Camera.ICameraHost>(provider => new NeoPrint.Kiosk.Core.Camera.SystemCameraHost(
+            provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value));
+
         // The fake printer prints into a folder, so the whole flow works on a
         // machine with no printer and in CI (plan section 7.6); with
         // Kiosk:UseFakePrinter it is listed next to the real ones (plan 7.7).

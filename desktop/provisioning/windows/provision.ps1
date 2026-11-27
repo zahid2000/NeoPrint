@@ -56,7 +56,8 @@
 
 .PARAMETER DependenciesPath
     A folder with the converter installers: LibreOffice_*_x64.msi and
-    gs*w64.exe (docs/KIOSK_SETUP.md). What is already installed is skipped.
+    gs*w64.exe, and the camera's FFmpeg as ffmpeg-*-win64-lgpl*.zip (T-482;
+    docs/KIOSK_SETUP.md). What is already installed is skipped.
 
 .EXAMPLE
     .\provision.ps1 -ApiUrl https://api.neoprint.az -OfflinePackage D:\neoprint -DependenciesPath D:\deps
@@ -76,7 +77,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$ProvisioningVersion = "0.6.0"
+$ProvisioningVersion = "0.7.0"
 
 $InstallRoot = "C:\Program Files\NeoPrint"
 $DataRoot    = "C:\ProgramData\NeoPrint"
@@ -558,7 +559,32 @@ if ($DependenciesPath) {
             Write-Log "  WARNING: no gs*w64.exe in $DependenciesPath; PostScript files will not convert"
         }
     }
+
+    # The camera's recorder (T-482): an LGPL build of FFmpeg, run by the
+    # kiosk as a separate program; nothing of it is linked into NeoPrint.
+    $ffmpeg = Join-Path $InstallRoot "ffmpeg\bin\ffmpeg.exe"
+    if (-not (Test-Path $ffmpeg)) {
+        $zip = Get-ChildItem -Path $DependenciesPath -Filter "ffmpeg-*-win64-lgpl*.zip" | Select-Object -First 1
+        if ($zip) {
+            Write-Log "  FFmpeg: $($zip.Name)"
+            $unpacked = Join-Path $env:TEMP "neoprint-ffmpeg"
+            Remove-Item -Path $unpacked -Recurse -Force -ErrorAction SilentlyContinue
+            Expand-Archive -Path $zip.FullName -DestinationPath $unpacked -Force
+            $top = Get-ChildItem -Path $unpacked -Directory | Select-Object -First 1
+            $target = Join-Path $InstallRoot "ffmpeg"
+            Remove-Item -Path $target -Recurse -Force -ErrorAction SilentlyContinue
+            Move-Item -Path $top.FullName -Destination $target
+            Remove-Item -Path $unpacked -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        else {
+            Write-Log "  WARNING: no ffmpeg-*-win64-lgpl*.zip in $DependenciesPath; the camera will not record"
+        }
+    }
 }
+
+# Desktop applications may use the camera (T-482): the kiosk records only
+# where the panel turned it on, and says so on the screen while it does.
+Set-RegistryValue "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam" "Value" "Allow" -Type String
 
 # --- NeoPrint --------------------------------------------------------------
 Set-Step 10 "NeoPrint"

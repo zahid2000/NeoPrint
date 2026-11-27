@@ -35,7 +35,7 @@
 # ---------------------------------------------------------------------------
 set -Eeuo pipefail
 
-PROVISIONING_VERSION="0.8.1"
+PROVISIONING_VERSION="0.9.0"
 
 API_URL=""
 ENROLLMENT_TOKEN=""
@@ -265,6 +265,7 @@ apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends \
     udisks2 \
     libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress \
     ghostscript \
+    ffmpeg \
     fonts-dejavu fonts-liberation fonts-crosextra-carlito fonts-crosextra-caladea \
     fontconfig \
     chrony \
@@ -325,6 +326,9 @@ install -d -o "$KIOSK_USER" -g "$KIOSK_USER" -m 700 "$DATA_ROOT/device"
 install -d -o "$KIOSK_USER" -g "$CONVERT_USER" -m 710 "$DATA_ROOT/spool"
 install -d -o "$KIOSK_USER" -g "$CONVERT_USER" -m 2770 "$DATA_ROOT/spool/work"
 install -d -o "$KIOSK_USER" -g "$SERVICE_USER" -m 750 "$DATA_ROOT/state"
+# The camera's recordings (T-482): the kiosk application's alone. Sealed for
+# the backend; the minute being written is the only plain video on the disk.
+install -d -o "$KIOSK_USER" -g "$KIOSK_USER" -m 700 "$DATA_ROOT/camera"
 install -d -o "$KIOSK_USER" -g "$SERVICE_USER" -m 770 "$LOG_ROOT"
 install -d -m 755 "$INSTALL_ROOT" "$LIB_ROOT"
 

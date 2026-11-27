@@ -93,4 +93,19 @@ public sealed class KioskSettings
 
     /// <summary>A limit for package downloads in KB/s, so an update does not take the kiosk's line (0: none).</summary>
     public int UpdateDownloadKBps { get; set; }
+
+    /// <summary>The FFmpeg the camera records with (T-482); empty finds it where provisioning put it, then on PATH.</summary>
+    public string FfmpegPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Which camera, when a machine has more than one: its DirectShow name on
+    /// Windows, its <c>/dev/video*</c> node or name on Linux. Empty: the first.
+    /// </summary>
+    public string CameraDevice { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Development only: a moving test picture instead of a camera, so the
+    /// recording chain runs on a machine without one (T-482).
+    /// </summary>
+    public bool FakeCamera { get; set; }
 }

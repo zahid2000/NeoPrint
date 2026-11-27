@@ -721,6 +721,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public bool HasConnectedPhones => _sessions.Count > 0;
 
+    /// <summary>
+    /// The camera is recording (T-482): the header says so on every screen,
+    /// for as long as it does - people are told they are filmed.
+    /// </summary>
+    [ObservableProperty]
+    private bool _cameraRecording;
+
+    public string CameraRecordingText => T("camera.recording");
+
     public string ConnectedPhonesText => _sessions.Count > 1 ? T("session.phones", _sessions.Count) : T("session.phone");
 
     /// <summary>A phone opened (or extended) a session here.</summary>

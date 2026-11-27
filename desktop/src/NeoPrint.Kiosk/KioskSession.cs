@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using NeoPrint.Kiosk.Core;
+using NeoPrint.Kiosk.Core.Camera;
 using NeoPrint.Kiosk.Core.Printing;
 using NeoPrint.Kiosk.Platform.Abstractions;
 using NeoPrint.Kiosk.Printing;
@@ -71,6 +72,7 @@ public sealed class KioskSession
         // kiosk can be activated again): every subscription is undone at the end.
         var unsubscribe = new List<Action>();
         var workerRun = Task.CompletedTask;
+        var cameraRun = Task.CompletedTask;
         var revoked = false;
 
         try
@@ -266,10 +268,28 @@ public sealed class KioskSession
                 _ = RunGuardedAsync("flash drive", () => WatchDrivesAsync(drives, orders, token), token);
             }
 
+            // The camera (T-482): records while the configuration has a camera
+            // section, keeps what Activity mode keeps; the header says so while it does.
+            var camera = new CameraRecorder(
+                new CameraVault(_services.GetRequiredService<IAppPaths>().CameraDirectory, _services.GetRequiredService<IClock>(), _logger),
+                _services.GetRequiredService<ICameraHost>(),
+                () => runtime.Configuration?.Camera,
+                () => !updateHost.IsIdle,
+                _services.GetRequiredService<IClock>(),
+                _logger);
+            Action<bool> recordingChanged = recording => Dispatcher.UIThread.Post(() => _model.CameraRecording = recording);
+            camera.RecordingChanged += recordingChanged;
+            unsubscribe.Add(() =>
+            {
+                camera.RecordingChanged -= recordingChanged;
+                Dispatcher.UIThread.Post(() => _model.CameraRecording = false);
+            });
+            cameraRun = RunGuardedAsync("camera", () => camera.RunAsync(token), token);
+
             _ = RunGuardedAsync("printer reports", () => ReportPrintersAsync(reporter, token), token);
             _ = RunGuardedAsync("analytics", () => SendAnalyticsAsync(api, token), token);
             _ = RunGuardedAsync("flash uploads", () => SendUploadsAsync(orders, token), token);
-            _ = RunGuardedAsync("telemetry", () => SendTelemetryAsync(runtime, hub, commands, drives, api, token), token);
+            _ = RunGuardedAsync("telemetry", () => SendTelemetryAsync(runtime, hub, commands, drives, api, camera, token), token);
             _ = RunGuardedAsync("printer telemetry", () => SendPrinterTelemetryAsync(runtime, reporter, api, token), token);
             _ = RunGuardedAsync("updates", () => updates.RunAsync(token), token);
 
@@ -316,6 +336,9 @@ public sealed class KioskSession
             // spool can be wiped under it.
             await Task.WhenAny(workerRun, Task.Delay(TimeSpan.FromSeconds(10), CancellationToken.None)).ConfigureAwait(false);
 
+            // The camera stops FFmpeg and seals its last minutes before the application goes.
+            await Task.WhenAny(cameraRun, Task.Delay(TimeSpan.FromSeconds(10), CancellationToken.None)).ConfigureAwait(false);
+
             foreach (var undo in unsubscribe)
             {
                 undo();
@@ -342,6 +365,7 @@ public sealed class KioskSession
         CommandProcessor commands,
         IRemovableDriveWatcher drives,
         KioskApiClient api,
+        CameraRecorder camera,
         CancellationToken cancellationToken)
     {
         var collector = _services.GetRequiredService<KioskTelemetryCollector>();
@@ -363,6 +387,7 @@ public sealed class KioskSession
             LastCrashAt = () => crashes.LastCrashAt,
             LibreOffice = () => ProgramExists(converters.LibreOfficeExecutable),
             Ghostscript = () => ProgramExists(converters.GhostscriptFor("ps")),
+            Camera = () => camera.Status,
         };
 
         while (!cancellationToken.IsCancellationRequested)

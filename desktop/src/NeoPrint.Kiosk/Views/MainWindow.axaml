@@ -68,6 +68,26 @@
                            Classes="muted"
                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
 
+                <!-- The camera is recording (T-482): always in sight while it does,
+                     on every screen - people are told they are filmed. Not a button. -->
+                <Border IsVisible="{Binding CameraRecording}"
+                        Background="{DynamicResource Neutral100}"
+                        CornerRadius="{DynamicResource RadiusSm}"
+                        Height="{DynamicResource StatusChipHeight}"
+                        Padding="{DynamicResource InsetX4}"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="{DynamicResource Space4}">
+                        <PathIcon Data="{StaticResource IconVideocam}"
+                                  Width="20" Height="20"
+                                  Foreground="{DynamicResource Neutral800}"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding CameraRecordingText}"
+                                   Foreground="{DynamicResource Neutral900}"
+                                   FontSize="{DynamicResource FontSizeCaption}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
                 <!-- A phone joined in a session (plan section 9.3): that one did,
                      never who - the screen is in a public place. Not a button. -->
                 <Border IsVisible="{Binding HasConnectedPhones}"

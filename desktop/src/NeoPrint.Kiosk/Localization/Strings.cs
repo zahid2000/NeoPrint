@@ -93,6 +93,7 @@ public static class Strings
                 ["format.pages.many"] = "{0} səhifə",
 
                 ["session.phone"] = "Telefon qoşulub",
+                ["camera.recording"] = "Videomüşahidə aparılır",
                 ["session.phones"] = "{0} telefon qoşulub",
                 ["queue.title"] = "Növbə",
                 ["queue.empty"] = "Növbə boşdur",
@@ -422,6 +423,7 @@ public static class Strings
                 ["format.pages.many"] = "{0} pages",
 
                 ["session.phone"] = "Phone connected",
+                ["camera.recording"] = "Video surveillance in progress",
                 ["session.phones"] = "{0} phones connected",
                 ["queue.title"] = "Queue",
                 ["queue.empty"] = "The queue is empty",
@@ -756,6 +758,7 @@ public static class Strings
 
 
                 ["session.phone"] = "Телефон подключён",
+                ["camera.recording"] = "Ведётся видеонаблюдение",
                 ["session.phones"] = "Подключено телефонов: {0}",
                 ["queue.title"] = "Очередь",
                 ["queue.empty"] = "Очередь пуста",

@@ -22,6 +22,12 @@ public interface IAppPaths
     /// <summary>Non-secret local state, such as the job journal.</summary>
     string StateDirectory { get; }
 
+    /// <summary>
+    /// The camera's recordings (T-482), next to the spool: sealed for the
+    /// backend, so the kiosk cannot read them back.
+    /// </summary>
+    string CameraDirectory => Path.Combine(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(SpoolDirectory)) ?? SpoolDirectory, "camera");
+
     /// <summary>Creates any directory that is missing, with restrictive permissions.</summary>
     void EnsureCreated();
 }

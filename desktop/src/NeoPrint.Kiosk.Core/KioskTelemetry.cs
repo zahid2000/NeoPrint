@@ -18,7 +18,8 @@ public sealed record TelemetryReport(
     TelemetryNetworkPart Network,
     TelemetryPeripheralsPart Peripherals,
     TelemetryWorkPart Work,
-    TelemetryServicesPart Services);
+    TelemetryServicesPart Services,
+    TelemetryCameraPart? Camera = null);
 
 public sealed record TelemetryAppPart(string? Version, DateTime? StartedAt, string? Screen, string? Session, DateTime? LastCrashAt);
 
@@ -54,6 +55,35 @@ public sealed record TelemetryWorkPart(
     int? PendingCommands);
 
 public sealed record TelemetryServicesPart(bool? LibreOffice, bool? Ghostscript, DateTime? ConfigurationAt, string? FeatureFlags);
+
+/// <summary>The camera (T-482): turned on, found, recording, and what it keeps on the disk.</summary>
+public sealed record TelemetryCameraPart(
+    bool? Enabled,
+    bool? Connected,
+    bool? Recording,
+    string? Mode,
+    string? Error,
+    long? StoredBytes,
+    int? Segments,
+    DateTime? OldestAt,
+    DateTime? LastSegmentAt)
+{
+    public static TelemetryCameraPart From(Camera.CameraStatus status)
+    {
+        ArgumentNullException.ThrowIfNull(status);
+
+        return new(
+            status.Enabled,
+            status.Connected,
+            status.Recording,
+            status.Mode,
+            status.Error,
+            status.Storage.Bytes,
+            status.Storage.Segments,
+            status.Storage.OldestAt,
+            status.Storage.NewestAt);
+    }
+}
 
 /// <summary>
 /// What only the running screen knows, read on the UI thread when a report is
@@ -169,6 +199,9 @@ public sealed class TelemetrySources
     public Func<bool?> LibreOffice { get; init; } = () => null;
 
     public Func<bool?> Ghostscript { get; init; } = () => null;
+
+    /// <summary>The camera, or null on a kiosk that has no recorder running (T-482).</summary>
+    public Func<Camera.CameraStatus?> Camera { get; init; } = () => null;
 }
 
 /// <summary>Puts one telemetry report together (plan section 7.9).</summary>
@@ -237,7 +270,8 @@ public sealed class KioskTelemetryCollector
                 sources.LibreOffice(),
                 sources.Ghostscript(),
                 _runtime.ConfigurationFetchedAt,
-                FeatureFingerprint(_runtime.Configuration?.Features)));
+                FeatureFingerprint(_runtime.Configuration?.Features)),
+            sources.Camera() is { } camera ? TelemetryCameraPart.From(camera) : null);
     }
 
     /// <summary>
