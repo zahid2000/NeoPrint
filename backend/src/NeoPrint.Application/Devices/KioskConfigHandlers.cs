@@ -39,6 +39,7 @@ public static class KioskConfigSettings
         SettingKeys.CameraMaxDiskGb,
         SettingKeys.CameraResolution,
         SettingKeys.CameraFps,
+        SettingKeys.CameraQuality,
         SettingKeys.LogsMaxUploadMb,
         SettingKeys.PaperBlockWhenInsufficient,
         SettingKeys.QueueDisplayLimit,
@@ -203,6 +204,7 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
         var key = await _cameraKeys.CurrentAsync(cancellationToken).ConfigureAwait(false);
         var mode = await _settings.GetAsync(SettingKeys.CameraMode, cancellationToken).ConfigureAwait(false);
         var resolution = await _settings.GetAsync(SettingKeys.CameraResolution, cancellationToken).ConfigureAwait(false);
+        var quality = await _settings.GetAsync(SettingKeys.CameraQuality, cancellationToken).ConfigureAwait(false);
 
         // Clamped again here: a value stored before the limits, or written
         // around the panel, still gives the kiosk something it can do.
@@ -216,7 +218,8 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
             Math.Clamp(await _settings.GetIntAsync(SettingKeys.CameraFps, 10, cancellationToken).ConfigureAwait(false),
                 Admin.CameraSettings.MinFps, Admin.CameraSettings.MaxFps),
             key.KeyId,
-            key.SubjectPublicKeyInfo);
+            key.SubjectPublicKeyInfo,
+            Admin.CameraSettings.Qualities.Contains(quality ?? string.Empty) ? quality! : "Medium");
     }
 }
 

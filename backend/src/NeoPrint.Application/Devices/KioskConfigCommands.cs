@@ -67,6 +67,7 @@ public sealed record KioskSleepSettingsDto(bool Enabled, string Window, int Afte
 /// <param name="Resolution"><c>640x480</c>, <c>1280x720</c> or <c>1920x1080</c>.</param>
 /// <param name="KeyId">The backend's camera key, named in every sealed segment.</param>
 /// <param name="PublicKey">Its public half, X.509 SubjectPublicKeyInfo (DER), base64: the kiosk can seal, never open.</param>
+/// <param name="Quality"><c>Low</c>, <c>Medium</c> or <c>High</c> (T-486).</param>
 public sealed record KioskCameraSettingsDto(
     string Mode,
     int RetentionDays,
@@ -74,7 +75,8 @@ public sealed record KioskCameraSettingsDto(
     string Resolution,
     int Fps,
     string KeyId,
-    string PublicKey);
+    string PublicKey,
+    string Quality = "Medium");
 
 /// <summary>
 /// When and how the kiosk updates itself (plan section 7.12, T-321;

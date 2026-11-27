@@ -172,6 +172,7 @@ public static class SettingKeys
     public const string CameraMaxDiskGb = "Camera.MaxDiskGb";
     public const string CameraResolution = "Camera.Resolution";
     public const string CameraFps = "Camera.Fps";
+    public const string CameraQuality = "Camera.Quality";
     public const string UpdateCheckIntervalMinutes = "Update.CheckIntervalMinutes";
     public const string UpdateHealthTimeoutMinutes = "Update.HealthTimeoutMinutes";
     public const string UpdateKeepVersions = "Update.KeepVersions";
@@ -260,6 +261,7 @@ public static class SettingKeys
         new(CameraMaxDiskGb, "20", SettingValueType.Integer, "Kamera görüntüsünün kioskda tuta biləcəyi ən çox yer (GB); dolanda ən köhnəsi silinir"),
         new(CameraResolution, "1280x720", SettingValueType.String, "Kamera görüntüsünün ölçüsü: 640x480, 1280x720 və ya 1920x1080"),
         new(CameraFps, "10", SettingValueType.Integer, "Kamera görüntüsünün saniyədə kadr sayı (2–30)"),
+        new(CameraQuality, "Medium", SettingValueType.String, "Kamera görüntüsünün keyfiyyəti: Low, Medium və ya High; aşağı keyfiyyət diskdə az yer tutur"),
         new(UpdateCheckIntervalMinutes, "15", SettingValueType.Integer, "Agent-in yeni versiya yoxlama intervalı"),
         new(UpdateHealthTimeoutMinutes, "5", SettingValueType.Integer, "Yeniləmədən sonra sağlamlıq gözləmə müddəti"),
         new(UpdateKeepVersions, "3", SettingValueType.Integer, "Kioskda saxlanılan versiya sayı"),

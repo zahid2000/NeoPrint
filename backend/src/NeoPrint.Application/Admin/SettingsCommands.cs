@@ -134,6 +134,11 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
                 yield return new ValidationError(key, "settings.cameraResolution");
             }
 
+            if (key == SettingKeys.CameraQuality && !CameraSettings.Qualities.Contains(value))
+            {
+                yield return new ValidationError(key, "settings.cameraQuality");
+            }
+
             if (key == SettingKeys.NotificationMinSeverity && !Severities.Contains(value, StringComparer.Ordinal))
             {
                 yield return new ValidationError(key, "settings.valueSeverity");
@@ -199,6 +204,9 @@ public static class CameraSettings
     public static readonly IReadOnlySet<string> Modes = new HashSet<string>(StringComparer.Ordinal) { Activity, Continuous };
 
     public static readonly IReadOnlySet<string> Resolutions = new HashSet<string>(StringComparer.Ordinal) { "640x480", "1280x720", "1920x1080" };
+
+    /// <summary>How hard the picture is compressed (T-486): lower takes less disk.</summary>
+    public static readonly IReadOnlySet<string> Qualities = new HashSet<string>(StringComparer.Ordinal) { "Low", "Medium", "High" };
 
     public static readonly IReadOnlyDictionary<string, (int Min, int Max)> Ranges = new Dictionary<string, (int Min, int Max)>(StringComparer.Ordinal)
     {

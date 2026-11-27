@@ -344,6 +344,7 @@ public sealed class KioskConfigTests
             camera.GetProperty("maxDiskGb").GetInt32().Should().Be(20);
             camera.GetProperty("resolution").GetString().Should().Be("1280x720");
             camera.GetProperty("fps").GetInt32().Should().Be(10);
+            camera.GetProperty("quality").GetString().Should().Be("Medium");
 
             // The same key on every read; the kiosk seals with it.
             var keyId = camera.GetProperty("keyId").GetString()!;
@@ -403,6 +404,9 @@ public sealed class KioskConfigTests
         (await SaveAsync("Camera.Mode", "Sometimes")).Should().Be(HttpStatusCode.BadRequest);
         (await SaveAsync("Camera.Resolution", "4000x3000")).Should().Be(HttpStatusCode.BadRequest);
         (await SaveAsync("Camera.Fps", "60")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Camera.Quality", "Ultra")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Camera.Quality", "Low")).Should().Be(HttpStatusCode.OK);
+        (await SaveAsync("Camera.Quality", "Medium")).Should().Be(HttpStatusCode.OK);
 
         (await SaveAsync("Camera.RetentionDays", "31")).Should().Be(HttpStatusCode.OK);
         (await SaveAsync("Camera.Mode", "Continuous")).Should().Be(HttpStatusCode.OK);

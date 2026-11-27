@@ -580,6 +580,7 @@
   "settings.mapAttribution": "The attribution must be made of \"text|https-address\" parts (separated by \";\"), and the OpenStreetMap link (https://www.openstreetmap.org/copyright) cannot be removed.",
   "settings.cameraMode": "The camera mode must be Activity (only while somebody is at the kiosk) or Continuous.",
   "settings.cameraResolution": "The camera resolution must be 640x480, 1280x720 or 1920x1080.",
+  "settings.cameraQuality": "The camera quality must be Low, Medium or High.",
   "storage.accessKeyRequired": "The access key is required.",
   "storage.actionNotNow": "This action is not possible for a job that is {status}.",
   "storage.actionUnknown": "Unknown action: pause, resume, cancel or retry-failed.",
