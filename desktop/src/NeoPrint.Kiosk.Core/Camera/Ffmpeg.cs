@@ -177,7 +177,7 @@ public static class FfmpegCommand
 
         var (width, height) = settings.Size;
         var fps = settings.FramesPerSecond;
-        var bitrate = Bitrate(width, fps);
+        var bitrate = Bitrate(width, fps, settings.QualityLevel);
 
         var args = new List<string> { "-hide_banner", "-nostdin", "-loglevel", "error" };
 
@@ -211,17 +211,26 @@ public static class FfmpegCommand
         // No sound: only pictures are kept (docs/KIOSK_CAMERA.md).
         args.Add("-an");
 
+        // A frame that is the same as the one before is dropped (T-487): an
+        // empty kiosk is a still picture, and a still picture needs one frame
+        // every few seconds, not ten a second - about a fifth of the disk.
+        // At least one frame every five seconds is kept, so the time runs on.
         args.AddRange([
             "-vf",
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"fps={fps},scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,format=yuv420p"),
+                $"fps={fps},scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,mpdecimate=max={fps * StillSeconds},format=yuv420p"),
+            "-fps_mode", "vfr",
         ]);
 
         args.AddRange(["-c:v", encoder]);
         args.AddRange(encoder switch
         {
-            "libx264" => ["-preset", "veryfast", "-tune", "zerolatency", "-crf", "28", "-maxrate", Kbit(bitrate), "-bufsize", Kbit(bitrate * 2)],
+            // Constant quality within a ceiling, and no look-ahead: with still
+            // pictures dropped a frame may come once in five seconds, and a
+            // look-ahead of forty frames would keep minutes of video in memory
+            // - lost when the power goes (measured, docs/KIOSK_CAMERA.md).
+            "libx264" => ["-preset", "veryfast", "-tune", "zerolatency", "-crf", Crf(settings.QualityLevel), "-maxrate", Kbit(bitrate), "-bufsize", Kbit(bitrate * 2)],
             _ => ["-b:v", Kbit(bitrate)],
         });
 
@@ -229,14 +238,15 @@ public static class FfmpegCommand
         // starts, so every file plays on its own.
         args.AddRange(["-g", Text(fps * 2), "-force_key_frames", $"expr:gte(t,n_forced*{SegmentSeconds})"]);
 
-        // Fragmented MP4: a file cut short by a power cut still plays up to
-        // where it stopped.
+        // Fragmented MP4, a fragment every two seconds and each written out at
+        // once: a file cut short by a power cut still plays up to where it
+        // stopped, even when a still picture makes the fragments tiny.
         args.AddRange([
             "-f", "segment",
             "-segment_time", Text(SegmentSeconds),
             "-segment_atclocktime", "1",
             "-segment_format", "mp4",
-            "-segment_format_options", "movflags=+frag_keyframe+empty_moov+default_base_moof",
+            "-segment_format_options", "movflags=+frag_keyframe+empty_moov+default_base_moof:frag_duration=2000000:flush_packets=1",
             "-reset_timestamps", "1",
             "-strftime", "1",
             outputPattern,
@@ -245,8 +255,14 @@ public static class FfmpegCommand
         return args;
     }
 
-    /// <summary>About 1.2 Mbit/s for 720p at 10 frames a second: a face stays a face, a day stays near 5 GB when recording all of it.</summary>
-    public static int Bitrate(int width, int fps)
+    /// <summary>The longest a still picture goes without a frame, in seconds.</summary>
+    public const int StillSeconds = 5;
+
+    /// <summary>
+    /// The ceiling, in kbit/s (T-486): for 720p at 10 frames a second 600
+    /// (Low), 1020 (Medium), 1800 (High) - a face stays a face at Medium.
+    /// </summary>
+    public static int Bitrate(int width, int fps, string quality = "Medium")
     {
         var atTen = width switch
         {
@@ -255,8 +271,23 @@ public static class FfmpegCommand
             _ => 2500,
         };
 
-        return Math.Max(300, atTen * fps / 10);
+        var percent = quality switch
+        {
+            "Low" => 50,
+            "High" => 150,
+            _ => 85,
+        };
+
+        return Math.Max(200, atTen * fps / 10 * percent / 100);
     }
+
+    /// <summary>x264's constant quality: lower is better and larger (measured, docs/KIOSK_CAMERA.md).</summary>
+    public static string Crf(string quality) => quality switch
+    {
+        "Low" => "32",
+        "High" => "23",
+        _ => "28",
+    };
 
     private static string Text(int value) => value.ToString(CultureInfo.InvariantCulture);
 

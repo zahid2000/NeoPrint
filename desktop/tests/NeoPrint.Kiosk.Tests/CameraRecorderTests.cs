@@ -104,9 +104,11 @@ public sealed class CameraRecorderTests : IDisposable
 
         args.Should().ContainInOrder("-f", "dshow", "-video_size", "1280x720", "-framerate", "10", "-i", "video=Logitech C270");
         args.Should().Contain("-an", "no sound is kept");
-        args.Should().ContainInOrder("-c:v", "libopenh264", "-b:v", "1200k");
+        args.Should().ContainInOrder("-c:v", "libopenh264", "-b:v", "1020k");
+        args.Should().Contain(arg => arg.Contains("mpdecimate=max=50", StringComparison.Ordinal), "a still picture is not stored ten times a second");
+        args.Should().ContainInOrder("-fps_mode", "vfr");
         args.Should().ContainInOrder("-segment_time", "60", "-segment_atclocktime", "1");
-        args.Should().Contain("movflags=+frag_keyframe+empty_moov+default_base_moof", "a minute cut short by a power cut still plays");
+        args.Should().Contain("movflags=+frag_keyframe+empty_moov+default_base_moof:frag_duration=2000000:flush_packets=1", "a minute cut short by a power cut still plays");
         args.Should().ContainInOrder("-strftime", "1", "out/seg-%Y%m%dT%H%M%S.mp4");
         args.Should().Contain("-nostdin");
     }
@@ -119,14 +121,40 @@ public sealed class CameraRecorderTests : IDisposable
         args.Should().NotContain("-video_size");
         args.Should().ContainInOrder("-f", "v4l2", "-i", "/dev/video0");
         args.Should().Contain(arg => arg.Contains("scale=1280:720", StringComparison.Ordinal));
-        args.Should().ContainInOrder("-preset", "veryfast");
+        args.Should().ContainInOrder("-preset", "veryfast", "-tune", "zerolatency", "-crf", "28");
     }
 
     [Theory]
-    [InlineData(640, 10, 600)]
-    [InlineData(1280, 10, 1200)]
-    [InlineData(1920, 15, 3750)]
-    [InlineData(640, 2, 300)]
+    [InlineData("Low", "32", "600k")]
+    [InlineData("Medium", "28", "1020k")]
+    [InlineData("High", "23", "1800k")]
+    [InlineData("Ultra", "28", "1020k")]
+    public void The_quality_the_panel_set_is_what_ffmpeg_is_asked_for(string quality, string crf, string ceiling)
+    {
+        var args = FfmpegCommand.Record(new CameraDevice("Cam", "v4l2", "/dev/video0"), "libx264", _settings! with { Quality = quality }, "x.mp4");
+
+        args.Should().ContainInOrder("-crf", crf, "-maxrate", ceiling);
+    }
+
+    [Fact]
+    public async Task Another_quality_starts_ffmpeg_again_with_it()
+    {
+        var recorder = Recorder();
+        await recorder.StepAsync(TestContext.Current.CancellationToken);
+
+        _settings = _settings! with { Quality = "Low" };
+        _clock.Now = Start.AddSeconds(5);
+        await recorder.StepAsync(TestContext.Current.CancellationToken);
+
+        _host.Started.Should().HaveCount(2);
+        _host.Started[1].Arguments.Should().Contain("600k");
+    }
+
+    [Theory]
+    [InlineData(640, 10, 510)]
+    [InlineData(1280, 10, 1020)]
+    [InlineData(1920, 15, 3187)]
+    [InlineData(640, 2, 200)]
     public void The_bitrate_follows_the_size_and_the_rate(int width, int fps, int kbit)
         => FfmpegCommand.Bitrate(width, fps).Should().Be(kbit);
 

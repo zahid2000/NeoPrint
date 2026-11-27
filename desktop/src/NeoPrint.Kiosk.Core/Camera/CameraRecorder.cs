@@ -160,7 +160,8 @@ public sealed class CameraRecorder
         }
 
         // Another size or rate: FFmpeg starts again with it.
-        if (_process is not null && _running is { } running && (running.Size != settings.Size || running.FramesPerSecond != settings.FramesPerSecond))
+        if (_process is not null && _running is { } running && (running.Size != settings.Size || running.FramesPerSecond != settings.FramesPerSecond
+            || running.QualityLevel != settings.QualityLevel))
         {
             StopProcess();
             _nextStart = now;

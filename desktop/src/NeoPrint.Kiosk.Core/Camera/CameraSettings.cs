@@ -11,6 +11,7 @@ namespace NeoPrint.Kiosk.Core.Camera;
 /// <param name="Resolution"><c>640x480</c>, <c>1280x720</c> or <c>1920x1080</c>.</param>
 /// <param name="KeyId">The backend's camera key, named in every sealed segment.</param>
 /// <param name="PublicKey">Its public half, X.509 SubjectPublicKeyInfo (DER), base64: the kiosk can seal, never open.</param>
+/// <param name="Quality"><c>Low</c>, <c>Medium</c> or <c>High</c> (<c>Camera.Quality</c>, T-486).</param>
 public sealed record KioskCameraSettings(
     string Mode = KioskCameraSettings.Activity,
     int RetentionDays = 2,
@@ -18,7 +19,8 @@ public sealed record KioskCameraSettings(
     string Resolution = "1280x720",
     int Fps = 10,
     string? KeyId = null,
-    string? PublicKey = null)
+    string? PublicKey = null,
+    string Quality = "Medium")
 {
     /// <summary>Only while somebody is at the kiosk, <see cref="CameraVault.ActivityMargin"/> either side.</summary>
     public const string Activity = "Activity";
@@ -33,6 +35,9 @@ public sealed record KioskCameraSettings(
     public int FramesPerSecond => Math.Clamp(Fps, 2, 30);
 
     public bool RecordsAlways => string.Equals(Mode, Continuous, StringComparison.Ordinal);
+
+    /// <summary>The quality as FFmpeg is asked for it; an unknown word is the middle one.</summary>
+    public string QualityLevel => Quality is "Low" or "High" ? Quality : "Medium";
 
     /// <summary>Width and height; the default when the text is not one of the three sizes.</summary>
     public (int Width, int Height) Size => Resolution switch
