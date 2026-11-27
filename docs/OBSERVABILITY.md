@@ -79,6 +79,11 @@ Collector → Prometheus → Grafana-ya gedir. Quruluş, dashboard-lar və giri�
 Kestrel, SignalR, rate limiting, exception-lar), `System.Runtime`, `System.Net.Http`.
 RabbitMQ növbələri Prometheus-a birbaşa öz plagini ilə gəlir.
 
+**Trace-lər (T-479):** API-nin span-ları (sorğu, MongoDB, xarici HTTP, MassTransit)
+Collector → Grafana Tempo-ya gedir, 7 gün saxlanılır. `TraceId` log sətrində var, `CorrelationId`
+isə span-da `neoprint.correlation_id` kimi yazılır. Ona görə log → trace → mesaj zənciri
+bir yerdən izlənir. Müştəri IP-si, user-agent, query string və Mongo əmrinin mətni span-a yazılmır.
+
 **Əvvəldən (T-215, T-282):** backend sayğacları .NET-in öz `System.Diagnostics.Metrics` API-si ilə
 `NeoPrint` meter-indədir (paket yoxdur; OpenTelemetry ixracatçısı təsdiqlənəndə eyni adlarla çıxacaq):
 `neoprint.analytics.events_rejected` (`reason`), `neoprint.files.cleanup.deleted`,

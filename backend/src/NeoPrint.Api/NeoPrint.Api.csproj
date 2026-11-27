@@ -18,6 +18,7 @@
     <!-- Metrics to the OpenTelemetry Collector, only when configured (T-477). -->
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     <!-- Unhandled errors to GlitchTip, only when a DSN is configured (T-478). -->
     <PackageReference Include="Sentry.AspNetCore" />
     <!-- Swagger UI is only registered in the Development environment. -->

@@ -433,6 +433,32 @@ services:
     mem_limit: 160m
     restart: unless-stopped
 
+  # The traces (T-479): Grafana Tempo, one process, its own disk, seven
+  # days. Reached by the collector and by Grafana only. The image runs as
+  # user 10001 and has no shell, so tempo-init hands it its volume first.
+  tempo-init:
+    image: postgres:17.12-alpine
+    container_name: ${NEOPRINT_NAME:-neoprint}-tempo-init
+    profiles: ["monitoring"]
+    entrypoint: ["sh", "-c", "chown -R 10001:10001 /var/tempo"]
+    volumes:
+      - tempo-data:/var/tempo
+    restart: "no"
+
+  tempo:
+    image: grafana/tempo:2.10.10
+    container_name: ${NEOPRINT_NAME:-neoprint}-tempo
+    profiles: ["monitoring"]
+    depends_on:
+      tempo-init:
+        condition: service_completed_successfully
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./docker/monitoring/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    mem_limit: 384m
+    restart: unless-stopped
+
   prometheus:
     image: prom/prometheus:v3.16.0
     container_name: ${NEOPRINT_NAME:-neoprint}-prometheus
@@ -600,5 +626,6 @@ volumes:
   rustfs-secondary-data:
   prometheus-data:
   grafana-data:
+  tempo-data:
   glitchtip-db-data:
   glitchtip-uploads:

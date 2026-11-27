@@ -91,6 +91,8 @@
     <!-- Apache-2.0, OpenTelemetry (CNCF). Metrics over OTLP to the collector. -->
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.21.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.21.0" />
+    <!-- Apache-2.0, OpenTelemetry (CNCF). Spans of incoming requests (T-479). -->
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.21.0" />
     <!-- MIT, Sentry. Unhandled errors to the self-hosted GlitchTip (T-478); API and kiosk. -->
     <PackageVersion Include="Sentry" Version="6.13.0" />
     <PackageVersion Include="Sentry.AspNetCore" Version="6.13.0" />

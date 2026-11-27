@@ -4,13 +4,15 @@ using NeoPrint.Infrastructure.Monitoring;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace NeoPrint.Api.Infrastructure;
 
 /// <summary>
-/// Monitoring (plan step 8, T-477, docs/OBSERVABILITY.md): the API's metrics,
-/// pushed over OTLP to the OpenTelemetry Collector, which Prometheus scrapes
-/// and Grafana reads.
+/// Monitoring (plan step 8, T-477, T-479, docs/OBSERVABILITY.md): the API's
+/// metrics and traces, pushed over OTLP to the OpenTelemetry Collector, which
+/// Prometheus scrapes for the metrics and passes the traces on to Tempo;
+/// Grafana reads both.
 /// </summary>
 /// <remarks>
 /// Off unless <c>Monitoring:OtlpEndpoint</c> is set - the compose file sets it
@@ -39,6 +41,33 @@ public static class MonitoringRegistration
         "System.Runtime",
         "System.Net.Http",
     ];
+
+    /// <summary>
+    /// Where spans come from besides the incoming request (T-479): outgoing
+    /// HTTP (bank, fiscal, storage), MongoDB - commands only, never their
+    /// text - and RabbitMQ through MassTransit, so a trace follows a message
+    /// from the API to its consumer.
+    /// </summary>
+    internal static readonly string[] TraceSources =
+    [
+        "System.Net.Http",
+        MongoDB.Driver.MongoTelemetry.ActivitySourceName,
+        MassTransit.Logging.DiagnosticHeaders.DefaultListenerName,
+    ];
+
+    /// <summary>The share of requests traced, 0..1 (<c>Monitoring:TraceSampleRatio</c>, default all).</summary>
+    internal static double SampleRatio(IConfiguration configuration)
+    {
+        var configured = configuration[$"{SectionName}:TraceSampleRatio"];
+
+        return double.TryParse(configured, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ratio)
+            ? Math.Clamp(ratio, 0, 1)
+            : 1;
+    }
+
+    /// <summary>Health probes and SignalR's long connections are not traced.</summary>
+    internal static bool IsNoise(PathString path) =>
+        path.StartsWithSegments("/health") || path.StartsWithSegments("/hubs");
 
     public static IServiceCollection AddNeoPrintMonitoring(
         this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
@@ -76,6 +105,26 @@ public static class MonitoringRegistration
                     reader.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 15_000;
                     // Prometheus wants cumulative counters.
                     reader.TemporalityPreference = MetricReaderTemporalityPreference.Cumulative;
+                }))
+            .WithTracing(tracing => tracing
+                .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(SampleRatio(configuration))))
+                .AddAspNetCoreInstrumentation(options =>
+                {
+                    // Probes and the live connections say nothing about a request.
+                    options.Filter = context => !IsNoise(context.Request.Path);
+                    options.EnrichWithHttpRequest = (activity, _) =>
+                    {
+                        // Who called is not the trace's business (docs/OBSERVABILITY.md);
+                        // the query string is already left out by the instrumentation.
+                        activity.SetTag("client.address", null);
+                        activity.SetTag("user_agent.original", null);
+                    };
+                })
+                .AddSource(TraceSources)
+                .AddOtlpExporter(exporter =>
+                {
+                    exporter.Endpoint = new Uri(collector, "v1/traces");
+                    exporter.Protocol = OtlpExportProtocol.HttpProtobuf;
                 }));
 
         return services;

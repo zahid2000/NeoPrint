@@ -92,7 +92,7 @@ limiti 1 GB-dır — yaddaş azdırsa `.env`-dən `COMPOSE_PROFILES` sətrini si
 `docker compose up -d --remove-orphans` edin, sonra admin paneldə "Office redaktoru"
 söndürülü qalsın. Collabora olmayanda redaktor açılmır, qalan hər şey işləyir.
 
-**Monitorinq (T-477, T-478):** OpenTelemetry Collector, Prometheus, Grafana və GlitchTip
+**Monitorinq (T-477, T-478, T-479):** OpenTelemetry Collector, Prometheus, Grafana, Tempo və GlitchTip
 (+ öz PostgreSQL-i) da işləyir (`COMPOSE_PROFILES=office,monitoring`). Boş halda ~600 MB, limitlər cəmi ~1,6 GB.
 Yaddaş azdırsa `monitoring`-i həmin sətirdən çıxarıb `docker compose up -d --remove-orphans`
 edin. API metrikası göndərə bilmir, amma işləməyə davam edir ([`MONITORING.md`](MONITORING.md)).

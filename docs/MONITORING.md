@@ -14,6 +14,8 @@ OpenTelemetry Collector  ──►  Prometheus  ◄── RabbitMQ (rabbitmq_pro
                                   │
                                   ▼
                                Grafana  (hazır dashboard-lar)
+
+API ──► Collector ──► Tempo ──► Grafana → Explore → Tempo   (trace-lər, T-479)
 ```
 
 - **API** metrikaları özü göndərir (`Monitoring__OtlpEndpoint`). Bu dəyişən
@@ -28,6 +30,25 @@ OpenTelemetry Collector  ──►  Prometheus  ◄── RabbitMQ (rabbitmq_pro
 - Bu üç servis `monitoring` compose profili ilə qalxır. Profil sönülü olanda heç
   biri işləmir, stack-in qalan hissəsi də dəyişmir. Yaddaş limitləri: kollektor
   160 MB, Prometheus 256 MB, Grafana 384 MB (lokal ölçü, boş halda: təxminən 80 + 60 + 220 MB).
+
+## Trace-lər (Tempo, T-479)
+
+- Bir trace bir sorğunun bütün yoludur. Ona daxildir:
+  - API-yə gələn sorğu;
+  - onun MongoDB əmrləri;
+  - xaricə gedən HTTP sorğuları (bank, fiskal, storage);
+  - RabbitMQ-ya göndərdiyi mesaj və həmin mesajı işləyən consumer.
+- Hər hissənin müddəti və xətası görünür.
+- **Necə tapılır:** Grafana → Explore → "Tempo".
+  - Log sətrindəki `TraceId` ilə birbaşa.
+  - Və ya TraceQL ilə:
+    - `{ span.neoprint.correlation_id = "<CorrelationId>" }`;
+    - `{ status = error }`;
+    - `{ duration > 2s }`;
+    - `{ span.http.route = "api/files/{id}" }`.
+- **Göndərilməyənlər:** müştərinin IP-si, user-agent, query string, MongoDB əmrlərinin mətni. `/health` və `/hubs` izlənmir.
+- Hamısı yazılır (`Monitoring__TraceSampleRatio`, default `1`). Yük artanda, məsələn `0.2` ilə payı azaltmaq olar.
+- Tempo 7 gün saxlayır. Limiti 384 MB-dır, boş halda ~45 MB.
 
 ## Xəta izləmə (GlitchTip, T-478)
 

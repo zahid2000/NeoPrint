@@ -1,0 +1,21 @@
+# The data sources, provisioned: nobody has to add them by hand (T-477, T-479).
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  # The traces (T-479): Grafana → Explore → Tempo, by trace id (the TraceId
+  # of a log line) or with TraceQL - service, route, status, duration, or
+  # { span.neoprint.correlation_id = "<id>" }.
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false

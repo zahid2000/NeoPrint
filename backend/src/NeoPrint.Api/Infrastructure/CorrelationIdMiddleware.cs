@@ -43,6 +43,10 @@ public sealed class CorrelationIdMiddleware
         // the body is on its way.
         context.Response.Headers[CorrelationHeaders.CorrelationId] = correlationId;
 
+        // On the request's span too (T-479): a trace in Tempo can be found by
+        // the correlation id a log line or a support case names.
+        System.Diagnostics.Activity.Current?.SetTag("neoprint.correlation_id", correlationId);
+
         // ASP.NET Core's own TraceIdentifier stays available for anything that
         // reads it, but the correlation id is what crosses process boundaries.
         using var scope = _logger.BeginScope(new Dictionary<string, object>

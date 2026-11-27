@@ -1,7 +1,8 @@
-# OpenTelemetry Collector (plan step 8 "Monitorinq", T-477).
+# OpenTelemetry Collector (plan step 8 "Monitorinq", T-477, T-479).
 #
-# The API pushes its metrics here over OTLP/HTTP; Prometheus scrapes them from
-# the Prometheus exporter. Nothing is sent outside the stack.
+# The API pushes its metrics and traces here over OTLP/HTTP. Prometheus
+# scrapes the metrics from the Prometheus exporter; the traces go on to
+# Tempo. Nothing is sent outside the stack.
 receivers:
   otlp:
     protocols:
@@ -27,6 +28,12 @@ exporters:
     # new instance id).
     metric_expiration: 10m
 
+  # The traces, to Tempo inside the stack.
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
@@ -41,3 +48,7 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [prometheus]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo]
