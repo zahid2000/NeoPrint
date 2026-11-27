@@ -185,7 +185,9 @@ public static class LayoutRenderer
     /// already upright. Phones often store the pixels sideways and record the
     /// turn instead; printed as stored, the card would lie on its side.
     /// </summary>
-    private static SKBitmap? Orient(SKBitmap source, SKEncodedOrigin origin)
+    /// <remarks>Also what the converter turns a photo upright with (T-473), so a
+    /// photo's preview and its place in a layout agree on which way is up.</remarks>
+    public static SKBitmap? Orient(SKBitmap source, SKEncodedOrigin origin)
     {
         if (origin == SKEncodedOrigin.TopLeft)
         {

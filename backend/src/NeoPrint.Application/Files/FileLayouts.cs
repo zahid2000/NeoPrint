@@ -72,10 +72,17 @@ public sealed record CreateScanCommand(
 
 /// <summary>
 /// Saves a new layout (plan section 2.11). Its pictures are named
-/// <c>file:{id}</c> - an image file's current content - or
-/// <c>file:{id}:{page}</c> - a page of a file's PDF.
+/// <c>file:{id}</c> - an image file's current content -,
+/// <c>file:{id}:{page}</c> - a page of a file's PDF - or
+/// <c>upload:{name}</c> - one of <paramref name="Uploads"/>, pictures sent
+/// with the layout itself and never kept as files of their own (photos just
+/// taken, T-473).
 /// </summary>
-public sealed record CreateLayoutCommand(Guid UserId, string LayoutJson, string? FileName) : IRequest<UserFileResult>;
+public sealed record CreateLayoutCommand(
+    Guid UserId,
+    string LayoutJson,
+    string? FileName,
+    IReadOnlyList<ScanPicture>? Uploads = null) : IRequest<UserFileResult>;
 
 /// <summary>
 /// Saves a changed layout as a new version. Pictures it already holds are
@@ -106,6 +113,14 @@ public sealed class FileLayoutHandlers :
 
     public const string AssetPrefix = "asset:";
     public const string FilePrefix = "file:";
+    public const string UploadPrefix = "upload:";
+
+    private static readonly PictureCodes ScanCodes = new("scan.tooManyPictures", "scan.pictureName", "scan.notAPicture");
+    private static readonly PictureCodes UploadCodes = new(
+        "files.layout.tooManyPictures", "files.layout.pictureName", "files.layout.notAPicture");
+
+    /// <summary>The messages for pictures sent with a request, by what went wrong.</summary>
+    private sealed record PictureCodes(string TooMany, string Name, string NotAPicture);
 
     private readonly IFileRepository _files;
     private readonly IFileStorage _storage;
@@ -154,7 +169,7 @@ public sealed class FileLayoutHandlers :
 
         await EnsureScanNoticeAcceptedAsync(request.UserId, cancellationToken).ConfigureAwait(false);
 
-        var pictures = CheckPictures(request.Pictures);
+        var pictures = CheckPictures(request.Pictures, ScanCodes, required: true);
         var maxBytes = await _intake.MaxBytesAsync(null, cancellationToken).ConfigureAwait(false);
 
         FileIntake.EnsureWithin(pictures.Values.Sum(bytes => (long)bytes.Length), maxBytes);
@@ -207,6 +222,7 @@ public sealed class FileLayoutHandlers :
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        var uploads = CheckPictures(request.Uploads, UploadCodes, required: false);
         var outline = _layouts.Read(request.LayoutJson);
         var maxBytes = await _intake.MaxBytesAsync(null, cancellationToken).ConfigureAwait(false);
         var file = new StoredFile
@@ -219,7 +235,7 @@ public sealed class FileLayoutHandlers :
             LayoutPaper = outline.Paper,
         };
 
-        var pictures = await CollectAsync(file, outline.Images, maxBytes, cancellationToken).ConfigureAwait(false);
+        var pictures = await CollectAsync(file, outline.Images, maxBytes, cancellationToken, uploads).ConfigureAwait(false);
         var written = new List<StoredObject>();
 
         try
@@ -377,16 +393,22 @@ public sealed class FileLayoutHandlers :
         }
     }
 
-    private static Dictionary<string, byte[]> CheckPictures(IReadOnlyList<ScanPicture>? pictures)
+    /// <summary>
+    /// Pictures sent with the request, by name: a scan's pages, or a layout's
+    /// new photos (T-473). <paramref name="codes"/> are the messages for each.
+    /// </summary>
+    private static Dictionary<string, byte[]> CheckPictures(IReadOnlyList<ScanPicture>? pictures, PictureCodes codes, bool required)
     {
         if (pictures is null || pictures.Count == 0)
         {
-            throw FileIntake.Invalid("pictures", "scan.noPictures");
+            return required
+                ? throw FileIntake.Invalid("pictures", "scan.noPictures")
+                : new Dictionary<string, byte[]>(StringComparer.Ordinal);
         }
 
         if (pictures.Count > MaxScanPictures)
         {
-            throw FileIntake.Invalid("pictures", "scan.tooManyPictures", ("max", MaxScanPictures));
+            throw FileIntake.Invalid("pictures", codes.TooMany, ("max", MaxScanPictures));
         }
 
         var byName = new Dictionary<string, byte[]>(StringComparer.Ordinal);
@@ -395,7 +417,7 @@ public sealed class FileLayoutHandlers :
         {
             if (string.IsNullOrWhiteSpace(picture.Name) || !byName.TryAdd(picture.Name, picture.Content))
             {
-                throw FileIntake.Invalid("pictures", "scan.pictureName");
+                throw FileIntake.Invalid("pictures", codes.Name);
             }
 
             // The phone sends JPEG; whatever arrives is checked by its bytes,
@@ -404,7 +426,7 @@ public sealed class FileLayoutHandlers :
 
             if (ContentSignature.Identify(header, picture.Name).Format?.Group != FormatGroup.Image)
             {
-                throw FileIntake.Invalid("pictures", "scan.notAPicture", ("name", picture.Name));
+                throw FileIntake.Invalid("pictures", codes.NotAPicture, ("name", picture.Name));
             }
         }
 
@@ -444,7 +466,11 @@ public sealed class FileLayoutHandlers :
     /// and pages of PDFs drawn as pictures.
     /// </summary>
     private async Task<Dictionary<string, Picture>> CollectAsync(
-        StoredFile layout, IReadOnlyList<string> names, long maxBytes, CancellationToken cancellationToken)
+        StoredFile layout,
+        IReadOnlyList<string> names,
+        long maxBytes,
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, byte[]>? uploads = null)
     {
         var pictures = new Dictionary<string, Picture>(StringComparer.Ordinal);
         long total = 0;
@@ -453,7 +479,9 @@ public sealed class FileLayoutHandlers :
         {
             var picture = name.StartsWith(AssetPrefix, StringComparison.Ordinal)
                 ? await OwnAssetAsync(layout, name, cancellationToken).ConfigureAwait(false)
-                : await FromFileAsync(layout.UserId, name, cancellationToken).ConfigureAwait(false);
+                : name.StartsWith(UploadPrefix, StringComparison.Ordinal)
+                    ? Uploaded(name, uploads)
+                    : await FromFileAsync(layout.UserId, name, cancellationToken).ConfigureAwait(false);
 
             total += picture.Existing is null ? picture.Bytes.Length : 0;
             FileIntake.EnsureWithin(total, maxBytes);
@@ -462,6 +490,18 @@ public sealed class FileLayoutHandlers :
         }
 
         return pictures;
+    }
+
+    /// <summary>A picture sent with the layout: <c>upload:{name}</c> (T-473).</summary>
+    private static Picture Uploaded(string name, IReadOnlyDictionary<string, byte[]>? uploads)
+    {
+        var bytes = uploads?.GetValueOrDefault(name[UploadPrefix.Length..])
+                    ?? throw FileIntake.Invalid("layout", "files.layout.imageRef", ("name", name));
+        var header = bytes.AsSpan(0, Math.Min(bytes.Length, ContentSignature.HeaderLength));
+        var format = ContentSignature.Identify(header, name).Format
+                     ?? throw FileIntake.Invalid("pictures", "files.layout.notAPicture", ("name", name));
+
+        return new Picture(AssetPrefix + Guid.NewGuid().ToString("N"), bytes, format.MediaType, false, null);
     }
 
     private async Task<Picture> OwnAssetAsync(StoredFile layout, string name, CancellationToken cancellationToken)

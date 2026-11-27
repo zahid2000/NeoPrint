@@ -30,7 +30,14 @@ internal static class ImageTool
             throw new ToolException("conversion.imageTooLarge");
         }
 
-        using var bitmap = SKBitmap.Decode(codec) ?? throw new ToolException("conversion.imageUnsupported");
+        using var decoded = SKBitmap.Decode(codec) ?? throw new ToolException("conversion.imageUnsupported");
+
+        // Upright, as the photo's EXIF says: a phone stores the pixels sideways
+        // and records the turn. Drawn as stored, the page lay on its side, and
+        // a layout - which does turn it - stretched it into the sideways frame
+        // the preview gave it (T-473).
+        using var upright = NeoPrint.Layout.LayoutRenderer.Orient(decoded, codec.EncodedOrigin);
+        var bitmap = upright ?? decoded;
 
         // 96 dpi is what a screen pixel means on paper; the print options
         // decide the actual paper size later.
@@ -78,6 +85,9 @@ internal static class ImageTool
 
         try
         {
+            // Upright first, as the preview shows it: the crop is given in that
+            // picture's terms, and the written file carries no EXIF turn (T-473).
+            current = Replace(current, NeoPrint.Layout.LayoutRenderer.Orient(current, codec.EncodedOrigin));
             current = Replace(current, Crop(current, edit.Crop));
             current = Replace(current, Rotate(current, edit.Rotate));
             current = Replace(current, Adjust(current, edit));

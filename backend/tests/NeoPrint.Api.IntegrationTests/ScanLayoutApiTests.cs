@@ -246,6 +246,76 @@ public sealed class ScanLayoutApiTests
     }
 
     [PdfiumFact]
+    public async Task Photos_sent_with_a_layout_become_one_pdf_and_no_files_of_their_own()
+    {
+        using var user = await SignedInAsync();
+
+        // A page each, as "Şəkillər → PDF" sends them (T-473).
+        var form = new MultipartFormDataContent
+        {
+            { new StringContent(JsonSerializer.Serialize(Layout(("upload:p1.jpg", 20, 20, 120, 160)))), "layout" },
+            { new StringContent("Şəkillər"), "fileName" },
+        };
+
+        foreach (var (name, color) in new[] { ("p1.jpg", SKColors.DarkSlateBlue), ("p2.jpg", SKColors.DarkOliveGreen) })
+        {
+            var part = new ByteArrayContent(Jpeg(600, 800, color));
+            part.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            form.Add(part, "images", name);
+        }
+
+        var created = await user.PostAsync("/api/files/layout/upload", form);
+
+        created.StatusCode.Should().Be(HttpStatusCode.Created, await created.Content.ReadAsStringAsync());
+        var file = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var id = file.GetProperty("id").GetGuid();
+        file.GetProperty("source").GetString().Should().Be("Layout");
+        file.GetProperty("fileName").GetString().Should().Be("Şəkillər.pdf");
+        (await ConvertAsync(id)).Should().Be(Domain.Files.FileStatus.Ready);
+
+        // The layout is the only file: the photos never were files.
+        var list = await user.GetFromJsonAsync<JsonElement>("/api/files");
+        list.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("id").GetGuid())
+            .Should().Equal(id);
+
+        // It keeps its own copy, and opens again like any layout.
+        var opened = await user.GetFromJsonAsync<JsonElement>($"/api/files/{id}/layout");
+        opened.GetProperty("assets").GetArrayLength().Should().Be(1, "only the photo the layout names is kept");
+        opened.GetProperty("layout").GetProperty("pages")[0].GetProperty("elements")[0]
+            .GetProperty("image").GetString().Should().StartWith("asset:");
+    }
+
+    [DockerFact]
+    public async Task A_layout_naming_a_photo_it_was_not_sent_or_sent_something_else_is_refused()
+    {
+        using var user = await SignedInAsync();
+
+        async Task<string> RefusedAsync(string image, string partName, byte[] content)
+        {
+            var form = new MultipartFormDataContent
+            {
+                { new StringContent(JsonSerializer.Serialize(Single(image))), "layout" },
+            };
+            var part = new ByteArrayContent(content);
+            part.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            form.Add(part, "images", partName);
+
+            var response = await user.PostAsync("/api/files/layout/upload", form);
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        (await RefusedAsync("upload:missing.jpg", "p1.jpg", Jpeg(100, 100, SKColors.Black)))
+            .Should().Contain("şəkli tapılmadı");
+        (await RefusedAsync("upload:p1.jpg", "p1.jpg", "not a picture"u8.ToArray()))
+            .Should().Contain("şəkil deyil, ona görə tərtibat saxlanılmadı");
+
+        (await user.GetFromJsonAsync<JsonElement>("/api/files")).GetProperty("items").GetArrayLength()
+            .Should().Be(0, "nothing was saved");
+    }
+
+    [PdfiumFact]
     public async Task A_layout_with_a_personal_document_is_personal_too()
     {
         using var user = await SignedInAsync();

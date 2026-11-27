@@ -145,6 +145,39 @@ public sealed class FilesController : ControllerBase
     }
 
     /// <summary>
+    /// Saves a new layout with pictures sent alongside it (T-473): photos just
+    /// taken become one PDF without ever being files of their own. Multipart:
+    /// <c>images</c> (each named by its file name), <c>layout</c> (the layout
+    /// JSON, where such a picture is <c>upload:{file name}</c>; <c>file:</c>
+    /// names work as in <c>POST files/layout</c>) and <c>fileName</c>.
+    /// </summary>
+    [HttpPost("layout/upload")]
+    [RequestSizeLimit(200L * 1024 * 1024)]
+    [ProducesResponseType(typeof(UserFileResult), StatusCodes.Status201Created)]
+    public async Task<ActionResult<UserFileResult>> CreateLayoutWithPictures(
+        [FromForm] List<IFormFile> images,
+        [FromForm] string? layout,
+        [FromForm] string? fileName,
+        CancellationToken cancellationToken)
+    {
+        var pictures = new List<ScanPicture>(images?.Count ?? 0);
+
+        foreach (var image in images ?? [])
+        {
+            await using var stream = image.OpenReadStream();
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            pictures.Add(new ScanPicture(image.FileName, buffer.ToArray()));
+        }
+
+        var result = await _sender.Send(
+            new CreateLayoutCommand(UserId, layout ?? string.Empty, fileName, pictures),
+            cancellationToken);
+
+        return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+    }
+
+    /// <summary>
     /// Saves a changed layout as a new version. Pictures the layout already
     /// holds keep their <c>asset:{key}</c> names; new ones are named as for
     /// a new layout.

@@ -1373,6 +1373,28 @@ Tərtibat hər şəklin **öz şifrəli nüsxəsini** saxlayır (`asset:{key}` a
 mənbə fayl silinsə də yenidən açılır. Mənbələrdən biri həssasdırsa tərtibat da
 həssasdır (avtomatik silinmə default `AfterPrint`). Başqasının faylı `404`.
 
+#### `POST /api/files/layout/upload` (T-473)
+
+Şəkillər tərtibatla **bir sorğuda** göndərilir: təzə çəkilmiş fotolar ayrıca
+fayl kimi heç vaxt saxlanılmır, siyahıda yalnız tərtibat görünür.
+`multipart/form-data`, ən çox 200 MB:
+
+| Sahə | Məna |
+|---|---|
+| `images` | şəkillər (ən çox 50), hər biri öz fayl adı ilə; növü baytlarından yoxlanır |
+| `layout` | tərtibat JSON-u mətn kimi. Göndərilən şəkil `upload:{fayl adı}` adlanır; `file:…` adları da `POST files/layout`-dakı kimi işləyir |
+| `fileName` | göstərilən ad (`POST files/scan`-dakı qayda) |
+
+→ `201` + fayl obyekti (`source` = `Layout`). Tərtibat yalnız adını çəkdiyi
+şəkillərin nüsxəsini saxlayır. Göndərilməmiş `upload:` adı
+`400 files.layout.imageRef`, şəkil olmayan fayl `400 files.layout.notAPicture`,
+50-dən çox şəkil `400 files.layout.tooManyPictures`, təkrarlanan və ya boş ad
+`400 files.layout.pictureName`.
+
+**Şəklin istiqaməti (T-473):** telefonun EXIF-də yazdığı fırlatma həm
+çevirmədə (şəkil faylının PDF-i və önizləməsi), həm şəkil redaktəsində, həm
+tərtibatda nəzərə alınır. Şəkil hər yerdə eyni tərəfə baxır.
+
 #### `GET /api/files/{id}/layout`
 
 → `{ "fileId", "layout": { ...şəkillər "asset:{key}" adı ilə... }, "assets": [ { "name", "mediaType", "sizeBytes" } ] }`.

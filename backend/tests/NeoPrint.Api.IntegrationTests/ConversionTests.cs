@@ -78,6 +78,70 @@ public sealed class ConversionTests
         return Encoding.ASCII.GetBytes(builder.ToString());
     }
 
+    [PdfiumFact]
+    public async Task A_photo_the_phone_stored_sideways_becomes_an_upright_page()
+    {
+        using var scope = _fixture.Services.CreateScope();
+        var conversion = scope.ServiceProvider.GetRequiredService<DocumentConversionService>();
+        var files = scope.ServiceProvider.GetRequiredService<IFileRepository>();
+        var storage = scope.ServiceProvider.GetRequiredService<IFileStorage>();
+
+        // Pixels 400 wide and 200 tall, EXIF orientation 6 ("turn 90°
+        // clockwise to show"): upright the page is 200 wide and 400 tall
+        // (T-473). Stored as it came, the photo printed on its side.
+        var file = await UploadAsync(scope, WithExifOrientation(Jpeg(400, 200), 6), "foto.jpg", "jpg", "image/jpeg");
+
+        await conversion.ConvertAsync(file.Id);
+
+        var converted = await files.FindByIdAsync(file.Id);
+        converted!.Status.Should().Be(FileStatus.Ready, converted.FailureReason);
+
+        using var pdf = new MemoryStream();
+        await storage.ReadAsync(
+            new StoredObject(
+                converted.Pdf!.ProviderId,
+                converted.Pdf.Key,
+                converted.Pdf.Sha256,
+                converted.Pdf.EncryptedLength,
+                converted.Pdf.PlaintextLength,
+                converted.Pdf.KekId),
+            StorageBucket.Files,
+            pdf);
+
+        using var document = PdfDocument.Load(pdf.ToArray());
+        var page = document.RenderPage(0, 200);
+
+        page.Width.Should().Be(200);
+        page.Height.Should().BeCloseTo(400, 2);
+    }
+
+    private static byte[] Jpeg(int width, int height)
+    {
+        using var bitmap = new SkiaSharp.SKBitmap(width, height);
+        bitmap.Erase(SkiaSharp.SKColors.SteelBlue);
+
+        using var image = SkiaSharp.SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Jpeg, 90);
+
+        return data.ToArray();
+    }
+
+    /// <summary>The JPEG with an EXIF block that holds only the orientation (as in LayoutRendererTests).</summary>
+    private static byte[] WithExifOrientation(byte[] jpeg, ushort orientation)
+    {
+        byte[] exif =
+        [
+            0xFF, 0xE1, 0x00, 0x22, // APP1, length 34
+            (byte)'E', (byte)'x', (byte)'i', (byte)'f', 0x00, 0x00,
+            (byte)'M', (byte)'M', 0x00, 0x2A, 0x00, 0x00, 0x00, 0x08, // big-endian TIFF, IFD at 8
+            0x00, 0x01, // one entry
+            0x01, 0x12, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, (byte)(orientation >> 8), (byte)orientation, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, // no next IFD
+        ];
+
+        return [.. jpeg.Take(2), .. exif, .. jpeg.Skip(2)];
+    }
+
     /// <summary>A 4x4 PNG, encoded by Skia so it is a real image.</summary>
     private static byte[] SmallPng()
     {
