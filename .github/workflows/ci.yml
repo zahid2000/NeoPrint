@@ -276,10 +276,6 @@ jobs:
     name: ios (unsigned build)
     runs-on: macos-26
     timeout-minutes: 60
-    # Until its first green run: our Swift has never been compiled before,
-    # and a red iOS build must not hold up the test-server deploys meanwhile.
-    # Removed once it passes (T-469).
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4

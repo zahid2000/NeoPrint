@@ -8,7 +8,7 @@ Bizim yol: Mac olmadan **GitHub macOS runner** tətbiqi yığır, imzalayır və
 
 | Nə | Harada |
 |---|---|
-| **İmzasız iOS build-i hər push-da** (Swift kodumuzun və plugin-lərin kompilyasiyası) | `ci.yml` → `ios (unsigned build)`, `macos-26` runner-i, Xcode 26. İlk yaşıl run-a qədər bloklamır (`continue-on-error`) |
+| **İmzasız iOS build-i hər push-da** (Swift kodumuzun və plugin-lərin kompilyasiyası) | `ci.yml` → `ios (unsigned build)`, `macos-26` runner-i, Xcode 26. İlk run 2026-11-27-də yaşıl oldu (Xcode 26.6), o vaxtdan bloklayıcıdır |
 | **TestFlight build-i** — test serverinə qoşulan tətbiq | "Deploy (test server)" workflow-u → `ios` seçimi |
 | **İmza qurulumu skripti** — sertifikat, profil, GitHub secret-ləri | `tools/ios/setup-signing.mjs` |
 | Minimum iOS **15.5** (ML Kit tələbi), `Podfile` | `mobile/ios` |
