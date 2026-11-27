@@ -285,6 +285,10 @@ flutter run -d <telefon_id> --dart-define=NEOPRINT_API_URL=https://<HOST>
 bildirişləri bu serverdə əlavə quraşdırma tələb edir (domen və Firebase açarı —
 `DEV_ENVIRONMENT.md` "Firebase (FCM) service account açarı").
 
+## iOS tətbiqi (TestFlight, T-469)
+
+Eyni workflow `ios` seçimi ilə iPhone üçün build yığır, onu bu serverə qoşur və TestFlight-a yükləyir. Susmaya görə bu seçim söndürülüb. Bir dəfəlik qurulum (Apple hesabı, API açarı, imza, push açarı) və iPhone-da yoxlama siyahısı: [`IOS_TESTING.md`](IOS_TESTING.md).
+
 ## Kiosku test serverinə yönəltmək
 
 ```powershell

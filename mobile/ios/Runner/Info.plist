@@ -21,6 +21,12 @@
 	<string>Yaxınlığınızdakı kioskları göstərmək üçün məkanınız lazımdır. Məkan heç yerdə saxlanmır.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Çap etmək istədiyiniz şəkli seçmək üçün foto kitabxanasına giriş lazımdır.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

@@ -1,8 +1,8 @@
 # NeoPrint CI (plan section 12, step 1).
 #
-# Five jobs, one per thing that can break on its own: the backend, the kiosk on
-# both of its platforms, the mobile app, the admin panel, and the licence
-# policy. They are independent, so a red backend still tells us whether the
+# One job per thing that can break on its own: the backend, the kiosk on
+# both of its platforms, the mobile app (and its iOS build), the admin panel,
+# and the licence policy. They are independent, so a red backend still tells us whether the
 # panel builds.
 name: CI
 
@@ -262,6 +262,53 @@ jobs:
 
       - name: Build web
         run: flutter build web
+        working-directory: mobile
+
+  # --------------------------------------------------------------------
+  # iOS (T-469)
+  # --------------------------------------------------------------------
+  #
+  # An unsigned build: no Apple account involved. It compiles our Swift
+  # (AppDelegate.swift's channels) and the plugins' iOS code, which nothing
+  # else touches. Standard runners cost nothing on a public repository; the
+  # macOS 26 image carries Xcode 26, the SDK App Store Connect requires.
+  ios:
+    name: ios (unsigned build)
+    runs-on: macos-26
+    timeout-minutes: 60
+    # Until its first green run: our Swift has never been compiled before,
+    # and a red iOS build must not hold up the test-server deploys meanwhile.
+    # Removed once it passes (T-469).
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the Flutter SDK
+        run: |
+          git clone --depth 1 --branch 3.50.0 https://github.com/flutter/flutter.git "$RUNNER_TOOL_CACHE/flutter"
+          echo "$RUNNER_TOOL_CACHE/flutter/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TOOL_CACHE/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+      - name: Record the SDK versions
+        run: |
+          flutter --version
+          xcodebuild -version
+          pod --version
+
+      - name: Cache the pub cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('mobile/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Resolve packages
+        run: flutter pub get
+        working-directory: mobile
+
+      - name: Build iOS (unsigned)
+        run: flutter build ios --release --no-codesign
         working-directory: mobile
 
   # --------------------------------------------------------------------

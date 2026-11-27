@@ -1,70 +1,131 @@
-# iOS: test build-i və iPhone-da yoxlama (T-468)
+# iOS: test build-i və iPhone-da yoxlama (T-468, T-469)
 
-Araşdırma: 2026-11-26. Plan iOS üçün yalnız **build** tələb edir, App Store publikasiyası scope xaricindədir (plan 15). Burada məqsəd **TestFlight** vasitəsilə iPhone-da test etməkdir. `PILOT.md` 11-ci bənd də budur.
+Araşdırma: 2026-11-26 (T-468). Qurulum: 2026-11-27 (T-469). Plan iOS üçün yalnız **build** tələb edir, App Store publikasiyası scope xaricindədir (plan 15).
 
-## 1. Repo-nun hazırkı vəziyyəti
+Bizim yol: Mac olmadan **GitHub macOS runner** tətbiqi yığır, imzalayır və App Store Connect-ə yükləyir. Oradan tətbiq **TestFlight**-ın daxili testçilərinə gedir. App Store-da heç nə dərc olunmur. `PILOT.md` 11-ci bənd də budur.
 
-| Nə | Vəziyyət |
+## 1. Nə hazırdır (T-469)
+
+| Nə | Harada |
 |---|---|
-| `mobile/ios` layihəsi | Var. Bundle ID `az.neoprint.neoprint`, minimum iOS 15.0, imza "Automatic", komanda (Team) yazılmayıb |
-| Öz Swift kodumuz (`AppDelegate.swift`, 436 sətir) | 6 kanal: `secure_storage` (Keychain), `biometrics` (Face ID), `document_scanner` (VisionKit), `heic`, `share`, `browser`. **Heç vaxt kompilyasiya olunmayıb** (`DECISIONS.md` 2026-10-05): bu maşında Xcode yoxdur, CI-da macOS job-u yoxdur |
-| iOS-da olmayan kanallar | `cloud_picker`, `file_saver`. Dart tərəfi bunları yalnız Android-də çağırır, iOS-da sistemin fayl seçicisi və paylaşma işləyir. Xəta vermir |
-| İcazə mətnləri (`Info.plist`) | Kamera, foto kitabxanası, məkan, Face ID var. `neoprint://` sxemi var |
-| Firebase iOS konfiqurasiyası | `firebase_options.dart`-da `ios` var |
-| Push (APNs) | **Hazır deyil**: entitlements faylı (`aps-environment`) yoxdur, `UIBackgroundModes: remote-notification` yoxdur, Firebase-ə APNs açarı yüklənməyib |
-| `ITSAppUsesNonExemptEncryption` | Yoxdur. Əlavə olunmasa, hər build-də şifrələmə sualı əl ilə cavablandırılmalı olur (bizdə yalnız HTTPS var, yəni `false`) |
-| Test serverinin ünvanı | APK-da `--dart-define=NEOPRINT_API_URL=https://<server>` ilə verilir. iOS build-i də eyni yolla almalıdır |
-| CocoaPods / Swift Package Manager | `Podfile` yoxdur. Mac-da ilk `flutter build ios` lazım olanı özü yaradır |
+| **İmzasız iOS build-i hər push-da** (Swift kodumuzun və plugin-lərin kompilyasiyası) | `ci.yml` → `ios (unsigned build)`, `macos-26` runner-i, Xcode 26. İlk yaşıl run-a qədər bloklamır (`continue-on-error`) |
+| **TestFlight build-i** — test serverinə qoşulan tətbiq | "Deploy (test server)" workflow-u → `ios` seçimi |
+| **İmza qurulumu skripti** — sertifikat, profil, GitHub secret-ləri | `tools/ios/setup-signing.mjs` |
+| Minimum iOS **15.5** (ML Kit tələbi), `Podfile` | `mobile/ios` |
+| Şifrələmə sualı avtomatik cavablanır | `Info.plist`: `ITSAppUsesNonExemptEncryption = false` (bizdə yalnız HTTPS var) |
+| **Push hazırlığı** | `Runner.entitlements` (`aps-environment`), `Info.plist`-də `UIBackgroundModes: remote-notification`. Tətbiq APNs tokenini gözləyib Firebase tokenini alır. Backend APNs hissəsini artıq göndərir (`FcmPushSender`) |
+| Firebase iOS konfiqurasiyası | `firebase_options.dart`-da `ios`, Bundle ID `az.neoprint.neoprint` |
 
-## 2. Apple tərəfinin tələbləri (2026)
+**Bundle ID** `az.neoprint.neoprint` qalır. İstifadəçi onu görmür. Ad dəyişikliyi (T-336) yalnız görünən adı (`CFBundleDisplayName`) və App Store Connect-dəki adı dəyişir, onlar sonra da dəyişdirilə bilər.
 
-- **Apple Developer Program:** ildə $99. Onsuz TestFlight yoxdur. Pulsuz Apple ID ilə yalnız Mac + Xcode + kabel ilə öz telefonuna 7 günlük quraşdırma mümkündür, bizdə Mac olmadığı üçün bu yol yoxdur.
-  - **Fərdi** qeydiyyat: tez olur, App Store-da şəxsin adı görünür.
-  - **Təşkilat** qeydiyyatı: D-U-N-S nömrəsi tələb edir, günlərlə, bəzən həftələrlə çəkir, şirkətin adı görünür.
-- **SDK tələbi:** 28 aprel 2026-dan App Store Connect-ə yüklənən build-lər **Xcode 26 və iOS 26 SDK** ilə yığılmalıdır. Minimum iOS versiyası (bizdə 15.0) dəyişmir.
-- **TestFlight:**
-  - **daxili testçilər** (App Store Connect istifadəçiləri): ən çox 100 nəfər, Apple-ın yoxlaması yoxdur, build emal olunan kimi əlçatandır;
-  - **xarici testçilər:** ən çox 10 000 nəfər, ilk build Apple-ın Beta App Review yoxlamasından keçir;
-  - hər build 90 gün işləyir.
+## 2. Layihə sahibinin etməli olduqları
 
-## 3. Mac olmadan build: GitHub Actions macOS runner
+Bu addımlar bir dəfə edilir. Açar fayllarını (`.p8`) söhbətə yazmayın. Faylı kompüterdə saxlayın və mənə yalnız **yolunu** deyin.
 
-Repo 2026-10-11-dən açıqdır (public). Açıq repolarda standart GitHub runner-ləri, o cümlədən macOS, **pulsuzdur**. Ona görə `DECISIONS.md`-dəki "macOS runner baha başa gəlir" səbəbi artıq keçərli deyil.
+### Addım 1 — Apple Developer Program ($99/il)
 
-Təklif olunan iki iş:
+1. iPhone-dakı Apple ID-də **iki addımlı doğrulama** açıq olmalıdır.
+2. <https://developer.apple.com/programs/enroll/> səhifəsinə daxil olun. Ən rahatı iPhone-da **Apple Developer** tətbiqindən qeydiyyatdır.
+3. Hesab növünü seçin:
+   - **Fərdi (Individual):** adətən 1–2 günə açılır. Hələlik test üçün bu kifayətdir.
+   - **Təşkilat (Organization):** D-U-N-S nömrəsi tələb edir, həftələrlə çəkə bilər.
 
-1. **CI-a imzasız iOS build-i** (`flutter build ios --no-codesign`, hər push-da). Heç bir hesab tələb etmir. Swift kodumuzun kompilyasiya olunduğunu ilk dəfə yoxlayır. Apple hesabı alınmamışdan əvvəl də edilə bilər.
-2. **"iOS test (TestFlight)" workflow-u** (əl ilə işə salınır):
-   - `flutter build ipa` test serverinin ünvanı ilə yığılır;
-   - imza üçün App Store Connect API açarı və avtomatik imza (`-allowProvisioningUpdates`) işlədilir;
-   - build TestFlight-a yüklənir.
+   Fərdi hesab sonra təşkilata köçürülə bilər.
+4. Ödənişdən sonra "Welcome" məktubunu gözləyin.
 
-   Açar GitHub secret-lərində saxlanır, repoya yazılmır. Lazım olan secret-lər: açar faylı (`.p8`), Key ID, Issuer ID, Team ID.
+### Addım 2 — App Store Connect API açarı
 
-## 4. Layihə sahibinin etməli olduqları
+1. <https://appstoreconnect.apple.com> → **Users and Access** → **Integrations** → **App Store Connect API** → **Team Keys** → **+**.
+2. Ad: `NeoPrint CI`. Giriş: **Admin**. Sertifikat və profil yaratmaq üçün bu rol lazımdır.
+3. **Download API Key**: `.p8` faylı **yalnız bir dəfə** endirilir. Onu məsələn `C:\Users\<siz>\keys\` qovluğunda saxlayın. Bu qovluq repo daxilində olmamalıdır.
+4. Səhifədə görünən iki dəyəri qeyd edin:
+   - **Key ID** (10 simvol);
+   - **Issuer ID** (cədvəlin üstündə, UUID).
+5. Mənə yazın: "açar hazırdır", faylın **yolu**, Key ID və Issuer ID.
 
-1. Apple Developer Program-a qeydiyyat ($99/il): fərdi və ya təşkilat.
-2. App Store Connect-də:
-   - **API açarı** yaratmaq (Users and Access → Integrations, rol "App Manager");
-   - **Team ID**-ni götürmək;
-   - açarı və ID-ləri GitHub secret-lərinə yazmaq. Mən bunun üçün əmrləri verəcəyəm, açarı söhbətə yazmayın.
-3. **Bundle ID-ni qəti seçmək.** App Store Connect-də tətbiq yaradılandan sonra Bundle ID dəyişdirilmir. Hazırda `az.neoprint.neoprint` yazılıb, amma ad dəyişikliyi (T-336) hələ gözləyir.
-4. App Store Connect-də tətbiq qeydini yaratmaq. Ad sonra dəyişdirilə bilər.
-5. Özünü daxili testçi kimi əlavə etmək, iPhone-a **TestFlight** tətbiqini quraşdırmaq.
-6. Push üçün (sonra): APNs açarını (`.p8`) Firebase layihəsinə yükləmək.
+Bundan sonra mən bu kompüterdə əvvəlcə yoxlama rejimində (`--apply`-sız), sonra qurulum rejimində (`--apply` ilə) bu əmri işlədəcəyəm:
 
-## 5. Claude-un edəcəkləri
+```bash
+node tools/ios/setup-signing.mjs --key <yol>/AuthKey_XXXX.p8 --key-id XXXX --issuer-id <uuid>
+```
 
-1. CI-a imzasız iOS build job-u əlavə etmək. Çıxan Swift xətalarını düzəltmək.
-2. `Info.plist`-ə `ITSAppUsesNonExemptEncryption = false` əlavə etmək. Push hazırlığı: entitlements faylı və `remote-notification`.
-3. TestFlight workflow-unu yazmaq və `docs/TEST_SERVER.md`-yə iOS bölməsi əlavə etmək.
-4. iPhone-da yoxlama siyahısını hazırlamaq (`MANUAL_TESTS.md` MT-09-un iOS hissəsi): PIN, Face ID, Keychain, kamera, QR, VisionKit skaneri, Office redaktoru (WKWebView), `neoprint://` linkləri.
+Skript bunları edir:
+- Bundle ID-ni qeydiyyatdan keçirir və Push Notifications-ı açır;
+- sertifikatı və profili yaradır;
+- 6 GitHub secret-i yazır.
 
-## 6. Risklər
+Açar repoya düşmür, ekrana çıxmır.
 
-- **Swift kodu heç vaxt kompilyasiya olunmayıb.** İlk build-də xətalar çıxacaq. Onları CI-da görüb düzəltmək olar, amma işləməsini yalnız real iPhone yoxlayır.
-- **Bəzi şeylər simulyatorda yoxlanmır:** ML Kit (QR) və VisionKit skaneri simulyatorda tam işləmir. Ona görə TestFlight və real iPhone lazımdır.
-- **SDK 26 ilə tətbiq UI görünüşü (Liquid Glass) dəyişə bilər.** iOS 26 SDK ilə yığılan tətbiqdə sistem elementləri yeni görünüş alır. Bizim UI Flutter-dir, ona görə əsasən sistem dialoqlarına aiddir.
-- **Bundle ID sonra dəyişdirilmir.** Ad dəyişikliyi (T-336) ilə toqquşmasın deyə qərar tətbiq qeydi yaradılmamışdan əvvəl verilməlidir.
+### Addım 3 — App Store Connect-də tətbiq qeydi
 
-Mənbələr: [Apple — SDK minimum tələbləri](https://developer.apple.com/news/upcoming-requirements/), [Apple — TestFlight icmalı](https://developer.apple.com/help/app-store-connect/test-a-beta-version/overview-of-testflight/), [GitHub — Actions ödənişi (açıq repolarda standart runner-lər pulsuzdur)](https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions).
+Bunu Addım 2-dən **sonra** edin, çünki Bundle ID siyahıda o zaman görünür.
+
+1. <https://appstoreconnect.apple.com> → **Apps** → **+** → **New App**.
+2. Sahələri doldurun:
+   - Platform **iOS**;
+   - Name: məs. `NeoPrint Test`. Ad App Store-da unikal olmalıdır, sonra dəyişdirilə bilər;
+   - Primary Language: **Azerbaijani** (siyahıda yoxdursa English);
+   - Bundle ID: **az.neoprint.neoprint**;
+   - SKU: `neoprint-test`;
+   - User Access: Full Access.
+3. **Create**. Qalan sahələri (şəkillər, təsvir) doldurmaq lazım deyil: onlar yalnız App Store üçündür.
+
+### Addım 4 — TestFlight testçiləri
+
+1. Tətbiq → **TestFlight** → **Internal Testing** → **+**, qrup adı: `NeoPrint`.
+2. Özünüzü (və App Store Connect-ə əlavə etdiyiniz digər insanları) qrupa əlavə edin. Daxili testçi App Store Connect istifadəçisi olmalıdır, ən çox 100 nəfər ola bilər.
+3. "Automatic distribution" açıq qalsın: hər yeni build qrupa özü gedir.
+
+### Addım 5 — Push bildirişləri (APNs açarı → Firebase)
+
+1. <https://developer.apple.com/account/resources/authkeys/list> → **+**.
+2. Ad `NeoPrint Push`, **Apple Push Notifications service (APNs)** seçin. Environment: **Sandbox & Production**.
+3. **Continue** → **Register** → **Download**. Bu `.p8` faylı da bir dəfə endirilir. Key ID-ni qeyd edin.
+4. **Team ID**: <https://developer.apple.com/account> → Membership details.
+5. <https://console.firebase.google.com> → NeoPrint layihəsi → ⚙ **Project settings** → **Cloud Messaging** → **Apple app configuration** (`az.neoprint.neoprint`) → **APNs Authentication Key** → **Upload**: faylı, Key ID-ni və Team ID-ni daxil edin.
+
+Bu açarı GitHub-a yazmaq lazım deyil: push Firebase üzərindən gedir.
+
+### Addım 6 — iPhone
+
+1. App Store-dan **TestFlight** tətbiqini quraşdırın (Apple-ın öz tətbiqidir).
+2. İlk build yükləndikdən sonra e-poçtunuza dəvət gəlir. Onu iPhone-da açın, **Accept** → TestFlight-da **Install** basın.
+3. Sonrakı build-lər TestFlight-da "Update" kimi görünəcək.
+
+## 3. Claude-un edəcəkləri (Addım 2-dən sonra)
+
+1. `setup-signing.mjs`-i işlətmək (əvvəlcə yoxlama, sonra `--apply`).
+2. "Deploy (test server)" workflow-unu `ios=true` ilə işə salmaq. İlk dəfə imza və ya Swift xətaları çıxa bilər, onları düzəldib yenidən işə salmaq.
+3. Build App Store Connect-də emal olunandan sonra (5–30 dəqiqə) sizə xəbər vermək.
+4. Sonrakı deploy-larda iOS build-ini **sizin istəyinizlə** etmək. Hər push-da TestFlight-a yükləmə olmur, çünki macOS build-i uzun çəkir və Apple build-ləri emal etməlidir.
+
+## 4. iPhone-da yoxlama siyahısı (MT-09-un iOS hissəsi)
+
+| # | Nə | Gözlənən |
+|---|---|---|
+| 1 | Qeydiyyat / giriş, PIN | Açılır, PIN saxlanır (Keychain) |
+| 2 | Face ID ilə açmaq | Face ID sorğusu, "NeoPrint-i PIN yazmadan açmaq üçün" mətni |
+| 3 | Bildiriş icazəsi və push | İcazə sorğusu. Paneldən göndərilən bildiriş tətbiq bağlı olanda da gəlir. Toxunanda düzgün ekran açılır |
+| 4 | Kamera: tək və bir neçə şəkil (T-466, T-470) | "Şəkil çək" və "Hazırdır" düymələri görünür |
+| 5 | QR oxumaq (ML Kit) | Kioskun ödəniş QR-ı oxunur |
+| 6 | Skaner (VisionKit) | Sənəd kənarları tapılır, səhifələr gəlir |
+| 7 | Fayl seçimi (bir neçə fayl), HEIC şəkil | Yüklənir, HEIC çevrilir |
+| 8 | Office redaktoru (WKWebView, T-459) | Sənəd açılır, saxlanır |
+| 9 | Paylaşma, brauzerdə açmaq | Sistem paylaşma pəncərəsi, Safari |
+| 10 | `neoprint://` linkləri | Tətbiq açılır, düzgün ekrana gedir |
+| 11 | Xəritə və məkan | İcazə sorğusu, yaxın kiosklar |
+
+## 5. Risklər
+
+- **Swift kodu ilk dəfə kompilyasiya olunur.** İlk CI run-larında xətalar çıxa bilər. Onlar CI-da görünür və düzəldilir, amma işləməyi yalnız real iPhone təsdiqləyir.
+- **ML Kit (QR) və VisionKit simulyatorda tam işləmir.** Ona görə yoxlama TestFlight və real iPhone ilə edilir.
+- **Sertifikat və profil 1 il işləyir.** Bitəndə `setup-signing.mjs --apply` yenidən işlədilir. Apple-da ən çox 2–3 distribution sertifikatı ola bilər, köhnəsi developer.apple.com → Certificates-də ləğv olunur.
+- **TestFlight build-i 90 gün işləyir.** Ondan sonra yeni build lazımdır.
+- **SDK 26 ilə yığılan tətbiqdə sistem elementləri yeni görünüş (Liquid Glass) alır.** Bizim UI Flutter-dir, dəyişiklik əsasən sistem dialoqlarına aiddir.
+
+Mənbələr:
+- [Apple — SDK minimum tələbləri](https://developer.apple.com/news/upcoming-requirements/)
+- [Apple — TestFlight icmalı](https://developer.apple.com/help/app-store-connect/test-a-beta-version/overview-of-testflight/)
+- [Apple — App Store Connect API açarı](https://developer.apple.com/documentation/appstoreconnectapi/creating-api-keys-for-app-store-connect-api)
+- [Firebase — APNs açarının yüklənməsi](https://firebase.google.com/docs/cloud-messaging/ios/certs)
+- [GitHub — Actions ödənişi (açıq repolarda standart runner-lər pulsuzdur)](https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions)

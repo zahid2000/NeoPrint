@@ -2,7 +2,8 @@
 #
 # Started by hand: Actions → "Deploy (test server)" → Run workflow. It builds
 # the API and the panel images, puts them on the server, and builds an Android
-# APK that talks to that server.
+# APK that talks to that server - and, when asked, the iOS app for TestFlight
+# (docs/IOS_TESTING.md).
 #
 # What it reads (Settings → Secrets and variables → Actions):
 #
@@ -14,6 +15,10 @@
 #   TEST_SERVER_DIR          optional, /opt/neoprint
 #   TEST_DOMAIN              optional; <ip>.sslip.io without it
 #   TEST_ACME_EMAIL          optional; contact for the certificates
+#
+# The iOS job alone also reads IOS_DIST_P12_B64, IOS_DIST_P12_PASSWORD,
+# IOS_PROFILE_B64, ASC_KEY_P8_B64, ASC_KEY_ID and ASC_ISSUER_ID, all written
+# by tools/ios/setup-signing.mjs.
 #
 # No application secret passes through here: the server generates its own
 # (deploy/test-server/deploy.sh) and they never leave it.
@@ -33,6 +38,10 @@ on:
         description: Build the Android APK that talks to the test server
         type: boolean
         default: true
+      ios:
+        description: Build the iOS app for the test server and upload it to TestFlight (T-469)
+        type: boolean
+        default: false
 
 # Two deployments at once would fight over the same containers. The second
 # waits for the first rather than cancelling it half way.
@@ -402,3 +411,166 @@ jobs:
             echo "- Or the \`neoprint-test-apk\` artifact of this run"
             echo "- It talks to https://$HOST/"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------------------------
+  # iOS → TestFlight (T-469, docs/IOS_TESTING.md)
+  # --------------------------------------------------------------------
+  #
+  # The same app as the APK, talking to the same server, signed for the App
+  # Store and uploaded to App Store Connect, where it reaches the internal
+  # testers through TestFlight. Nothing is published to the App Store.
+  #
+  # The secrets come from tools/ios/setup-signing.mjs: the distribution
+  # certificate (.p12 and its password), the App Store profile, and the App
+  # Store Connect API key the upload signs in with.
+  ios:
+    name: ios (TestFlight)
+    if: inputs.ios
+    needs: settings
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    env:
+      HOST: ${{ needs.settings.outputs.host }}
+
+    steps:
+      - name: Check the signing secrets
+        env:
+          P12: ${{ secrets.IOS_DIST_P12_B64 }}
+          P12_PASSWORD: ${{ secrets.IOS_DIST_P12_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROFILE_B64 }}
+          ASC_KEY: ${{ secrets.ASC_KEY_P8_B64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          missing=()
+          for name in P12 P12_PASSWORD PROFILE ASC_KEY ASC_KEY_ID ASC_ISSUER_ID; do
+            [ -n "${!name}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::iOS signing is not set up (missing: ${missing[*]}). Run tools/ios/setup-signing.mjs --apply (docs/IOS_TESTING.md)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Install the Flutter SDK
+        run: |
+          git clone --depth 1 --branch 3.50.0 https://github.com/flutter/flutter.git "$RUNNER_TOOL_CACHE/flutter"
+          echo "$RUNNER_TOOL_CACHE/flutter/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TOOL_CACHE/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+      - name: Record the SDK versions
+        run: |
+          flutter --version
+          xcodebuild -version
+
+      - name: Cache the pub cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('mobile/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Resolve packages
+        run: flutter pub get
+        working-directory: mobile
+
+      # A keychain of its own for the run, removed at the end; the profile
+      # where Xcode looks for profiles. Its name, team and bundle ID come from
+      # the profile itself.
+      - name: Install the certificate and the profile
+        env:
+          P12: ${{ secrets.IOS_DIST_P12_B64 }}
+          P12_PASSWORD: ${{ secrets.IOS_DIST_P12_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROFILE_B64 }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(openssl rand -base64 24)"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          printf '%s' "$P12" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          security import "$RUNNER_TEMP/dist.p12" -k "$keychain" -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/dist.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+          printf '%s' "$PROFILE" | base64 --decode > "$RUNNER_TEMP/app.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/app.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          uuid=$(plutil -extract UUID raw "$RUNNER_TEMP/profile.plist")
+          name=$(plutil -extract Name raw "$RUNNER_TEMP/profile.plist")
+          team=$(plutil -extract TeamIdentifier.0 raw "$RUNNER_TEMP/profile.plist")
+          app_id=$(plutil -extract Entitlements.application-identifier raw "$RUNNER_TEMP/profile.plist")
+          bundle="${app_id#"$team".}"
+          for dir in "$HOME/Library/MobileDevice/Provisioning Profiles" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+            mkdir -p "$dir"
+            cp "$RUNNER_TEMP/app.mobileprovision" "$dir/$uuid.mobileprovision"
+          done
+
+          {
+            echo "PROFILE_NAME=$name"
+            echo "TEAM_ID=$team"
+            echo "BUNDLE_ID=$bundle"
+          } >> "$GITHUB_ENV"
+          echo "Profile \"$name\", team $team, bundle $bundle"
+
+      # Only the Runner target reads Signing.xcconfig (Flutter/Release.xcconfig
+      # takes it in), so the pods build as they are.
+      - name: Sign the app for the App Store
+        run: |
+          {
+            echo "CODE_SIGN_STYLE = Manual"
+            echo "DEVELOPMENT_TEAM = $TEAM_ID"
+            echo "PROVISIONING_PROFILE_SPECIFIER = $PROFILE_NAME"
+            echo "CODE_SIGN_IDENTITY = Apple Distribution"
+            echo "CODE_SIGN_IDENTITY[sdk=iphoneos*] = Apple Distribution"
+            echo "APS_ENVIRONMENT = production"
+          } > ios/Flutter/Signing.xcconfig
+
+          plist="$RUNNER_TEMP/ExportOptions.plist"
+          plutil -create xml1 "$plist"
+          plutil -insert method -string app-store-connect "$plist"
+          plutil -insert teamID -string "$TEAM_ID" "$plist"
+          plutil -insert signingStyle -string manual "$plist"
+          plutil -insert signingCertificate -string "Apple Distribution" "$plist"
+          plutil -insert uploadSymbols -bool YES "$plist"
+          plutil -insert provisioningProfiles -dictionary "$plist"
+          plutil -insert "provisioningProfiles.$BUNDLE_ID" -string "$PROFILE_NAME" "$plist"
+          cat "$plist"
+        working-directory: mobile
+
+      # The run number as the build number, as for the APK: each upload is
+      # newer than the last to App Store Connect.
+      - name: Build
+        run: |
+          flutter build ipa --release "--build-number=$GITHUB_RUN_NUMBER" \
+            "--dart-define=NEOPRINT_API_URL=https://$HOST" \
+            "--export-options-plist=$RUNNER_TEMP/ExportOptions.plist"
+          ipa=$(ls build/ios/ipa/*.ipa)
+          echo "IPA=$PWD/$ipa" >> "$GITHUB_ENV"
+          echo "IPA size: $(stat -f %z "$ipa") bytes" >> "$GITHUB_STEP_SUMMARY"
+        working-directory: mobile
+
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY: ${{ secrets.ASC_KEY_P8_B64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          [[ "$ASC_KEY_ID" =~ ^[A-Z0-9]+$ ]] || { echo "::error::ASC_KEY_ID is not a key ID"; exit 1; }
+          mkdir -p ~/.appstoreconnect/private_keys
+          printf '%s' "$ASC_KEY" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8
+          xcrun altool --upload-app --type ios --file "$IPA" --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+
+          {
+            echo "### iOS"
+            echo "- Build $GITHUB_RUN_NUMBER uploaded to App Store Connect; it reaches TestFlight once Apple has processed it (usually 5-30 minutes)"
+            echo "- It talks to https://$HOST/"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the keychain and the key
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -rf ~/.appstoreconnect mobile/ios/Flutter/Signing.xcconfig "$RUNNER_TEMP/app.mobileprovision" "$RUNNER_TEMP/profile.plist"

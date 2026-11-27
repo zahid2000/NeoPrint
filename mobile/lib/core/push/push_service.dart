@@ -130,6 +130,10 @@ class FirebasePushPlatform implements PushPlatform {
         return null;
       }
 
+      if (!await _apnsReady()) {
+        return null;
+      }
+
       return await FirebaseMessaging.instance.getToken(
         vapidKey: kIsWeb ? _vapidKey : null,
       );
@@ -202,6 +206,25 @@ class FirebasePushPlatform implements PushPlatform {
       // Offline, most likely: the server-side removal is the other half.
       debugPrint('Push token not given up: $error');
     }
+  }
+
+  /// On an iPhone Firebase has no token until APNs has given the phone its
+  /// own, a moment after the permission; asking sooner throws. Waited for a
+  /// few seconds - past that the token comes through [tokenRefreshed].
+  Future<bool> _apnsReady() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+      return true;
+    }
+
+    for (var i = 0; i < 10; i++) {
+      if (await FirebaseMessaging.instance.getAPNSToken() != null) {
+        return true;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+
+    debugPrint('Push token not yet available: no APNs token.');
+    return false;
   }
 
   @override

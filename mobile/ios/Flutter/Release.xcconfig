@@ -1,1 +1,9 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
+
+APS_ENVIRONMENT = development
+
+// The TestFlight build's signing: written by the "Deploy (test server)"
+// workflow (docs/IOS_TESTING.md) and never committed. Without it the build
+// is the unsigned one CI makes on every push.
+#include? "Signing.xcconfig"

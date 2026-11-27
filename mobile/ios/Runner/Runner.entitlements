@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Push through APNs (Firebase Cloud Messaging). The value comes from the
+	     build: "development" for a build from Xcode, "production" for the
+	     TestFlight build (Flutter/Signing.xcconfig, written by CI). -->
+	<key>aps-environment</key>
+	<string>$(APS_ENVIRONMENT)</string>
+</dict>
+</plist>
