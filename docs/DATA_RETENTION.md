@@ -137,8 +137,9 @@ Yalnız kioskun diskində (`camera/sealed`), backend-in açıq açarı ilə şif
 `Camera.RetentionDays` (default **2**, ən çox **31**) keçəndən sonra kiosk özü silir; `Camera.MaxDiskGb` aşılanda
 və diskdə 3 GB-dan az boş yer qalanda ən köhnəsi əvvəl silinir. `Activity` rejimində kioskda heç kim olmayan
 dəqiqələr ümumiyyətlə saxlanmır (bir dəqiqə əvvəl / sonra ilə). Səs yazılmır, üz tanıma yoxdur. Kamera söndürüləndə
-qalan yazılar son saxlama müddəti ilə silinir. Serverə görüntü yalnız admin istəyəndə gedir (T-483); onun saxlanma
-qaydası həmin işdə yazılır. `camera_keys` (backend-in kamera açar cütü) silinmir: köhnə yazılar onunla açılır.
+qalan yazılar son saxlama müddəti ilə silinir. Fayl serveri seçilibsə (T-485) hər dəqiqə şifrəli halda oraya da gedir və
+`Camera.ArchiveRetentionDays` (default **30**, ən çox **365**) keçəndən sonra saatlıq iş onu serverdən və
+`camera_segments`-dən silir; serverdə də yalnız backend-in kamera açarı açır. `camera_keys` (backend-in kamera açar cütü) silinmir: köhnə yazılar onunla açılır.
 
 ## Incident bildirişlərinin qeydi
 

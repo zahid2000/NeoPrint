@@ -557,13 +557,13 @@ Activation ekranına qayıdır.
   "paperStock": { "A4": { "capacity", "current" } },
   "features": { "scan.enabled": true },
   "heartbeatSeconds", "cacheTtlHours", "serverTime",
-  "camera": { "mode", "retentionDays", "maxDiskGb", "resolution", "fps", "keyId", "publicKey", "quality" }
+  "camera": { "mode", "retentionDays", "maxDiskGb", "resolution", "fps", "keyId", "publicKey", "quality", "archive" }
 }
 ```
 
 - `camera` (T-482): **yalnız `kiosk_camera` flag-i bu kiosk üçün açıq olanda**; yoxdursa (və ya `null`) kiosk
   yazmır. `mode` `Activity` / `Continuous`, `retentionDays` 1–31 (default 2), `maxDiskGb` 1–500 (20),
-  `resolution` `640x480` / `1280x720` / `1920x1080`, `fps` 2–30 (10), `quality` `Low` / `Medium` / `High` (`Medium`, T-486) — `Camera.*` ayarları, server yenidən
+  `resolution` `640x480` / `1280x720` / `1920x1080`, `fps` 2–30 (10), `quality` `Low` / `Medium` / `High` (`Medium`, T-486), `archive` — dəqiqələr fayl serverinə də göndərilsin (T-485) — `Camera.*` ayarları, server yenidən
   sərhədləyir. `keyId` + `publicKey` (X.509 SubjectPublicKeyInfo, base64): backend-in kamera açıq açarı (RSA-3072) —
   kiosk görüntünü onunla bağlayır, aça bilmir; gizli açar backend-dən çıxmır (`docs/KIOSK_CAMERA.md`).
 
@@ -2526,3 +2526,12 @@ refund, wallet, fiskal çek, qəbz, promokod, istifadəçi hub-ı və admin pul 
 Addım 2-nin bütün endpoint-ləri (fayllar, redaktə və versiyalar, səhifə
 şəkilləri, formatlar, storage provayderləri və sinxronizasiya, kiosk idarəsi,
 qiymət profilləri və `pricing/quote`) yuxarıdakı bölmələrdədir.
+
+## Kiosk kamerası — fayl serveri (T-485)
+
+| Endpoint | Nə edir |
+|---|---|
+| `POST /api/kiosks/me/camera/segments?start={UTC}&seconds={1–120}` | Kiosk token-i. Gövdə — kioskun şifrələdiyi dəqiqə (`application/octet-stream`, ≤ 64 MB). Backend başlığı yoxlayır (`NPCAM1`, özünün kamera açarı), faylı olduğu kimi seçilmiş provayderin Files bucket-inə yazır (`camera/{kioskId}/{yyyy}/{MM}/{dd}/…npcam`), `camera_segments`-ə qeyd edir. → `200` `{ id, start, end, bytes, expiresAt, alreadyStored }`; eyni dəqiqə (kiosk + `start`) təkrar göndəriləndə heç nə yazılmır, `alreadyStored: true`. `409`: `camera.archiveOff` (bu kiosk serverə yazmır), `camera.segmentInvalid` (vaxt son 32 gündən kənar və ya gələcəkdə, forma / açar tanınmır), `camera.segmentTooLarge` |
+| `PUT /api/admin/kiosks/{id}/camera-archive` | `storage.manage`. `{ "target": null \| "off" \| "<provayder id>" }` — `null` ümumi ayarı (`Camera.ArchiveProvider`) izləyir, `off` — yalnız kioskun diski. Audit: `kiosks.camera-archive`. Kiosk detalında `cameraArchive` |
+
+Ayarlar: `Camera.ArchiveProvider` (boş və ya provayder id-si), `Camera.ArchiveRetentionDays` (30, 1–365). Vaxtı keçənləri saatlıq Hangfire işi (`camera-archive-purge`) silir. Telemetriyada `camera.unsent`, `camera.lastSentAt`.

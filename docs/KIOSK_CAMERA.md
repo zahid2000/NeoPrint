@@ -99,6 +99,28 @@ saxlamır), dəyişdirilmiş backend də onu buna məcbur edə bilməz.
     görünür (`DESIGN_SYSTEM.md`).
   - Kamera yazmırsa nişan yoxdur.
 
+## 2a. Fayl serveri (T-485)
+
+Görüntü kioskun diskindən əlavə **fayl serverinə** də yazıla bilər.
+
+- **Hara yazılır.** Admin → Saxlama səhifəsindəki S3 provayderlərindən biri (MinIO, RustFS və ya başqa S3) seçilir.
+  - Hamı üçün: Parametrlər → Kiosk kamerası → `Camera.ArchiveProvider`, siyahıdan. Boşdursa heç bir kiosk serverə yazmır.
+  - Kiosk üçün ayrıca: Kiosk → "Qiymət" sekmesi → "Kamera görüntüsü — fayl serveri". Seçimlər: ümumi ayar, "serverə yazılmasın" və ya başqa server. Bunun üçün `storage.manage` icazəsi lazımdır.
+- **Necə gedir.**
+  - Kiosk şifrəli dəqiqəni `POST /api/kiosks/me/camera/segments` ilə **backend-ə** göndərir, backend onu serverə yazır.
+  - Kioskda serverin parolu yoxdur.
+  - Serverə gedən fayl kioskun diskindəki eyni şifrəli fayldır. Onu yalnız backend-in kamera açarı açır, ona görə server özü də görüntünü görə bilmir.
+  - Yer: provayderin Files bucket-i, `camera/{kiosk}/{il}/{ay}/{gün}/…npcam`.
+- **Kiosk tərəfi.**
+  - Göndərilən dəqiqə `sealed/sent/` qovluğuna köçür və kioskda da öz müddəti qədər qalır.
+  - Ən köhnə dəqiqə əvvəl gedir, bir dövrədə ən çox 20 dəqiqə.
+  - Server əlçatan deyilsə bir dəqiqə sonra yenidən cəhd olunur.
+  - Eyni dəqiqəni ikinci dəfə göndərmək yeni yazı yaratmır.
+  - Serverin heç vaxt qəbul etməyəcəyi dəqiqə (vaxtı və ya forması səhv) yalnız kioskda qalır, digərlərini saxlamır.
+- **Saxlama müddəti.** `Camera.ArchiveRetentionDays`: default **30**, 1–365. Saatlıq iş vaxtı keçəni serverdən silir.
+- **Nəzarət.** Admin → Kiosk → Vəziyyət → Kamera bölməsində "Serverə göndərilməyib" (dəqiqə sayı) və "Serverə son göndəriş" görünür.
+- **Xətt.** Kiosk görüntünü internetlə göndərir. `Activity` rejimində və tərpənməz kadrlar atıldığı üçün adətən gündə yüzlərlə MB-dır. Fasiləsiz rejimdə və hərəkətli yerdə bir neçə GB ola bilər.
+
 ## 3. Nəzarət
 
 - **Telemetriya** `camera` qrupu ilə gəlir: açıqdır, kamera tapılıb, yazır, rejim, səbəb,
