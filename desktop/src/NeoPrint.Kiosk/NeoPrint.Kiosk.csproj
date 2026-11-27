@@ -45,6 +45,8 @@
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <!-- Unhandled errors to GlitchTip, only with the DSN the API hands out (T-478). -->
+    <PackageReference Include="Sentry" />
   </ItemGroup>
 
   <!--

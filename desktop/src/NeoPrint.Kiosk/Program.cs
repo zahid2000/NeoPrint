@@ -29,6 +29,11 @@ internal static class Program
     {
         var services = BuildServices(args);
 
+        // Error tracking (T-478), beside the start and never in its way.
+        _ = Task.Run(() => ErrorTracking.StartAsync(
+            services.GetRequiredService<Microsoft.Extensions.Options.IOptions<KioskSettings>>().Value.ApiBaseUrl,
+            services.GetRequiredService<ILogger<App>>()));
+
         try
         {
             return BuildAvaloniaApp(services)
@@ -39,6 +44,7 @@ internal static class Program
             // Plan section 7.1: a global crash handler. The agent restarts the
             // UI, so the job here is to leave a usable record behind.
             TryLogFatal(services, exception);
+            ErrorTracking.CaptureFatal(exception);
             return 1;
         }
     }
