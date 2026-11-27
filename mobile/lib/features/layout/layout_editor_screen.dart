@@ -110,6 +110,12 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
   /// The pictures, with the ones added here (T-409).
   late final Map<String, EditorPicture> _pictures = {...widget.pictures};
 
+  /// Photos that are not files yet (T-473), sent with the layout on save.
+  late final Map<String, Uint8List> _uploads = {
+    for (final MapEntry(:key, :value) in widget.images.entries)
+      if (key.startsWith(uploadPrefix)) key: value,
+  };
+
   @override
   void initState() {
     super.initState();
@@ -156,6 +162,11 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
 
     final (images, pictures) = loaded;
     _pictures.addAll(pictures);
+    for (final MapEntry(:key, :value) in images.entries) {
+      if (key.startsWith(uploadPrefix)) {
+        _uploads[key] = value;
+      }
+    }
     final added = [for (final name in images.keys) _pictures[name]!];
     if (added.isEmpty) {
       return;
@@ -591,8 +602,16 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
 
     try {
       final repository = ref.read(layoutRepositoryProvider);
+      // Only the photos the layout still shows go with it.
+      final photos = {
+        for (final page in project.pages)
+          for (final element in page.elements)
+            if (_uploads[element.image] case final bytes?) element.image: bytes,
+      };
       final UserFile saved = widget.mode == LayoutEditorMode.editFile
           ? await repository.update(widget.fileId!, project)
+          : photos.isNotEmpty
+          ? await repository.createWithPhotos(project, name!, photos)
           : await repository.create(project, name!);
 
       unawaited(ref.read(filesControllerProvider.notifier).load());
@@ -611,34 +630,10 @@ class _LayoutEditorScreenState extends ConsumerState<LayoutEditorScreen> {
     }
   }
 
-  Future<String?> _askName(AppLocalizations l10n) {
-    final controller = TextEditingController(
-      text: widget.title ?? l10n.layoutTitle,
-    );
-
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.layoutNameTitle),
-        content: TextField(controller: controller, autofocus: true),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(
-              context,
-              controller.text.trim().isEmpty
-                  ? l10n.layoutTitle
-                  : controller.text.trim(),
-            ),
-            child: Text(l10n.layoutSave),
-          ),
-        ],
-      ),
-    ).whenComplete(controller.dispose);
-  }
+  Future<String?> _askName(AppLocalizations l10n) => showDialog<String>(
+    context: context,
+    builder: (_) => _NameDialog(initial: widget.title ?? l10n.layoutTitle),
+  );
 
   Future<bool> _confirmLeave() async {
     final l10n = AppLocalizations.of(context);
@@ -1100,6 +1095,52 @@ class _Tool extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Tərtibatın adı". The dialog owns its text: disposed when the dialog is
+/// gone, not when its answer arrives - the closing animation still draws the
+/// field (a disposed controller there was an error).
+class _NameDialog extends StatefulWidget {
+  const _NameDialog({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  late final _controller = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.layoutNameTitle),
+      content: TextField(controller: _controller, autofocus: true),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.commonCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(
+            context,
+            _controller.text.trim().isEmpty
+                ? l10n.layoutTitle
+                : _controller.text.trim(),
+          ),
+          child: Text(l10n.layoutSave),
+        ),
+      ],
     );
   }
 }

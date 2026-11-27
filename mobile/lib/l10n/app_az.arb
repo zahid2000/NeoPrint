@@ -464,10 +464,6 @@
   "photosAsLayoutHint": "Yerləşdirin, ölçüsünü dəyişin, sonra saxlayın",
   "photosAsSeparate": "Ayrı şəkillər kimi",
   "photosPreparing": "Şəkillər hazırlanır…",
-  "photosNotReady": "Bu şəkillər hazırlanmadı və əlavə olunmadı: {names}. Fayllarımda səbəbinə baxın.",
-  "@photosNotReady": {
-    "placeholders": { "names": { "type": "String" } }
-  },
   "photosPdfName": "Şəkillər {date}",
   "@photosPdfName": {
     "placeholders": { "date": { "type": "String" } }

@@ -314,7 +314,6 @@
   "photosAsLayoutHint": "Arrange and resize them, then save",
   "photosAsSeparate": "As separate photos",
   "photosPreparing": "Preparing the photos…",
-  "photosNotReady": "These photos were not prepared and were left out: {names}. See why in My files.",
   "photosPdfName": "Photos {date}",
   "photosPdfSaved": "The PDF is ready - in My files.",
   "cameraNoCamera": "No camera was found on this device.",

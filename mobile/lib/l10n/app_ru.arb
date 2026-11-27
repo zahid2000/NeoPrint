@@ -314,7 +314,6 @@
   "photosAsLayoutHint": "Расположите, измените размер и сохраните",
   "photosAsSeparate": "Отдельными снимками",
   "photosPreparing": "Снимки готовятся…",
-  "photosNotReady": "Эти снимки не подготовлены и не добавлены: {names}. Причину смотрите в «Моих файлах».",
   "photosPdfName": "Снимки {date}",
   "photosPdfSaved": "PDF готов — в «Моих файлах».",
   "cameraNoCamera": "На этом устройстве не найдена камера.",

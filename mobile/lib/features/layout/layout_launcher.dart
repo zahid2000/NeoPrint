@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:material_ui/material_ui.dart';
+import 'package:camera/camera.dart' show XFile;
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image/image.dart' as img;
+import 'package:material_ui/material_ui.dart';
 
 import '../../core/features/feature_flags.dart';
 import '../../core/network/api_client.dart';
@@ -95,133 +98,116 @@ Future<void> openNewLayout(
   }
 }
 
-/// How long photos just uploaded are waited for, to be made ready (T-466).
-const photosReadyTimeout = Duration(minutes: 2);
-
-/// [files] once the server has made them ready, behind "Şəkillər
-/// hazırlanır…"; one that failed or took too long is named and left out.
-Future<List<UserFile>> _whenReady(
-  BuildContext context,
-  WidgetRef ref,
-  List<UserFile> files,
-) async {
-  final l10n = AppLocalizations.of(context);
-  final messenger = ScaffoldMessenger.of(context);
-  final navigator = Navigator.of(context, rootNavigator: true);
-  final repository = ref.read(filesRepositoryProvider);
-  final clock = Stopwatch()..start();
-
-  showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => PopScope(
-      canPop: false,
-      child: AlertDialog(
-        content: Row(
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(width: Spacing.x4),
-            Expanded(child: Text(l10n.photosPreparing)),
-          ],
-        ),
-      ),
-    ),
-  );
-
-  final ready = <UserFile>[];
-  final missing = <String>[];
-  try {
-    for (final file in files) {
-      var current = file;
-      while (current.status != FileStatus.ready &&
-          current.status != FileStatus.failed &&
-          clock.elapsed < photosReadyTimeout) {
-        await Future<void>.delayed(const Duration(seconds: 1));
-        try {
-          current = await repository.get(file.id);
-        } on ApiException {
-          // A moment of no network: ask again.
-        }
-      }
-      if (current.status == FileStatus.ready) {
-        ready.add(current);
-      } else {
-        missing.add(current.fileName);
-      }
-    }
-  } finally {
-    navigator.pop();
+/// Photos just taken, turned upright and ready to go with a layout
+/// (T-473, T-475): named `upload:photo-N.jpg`, each with its width over
+/// height. They never become files of their own.
+///
+/// The camera stores the pixels as the sensor saw them and records the turn
+/// in EXIF; the turn is applied here, so the editor, the PDF and the server
+/// all see the photo the way it was taken.
+Future<LoadedPictures> preparePhotos(List<String> paths) async {
+  final images = <String, Uint8List>{};
+  final pictures = <String, EditorPicture>{};
+  for (final (i, path) in paths.indexed) {
+    final upright = await compute(uprightJpeg, await XFile(path).readAsBytes());
+    final name = '${uploadPrefix}photo-${i + 1}.jpg';
+    images[name] = upright.bytes;
+    pictures[name] = EditorPicture(name: name, aspect: upright.aspect);
   }
-
-  if (missing.isNotEmpty) {
-    messenger.showSnackBar(
-      SnackBar(content: Text(l10n.photosNotReady(missing.join(', ')))),
-    );
-  }
-  return ready;
+  return (images, pictures);
 }
 
-/// "Bir PDF faylı" (T-466): the photos, a page each, saved as one layout
-/// file - a PDF that prints and opens again in the editor. The separate
-/// photo files then go: the layout keeps its own copy of every picture.
+/// [bytes] as an upright JPEG, with its width over height. Off the UI thread.
+({Uint8List bytes, double aspect}) uprightJpeg(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) {
+    throw const FormatException('Not a picture.');
+  }
+  final upright = img.bakeOrientation(decoded);
+  return (
+    bytes: img.encodeJpg(upright, quality: 90),
+    aspect: upright.width / upright.height,
+  );
+}
+
+/// "Bir PDF faylı" (T-466, T-473): the photos, a page each, saved as one
+/// layout file in a single request - a PDF that prints and opens again in
+/// the editor. The photos themselves are never on the list.
 Future<void> savePhotosAsPdf(
   BuildContext context,
   WidgetRef ref,
-  List<UserFile> photos,
+  List<String> paths,
 ) async {
   final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
-  final files = ref.read(filesRepositoryProvider);
   final layouts = ref.read(layoutRepositoryProvider);
 
-  final ready = await _whenReady(context, ref, photos);
-  if (ready.isEmpty || !context.mounted) {
-    return;
-  }
-
-  final sources = [for (final file in ready) LayoutSource(file)];
   final saved = await _withProgress(context, () async {
-    final (_, pictures) = await _loadSources(files, sources);
+    final (images, pictures) = await preparePhotos(paths);
     final project = LayoutEditing.onePerPage(
       const LayoutProject(marginMm: 10, pages: [LayoutPage([])]),
       0,
-      [for (final source in sources) pictures[source.name]!],
+      [...pictures.values],
     );
     final now = DateTime.now();
     final name = l10n.photosPdfName(
       '${now.year}-${_two(now.month)}-${_two(now.day)} '
       '${_two(now.hour)}-${_two(now.minute)}',
     );
-    return layouts.create(project, name);
-  });
+    return layouts.createWithPhotos(project, name, images);
+  }, message: l10n.photosPreparing);
   if (saved == null) {
     return;
   }
 
-  for (final photo in ready) {
-    try {
-      await files.delete(photo.id);
-    } on ApiException {
-      // Left on the list: the user can delete it, nothing is lost.
-    }
-  }
   await ref.read(filesControllerProvider.notifier).load();
   messenger.showSnackBar(SnackBar(content: Text(l10n.photosPdfSaved)));
 }
 
-/// "Tərtibatda aç" (T-466): the photos in the layout editor, a page each.
+/// "Tərtibatda aç" (T-466, T-475): the photos in the layout editor, a page
+/// each, straight from the phone. Nothing is uploaded until the layout is
+/// saved, and then only the layout is on the list.
 Future<void> openPhotosInLayout(
   BuildContext context,
   WidgetRef ref,
-  List<UserFile> photos,
+  List<String> paths,
 ) async {
-  final ready = await _whenReady(context, ref, photos);
-  if (ready.isEmpty || !context.mounted) {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  final navigator = Navigator.of(context, rootNavigator: true);
+
+  final loaded = await _withProgress(
+    context,
+    () => preparePhotos(paths),
+    message: l10n.photosPreparing,
+  );
+  if (loaded == null || !context.mounted) {
     return;
   }
-  await openNewLayout(context, ref, [
-    for (final file in ready) LayoutSource(file),
-  ]);
+
+  final (images, pictures) = loaded;
+  final project = LayoutEditing.onePerPage(
+    const LayoutProject(marginMm: 10, pages: [LayoutPage([])]),
+    0,
+    [...pictures.values],
+  );
+
+  final saved = await navigator.push<UserFile>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => LayoutEditorScreen(
+        initial: project,
+        pictures: pictures,
+        images: images,
+        mode: LayoutEditorMode.newFile,
+        onAddPictures: _picker(ref),
+      ),
+    ),
+  );
+
+  if (saved != null) {
+    messenger.showSnackBar(SnackBar(content: Text(l10n.layoutSaved)));
+  }
 }
 
 String _two(int value) => value.toString().padLeft(2, '0');
@@ -318,8 +304,9 @@ Future<LoadedPictures?> Function(BuildContext context) _picker(WidgetRef ref) =>
 /// Runs [load] behind a progress dialog; null, with the reason shown, on failure.
 Future<T?> _withProgress<T>(
   BuildContext context,
-  Future<T> Function() load,
-) async {
+  Future<T> Function() load, {
+  String? message,
+}) async {
   final l10n = AppLocalizations.of(context);
   final messenger = ScaffoldMessenger.of(context);
   final navigator = Navigator.of(context, rootNavigator: true);
@@ -327,7 +314,20 @@ Future<T?> _withProgress<T>(
   showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => const Center(child: CircularProgressIndicator()),
+    builder: (_) => message == null
+        ? const Center(child: CircularProgressIndicator())
+        : PopScope(
+            canPop: false,
+            child: AlertDialog(
+              content: Row(
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(width: Spacing.x4),
+                  Expanded(child: Text(message)),
+                ],
+              ),
+            ),
+          ),
   );
 
   try {

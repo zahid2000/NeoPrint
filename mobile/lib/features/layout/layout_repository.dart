@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -7,6 +8,9 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/network/api_client.dart';
 import '../files/file_models.dart';
 import 'layout_model.dart';
+
+/// A picture sent with a new layout rather than taken from a file (T-473).
+const uploadPrefix = 'upload:';
 
 /// A layout file's layout, for the editor to open again.
 final class OpenedLayout {
@@ -34,6 +38,40 @@ class LayoutRepository {
     body: {'layout': layout.toJson(), 'fileName': fileName},
     parse: (json) => UserFile.fromJson(json as Map<String, dynamic>),
   );
+
+  /// Pictures sent with the layout itself (T-473): [photos] by the name the
+  /// layout gives them, `upload:{name}`. Photos just taken never become
+  /// files of their own - only the layout does.
+  Future<UserFile> createWithPhotos(
+    LayoutProject layout,
+    String fileName,
+    Map<String, Uint8List> photos,
+  ) {
+    final form = FormData();
+    for (final MapEntry(key: name, value: bytes) in photos.entries) {
+      form.files.add(
+        MapEntry(
+          'images',
+          MultipartFile.fromBytes(
+            bytes,
+            filename: name.substring(uploadPrefix.length),
+            contentType: DioMediaType('image', 'jpeg'),
+          ),
+        ),
+      );
+    }
+    form.fields.addAll([
+      MapEntry('layout', jsonEncode(layout.toJson())),
+      MapEntry('fileName', fileName),
+    ]);
+
+    return _api.send(
+      method: 'POST',
+      path: 'api/files/layout/upload',
+      body: form,
+      parse: (json) => UserFile.fromJson(json as Map<String, dynamic>),
+    );
+  }
 
   /// Pictures it already holds keep their `asset:{key}` names.
   Future<UserFile> update(String fileId, LayoutProject layout) => _api.send(

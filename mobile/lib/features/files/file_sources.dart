@@ -213,20 +213,16 @@ Future<List<UserFile>> addFileFrom(
       if (!context.mounted) {
         break;
       }
-      final uploaded = await controller.uploadAll(
-        photos,
-        parallel: parallelUploads,
-      );
-      if (!context.mounted || uploaded.isEmpty) {
-        break;
-      }
+      // A PDF or a layout takes the photos straight from the phone: they
+      // are never files of their own (T-473, T-475).
+      final paths = [for (final photo in photos) photo.path!];
       switch (keep) {
         case PhotosAs.separate:
-          return uploaded;
+          return controller.uploadAll(photos, parallel: parallelUploads);
         case PhotosAs.pdf:
-          await savePhotosAsPdf(context, ref, uploaded);
+          await savePhotosAsPdf(context, ref, paths);
         case PhotosAs.layout:
-          await openPhotosInLayout(context, ref, uploaded);
+          await openPhotosInLayout(context, ref, paths);
       }
   }
   return const [];
