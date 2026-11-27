@@ -56,6 +56,9 @@ public enum IncidentType
     /// closes it; opened again when the customer carries it on.
     /// </summary>
     CustomerClaim = 21,
+
+    /// <summary>A kiosk's camera is turned on but has not been recording for minutes (T-482).</summary>
+    CameraDown = 22,
 }
 
 public enum IncidentSeverity

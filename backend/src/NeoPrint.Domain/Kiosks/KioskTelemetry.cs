@@ -34,6 +34,9 @@ public sealed class KioskTelemetrySample
 
     public TelemetryServices Services { get; set; } = new();
 
+    /// <summary>The camera (T-482); empty on a kiosk where it is not turned on.</summary>
+    public TelemetryCamera Camera { get; set; } = new();
+
     /// <summary>
     /// The limits this sample is over and since when (<see cref="TelemetryCondition"/>
     /// → the first sample that was over it). Carried from sample to sample, so
@@ -168,6 +171,60 @@ public sealed class TelemetryServices
     public string? FeatureFlags { get; set; }
 }
 
+/// <summary>The kiosk camera (T-482): whether it records, and what it keeps on the kiosk's disk.</summary>
+public sealed class TelemetryCamera
+{
+    /// <summary>The camera is turned on for this kiosk (the <c>kiosk_camera</c> flag).</summary>
+    public bool? Enabled { get; set; }
+
+    /// <summary>A camera is plugged in and found.</summary>
+    public bool? Connected { get; set; }
+
+    /// <summary>The recorder is running and writing.</summary>
+    public bool? Recording { get; set; }
+
+    /// <summary><c>Continuous</c> or <c>Activity</c>.</summary>
+    public string? Mode { get; set; }
+
+    /// <summary>Why it does not record, as a code from <see cref="CameraErrors"/>.</summary>
+    public string? Error { get; set; }
+
+    /// <summary>The sealed recordings on the kiosk's disk.</summary>
+    public long? StoredBytes { get; set; }
+
+    public int? Segments { get; set; }
+
+    /// <summary>The oldest recording kept: how far back the kiosk can show.</summary>
+    public DateTime? OldestAt { get; set; }
+
+    /// <summary>When the last finished segment was sealed.</summary>
+    public DateTime? LastSegmentAt { get; set; }
+}
+
+/// <summary>Why a kiosk's camera does not record (T-482).</summary>
+public static class CameraErrors
+{
+    /// <summary>No camera is plugged in.</summary>
+    public const string NoCamera = "noCamera";
+
+    /// <summary>FFmpeg is not installed, or has no encoder the kiosk may use.</summary>
+    public const string NoRecorder = "noRecorder";
+
+    /// <summary>The configuration has no camera key: nothing could be sealed.</summary>
+    public const string NoKey = "noKey";
+
+    /// <summary>The recorder keeps stopping.</summary>
+    public const string RecorderFailed = "recorderFailed";
+
+    /// <summary>Too little free disk to record without starving the print spool.</summary>
+    public const string DiskFull = "diskFull";
+
+    public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
+    {
+        NoCamera, NoRecorder, NoKey, RecorderFailed, DiskFull,
+    };
+}
+
 /// <summary>The limits a sample is checked against (plan section 7.9).</summary>
 public static class TelemetryCondition
 {
@@ -185,4 +242,7 @@ public static class TelemetryCondition
 
     /// <summary>The kiosk's clock a minute or more off the server's, for five minutes.</summary>
     public const string ClockOff = "clock";
+
+    /// <summary>The camera turned on, and not recording for ten minutes (T-482).</summary>
+    public const string CameraDown = "camera";
 }

@@ -167,6 +167,11 @@ public static class SettingKeys
     public const string KioskSleepEnabled = "Kiosk.SleepEnabled";
     public const string KioskSleepWindow = "Kiosk.SleepWindow";
     public const string KioskSleepAfterIdleMinutes = "Kiosk.SleepAfterIdleMinutes";
+    public const string CameraMode = "Camera.Mode";
+    public const string CameraRetentionDays = "Camera.RetentionDays";
+    public const string CameraMaxDiskGb = "Camera.MaxDiskGb";
+    public const string CameraResolution = "Camera.Resolution";
+    public const string CameraFps = "Camera.Fps";
     public const string UpdateCheckIntervalMinutes = "Update.CheckIntervalMinutes";
     public const string UpdateHealthTimeoutMinutes = "Update.HealthTimeoutMinutes";
     public const string UpdateKeepVersions = "Update.KeepVersions";
@@ -250,6 +255,11 @@ public static class SettingKeys
         new(KioskSleepEnabled, "true", SettingValueType.Boolean, "Kiosk gecə boş qalanda yuxu rejiminə keçir və özü oyanır"),
         new(KioskSleepWindow, "23:00-06:00", SettingValueType.TimeRange, "Gecə yuxusunun saat aralığı (kioskun yerli saatı): kiosk yalnız bu aralıqda yatır və aralığın sonunda oyanır"),
         new(KioskSleepAfterIdleMinutes, "30", SettingValueType.Integer, "Gecə aralığında kiosk bu qədər dəqiqə boş qalandan sonra yatır"),
+        new(CameraMode, "Activity", SettingValueType.String, "Kiosk kamerasının yazılışı: Activity — yalnız kioskda kimsə olanda (±1 dəqiqə), Continuous — fasiləsiz"),
+        new(CameraRetentionDays, "2", SettingValueType.Integer, "Kamera görüntüsü kioskun diskində bu qədər gün saxlanılır (1–31)"),
+        new(CameraMaxDiskGb, "20", SettingValueType.Integer, "Kamera görüntüsünün kioskda tuta biləcəyi ən çox yer (GB); dolanda ən köhnəsi silinir"),
+        new(CameraResolution, "1280x720", SettingValueType.String, "Kamera görüntüsünün ölçüsü: 640x480, 1280x720 və ya 1920x1080"),
+        new(CameraFps, "10", SettingValueType.Integer, "Kamera görüntüsünün saniyədə kadr sayı (2–30)"),
         new(UpdateCheckIntervalMinutes, "15", SettingValueType.Integer, "Agent-in yeni versiya yoxlama intervalı"),
         new(UpdateHealthTimeoutMinutes, "5", SettingValueType.Integer, "Yeniləmədən sonra sağlamlıq gözləmə müddəti"),
         new(UpdateKeepVersions, "3", SettingValueType.Integer, "Kioskda saxlanılan versiya sayı"),

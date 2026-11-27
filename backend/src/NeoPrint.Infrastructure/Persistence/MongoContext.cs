@@ -127,6 +127,8 @@ public sealed class MongoContext
     /// <summary>Logs kiosks sent on an UploadLogs command (T-321).</summary>
     public MongoSet<KioskLog> KioskLogs => Set<KioskLog>("kiosk_logs");
 
+    public MongoSet<CameraKey> CameraKeys => Set<CameraKey>("camera_keys");
+
     public MongoSet<Domain.Releases.Release> Releases => Set<Domain.Releases.Release>("releases");
 
     public MongoSet<Domain.Releases.ReleaseRollout> ReleaseRollouts => Set<Domain.Releases.ReleaseRollout>("release_rollouts");
@@ -487,6 +489,11 @@ public sealed class MongoContext
             (Builders<KioskLog>.IndexKeys.Ascending(log => log.KioskId).Descending(log => log.CreatedAt),
                 Named("ix_kiosk_logs_kiosk_created")),
             (Builders<KioskLog>.IndexKeys.Ascending(log => log.ExpiresAt), Named("ix_kiosk_logs_expires")));
+
+        await CreateAsync(CameraKeys,
+            // A segment names its key; the oldest key is the one handed out (T-482).
+            (Builders<CameraKey>.IndexKeys.Ascending(key => key.KeyId), Unique("ux_camera_keys_key_id")),
+            (Builders<CameraKey>.IndexKeys.Ascending(key => key.CreatedAt), Named("ix_camera_keys_created")));
 
         await CreateAsync(KioskCommands,
             (Builders<KioskCommand>.IndexKeys

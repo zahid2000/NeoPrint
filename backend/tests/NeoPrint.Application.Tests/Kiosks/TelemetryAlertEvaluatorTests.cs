@@ -268,4 +268,73 @@ public sealed class TelemetryAlertEvaluatorTests
         sample.Work.JobsToday.Should().Be(12);
         sample.Timestamp.Should().Be(now, "the series is ordered by the server's clock, not the kiosk's");
     }
+
+    private static KioskTelemetrySample WithCamera(int secondsIn, bool? enabled, bool? recording, string? error = null)
+    {
+        var sample = Sample(secondsIn);
+        sample.Camera = new TelemetryCamera { Enabled = enabled, Recording = recording, Error = error };
+        return sample;
+    }
+
+    [Fact]
+    public void A_camera_turned_on_and_not_recording_for_ten_minutes_is_raised_with_its_reason()
+    {
+        var samples = Enumerable.Range(0, 21).Select(i => WithCamera(i * 30, true, false, CameraErrors.NoCamera)).ToArray();
+
+        Run(samples[..20]).Raise.Should().BeEmpty("nine and a half minutes is not yet ten: the recorder may be restarting");
+
+        var alert = Run(samples).Raise.Should().ContainSingle().Subject;
+        alert.Type.Should().Be(IncidentType.CameraDown);
+        alert.Severity.Should().Be(IncidentSeverity.Medium);
+        alert.Details.Key.Should().Be("incidents.telemetry.cameraDown.noCamera");
+        alert.Details.Arguments!["minutes"].Should().Be("10");
+    }
+
+    [Fact]
+    public void A_kiosk_without_the_camera_turned_on_raises_nothing_about_it()
+    {
+        Run([.. Enumerable.Range(0, 30).Select(i => WithCamera(i * 30, false, false))]).Raise.Should().BeEmpty();
+        Run([.. Enumerable.Range(0, 30).Select(i => WithCamera(i * 30, null, null))]).Raise.Should().BeEmpty("an older kiosk says nothing about a camera");
+    }
+
+    [Fact]
+    public void The_camera_recording_again_clears_it()
+    {
+        var down = WithCamera(0, true, false, CameraErrors.RecorderFailed);
+        var up = WithCamera(30, true, true);
+
+        var evaluation = Run(down, up);
+
+        evaluation.Cleared.Should().Equal(TelemetryCondition.CameraDown);
+    }
+
+    [Fact]
+    public void What_a_kiosk_says_about_its_camera_is_bounded()
+    {
+        var sample = KioskTelemetryHandlers.Clean(
+            new KioskTelemetryReport(
+                Start, null, null, null, null, null, null,
+                new TelemetryCamera
+                {
+                    Enabled = true,
+                    Recording = false,
+                    Mode = "Always",
+                    Error = "rm -rf",
+                    StoredBytes = -1,
+                    Segments = 2_000_000,
+                    OldestAt = Start.AddDays(-2),
+                    LastSegmentAt = Start.AddYears(3),
+                }),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Start);
+
+        sample.Camera.Enabled.Should().BeTrue();
+        sample.Camera.Mode.Should().BeNull();
+        sample.Camera.Error.Should().BeNull("only the known reasons reach the panel");
+        sample.Camera.StoredBytes.Should().BeNull();
+        sample.Camera.Segments.Should().BeNull();
+        sample.Camera.OldestAt.Should().Be(Start.AddDays(-2));
+        sample.Camera.LastSegmentAt.Should().BeNull();
+    }
 }

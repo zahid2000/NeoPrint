@@ -34,6 +34,11 @@ public static class KioskConfigSettings
         SettingKeys.KioskSleepEnabled,
         SettingKeys.KioskSleepWindow,
         SettingKeys.KioskSleepAfterIdleMinutes,
+        SettingKeys.CameraMode,
+        SettingKeys.CameraRetentionDays,
+        SettingKeys.CameraMaxDiskGb,
+        SettingKeys.CameraResolution,
+        SettingKeys.CameraFps,
         SettingKeys.LogsMaxUploadMb,
         SettingKeys.PaperBlockWhenInsufficient,
         SettingKeys.QueueDisplayLimit,
@@ -53,6 +58,7 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
     private readonly IClock _clock;
     private readonly Pricing.KioskPricing _pricing;
     private readonly Kiosks.KioskBrandingResolver _branding;
+    private readonly Kiosks.ICameraKeys _cameraKeys;
 
     public GetKioskConfigHandler(
         IKioskDeviceRepository devices,
@@ -61,9 +67,11 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
         IFeatureFlagEvaluator features,
         IClock clock,
         Pricing.KioskPricing pricing,
-        Kiosks.KioskBrandingResolver branding)
+        Kiosks.KioskBrandingResolver branding,
+        Kiosks.ICameraKeys cameraKeys)
     {
         _branding = branding;
+        _cameraKeys = cameraKeys;
         _pricing = pricing;
         _devices = devices;
         _kiosks = kiosks;
@@ -180,7 +188,35 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
             new KioskSleepSettingsDto(
                 await _settings.GetBoolAsync(SettingKeys.KioskSleepEnabled, true, cancellationToken).ConfigureAwait(false),
                 await _settings.GetAsync(SettingKeys.KioskSleepWindow, cancellationToken).ConfigureAwait(false) ?? "23:00-06:00",
-                await _settings.GetIntAsync(SettingKeys.KioskSleepAfterIdleMinutes, 30, cancellationToken).ConfigureAwait(false)));
+                await _settings.GetIntAsync(SettingKeys.KioskSleepAfterIdleMinutes, 30, cancellationToken).ConfigureAwait(false)),
+            // The camera, where it is turned on (T-482).
+            features.TryGetValue(CameraFlag, out var camera) && camera
+                ? await CameraAsync(cancellationToken).ConfigureAwait(false)
+                : null);
+    }
+
+    /// <summary>The flag that turns a kiosk's camera on (T-482).</summary>
+    public const string CameraFlag = "kiosk_camera";
+
+    private async Task<KioskCameraSettingsDto> CameraAsync(CancellationToken cancellationToken)
+    {
+        var key = await _cameraKeys.CurrentAsync(cancellationToken).ConfigureAwait(false);
+        var mode = await _settings.GetAsync(SettingKeys.CameraMode, cancellationToken).ConfigureAwait(false);
+        var resolution = await _settings.GetAsync(SettingKeys.CameraResolution, cancellationToken).ConfigureAwait(false);
+
+        // Clamped again here: a value stored before the limits, or written
+        // around the panel, still gives the kiosk something it can do.
+        return new KioskCameraSettingsDto(
+            Admin.CameraSettings.Modes.Contains(mode ?? string.Empty) ? mode! : Admin.CameraSettings.Activity,
+            Math.Clamp(await _settings.GetIntAsync(SettingKeys.CameraRetentionDays, 2, cancellationToken).ConfigureAwait(false),
+                Admin.CameraSettings.MinRetentionDays, Admin.CameraSettings.MaxRetentionDays),
+            Math.Clamp(await _settings.GetIntAsync(SettingKeys.CameraMaxDiskGb, 20, cancellationToken).ConfigureAwait(false),
+                Admin.CameraSettings.MinDiskGb, Admin.CameraSettings.MaxDiskGb),
+            Admin.CameraSettings.Resolutions.Contains(resolution ?? string.Empty) ? resolution! : "1280x720",
+            Math.Clamp(await _settings.GetIntAsync(SettingKeys.CameraFps, 10, cancellationToken).ConfigureAwait(false),
+                Admin.CameraSettings.MinFps, Admin.CameraSettings.MaxFps),
+            key.KeyId,
+            key.SubjectPublicKeyInfo);
     }
 }
 

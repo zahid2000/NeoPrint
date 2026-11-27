@@ -116,6 +116,24 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
                 yield return new ValidationError(key, "settings.valueRange", ("min", MinSleepIdleMinutes), ("max", MaxSleepIdleMinutes));
             }
 
+            // The kiosk camera (T-482): two days by default, never past a month.
+            if (CameraSettings.Ranges.TryGetValue(key, out var range)
+                && int.TryParse(value, out var number)
+                && (number < range.Min || number > range.Max))
+            {
+                yield return new ValidationError(key, "settings.valueRange", ("min", range.Min), ("max", range.Max));
+            }
+
+            if (key == SettingKeys.CameraMode && !CameraSettings.Modes.Contains(value))
+            {
+                yield return new ValidationError(key, "settings.cameraMode");
+            }
+
+            if (key == SettingKeys.CameraResolution && !CameraSettings.Resolutions.Contains(value))
+            {
+                yield return new ValidationError(key, "settings.cameraResolution");
+            }
+
             if (key == SettingKeys.NotificationMinSeverity && !Severities.Contains(value, StringComparer.Ordinal))
             {
                 yield return new ValidationError(key, "settings.valueSeverity");
@@ -155,4 +173,37 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
     }
 
     private static readonly string[] Severities = Enum.GetNames<NeoPrint.Domain.Incidents.IncidentSeverity>();
+}
+
+/// <summary>The kiosk camera's settings and their limits (T-482).</summary>
+public static class CameraSettings
+{
+    /// <summary>Only while somebody is at the kiosk, a minute either side.</summary>
+    public const string Activity = "Activity";
+
+    public const string Continuous = "Continuous";
+
+    public const int MinRetentionDays = 1;
+
+    /// <summary>The owner's limit: a month at most.</summary>
+    public const int MaxRetentionDays = 31;
+
+    public const int MinDiskGb = 1;
+
+    public const int MaxDiskGb = 500;
+
+    public const int MinFps = 2;
+
+    public const int MaxFps = 30;
+
+    public static readonly IReadOnlySet<string> Modes = new HashSet<string>(StringComparer.Ordinal) { Activity, Continuous };
+
+    public static readonly IReadOnlySet<string> Resolutions = new HashSet<string>(StringComparer.Ordinal) { "640x480", "1280x720", "1920x1080" };
+
+    public static readonly IReadOnlyDictionary<string, (int Min, int Max)> Ranges = new Dictionary<string, (int Min, int Max)>(StringComparer.Ordinal)
+    {
+        [SettingKeys.CameraRetentionDays] = (MinRetentionDays, MaxRetentionDays),
+        [SettingKeys.CameraMaxDiskGb] = (MinDiskGb, MaxDiskGb),
+        [SettingKeys.CameraFps] = (MinFps, MaxFps),
+    };
 }

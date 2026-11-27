@@ -144,7 +144,7 @@ public sealed class FeatureFlagEvaluationTests
     [Fact]
     public void Every_mvp_flag_is_declared_with_at_least_one_platform()
     {
-        FeatureFlag.MvpFlags.Should().HaveCount(12);
+        FeatureFlag.MvpFlags.Should().HaveCount(13);
         FeatureFlag.MvpFlags.Should().OnlyContain(flag => flag.Platforms.Length > 0);
         FeatureFlag.MvpFlags.Select(flag => flag.Key).Should().OnlyHaveUniqueItems();
     }
@@ -163,9 +163,9 @@ public sealed class FeatureFlagEvaluationTests
     }
 
     [Fact]
-    public void Only_the_office_editor_is_seeded_off_it_needs_collabora_running()
+    public void Only_the_office_editor_and_the_camera_are_seeded_off()
     {
-        FeatureFlag.OffByDefault.Should().BeEquivalentTo(["office_editor"]);
+        FeatureFlag.OffByDefault.Should().BeEquivalentTo(["office_editor", "kiosk_camera"]);
         FeatureFlag.OffByDefault.Should().OnlyContain(key => FeatureFlag.MvpFlags.Any(flag => flag.Key == key));
     }
 }

@@ -309,6 +309,110 @@ public sealed class KioskConfigTests
     }
 
     [DockerFact]
+    public async Task The_camera_reaches_only_a_kiosk_it_is_turned_on_for_with_a_key_the_kiosk_cannot_open()
+    {
+        if (Skip) { return; }
+
+        var (kiosk, _, kioskId, _) = await ActivatedKioskAsync("config-camera", "HP LaserJet");
+        using var _client = kiosk;
+        using var admin = await SuperAdminAsync();
+
+        // Off by default (T-482): no camera section, so the kiosk records nothing.
+        var off = await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config");
+        off.GetProperty("features").GetProperty("kiosk_camera").GetBoolean().Should().BeFalse();
+        (off.TryGetProperty("camera", out var none) && none.ValueKind != JsonValueKind.Null).Should().BeFalse();
+
+        // Turned on for this kiosk alone.
+        var flag = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/features"))
+            .EnumerateArray().Single(item => item.GetProperty("key").GetString() == "kiosk_camera");
+        var on = await admin.PutAsJsonAsync("/api/admin/features/kiosk_camera", new
+        {
+            defaultEnabled = false,
+            rolloutPercent = flag.GetProperty("rolloutPercent").GetInt32(),
+            kioskOverrides = new Dictionary<string, bool> { [kioskId.ToString()] = true },
+            userAllowlist = Array.Empty<Guid>(),
+        });
+        on.StatusCode.Should().Be(HttpStatusCode.OK, await on.Content.ReadAsStringAsync());
+
+        try
+        {
+            var config = await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config");
+            var camera = config.GetProperty("camera");
+
+            camera.GetProperty("mode").GetString().Should().Be("Activity");
+            camera.GetProperty("retentionDays").GetInt32().Should().Be(2);
+            camera.GetProperty("maxDiskGb").GetInt32().Should().Be(20);
+            camera.GetProperty("resolution").GetString().Should().Be("1280x720");
+            camera.GetProperty("fps").GetInt32().Should().Be(10);
+
+            // The same key on every read; the kiosk seals with it.
+            var keyId = camera.GetProperty("keyId").GetString()!;
+            (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("camera").GetProperty("keyId").GetString()
+                .Should().Be(keyId);
+
+            using var publicKey = RSA.Create();
+            publicKey.ImportSubjectPublicKeyInfo(Convert.FromBase64String(camera.GetProperty("publicKey").GetString()!), out _);
+
+            var video = RandomNumberGenerator.GetBytes(50_000);
+            using var sealedSegment = new MemoryStream();
+            await NeoPrint.Crypto.CameraSegmentCipher.EncryptAsync(new MemoryStream(video), sealedSegment, keyId, publicKey);
+
+            // Only the backend opens it, with the private key it keeps.
+            using var scope = _fixture.Services.CreateScope();
+            var keys = scope.ServiceProvider.GetRequiredService<NeoPrint.Application.Kiosks.ICameraKeys>();
+            using var privateKey = await keys.OpenPrivateKeyAsync(keyId);
+            privateKey.Should().NotBeNull();
+
+            sealedSegment.Position = 0;
+            using var opened = new MemoryStream();
+            await NeoPrint.Crypto.CameraSegmentCipher.DecryptAsync(sealedSegment, opened, _ => privateKey);
+            opened.ToArray().Should().Equal(video);
+
+            // And what is kept is the private key sealed, not the key itself.
+            var stored = await scope.ServiceProvider.GetRequiredService<MongoContext>().CameraKeys
+                .Find(key => key.KeyId == keyId).SingleAsync();
+            stored.KekId.Should().NotBeNullOrEmpty();
+            var pkcs8 = privateKey!.ExportPkcs8PrivateKey();
+            stored.EncryptedPrivateKey.AsSpan().IndexOf(pkcs8.AsSpan(0, 64)).Should().Be(-1);
+        }
+        finally
+        {
+            await admin.PutAsJsonAsync("/api/admin/features/kiosk_camera", new
+            {
+                defaultEnabled = false,
+                rolloutPercent = flag.GetProperty("rolloutPercent").GetInt32(),
+                kioskOverrides = new Dictionary<string, bool>(),
+                userAllowlist = Array.Empty<Guid>(),
+            });
+        }
+    }
+
+    [DockerFact]
+    public async Task The_camera_settings_keep_to_their_limits()
+    {
+        if (Skip) { return; }
+
+        using var admin = await SuperAdminAsync();
+
+        async Task<HttpStatusCode> SaveAsync(string key, string value)
+            => (await admin.PutAsJsonAsync("/api/admin/settings", new { values = new Dictionary<string, string> { [key] = value } })).StatusCode;
+
+        // Two days by default, a month at most (the owner's limits).
+        (await SaveAsync("Camera.RetentionDays", "32")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Camera.RetentionDays", "0")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Camera.Mode", "Sometimes")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Camera.Resolution", "4000x3000")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Camera.Fps", "60")).Should().Be(HttpStatusCode.BadRequest);
+
+        (await SaveAsync("Camera.RetentionDays", "31")).Should().Be(HttpStatusCode.OK);
+        (await SaveAsync("Camera.Mode", "Continuous")).Should().Be(HttpStatusCode.OK);
+
+        // Back to the defaults: the settings are shared by the collection.
+        (await SaveAsync("Camera.RetentionDays", "2")).Should().Be(HttpStatusCode.OK);
+        (await SaveAsync("Camera.Mode", "Activity")).Should().Be(HttpStatusCode.OK);
+    }
+
+    [DockerFact]
     public async Task A_kiosk_with_no_printer_yet_is_still_configured()
     {
         if (Skip) { return; }

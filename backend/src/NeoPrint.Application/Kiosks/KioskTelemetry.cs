@@ -27,7 +27,8 @@ public sealed record KioskTelemetryReport(
     TelemetryNetwork? Network,
     TelemetryPeripherals? Peripherals,
     TelemetryWork? Work,
-    TelemetryServices? Services);
+    TelemetryServices? Services,
+    TelemetryCamera? Camera = null);
 
 /// <summary>Stores a kiosk's report, checks it against the limits and tells the panel.</summary>
 public sealed record ReportKioskTelemetryCommand(Guid DeviceId, KioskTelemetryReport Report) : IRequest;
@@ -123,6 +124,12 @@ public static class TelemetryAlertEvaluator
     public static readonly TimeSpan MemoryHighFor = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan BackendSlowFor = TimeSpan.FromMinutes(5);
     public static readonly TimeSpan HubDownFor = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// A camera that is turned on and not recording for this long (T-482): long
+    /// enough for the recorder to restart, or for an update to bring it back.
+    /// </summary>
+    public static readonly TimeSpan CameraDownFor = TimeSpan.FromMinutes(10);
 
     /// <summary>
     /// One report that was a minute on its way is not a wrong clock; ten in a
@@ -247,6 +254,18 @@ public static class TelemetryAlertEvaluator
                 UserMessage.Of(
                     offset > 0 ? "incidents.telemetry.clockAhead" : "incidents.telemetry.clockBehind",
                     ("seconds", Math.Abs(offset ?? 0) / 1000),
+                    ("minutes", (int)lasted.TotalMinutes))));
+
+        Check(
+            TelemetryCondition.CameraDown,
+            current.Camera.Enabled == true && current.Camera.Recording == false,
+            CameraDownFor,
+            lasted => new TelemetryAlert(
+                TelemetryCondition.CameraDown,
+                IncidentType.CameraDown,
+                IncidentSeverity.Medium,
+                UserMessage.Of(
+                    "incidents.telemetry.cameraDown." + (current.Camera.Error ?? "unknown"),
                     ("minutes", (int)lasted.TotalMinutes))));
 
         // Cleared is judged against the previous sample whatever the gap: an
@@ -495,6 +514,7 @@ public sealed class KioskTelemetryHandlers :
         var peripherals = report.Peripherals ?? new TelemetryPeripherals();
         var work = report.Work ?? new TelemetryWork();
         var services = report.Services ?? new TelemetryServices();
+        var camera = report.Camera ?? new TelemetryCamera();
 
         return new KioskTelemetrySample
         {
@@ -559,6 +579,18 @@ public sealed class KioskTelemetryHandlers :
                 Ghostscript = services.Ghostscript,
                 ConfigurationAt = Past(services.ConfigurationAt, now),
                 FeatureFlags = Text(services.FeatureFlags, 32),
+            },
+            Camera = new TelemetryCamera
+            {
+                Enabled = camera.Enabled,
+                Connected = camera.Connected,
+                Recording = camera.Recording,
+                Mode = camera.Mode is "Activity" or "Continuous" ? camera.Mode : null,
+                Error = camera.Error is { } error && CameraErrors.All.Contains(error) ? error : null,
+                StoredBytes = NotNegative(camera.StoredBytes),
+                Segments = Count(camera.Segments),
+                OldestAt = Past(camera.OldestAt, now),
+                LastSegmentAt = Past(camera.LastSegmentAt, now),
             },
         };
     }

@@ -56,11 +56,14 @@ public sealed class FeatureFlag : Entity
         ("txt_editor", "Mətn redaktoru (TXT, JSON, CSV, XML, HTML)", [FeaturePlatform.Kiosk, FeaturePlatform.Mobile]),
         ("data_export", "Məlumatlarımı yüklə", [FeaturePlatform.Mobile]),
         ("office_editor", "Office redaktoru (Word, Excel, PowerPoint — Collabora)", [FeaturePlatform.Kiosk, FeaturePlatform.Mobile]),
+        ("kiosk_camera", "Kiosk kamerası: görüntü yazılır və kioskun diskində saxlanılır", [FeaturePlatform.Kiosk]),
     ];
 
     /// <summary>
     /// Flags seeded off: the Office editor needs the Collabora container,
     /// which a server may not run (T-459); an admin turns it on once it does.
+    /// The camera (T-482) records only on a kiosk that has one and where
+    /// people are told so: turned on kiosk by kiosk.
     /// </summary>
-    public static readonly IReadOnlySet<string> OffByDefault = new HashSet<string>(StringComparer.Ordinal) { "office_editor" };
+    public static readonly IReadOnlySet<string> OffByDefault = new HashSet<string>(StringComparer.Ordinal) { "office_editor", "kiosk_camera" };
 }

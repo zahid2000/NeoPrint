@@ -45,7 +45,8 @@ public sealed record KioskConfigResponse(
     int TelemetrySeconds = 30,
     KioskUpdateSettingsDto? Update = null,
     Kiosks.KioskBrandingDto? Branding = null,
-    KioskSleepSettingsDto? Sleep = null);
+    KioskSleepSettingsDto? Sleep = null,
+    KioskCameraSettingsDto? Camera = null);
 
 /// <summary>
 /// The kiosk's night sleep (T-448): it never sleeps while it works - only
@@ -55,6 +56,25 @@ public sealed record KioskConfigResponse(
 /// </summary>
 /// <param name="Window">The night, the kiosk's local time ("23:00-06:00").</param>
 public sealed record KioskSleepSettingsDto(bool Enabled, string Window, int AfterIdleMinutes);
+
+/// <summary>
+/// The kiosk camera (T-482): sent only to a kiosk the <c>kiosk_camera</c>
+/// flag is on for - no camera section means "do not record".
+/// </summary>
+/// <param name="Mode"><c>Activity</c> (only while somebody is at the kiosk, a minute either side) or <c>Continuous</c>.</param>
+/// <param name="RetentionDays">How long recordings stay on the kiosk's disk (<c>Camera.RetentionDays</c>, 1-31).</param>
+/// <param name="MaxDiskGb">The most disk they may take; the oldest go first.</param>
+/// <param name="Resolution"><c>640x480</c>, <c>1280x720</c> or <c>1920x1080</c>.</param>
+/// <param name="KeyId">The backend's camera key, named in every sealed segment.</param>
+/// <param name="PublicKey">Its public half, X.509 SubjectPublicKeyInfo (DER), base64: the kiosk can seal, never open.</param>
+public sealed record KioskCameraSettingsDto(
+    string Mode,
+    int RetentionDays,
+    int MaxDiskGb,
+    string Resolution,
+    int Fps,
+    string KeyId,
+    string PublicKey);
 
 /// <summary>
 /// When and how the kiosk updates itself (plan section 7.12, T-321;
