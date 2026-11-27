@@ -144,6 +144,42 @@ void main() {
     return Future<void>.delayed(Duration.zero, () => expect(saves, [true]));
   });
 
+  test('the app\'s page holds Collabora in a frame - it talks to its host '
+      'only from one - and posts the token to it, not in a URL (T-472)', () {
+    final page = officeHostPage(
+      Uri.parse('https://test.example/browser/abc/cool.html?WOPISrc=x&lang=az'),
+      const OfficeSession(
+        editorPath: '/browser/abc/cool.html',
+        accessToken: 'a"b<c>&d',
+        accessTokenTtl: 1700000000000,
+      ),
+    );
+
+    expect(
+      page,
+      contains(
+        '<form id="open" action="https://test.example/browser/abc/cool.html'
+        '?WOPISrc=x&amp;lang=az" method="post" target="editor">',
+      ),
+    );
+    expect(page, contains('<iframe id="editor" name="editor"'));
+    // The token is escaped, so it cannot break out of the attribute.
+    expect(page, contains('value="a&quot;b&lt;c&gt;&amp;d"'));
+    expect(page, isNot(contains('a"b<c>')));
+    expect(page, contains('value="1700000000000"'));
+    // Only the frame's messages, from the server's origin, are listened to;
+    // Frame_Ready is answered with Host_PostmessageReady.
+    expect(
+      page,
+      contains(
+        'event.origin !== origin || event.source !== frame.contentWindow',
+      ),
+    );
+    expect(page, contains("MessageId: 'Host_PostmessageReady'"));
+    expect(page, contains('$officeEditorChannel.postMessage'));
+    expect(officeSaveScript, contains('__neoprintSave'));
+  });
+
   testWidgets('X closes at once while nothing has changed; a change brings '
       'the save icon, which saves', (tester) async {
     final repository = OfficeRepository([office('hesabat.docx')]);

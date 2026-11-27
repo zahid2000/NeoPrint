@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:material_ui/material_ui.dart';
@@ -350,10 +349,6 @@ class _OfficeWebViewState extends State<_OfficeWebView> {
   void initState() {
     super.initState();
 
-    final form =
-        'access_token=${Uri.encodeQueryComponent(widget.session.accessToken)}'
-        '&access_token_ttl=${widget.session.accessTokenTtl}';
-
     widget.link.save = () => _controller.runJavaScript(officeSaveScript);
 
     _controller = WebViewController()
@@ -366,10 +361,7 @@ class _OfficeWebViewState extends State<_OfficeWebView> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) => widget.onLoading(true),
-          onPageFinished: (_) {
-            widget.onLoading(false);
-            unawaited(_controller.runJavaScript(officeListenScript));
-          },
+          onPageFinished: (_) => widget.onLoading(false),
           onWebResourceError: (error) {
             // Only the page itself: a picture or a font that did not load
             // leaves a working editor.
@@ -385,11 +377,14 @@ class _OfficeWebViewState extends State<_OfficeWebView> {
               : NavigationDecision.prevent,
         ),
       )
-      ..loadRequest(
-        widget.page,
-        method: LoadRequestMethod.post,
-        headers: const {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: Uint8List.fromList(utf8.encode(form)),
+      // Collabora talks to its host only from inside a frame (Map.WOPI.js:
+      // window.parent !== window.self); opened on its own it said nothing,
+      // and the app never learnt the document had changed (T-472). So the
+      // app's own page holds it, under the server's origin - the one
+      // CheckFileInfo names as PostMessageOrigin.
+      ..loadHtmlString(
+        officeHostPage(widget.page, widget.session),
+        baseUrl: widget.page.origin,
       );
   }
 
@@ -426,21 +421,54 @@ void officeEditorMessage(OfficeEditorLink link, String message) {
   }
 }
 
-/// Collabora posts its messages to the page's parent - the page itself,
-/// here - for the origin CheckFileInfo named (`PostMessageOrigin`), once the
-/// host has said it listens (`Host_PostmessageReady`). Only the document's
-/// status and a save's answer are passed on.
-const officeListenScript =
-    '''
+/// The app's page that holds the editor (T-472).
+///
+/// Opened under the server's origin, it posts the token to Collabora's page
+/// into a frame - a form, so the token is in no URL - and passes on what
+/// Collabora tells its host: the document's status and a save's answer.
+/// Collabora posts to its parent for the origin CheckFileInfo named
+/// (`PostMessageOrigin`), and starts once the host has said it listens
+/// (`Host_PostmessageReady`). Messages from anything but that frame, or from
+/// another origin, are ignored.
+String officeHostPage(Uri page, OfficeSession session) {
+  final action = _html(page.toString());
+  final token = _html(session.accessToken);
+  final ttl = _html('${session.accessTokenTtl}');
+
+  return '''
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+  html, body, iframe { margin: 0; padding: 0; border: 0; width: 100%; height: 100%; overflow: hidden; }
+  form { display: none; }
+</style>
+</head>
+<body>
+<form id="open" action="$action" method="post" target="editor">
+  <input type="hidden" name="access_token" value="$token">
+  <input type="hidden" name="access_token_ttl" value="$ttl">
+</form>
+<iframe id="editor" name="editor" allow="clipboard-read; clipboard-write; fullscreen"></iframe>
+<script>
 (function () {
-  if (window.__neoprintEditor) { return; }
-  window.__neoprintEditor = true;
   var origin = window.location.origin;
-  function ready() {
-    window.postMessage(JSON.stringify({ MessageId: 'Host_PostmessageReady' }), origin);
+  var frame = document.getElementById('editor');
+  function send(message) {
+    if (frame.contentWindow) {
+      frame.contentWindow.postMessage(JSON.stringify(message), origin);
+    }
   }
+  window.__neoprintSave = function () {
+    send({
+      MessageId: 'Action_Save',
+      Values: { DontTerminateEdit: true, DontSaveIfUnmodified: true, Notify: true }
+    });
+  };
   window.addEventListener('message', function (event) {
-    if (event.origin !== origin) { return; }
+    if (event.origin !== origin || event.source !== frame.contentWindow) { return; }
     var message;
     try {
       message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
@@ -448,22 +476,28 @@ const officeListenScript =
     if (!message || !message.MessageId) { return; }
     var values = message.Values || {};
     if (message.MessageId === 'App_LoadingStatus' && values.Status === 'Frame_Ready') {
-      ready();
+      send({ MessageId: 'Host_PostmessageReady' });
     } else if (message.MessageId === 'Doc_ModifiedStatus') {
       $officeEditorChannel.postMessage(JSON.stringify({ modified: values.Modified === true }));
     } else if (message.MessageId === 'Action_Save_Resp') {
       $officeEditorChannel.postMessage(JSON.stringify({ saved: values.success === true }));
     }
   });
-  ready();
+  document.getElementById('open').submit();
 })();
+</script>
+</body>
+</html>
 ''';
+}
 
-/// "Save" as Collabora's own button does it; the answer comes back as
-/// `Action_Save_Resp`.
-const officeSaveScript = '''
-window.postMessage(JSON.stringify({
-  MessageId: 'Action_Save',
-  Values: { DontTerminateEdit: true, DontSaveIfUnmodified: true, Notify: true }
-}), window.location.origin);
-''';
+/// "Save" as Collabora's own button does it, through the host page; the
+/// answer comes back as `Action_Save_Resp`.
+const officeSaveScript = 'window.__neoprintSave && window.__neoprintSave();';
+
+String _html(String value) => value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll("'", '&#39;');
