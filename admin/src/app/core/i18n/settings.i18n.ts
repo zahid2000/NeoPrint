@@ -120,6 +120,16 @@ export const settingsTranslations: PageTranslations = {
       'Gecə yuxusunun saat aralığı (kioskun yerli saatı), məs. 23:00-06:00: kiosk yalnız bu aralıqda yatır və aralığın sonunda oyanır.',
     'settings.description.Kiosk.SleepAfterIdleMinutes':
       'Gecə aralığında kiosk bu qədər dəqiqə müştərisiz və çapsız qalandan sonra yatır (5–240).',
+    'settings.description.Camera.Mode':
+      'Kioskun kamerası nə vaxt yazır: Activity — yalnız kioskda kimsə olanda və ya çap gedəndə (bir dəqiqə əvvəl və sonra ilə), Continuous — fasiləsiz. Kamera hər kiosk üçün ayrıca "Funksiya açarları" bölməsində açılır (kiosk_camera).',
+    'settings.description.Camera.RetentionDays':
+      'Kamera görüntüsü kioskun diskində bu qədər gün saxlanılır, sonra silinir (1–31).',
+    'settings.description.Camera.MaxDiskGb':
+      'Görüntünün kioskda tuta biləcəyi ən çox yer (GB, 1–500). Dolanda ən köhnəsi silinir; çap üçün həmişə ən az 3 GB boş qalır.',
+    'settings.description.Camera.Resolution':
+      'Görüntünün ölçüsü: 640x480, 1280x720 və ya 1920x1080. Böyük ölçü diskdə çox yer tutur.',
+    'settings.description.Camera.Fps':
+      'Saniyədə kadr sayı (2–30). 10 kadr adətən kifayətdir; çox kadr diskdə çox yer tutur.',
     'settings.description.Update.CheckIntervalMinutes':
       'Kiosk yeni versiyanı bu intervalla yoxlayır.',
     'settings.description.Update.HealthTimeoutMinutes':
@@ -242,6 +252,16 @@ export const settingsTranslations: PageTranslations = {
       'The night window (the kiosk\'s local time), e.g. 23:00-06:00: the kiosk sleeps only within it and wakes at its end.',
     'settings.description.Kiosk.SleepAfterIdleMinutes':
       'In the night window the kiosk sleeps after this many minutes with no customer and nothing printing (5–240).',
+    'settings.description.Camera.Mode':
+      'When the kiosk camera records: Activity - only while somebody is at the kiosk or it prints (with a minute before and after), Continuous - all the time. The camera is turned on kiosk by kiosk with a feature flag (kiosk_camera).',
+    'settings.description.Camera.RetentionDays':
+      'Camera footage stays on the kiosk disk for this many days, then is deleted (1–31).',
+    'settings.description.Camera.MaxDiskGb':
+      'The most space the footage may take on the kiosk (GB, 1–500). When full, the oldest goes first; at least 3 GB always stays free for printing.',
+    'settings.description.Camera.Resolution':
+      'The picture size: 640x480, 1280x720 or 1920x1080. A larger size takes more disk.',
+    'settings.description.Camera.Fps':
+      'Frames per second (2–30). 10 is usually enough; more frames take more disk.',
     'settings.description.Update.CheckIntervalMinutes':
       'How often the kiosk checks for a new version.',
     'settings.description.Update.HealthTimeoutMinutes':
@@ -368,6 +388,16 @@ export const settingsTranslations: PageTranslations = {
       'Ночной интервал (местное время киоска), например 23:00-06:00: киоск засыпает только в нём и просыпается в его конце.',
     'settings.description.Kiosk.SleepAfterIdleMinutes':
       'В ночном интервале киоск засыпает после стольких минут без клиентов и печати (5–240).',
+    'settings.description.Camera.Mode':
+      'Когда пишет камера киоска: Activity — только когда у киоска кто-то есть или идёт печать (с минутой до и после), Continuous — непрерывно. Камера включается для каждого киоска через feature flag (kiosk_camera).',
+    'settings.description.Camera.RetentionDays':
+      'Видео хранится на диске киоска столько дней, затем удаляется (1–31).',
+    'settings.description.Camera.MaxDiskGb':
+      'Сколько места видео может занимать на киоске (ГБ, 1–500). При заполнении удаляется самое старое; для печати всегда остаётся не меньше 3 ГБ.',
+    'settings.description.Camera.Resolution':
+      'Размер изображения: 640x480, 1280x720 или 1920x1080. Больший размер занимает больше места.',
+    'settings.description.Camera.Fps':
+      'Кадров в секунду (2–30). Обычно хватает 10; больше кадров — больше места на диске.',
     'settings.description.Update.CheckIntervalMinutes':
       'Как часто киоск проверяет наличие новой версии.',
     'settings.description.Update.HealthTimeoutMinutes':

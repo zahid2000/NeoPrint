@@ -63,7 +63,22 @@ export interface TelemetryServices {
   readonly featureFlags?: string | null;
 }
 
-/** The limits a report is over (`disk`, `memory`, `latency`, `hub`, `clock`), each with since when. */
+/** The kiosk camera (T-482); empty on a kiosk where it is not turned on. */
+export interface TelemetryCamera {
+  readonly enabled?: boolean | null;
+  readonly connected?: boolean | null;
+  readonly recording?: boolean | null;
+  /** `Activity` or `Continuous`. */
+  readonly mode?: string | null;
+  /** `noCamera`, `noRecorder`, `noKey`, `recorderFailed` or `diskFull`. */
+  readonly error?: string | null;
+  readonly storedBytes?: number | null;
+  readonly segments?: number | null;
+  readonly oldestAt?: string | null;
+  readonly lastSegmentAt?: string | null;
+}
+
+/** The limits a report is over (`disk`, `memory`, `latency`, `hub`, `clock`, `camera`), each with since when. */
 export type TelemetryBreaches = Readonly<Record<string, string>>;
 
 export interface KioskTelemetrySample {
@@ -74,6 +89,7 @@ export interface KioskTelemetrySample {
   readonly peripherals?: TelemetryPeripherals | null;
   readonly work?: TelemetryWork | null;
   readonly services?: TelemetryServices | null;
+  readonly camera?: TelemetryCamera | null;
   readonly breaches?: TelemetryBreaches | null;
 }
 

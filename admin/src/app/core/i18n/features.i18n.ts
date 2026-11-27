@@ -43,6 +43,9 @@ export const featuresTranslations: PageTranslations = {
     'features.flag.office_editor.name': 'Office redaktoru',
     'features.flag.office_editor.description':
       'Word, Excel və PowerPoint faylını çapdan əvvəl kioskda və ya tətbiqdə redaktə etmək (Collabora). Serverdə Collabora konteyneri işləməlidir.',
+    'features.flag.kiosk_camera.name': 'Kiosk kamerası',
+    'features.flag.kiosk_camera.description':
+      'Kioskun USB kamerası görüntünü yazır və kioskun diskində şifrəli saxlayır (müddət və rejim — Parametrlər → Kiosk kamerası). Yalnız kamerası olan və "Videomüşahidə aparılır" lövhəsi asılan kiosklarda açın.',
     'features.technicalKey': 'Texniki açar',
     'features.platform.Kiosk': 'Kiosk',
     'features.platform.Mobile': 'Mobil tətbiq',
@@ -85,6 +88,9 @@ export const featuresTranslations: PageTranslations = {
     'features.flag.office_editor.name': 'Office editor',
     'features.flag.office_editor.description':
       'A Word, Excel or PowerPoint file can be edited at the kiosk or in the app before printing (Collabora). The Collabora container must run on the server.',
+    'features.flag.kiosk_camera.name': 'Kiosk camera',
+    'features.flag.kiosk_camera.description':
+      'The kiosk USB camera records and keeps the footage encrypted on the kiosk disk (period and mode under Settings → Kiosk camera). Turn it on only at kiosks that have a camera and a "Video surveillance" sign.',
     'features.technicalKey': 'Technical key',
     'features.platform.Kiosk': 'Kiosk',
     'features.platform.Mobile': 'Mobile app',
@@ -127,6 +133,9 @@ export const featuresTranslations: PageTranslations = {
     'features.flag.office_editor.name': 'Редактор Office',
     'features.flag.office_editor.description':
       'Файл Word, Excel или PowerPoint можно отредактировать в киоске или в приложении перед печатью (Collabora). На сервере должен работать контейнер Collabora.',
+    'features.flag.kiosk_camera.name': 'Камера киоска',
+    'features.flag.kiosk_camera.description':
+      'USB-камера киоска записывает видео и хранит его зашифрованным на диске киоска (срок и режим — Настройки → Камера киоска). Включайте только на киосках с камерой и табличкой «Ведётся видеонаблюдение».',
     'features.technicalKey': 'Технический ключ',
     'features.platform.Kiosk': 'Киоск',
     'features.platform.Mobile': 'Мобильное приложение',

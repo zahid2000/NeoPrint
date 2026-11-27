@@ -406,7 +406,7 @@ export class KioskStatusComponent implements OnInit {
   private describe(sample: KioskTelemetrySample): MetricGroup[] {
     const language = this.translate.getCurrentLang();
     const breaches = sample.breaches ?? {};
-    const { app, system, network, peripherals, work, services } = sample;
+    const { app, system, network, peripherals, work, services, camera } = sample;
     const when = (value: string | null | undefined): string | null => (value ? this.at(value) : null);
     const count = (value: number | null | undefined): string | null => (value == null ? null : formatCount(value, language));
     const bytes = (value: number | null | undefined): string | null => (value == null ? null : formatBytes(value, language));
@@ -515,7 +515,58 @@ export class KioskStatusComponent implements OnInit {
           { key: 'featureFlags', value: services?.featureFlags ?? null },
         ],
       },
+      // The camera (T-482), only where it is turned on: a kiosk without one has nothing to say here.
+      ...(camera?.enabled
+        ? [
+            {
+              key: 'camera',
+              rows: [
+                {
+                  key: 'cameraRecording',
+                  value: yesNo(camera.recording, 'monitoring.value.recording', 'monitoring.value.notRecording'),
+                  breach: since('camera'),
+                },
+                { key: 'cameraProblem', value: camera.recording || !camera.error ? null : this.cameraError(camera.error) },
+                { key: 'cameraMode', value: camera.mode ? this.cameraMode(camera.mode) : null },
+                {
+                  key: 'cameraStored',
+                  value:
+                    camera.storedBytes == null
+                      ? null
+                      : this.text('monitoring.value.cameraStored', {
+                          size: formatBytes(camera.storedBytes, language),
+                          count: formatCount(camera.segments ?? 0, language),
+                        }),
+                },
+                { key: 'cameraOldest', value: when(camera.oldestAt) },
+                { key: 'cameraNewest', value: when(camera.lastSegmentAt) },
+              ],
+            },
+          ]
+        : []),
     ];
+  }
+
+  /** Why the camera does not record, in the reader's language (T-482). */
+  private cameraError(error: string): string {
+    switch (error) {
+      case 'noCamera':
+        return this.text('monitoring.cameraError.noCamera');
+      case 'noRecorder':
+        return this.text('monitoring.cameraError.noRecorder');
+      case 'noKey':
+        return this.text('monitoring.cameraError.noKey');
+      case 'recorderFailed':
+        return this.text('monitoring.cameraError.recorderFailed');
+      case 'diskFull':
+        return this.text('monitoring.cameraError.diskFull');
+      default:
+        return error;
+    }
+  }
+
+  private cameraMode(mode: string): string {
+    return mode === 'Continuous' ? this.text('monitoring.cameraMode.Continuous') : this.text('monitoring.cameraMode.Activity');
   }
 
   /** "3 gün 4 saat", "2 saat 5 dəq", "40 dəq". */
