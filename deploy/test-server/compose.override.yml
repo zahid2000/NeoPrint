@@ -48,6 +48,14 @@ services:
   mailpit:
     ports: !reset []
 
+  # Monitoring (T-477). Prometheus is reached only by Grafana; Grafana only
+  # through Caddy (grafana.<host>), behind its own login.
+  prometheus:
+    ports: !reset []
+
+  grafana:
+    ports: !reset []
+
   api:
     build: !reset null
     image: ${NEOPRINT_API_IMAGE:?set by deploy.sh}

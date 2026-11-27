@@ -376,6 +376,10 @@ builder.Services.AddCors(options => options.AddPolicy(
         .AllowAnyMethod()
         .AllowCredentials()));
 
+// Metrics to the OpenTelemetry Collector (T-477, docs/OBSERVABILITY.md):
+// nothing is registered unless Monitoring:OtlpEndpoint is set.
+builder.Services.AddNeoPrintMonitoring(builder.Configuration, builder.Environment);
+
 var app = builder.Build();
 
 // ---------------------------------------------------------------------------

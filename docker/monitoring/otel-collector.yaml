@@ -1,0 +1,43 @@
+# OpenTelemetry Collector (plan step 8 "Monitorinq", T-477).
+#
+# The API pushes its metrics here over OTLP/HTTP; Prometheus scrapes them from
+# the Prometheus exporter. Nothing is sent outside the stack.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Refuses data before the container's own limit is reached (mem_limit in
+  # docker-compose.yml), instead of being killed by it.
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 100
+    spike_limit_mib: 25
+  batch: {}
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    # service.name and service.instance.id arrive as exported_job and
+    # exported_instance, which is what the dashboards use to tell API
+    # instances apart; the rest of the resource is in target_info.
+    # A series not updated for this long is dropped (a restarted API gets a
+    # new instance id).
+    metric_expiration: 10m
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: warn
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]

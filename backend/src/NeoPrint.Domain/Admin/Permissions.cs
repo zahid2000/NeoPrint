@@ -98,6 +98,9 @@ public static class Permissions
     public const string AuditView = "audit.view";
     public const string SystemJobsView = "system.jobs.view";
 
+    /// <summary>The way to the monitoring dashboards (plan step 8, T-477).</summary>
+    public const string MonitoringView = "monitoring.view";
+
     /// <summary>The catalogue, grouped as the admin panel displays it.</summary>
     public static readonly IReadOnlyList<PermissionGroup> Catalogue =
     [
@@ -132,7 +135,7 @@ public static class Permissions
             FeaturesManage, LegalManage,
         ]),
         new("incidents", "Incident-lər", [IncidentsView, IncidentsAcknowledge, IncidentsResolve]),
-        new("system", "Sistem", [StorageManage, AdminsManage, RolesManage, AuditView, SystemJobsView]),
+        new("system", "Sistem", [StorageManage, AdminsManage, RolesManage, AuditView, SystemJobsView, MonitoringView]),
     ];
 
     /// <summary>
@@ -146,7 +149,7 @@ public static class Permissions
     /// </summary>
     public static readonly IReadOnlySet<string> GlobalOnly = new HashSet<string>(StringComparer.Ordinal)
     {
-        RolesManage, AdminsManage, StorageManage, SystemJobsView,
+        RolesManage, AdminsManage, StorageManage, SystemJobsView, MonitoringView,
         UsersView, UsersBlock, UsersMarkTest, WalletsAdjust, ReferralsView, VouchersView,
         PromosManage, PricingManage, DevicesEnroll, InventoryManage,
         SettingsManage, FeaturesManage, FormatsManage, LegalManage,

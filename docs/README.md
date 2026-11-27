@@ -26,6 +26,7 @@ Ziddiyyət görünürsə: dayan, uyğunsuzluğu göstər, təhlükəsiz variant�
 | `DOMAIN_RULES.md` | Money, pricing snapshot, wallet ledger, audit, kiosk/device ayrımı |
 | `DATA_RETENTION.md` | Fayl, hesab, razılıq və maliyyə məlumatlarının saxlanması |
 | `OBSERVABILITY.md` | CorrelationId, structured log, metrik və alert-lər |
+| `MONITORING.md` | Monitorinq yığımı (Faza 2, Addım 8): OpenTelemetry → Collector → Prometheus → Grafana, dashboard-lar, giriş |
 | `KIOSK_SETUP.md` | Kioskun sıfırdan quraşdırılması (texnik üçün): paket, provisioning, aktivləşdirmə, texniki giriş, golden image |
 | `KIOSK_PROVISIONING.md` | Provisioning skriptlərinin OS-də etdiyi hər dəyişiklik və səbəbi |
 | `MANUAL_TESTS.md` | Real printer / cihaz tələb edən əl ilə yoxlamalar (məs. çapın ortasında elektrik kəsilməsi): hazırlıq, addımlar, gözlənilən nəticə |

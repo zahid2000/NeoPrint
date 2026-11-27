@@ -15,6 +15,9 @@
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
     <PackageReference Include="Hangfire.AspNetCore" />
+    <!-- Metrics to the OpenTelemetry Collector, only when configured (T-477). -->
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <!-- Swagger UI is only registered in the Development environment. -->
     <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>

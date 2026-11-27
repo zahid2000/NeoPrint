@@ -1722,6 +1722,23 @@ Hər iki skript öz kioskunu və anbar məhsulunu yaradır və sonda hamısını
   (masaüstü), ikon zolağı → tam menyu (planşet 820 px), drawer (telefon 390 px) hər kadrda ölçülür; ilk yükləmədə
   hərəkət yoxdur, `prefers-reduced-motion`-da heç nə hərəkət etmir, klaviatura bağlı qrupa girmir; kadrlar şəkil kimi.
 
+## 7z-m. Faza 2, Addım 8 — monitorinq (T-477)
+
+Collector, Prometheus və Grafana yalnız `monitoring` profili ilə qalxır (default olaraq qalxmır):
+
+```bash
+docker compose --profile monitoring up -d                  # hamısı + monitorinq
+# və ya hər dəfə yazmamaq üçün .env-ə: COMPOSE_PROFILES=monitoring
+node tools/monitoring/dashboards.mjs                       # dashboard JSON-larını yenidən yarat (kodu dəyişəndən sonra)
+```
+
+- Grafana: http://localhost:3000 — `admin` / `admin`, ilk girişdə yeni parol istəyir. Ana səhifə "NeoPrint — Ümumi baxış".
+- Prometheus: http://localhost:9090 (yalnız 127.0.0.1).
+- Admin panelində "Monitorinq" (`monitoring.view`, SuperAdmin-də var) Grafana-ya keçid verir.
+- Lokal mühitinizdə etməli olduğunuz: heç nə məcburi deyil. Monitorinqi görmək istəyirsinizsə yuxarıdakı əmr.
+  Yaddaş: üç servis boş halda ~360 MB.
+- Ətraflı: [`MONITORING.md`](MONITORING.md).
+
 ## 7z. Addım 7B — M20: staging bu maşında (T-335, T-169)
 
 Development-in yanında, ona toxunmadan (`docs/DEPLOY.md` §3a):

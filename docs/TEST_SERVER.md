@@ -49,6 +49,7 @@ Domen hələ yoxdur, ona görə serverin IP-sindən `sslip.io` adı düzəlir:
 | API (mobil tətbiq, kiosk) | `https://<HOST>/` — `api/...` və `hubs/...` |
 | Test APK | `https://<HOST>/download/neoprint-test.apk` |
 | Mailpit (qeydiyyat və şifrə kodları) | `https://mail.<HOST>/` — parolla |
+| Grafana (monitorinq, T-477) | `https://grafana.<HOST>/` — Grafana-nın öz girişi |
 | Dev endpoint-ləri (mock bank və s.) | `https://<HOST>/api/dev/...` — parolla |
 
 Swagger, MongoDB, Redis, RabbitMQ, RustFS və OpenBao kənardan açılmır
@@ -89,6 +90,11 @@ təkbaşına 2 GB-a qədər götürə bilər). Bu rəqəmlər hesablamadır, bu 
 limiti 1 GB-dır — yaddaş azdırsa `.env`-dən `COMPOSE_PROFILES` sətrini silib
 `docker compose up -d --remove-orphans` edin, sonra admin paneldə "Office redaktoru"
 söndürülü qalsın. Collabora olmayanda redaktor açılmır, qalan hər şey işləyir.
+
+**Monitorinq (T-477):** OpenTelemetry Collector, Prometheus və Grafana da işləyir
+(`COMPOSE_PROFILES=office,monitoring`). Boş halda ~360 MB, limitlər cəmi ~800 MB.
+Yaddaş azdırsa `monitoring`-i həmin sətirdən çıxarıb `docker compose up -d --remove-orphans`
+edin. API metrikası göndərə bilmir, amma işləməyə davam edir ([`MONITORING.md`](MONITORING.md)).
 
 ### 2. Deploy üçün SSH açarı yaradın
 
@@ -244,6 +250,7 @@ cat .test-server/credentials                                          # Mailpit 
 | Admin / Operator / Maliyyə | `dev-admin@` / `dev-operator@` / `dev-finance@neoprint.local` | eyni |
 | Mobil istifadəçi (email təsdiqlənib) | `dev-user@neoprint.local` | eyni |
 | Mailpit və dev endpoint-ləri | `TEST_TOOLS_USER` | `TEST_TOOLS_PASSWORD` |
+| Grafana (monitorinq) | `GRAFANA_ADMIN_USER` (`admin`) | `GRAFANA_ADMIN_PASSWORD` — yalnız Grafana ilk qalxanda tətbiq olunur; Grafana-da dəyişsəniz yenisi qalır |
 
 Test kioskları və qalan hər şey lokal mühitdəki kimidir
 (`DEV_ENVIRONMENT.md` bölmə 4 və 5).

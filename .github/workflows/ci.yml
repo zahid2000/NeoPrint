@@ -417,6 +417,11 @@ jobs:
       - name: Check the task registry
         run: node tools/tasks-lint
 
+      # The Grafana JSON is generated from tools/monitoring/dashboards.mjs
+      # (T-477); a hand edit to the JSON or a forgotten regeneration fails here.
+      - name: Check the Grafana dashboards are generated
+        run: node tools/monitoring/dashboards.mjs --check
+
   # --------------------------------------------------------------------
   # Licence policy
   # --------------------------------------------------------------------

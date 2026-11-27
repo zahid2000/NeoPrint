@@ -87,6 +87,12 @@
     <PackageVersion Include="QRCoder" Version="1.8.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Monitoring (plan step 8, T-477)">
+    <!-- Apache-2.0, OpenTelemetry (CNCF). Metrics over OTLP to the collector. -->
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.21.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Development only">
     <!-- MIT. Swagger UI is registered only in the Development environment. -->
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.3.2" />

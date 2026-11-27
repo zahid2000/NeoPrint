@@ -1,0 +1,14 @@
+# The NeoPrint dashboards, from docker/monitoring/grafana/dashboards (T-477).
+# Changed in the repository, not in Grafana: a change made in the UI is not
+# saved over the file.
+apiVersion: 1
+
+providers:
+  - name: neoprint
+    folder: NeoPrint
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 60
+    options:
+      path: /var/lib/grafana/dashboards

@@ -58,3 +58,9 @@ mail.{$NEOPRINT_HOST} {
 	import test_tools_auth
 	reverse_proxy mailpit:8025
 }
+
+# Grafana: the monitoring dashboards (T-477). Its own login - the user and
+# password are in .test-server/credentials on the server (GRAFANA_ADMIN_*).
+grafana.{$NEOPRINT_HOST} {
+	reverse_proxy grafana:3000
+}

@@ -62,7 +62,17 @@ Bu kateqoriya `Program.cs`-də söndürülüb, çünki səviyyəni handler seçi
 
 ## Metrics
 
-**Hazırda (T-215, T-282):** backend sayğacları .NET-in öz `System.Diagnostics.Metrics` API-si ilə
+**Monitorinq yığımı (T-477, Faza 2 Addım 8):** API metrikaları OpenTelemetry ilə
+Collector → Prometheus → Grafana-ya gedir. Quruluş, dashboard-lar və giriş
+[`MONITORING.md`](MONITORING.md)-dədir. Göndərilən meter-lər: `NeoPrint`,
+`NeoPrint.Operations` (MongoDB-dən dəqiqədə bir sayılan gauge-lər:
+`neoprint.refunds.open`, `neoprint.fiscal.receipts.open`, `neoprint.payments.refund_failed`,
+`neoprint.storage.sync.failures`, `neoprint.storage.providers.unhealthy`,
+`neoprint.incidents.open`, `neoprint.kiosks`), ASP.NET Core (sorğu müddəti / statusu,
+Kestrel, SignalR, rate limiting, exception-lar), `System.Runtime`, `System.Net.Http`.
+RabbitMQ növbələri Prometheus-a birbaşa öz plagini ilə gəlir.
+
+**Əvvəldən (T-215, T-282):** backend sayğacları .NET-in öz `System.Diagnostics.Metrics` API-si ilə
 `NeoPrint` meter-indədir (paket yoxdur; OpenTelemetry ixracatçısı təsdiqlənəndə eyni adlarla çıxacaq):
 `neoprint.analytics.events_rejected` (`reason`), `neoprint.files.cleanup.deleted`,
 `neoprint.files.cleanup.deleted_bytes`, `neoprint.messaging.dead_letter_messages` (`queue`),

@@ -36,6 +36,8 @@ mənbə və səbəblə burada qeyd olunur.
 | `PDFsharp` | 6.2.4 | MIT | empira (rəsmi) | PDF səhifə əməliyyatları, tərtibat PDF-i (`NeoPrint.Layout` — backend və kiosk eyni renderer, Addım 6) |
 | `SkiaSharp`, `SkiaSharp.NativeAssets.Linux` | 3.119.4 | MIT | Microsoft | Şəkil emalı, şəkil → PDF, preview; `NeoPrint.Layout`-da şəkillərin 300 DPI-a endirilməsi və EXIF oriyentasiyası. Avalonia 11.3 ilə eyni versiya. Backend-də yalnız converter alətində (`NeoPrint.Converter`) işlənir — API prosesində yox (T-051, ADR-0005) |
 | `QRCoder` | 1.8.0 | MIT | Raffael Herrmann | QR generasiya |
+| `OpenTelemetry.Extensions.Hosting` | 1.21.0 | Apache-2.0 | OpenTelemetry (CNCF) | API metrikalarının OpenTelemetry Collector-a göndərilməsi (plan Addım 8 "Monitorinq", T-477; plan paketi adı ilə göstərir: "OpenTelemetry (.NET SDK — Apache-2.0, CNCF)"). Yalnız `Monitoring__OtlpEndpoint` qurulanda qoşulur |
+| `OpenTelemetry.Exporter.OpenTelemetryProtocol` | 1.21.0 | Apache-2.0 | OpenTelemetry (CNCF) | Yuxarıdakının OTLP/HTTP ixracatçısı (T-477) |
 | `Swashbuckle.AspNetCore` | 7.3.2 | MIT | domaindrivendev | Swagger UI — **yalnız Development mühitində** qeydiyyatdan keçir |
 | `System.Management` | 10.0.15 | MIT | Microsoft | Windows WMI (kiosk telemetriyası) |
 
@@ -167,6 +169,9 @@ Bölmə 2.0 qaydası 1-ə görə aşağıdakılar üçün paket **əlavə edilmi
 | LibreOffice (headless) | MPL-2.0 | Office → PDF |
 | Collabora Online CODE (`collabora/code:26.04.6.1.1`, digest ilə pinlənib) | MPL-2.0 | Word / Excel / PowerPoint redaktoru (plan 2.2, Addım 9; T-459). Ayrıca konteyner, compose profili `office` — yalnız lazım olan serverdə işə düşür; WOPI host öz kodumuzdur. `cpus: 1`, `mem_limit: 1g`, boş halda ~425 MB (lokal ölçülüb). Admin paneldə `office_editor` flag-i ilə yandırılır (default söndürülü). Layihə sahibi 2026-11-26-da təsdiqləyib. CODE versiyası development / kiçik quraşdırma üçündür: eyni anda çox sayda sənəd açılanda Collabora xəbərdarlıq göstərir — pilot üçün kifayətdir, genişlənmədə kommersiya lisenziyası (Collabora Online) nəzərdən keçirilməlidir |
 | Ghostscript (+ GhostPCL, GhostXPS) | AGPL-3.0 | PS / EPS / PCL / PRN / XPS → PDF (ayrıca proses, dəyişdirilmədən) |
+| OpenTelemetry Collector Contrib (`otel/opentelemetry-collector-contrib:0.165.0`) | Apache-2.0 | Monitorinq (plan Addım 8, T-477): API-dən OTLP qəbul edir, Prometheus-a açır. Compose profili `monitoring`, `mem_limit: 160m` |
+| Prometheus (`prom/prometheus:v3.16.0`) | Apache-2.0 | Metrika bazası (T-477): 30 gün, ən çox 2 GB. Profil `monitoring`, `mem_limit: 256m` |
+| Grafana (`grafana/grafana:13.3.1`) | AGPL-3.0 (server kimi, dəyişdirilmədən — plan 2.0) | Dashboard-lar (T-477), repodan provision olunur. Profil `monitoring`, `mem_limit: 384m`. `grafana/grafana-oss` image-i 13.0.2-dən sonra yenilənmir, OSS versiya artıq `grafana/grafana`-dır |
 | PDFium native kitabxanası (`bblanchon/pdfium-binaries`, `chromium/8066`; backend Dockerfile-da, CI-də və kiosk build-ində (`NeoPrint.Kiosk.csproj`) pinlənib, hər yükləmə SHA-256 ilə yoxlanılır — T-100) | BSD-3 / Apache-2.0 (Google PDFium) | Səhifə sayı və səhifə şəkilləri. Yalnız hazır binary götürülür; wrapper öz kodumuzdur (`NeoPrint.Pdfium`) |
 | CUPS | Apache-2.0 | Linux çap |
 | Mailpit | MIT | Development-də email |

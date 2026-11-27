@@ -173,6 +173,18 @@ if [ ! -f "$CREDENTIALS_FILE" ]; then
     rm -f "$CADDY_STATE_DIR/tools-auth.caddy"
 fi
 
+# Grafana's first administrator (T-477). Added to a credentials file written
+# before monitoring existed, too. Grafana takes it only when its database is
+# created; changed later in Grafana, the new one stays.
+if ! grep -q '^GRAFANA_ADMIN_PASSWORD=' "$CREDENTIALS_FILE"; then
+    log "adding Grafana's administrator password to .test-server/credentials"
+    printf 'GRAFANA_ADMIN_USER=admin\nGRAFANA_ADMIN_PASSWORD=%s\n' "$(random_hex 16)" >>"$CREDENTIALS_FILE"
+fi
+# In this script's environment only, for Compose to put into the container;
+# never in .env, which is readable and holds no secret.
+NEOPRINT_GRAFANA_ADMIN_PASSWORD="$(sed -n 's/^GRAFANA_ADMIN_PASSWORD=//p' "$CREDENTIALS_FILE")"
+export NEOPRINT_GRAFANA_ADMIN_PASSWORD
+
 if [ ! -f "$CADDY_STATE_DIR/tools-auth.caddy" ]; then
     tools_user="$(sed -n 's/^TEST_TOOLS_USER=//p' "$CREDENTIALS_FILE")"
     # On stdin, so the password is in no process list.
@@ -204,8 +216,10 @@ NEOPRINT_API_IMAGE=$NEOPRINT_API_IMAGE
 NEOPRINT_ADMIN_IMAGE=$NEOPRINT_ADMIN_IMAGE
 NEOPRINT_ACME_EMAIL=$NEOPRINT_ACME_EMAIL
 # The Office editor (T-459): Collabora runs here, behind Caddy's TLS.
-COMPOSE_PROFILES=office
+# Monitoring (T-477): the collector, Prometheus and Grafana.
+COMPOSE_PROFILES=office,monitoring
 NEOPRINT_OFFICE_TLS_TERMINATION=true
+NEOPRINT_GRAFANA_URL=https://grafana.$NEOPRINT_HOST
 EOF
 chmod 644 "$RELEASE_FILE"
 
@@ -292,4 +306,5 @@ log "done"
 log "panel:      https://$NEOPRINT_HOST/"
 log "API:        https://$NEOPRINT_HOST/api/"
 log "mail:       https://mail.$NEOPRINT_HOST/   (user and password: .test-server/credentials on the server)"
+log "grafana:    https://grafana.$NEOPRINT_HOST/   (GRAFANA_ADMIN_* in .test-server/credentials on the server)"
 log "passwords:  docs/TEST_SERVER.md says where each one is on the server"

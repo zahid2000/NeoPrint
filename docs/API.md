@@ -2325,6 +2325,19 @@ alert; 70 — printer cavab vermir / səbəb bildirir; 60 — printer seçilməy
 
 ## Arxa plan işləri və Hangfire paneli (Addım 7A, M11 — T-215)
 
+### `GET /api/admin/monitoring`
+
+`monitoring.view` (yalnız bütün kioskları görən hesab; T-477). Admin panelinin "Monitorinq" səhifəsi: API metrikaları
+göndərirmi, Grafana harada açılır, "Əməliyyatlar" göstəriciləri son dəfə nə vaxt sayılıb. Parol və ya metrika qaytarmır
+(Grafana-nın öz girişi var, `docs/MONITORING.md`).
+
+```json
+{ "metricsEnabled": true, "grafanaUrl": "https://grafana.<host>", "countedAt": "2026-11-27T13:21:00Z" }
+```
+
+`grafanaUrl` — `Monitoring__GrafanaUrl`; http(s) ünvanı deyilsə və ya qurulmayıbsa `null`. `metricsEnabled` —
+`Monitoring__OtlpEndpoint` qurulub. `countedAt` — metrikalar sönülüdürsə və ya hələ sayılmayıbsa `null`.
+
 ### `GET /api/admin/system/jobs`
 
 `system.jobs.view` + bütün kioskları görən hesab (əhatəsi məhdud hesab → `403`). Hər yoxlamanın son qaçışı

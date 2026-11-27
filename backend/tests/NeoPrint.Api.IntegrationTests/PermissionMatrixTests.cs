@@ -213,6 +213,7 @@ public sealed class PermissionMatrixTests
         new("POST", "api/admin/inventory/movements", Permissions.InventoryManage, Body: """{"itemId":"{item}","type":"Purchase","quantity":1,"kioskId":"{kiosk}"}"""),
         new("GET", "api/admin/system/jobs", Permissions.SystemJobsView),
         new("POST", "api/admin/hangfire-session", Permissions.SystemJobsView),
+        new("GET", "api/admin/monitoring", Permissions.MonitoringView),
         new("GET", "api/admin/operator/kiosks", Permissions.OperatorPanel),
         new("GET", "api/admin/operator/kiosks/{id:guid}", Permissions.OperatorPanel, Target.TheirKiosk),
 
