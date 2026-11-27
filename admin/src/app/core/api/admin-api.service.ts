@@ -770,6 +770,11 @@ export class AdminApiService {
     });
   }
 
+  /** Null follows `Camera.ArchiveProvider`, `off` keeps the kiosk's camera on its own disk, an id sends it there (T-485). */
+  setKioskCameraArchive(id: string, target: string | null): Observable<KioskDetail> {
+    return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/camera-archive`, { target });
+  }
+
   setKioskPaperCapacity(id: string, a4: number, a3: number): Observable<KioskDetail> {
     return this.http.put<KioskDetail>(`/api/admin/kiosks/${id}/paper/capacity`, { a4, a3 });
   }

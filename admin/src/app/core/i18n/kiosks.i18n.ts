@@ -68,6 +68,10 @@ export const kiosksTranslations: PageTranslations = {
     'kiosks.fiscalTerminal': 'Fiskal terminal ID',
     'kiosks.fiscalHint':
       'E-kassa terminalının identifikatoru. Boş qalsa, bu kioskun satışlarına fiskal çek verilmir — çeklər gözləyir.',
+    'kiosks.cameraArchive.title': 'Kamera görüntüsü — fayl serveri',
+    'kiosks.cameraArchive.default': 'Ümumi ayar (Parametrlər → Kiosk kamerası)',
+    'kiosks.cameraArchive.off': 'Serverə yazılmasın — yalnız kioskun diski',
+    'kiosks.cameraArchive.hint': 'Görüntü həmişə kioskun diskində də qalır',
     'kiosks.paperHint':
       'Lotokların tutumu. Yüklənmiş vərəq sayı doldurma və çaplarla hesablanır; tutum azaldılanda sayğac ona endirilir.',
     'kiosks.capacityA4': 'A4 tutumu',
@@ -175,6 +179,10 @@ export const kiosksTranslations: PageTranslations = {
     'kiosks.fiscalTerminal': 'Fiscal terminal ID',
     'kiosks.fiscalHint':
       'The e-kassa terminal identifier. While it is empty, the sales of this kiosk get no fiscal receipt — they wait.',
+    'kiosks.cameraArchive.title': 'Camera footage - file server',
+    'kiosks.cameraArchive.default': 'Common setting (Settings → Kiosk camera)',
+    'kiosks.cameraArchive.off': 'Not to a server - the kiosk disk only',
+    'kiosks.cameraArchive.hint': 'The footage always stays on the kiosk disk too',
     'kiosks.paperHint':
       'Tray capacities. Sheets loaded are counted from refills and prints; lowering a capacity brings the counter down to it.',
     'kiosks.capacityA4': 'A4 capacity',
@@ -283,6 +291,10 @@ export const kiosksTranslations: PageTranslations = {
     'kiosks.fiscalTerminal': 'ID фискального терминала',
     'kiosks.fiscalHint':
       'Идентификатор терминала e-kassa. Пока он пуст, продажи этого киоска не получают фискальный чек — чеки ждут.',
+    'kiosks.cameraArchive.title': 'Видео камеры — файловый сервер',
+    'kiosks.cameraArchive.default': 'Общая настройка (Настройки → Камера киоска)',
+    'kiosks.cameraArchive.off': 'Не записывать на сервер — только диск киоска',
+    'kiosks.cameraArchive.hint': 'Видео всегда остаётся и на диске киоска',
     'kiosks.paperHint':
       'Вместимость лотков. Загруженные листы считаются по заправкам и печати; при уменьшении вместимости счётчик опускается до неё.',
     'kiosks.capacityA4': 'Вместимость A4',

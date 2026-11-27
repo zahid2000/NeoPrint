@@ -150,6 +150,10 @@ export class KioskEditorComponent implements OnInit {
   readonly pricingProfileId = signal<string | null>(null);
   readonly fiscalTerminalId = signal('');
 
+  /** Where the camera's minutes go besides the kiosk's disk (T-485): null follows the setting. */
+  readonly cameraArchive = signal<string | null>(null);
+  readonly storageTargets = signal<readonly { id: string; name: string }[]>([]);
+
   // Paper
   readonly capacityA4 = signal(500);
   readonly capacityA3 = signal(0);
@@ -164,6 +168,7 @@ export class KioskEditorComponent implements OnInit {
   readonly canLimits = computed(() => this.auth.canAny([Permissions.kioskLimitsManage]));
   readonly canPricing = computed(() => this.auth.canAny([Permissions.pricingManage]));
   readonly canFiscal = computed(() => this.auth.canAny([Permissions.fiscalManage]));
+  readonly canCameraArchive = computed(() => this.auth.canAny([Permissions.storageManage]));
   readonly canDevices = computed(() => this.auth.canAny([Permissions.devicesView]));
   readonly canPrinters = computed(() => this.auth.canAny([Permissions.printersView]));
   readonly canJobs = computed(() => this.auth.canAny([Permissions.jobsView]));
@@ -356,6 +361,11 @@ export class KioskEditorComponent implements OnInit {
         this.profiles.set(await firstValueFrom(this.api.listPricingProfiles()));
       }
 
+      if (this.canCameraArchive()) {
+        const providers = await firstValueFrom(this.api.listStorageProviders());
+        this.storageTargets.set(providers.map((provider) => ({ id: provider.id, name: provider.name })));
+      }
+
       const id = this.id();
 
       if (id) {
@@ -460,6 +470,22 @@ export class KioskEditorComponent implements OnInit {
     });
   }
 
+  async saveCameraArchive(): Promise<void> {
+    await this.run('camera', async () => {
+      this.apply(await firstValueFrom(this.api.setKioskCameraArchive(this.id()!, this.cameraArchive())));
+    });
+  }
+
+  /** The kiosk's choice as words, for an account that may only read it. */
+  cameraArchiveText(): string {
+    const value = this.kiosk()?.cameraArchive;
+    return value == null
+      ? this.t('kiosks.cameraArchive.default')
+      : value === 'off'
+        ? this.t('kiosks.cameraArchive.off')
+        : (this.storageTargets().find((target) => target.id === value)?.name ?? value);
+  }
+
   async savePaper(): Promise<void> {
     await this.run('paper', async () => {
       this.apply(
@@ -544,6 +570,7 @@ export class KioskEditorComponent implements OnInit {
     this.maxPages.set(kiosk.maxPages.override ?? null);
     this.pricingProfileId.set(kiosk.pricingProfileId ?? null);
     this.fiscalTerminalId.set(kiosk.fiscalTerminalId ?? '');
+    this.cameraArchive.set(kiosk.cameraArchive ?? null);
     this.capacityA4.set(kiosk.paper['A4']?.capacity ?? 0);
     this.capacityA3.set(kiosk.paper['A3']?.capacity ?? 0);
   }

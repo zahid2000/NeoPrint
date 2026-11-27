@@ -76,6 +76,9 @@ export interface TelemetryCamera {
   readonly segments?: number | null;
   readonly oldestAt?: string | null;
   readonly lastSegmentAt?: string | null;
+  /** Minutes not yet on the file server (T-485); absent when none go there. */
+  readonly unsent?: number | null;
+  readonly lastSentAt?: string | null;
 }
 
 /** The limits a report is over (`disk`, `memory`, `latency`, `hub`, `clock`, `camera`), each with since when. */

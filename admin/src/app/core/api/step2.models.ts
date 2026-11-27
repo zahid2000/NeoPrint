@@ -303,6 +303,8 @@ export interface KioskDetail {
   readonly safeModeSince?: string | null;
   /** The picture the app shows, relative to the API (T-340); absent without one. */
   readonly photoUrl?: string | null;
+  /** Where its camera minutes go besides its disk (T-485): absent follows the setting, `off`, or a storage provider's id. */
+  readonly cameraArchive?: string | null;
 }
 
 export interface CreateKioskInput {

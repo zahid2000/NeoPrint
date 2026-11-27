@@ -15,6 +15,8 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 import { AdminApiService, PlatformSetting } from '../../core/api/admin-api.service';
+import { Permissions } from '../../core/auth/auth.models';
+import { AuthService } from '../../core/auth/auth.service';
 import { defaultLanguage, translations } from '../../core/i18n/translations';
 import { describeError } from '../login/login.component';
 
@@ -28,6 +30,15 @@ export const SETTING_CHOICES: Readonly<Record<string, readonly string[]>> = {
   'Camera.Resolution': ['640x480', '1280x720', '1920x1080'],
   'Camera.Quality': ['Low', 'Medium', 'High'],
 };
+
+/** The setting whose value is a storage provider's id (T-485): picked by the provider's name. */
+export const ARCHIVE_PROVIDER_SETTING = 'Camera.ArchiveProvider';
+
+/** A file server the camera archive can go to. */
+export interface ArchiveTarget {
+  readonly id: string;
+  readonly name: string;
+}
 
 /** Settings grouped by the prefix of their key, as the panel shows them. */
 interface SettingGroup {
@@ -63,6 +74,13 @@ interface SettingGroup {
 })
 export class SettingsComponent {
   private readonly api = inject(AdminApiService);
+  private readonly auth = inject(AuthService);
+
+  /**
+   * The storage providers, for the camera archive's file server (T-485); null
+   * when this account may not read them - the id is then typed.
+   */
+  readonly archiveTargets = signal<readonly ArchiveTarget[] | null>(null);
 
   /** Whether this build explains the setting; otherwise the seeded description shows. */
   hasText(setting: PlatformSetting): boolean {
@@ -127,6 +145,11 @@ export class SettingsComponent {
     try {
       const settings = await firstValueFrom(this.api.listSettings());
 
+      if (this.auth.canAny([Permissions.storageManage])) {
+        const providers = await firstValueFrom(this.api.listStorageProviders());
+        this.archiveTargets.set(providers.map((provider) => ({ id: provider.id, name: provider.name })));
+      }
+
       this.settings.set(settings);
       this.draft.set(Object.fromEntries(settings.map((setting) => [setting.key, setting.value])));
     } catch (error) {
@@ -166,6 +189,11 @@ export class SettingsComponent {
   /** Whether a group holds anything the operator has edited. */
   groupHasChanges(group: SettingGroup): boolean {
     return group.settings.some((setting) => this.isChanged(setting));
+  }
+
+  /** The file servers to pick from for this setting, or null when it is not the camera archive's. */
+  archiveTargetsOf(setting: PlatformSetting): readonly ArchiveTarget[] | null {
+    return setting.key === ARCHIVE_PROVIDER_SETTING ? this.archiveTargets() : null;
   }
 
   /** The words a setting may take, or null when it is typed. */

@@ -481,6 +481,37 @@
           } @else {
             <p>{{ kiosk()?.fiscalTerminalId ?? '—' }}</p>
           }
+
+          <!-- The camera's minutes to a file server (T-485): this kiosk's own choice. -->
+          <h3>{{ 'kiosks.cameraArchive.title' | translate }}</h3>
+          @if (canCameraArchive()) {
+            <div class="editor__inline">
+              <mat-form-field>
+                <mat-label>{{ 'kiosks.cameraArchive.title' | translate }}</mat-label>
+                <mat-select [ngModel]="cameraArchive()" (ngModelChange)="cameraArchive.set($event)">
+                  <mat-option [value]="null">{{ 'kiosks.cameraArchive.default' | translate }}</mat-option>
+                  <mat-option value="off">{{ 'kiosks.cameraArchive.off' | translate }}</mat-option>
+                  @for (target of storageTargets(); track target.id) {
+                    <mat-option [value]="target.id">{{ target.name }}</mat-option>
+                  }
+                </mat-select>
+                <mat-hint>{{ 'kiosks.cameraArchive.hint' | translate }}</mat-hint>
+              </mat-form-field>
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="saving() !== null"
+                (click)="saveCameraArchive()"
+              >
+                @if (saving() === 'camera') {
+                  <mat-spinner diameter="18" class="neo-button-spinner" />
+                }
+                {{ 'common.save' | translate }}
+              </button>
+            </div>
+          } @else {
+            <p>{{ cameraArchiveText() }}</p>
+          }
         </section>
       </mat-tab>
 

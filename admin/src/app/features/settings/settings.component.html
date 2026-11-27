@@ -69,7 +69,20 @@
               </div>
 
               <div class="settings__control">
-                @if (choicesOf(setting); as options) {
+                @if (archiveTargetsOf(setting); as targets) {
+                  <mat-form-field class="settings__input settings__input--wide">
+                    <mat-select
+                      [ngModel]="value(setting)"
+                      (ngModelChange)="set(setting, $event)"
+                      [aria-label]="setting.key"
+                    >
+                      <mat-option value="">{{ 'settings.archive.none' | translate }}</mat-option>
+                      @for (target of targets; track target.id) {
+                        <mat-option [value]="target.id">{{ target.name }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                } @else if (choicesOf(setting); as options) {
                   <mat-form-field class="settings__input settings__input--wide">
                     <mat-select
                       [ngModel]="value(setting)"

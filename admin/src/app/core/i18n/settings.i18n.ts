@@ -140,6 +140,9 @@ export const settingsTranslations: PageTranslations = {
     'settings.choice.Camera.Quality.Low': 'Aşağı — ən az yer',
     'settings.choice.Camera.Quality.Medium': 'Orta',
     'settings.choice.Camera.Quality.High': 'Yüksək — ən aydın',
+    'settings.archive.none': 'Yoxdur — yalnız kioskun diski',
+    'settings.description.Camera.ArchiveProvider': 'Kamera görüntüsü kioskun diskindən əlavə bu fayl serverinə də yazılır (Saxlama bölməsindəki provayderlərdən biri). Kiosk şifrəli faylı backend-ə göndərir, backend serverə yazır — kioskda heç bir parol saxlanmır. Kiosk səhifəsində hər kiosk üçün ayrıca seçmək olar.',
+    'settings.description.Camera.ArchiveRetentionDays': 'Kamera görüntüsü fayl serverində bu qədər gün saxlanılır, sonra silinir (1–365).',
     'settings.description.Update.CheckIntervalMinutes':
       'Kiosk yeni versiyanı bu intervalla yoxlayır.',
     'settings.description.Update.HealthTimeoutMinutes':
@@ -282,6 +285,9 @@ export const settingsTranslations: PageTranslations = {
     'settings.choice.Camera.Quality.Low': 'Low - least space',
     'settings.choice.Camera.Quality.Medium': 'Medium',
     'settings.choice.Camera.Quality.High': 'High - sharpest',
+    'settings.archive.none': 'None - the kiosk disk only',
+    'settings.description.Camera.ArchiveProvider': 'Camera footage is also written to this file server besides the kiosk disk (one of the providers on the Storage page). The kiosk sends the encrypted file to the backend and the backend writes it - no password is kept on the kiosk. Each kiosk can have its own on the kiosk page.',
+    'settings.description.Camera.ArchiveRetentionDays': 'Camera footage stays on the file server for this many days, then is deleted (1–365).',
     'settings.description.Update.CheckIntervalMinutes':
       'How often the kiosk checks for a new version.',
     'settings.description.Update.HealthTimeoutMinutes':
@@ -428,6 +434,9 @@ export const settingsTranslations: PageTranslations = {
     'settings.choice.Camera.Quality.Low': 'Низкое — меньше всего места',
     'settings.choice.Camera.Quality.Medium': 'Среднее',
     'settings.choice.Camera.Quality.High': 'Высокое — самое чёткое',
+    'settings.archive.none': 'Нет — только диск киоска',
+    'settings.description.Camera.ArchiveProvider': 'Видео камеры кроме диска киоска записывается и на этот файловый сервер (один из поставщиков на странице «Хранилище»). Киоск отправляет зашифрованный файл в backend, backend записывает его на сервер — на киоске не хранится никаких паролей. Для каждого киоска можно выбрать свой на странице киоска.',
+    'settings.description.Camera.ArchiveRetentionDays': 'Видео хранится на файловом сервере столько дней, затем удаляется (1–365).',
     'settings.description.Update.CheckIntervalMinutes':
       'Как часто киоск проверяет наличие новой версии.',
     'settings.description.Update.HealthTimeoutMinutes':

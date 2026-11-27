@@ -230,4 +230,24 @@ describe('SettingsComponent', () => {
     component.set(quality, 'Low');
     expect(component.isChanged(quality)).toBe(true);
   });
+
+  it('offers the storage providers as the camera archive, by name (T-485)', () => {
+    const archive: PlatformSetting = {
+      key: 'Camera.ArchiveProvider',
+      value: '',
+      defaultValue: '',
+      valueType: 'String',
+      description: 'Fayl serveri',
+      isDefault: true,
+      updatedAt: null,
+      updatedBy: null,
+    };
+
+    // An account that may not read the providers types the id instead.
+    expect(component.archiveTargetsOf(archive)).toBeNull();
+
+    component.archiveTargets.set([{ id: 'p-1', name: 'Ofis NAS' }]);
+    expect(component.archiveTargetsOf(archive)).toEqual([{ id: 'p-1', name: 'Ofis NAS' }]);
+    expect(component.archiveTargetsOf(settings[0])).toBeNull();
+  });
 });

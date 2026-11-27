@@ -540,6 +540,8 @@ export class KioskStatusComponent implements OnInit {
                 },
                 { key: 'cameraOldest', value: when(camera.oldestAt) },
                 { key: 'cameraNewest', value: when(camera.lastSegmentAt) },
+                { key: 'cameraUnsent', value: count(camera.unsent) },
+                { key: 'cameraLastSent', value: when(camera.lastSentAt) },
               ],
             },
           ]
