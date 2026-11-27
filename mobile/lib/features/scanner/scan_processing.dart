@@ -6,43 +6,113 @@ import 'package:image/image.dart' as img;
 /// The look a scanned page gets (plan section 2.11).
 enum ScanFilter { original, grayscale, blackWhite, contrast }
 
-/// Part of the picture to keep, as fractions of its width and height after
-/// the turn: 0,0 is the top left, 1,1 the bottom right.
+/// A point of the crop, as fractions of the picture's width and height
+/// after the turn: 0,0 is the top left, 1,1 the bottom right.
+typedef ScanPoint = ({double x, double y});
+
+/// Part of the picture to keep: any four-sided shape (T-476), its corners
+/// moved one by one as in a document scanner app. A rectangle is cut out
+/// as it is; any other shape is straightened onto a rectangle - the page
+/// photographed at a slant comes out flat.
 final class ScanCrop {
-  const ScanCrop(this.left, this.top, this.right, this.bottom);
+  const ScanCrop(
+    this.topLeft,
+    this.topRight,
+    this.bottomRight,
+    this.bottomLeft,
+  );
 
-  static const whole = ScanCrop(0, 0, 1, 1);
+  /// A rectangle: [left] to [right], [top] to [bottom].
+  const ScanCrop.rect(double left, double top, double right, double bottom)
+    : topLeft = (x: left, y: top),
+      topRight = (x: right, y: top),
+      bottomRight = (x: right, y: bottom),
+      bottomLeft = (x: left, y: bottom);
 
-  final double left;
-  final double top;
-  final double right;
-  final double bottom;
+  static const whole = ScanCrop.rect(0, 0, 1, 1);
 
-  bool get isWhole => left <= 0 && top <= 0 && right >= 1 && bottom >= 1;
+  final ScanPoint topLeft;
+  final ScanPoint topRight;
+  final ScanPoint bottomRight;
+  final ScanPoint bottomLeft;
 
-  /// The crop with each side kept inside the picture and at least 5% across.
+  /// Clockwise from the top left.
+  List<ScanPoint> get corners => [topLeft, topRight, bottomRight, bottomLeft];
+
+  /// The crop with [index] (clockwise from the top left) at [point].
+  ScanCrop withCorner(int index, ScanPoint point) {
+    final next = [...corners]..[index] = point;
+    return ScanCrop(next[0], next[1], next[2], next[3]);
+  }
+
+  bool get isWhole => this == whole;
+
+  /// Whether the sides run along the picture's: then it is a plain cut.
+  bool get isRect =>
+      topLeft.y == topRight.y &&
+      bottomLeft.y == bottomRight.y &&
+      topLeft.x == bottomLeft.x &&
+      topRight.x == bottomRight.x;
+
+  /// The corners kept inside the picture.
   ScanCrop clamped() {
-    const minimum = 0.05;
-    final l = left.clamp(0.0, 1.0 - minimum);
-    final t = top.clamp(0.0, 1.0 - minimum);
+    ScanPoint inside(ScanPoint p) =>
+        (x: p.x.clamp(0.0, 1.0), y: p.y.clamp(0.0, 1.0));
     return ScanCrop(
-      l,
-      t,
-      right.clamp(l + minimum, 1.0),
-      bottom.clamp(t + minimum, 1.0),
+      inside(topLeft),
+      inside(topRight),
+      inside(bottomRight),
+      inside(bottomLeft),
     );
+  }
+
+  /// Whether the shape can be straightened: its corners go round one way
+  /// with no side crossing another, and it is not a sliver - every side at
+  /// least 5% of the picture across.
+  bool get isUsable {
+    final c = corners;
+    double? sign;
+    for (var i = 0; i < 4; i++) {
+      final a = c[i], b = c[(i + 1) % 4], d = c[(i + 2) % 4];
+      final cross = (b.x - a.x) * (d.y - b.y) - (b.y - a.y) * (d.x - b.x);
+      if (cross.abs() < 1e-9) {
+        return false;
+      }
+      if (sign != null && cross.sign != sign) {
+        return false;
+      }
+      sign = cross.sign;
+    }
+    for (var i = 0; i < 4; i++) {
+      final a = c[i], b = c[(i + 1) % 4];
+      if (math.sqrt(math.pow(b.x - a.x, 2) + math.pow(b.y - a.y, 2)) < 0.05) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// The flat page's size in pixels for a picture of [width] x [height]:
+  /// the longer of each pair of opposite sides.
+  (int, int) sizeIn(int width, int height) {
+    double side(ScanPoint a, ScanPoint b) => math.sqrt(
+      math.pow((b.x - a.x) * width, 2) + math.pow((b.y - a.y) * height, 2),
+    );
+    final w = math.max(side(topLeft, topRight), side(bottomLeft, bottomRight));
+    final h = math.max(side(topLeft, bottomLeft), side(topRight, bottomRight));
+    return (math.max(1, w.round()), math.max(1, h.round()));
   }
 
   @override
   bool operator ==(Object other) =>
       other is ScanCrop &&
-      other.left == left &&
-      other.top == top &&
-      other.right == right &&
-      other.bottom == bottom;
+      other.topLeft == topLeft &&
+      other.topRight == topRight &&
+      other.bottomRight == bottomRight &&
+      other.bottomLeft == bottomLeft;
 
   @override
-  int get hashCode => Object.hash(left, top, right, bottom);
+  int get hashCode => Object.hash(topLeft, topRight, bottomRight, bottomLeft);
 }
 
 /// What is done to one page, applied in this order: turn, crop, filter,
@@ -138,15 +208,31 @@ abstract final class ScanProcessing {
     }
 
     final crop = edit.crop.clamped();
-    if (!crop.isWhole) {
-      final x = (crop.left * page.width).round();
-      final y = (crop.top * page.height).round();
+    if (crop.isWhole) {
+      // Nothing to cut.
+    } else if (crop.isRect) {
+      final x = (crop.topLeft.x * page.width).round();
+      final y = (crop.topLeft.y * page.height).round();
       page = img.copyCrop(
         page,
         x: x,
         y: y,
-        width: math.max(1, (crop.right * page.width).round() - x),
-        height: math.max(1, (crop.bottom * page.height).round() - y),
+        width: math.max(1, (crop.bottomRight.x * page.width).round() - x),
+        height: math.max(1, (crop.bottomRight.y * page.height).round() - y),
+      );
+    } else {
+      // Straightened onto a flat page of its own size (T-476).
+      final (w, h) = crop.sizeIn(page.width, page.height);
+      img.Point at(ScanPoint p) =>
+          img.Point(p.x * (page.width - 1), p.y * (page.height - 1));
+      page = img.copyRectify(
+        page,
+        topLeft: at(crop.topLeft),
+        topRight: at(crop.topRight),
+        bottomLeft: at(crop.bottomLeft),
+        bottomRight: at(crop.bottomRight),
+        interpolation: img.Interpolation.linear,
+        toImage: img.Image(width: w, height: h, numChannels: page.numChannels),
       );
     }
 

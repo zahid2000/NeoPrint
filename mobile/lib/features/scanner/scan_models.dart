@@ -30,9 +30,11 @@ final class ScanPage {
   /// The shape after the turn and the crop: width over height.
   double get editedAspect {
     final turned = edit.quarterTurns.isOdd;
-    final w = (turned ? height : width) * (edit.crop.right - edit.crop.left);
-    final h = (turned ? width : height) * (edit.crop.bottom - edit.crop.top);
-    return h <= 0 ? 1 : w / h;
+    final (w, h) = edit.crop.sizeIn(
+      turned ? height : width,
+      turned ? width : height,
+    );
+    return w / h;
   }
 }
 

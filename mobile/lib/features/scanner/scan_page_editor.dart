@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/tokens.dart';
@@ -80,14 +81,13 @@ class _ScanPageEditorState extends State<ScanPageEditor> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _rotate,
-                        icon: const Icon(Icons.rotate_right),
-                        label: Text(l10n.docScanEditRotate),
-                      ),
-                    ],
+                  // Not in a row: the theme's buttons are full width, and an
+                  // unbounded one laid out nothing - this whole panel with it.
+                  OutlinedButton.icon(
+                    key: const ValueKey('scanEditRotate'),
+                    onPressed: _rotate,
+                    icon: const Icon(Icons.rotate_right),
+                    label: Text(l10n.docScanEditRotate),
                   ),
                   const SizedBox(height: Spacing.x3),
                   SegmentedButton<ScanFilter>(
@@ -145,8 +145,11 @@ class _ScanPageEditorState extends State<ScanPageEditor> {
   }
 }
 
-/// The turned page with the crop frame over it.
-class _CropView extends StatelessWidget {
+/// The turned page with the crop over it (T-476): four points, one at each
+/// corner, moved one by one - the page need not be a rectangle - and one in
+/// the middle of each side, which moves that side. While a point is held, a
+/// magnifier above the finger shows the corner it is on.
+class _CropView extends StatefulWidget {
   const _CropView({
     required this.page,
     required this.edit,
@@ -157,89 +160,167 @@ class _CropView extends StatelessWidget {
   final ScanPageEdit edit;
   final ValueChanged<ScanCrop> onCrop;
 
-  static const _handle = 24.0;
+  @override
+  State<_CropView> createState() => _CropViewState();
+}
+
+class _CropViewState extends State<_CropView> {
+  /// The touch area of a point, and the dot drawn in it.
+  static const _touch = Spacing.x12;
+  static const _corner = Spacing.x6;
+  static const _edge = Spacing.x4;
+
+  /// The magnifier: its size, how much it enlarges, and how far above the
+  /// finger it sits so the finger does not cover it.
+  static const _loupe = Spacing.x16 + Spacing.x8;
+  static const _zoom = 2.0;
+  static const _lift = Spacing.x16 + Spacing.x2;
+
+  /// The point being dragged, where it is on screen.
+  Offset? _held;
 
   @override
   Widget build(BuildContext context) {
+    final edit = widget.edit;
+    final page = widget.page;
     final turned = edit.quarterTurns.isOdd;
     final aspect = turned ? page.height / page.width : page.width / page.height;
 
-    return Center(
-      child: AspectRatio(
-        aspectRatio: aspect,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final height = constraints.maxHeight;
-            final crop = edit.crop;
-            final frame = Rect.fromLTRB(
-              crop.left * width,
-              crop.top * height,
-              crop.right * width,
-              crop.bottom * height,
-            );
+    // The page with room around it for half a point: a touch is taken only
+    // inside the area, and the points sit on the page's edges - without the
+    // room, the outer half of the right and bottom ones did not answer.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const margin = _touch / 2;
+        final room = Size(
+          constraints.maxWidth - 2 * margin,
+          constraints.maxHeight - 2 * margin,
+        );
+        final size = room.width / room.height > aspect
+            ? Size(room.height * aspect, room.height)
+            : Size(room.width, room.width / aspect);
+        final origin = Offset(
+          (constraints.maxWidth - size.width) / 2,
+          (constraints.maxHeight - size.height) / 2,
+        );
+        final picture = origin & size;
+        final crop = edit.crop;
+        Offset at(ScanPoint p) =>
+            origin + Offset(p.x * size.width, p.y * size.height);
+        final corners = [for (final p in crop.corners) at(p)];
 
-            void drag(Alignment corner, Offset delta) {
-              final dx = delta.dx / width;
-              final dy = delta.dy / height;
-              onCrop(
-                ScanCrop(
-                  crop.left + (corner.x < 0 ? dx : 0),
-                  crop.top + (corner.y < 0 ? dy : 0),
-                  crop.right + (corner.x > 0 ? dx : 0),
-                  crop.bottom + (corner.y > 0 ? dy : 0),
-                ).clamped(),
-              );
-            }
+        // A move is taken only when the shape stays one that can be
+        // straightened: no side crossing another, no sliver.
+        void move(ScanCrop next) {
+          final inside = next.clamped();
+          if (inside.isUsable) {
+            widget.onCrop(inside);
+          }
+        }
 
-            return Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned.fill(
-                  child: ColorFiltered(
-                    colorFilter: ColorFilter.matrix(_matrix(edit)),
-                    child: RotatedBox(
-                      quarterTurns: edit.quarterTurns,
-                      child: Image.file(File(page.path), fit: BoxFit.fill),
-                    ),
+        ScanPoint shifted(ScanPoint p, Offset delta) =>
+            (x: p.x + delta.dx / size.width, y: p.y + delta.dy / size.height);
+
+        Widget handle({
+          required Key key,
+          required Offset centre,
+          required double dot,
+          required void Function(Offset delta) onDrag,
+        }) => Positioned(
+          left: centre.dx - _touch / 2,
+          top: centre.dy - _touch / 2,
+          child: GestureDetector(
+            key: key,
+            behavior: HitTestBehavior.opaque,
+            onPanStart: (_) => setState(() => _held = centre),
+            onPanUpdate: (details) {
+              onDrag(details.delta);
+              setState(() => _held = (_held ?? centre) + details.delta);
+            },
+            onPanEnd: (_) => setState(() => _held = null),
+            onPanCancel: () => setState(() => _held = null),
+            child: SizedBox.square(
+              dimension: _touch,
+              child: Center(
+                child: Container(
+                  width: dot,
+                  height: dot,
+                  decoration: BoxDecoration(
+                    color: LightPalette.neutral0,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: LightPalette.brand500, width: 2),
                   ),
                 ),
-                Positioned.fill(
-                  child: CustomPaint(painter: _ShadePainter(frame)),
+              ),
+            ),
+          ),
+        );
+
+        final held = _held;
+        return Stack(
+          children: [
+            Positioned.fromRect(
+              rect: picture,
+              child: ColorFiltered(
+                colorFilter: ColorFilter.matrix(_matrix(edit)),
+                child: RotatedBox(
+                  quarterTurns: edit.quarterTurns,
+                  child: Image.file(File(page.path), fit: BoxFit.fill),
                 ),
-                for (final corner in const [
-                  Alignment.topLeft,
-                  Alignment.topRight,
-                  Alignment.bottomLeft,
-                  Alignment.bottomRight,
-                ])
-                  Positioned(
-                    left: (corner.x < 0 ? frame.left : frame.right) - _handle,
-                    top: (corner.y < 0 ? frame.top : frame.bottom) - _handle,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onPanUpdate: (details) => drag(corner, details.delta),
-                      child: SizedBox(
-                        width: _handle * 2,
-                        height: _handle * 2,
-                        child: Center(
-                          child: Container(
-                            width: _handle,
-                            height: _handle,
-                            decoration: BoxDecoration(
-                              color: LightPalette.neutral0,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
+              ),
+            ),
+            Positioned.fill(
+              child: CustomPaint(painter: _ShadePainter(picture, corners)),
+            ),
+            // The middle of each side moves the side: both its ends.
+            for (var i = 0; i < 4; i++)
+              handle(
+                key: ValueKey('scanCropEdge-$i'),
+                centre: (corners[i] + corners[(i + 1) % 4]) / 2,
+                dot: _edge,
+                onDrag: (delta) {
+                  final c = crop.corners;
+                  move(
+                    crop
+                        .withCorner(i, shifted(c[i], delta))
+                        .withCorner(
+                          (i + 1) % 4,
+                          shifted(c[(i + 1) % 4], delta),
+                        ),
+                  );
+                },
+              ),
+            for (var i = 0; i < 4; i++)
+              handle(
+                key: ValueKey('scanCropCorner-$i'),
+                centre: corners[i],
+                dot: _corner,
+                onDrag: (delta) =>
+                    move(crop.withCorner(i, shifted(crop.corners[i], delta))),
+              ),
+            if (held != null)
+              Positioned(
+                left: held.dx - _loupe / 2,
+                top: held.dy - _loupe / 2 - _lift,
+                child: const IgnorePointer(
+                  child: RawMagnifier(
+                    size: Size.square(_loupe),
+                    magnificationScale: _zoom,
+                    focalPointOffset: Offset(0, _lift),
+                    decoration: MagnifierDecoration(
+                      shape: CircleBorder(
+                        side: BorderSide(
+                          color: LightPalette.neutral0,
+                          width: 2,
                         ),
                       ),
                     ),
                   ),
-              ],
-            );
-          },
-        ),
-      ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -291,35 +372,41 @@ class _CropView extends StatelessWidget {
   }
 }
 
-/// Darkens everything outside the crop frame and draws the frame.
+/// Darkens everything outside the crop and draws its sides (T-476).
 class _ShadePainter extends CustomPainter {
-  const _ShadePainter(this.frame);
+  const _ShadePainter(this.picture, this.corners);
 
-  final Rect frame;
+  /// Where the page is drawn.
+  final Rect picture;
+
+  /// Clockwise from the top left, on screen.
+  final List<Offset> corners;
 
   @override
   void paint(Canvas canvas, Size size) {
+    final shape = Path()..addPolygon(corners, true);
     final outside = Path()
       ..fillType = PathFillType.evenOdd
-      ..addRect(Offset.zero & size)
-      ..addRect(frame);
+      ..addRect(picture)
+      ..addPath(shape, Offset.zero);
 
     canvas
       ..drawPath(
         outside,
         Paint()..color = LightPalette.neutral900.withValues(alpha: 0.5),
       )
-      ..drawRect(
-        frame,
+      ..drawPath(
+        shape,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2
-          ..color = LightPalette.neutral0,
+          ..color = LightPalette.brand500,
       );
   }
 
   @override
-  bool shouldRepaint(_ShadePainter old) => old.frame != frame;
+  bool shouldRepaint(_ShadePainter old) =>
+      old.picture != picture || !listEquals(old.corners, corners);
 }
 
 /// Opens the editor for a page and returns its new edit, or null.

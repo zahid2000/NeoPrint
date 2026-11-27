@@ -50,7 +50,7 @@ void main() {
     );
     final cropped = ScanProcessing.process(
       photo(400, 200),
-      const ScanPageEdit(crop: ScanCrop(0.25, 0, 0.75, 0.5)),
+      const ScanPageEdit(crop: ScanCrop.rect(0.25, 0, 0.75, 0.5)),
     );
 
     expect((turned.width, turned.height), (200, 400));
@@ -83,16 +83,48 @@ void main() {
     expect(lighter.getPixel(10, 40).g, greaterThan(plain.getPixel(10, 40).g));
   });
 
-  test('a crop is kept inside the picture and never collapses', () {
-    final crop = const ScanCrop(-0.2, 0.5, 0.52, 2).clamped();
+  test('a crop is kept inside the picture', () {
+    final crop = const ScanCrop.rect(-0.2, 0.5, 0.52, 2).clamped();
 
-    expect(crop.left, 0);
-    expect(crop.right, 0.52);
-    expect(crop.bottom, 1);
-    expect(
-      const ScanCrop(0.9, 0.9, 0.9, 0.9).clamped().right,
-      closeTo(0.95, 1e-9),
+    expect(crop.topLeft, (x: 0.0, y: 0.5));
+    expect(crop.bottomRight, (x: 0.52, y: 1.0));
+  });
+
+  test('only a shape that can be straightened is usable: no crossing '
+      'sides, no sliver (T-476)', () {
+    expect(ScanCrop.whole.isUsable, isTrue);
+    // A slanted page: every corner somewhere else.
+    const slanted = ScanCrop(
+      (x: 0.1, y: 0.2),
+      (x: 0.8, y: 0.05),
+      (x: 0.95, y: 0.9),
+      (x: 0.05, y: 0.8),
     );
+    expect(slanted.isUsable, isTrue);
+    expect(slanted.isRect, isFalse);
+    // The top right dragged past the bottom right: the sides cross.
+    expect(ScanCrop.whole.withCorner(1, (x: 0.2, y: 1.2)).isUsable, isFalse);
+    // Two corners on top of each other.
+    expect(ScanCrop.whole.withCorner(1, (x: 0.02, y: 0.0)).isUsable, isFalse);
+  });
+
+  test('a slanted crop is straightened onto a flat page of its own size '
+      '(T-476)', () {
+    // A trapezium: the top 200 px across, the bottom 400, 200 px tall -
+    // its slanted sides 224 px, so the flat page is 400 x 224.
+    const trapezium = ScanCrop(
+      (x: 0.25, y: 0.0),
+      (x: 0.75, y: 0.0),
+      (x: 1.0, y: 1.0),
+      (x: 0.0, y: 1.0),
+    );
+    expect(trapezium.sizeIn(400, 200), (400, 224));
+
+    final page = ScanProcessing.process(
+      photo(400, 200),
+      const ScanPageEdit(crop: trapezium),
+    );
+    expect((page.width, page.height), (400, 224));
   });
 
   test('bytes that are not a picture are refused', () {
