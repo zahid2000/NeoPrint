@@ -180,56 +180,66 @@ void main() {
     expect(officeSaveScript, contains('__neoprintSave'));
   });
 
-  testWidgets('X closes at once while nothing has changed; a change brings '
-      'the save icon, which saves', (tester) async {
+  Future<void> openEditor(WidgetTester tester) async {
     final repository = OfficeRepository([office('hesabat.docx')]);
     await tester.pumpWidget(app(repository));
     await tester.pumpAndSettle();
     await openMenu(tester, 0);
     await tester.tap(find.text('Redaktə et'));
     await tester.pumpAndSettle();
+  }
+
+  testWidgets('only the X, ever: it closes at once while nothing has '
+      'changed (T-474)', (tester) async {
+    await openEditor(tester);
+
+    lastLink!.modified.value = false;
+    await tester.pump();
+    expect(find.byKey(const ValueKey('officeEditorClose')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('officeEditorClose')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Redaktordan çıxılsın?'), findsNothing);
+    expect(find.text('Collabora'), findsNothing);
+    expect(saveRequests, 0);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('with changes the X stays an X; leaving asks, saves, and '
+      'closes once the editor has saved (T-474)', (tester) async {
+    await openEditor(tester);
 
     // Typing in the document: Collabora says it is modified.
     lastLink!.modified.value = true;
     await tester.pump();
-    expect(find.byKey(const ValueKey('officeEditorClose')), findsNothing);
-    expect(find.byKey(const ValueKey('officeEditorSave')), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('officeEditorSave')));
-    await tester.pump();
-    expect(saveRequests, 1);
-
-    // Collabora answers: saved.
-    lastLink!.saves.add(true);
-    await tester.pump();
-    await tester.pump();
-    expect(
-      find.text('Saxlandı. Fayl yenidən çapa hazırlanır.'),
-      findsOneWidget,
-    );
     expect(find.byKey(const ValueKey('officeEditorClose')), findsOneWidget);
+    expect(find.byIcon(Icons.save_outlined), findsNothing);
 
-    // Nothing changed since: X leaves without asking.
     await tester.tap(find.byKey(const ValueKey('officeEditorClose')));
     await tester.pumpAndSettle();
-    expect(find.text('Redaktordan çıxılsın?'), findsNothing);
+    expect(find.text('Redaktordan çıxılsın?'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('officeEditorLeave')));
+    await tester.pump();
+    expect(saveRequests, 1);
+    expect(find.text('Collabora'), findsOneWidget);
+
+    // Collabora answers: saved - and the editor closes.
+    lastLink!.saves.add(true);
+    await tester.pumpAndSettle();
     expect(find.text('Collabora'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('a save that fails says so and keeps the save icon', (
+  testWidgets('a save on the way out that fails says so and stays', (
     tester,
   ) async {
-    final repository = OfficeRepository([office('hesabat.docx')]);
-    await tester.pumpWidget(app(repository));
-    await tester.pumpAndSettle();
-    await openMenu(tester, 0);
-    await tester.tap(find.text('Redaktə et'));
-    await tester.pumpAndSettle();
+    await openEditor(tester);
 
     lastLink!.modified.value = true;
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('officeEditorSave')));
+    await tester.tap(find.byKey(const ValueKey('officeEditorClose')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('officeEditorLeave')));
     await tester.pump();
     lastLink!.saves.add(false);
     await tester.pump();
@@ -237,11 +247,12 @@ void main() {
 
     expect(
       find.text(
-        'Saxlanmadı. Dəyişiklikləriniz redaktorda qalır — bir az sonra yenidən saxlayın.',
+        'Saxlanmadı. Dəyişiklikləriniz redaktorda qalır — bir az sonra X ilə yenidən çıxın.',
       ),
       findsOneWidget,
     );
-    expect(find.byKey(const ValueKey('officeEditorSave')), findsOneWidget);
+    expect(find.text('Collabora'), findsOneWidget);
+    expect(find.byKey(const ValueKey('officeEditorClose')), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

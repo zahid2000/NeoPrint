@@ -145,47 +145,17 @@ class _OfficeEditorScreenState extends ConsumerState<OfficeEditorScreen> {
     }
   }
 
-  /// The save icon: the editor saves a new version, converted again.
-  Future<void> _save() async {
-    final save = _link.save;
-    if (save == null || _saving) {
-      return;
-    }
-
-    setState(() => _saving = true);
-    // An editor that never answers does not leave the icon spinning.
-    _saveTimeout = Timer(const Duration(seconds: 30), () => _saved(false));
-    await save();
-  }
-
-  void _saved(bool ok) {
-    _saveTimeout?.cancel();
-    if (!mounted || !_saving) {
-      return;
-    }
-
-    final l10n = AppLocalizations.of(context);
-    setState(() => _saving = false);
-    if (ok) {
-      _link.modified.value = false;
-      unawaited(ref.read(filesControllerProvider.notifier).load());
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok ? l10n.officeEditorSaved : l10n.officeEditorSaveFailed,
-        ),
-      ),
-    );
-  }
-
-  /// Leaving with changes asks first: the editor saves them on the way out.
-  /// With nothing changed - as the editor said - it simply closes.
+  /// Leaving: with nothing changed - as the editor said - it simply
+  /// closes. With changes it asks, then has the editor save them and closes
+  /// once it has (T-474: only the X, no save icon).
   Future<void> _leave() async {
     final l10n = AppLocalizations.of(context);
 
     if (_session == null || _link.modified.value == false) {
       Navigator.of(context).pop(false);
+      return;
+    }
+    if (_saving) {
       return;
     }
 
@@ -208,11 +178,47 @@ class _OfficeEditorScreenState extends ConsumerState<OfficeEditorScreen> {
       ),
     );
 
-    if ((leave ?? false) && mounted) {
-      // A save on the way out makes the file Pending again: the list polls.
-      unawaited(ref.read(filesControllerProvider.notifier).load());
-      Navigator.of(context).pop(true);
+    if (!(leave ?? false) || !mounted) {
+      return;
     }
+
+    final save = _link.save;
+    // An editor that never said it changed: it saves a changed document
+    // itself as it closes.
+    if (save == null || _link.modified.value == null) {
+      _close();
+      return;
+    }
+
+    setState(() => _saving = true);
+    // An editor that never answers does not keep the user here.
+    _saveTimeout = Timer(const Duration(seconds: 30), () => _saved(false));
+    await save();
+  }
+
+  void _saved(bool ok) {
+    _saveTimeout?.cancel();
+    if (!mounted || !_saving) {
+      return;
+    }
+
+    if (ok) {
+      _close();
+      return;
+    }
+
+    setState(() => _saving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppLocalizations.of(context).officeEditorSaveFailed),
+      ),
+    );
+  }
+
+  void _close() {
+    // A save makes the file Pending again: the list polls.
+    unawaited(ref.read(filesControllerProvider.notifier).load());
+    Navigator.of(context).pop(true);
   }
 
   @override
@@ -230,19 +236,12 @@ class _OfficeEditorScreenState extends ConsumerState<OfficeEditorScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          // X while nothing has changed, the save icon once something has
-          // (T-465). An editor that does not say keeps the X.
+          // Only the X (T-474); while the changes are being saved on the
+          // way out, a spinner in its place.
           leading: _saving
               ? const Padding(
                   padding: EdgeInsets.all(Spacing.x4),
                   child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : (_link.modified.value ?? false)
-              ? IconButton(
-                  key: const ValueKey('officeEditorSave'),
-                  tooltip: l10n.officeEditorSave,
-                  icon: Icon(Icons.save_outlined, color: tokens.brand500),
-                  onPressed: _save,
                 )
               : IconButton(
                   key: const ValueKey('officeEditorClose'),
