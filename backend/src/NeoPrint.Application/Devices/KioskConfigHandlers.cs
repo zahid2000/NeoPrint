@@ -40,6 +40,7 @@ public static class KioskConfigSettings
         SettingKeys.CameraResolution,
         SettingKeys.CameraFps,
         SettingKeys.CameraQuality,
+        SettingKeys.CameraArchiveProvider,
         SettingKeys.LogsMaxUploadMb,
         SettingKeys.PaperBlockWhenInsufficient,
         SettingKeys.QueueDisplayLimit,
@@ -60,6 +61,7 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
     private readonly Pricing.KioskPricing _pricing;
     private readonly Kiosks.KioskBrandingResolver _branding;
     private readonly Kiosks.ICameraKeys _cameraKeys;
+    private readonly Kiosks.ICameraArchiveStore _cameraArchive;
 
     public GetKioskConfigHandler(
         IKioskDeviceRepository devices,
@@ -69,8 +71,10 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
         IClock clock,
         Pricing.KioskPricing pricing,
         Kiosks.KioskBrandingResolver branding,
-        Kiosks.ICameraKeys cameraKeys)
+        Kiosks.ICameraKeys cameraKeys,
+        Kiosks.ICameraArchiveStore cameraArchive)
     {
+        _cameraArchive = cameraArchive;
         _branding = branding;
         _cameraKeys = cameraKeys;
         _pricing = pricing;
@@ -192,14 +196,14 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
                 await _settings.GetIntAsync(SettingKeys.KioskSleepAfterIdleMinutes, 30, cancellationToken).ConfigureAwait(false)),
             // The camera, where it is turned on (T-482).
             features.TryGetValue(CameraFlag, out var camera) && camera
-                ? await CameraAsync(cancellationToken).ConfigureAwait(false)
+                ? await CameraAsync(kiosk, cancellationToken).ConfigureAwait(false)
                 : null);
     }
 
     /// <summary>The flag that turns a kiosk's camera on (T-482).</summary>
     public const string CameraFlag = "kiosk_camera";
 
-    private async Task<KioskCameraSettingsDto> CameraAsync(CancellationToken cancellationToken)
+    private async Task<KioskCameraSettingsDto> CameraAsync(Kiosk kiosk, CancellationToken cancellationToken)
     {
         var key = await _cameraKeys.CurrentAsync(cancellationToken).ConfigureAwait(false);
         var mode = await _settings.GetAsync(SettingKeys.CameraMode, cancellationToken).ConfigureAwait(false);
@@ -219,7 +223,12 @@ public sealed class GetKioskConfigHandler : IRequestHandler<GetKioskConfigQuery,
                 Admin.CameraSettings.MinFps, Admin.CameraSettings.MaxFps),
             key.KeyId,
             key.SubjectPublicKeyInfo,
-            Admin.CameraSettings.Qualities.Contains(quality ?? string.Empty) ? quality! : "Medium");
+            Admin.CameraSettings.Qualities.Contains(quality ?? string.Empty) ? quality! : "Medium",
+            await Kiosks.CameraArchiveTarget.ResolveAsync(
+                kiosk,
+                await _settings.GetAsync(SettingKeys.CameraArchiveProvider, cancellationToken).ConfigureAwait(false),
+                _cameraArchive,
+                cancellationToken).ConfigureAwait(false) is not null);
     }
 }
 

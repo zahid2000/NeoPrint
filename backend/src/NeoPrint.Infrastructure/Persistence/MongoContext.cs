@@ -129,6 +129,8 @@ public sealed class MongoContext
 
     public MongoSet<CameraKey> CameraKeys => Set<CameraKey>("camera_keys");
 
+    public MongoSet<CameraSegment> CameraSegments => Set<CameraSegment>("camera_segments");
+
     public MongoSet<Domain.Releases.Release> Releases => Set<Domain.Releases.Release>("releases");
 
     public MongoSet<Domain.Releases.ReleaseRollout> ReleaseRollouts => Set<Domain.Releases.ReleaseRollout>("release_rollouts");
@@ -494,6 +496,11 @@ public sealed class MongoContext
             // A segment names its key; the oldest key is the one handed out (T-482).
             (Builders<CameraKey>.IndexKeys.Ascending(key => key.KeyId), Unique("ux_camera_keys_key_id")),
             (Builders<CameraKey>.IndexKeys.Ascending(key => key.CreatedAt), Named("ix_camera_keys_created")));
+
+        await CreateAsync(CameraSegments,
+            // A minute is sent once per kiosk (T-485); and what is due for deletion.
+            (Builders<CameraSegment>.IndexKeys.Ascending(segment => segment.KioskId).Ascending(segment => segment.Start), Unique("ux_camera_segments_kiosk_start")),
+            (Builders<CameraSegment>.IndexKeys.Ascending(segment => segment.ExpiresAt), Named("ix_camera_segments_expires")));
 
         await CreateAsync(KioskCommands,
             (Builders<KioskCommand>.IndexKeys

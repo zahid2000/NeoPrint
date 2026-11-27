@@ -83,7 +83,8 @@ public sealed record KioskDetail(
     int Revision,
     DateTime? SafeModeSince = null,
     string? PhotoUrl = null,
-    DateTime? SleepingUntil = null);
+    DateTime? SleepingUntil = null,
+    string? CameraArchive = null);
 
 /// <summary>A new kiosk, as the "Kiosk yarat" form sends it.</summary>
 /// <param name="Code">Empty: the next <c>KSK-XXXX</c> is generated.</param>
@@ -142,6 +143,13 @@ public sealed record SetKioskPricingProfileCommand(Guid KioskId, Guid? PricingPr
     : IRequest<KioskDetail>, ITransactionalRequest;
 
 public sealed record SetKioskFiscalTerminalCommand(Guid KioskId, string? FiscalTerminalId, Guid AdminUserId, string? Ip)
+    : IRequest<KioskDetail>, ITransactionalRequest;
+
+/// <summary>
+/// Where this kiosk's camera minutes go besides its disk (T-485): null follows
+/// <c>Camera.ArchiveProvider</c>, <c>off</c> keeps them on the kiosk, a storage provider's id sends them there.
+/// </summary>
+public sealed record SetKioskCameraArchiveCommand(Guid KioskId, string? Target, Guid AdminUserId, string? Ip)
     : IRequest<KioskDetail>, ITransactionalRequest;
 
 /// <summary>How many orders the kiosk's queue panel shows, 3 or 5 (plan section 2.2); set by an operator at the kiosk (T-392).</summary>
@@ -328,6 +336,17 @@ public sealed class SetKioskFiscalTerminalCommandValidator : IValidator<SetKiosk
         => KioskRules.FiscalTerminal(request.FiscalTerminalId);
 }
 
+public sealed class SetKioskCameraArchiveCommandValidator : IValidator<SetKioskCameraArchiveCommand>
+{
+    public IEnumerable<ValidationError> Validate(SetKioskCameraArchiveCommand request)
+    {
+        if (!CameraArchiveTarget.IsValid(request.Target))
+        {
+            yield return new ValidationError("target", "kiosks.cameraArchiveInvalid");
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -355,6 +374,7 @@ public sealed class KioskAdminHandlers :
     IRequestHandler<CreateKioskCommand, KioskDetail>,
     IRequestHandler<UpdateKioskCommand, KioskDetail>,
     IRequestHandler<SetKioskLimitsCommand, KioskDetail>,
+    IRequestHandler<SetKioskCameraArchiveCommand, KioskDetail>,
     IRequestHandler<SetKioskPricingProfileCommand, KioskDetail>,
     IRequestHandler<SetKioskFiscalTerminalCommand, KioskDetail>,
     IRequestHandler<SetKioskQueueLimitCommand, KioskDetail>,
@@ -517,6 +537,19 @@ public sealed class KioskAdminHandlers :
             {
                 await EnsureProfileExistsAsync(request.PricingProfileId, cancellationToken).ConfigureAwait(false);
                 kiosk.PricingProfileId = request.PricingProfileId;
+            },
+            cancellationToken);
+
+    public Task<KioskDetail> Handle(SetKioskCameraArchiveCommand request, CancellationToken cancellationToken)
+        => ChangeAsync(
+            request.KioskId,
+            request.AdminUserId,
+            request.Ip,
+            "kiosks.camera-archive",
+            kiosk =>
+            {
+                kiosk.CameraArchive = string.IsNullOrWhiteSpace(request.Target) ? null : request.Target.Trim();
+                return Task.CompletedTask;
             },
             cancellationToken);
 
@@ -692,7 +725,8 @@ public sealed class KioskAdminHandlers :
             kiosk.RowVersion,
             kiosk.SafeModeSince,
             kiosk.Photo is { } photo ? $"api/admin/kiosks/{kiosk.Id}/photo?v={photo.Version}" : null,
-            kiosk.SleepingUntil);
+            kiosk.SleepingUntil,
+            kiosk.CameraArchive);
     }
 
     /// <summary>What the audit log keeps: never the PIN hash.</summary>
@@ -707,6 +741,7 @@ public sealed class KioskAdminHandlers :
         kiosk.MaxPages,
         kiosk.PricingProfileId,
         kiosk.FiscalTerminalId,
+        kiosk.CameraArchive,
         Paper = kiosk.PaperStock.ToDictionary(pair => pair.Key, pair => pair.Value.Capacity),
         HasAdminPin = kiosk.AdminPinHash is not null,
     });

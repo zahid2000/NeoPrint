@@ -199,6 +199,12 @@ public sealed class TelemetryCamera
 
     /// <summary>When the last finished segment was sealed.</summary>
     public DateTime? LastSegmentAt { get; set; }
+
+    /// <summary>Minutes not yet on the file server (T-485).</summary>
+    public int? Unsent { get; set; }
+
+    /// <summary>When a minute last reached the file server.</summary>
+    public DateTime? LastSentAt { get; set; }
 }
 
 /// <summary>Why a kiosk's camera does not record (T-482).</summary>

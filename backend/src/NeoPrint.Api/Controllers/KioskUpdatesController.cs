@@ -107,6 +107,26 @@ public sealed class KioskUpdatesController : ControllerBase
         return Ok(await _sender.Send(new UploadKioskLogCommand(deviceId, Request.Body, commandId, _currentUser.Ip), cancellationToken));
     }
 
+    /// <summary>
+    /// One sealed camera minute (T-485), the body as the kiosk sealed it; kept
+    /// on the file server the panel chose. Sending the same minute again
+    /// changes nothing. 409 `camera.archiveOff` when this kiosk's minutes
+    /// stay on the kiosk.
+    /// </summary>
+    [HttpPost("kiosks/me/camera/segments")]
+    [RequestSizeLimit(65L * 1024 * 1024)]
+    public async Task<ActionResult<CameraSegmentView>> CameraSegment(
+        [FromQuery] DateTime start, [FromQuery] int seconds, CancellationToken cancellationToken)
+    {
+        if (_currentUser.DeviceId is not { } deviceId)
+        {
+            return Forbid();
+        }
+
+        return Ok(await _sender.Send(
+            new UploadCameraSegmentCommand(deviceId, Request.Body, start.ToUniversalTime(), seconds), cancellationToken));
+    }
+
     private static async Task SkipAsync(Stream content, long count, CancellationToken cancellationToken)
     {
         var buffer = new byte[81920];

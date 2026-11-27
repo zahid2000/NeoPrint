@@ -591,6 +591,8 @@ public sealed class KioskTelemetryHandlers :
                 Segments = Count(camera.Segments),
                 OldestAt = Past(camera.OldestAt, now),
                 LastSegmentAt = Past(camera.LastSegmentAt, now),
+                Unsent = Count(camera.Unsent),
+                LastSentAt = Past(camera.LastSentAt, now),
             },
         };
     }

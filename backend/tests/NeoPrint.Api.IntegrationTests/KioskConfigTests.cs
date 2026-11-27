@@ -389,6 +389,110 @@ public sealed class KioskConfigTests
     }
 
     [DockerFact]
+    public async Task A_kiosks_camera_minutes_reach_the_file_server_the_panel_chose_once_each_and_go_when_their_time_is_up()
+    {
+        if (Skip) { return; }
+
+        var (kiosk, _, kioskId, _) = await ActivatedKioskAsync("camera-archive", "HP LaserJet");
+        using var _client = kiosk;
+        using var admin = await SuperAdminAsync();
+
+        async Task<HttpStatusCode> SaveAsync(string key, string value)
+            => (await admin.PutAsJsonAsync("/api/admin/settings", new { values = new Dictionary<string, string> { [key] = value } })).StatusCode;
+
+        var providers = await admin.GetFromJsonAsync<JsonElement>("/api/admin/storage/providers");
+        var primary = providers.EnumerateArray().Single(p => p.GetProperty("role").GetString() == "Primary").GetProperty("id").GetString()!;
+
+        var flag = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/features"))
+            .EnumerateArray().Single(item => item.GetProperty("key").GetString() == "kiosk_camera");
+        async Task FlagAsync(Dictionary<string, bool> overrides) => (await admin.PutAsJsonAsync("/api/admin/features/kiosk_camera", new
+        {
+            defaultEnabled = false,
+            rolloutPercent = flag.GetProperty("rolloutPercent").GetInt32(),
+            kioskOverrides = overrides,
+            userAllowlist = Array.Empty<Guid>(),
+        })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await FlagAsync(new Dictionary<string, bool> { [kioskId.ToString()] = true });
+        (await SaveAsync("Camera.ArchiveProvider", "not-a-provider")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Camera.ArchiveRetentionDays", "366")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Camera.ArchiveProvider", primary)).Should().Be(HttpStatusCode.OK);
+
+        try
+        {
+            var camera = (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("camera");
+            camera.GetProperty("archive").GetBoolean().Should().BeTrue("the panel chose a file server for every kiosk");
+
+            using var publicKey = RSA.Create();
+            publicKey.ImportSubjectPublicKeyInfo(Convert.FromBase64String(camera.GetProperty("publicKey").GetString()!), out _);
+            using var sealedMinute = new MemoryStream();
+            await NeoPrint.Crypto.CameraSegmentCipher.EncryptAsync(
+                new MemoryStream(RandomNumberGenerator.GetBytes(20_000)), sealedMinute, camera.GetProperty("keyId").GetString()!, publicKey);
+            var bytes = sealedMinute.ToArray();
+
+            var start = DateTime.UtcNow.AddMinutes(-3);
+            start = new DateTime(start.Year, start.Month, start.Day, start.Hour, start.Minute, 0, DateTimeKind.Utc);
+            var url = $"/api/kiosks/me/camera/segments?start={start:yyyy-MM-ddTHH:mm:ssZ}&seconds=60";
+
+            var first = await kiosk.PostAsync(url, new ByteArrayContent(bytes));
+            first.StatusCode.Should().Be(HttpStatusCode.OK, await first.Content.ReadAsStringAsync());
+            (await first.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("alreadyStored").GetBoolean().Should().BeFalse();
+
+            // Sent again - a lost answer, a restart: nothing written twice.
+            var again = await kiosk.PostAsync(url, new ByteArrayContent(bytes));
+            (await again.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("alreadyStored").GetBoolean().Should().BeTrue();
+
+            using var scope = _fixture.Services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+            var stored = await context.CameraSegments.Find(segment => segment.KioskId == kioskId).ToListAsync();
+            stored.Should().ContainSingle();
+            stored[0].ProviderId.Should().Be(Guid.Parse(primary));
+            stored[0].ExpiresAt.Should().Be(start.AddDays(30));
+
+            // On the server exactly as the kiosk sealed it.
+            var store = scope.ServiceProvider.GetRequiredService<NeoPrint.Application.Kiosks.ICameraArchiveStore>();
+            await using (var read = await store.OpenReadAsync(stored[0].ProviderId, stored[0].Key))
+            using (var copy = new MemoryStream())
+            {
+                await read.CopyToAsync(copy);
+                copy.ToArray().Should().Equal(bytes);
+            }
+
+            // Something that is not a sealed minute is not kept.
+            var later = await kiosk.PostAsync(
+                $"/api/kiosks/me/camera/segments?start={start.AddMinutes(1):yyyy-MM-ddTHH:mm:ssZ}&seconds=60", new ByteArrayContent("hello"u8.ToArray()));
+            later.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            // This one kiosk keeps its minutes to itself.
+            (await admin.PutAsJsonAsync($"/api/admin/kiosks/{kioskId}/camera-archive", new { target = "elsewhere" })).StatusCode
+                .Should().Be(HttpStatusCode.BadRequest);
+            var off = await admin.PutAsJsonAsync($"/api/admin/kiosks/{kioskId}/camera-archive", new { target = "off" });
+            off.StatusCode.Should().Be(HttpStatusCode.OK, await off.Content.ReadAsStringAsync());
+            (await off.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("cameraArchive").GetString().Should().Be("off");
+            (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("camera").GetProperty("archive").GetBoolean()
+                .Should().BeFalse();
+            var refused = await kiosk.PostAsync(
+                $"/api/kiosks/me/camera/segments?start={start.AddMinutes(2):yyyy-MM-ddTHH:mm:ssZ}&seconds=60", new ByteArrayContent(bytes));
+            refused.StatusCode.Should().Be(HttpStatusCode.Conflict);
+            (await refused.Content.ReadAsStringAsync()).Should().Contain("camera.archiveOff");
+
+            // Its time up: gone from the server and from the list.
+            await context.CameraSegments.UpdateOneAsync(
+                segment => segment.Id == stored[0].Id, Builders<CameraSegment>.Update.Set(segment => segment.ExpiresAt, DateTime.UtcNow.AddMinutes(-1)));
+            var sender = scope.ServiceProvider.GetRequiredService<MediatR.ISender>();
+            (await sender.Send(new NeoPrint.Application.Kiosks.PurgeExpiredCameraSegmentsCommand())).Should().BeGreaterThanOrEqualTo(1);
+            (await context.CameraSegments.Find(segment => segment.KioskId == kioskId).AnyAsync()).Should().BeFalse();
+            var gone = async () => { await using var _ = await store.OpenReadAsync(stored[0].ProviderId, stored[0].Key); };
+            await gone.Should().ThrowAsync<Exception>();
+        }
+        finally
+        {
+            await SaveAsync("Camera.ArchiveProvider", "");
+            await FlagAsync([]);
+        }
+    }
+
+    [DockerFact]
     public async Task The_camera_settings_keep_to_their_limits()
     {
         if (Skip) { return; }

@@ -560,6 +560,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         jobs => jobs.PurgeAsync(CancellationToken.None),
         NeoPrint.Infrastructure.Kiosks.KioskLogJobs.Daily);
 
+    // Archived camera minutes past their keeping time (T-485).
+    recurring.AddOrUpdate<NeoPrint.Infrastructure.Kiosks.CameraArchiveJobs>(
+        NeoPrint.Infrastructure.Kiosks.CameraArchiveJobs.PurgeJobId,
+        jobs => jobs.PurgeAsync(CancellationToken.None),
+        NeoPrint.Infrastructure.Kiosks.CameraArchiveJobs.Hourly);
+
     // The pilot report's days (plan sections 2.17, 6).
     recurring.AddOrUpdate<NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob>(
         NeoPrint.Infrastructure.Analytics.AnalyticsRollupJob.JobId,

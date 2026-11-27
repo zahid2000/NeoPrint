@@ -137,6 +137,15 @@ public sealed class AdminKiosksController : ControllerBase
             new SetKioskPricingProfileCommand(id, request.PricingProfileId, AdminId, _currentUser.Ip),
             cancellationToken));
 
+    /// <summary>{ "target": null | "off" | provider id } - where the kiosk's camera minutes go besides its disk (T-485).</summary>
+    [HttpPut("{id:guid}/camera-archive")]
+    [HasPermission(Permissions.StorageManage)]
+    public async Task<ActionResult<KioskDetail>> SetCameraArchive(
+        Guid id, [FromBody] KioskCameraArchiveRequest request, CancellationToken cancellationToken)
+        => Ok(await _sender.Send(
+            new SetKioskCameraArchiveCommand(id, request.Target, AdminId, _currentUser.Ip),
+            cancellationToken));
+
     [HttpPut("{id:guid}/fiscal-terminal")]
     [HasPermission(Permissions.FiscalManage)]
     public async Task<ActionResult<KioskDetail>> SetFiscalTerminal(
@@ -407,6 +416,8 @@ public sealed record KioskLimitsRequest(int? MaxFileSizeMb, int? MaxPages);
 public sealed record KioskPricingProfileRequest(Guid? PricingProfileId);
 
 public sealed record KioskFiscalTerminalRequest(string? FiscalTerminalId);
+
+public sealed record KioskCameraArchiveRequest(string? Target);
 
 public sealed record KioskPaperCapacityRequest(int A4, int A3);
 

@@ -344,7 +344,8 @@ public sealed partial class OperationsJobsTests
         var cookie = session.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith("neoprint_hangfire=", StringComparison.Ordinal)).ToLowerInvariant();
         cookie.Should().Contain("path=/api/admin/hangfire").And.Contain("httponly").And.Contain("samesite=strict");
 
-        var page = await admin.GetAsync("/api/admin/hangfire/recurring");
+        // Every job on one page: the dashboard pages them by twenty.
+        var page = await admin.GetAsync("/api/admin/hangfire/recurring?from=0&count=100");
         page.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await page.Content.ReadAsStringAsync();
         html.Should().Contain("analytics-rollup");

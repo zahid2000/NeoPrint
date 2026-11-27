@@ -201,6 +201,13 @@ public sealed class Kiosk : Entity
     public string? FiscalTerminalId { get; set; }
 
     /// <summary>
+    /// Where this kiosk's camera minutes go besides its own disk (T-485): null
+    /// follows <c>Camera.ArchiveProvider</c>, <c>off</c> keeps them on the kiosk,
+    /// a storage provider's id sends them there.
+    /// </summary>
+    public string? CameraArchive { get; set; }
+
+    /// <summary>
     /// The kiosk's picture in the app (T-340); null without one. Changed only
     /// through <see cref="ReplacePhoto"/> and <see cref="RemovePhoto"/>.
     /// </summary>

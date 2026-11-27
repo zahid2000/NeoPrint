@@ -134,6 +134,12 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
                 yield return new ValidationError(key, "settings.cameraResolution");
             }
 
+            // A storage provider's id, or empty: no file server (T-485).
+            if (key == SettingKeys.CameraArchiveProvider && value.Length > 0 && !Guid.TryParse(value, out _))
+            {
+                yield return new ValidationError(key, "settings.cameraArchiveProvider");
+            }
+
             if (key == SettingKeys.CameraQuality && !CameraSettings.Qualities.Contains(value))
             {
                 yield return new ValidationError(key, "settings.cameraQuality");
@@ -201,6 +207,11 @@ public static class CameraSettings
 
     public const int MaxFps = 30;
 
+    public const int MinArchiveRetentionDays = 1;
+
+    /// <summary>A year on the file server at most (T-485).</summary>
+    public const int MaxArchiveRetentionDays = 365;
+
     public static readonly IReadOnlySet<string> Modes = new HashSet<string>(StringComparer.Ordinal) { Activity, Continuous };
 
     public static readonly IReadOnlySet<string> Resolutions = new HashSet<string>(StringComparer.Ordinal) { "640x480", "1280x720", "1920x1080" };
@@ -213,5 +224,6 @@ public static class CameraSettings
         [SettingKeys.CameraRetentionDays] = (MinRetentionDays, MaxRetentionDays),
         [SettingKeys.CameraMaxDiskGb] = (MinDiskGb, MaxDiskGb),
         [SettingKeys.CameraFps] = (MinFps, MaxFps),
+        [SettingKeys.CameraArchiveRetentionDays] = (MinArchiveRetentionDays, MaxArchiveRetentionDays),
     };
 }
