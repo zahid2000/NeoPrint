@@ -8,7 +8,13 @@ təhlükəsizdir. Quraşdırma addımları: `docs/KIOSK_SETUP.md`.
 
 Hər iki skript: parametrlər `ApiUrl`, `EnrollmentToken` (istəyə görə), `Channel` (`pilot`/`stable`),
 `OfflinePackage` **və ya** `Download` (T-327); log — `C:\ProgramData\NeoPrint\provision.log` /
-`/var/log/neoprint/provision.log`; sonda `state/provisioning-version` (Linux **0.8.1**, Windows **0.6.0** — T-448 gecə yuxusu, T-449 başqa yuxu yoxdur).
+`/var/log/neoprint/provision.log`; sonda `state/provisioning-version` (Linux **0.9.0**, Windows **0.7.0** — T-448 gecə yuxusu, T-449 başqa yuxu yoxdur, T-482 kamera).
+
+**Kamera (T-482, `docs/KIOSK_CAMERA.md`):** Linux 0.9.0 — `ffmpeg` paketi (Ubuntu-nun öz build-i, ayrıca proqram kimi
+işlədilir), `/var/lib/neoprint/camera` (`kiosk:kiosk 700`; `kiosk` hesabı artıq `video` qrupundadır). Windows 0.7.0 —
+asılılıqlar qovluğundan `ffmpeg-*-win64-lgpl*.zip` (BtbN LGPL build-i) `C:\Program Files\NeoPrint\ffmpeg\`-ə açılır,
+masaüstü tətbiqlərinə kamera icazəsi (`HKLM\…\CapabilityAccessManager\ConsentStore\webcam` → `Value=Allow`). FFmpeg
+yoxdursa provisioning dayanmır — kamera yazmır və paneldə səbəb "FFmpeg yoxdur" görünür.
 
 **Addımlar və xəta (T-327):** hər skript 13 addımdır və hər addımın adını yazır (`step N/13: ...`). Addım uğursuz
 olanda: `ERROR: step N/13 (ad) failed`, `what to do: ...` (addıma görə; Azərbaycanca cədvəl — `docs/KIOSK_SETUP.md`

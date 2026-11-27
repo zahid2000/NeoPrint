@@ -29,6 +29,7 @@ Ziddiyyət görünürsə: dayan, uyğunsuzluğu göstər, təhlükəsiz variant�
 | `MONITORING.md` | Monitorinq yığımı (Faza 2, Addım 8): OpenTelemetry → Collector → Prometheus → Grafana, dashboard-lar, giriş |
 | `KIOSK_SETUP.md` | Kioskun sıfırdan quraşdırılması (texnik üçün): paket, provisioning, aktivləşdirmə, texniki giriş, golden image |
 | `KIOSK_PROVISIONING.md` | Provisioning skriptlərinin OS-də etdiyi hər dəyişiklik və səbəbi |
+| `KIOSK_CAMERA.md` | Kiosk kamerası (T-481): yazılış, şifrələmə, saxlama müddəti, nəzarət, quraşdırma |
 | `MANUAL_TESTS.md` | Real printer / cihaz tələb edən əl ilə yoxlamalar (məs. çapın ortasında elektrik kəsilməsi): hazırlıq, addımlar, gözlənilən nəticə |
 | `UI_BUGS.md` | Layihə sahibinin bir sətirlə yazdığı xırda UI problemləri; hər M-dən sonra oxunur və bağlanır |
 | `TEST_SERVER.md` | İnternetdən əlçatan test serveri: GitHub Actions ilə deploy, GitHub-a yazılan məlumatlar, parolların yeri, test APK-sı |

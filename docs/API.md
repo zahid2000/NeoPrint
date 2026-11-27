@@ -556,9 +556,16 @@ Activation ekranına qayıdır.
   "queueDisplayLimit", "maxFileSizeMb", "maxPages", "pricingProfileId",
   "paperStock": { "A4": { "capacity", "current" } },
   "features": { "scan.enabled": true },
-  "heartbeatSeconds", "cacheTtlHours", "serverTime"
+  "heartbeatSeconds", "cacheTtlHours", "serverTime",
+  "camera": { "mode", "retentionDays", "maxDiskGb", "resolution", "fps", "keyId", "publicKey" }
 }
 ```
+
+- `camera` (T-482): **yalnız `kiosk_camera` flag-i bu kiosk üçün açıq olanda**; yoxdursa (və ya `null`) kiosk
+  yazmır. `mode` `Activity` / `Continuous`, `retentionDays` 1–31 (default 2), `maxDiskGb` 1–500 (20),
+  `resolution` `640x480` / `1280x720` / `1920x1080`, `fps` 2–30 (10) — `Camera.*` ayarları, server yenidən
+  sərhədləyir. `keyId` + `publicKey` (X.509 SubjectPublicKeyInfo, base64): backend-in kamera açıq açarı (RSA-3072) —
+  kiosk görüntünü onunla bağlayır, aça bilmir; gizli açar backend-dən çıxmır (`docs/KIOSK_CAMERA.md`).
 
 **Backend secret-i yoxdur** — admin PIN-i kiosk üçün yalnız PBKDF2 hash kimi
 gedir, cihaz onunla tutuşdurur (Bölmə 2.13, 7.11).
@@ -625,9 +632,16 @@ Kiosk token-i. Kioskun öz vəziyyəti haqqında hesabatı, hər `Kiosk.Telemetr
   "peripherals": { "flashInserted", "qrScannerLastReadAt", "screenWidth", "screenHeight" },
   "work": { "queueLength", "currentJob", "jobsToday", "sheetsToday", "spoolFiles",
             "failedFlashUploads", "pendingCommands" },
-  "services": { "libreOffice", "ghostscript", "configurationAt", "featureFlags" }
+  "services": { "libreOffice", "ghostscript", "configurationAt", "featureFlags" },
+  "camera": { "enabled", "connected", "recording", "mode", "error", "storedBytes", "segments",
+              "oldestAt", "lastSegmentAt" }
 }
 ```
+
+- `camera` (T-482, `docs/KIOSK_CAMERA.md`): yalnız kamerası açıq olan kiosk göndərir. `mode`:
+  `Activity` / `Continuous`; `error` (yazmayanda niyə): `noCamera` / `noRecorder` / `noKey` /
+  `recorderFailed` / `diskFull`, başqa dəyər atılır. Kamera açıq olub 10 dəqiqə yazmayanda
+  `CameraDown` incident-i açılır (`breaches.camera`).
 
 - **Hər qrup və hər sahə istəyə bağlıdır.** Kioskun oxuya bilmədiyi dəyər göndərilmir
   (`null`) — panel onu "məlumat yoxdur" kimi göstərir, sıfır kimi yox.

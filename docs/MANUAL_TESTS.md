@@ -416,3 +416,20 @@ Sınaq üçün gecəni gözləməyin: paneldə **Tənzimləmələr → Kiosk** b
 | 6 | Yatmış kioskun elektrik / şəbəkə kabelini çıxarın, aralığın sonundan 10 dəqiqə keçsin | Paneldə kiosk "Əlaqə yoxdur", `ConnectionLost` incident-i açılır (oyanmadı) | **Real cihaz** |
 | 6a | **T-449.** Admin menyusundan "Servis girişi" → Ubuntu masaüstü; 30 dəqiqə heç nəyə toxunmayın | Ekran sönə və kilidlənə bilər (masaüstünün öz kilidi), amma kompüter **yatmır**: siçanı tərpədəndə ekran dərhal gəlir; `systemctl is-enabled suspend.target` → `masked` | **Real cihaz** |
 | 7 | Linux: kioskun terminalında `sudo journalctl -u neoprint-kiosk | grep -i sleep` (və ya `/var/log/neoprint`) | "the kiosk sleeps until …" və "awake again" sətirləri; yuxu alınmasa "could not sleep" — onda `cat /sys/power/state`-də `mem` olmalıdır, BIOS-da "Wake on RTC" / "RTC Alarm" aktiv olmalıdır | **Real cihaz** |
+
+## MT-11. Faza 2 — kiosk kamerası real cihazda (T-482)
+
+Real USB kamera ilə. Kiosk yeni versiyada, provisioning Linux **0.9.0** / Windows **0.7.0** (Windows-da asılılıqlar
+qovluğunda `ffmpeg-n8.1-latest-win64-lgpl-8.1.zip`). Panel → Funksiya açarları → `kiosk_camera` → bu kiosk üçün açıq.
+
+| № | Addım | Gözlənilən | Harada |
+|---|---|---|---|
+| 1 | Flag-i açın, 1 dəqiqə gözləyin | Başlıqda "Videomüşahidə aparılır"; panel → Kiosk → Vəziyyət → Kamera: "Yazır", rejim "Yalnız kioskda kimsə olanda" | **Real cihaz** |
+| 2 | Windows: `C:\ProgramData\NeoPrint\camera\sealed`, Linux: `sudo ls -l /var/lib/neoprint/camera/sealed` — ekrana toxunub 3 dəqiqə istifadə edin | Hər dəqiqə üçün `…Z-60.npcam`; `writing/`-da ən çox 1–2 `.mp4`; toxunulmayan dəqiqələr saxlanmır | **Real cihaz** |
+| 3 | `.npcam` faylını video oynadıcı ilə açmağa çalışın | Açılmır (şifrəlidir) | **Real cihaz** |
+| 4 | `Camera.Mode` → `Continuous` | Toxunmadan da hər dəqiqə fayl yaranır | **Real cihaz** |
+| 5 | Kameranın USB kabelini çıxarın, 10 dəqiqə gözləyin | Nişan itir; paneldə "Yazmır · Kamera tapılmır"; 10 dəqiqədən sonra `CameraDown` incident-i; kabeli taxanda ≤ 1 dəqiqədə yenə yazır və incident bağlanır | **Real cihaz** |
+| 6 | `Camera.Resolution` → `640x480` | FFmpeg yenidən başlayır; fayllar kiçilir | **Real cihaz** |
+| 7 | `Camera.RetentionDays` → `1`; `sealed`-də adı 2 gün əvvələ düşən boş fayl yaradın (məs. `20261101T100000Z-60.npcam`) | 5 dəqiqə ərzində silinir | **Real cihaz** |
+| 8 | Flag-i söndürün | Nişan itir, FFmpeg dayanır (`writing/` boşalır); köhnə yazılar saxlama müddəti bitəndə silinir | **Real cihaz** |
+| 9 | Kiosk tətbiqini tapşırıq menecerindən / `kill -9` ilə öldürün | Yeni başlanğıcda köhnə FFmpeg dayandırılır, kamera yenə yazır | **Real cihaz** |

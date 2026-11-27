@@ -1741,6 +1741,23 @@ node tools/monitoring/dashboards.mjs                       # dashboard JSON-lar�
   Yaddaş: hamısı boş halda ~600 MB (Grafana yığımı ~360 MB, GlitchTip ~250 MB).
 - Ətraflı: [`MONITORING.md`](MONITORING.md).
 
+## 7z-n. Kiosk kamerası lokal (T-482)
+
+Kamera admin paneldə **Funksiya açarları → `kiosk_camera`** ilə kiosk-kiosk açılır (default söndürülü).
+Kamerasız maşında bütün zənciri sınamaq üçün test şəkli:
+
+```powershell
+winget install Gyan.FFmpeg            # və ya FFmpeg-i PATH-a qoyun; Linux: sudo apt install ffmpeg
+# desktop/src/NeoPrint.Kiosk/appsettings.Development.json → "Kiosk": { "FakeCamera": true }
+# (FFmpeg PATH-da deyilsə: "FfmpegPath": "C:\\ffmpeg\\bin\\ffmpeg.exe")
+```
+
+- Panel → Funksiya açarları → `kiosk_camera` → öz kioskunuz üçün **açıq**; kiosk konfiqurasiyanı dərhal alır.
+- Başlıqda ~20 saniyədən sonra "Videomüşahidə aparılır" nişanı görünür; `C:\ProgramData\NeoPrint\camera\sealed\`
+  qovluğuna hər dəqiqə bir `.npcam` faylı düşür (`Activity` rejimində yalnız ekrana toxunanda / çap gedəndə).
+- Panel → Kiosk → Vəziyyət → "Kamera" qrupu; 10 dəqiqə yazmasa `CameraDown` incident-i.
+- Lokal mühitinizdə etməli olduğunuz: heç nə məcburi deyil (flag söndürülü gəlir). Ətraflı: [`KIOSK_CAMERA.md`](KIOSK_CAMERA.md).
+
 ## 7z. Addım 7B — M20: staging bu maşında (T-335, T-169)
 
 Development-in yanında, ona toxunmadan (`docs/DEPLOY.md` §3a):

@@ -131,6 +131,15 @@ toner dəyişdi, kağız dolduruldu, sıxılma başladı / bitdi, vəziyyət də
 sətir) və sərf proqnozu, servis tapşırıqları üçün bir il qalır. İstifadəçi və ya fayl haqqında heç
 nə yoxdur.
 
+## Kiosk kamerasının görüntüsü (T-482)
+
+Yalnız kioskun diskində (`camera/sealed`), backend-in açıq açarı ilə şifrəli, bir dəqiqəlik fayllar:
+`Camera.RetentionDays` (default **2**, ən çox **31**) keçəndən sonra kiosk özü silir; `Camera.MaxDiskGb` aşılanda
+və diskdə 3 GB-dan az boş yer qalanda ən köhnəsi əvvəl silinir. `Activity` rejimində kioskda heç kim olmayan
+dəqiqələr ümumiyyətlə saxlanmır (bir dəqiqə əvvəl / sonra ilə). Səs yazılmır, üz tanıma yoxdur. Kamera söndürüləndə
+qalan yazılar son saxlama müddəti ilə silinir. Serverə görüntü yalnız admin istəyəndə gedir (T-483); onun saxlanma
+qaydası həmin işdə yazılır. `camera_keys` (backend-in kamera açar cütü) silinmir: köhnə yazılar onunla açılır.
+
 ## Incident bildirişlərinin qeydi
 
 `incident_notifications` — incident-in kimə və hansı kanalla (`email` / `telegram`) göndərildiyi: sətirdə
