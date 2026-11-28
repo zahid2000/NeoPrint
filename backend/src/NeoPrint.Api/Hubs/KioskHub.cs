@@ -93,6 +93,12 @@ public sealed class SignalRKioskNotifier : IKioskNotifier, NeoPrint.Application.
     public Task SessionClosedAsync(Guid kioskId, Guid sessionId, string reason, CancellationToken cancellationToken = default)
         => Send(kioskId, "SessionClosed", new { kioskId, sessionId, reason }, cancellationToken);
 
+    public Task CameraFootageRequestedAsync(Guid kioskId, Guid requestId, CancellationToken cancellationToken = default)
+        => Send(kioskId, "CameraFootageRequested", new { kioskId, requestId }, cancellationToken);
+
+    public Task CameraLiveRequestedAsync(Guid kioskId, CancellationToken cancellationToken = default)
+        => Send(kioskId, "CameraLiveRequested", new { kioskId }, cancellationToken);
+
     private Task Send(Guid kioskId, string method, object payload, CancellationToken cancellationToken)
         => _hub.Clients.Group(KioskHub.GroupFor(kioskId)).SendAsync(method, payload, cancellationToken);
 }

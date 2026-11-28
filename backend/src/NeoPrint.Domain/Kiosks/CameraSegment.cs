@@ -32,4 +32,11 @@ public sealed class CameraSegment : Entity
 
     /// <summary>When it is deleted (<c>Camera.ArchiveRetentionDays</c> after it was recorded).</summary>
     public DateTime ExpiresAt { get; set; }
+
+    /// <summary>
+    /// Sent because the panel asked for it (T-483), not by the archive: kept a
+    /// day on the primary storage provider, and replaced should the archive
+    /// send the same minute.
+    /// </summary>
+    public bool Fetched { get; set; }
 }

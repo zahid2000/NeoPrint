@@ -168,6 +168,19 @@
   "GET api/kiosks/me/branding/image": {
     "response": "untyped"
   },
+  "GET api/kiosks/me/camera/requests": {
+    "response": {
+      "list": {
+        "createdAt": "datetime",
+        "delivered": "integer",
+        "deliveredAt": "datetime?",
+        "from": "datetime",
+        "id": "guid",
+        "status": "string",
+        "to": "datetime"
+      }
+    }
+  },
   "GET api/kiosks/me/commands": {
     "response": {
       "list": {
@@ -1302,6 +1315,35 @@
     "response": {
       "accepted": "integer",
       "rejected": "integer"
+    }
+  },
+  "POST api/kiosks/me/camera/live": {
+    "response": {
+      "live": "bool"
+    }
+  },
+  "POST api/kiosks/me/camera/requests/{}/done": {
+    "request": {
+      "minutes!": "integer"
+    },
+    "response": {
+      "createdAt": "datetime",
+      "delivered": "integer",
+      "deliveredAt": "datetime?",
+      "from": "datetime",
+      "id": "guid",
+      "status": "string",
+      "to": "datetime"
+    }
+  },
+  "POST api/kiosks/me/camera/requests/{}/minutes": {
+    "response": {
+      "alreadyStored": "bool",
+      "bytes": "integer",
+      "end": "datetime",
+      "expiresAt": "datetime",
+      "id": "guid",
+      "start": "datetime"
     }
   },
   "POST api/kiosks/me/camera/segments": {

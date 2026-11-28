@@ -140,6 +140,8 @@ public static class DependencyInjection
         services.AddSingleton<Application.Kiosks.ICameraKeys, Kiosks.CameraKeyStore>();
         services.AddScoped<Application.Kiosks.ICameraArchiveStore, Kiosks.CameraArchiveStore>();
         services.AddScoped<Application.Kiosks.ICameraSegmentRepository, Kiosks.CameraSegmentRepository>();
+        services.AddScoped<Application.Kiosks.ICameraRequestRepository, Kiosks.CameraRequestRepository>();
+        services.AddScoped<Application.Kiosks.ICameraLiveStore, Kiosks.RedisCameraLiveStore>();
         services.AddScoped<Kiosks.CameraArchiveJobs>();
         services.AddSingleton<Application.Releases.IReleaseKeys, Releases.ConfiguredReleaseKeys>();
         services.AddScoped<IPrintJobRepository, PrintJobRepository>();

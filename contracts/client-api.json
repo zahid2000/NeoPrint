@@ -62,6 +62,26 @@
     {
       "client": "kiosk",
       "method": "POST",
+      "route": "api/kiosks/me/camera/live"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/kiosks/me/camera/requests"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/camera/requests/{}/done"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/camera/requests/{}/minutes"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
       "route": "api/kiosks/me/camera/segments"
     },
     {
@@ -651,6 +671,14 @@
     }
   ],
   "events": [
+    {
+      "client": "kiosk",
+      "name": "CameraFootageRequested"
+    },
+    {
+      "client": "kiosk",
+      "name": "CameraLiveRequested"
+    },
     {
       "client": "kiosk",
       "name": "DeviceActivated"

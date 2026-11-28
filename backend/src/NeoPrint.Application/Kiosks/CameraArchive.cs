@@ -25,6 +25,9 @@ public interface ICameraArchiveStore
     /// <summary>Whether a storage provider by that id is configured.</summary>
     Task<bool> HasProviderAsync(Guid providerId, CancellationToken cancellationToken = default);
 
+    /// <summary>The primary storage provider: where the minutes the panel asks a kiosk for are kept (T-483).</summary>
+    Task<Guid> PrimaryProviderIdAsync(CancellationToken cancellationToken = default);
+
     /// <returns>The SHA-256 (hex) and length of what was stored.</returns>
     Task<(string Sha256, long Length)> WriteAsync(Guid providerId, string key, Stream content, CancellationToken cancellationToken = default);
 
@@ -40,6 +43,11 @@ public interface ICameraSegmentRepository
     Task<bool> TryAddAsync(CameraSegment segment, CancellationToken cancellationToken = default);
 
     Task<CameraSegment?> FindAsync(Guid kioskId, DateTime start, CancellationToken cancellationToken = default);
+
+    Task<CameraSegment?> FindByIdAsync(Guid kioskId, Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>A kiosk's minutes starting in [from, to), oldest first (T-483).</summary>
+    Task<IReadOnlyList<CameraSegment>> ListAsync(Guid kioskId, DateTime from, DateTime to, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<CameraSegment>> ListExpiredAsync(DateTime now, int limit, CancellationToken cancellationToken = default);
 
@@ -78,7 +86,7 @@ public static class CameraArchiveTarget
 /// <param name="Start">When the minute starts, UTC, as its file name says.</param>
 public sealed record UploadCameraSegmentCommand(Guid DeviceId, Stream Body, DateTime Start, int Seconds) : IRequest<CameraSegmentView>;
 
-/// <summary>Deletes the archived minutes past <c>Camera.ArchiveRetentionDays</c>.</summary>
+/// <summary>Deletes the archived minutes past <c>Camera.ArchiveRetentionDays</c>, and those fetched for viewing past their day (T-483).</summary>
 public sealed record PurgeExpiredCameraSegmentsCommand : IRequest<int>;
 
 /// <param name="AlreadyStored">The kiosk had sent it before: nothing was written again.</param>
@@ -96,6 +104,7 @@ public sealed class CameraArchiveHandlers :
     private const int PurgeBatch = 500;
 
     private readonly ICameraSegmentRepository _segments;
+    private readonly ICameraRequestRepository _requests;
     private readonly ICameraArchiveStore _store;
     private readonly ICameraKeys _keys;
     private readonly IKioskDeviceRepository _devices;
@@ -106,6 +115,7 @@ public sealed class CameraArchiveHandlers :
 
     public CameraArchiveHandlers(
         ICameraSegmentRepository segments,
+        ICameraRequestRepository requests,
         ICameraArchiveStore store,
         ICameraKeys keys,
         IKioskDeviceRepository devices,
@@ -115,6 +125,7 @@ public sealed class CameraArchiveHandlers :
         ILogger<CameraArchiveHandlers> logger)
     {
         _segments = segments;
+        _requests = requests;
         _store = store;
         _keys = keys;
         _devices = devices;
@@ -151,7 +162,7 @@ public sealed class CameraArchiveHandlers :
         }
 
         var existing = await _segments.FindAsync(kioskId, start, cancellationToken).ConfigureAwait(false);
-        if (existing is not null)
+        if (existing is { Fetched: false })
         {
             return View(existing, alreadyStored: true);
         }
@@ -160,11 +171,57 @@ public sealed class CameraArchiveHandlers :
         var providerId = await CameraArchiveTarget.ResolveAsync(kiosk, common, _store, cancellationToken).ConfigureAwait(false)
             ?? throw new DomainException("camera.archiveOff");
 
+        var retention = Math.Clamp(
+            await _settings.GetIntAsync(SettingKeys.CameraArchiveRetentionDays, 30, cancellationToken).ConfigureAwait(false),
+            CameraSettings.MinArchiveRetentionDays,
+            CameraSettings.MaxArchiveRetentionDays);
+
+        var segment = await StoreAsync(
+                request.Body, kioskId, start, request.Seconds, providerId, start.AddDays(retention), fetched: false,
+                _keys, _store, now, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (existing is not null)
+        {
+            // Asked for by the panel a day's keeping only: the archive's copy
+            // takes its place, kept as long as the archive keeps minutes.
+            await _segments.DeleteAsync(existing.Id, cancellationToken).ConfigureAwait(false);
+            await _store.DeleteAsync(existing.ProviderId, existing.Key, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!await _segments.TryAddAsync(segment, cancellationToken).ConfigureAwait(false))
+        {
+            // Sent twice at the same moment: the other request recorded it, under the same key.
+            var other = await _segments.FindAsync(kioskId, start, cancellationToken).ConfigureAwait(false);
+            return View(other ?? segment, alreadyStored: true);
+        }
+
+        return View(segment, alreadyStored: false);
+    }
+
+    /// <summary>
+    /// Receives one sealed minute, checks the backend can open it, and writes
+    /// it to the provider as it is; the caller records it.
+    /// </summary>
+    internal static async Task<CameraSegment> StoreAsync(
+        Stream body,
+        Guid kioskId,
+        DateTime start,
+        int seconds,
+        Guid providerId,
+        DateTime expiresAt,
+        bool fetched,
+        ICameraKeys keys,
+        ICameraArchiveStore store,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+
         var scratch = Path.Combine(Path.GetTempPath(), $"neoprint-camera-{Guid.NewGuid():N}");
         await using var buffer = new FileStream(
             scratch, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
 
-        await CopyLimitedAsync(request.Body, buffer, cancellationToken).ConfigureAwait(false);
+        await CopyLimitedAsync(body, buffer, cancellationToken).ConfigureAwait(false);
 
         // Only what this backend can open is kept: the file names a camera key it holds.
         buffer.Position = 0;
@@ -178,7 +235,7 @@ public sealed class CameraArchiveHandlers :
             throw new DomainException("camera.segmentInvalid");
         }
 
-        using (var key = await _keys.OpenPrivateKeyAsync(header.KeyId, cancellationToken).ConfigureAwait(false))
+        using (var key = await keys.OpenPrivateKeyAsync(header.KeyId, cancellationToken).ConfigureAwait(false))
         {
             if (key is null)
             {
@@ -187,44 +244,37 @@ public sealed class CameraArchiveHandlers :
         }
 
         buffer.Position = 0;
+
+        // A fetched minute has its own name: the archive's copy of the same
+        // minute replaces it without the two writing over each other.
         var objectKey = string.Create(
             System.Globalization.CultureInfo.InvariantCulture,
-            $"camera/{kioskId:N}/{start:yyyy}/{start:MM}/{start:dd}/{start:yyyyMMdd'T'HHmmss'Z'}-{request.Seconds}.npcam");
-        var (sha, length) = await _store.WriteAsync(providerId, objectKey, buffer, cancellationToken).ConfigureAwait(false);
+            $"camera/{kioskId:N}/{start:yyyy}/{start:MM}/{start:dd}/{start:yyyyMMdd'T'HHmmss'Z'}-{seconds}{(fetched ? "-fetched" : string.Empty)}.npcam");
+        var (sha, length) = await store.WriteAsync(providerId, objectKey, buffer, cancellationToken).ConfigureAwait(false);
 
-        var retention = Math.Clamp(
-            await _settings.GetIntAsync(SettingKeys.CameraArchiveRetentionDays, 30, cancellationToken).ConfigureAwait(false),
-            CameraSettings.MinArchiveRetentionDays,
-            CameraSettings.MaxArchiveRetentionDays);
-
-        var segment = new CameraSegment
+        return new CameraSegment
         {
             KioskId = kioskId,
             Start = start,
-            End = start.AddSeconds(request.Seconds),
+            End = start.AddSeconds(seconds),
             Bytes = length,
             ProviderId = providerId,
             Key = objectKey,
             Sha256 = sha,
             KeyId = header.KeyId,
             CreatedAt = now,
-            ExpiresAt = start.AddDays(retention),
+            ExpiresAt = expiresAt,
+            Fetched = fetched,
         };
-
-        if (!await _segments.TryAddAsync(segment, cancellationToken).ConfigureAwait(false))
-        {
-            // Sent twice at the same moment: the other request recorded it, under the same key.
-            var other = await _segments.FindAsync(kioskId, start, cancellationToken).ConfigureAwait(false);
-            return View(other ?? segment, alreadyStored: true);
-        }
-
-        return View(segment, alreadyStored: false);
     }
 
     /// <inheritdoc cref="PurgeExpiredCameraSegmentsCommand" />
     public async Task<int> Handle(PurgeExpiredCameraSegmentsCommand request, CancellationToken cancellationToken)
     {
         var deleted = 0;
+
+        // What the panel asked kiosks for (T-483): a day, then forgotten.
+        await _requests.DeleteExpiredAsync(_clock.UtcNow, cancellationToken).ConfigureAwait(false);
 
         while (!cancellationToken.IsCancellationRequested)
         {

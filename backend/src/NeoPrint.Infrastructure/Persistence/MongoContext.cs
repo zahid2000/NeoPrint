@@ -131,6 +131,8 @@ public sealed class MongoContext
 
     public MongoSet<CameraSegment> CameraSegments => Set<CameraSegment>("camera_segments");
 
+    public MongoSet<CameraRequest> CameraRequests => Set<CameraRequest>("camera_requests");
+
     public MongoSet<Domain.Releases.Release> Releases => Set<Domain.Releases.Release>("releases");
 
     public MongoSet<Domain.Releases.ReleaseRollout> ReleaseRollouts => Set<Domain.Releases.ReleaseRollout>("release_rollouts");
@@ -501,6 +503,11 @@ public sealed class MongoContext
             // A minute is sent once per kiosk (T-485); and what is due for deletion.
             (Builders<CameraSegment>.IndexKeys.Ascending(segment => segment.KioskId).Ascending(segment => segment.Start), Unique("ux_camera_segments_kiosk_start")),
             (Builders<CameraSegment>.IndexKeys.Ascending(segment => segment.ExpiresAt), Named("ix_camera_segments_expires")));
+
+        await CreateAsync(CameraRequests,
+            // A kiosk's open requests, the newest for a span, and what is due for deletion (T-483).
+            (Builders<CameraRequest>.IndexKeys.Ascending(request => request.KioskId).Descending(request => request.CreatedAt), Named("ix_camera_requests_kiosk_created")),
+            (Builders<CameraRequest>.IndexKeys.Ascending(request => request.ExpiresAt), Named("ix_camera_requests_expires")));
 
         await CreateAsync(KioskCommands,
             (Builders<KioskCommand>.IndexKeys

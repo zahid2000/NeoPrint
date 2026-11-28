@@ -35,6 +35,9 @@ public static class Permissions
     public const string KioskCommandsRestart = "kiosks.commands.restart";
     public const string KioskCommandsReboot = "kiosks.commands.reboot";
 
+    /// <summary>The kiosk camera, live and recorded (T-483); every look is on the record.</summary>
+    public const string CameraView = "camera.view";
+
     // Printers
     public const string PrintersView = "printers.view";
     public const string PrintersSelect = "printers.select";
@@ -110,7 +113,7 @@ public static class Permissions
             KiosksView, KiosksStatusView, KiosksCreate, KiosksEdit, KiosksDelete, KiosksActivate,
             DevicesView, DevicesRevoke, DevicesEnroll, ReleasesView, ReleasesManage,
             KioskCommandsUpdate, KioskLogsDownload, KioskLimitsManage,
-            KioskCommandsPause, KioskCommandsRestart, KioskCommandsReboot,
+            KioskCommandsPause, KioskCommandsRestart, KioskCommandsReboot, CameraView,
         ]),
         new("printers", "Printerlər",
         [

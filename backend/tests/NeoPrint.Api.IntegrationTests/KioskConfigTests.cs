@@ -999,4 +999,129 @@ public sealed class KioskConfigTests
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [DockerFact]
+    public async Task The_panel_asks_a_kiosk_for_recorded_minutes_and_plays_them_and_watches_live_while_it_asks()
+    {
+        if (Skip) { return; }
+
+        var (kiosk, _, kioskId, _) = await ActivatedKioskAsync("camera-viewing", "HP LaserJet");
+        using var _client = kiosk;
+        using var admin = await SuperAdminAsync();
+
+        var flag = (await admin.GetFromJsonAsync<JsonElement>("/api/admin/features"))
+            .EnumerateArray().Single(item => item.GetProperty("key").GetString() == "kiosk_camera");
+        async Task FlagAsync(Dictionary<string, bool> overrides) => (await admin.PutAsJsonAsync("/api/admin/features/kiosk_camera", new
+        {
+            defaultEnabled = false,
+            rolloutPercent = flag.GetProperty("rolloutPercent").GetInt32(),
+            kioskOverrides = overrides,
+            userAllowlist = Array.Empty<Guid>(),
+        })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var camera = $"/api/admin/kiosks/{kioskId}/camera";
+        var now = DateTime.UtcNow;
+        var start = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Utc).AddMinutes(-5);
+        var span = new { from = start, to = start.AddMinutes(4) };
+
+        // The camera turned off: nothing to ask for or watch.
+        (await admin.PostAsJsonAsync($"{camera}/footage/requests", span)).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await admin.PostAsync($"{camera}/live", null)).StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        await FlagAsync(new Dictionary<string, bool> { [kioskId.ToString()] = true });
+        try
+        {
+            string Query(DateTime from, DateTime to) => $"from={from:yyyy-MM-ddTHH:mm:ssZ}&to={to:yyyy-MM-ddTHH:mm:ssZ}";
+
+            var empty = await admin.GetFromJsonAsync<JsonElement>($"{camera}/footage?{Query(span.from, span.to)}");
+            empty.GetProperty("cameraOn").GetBoolean().Should().BeTrue();
+            empty.GetProperty("minutes").GetArrayLength().Should().Be(0);
+
+            // More than an hour at once is refused.
+            (await admin.PostAsJsonAsync($"{camera}/footage/requests", new { from = start.AddHours(-2), to = start }))
+                .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+            var asked = await admin.PostAsJsonAsync($"{camera}/footage/requests", span);
+            asked.StatusCode.Should().Be(HttpStatusCode.OK, await asked.Content.ReadAsStringAsync());
+            var requestId = (await asked.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+            // Asked twice: the same request.
+            (await (await admin.PostAsJsonAsync($"{camera}/footage/requests", span)).Content.ReadFromJsonAsync<JsonElement>())
+                .GetProperty("id").GetGuid().Should().Be(requestId);
+
+            var pending = await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/camera/requests");
+            pending.EnumerateArray().Select(item => item.GetProperty("id").GetGuid()).Should().Contain(requestId);
+
+            // The kiosk seals a minute as it records one.
+            var config = (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/config")).GetProperty("camera");
+            using var publicKey = RSA.Create();
+            publicKey.ImportSubjectPublicKeyInfo(Convert.FromBase64String(config.GetProperty("publicKey").GetString()!), out _);
+            var video = RandomNumberGenerator.GetBytes(30_000);
+            using var sealedMinute = new MemoryStream();
+            await NeoPrint.Crypto.CameraSegmentCipher.EncryptAsync(
+                new MemoryStream(video), sealedMinute, config.GetProperty("keyId").GetString()!, publicKey);
+            var bytes = sealedMinute.ToArray();
+
+            string Minute(DateTime at) => $"/api/kiosks/me/camera/requests/{requestId}/minutes?start={at:yyyy-MM-ddTHH:mm:ssZ}&seconds=60";
+
+            var sent = await kiosk.PostAsync(Minute(start.AddMinutes(1)), new ByteArrayContent(bytes));
+            sent.StatusCode.Should().Be(HttpStatusCode.OK, await sent.Content.ReadAsStringAsync());
+
+            // A minute outside the span asked for is not taken.
+            (await kiosk.PostAsync(Minute(start.AddHours(-3)), new ByteArrayContent(bytes))).StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            var done = await kiosk.PostAsJsonAsync($"/api/kiosks/me/camera/requests/{requestId}/done", new { minutes = 1 });
+            (await done.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString().Should().Be("Delivered");
+            (await kiosk.GetFromJsonAsync<JsonElement>("/api/kiosks/me/camera/requests"))
+                .EnumerateArray().Should().NotContain(item => item.GetProperty("id").GetGuid() == requestId);
+
+            var footage = await admin.GetFromJsonAsync<JsonElement>($"{camera}/footage?{Query(span.from, span.to)}");
+            footage.GetProperty("request").GetProperty("delivered").GetInt32().Should().Be(1);
+            var minute = footage.GetProperty("minutes").EnumerateArray().Single();
+            minute.GetProperty("fetched").GetBoolean().Should().BeTrue();
+            minute.GetProperty("expiresAt").GetDateTime().Should().BeCloseTo(DateTime.UtcNow.AddDays(1), TimeSpan.FromMinutes(5));
+
+            // Opened for the panel: the video as the kiosk recorded it.
+            var played = await admin.GetAsync($"{camera}/footage/{minute.GetProperty("id").GetGuid()}");
+            played.StatusCode.Should().Be(HttpStatusCode.OK);
+            played.Content.Headers.ContentType!.MediaType.Should().Be("video/mp4");
+            (await played.Content.ReadAsByteArrayAsync()).Should().Equal(video);
+
+            // Live: nobody watches, nothing is kept.
+            byte[] jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 0xFF, 0xD9];
+            async Task<bool> FrameAsync(byte[] body)
+            {
+                var response = await kiosk.PostAsync("/api/kiosks/me/camera/live", new ByteArrayContent(body));
+                response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+                return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("live").GetBoolean();
+            }
+
+            (await FrameAsync(jpeg)).Should().BeFalse();
+            (await admin.GetAsync($"{camera}/live/frame")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            (await admin.PostAsync($"{camera}/live", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+            (await FrameAsync(jpeg)).Should().BeTrue();
+            var frame = await admin.GetAsync($"{camera}/live/frame");
+            frame.StatusCode.Should().Be(HttpStatusCode.OK);
+            frame.Content.Headers.ContentType!.MediaType.Should().Be("image/jpeg");
+            (await frame.Content.ReadAsByteArrayAsync()).Should().Equal(jpeg);
+
+            // Only a JPEG reaches the panel.
+            (await kiosk.PostAsync("/api/kiosks/me/camera/live", new ByteArrayContent("<svg/>"u8.ToArray())))
+                .StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+            (await admin.DeleteAsync($"{camera}/live")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+            (await FrameAsync(jpeg)).Should().BeFalse("nobody watches any more");
+
+            // Every look is on the record.
+            using var scope = _fixture.Services.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<MongoContext>();
+            var actions = await context.AuditLogs.Find(entry => entry.EntityId == kioskId.ToString()).Project(entry => entry.Action).ToListAsync();
+            actions.Should().Contain(["camera.footage.request", "camera.footage.view", "camera.live.view"]);
+        }
+        finally
+        {
+            await FlagAsync([]);
+        }
+    }
 }

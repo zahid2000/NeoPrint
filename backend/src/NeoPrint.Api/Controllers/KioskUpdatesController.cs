@@ -127,6 +127,48 @@ public sealed class KioskUpdatesController : ControllerBase
             new UploadCameraSegmentCommand(deviceId, Request.Body, start.ToUniversalTime(), seconds), cancellationToken));
     }
 
+    /// <summary>What the panel asked this kiosk for and it has not answered (T-483).</summary>
+    [HttpGet("kiosks/me/camera/requests")]
+    public async Task<ActionResult<IReadOnlyList<CameraRequestView>>> CameraRequests(CancellationToken cancellationToken)
+        => _currentUser.DeviceId is { } deviceId
+            ? Ok(await _sender.Send(new ListKioskCameraRequestsQuery(deviceId), cancellationToken))
+            : Forbid();
+
+    /// <summary>One sealed minute of a span the panel asked for; kept a day for viewing (T-483).</summary>
+    [HttpPost("kiosks/me/camera/requests/{requestId:guid}/minutes")]
+    [RequestSizeLimit(65L * 1024 * 1024)]
+    public async Task<ActionResult<CameraSegmentView>> CameraRequestMinute(
+        Guid requestId, [FromQuery] DateTime start, [FromQuery] int seconds, CancellationToken cancellationToken)
+    {
+        if (_currentUser.DeviceId is not { } deviceId)
+        {
+            return Forbid();
+        }
+
+        return Ok(await _sender.Send(
+            new UploadRequestedCameraMinuteCommand(deviceId, requestId, Request.Body, start.ToUniversalTime(), seconds), cancellationToken));
+    }
+
+    /// <summary>The kiosk sent everything it had of the span.</summary>
+    [HttpPost("kiosks/me/camera/requests/{requestId:guid}/done")]
+    public async Task<ActionResult<CameraRequestView>> CameraRequestDone(
+        Guid requestId, [FromBody] CameraRequestDoneRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return _currentUser.DeviceId is { } deviceId
+            ? Ok(await _sender.Send(new CompleteKioskCameraRequestCommand(deviceId, requestId, request.Minutes), cancellationToken))
+            : Forbid();
+    }
+
+    /// <summary>One live frame (JPEG, T-483); the answer says whether somebody still watches.</summary>
+    [HttpPost("kiosks/me/camera/live")]
+    [RequestSizeLimit(1L * 1024 * 1024 + 4096)]
+    public async Task<ActionResult<CameraLiveAnswer>> CameraLiveFrame(CancellationToken cancellationToken)
+        => _currentUser.DeviceId is { } deviceId
+            ? Ok(await _sender.Send(new PostKioskCameraFrameCommand(deviceId, Request.Body), cancellationToken))
+            : Forbid();
+
     private static async Task SkipAsync(Stream content, long count, CancellationToken cancellationToken)
     {
         var buffer = new byte[81920];
@@ -160,3 +202,6 @@ public sealed class KioskUpdatesController : ControllerBase
 
 /// <param name="MessageKey">What happened, as a message key the backend knows (<c>updates.signatureRefused</c>).</param>
 public sealed record UpdateStatusRequest(ReleaseComponent Component, string? Version, KioskUpdateStatus Status, string? MessageKey);
+
+/// <param name="Minutes">How many minutes of the span the kiosk had and sent.</param>
+public sealed record CameraRequestDoneRequest(int Minutes);

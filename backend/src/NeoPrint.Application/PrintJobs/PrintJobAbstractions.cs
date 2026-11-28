@@ -163,6 +163,12 @@ public interface IKioskNotifier
 
     /// <summary>The phone left: closed, replaced or expired.</summary>
     Task SessionClosedAsync(Guid kioskId, Guid sessionId, string reason, CancellationToken cancellationToken = default);
+
+    /// <summary>The panel asks for recorded camera minutes (T-483): the kiosk reads <c>GET kiosks/me/camera/requests</c>.</summary>
+    Task CameraFootageRequestedAsync(Guid kioskId, Guid requestId, CancellationToken cancellationToken = default);
+
+    /// <summary>Somebody watches the camera live (T-483): the kiosk sends frames while the backend says so.</summary>
+    Task CameraLiveRequestedAsync(Guid kioskId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>One line of the queue panel (plan section 7.2).</summary>
