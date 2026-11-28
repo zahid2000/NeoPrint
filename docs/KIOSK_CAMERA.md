@@ -168,6 +168,20 @@ Admin → Kiosk → **"Kamera"** tabı (`camera.view` icazəsi). Hər baxış au
 - **Lövhə:** kamera açılan kioskun üstündə "Videomüşahidə aparılır" lövhəsi olmalıdır
   (M3-də quraşdırma sənədinə əlavə olunur).
 
+## 4a. Panel "FFmpeg yoxdur" deyirsə (T-495)
+
+Kiosk quraşdırılanda asılılıqlar qovluğunda FFmpeg zip-i olmayıb. Kamera yazmır, paneldə Vəziyyət → Kamera: "Yazmır", "Niyə yazmır: FFmpeg yoxdur".
+
+- **Windows:** kioskda administrator PowerShell-də:
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File toolskiosk-camerainstall-ffmpeg.ps1
+  ```
+
+  Skript BtbN-in LGPL build-ini endirir (~170 MB) və `C:Program FilesNeoPrintfmpeg`-ə açır. İnternetsiz kiosk üçün zip-i fləşkada gətirin: `-Zip D:fmpeg-n8.1-latest-win64-lgpl-8.1.zip`. Sonra kiosk tətbiqi FFmpeg-i 10 dəqiqə ərzində özü tapır; dərhal görmək üçün panel → kiosk → Əmrlər → tətbiqi yenidən başladın.
+- **Linux:** `sudo apt install ffmpeg` (və ya provisioning 0.9.0+ ilə `repair`).
+- Yeni kioskda bu lazım deyil: asılılıqlar qovluğuna `ffmpeg-*-win64-lgpl*.zip` qoyun (§4).
+
 ## 5. Lokal sınaq (kamera olmadan)
 
 `Kiosk:FakeCamera=true` olanda kamera əvəzinə FFmpeg-in hərəkətli test şəkli
