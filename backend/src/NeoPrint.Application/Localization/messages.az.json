@@ -581,6 +581,8 @@
   "settings.cameraMode": "Kamera rejimi Activity (yalnız kioskda kimsə olanda) və ya Continuous (fasiləsiz) olmalıdır.",
   "settings.cameraResolution": "Kamera ölçüsü 640x480, 1280x720 və ya 1920x1080 olmalıdır.",
   "settings.cameraQuality": "Kamera keyfiyyəti Low (aşağı), Medium (orta) və ya High (yüksək) olmalıdır.",
+  "settings.fiscalTopUpReceiptMode": "Balans artırma çeki OnTopUp (balans artırılanda) və ya OnService (xidmət göstəriləndə) olmalıdır.",
+  "settings.sensitiveAutoDelete": "Həssas skanların silinməsi Never, AfterPrint, AfterOneDay, AfterSevenDays və ya AfterThirtyDays olmalıdır.",
   "settings.mobileMinVersion": "Mobil tətbiqin minimum versiyası 1.2.0 kimi yazılmalıdır (və ya boş qalmalıdır).",
   "app.updateRequired": "Tətbiqi yeniləyin",
   "app.updateRequiredDetail": "Tətbiqin bu versiyası artıq işləmir. Davam etmək üçün onu mağazadan yeniləyin ({minVersion} və ya daha yeni).",

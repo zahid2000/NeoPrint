@@ -453,6 +453,10 @@ public sealed class AdminConfigTests
         (await SaveAsync("PrintJob.MaxAutoRetries", "11")).Should().Be(HttpStatusCode.BadRequest);
         (await SaveAsync("Notification.TelegramEnabled", "yes")).Should().Be(HttpStatusCode.BadRequest);
 
+        // The words the panel offers as a list (T-493).
+        (await SaveAsync("Fiscal.TopUpReceiptMode", "Later")).Should().Be(HttpStatusCode.BadRequest);
+        (await SaveAsync("Privacy.SensitiveAutoDeleteDefault", "Tomorrow")).Should().Be(HttpStatusCode.BadRequest);
+
         // The night's sleep (T-448): a real window, and not a nap between customers.
         Default("Kiosk.SleepEnabled").Should().Be("true");
         Default("Kiosk.SleepWindow").Should().Be("23:00-06:00");
@@ -468,6 +472,8 @@ public sealed class AdminConfigTests
         var reader = scope.ServiceProvider.GetRequiredService<ISettingsReader>();
 
         (await reader.GetAsync(SettingKeys.NotificationMinSeverity)).Should().Be("High");
+        (await reader.GetAsync(SettingKeys.FiscalTopUpReceiptMode)).Should().Be("OnTopUp");
+        (await reader.GetAsync(SettingKeys.PrivacySensitiveAutoDeleteDefault)).Should().Be("AfterPrint");
         (await reader.GetIntAsync(SettingKeys.PrintJobMaxAutoRetries, 0)).Should().Be(3);
         (await reader.GetBoolAsync(SettingKeys.NotificationTelegramEnabled, true)).Should().BeFalse();
         (await reader.GetAsync(SettingKeys.KioskSleepWindow)).Should().Be("23:00-06:00");

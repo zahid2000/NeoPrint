@@ -581,6 +581,8 @@
   "settings.cameraMode": "Режим камеры должен быть Activity (только когда у киоска кто-то есть) или Continuous (непрерывно).",
   "settings.cameraResolution": "Разрешение камеры должно быть 640x480, 1280x720 или 1920x1080.",
   "settings.cameraQuality": "Качество камеры должно быть Low (низкое), Medium (среднее) или High (высокое).",
+  "settings.fiscalTopUpReceiptMode": "Чек пополнения должен быть OnTopUp (при пополнении баланса) или OnService (при оказании услуги).",
+  "settings.sensitiveAutoDelete": "Удаление чувствительных сканов должно быть Never, AfterPrint, AfterOneDay, AfterSevenDays или AfterThirtyDays.",
   "settings.mobileMinVersion": "Минимальная версия мобильного приложения пишется как 1.2.0 (или остаётся пустой).",
   "app.updateRequired": "Обновите приложение",
   "app.updateRequiredDetail": "Эта версия приложения больше не работает. Чтобы продолжить, обновите её в магазине ({minVersion} или новее).",

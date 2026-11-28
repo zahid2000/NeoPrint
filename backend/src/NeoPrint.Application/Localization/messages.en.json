@@ -581,6 +581,8 @@
   "settings.cameraMode": "The camera mode must be Activity (only while somebody is at the kiosk) or Continuous.",
   "settings.cameraResolution": "The camera resolution must be 640x480, 1280x720 or 1920x1080.",
   "settings.cameraQuality": "The camera quality must be Low, Medium or High.",
+  "settings.fiscalTopUpReceiptMode": "The top-up receipt must be OnTopUp (when the balance is topped up) or OnService (when a service is given).",
+  "settings.sensitiveAutoDelete": "Deleting sensitive scans must be Never, AfterPrint, AfterOneDay, AfterSevenDays or AfterThirtyDays.",
   "settings.mobileMinVersion": "The minimum mobile app version must look like 1.2.0 (or be left empty).",
   "app.updateRequired": "Update the app",
   "app.updateRequiredDetail": "This version of the app no longer works. Update it from the store to continue ({minVersion} or newer).",

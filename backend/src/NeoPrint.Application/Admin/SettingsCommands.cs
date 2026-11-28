@@ -156,6 +156,17 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
                 yield return new ValidationError(key, "settings.valueSeverity");
             }
 
+            // Words the panel offers as a list (T-493): nothing else can be saved.
+            if (key == SettingKeys.FiscalTopUpReceiptMode && !TopUpReceiptModes.Contains(value, StringComparer.Ordinal))
+            {
+                yield return new ValidationError(key, "settings.fiscalTopUpReceiptMode");
+            }
+
+            if (key == SettingKeys.PrivacySensitiveAutoDeleteDefault && !AutoDeleteRules.Contains(value, StringComparer.Ordinal))
+            {
+                yield return new ValidationError(key, "settings.sensitiveAutoDelete");
+            }
+
             // The map (T-217): a style the apps can load, and the data's licence always credited.
             if (key == SettingKeys.MapStyleUrl && !MapSettings.IsValidStyleUrl(value))
             {
@@ -190,6 +201,11 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
     }
 
     private static readonly string[] Severities = Enum.GetNames<NeoPrint.Domain.Incidents.IncidentSeverity>();
+
+    /// <summary>When a top-up is fiscalized: at once, or when the wallet pays for a service.</summary>
+    private static readonly string[] TopUpReceiptModes = ["OnTopUp", "OnService"];
+
+    private static readonly string[] AutoDeleteRules = Enum.GetNames<NeoPrint.Domain.Files.AutoDeleteRule>();
 }
 
 /// <summary>The kiosk camera's settings and their limits (T-482).</summary>
