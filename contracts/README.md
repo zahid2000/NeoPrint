@@ -31,6 +31,13 @@ PowerShell: `$env:NEOPRINT_CONTRACT_UPDATE='1'; dotnet test backend/tests/NeoPri
 
 Əmr klientlərin yeni çağırdığı yolları və hadisələri əlavə edir, formalar faylını yenidən yazır. Sındıran dəyişiklik bu rejimdə də qırmızıdır. Nəticə `git diff` ilə yoxlanılır və commit olunur.
 
+## Dəstəklənən minimum versiya (T-492)
+
+`minSupported` backend-in içinə də yığılır (`SupportedClients`):
+
+- **Kiosk** — admin → Buraxılışlar → "Kiosk versiyaları": bu versiyadan köhnə kiosk "Dəstəklənmir" kimi görünür. Kiosk bloklanmır.
+- **Mobil** — köhnə tətbiq `426` alır və "Tətbiqi yeniləyin" ekranını göstərir. Admin `Mobile.MinVersion` ayarı ilə həddi qaldıra bilər, fayldakından aşağı sala bilməz.
+
 ## Köhnə yolu silmək (genişləndir → köçür → daralt)
 
 1. Klient yeni yola keçir. Köhnə sətrə `"retiredIn": "<köhnəni çağırmayan ilk klient versiyası>"` yazılır. Sətir silinmir.

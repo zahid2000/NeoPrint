@@ -438,3 +438,15 @@ qovluğunda `ffmpeg-n8.1-latest-win64-lgpl-8.1.zip`). Panel → Funksiya açarla
 | 12 | Parametrlər → Kiosk kamerası → fayl serveri: siyahıdan provayder seçin (T-485) | 1–2 dəqiqə ərzində kiosk Vəziyyət → Kamera: "Serverə göndərilməyib" 0-a enir, "Serverə son göndəriş" yenilənir; provayderin Files bucket-ində `camera/<kiosk>/…/…npcam` faylları | **Real cihaz** |
 | 13 | Kioskun şəbəkə kabelini 5 dəqiqə çıxarın, sonra taxın | Bu müddətdə "Serverə göndərilməyib" artır, kabel taxılandan sonra hamısı gedir, heç biri iki dəfə yazılmır | **Real cihaz** |
 | 14 | Kiosk səhifəsi → "Kamera görüntüsü — fayl serveri" → "Serverə yazılmasın" | Bu kiosk serverə göndərməyi dayandırır, görüntü yalnız kioskun diskində qalır | **Real cihaz** |
+
+## MT-12. Köhnə kiosk və tətbiq (T-492, ADR-0009)
+
+Test serverində və ya lokal stack-də. Telefonda tətbiq bu buraxılışdan (T-492) və ya yeni olmalıdır.
+
+| № | Addım | Gözlənilən | Harada |
+|---|---|---|---|
+| 1 | Admin → Buraxılışlar → "Kiosk versiyaları" | `minSupported.kiosk`-dan köhnə kiosk tətbiqi olan sətirdə versiyanın altında "Dəstəklənmir — ən azı …", cədvəlin üstündə "N kiosk backend-in artıq dəstəkləmədiyi versiyadadır". Yeni kiosklarda heç nə yoxdur | Panel |
+| 2 | Tənzimləmələr → Mobil tətbiq → `Mobile.MinVersion` = `9.0.0`; bir dəqiqə gözləyin, tətbiqdə Balans ekranını açın | Tətbiq hər ekranın yerinə "Tətbiqi yeniləyin" göstərir (versiya ilə), naviqasiya yoxdur | **Real telefon** |
+| 3 | Ayarı boşaldın, bir dəqiqə gözləyin, "Yenidən yoxla" | Tətbiq açılır, harada idisə ora qayıdır | **Real telefon** |
+| 4 | Ayara `abc` yazın | Saxlanmır: "Mobil tətbiqin minimum versiyası 1.2.0 kimi yazılmalıdır" | Panel |
+| 5 | Kiosk minimumdan köhnə olsa da işləyir: köhnə kioskda sifariş verin | Sifariş, ödəniş və çap adi qaydada gedir (kiosk bloklanmır) | **Real cihaz** |

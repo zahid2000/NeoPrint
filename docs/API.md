@@ -13,6 +13,8 @@ Development-də Swagger UI: `http://localhost:5080/swagger`.
 
 Kioskun, provisioning skriptlərinin və mobil tətbiqin işlətdiyi endpoint-lər `contracts/client-api.json`-dadır. Onların yolu, metodu və cavab sahələri silinmir və dəyişdirilmir, yalnız əlavə olunur. CI yoxlayır (`contracts/README.md`).
 
+**Köhnə mobil tətbiq (T-492).** Mobil tətbiq hər sorğuda `X-App-Version: 0.1.0` göndərir. Versiya dəstəklənən minimumdan köhnədirsə istənilən `/api` və `/hubs` sorğusu `426` alır: `{ code: "app.updateRequired", minVersion, title, detail }`. Minimum — `contracts/client-api.json`-dəki `minSupported.mobile` ilə `Mobile.MinVersion` ayarının böyüyü (ayar həddi yalnız qaldıra bilər; bir dəqiqə keşlənir). Başlıqsız sorğu (kiosk, admin panel) heç vaxt `426` almır.
+
 ### Base URL
 
 | Mühit | URL |
@@ -2493,7 +2495,7 @@ Hamısı **qlobal** resursdur: `releases.view` / `releases.manage` `Permissions.
 | `POST /api/admin/releases/{id}/withdraw` | `releases.manage` | `{ reason }` (3–500): heç bir kioska təklif olunmur, yayımları `RolledBack`, bütün kiosklara `UpdateAvailable` |
 | `POST /api/admin/rollouts` | `releases.manage` | `{ releaseId, target: All\|Kiosks\|Percent\|Channel, kioskIds?, percent?, channel?, urgent? }` — `urgent` (T-321): təcili / təhlükəsizlik, kiosk yeniləmə pəncərəsini gözləmir (boş anı yenə gözləyir). Pilot buraxılışı yalnız `Kiosks` və ya `Channel=Pilot` — əks halda `409 rollouts.pilotOnly`. `Percent`: kiosk + yayım id-sinin SHA-256-sından 0–99 yer — eyni kiosk həmişə eyni yerdədir. Çatdığı kiosklara `UpdateAvailable` |
 | `POST /api/admin/rollouts/{id}/pause\|resume\|complete\|rollback` | `releases.manage` | `STATE_MACHINES.md` "Release rollout"; təkrar basış — dəyişiklik yoxdur; geri çəkilmiş buraxılışın yayımı davam etmir (`409`) |
-| `GET /api/admin/kiosks/versions` | `releases.view` | Hər kiosk: platforma (`win-x64` / `linux-x64`), kanal, UI / Agent / provisioning versiyası, hər komponentin son yeniləmə vəziyyəti (mesajı ilə), təklif olunanlar, son siqnal |
+| `GET /api/admin/kiosks/versions` | `releases.view` | Hər kiosk: platforma (`win-x64` / `linux-x64`), kanal, UI / Agent / provisioning versiyası, hər komponentin son yeniləmə vəziyyəti (mesajı ilə), təklif olunanlar, son siqnal; `supported` — kiosk tətbiqi backend-in dəstəklədiyi ən köhnə versiyadan (`minSupportedVersion`) köhnədirsə `false`, versiya bilinmirsə yoxdur (T-492) |
 | `PUT /api/admin/kiosks/{id}/update-channel` | `releases.manage` | `{ channel: Pilot\|Stable }` |
 | `GET /api/admin/kiosks/{id}/update` | `kiosks.view` | Kiosk detalının "Yeniləmə" tabı (T-326) — **kiosk əhatəsinə tabedir** (əhatəsi məhdud hesab öz kioskunu görür, başqası `404`): `{ kioskId, platform, channel, hasDevice, lastHeartbeatAt, maxIdleWaitMinutes, components[{ component, running, target, state }], history[] (son 50, yenidən köhnəyə), skipped[{ component, version, at }] }` |
 | `POST /api/admin/kiosks/{id}/update-now` · `rollback-version` · `reapply-provisioning` | `kiosks.commands.update` | Agent əmrləri (`UpdateNow`, `RollbackVersion`, `ReapplyProvisioning`); gövdə `{ reason }` **məcburidir** (3–500, T-326) — yoxdursa `400 kioskCommands.reasonRequired` (kiosk əhatəsi yoxlanandan sonra); kiosk əhatəsinə tabedir (başqa kiosk — `404`); açıq eyni əmr varsa o qaytarılır; səbəb əmrdə (`reason`, yalnız paneldə — kioska getmir) və audit-də |

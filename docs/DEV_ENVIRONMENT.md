@@ -1845,6 +1845,15 @@ git diff contracts/        # nə əlavə olundu - baxın, sonra commit
 
 Sındıran dəyişiklik (sahə silinib, tipi dəyişib, yol yoxdur) bu əmrlə də keçmir. Köhnə yolu silmək qaydası: `contracts/README.md` → "Köhnə yolu silmək".
 
+**Dəstəklənən minimum versiya (T-492).** Lokal build edilmiş kiosk `0.1.0` bildirir, ona görə admin → Buraxılışlar → "Kiosk versiyaları"nda "Dəstəklənmir" görünür — bu normaldır. Köhnə mobil tətbiqin cavabını yoxlamaq:
+
+```bash
+curl -i -H "X-App-Version: 0.0.1" http://localhost:5080/api/features     # 426, code app.updateRequired
+curl -i -H "X-App-Version: 0.1.0" http://localhost:5080/api/features     # 200
+```
+
+Telefonda "Tətbiqi yeniləyin" ekranını görmək üçün: admin → Tənzimləmələr → Mobil tətbiq → `Mobile.MinVersion` = `9.0.0`, bir dəqiqə gözləyin, tətbiqdə istənilən ekranı açın. Sonra ayarı boşaldın.
+
 ## 7y. Addım 7B — real Linux kiosku test serverinə (T-333)
 
 ```bash
