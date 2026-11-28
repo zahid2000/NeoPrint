@@ -103,6 +103,9 @@ builder.Services.AddSingleton(provider =>
 });
 builder.Services.AddHostedService<AgentWorker>();
 
+// The camera's FFmpeg on a Windows kiosk set up without it (T-496).
+builder.Services.AddHostedService<FfmpegInstallerService>();
+
 var host = builder.Build();
 
 host.Services.GetRequiredService<ILoggerFactory>()

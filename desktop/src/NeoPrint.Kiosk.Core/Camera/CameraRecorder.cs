@@ -55,6 +55,9 @@ public sealed class CameraRecorder
     private static readonly TimeSpan NoCameraRetry = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan NoRecorderRetry = TimeSpan.FromMinutes(10);
 
+    /// <summary>FFmpeg asked of the agent (T-496): looked for again soon, so the camera starts once it is there.</summary>
+    public static readonly TimeSpan NoFfmpegRetry = TimeSpan.FromMinutes(1);
+
     private readonly CameraVault _vault;
     private readonly ICameraHost _host;
     private readonly Func<KioskCameraSettings?> _settings;
@@ -63,6 +66,7 @@ public sealed class CameraRecorder
     private readonly ILogger _logger;
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
     private readonly ActivityLog _activity = new();
+    private readonly bool _askForFfmpeg;
 
     private IRecorderProcess? _process;
     private KioskCameraSettings? _running;
@@ -73,10 +77,11 @@ public sealed class CameraRecorder
     private bool _askSize = true;
     private bool? _connected;
     private string? _error;
-    private (string Ffmpeg, string? Encoder)? _encoder;
+    private (string Ffmpeg, string? Encoder, bool Mpdecimate)? _encoder;
     private CameraStatus _status = CameraStatus.Off;
 
     /// <param name="settings">The configuration's camera section; null while the camera is turned off.</param>
+    /// <param name="askForFfmpeg">Whether a missing FFmpeg is asked of the agent (T-496); on Windows by default.</param>
     /// <param name="busy">Whether somebody is at the kiosk or it is printing: what <c>Activity</c> mode keeps.</param>
     public CameraRecorder(
         CameraVault vault,
@@ -85,8 +90,10 @@ public sealed class CameraRecorder
         Func<bool> busy,
         IClock clock,
         ILogger logger,
-        Func<TimeSpan, CancellationToken, Task>? delay = null)
+        Func<TimeSpan, CancellationToken, Task>? delay = null,
+        bool? askForFfmpeg = null)
     {
+        _askForFfmpeg = askForFfmpeg ?? OperatingSystem.IsWindows();
         _vault = vault;
         _host = host;
         _settings = settings;
@@ -221,14 +228,29 @@ public sealed class CameraRecorder
         if (ffmpeg is null)
         {
             _error = CameraError.NoRecorder;
-            _nextStart = now + NoRecorderRetry;
+
+            // On Windows the agent installs it (T-496); the kiosk application
+            // may not write to Program Files, so it only asks.
+            if (_askForFfmpeg)
+            {
+                FfmpegSetup.Ask(_vault.Root);
+                _nextStart = now + NoFfmpegRetry;
+            }
+            else
+            {
+                _nextStart = now + NoRecorderRetry;
+            }
+
             return;
         }
 
         if (_encoder is not { } known || known.Ffmpeg != ffmpeg)
         {
-            known = (ffmpeg, FfmpegOutput.PickEncoder(
-                await _host.AskAsync(ffmpeg, ["-hide_banner", "-encoders"], cancellationToken).ConfigureAwait(false)));
+            known = (
+                ffmpeg,
+                FfmpegOutput.PickEncoder(await _host.AskAsync(ffmpeg, ["-hide_banner", "-encoders"], cancellationToken).ConfigureAwait(false)),
+                FfmpegOutput.HasFilter(
+                    await _host.AskAsync(ffmpeg, ["-hide_banner", "-filters"], cancellationToken).ConfigureAwait(false), "mpdecimate"));
             _encoder = known;
         }
 
@@ -250,7 +272,7 @@ public sealed class CameraRecorder
             return;
         }
 
-        _process = _host.Start(ffmpeg, FfmpegCommand.Record(device, encoder, settings, _vault.WritingPattern, _askSize));
+        _process = _host.Start(ffmpeg, FfmpegCommand.Record(device, encoder, settings, _vault.WritingPattern, _askSize, known.Mpdecimate));
         _running = settings;
         _startedAt = now;
         RecorderPidFile.Write(PidFile, _process.Id);

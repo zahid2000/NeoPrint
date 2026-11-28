@@ -31,6 +31,21 @@ public static partial class FfmpegOutput
     public static readonly IReadOnlyList<string> Encoders = ["libopenh264", "h264_mf", "libx264"];
 
     /// <summary>The first encoder of <see cref="Encoders"/> that <c>ffmpeg -encoders</c> lists.</summary>
+    /// <summary>
+    /// Whether <c>ffmpeg -filters</c> lists a filter. <c>mpdecimate</c> is GPL:
+    /// the LGPL build Windows kiosks get has no such filter (T-496).
+    /// </summary>
+    public static bool HasFilter(string filtersOutput, string name)
+    {
+        ArgumentNullException.ThrowIfNull(filtersOutput);
+
+        return filtersOutput.Split('\n').Any(line =>
+        {
+            var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length >= 2 && parts[1] == name;
+        });
+    }
+
     public static string? PickEncoder(string encodersOutput)
     {
         ArgumentNullException.ThrowIfNull(encodersOutput);
@@ -169,8 +184,13 @@ public static class FfmpegCommand
     /// them refuses to open; the recorder then tries again without, and the
     /// picture is scaled instead.
     /// </param>
+    /// <param name="mpdecimate">
+    /// FFmpeg has the <c>mpdecimate</c> filter (GPL builds). Without it - the
+    /// LGPL build on Windows - still pictures are dropped with <c>select</c>
+    /// on the scene change instead (T-496).
+    /// </param>
     public static IReadOnlyList<string> Record(
-        CameraDevice device, string encoder, KioskCameraSettings settings, string outputPattern, bool askSize = true)
+        CameraDevice device, string encoder, KioskCameraSettings settings, string outputPattern, bool askSize = true, bool mpdecimate = true)
     {
         ArgumentNullException.ThrowIfNull(device);
         ArgumentNullException.ThrowIfNull(settings);
@@ -221,7 +241,7 @@ public static class FfmpegCommand
             string.Create(
                 CultureInfo.InvariantCulture,
                 $"[0:v]fps={fps},scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,split=2[full][small];"
-                + $"[full]mpdecimate=max={fps * StillSeconds},format=yuv420p[rec];"
+                + $"[full]{StillFilter(fps, mpdecimate)},format=yuv420p[rec];"
                 + $"[small]fps={LiveFramesPerSecond},scale={LiveWidth}:-2,format=yuvj420p[live]"),
         ]);
 
@@ -262,6 +282,17 @@ public static class FfmpegCommand
 
         return args;
     }
+
+    /// <summary>
+    /// Drops a frame the same as the one before, keeping one at least every
+    /// <see cref="StillSeconds"/>: <c>mpdecimate</c>, or - where FFmpeg has
+    /// none - <c>select</c> on the scene change (measured on the LGPL build:
+    /// a still picture keeps a frame every five seconds).
+    /// </summary>
+    public static string StillFilter(int fps, bool mpdecimate)
+        => mpdecimate
+            ? string.Create(CultureInfo.InvariantCulture, $"mpdecimate=max={fps * StillSeconds}")
+            : string.Create(CultureInfo.InvariantCulture, $"select='gt(scene,0.003)+isnan(prev_selected_t)+gte(t-prev_selected_t,{StillSeconds})'");
 
     /// <summary>The live view's frames a second (T-483).</summary>
     public const int LiveFramesPerSecond = 2;

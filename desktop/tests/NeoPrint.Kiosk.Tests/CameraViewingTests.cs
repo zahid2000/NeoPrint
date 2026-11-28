@@ -40,6 +40,24 @@ public sealed class CameraViewingTests : IDisposable
     }
 
     [Fact]
+    public void Without_mpdecimate_the_lgpl_build_drops_still_pictures_with_select()
+    {
+        const string Filters = """
+             .. select            V->N       Select video frames to pass in output.
+             .. decimate          N->V       Decimate frames (post field matching filter).
+            """;
+
+        FfmpegOutput.HasFilter(Filters, "mpdecimate").Should().BeFalse("the Windows LGPL build has no mpdecimate (T-496)");
+        FfmpegOutput.HasFilter(Filters + "\n .. mpdecimate        V->V       Remove near-duplicate frames.\n", "mpdecimate").Should().BeTrue();
+
+        var settings = new KioskCameraSettings(KioskCameraSettings.Activity, 2, 20, "1280x720", 10, "cam-test", PublicKey);
+        var args = FfmpegCommand.Record(new CameraDevice("Cam", "dshow", "C270"), "libopenh264", settings, "x.mp4", mpdecimate: false);
+        var graph = args[args.ToList().IndexOf("-filter_complex") + 1];
+
+        graph.Should().NotContain("mpdecimate").And.Contain("select='gt(scene,0.003)+isnan(prev_selected_t)+gte(t-prev_selected_t,5)'");
+    }
+
+    [Fact]
     public void The_jpegs_are_cut_one_by_one_however_the_bytes_arrive()
     {
         byte[] first = [0xFF, 0xD8, 0xFF, 0xE0, 0x10, 0xFF, 0x00, 0x20, 0xFF, 0xD9];
