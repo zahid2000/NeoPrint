@@ -1,0 +1,727 @@
+{
+  "minSupported": {
+    "kiosk": "0.9.0-m20.2",
+    "mobile": "0.1.0"
+  },
+  "endpoints": [
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/devices/challenge"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/devices/me"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/devices/me/pairing-code"
+    },
+    {
+      "client": "kiosk",
+      "method": "PUT",
+      "route": "api/devices/me/printers"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/devices/register"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/devices/token"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/error-tracking/{}"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/incidents"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/heartbeat"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/analytics"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/kiosks/me/branding/image"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/camera/segments"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/kiosks/me/commands"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/commands/{}/ack"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/commands/{}/result"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/kiosks/me/config"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/logs"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/operator-logins"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/kiosks/me/operator-logins/{}"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/operator-logins/{}/actions"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/operator-logins/{}/end"
+    },
+    {
+      "client": "kiosk",
+      "method": "PUT",
+      "route": "api/kiosks/me/printers"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/printers/telemetry"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/kiosks/me/queue"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/receipts/{}/email"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/kiosks/me/sessions"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/telemetry"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/kiosks/me/update"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/kiosks/me/update-status"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/payments/intents"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/payments/{}"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/payments/{}/fiscal"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/print-jobs"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/print-jobs/by-code/{}"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/print-jobs/pending-for-user"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/print-jobs/pending-for-user/paid/{}/release"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/print-jobs/pending-for-user/prepared/{}"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/print-jobs/{}"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/print-jobs/{}/cancel"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/print-jobs/{}/file"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/print-jobs/{}/flash-upload"
+    },
+    {
+      "client": "kiosk",
+      "method": "GET",
+      "route": "api/print-jobs/{}/refunds"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/print-jobs/{}/status"
+    },
+    {
+      "client": "kiosk",
+      "method": "POST",
+      "route": "api/promos/validate"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/auth/confirm-email"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/auth/login"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/auth/logout"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/auth/refresh"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/auth/register"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/auth/resend-confirmation"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/consents"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/consents/pending"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/contact"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/error-tracking/{}"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/features"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/files"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/files"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/files/formats"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/files/layout"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/files/layout/upload"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/files/scan"
+    },
+    {
+      "client": "mobile",
+      "method": "DELETE",
+      "route": "api/files/{}"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/files/{}"
+    },
+    {
+      "client": "mobile",
+      "method": "PUT",
+      "route": "api/files/{}/auto-delete"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/files/{}/content"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/files/{}/edit"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/files/{}/layout"
+    },
+    {
+      "client": "mobile",
+      "method": "PUT",
+      "route": "api/files/{}/layout"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/files/{}/layout/assets/{}"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/files/{}/office-session"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/files/{}/pages/{}.png"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/files/{}/versions"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/files/{}/versions/{}/content"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/kiosks"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/kiosks/{}"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/kiosks/{}/queue"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/legal/{}"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/map/config"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/me/claims"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/me/claims"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/me/claims/{}/photos"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/me/claims/{}/reopen"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/notifications"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/notifications/{}/read"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/payments/{}/app"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/payments/{}/pay-with-app"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/prepared-prints"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/prepared-prints"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/prepared-prints/paid"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/prepared-prints/paid/{}/cancel"
+    },
+    {
+      "client": "mobile",
+      "method": "DELETE",
+      "route": "api/prepared-prints/{}"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/pricing/quote"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/print-jobs/my"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/print-jobs/my/{}/cancel"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/promos/validate"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/receipts"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/receipts/{}/email"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/referrals/me"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/referrals/me/qr.png"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/schedules"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/schedules"
+    },
+    {
+      "client": "mobile",
+      "method": "DELETE",
+      "route": "api/schedules/{}"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/schedules/{}/print-now"
+    },
+    {
+      "client": "mobile",
+      "method": "PUT",
+      "route": "api/schedules/{}/time"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/sessions"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/sessions/current"
+    },
+    {
+      "client": "mobile",
+      "method": "DELETE",
+      "route": "api/sessions/{}"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/sessions/{}/print-jobs"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/shares"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/shares/received"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/shares/recipient-by-qr"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/shares/sent"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/shares/{}/pages/{}.png"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/shares/{}/save"
+    },
+    {
+      "client": "mobile",
+      "method": "PUT",
+      "route": "api/users/me"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/users/me/delete"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/users/me/delete"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/users/me/export"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/users/me/export"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/users/me/fcm-token"
+    },
+    {
+      "client": "mobile",
+      "method": "DELETE",
+      "route": "api/users/me/photo"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/users/me/photo"
+    },
+    {
+      "client": "mobile",
+      "method": "PUT",
+      "route": "api/users/me/photo"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/users/me/qr.png"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/wallet"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/wallet/top-up"
+    },
+    {
+      "client": "mobile",
+      "method": "GET",
+      "route": "api/wallet/transactions"
+    },
+    {
+      "client": "mobile",
+      "method": "POST",
+      "route": "api/wallet/vouchers/redeem"
+    },
+    {
+      "client": "provisioning",
+      "method": "GET",
+      "route": "api/releases/latest/{}/{}"
+    }
+  ],
+  "events": [
+    {
+      "client": "kiosk",
+      "name": "DeviceActivated"
+    },
+    {
+      "client": "kiosk",
+      "name": "DeviceRevoked"
+    },
+    {
+      "client": "kiosk",
+      "name": "JobAdded"
+    },
+    {
+      "client": "kiosk",
+      "name": "JobCancelled"
+    },
+    {
+      "client": "kiosk",
+      "name": "KioskCommand"
+    },
+    {
+      "client": "kiosk",
+      "name": "KioskConfigChanged"
+    },
+    {
+      "client": "kiosk",
+      "name": "PairingCodeRenewed"
+    },
+    {
+      "client": "kiosk",
+      "name": "PaymentConfirmed"
+    },
+    {
+      "client": "kiosk",
+      "name": "PrinterConfigChanged"
+    },
+    {
+      "client": "kiosk",
+      "name": "QueueUpdated"
+    },
+    {
+      "client": "kiosk",
+      "name": "SessionClosed"
+    },
+    {
+      "client": "kiosk",
+      "name": "SessionOpened"
+    },
+    {
+      "client": "kiosk",
+      "name": "UpdateAvailable"
+    },
+    {
+      "client": "mobile",
+      "name": "JobStatusChanged"
+    },
+    {
+      "client": "mobile",
+      "name": "Notification"
+    },
+    {
+      "client": "mobile",
+      "name": "PaymentStatusChanged"
+    },
+    {
+      "client": "mobile",
+      "name": "ScheduleDue"
+    },
+    {
+      "client": "mobile",
+      "name": "SessionClosed"
+    }
+  ]
+}

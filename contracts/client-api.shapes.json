@@ -1,0 +1,2507 @@
+{
+  "DELETE api/files/{}": {
+    "response": "untyped"
+  },
+  "DELETE api/prepared-prints/{}": {
+    "response": "untyped"
+  },
+  "DELETE api/schedules/{}": {
+    "response": "untyped"
+  },
+  "DELETE api/sessions/{}": {
+    "response": "untyped"
+  },
+  "DELETE api/users/me/photo": {
+    "response": "untyped"
+  },
+  "GET api/consents/pending": {
+    "response": {
+      "list": {
+        "docType": "enum(Privacy|ScanNotice|Terms)",
+        "version": "string"
+      }
+    }
+  },
+  "GET api/contact": {
+    "response": {
+      "list": {
+        "kind": "enum(Email|Phone|Telegram|WhatsApp)",
+        "link": "string",
+        "value": "string"
+      }
+    }
+  },
+  "GET api/devices/me": {
+    "response": {
+      "deviceId": "guid",
+      "hasValidPairingCode": "bool",
+      "kioskCode": "string?",
+      "kioskId": "guid?",
+      "pairingCodeExpiresAt": "datetime?",
+      "status": "enum(Active|Expired|Pending|Revoked)"
+    }
+  },
+  "GET api/error-tracking/{}": {
+    "response": {
+      "dsn": "string?",
+      "environment": "string"
+    }
+  },
+  "GET api/features": {
+    "response": {
+      "map": "bool"
+    }
+  },
+  "GET api/files": {
+    "response": {
+      "items": {
+        "list": {
+          "autoDelete": "string",
+          "createdAt": "datetime",
+          "currentExtension": "string?",
+          "documentType": "string?",
+          "editLocked": "bool",
+          "extension": "string",
+          "failureReason": "string?",
+          "fileName": "string",
+          "hasLayout": "bool",
+          "id": "guid",
+          "isSensitive": "bool",
+          "mediaType": "string",
+          "pageCount": "integer",
+          "physicalHeightMm": "number?",
+          "physicalWidthMm": "number?",
+          "realSizePaper": "string?",
+          "sizeBytes": "integer",
+          "source": "string",
+          "status": "string",
+          "versionCount": "integer"
+        }
+      },
+      "total": "integer"
+    }
+  },
+  "GET api/files/formats": {
+    "response": {
+      "list": "string"
+    }
+  },
+  "GET api/files/{}": {
+    "response": {
+      "autoDelete": "string",
+      "createdAt": "datetime",
+      "currentExtension": "string?",
+      "documentType": "string?",
+      "editLocked": "bool",
+      "extension": "string",
+      "failureReason": "string?",
+      "fileName": "string",
+      "hasLayout": "bool",
+      "id": "guid",
+      "isSensitive": "bool",
+      "mediaType": "string",
+      "pageCount": "integer",
+      "physicalHeightMm": "number?",
+      "physicalWidthMm": "number?",
+      "realSizePaper": "string?",
+      "sizeBytes": "integer",
+      "source": "string",
+      "status": "string",
+      "versionCount": "integer"
+    }
+  },
+  "GET api/files/{}/content": {
+    "response": "untyped"
+  },
+  "GET api/files/{}/layout": {
+    "response": {
+      "assets": {
+        "list": {
+          "mediaType": "string",
+          "name": "string",
+          "sizeBytes": "integer"
+        }
+      },
+      "fileId": "guid",
+      "layout": "json"
+    }
+  },
+  "GET api/files/{}/layout/assets/{}": {
+    "response": "untyped"
+  },
+  "GET api/files/{}/pages/{}.png": {
+    "response": "untyped"
+  },
+  "GET api/files/{}/versions": {
+    "response": {
+      "list": {
+        "createdAt": "datetime",
+        "extension": "string",
+        "isCurrent": "bool",
+        "note": "string?",
+        "number": "integer",
+        "sizeBytes": "integer"
+      }
+    }
+  },
+  "GET api/files/{}/versions/{}/content": {
+    "response": "untyped"
+  },
+  "GET api/kiosks": {
+    "response": {
+      "items": {
+        "list": {
+          "address": "string",
+          "code": "string",
+          "distanceKm": "number?",
+          "id": "guid",
+          "lat": "number",
+          "lng": "number",
+          "name": "string",
+          "photoUrl": "string?",
+          "queueLength": "integer?",
+          "status": "string"
+        }
+      }
+    }
+  },
+  "GET api/kiosks/me/branding/image": {
+    "response": "untyped"
+  },
+  "GET api/kiosks/me/commands": {
+    "response": {
+      "list": {
+        "completedAt": "datetime?",
+        "createdAt": "datetime",
+        "id": "guid",
+        "kioskId": "guid",
+        "reason": "string?",
+        "result": "string?",
+        "status": "string",
+        "type": "string"
+      }
+    }
+  },
+  "GET api/kiosks/me/config": {
+    "response": {
+      "adminPinHash": "string?",
+      "allowedFormats": {
+        "list?": "string"
+      },
+      "availablePrinters": {
+        "list": {
+          "detectedCapabilities": {
+            "a3": "bool",
+            "color": "bool",
+            "duplex": "bool"
+          },
+          "driverName": "string?",
+          "isOnline": "bool",
+          "name": "string"
+        }
+      },
+      "branding": {
+        "?": true,
+        "imageVersion": "integer?",
+        "layout": {
+          "?": true,
+          "cards": {
+            "list": "string"
+          },
+          "features": {
+            "list": "string"
+          },
+          "imageLeft": "bool"
+        },
+        "texts": {
+          "map": {
+            "map": "string"
+          }
+        }
+      },
+      "cacheTtlHours": "integer",
+      "camera": {
+        "?": true,
+        "archive": "bool",
+        "fps": "integer",
+        "keyId": "string",
+        "maxDiskGb": "integer",
+        "mode": "string",
+        "publicKey": "string",
+        "quality": "string",
+        "resolution": "string",
+        "retentionDays": "integer"
+      },
+      "code": "string",
+      "defaultLanguage": "string",
+      "effectiveCapabilities": {
+        "a3": "bool",
+        "color": "bool",
+        "duplex": "bool"
+      },
+      "features": {
+        "map": "bool"
+      },
+      "heartbeatSeconds": "integer",
+      "idleResetSeconds": "integer",
+      "kioskId": "guid",
+      "maxFileSizeMb": "integer",
+      "maxPages": "integer",
+      "name": "string",
+      "paperBlockWhenInsufficient": "bool",
+      "paperStock": {
+        "map": {
+          "capacity": "integer",
+          "current": "integer"
+        }
+      },
+      "prices": {
+        "?": true,
+        "bwPerSide": "number",
+        "campaignName": "string?",
+        "campaignPercent": "number",
+        "colorPerSide": "number",
+        "currency": "string",
+        "minOrder": "number",
+        "paperMultipliers": {
+          "map": "number"
+        },
+        "profileName": "string",
+        "tierMode": "enum(Graduated|WholeOrder)",
+        "tiers": {
+          "list": {
+            "bwPerSide": "number?",
+            "colorPerSide": "number?",
+            "discountPercent": "number",
+            "minSides": "integer"
+          }
+        }
+      },
+      "pricingProfileId": "guid?",
+      "queueDisplayLimit": "integer",
+      "selectedPrinter": "string?",
+      "serverTime": "datetime",
+      "sleep": {
+        "?": true,
+        "afterIdleMinutes": "integer",
+        "enabled": "bool",
+        "window": "string"
+      },
+      "status": "enum(Disabled|Maintenance|NotActivated|NotConfigured|Offline|Online|Paused)",
+      "telemetrySeconds": "integer",
+      "update": {
+        "?": true,
+        "checkIntervalMinutes": "integer",
+        "healthTimeoutMinutes": "integer",
+        "keepVersions": "integer",
+        "maxIdleWaitMinutes": "integer",
+        "maxLogUploadMb": "integer",
+        "window": "string"
+      }
+    }
+  },
+  "GET api/kiosks/me/operator-logins/{}": {
+    "response": {
+      "canChangeQueue": "bool",
+      "canPause": "bool",
+      "canSelectPrinter": "bool",
+      "expiresAt": "datetime",
+      "id": "guid",
+      "operatorName": "string?",
+      "status": "string"
+    }
+  },
+  "GET api/kiosks/me/queue": {
+    "response": {
+      "list": {
+        "copies": "integer",
+        "fileName": "string?",
+        "jobCode": "string",
+        "jobId": "guid",
+        "pages": "integer",
+        "position": "integer",
+        "queuedAt": "datetime?",
+        "status": "string",
+        "userInitial": "string?"
+      }
+    }
+  },
+  "GET api/kiosks/me/sessions": {
+    "response": {
+      "list": {
+        "expiresAt": "datetime",
+        "sessionId": "guid"
+      }
+    }
+  },
+  "GET api/kiosks/me/update": {
+    "response": {
+      "keySet": "string",
+      "offers": {
+        "list": {
+          "component": "string",
+          "download": "string",
+          "manifest": "string",
+          "releaseId": "guid",
+          "signature": "string",
+          "size": "integer",
+          "urgent": "bool",
+          "version": "string"
+        }
+      },
+      "platform": "string?",
+      "withdrawn": {
+        "list": "string"
+      }
+    }
+  },
+  "GET api/kiosks/{}": {
+    "response": {
+      "address": "string",
+      "capabilities": {
+        "a3": "bool",
+        "color": "bool",
+        "duplex": "bool"
+      },
+      "code": "string",
+      "id": "guid",
+      "lat": "number",
+      "lng": "number",
+      "name": "string",
+      "paper": {
+        "list": {
+          "availableSheets": "integer?",
+          "size": "string",
+          "state": "string"
+        }
+      },
+      "photoUrl": "string?",
+      "prices": {
+        "?": true,
+        "bwPerSide": "number",
+        "campaignName": "string?",
+        "campaignPercent": "number",
+        "colorPerSide": "number",
+        "currency": "string",
+        "minOrder": "number",
+        "paperMultipliers": {
+          "map": "number"
+        },
+        "profileName": "string",
+        "tierMode": "enum(Graduated|WholeOrder)",
+        "tiers": {
+          "list": {
+            "bwPerSide": "number?",
+            "colorPerSide": "number?",
+            "discountPercent": "number",
+            "minSides": "integer"
+          }
+        }
+      },
+      "queueLength": "integer",
+      "status": "string"
+    }
+  },
+  "GET api/kiosks/{}/queue": {
+    "response": {
+      "entries": {
+        "list": {
+          "isMine": "bool",
+          "jobCode": "string?",
+          "position": "integer",
+          "printedSides": "integer",
+          "readyInMinutes": "integer",
+          "sides": "integer",
+          "status": "string"
+        }
+      },
+      "kioskId": "guid",
+      "length": "integer"
+    }
+  },
+  "GET api/legal/{}": {
+    "response": {
+      "content": "string",
+      "docType": "enum(Privacy|ScanNotice|Terms)",
+      "language": "string",
+      "publishedAt": "datetime",
+      "version": "string"
+    }
+  },
+  "GET api/map/config": {
+    "response": {
+      "attribution": {
+        "list": {
+          "label": "string",
+          "url": "string"
+        }
+      },
+      "styleUrl": "string"
+    }
+  },
+  "GET api/me/claims": {
+    "response": {
+      "list": {
+        "channel": "string",
+        "contact": "string?",
+        "createdAt": "datetime",
+        "id": "guid",
+        "jobCode": "string?",
+        "jobId": "guid?",
+        "kioskId": "guid?",
+        "photoCount": "integer",
+        "repliedAt": "datetime?",
+        "reply": "string?",
+        "status": "string",
+        "text": "string",
+        "userId": "guid?"
+      }
+    }
+  },
+  "GET api/notifications": {
+    "response": {
+      "items": {
+        "list": {
+          "body": "string",
+          "createdAt": "datetime",
+          "id": "guid",
+          "link": "string?",
+          "readAt": "datetime?",
+          "title": "string",
+          "type": "string"
+        }
+      },
+      "next": "datetime?",
+      "unread": "integer"
+    }
+  },
+  "GET api/payments/{}": {
+    "response": {
+      "amount": "number",
+      "currency": "string",
+      "discount": "number",
+      "expiresAt": "datetime",
+      "id": "guid",
+      "jobCode": "string",
+      "jobId": "guid",
+      "method": "string",
+      "paidAt": "datetime?",
+      "promoCode": "string?",
+      "promoRefusal": "string?",
+      "qrContent": "string?",
+      "secondsLeft": "integer",
+      "status": "string"
+    }
+  },
+  "GET api/payments/{}/app": {
+    "response": {
+      "amount": "number",
+      "bonusPages": "integer",
+      "bonusPagesUsable": "integer",
+      "bonusValue": "number",
+      "collectAtKiosk": "bool",
+      "color": "bool",
+      "copies": "integer",
+      "currency": "string",
+      "duplex": "bool",
+      "expiresAt": "datetime",
+      "fileName": "string?",
+      "id": "guid",
+      "jobCode": "string?",
+      "kioskCode": "string?",
+      "kioskName": "string?",
+      "method": "string?",
+      "pages": "integer",
+      "paidAt": "datetime?",
+      "paper": "string?",
+      "promoCode": "string?",
+      "promoDiscount": "number",
+      "promoDiscountWithBonus": "number",
+      "promoRefusal": "string?",
+      "scheduledAt": "datetime?",
+      "secondsLeft": "integer",
+      "status": "string",
+      "walletBalance": "number"
+    }
+  },
+  "GET api/payments/{}/fiscal": {
+    "response": {
+      "fiscalDocumentNumber": "string?",
+      "fiscalId": "string?",
+      "issuedAt": "datetime?",
+      "receiptId": "guid",
+      "status": "string",
+      "verificationUrl": "string?"
+    }
+  },
+  "GET api/prepared-prints": {
+    "response": {
+      "items": {
+        "list": {
+          "amount": "number?",
+          "collectBy": "datetime?",
+          "createdAt": "datetime",
+          "currency": "string?",
+          "fileId": "guid",
+          "fileName": "string",
+          "id": "guid",
+          "jobCode": "string?",
+          "kind": "string",
+          "kioskCode": "string?",
+          "kioskId": "guid?",
+          "kioskName": "string?",
+          "options": {
+            "?": true,
+            "color": "bool",
+            "copies": "integer",
+            "duplex": "bool",
+            "orientation": "enum(Auto|Landscape|Portrait)",
+            "pageRange": "string?",
+            "pagesPerSheet": "integer",
+            "paper": "string",
+            "scaling": "enum(Actual|Fit)"
+          },
+          "pages": "integer",
+          "preset": {
+            "?": true,
+            "color": "bool?",
+            "copies": "integer?",
+            "duplex": "bool?",
+            "pageRange": "string?",
+            "pagesPerSheet": "integer?",
+            "paper": "string?"
+          },
+          "state": "string"
+        }
+      }
+    }
+  },
+  "GET api/print-jobs/by-code/{}": {
+    "response": {
+      "cancelReason": "string?",
+      "createdAt": "datetime",
+      "errorReason": "string?",
+      "fileName": "string?",
+      "finishedAt": "datetime?",
+      "id": "guid",
+      "jobCode": "string",
+      "kioskId": "guid",
+      "options": {
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "orientation": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "scaling": "enum(Actual|Fit)"
+      },
+      "pageCount": "integer",
+      "paymentSkipped": "bool",
+      "price": {
+        "amountDue": "number",
+        "basePrice": "number",
+        "currency": "string",
+        "discountPercent": "number",
+        "minimumApplied": "bool",
+        "profileId": "guid",
+        "profileName": "string",
+        "promoCode": "string?",
+        "promoDiscount": "number",
+        "sheets": "integer",
+        "sides": "integer",
+        "takenAt": "datetime",
+        "total": "number",
+        "volumeDiscount": "number"
+      },
+      "printedSheets": "integer",
+      "printedSides": "integer",
+      "queuePosition": "integer?",
+      "queuedAt": "datetime?",
+      "requiredSheets": "integer",
+      "selectedPages": "integer",
+      "source": "string",
+      "status": "string"
+    }
+  },
+  "GET api/print-jobs/my": {
+    "response": {
+      "list": {
+        "amount": "number",
+        "canCancel": "bool",
+        "color": "bool",
+        "copies": "integer",
+        "createdAt": "datetime",
+        "currency": "string",
+        "duplex": "bool",
+        "fileId": "guid?",
+        "fileName": "string?",
+        "finishedAt": "datetime?",
+        "held": "bool",
+        "id": "guid",
+        "jobCode": "string",
+        "kioskCode": "string?",
+        "kioskId": "guid",
+        "kioskName": "string?",
+        "kioskStopped": "bool",
+        "pageRange": "string?",
+        "pages": "integer",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "paymentId": "guid?",
+        "printedSides": "integer",
+        "reason": "string?",
+        "scheduledAt": "datetime?",
+        "status": "string"
+      }
+    }
+  },
+  "GET api/print-jobs/{}": {
+    "response": {
+      "cancelReason": "string?",
+      "createdAt": "datetime",
+      "errorReason": "string?",
+      "fileName": "string?",
+      "finishedAt": "datetime?",
+      "id": "guid",
+      "jobCode": "string",
+      "kioskId": "guid",
+      "options": {
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "orientation": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "scaling": "enum(Actual|Fit)"
+      },
+      "pageCount": "integer",
+      "paymentSkipped": "bool",
+      "price": {
+        "amountDue": "number",
+        "basePrice": "number",
+        "currency": "string",
+        "discountPercent": "number",
+        "minimumApplied": "bool",
+        "profileId": "guid",
+        "profileName": "string",
+        "promoCode": "string?",
+        "promoDiscount": "number",
+        "sheets": "integer",
+        "sides": "integer",
+        "takenAt": "datetime",
+        "total": "number",
+        "volumeDiscount": "number"
+      },
+      "printedSheets": "integer",
+      "printedSides": "integer",
+      "queuePosition": "integer?",
+      "queuedAt": "datetime?",
+      "requiredSheets": "integer",
+      "selectedPages": "integer",
+      "source": "string",
+      "status": "string"
+    }
+  },
+  "GET api/print-jobs/{}/file": {
+    "response": "untyped"
+  },
+  "GET api/print-jobs/{}/refunds": {
+    "response": {
+      "list": {
+        "amount": "number",
+        "currency": "string",
+        "destination": "string",
+        "id": "guid",
+        "status": "string",
+        "statusUrl": "string",
+        "voucherCode": "string?"
+      }
+    }
+  },
+  "GET api/receipts": {
+    "response": {
+      "list": {
+        "amount": "number",
+        "createdAt": "datetime",
+        "currency": "string",
+        "emailedCount": "integer",
+        "fiscalShown": "bool",
+        "fiscalStatus": "string",
+        "id": "guid",
+        "jobId": "guid?",
+        "kioskId": "guid?",
+        "number": "string",
+        "paymentId": "guid",
+        "purpose": "string"
+      }
+    }
+  },
+  "GET api/referrals/me": {
+    "response": {
+      "bonusPagesEarned": "integer",
+      "bonusPagesPerInvite": "integer",
+      "code": "string",
+      "invited": "integer",
+      "inviteeBonusPages": "integer",
+      "link": "string",
+      "rewarded": "integer",
+      "waiting": "integer"
+    }
+  },
+  "GET api/referrals/me/qr.png": {
+    "response": "untyped"
+  },
+  "GET api/releases/latest/{}/{}": {
+    "response": {
+      "builtAt": "datetime",
+      "channel": "string",
+      "component": "string",
+      "fileName": "string",
+      "keyId": "string",
+      "keySet": "string",
+      "manifestPath": "string",
+      "minAgentVersion": "string",
+      "packagePath": "string",
+      "platform": "string",
+      "sha256": "string",
+      "signaturePath": "string",
+      "size": "integer",
+      "version": "string"
+    }
+  },
+  "GET api/schedules": {
+    "response": {
+      "items": {
+        "list": {
+          "amount": "number",
+          "autoCancelAt": "datetime?",
+          "createdAt": "datetime",
+          "currency": "string",
+          "fileId": "guid",
+          "fileName": "string",
+          "id": "guid",
+          "jobCode": "string",
+          "jobId": "guid",
+          "jobStatus": "string",
+          "kioskCode": "string?",
+          "kioskId": "guid",
+          "kioskName": "string?",
+          "options": {
+            "color": "bool",
+            "copies": "integer",
+            "duplex": "bool",
+            "orientation": "enum(Auto|Landscape|Portrait)",
+            "pageRange": "string?",
+            "pagesPerSheet": "integer",
+            "paper": "string",
+            "scaling": "enum(Actual|Fit)"
+          },
+          "pages": "integer",
+          "paymentId": "guid",
+          "scheduledAt": "datetime",
+          "status": "string"
+        }
+      }
+    }
+  },
+  "GET api/sessions/current": {
+    "response": {
+      "expiresAt": "datetime",
+      "id": "guid",
+      "kioskCode": "string",
+      "kioskId": "guid",
+      "kioskName": "string",
+      "ttlMinutes": "integer"
+    }
+  },
+  "GET api/shares/received": {
+    "response": {
+      "items": {
+        "list": {
+          "availability": "string",
+          "createdAt": "datetime",
+          "fileName": "string",
+          "id": "guid",
+          "isSensitive": "bool",
+          "message": "string?",
+          "otherPublicId": "string",
+          "pageCount": "integer",
+          "savedAt": "datetime?",
+          "savedFileId": "guid?"
+        }
+      }
+    }
+  },
+  "GET api/shares/sent": {
+    "response": {
+      "items": {
+        "list": {
+          "availability": "string",
+          "createdAt": "datetime",
+          "fileName": "string",
+          "id": "guid",
+          "isSensitive": "bool",
+          "message": "string?",
+          "otherPublicId": "string",
+          "pageCount": "integer",
+          "savedAt": "datetime?",
+          "savedFileId": "guid?"
+        }
+      }
+    }
+  },
+  "GET api/shares/{}/pages/{}.png": {
+    "response": "untyped"
+  },
+  "GET api/users/me/delete": {
+    "response": {
+      "balance": "number",
+      "blockers": {
+        "activePrints": "integer",
+        "any": "bool",
+        "pendingRefunds": "integer",
+        "scheduledPrints": "integer",
+        "uncollectedOrders": "integer"
+      },
+      "bonusPages": "integer",
+      "currency": "string"
+    }
+  },
+  "GET api/users/me/export": {
+    "response": {
+      "downloadUrl": "string?",
+      "expiresAt": "datetime?",
+      "failureReason": "string?",
+      "id": "guid",
+      "includesFiles": "bool",
+      "readyAt": "datetime?",
+      "requestedAt": "datetime",
+      "sizeBytes": "integer",
+      "status": "string"
+    }
+  },
+  "GET api/users/me/photo": {
+    "response": "untyped"
+  },
+  "GET api/users/me/qr.png": {
+    "response": "untyped"
+  },
+  "GET api/wallet": {
+    "response": {
+      "balance": "number",
+      "bonusPages": "integer",
+      "currency": "string"
+    }
+  },
+  "GET api/wallet/transactions": {
+    "response": {
+      "items": {
+        "list": {
+          "amount": "number",
+          "balanceAfter": "number",
+          "bonusPages": "integer",
+          "bonusPagesAfter": "integer",
+          "createdAt": "datetime",
+          "id": "guid",
+          "note": "string?",
+          "type": "string"
+        }
+      },
+      "page": "integer",
+      "pageSize": "integer",
+      "total": "integer"
+    }
+  },
+  "POST api/auth/confirm-email": {
+    "request": {
+      "code!": "string",
+      "deviceId": "string?",
+      "email!": "string"
+    },
+    "response": {
+      "accessToken": "string",
+      "accessTokenExpiresAt": "datetime",
+      "refreshToken": "string",
+      "refreshTokenExpiresAt": "datetime",
+      "user": {
+        "email": "string",
+        "emailConfirmed": "bool",
+        "fullName": "string?",
+        "id": "guid",
+        "language": "string",
+        "pendingConsents": {
+          "list": {
+            "docType": "enum(Privacy|ScanNotice|Terms)",
+            "version": "string"
+          }
+        },
+        "publicId": "string"
+      }
+    }
+  },
+  "POST api/auth/login": {
+    "request": {
+      "deviceId": "string?",
+      "email!": "string",
+      "password!": "string"
+    },
+    "response": {
+      "accessToken": "string",
+      "accessTokenExpiresAt": "datetime",
+      "refreshToken": "string",
+      "refreshTokenExpiresAt": "datetime",
+      "user": {
+        "email": "string",
+        "emailConfirmed": "bool",
+        "fullName": "string?",
+        "id": "guid",
+        "language": "string",
+        "pendingConsents": {
+          "list": {
+            "docType": "enum(Privacy|ScanNotice|Terms)",
+            "version": "string"
+          }
+        },
+        "publicId": "string"
+      }
+    }
+  },
+  "POST api/auth/logout": {
+    "request": {
+      "fcmToken": "string?",
+      "refreshToken!": "string"
+    },
+    "response": "untyped"
+  },
+  "POST api/auth/refresh": {
+    "request": {
+      "deviceId": "string?",
+      "refreshToken!": "string"
+    },
+    "response": {
+      "accessToken": "string",
+      "accessTokenExpiresAt": "datetime",
+      "refreshToken": "string",
+      "refreshTokenExpiresAt": "datetime",
+      "user": {
+        "email": "string",
+        "emailConfirmed": "bool",
+        "fullName": "string?",
+        "id": "guid",
+        "language": "string",
+        "pendingConsents": {
+          "list": {
+            "docType": "enum(Privacy|ScanNotice|Terms)",
+            "version": "string"
+          }
+        },
+        "publicId": "string"
+      }
+    }
+  },
+  "POST api/auth/register": {
+    "request": {
+      "consents": {
+        "list?": {
+          "docType!": "enum(Privacy|ScanNotice|Terms)",
+          "version!": "string"
+        }
+      },
+      "deviceId": "string?",
+      "email!": "string",
+      "fullName": "string?",
+      "language": "string?",
+      "password!": "string",
+      "referralCode": "string?"
+    },
+    "response": {
+      "confirmationRequired": "bool",
+      "email": "string",
+      "userId": "guid"
+    }
+  },
+  "POST api/auth/resend-confirmation": {
+    "request": {
+      "email!": "string"
+    },
+    "response": "untyped"
+  },
+  "POST api/consents": {
+    "request": {
+      "consents!": {
+        "list": {
+          "docType!": "enum(Privacy|ScanNotice|Terms)",
+          "version!": "string"
+        }
+      },
+      "deviceId": "string?"
+    },
+    "response": "untyped"
+  },
+  "POST api/devices/challenge": {
+    "request": {
+      "deviceId!": "guid"
+    },
+    "response": {
+      "expiresAt": "datetime",
+      "nonce": "string"
+    }
+  },
+  "POST api/devices/me/pairing-code": {
+    "response": {
+      "expiresAt": "datetime",
+      "pairingCode": "string"
+    }
+  },
+  "POST api/devices/register": {
+    "request": {
+      "agentVersion": "string?",
+      "appVersion": "string?",
+      "enrollmentToken": "string?",
+      "fingerprint!": {
+        "cpu": "string?",
+        "hostname": "string?",
+        "macAddresses": {
+          "list?": "string"
+        },
+        "machineId": "string?",
+        "os": "string?",
+        "osVersion": "string?",
+        "ramGb!": "integer",
+        "screenResolution": "string?"
+      },
+      "platform!": "enum(Linux|Unknown|Windows)",
+      "printers": {
+        "list?": {
+          "a3!": "bool",
+          "color!": "bool",
+          "driverName": "string?",
+          "duplex!": "bool",
+          "isOnline!": "bool",
+          "name!": "string"
+        }
+      },
+      "provisioningVersion": "string?",
+      "publicKey!": "string"
+    },
+    "response": {
+      "activated": "bool",
+      "deviceId": "guid",
+      "kioskCode": "string?",
+      "kioskId": "guid?",
+      "pairingCode": "string?",
+      "pairingCodeExpiresAt": "datetime?"
+    }
+  },
+  "POST api/devices/token": {
+    "request": {
+      "deviceId!": "guid",
+      "nonce!": "string",
+      "signature!": "string"
+    },
+    "response": {
+      "accessToken": "string",
+      "expiresAt": "datetime",
+      "kioskCode": "string?",
+      "kioskId": "guid?",
+      "tokenType": "string"
+    }
+  },
+  "POST api/files": {
+    "response": {
+      "autoDelete": "string",
+      "createdAt": "datetime",
+      "currentExtension": "string?",
+      "documentType": "string?",
+      "editLocked": "bool",
+      "extension": "string",
+      "failureReason": "string?",
+      "fileName": "string",
+      "hasLayout": "bool",
+      "id": "guid",
+      "isSensitive": "bool",
+      "mediaType": "string",
+      "pageCount": "integer",
+      "physicalHeightMm": "number?",
+      "physicalWidthMm": "number?",
+      "realSizePaper": "string?",
+      "sizeBytes": "integer",
+      "source": "string",
+      "status": "string",
+      "versionCount": "integer"
+    }
+  },
+  "POST api/files/layout": {
+    "request": {
+      "fileName": "string?",
+      "layout!": "json"
+    },
+    "response": {
+      "autoDelete": "string",
+      "createdAt": "datetime",
+      "currentExtension": "string?",
+      "documentType": "string?",
+      "editLocked": "bool",
+      "extension": "string",
+      "failureReason": "string?",
+      "fileName": "string",
+      "hasLayout": "bool",
+      "id": "guid",
+      "isSensitive": "bool",
+      "mediaType": "string",
+      "pageCount": "integer",
+      "physicalHeightMm": "number?",
+      "physicalWidthMm": "number?",
+      "realSizePaper": "string?",
+      "sizeBytes": "integer",
+      "source": "string",
+      "status": "string",
+      "versionCount": "integer"
+    }
+  },
+  "POST api/files/layout/upload": {
+    "response": {
+      "autoDelete": "string",
+      "createdAt": "datetime",
+      "currentExtension": "string?",
+      "documentType": "string?",
+      "editLocked": "bool",
+      "extension": "string",
+      "failureReason": "string?",
+      "fileName": "string",
+      "hasLayout": "bool",
+      "id": "guid",
+      "isSensitive": "bool",
+      "mediaType": "string",
+      "pageCount": "integer",
+      "physicalHeightMm": "number?",
+      "physicalWidthMm": "number?",
+      "realSizePaper": "string?",
+      "sizeBytes": "integer",
+      "source": "string",
+      "status": "string",
+      "versionCount": "integer"
+    }
+  },
+  "POST api/files/scan": {
+    "response": {
+      "autoDelete": "string",
+      "createdAt": "datetime",
+      "currentExtension": "string?",
+      "documentType": "string?",
+      "editLocked": "bool",
+      "extension": "string",
+      "failureReason": "string?",
+      "fileName": "string",
+      "hasLayout": "bool",
+      "id": "guid",
+      "isSensitive": "bool",
+      "mediaType": "string",
+      "pageCount": "integer",
+      "physicalHeightMm": "number?",
+      "physicalWidthMm": "number?",
+      "realSizePaper": "string?",
+      "sizeBytes": "integer",
+      "source": "string",
+      "status": "string",
+      "versionCount": "integer"
+    }
+  },
+  "POST api/files/{}/edit": {
+    "request": {
+      "image": {
+        "?": true,
+        "brightness": "integer",
+        "contrast": "integer",
+        "crop": {
+          "?": true,
+          "height!": "number",
+          "width!": "number",
+          "x!": "number",
+          "y!": "number"
+        },
+        "grayscale": "bool",
+        "rotate": "integer"
+      },
+      "pages": {
+        "list?": {
+          "page!": "integer",
+          "rotate": "integer"
+        }
+      },
+      "text": "string?"
+    },
+    "response": {
+      "autoDelete": "string",
+      "createdAt": "datetime",
+      "currentExtension": "string?",
+      "documentType": "string?",
+      "editLocked": "bool",
+      "extension": "string",
+      "failureReason": "string?",
+      "fileName": "string",
+      "hasLayout": "bool",
+      "id": "guid",
+      "isSensitive": "bool",
+      "mediaType": "string",
+      "pageCount": "integer",
+      "physicalHeightMm": "number?",
+      "physicalWidthMm": "number?",
+      "realSizePaper": "string?",
+      "sizeBytes": "integer",
+      "source": "string",
+      "status": "string",
+      "versionCount": "integer"
+    }
+  },
+  "POST api/files/{}/office-session": {
+    "response": {
+      "accessToken": "string",
+      "accessTokenTtl": "integer",
+      "editorPath": "string"
+    }
+  },
+  "POST api/incidents": {
+    "request": {
+      "type": "string?"
+    },
+    "response": "untyped"
+  },
+  "POST api/kiosks/heartbeat": {
+    "request": {
+      "agentVersion": "string?",
+      "appVersion": "string?",
+      "printerOnline!": "bool",
+      "printerProblem": "string?",
+      "provisioningVersion": "string?",
+      "safeMode": "bool",
+      "sleepingUntil": "datetime?"
+    },
+    "response": {
+      "configurationChangedAt": "datetime",
+      "nextInSeconds": "integer",
+      "serverTime": "datetime",
+      "status": "enum(Disabled|Maintenance|NotActivated|NotConfigured|Offline|Online|Paused)"
+    }
+  },
+  "POST api/kiosks/me/analytics": {
+    "request": {
+      "events": {
+        "list?": {
+          "at!": "datetime",
+          "event": "string?",
+          "props": {
+            "map?": "string?"
+          },
+          "sessionId": "string?"
+        }
+      }
+    },
+    "response": {
+      "accepted": "integer",
+      "rejected": "integer"
+    }
+  },
+  "POST api/kiosks/me/camera/segments": {
+    "response": {
+      "alreadyStored": "bool",
+      "bytes": "integer",
+      "end": "datetime",
+      "expiresAt": "datetime",
+      "id": "guid",
+      "start": "datetime"
+    }
+  },
+  "POST api/kiosks/me/commands/{}/ack": {
+    "response": {
+      "completedAt": "datetime?",
+      "createdAt": "datetime",
+      "id": "guid",
+      "kioskId": "guid",
+      "reason": "string?",
+      "result": "string?",
+      "status": "string",
+      "type": "string"
+    }
+  },
+  "POST api/kiosks/me/commands/{}/result": {
+    "request": {
+      "messageKey": "string?",
+      "sheetsUsed!": "integer",
+      "succeeded!": "bool"
+    },
+    "response": {
+      "completedAt": "datetime?",
+      "createdAt": "datetime",
+      "id": "guid",
+      "kioskId": "guid",
+      "reason": "string?",
+      "result": "string?",
+      "status": "string",
+      "type": "string"
+    }
+  },
+  "POST api/kiosks/me/logs": {
+    "response": {
+      "commandId": "guid?",
+      "createdAt": "datetime",
+      "expiresAt": "datetime",
+      "id": "guid",
+      "kioskId": "guid",
+      "lines": "integer",
+      "redacted": "integer",
+      "size": "integer"
+    }
+  },
+  "POST api/kiosks/me/operator-logins": {
+    "response": {
+      "expiresAt": "datetime",
+      "id": "guid",
+      "qr": "string"
+    }
+  },
+  "POST api/kiosks/me/operator-logins/{}/actions": {
+    "request": {
+      "action!": "enum(Pause|Resume|SelectPrinter|SetQueueLimit)",
+      "limit": "integer?",
+      "printer": "string?"
+    },
+    "response": "untyped"
+  },
+  "POST api/kiosks/me/operator-logins/{}/end": {
+    "response": "untyped"
+  },
+  "POST api/kiosks/me/printers/telemetry": {
+    "request": {
+      "printers": {
+        "list?": {
+          "address": "string?",
+          "colorPages": "integer?",
+          "connection": "string?",
+          "driverName": "string?",
+          "driverVersion": "string?",
+          "features": {
+            "?": true,
+            "color": "bool?",
+            "duplex": "bool?",
+            "nativeFormats": {
+              "list?": "string"
+            },
+            "paperSizes": {
+              "list?": "string"
+            },
+            "resolutionDpi": "integer?",
+            "trays": {
+              "list?": "string"
+            }
+          },
+          "firmware": "string?",
+          "lastError": "string?",
+          "lifetimePages": "integer?",
+          "macAddress": "string?",
+          "manufacturer": "string?",
+          "model": "string?",
+          "monoPages": "integer?",
+          "name": "string?",
+          "online": "bool?",
+          "serialNumber": "string?",
+          "spoolerJobs": {
+            "list?": {
+              "id": "string?",
+              "sizeBytes": "integer?",
+              "state": "string?",
+              "submittedAt": "datetime?"
+            }
+          },
+          "state": "string?",
+          "stateReasons": {
+            "list?": "string"
+          },
+          "supplies": {
+            "list?": {
+              "color": "string?",
+              "levelPercent": "integer?",
+              "name": "string?",
+              "type": "string?"
+            }
+          },
+          "trays": {
+            "list?": {
+              "levelPercent": "integer?",
+              "media": "string?",
+              "name": "string?"
+            }
+          },
+          "uri": "string?"
+        }
+      }
+    },
+    "response": "untyped"
+  },
+  "POST api/kiosks/me/receipts/{}/email": {
+    "request": {
+      "email": "string?"
+    },
+    "response": {
+      "amount": "number",
+      "createdAt": "datetime",
+      "currency": "string",
+      "emailedCount": "integer",
+      "fiscalShown": "bool",
+      "fiscalStatus": "string",
+      "id": "guid",
+      "jobId": "guid?",
+      "kioskId": "guid?",
+      "number": "string",
+      "paymentId": "guid",
+      "purpose": "string"
+    }
+  },
+  "POST api/kiosks/me/telemetry": {
+    "request": {
+      "app": {
+        "?": true,
+        "lastCrashAt": "datetime?",
+        "screen": "string?",
+        "session": "string?",
+        "startedAt": "datetime?",
+        "version": "string?"
+      },
+      "camera": {
+        "?": true,
+        "connected": "bool?",
+        "enabled": "bool?",
+        "error": "string?",
+        "lastSegmentAt": "datetime?",
+        "lastSentAt": "datetime?",
+        "mode": "string?",
+        "oldestAt": "datetime?",
+        "recording": "bool?",
+        "segments": "integer?",
+        "storedBytes": "integer?",
+        "unsent": "integer?"
+      },
+      "network": {
+        "?": true,
+        "backendLatencyMs": "integer?",
+        "connectionType": "string?",
+        "hubConnected": "bool?",
+        "hubDisconnectedSeconds": "integer?",
+        "hubLastReconnectAt": "datetime?",
+        "localIp": "string?",
+        "wifiSignalPercent": "integer?"
+      },
+      "peripherals": {
+        "?": true,
+        "flashInserted": "bool?",
+        "qrScannerLastReadAt": "datetime?",
+        "screenHeight": "integer?",
+        "screenWidth": "integer?"
+      },
+      "sentAt": "datetime?",
+      "services": {
+        "?": true,
+        "configurationAt": "datetime?",
+        "featureFlags": "string?",
+        "ghostscript": "bool?",
+        "libreOffice": "bool?"
+      },
+      "system": {
+        "?": true,
+        "clockOffsetMs": "integer?",
+        "cpuPercent": "number?",
+        "hostname": "string?",
+        "memoryTotalBytes": "integer?",
+        "memoryUsedBytes": "integer?",
+        "memoryUsedPercent": "number?",
+        "os": "string?",
+        "osVersion": "string?",
+        "spoolDiskFreeBytes": "integer?",
+        "systemDiskFreeBytes": "integer?",
+        "uptimeSeconds": "integer?"
+      },
+      "work": {
+        "?": true,
+        "currentJob": "string?",
+        "failedFlashUploads": "integer?",
+        "jobsToday": "integer?",
+        "pendingCommands": "integer?",
+        "queueLength": "integer?",
+        "sheetsToday": "integer?",
+        "spoolFiles": "integer?"
+      }
+    },
+    "response": "untyped"
+  },
+  "POST api/kiosks/me/update-status": {
+    "request": {
+      "component!": "enum(Agent|App|Provisioning)",
+      "messageKey": "string?",
+      "status!": "enum(Applying|Downloading|Draining|Failed|HealthCheck|Ready|RolledBack|Succeeded|WaitingForIdle)",
+      "version": "string?"
+    },
+    "response": "untyped"
+  },
+  "POST api/me/claims": {
+    "request": {
+      "jobId!": "guid",
+      "text": "string?"
+    },
+    "response": {
+      "channel": "string",
+      "contact": "string?",
+      "createdAt": "datetime",
+      "id": "guid",
+      "jobCode": "string?",
+      "jobId": "guid?",
+      "kioskId": "guid?",
+      "photoCount": "integer",
+      "repliedAt": "datetime?",
+      "reply": "string?",
+      "status": "string",
+      "text": "string",
+      "userId": "guid?"
+    }
+  },
+  "POST api/me/claims/{}/photos": {
+    "response": {
+      "channel": "string",
+      "contact": "string?",
+      "createdAt": "datetime",
+      "id": "guid",
+      "jobCode": "string?",
+      "jobId": "guid?",
+      "kioskId": "guid?",
+      "photoCount": "integer",
+      "repliedAt": "datetime?",
+      "reply": "string?",
+      "status": "string",
+      "text": "string",
+      "userId": "guid?"
+    }
+  },
+  "POST api/me/claims/{}/reopen": {
+    "response": {
+      "channel": "string",
+      "contact": "string?",
+      "createdAt": "datetime",
+      "id": "guid",
+      "jobCode": "string?",
+      "jobId": "guid?",
+      "kioskId": "guid?",
+      "photoCount": "integer",
+      "repliedAt": "datetime?",
+      "reply": "string?",
+      "status": "string",
+      "text": "string",
+      "userId": "guid?"
+    }
+  },
+  "POST api/notifications/{}/read": {
+    "response": {
+      "body": "string",
+      "createdAt": "datetime",
+      "id": "guid",
+      "link": "string?",
+      "readAt": "datetime?",
+      "title": "string",
+      "type": "string"
+    }
+  },
+  "POST api/payments/intents": {
+    "request": {
+      "jobId!": "guid",
+      "method!": "string"
+    },
+    "response": {
+      "amount": "number",
+      "currency": "string",
+      "discount": "number",
+      "expiresAt": "datetime",
+      "id": "guid",
+      "jobCode": "string",
+      "jobId": "guid",
+      "method": "string",
+      "paidAt": "datetime?",
+      "promoCode": "string?",
+      "promoRefusal": "string?",
+      "qrContent": "string?",
+      "secondsLeft": "integer",
+      "status": "string"
+    }
+  },
+  "POST api/payments/{}/pay-with-app": {
+    "request": {
+      "expectedAmount": "number?",
+      "promoCode": "string?",
+      "source": "string?",
+      "useBonus!": "bool"
+    },
+    "response": {
+      "amount": "number",
+      "bonusPages": "integer",
+      "bonusPagesUsable": "integer",
+      "bonusValue": "number",
+      "collectAtKiosk": "bool",
+      "color": "bool",
+      "copies": "integer",
+      "currency": "string",
+      "duplex": "bool",
+      "expiresAt": "datetime",
+      "fileName": "string?",
+      "id": "guid",
+      "jobCode": "string?",
+      "kioskCode": "string?",
+      "kioskName": "string?",
+      "method": "string?",
+      "pages": "integer",
+      "paidAt": "datetime?",
+      "paper": "string?",
+      "promoCode": "string?",
+      "promoDiscount": "number",
+      "promoDiscountWithBonus": "number",
+      "promoRefusal": "string?",
+      "scheduledAt": "datetime?",
+      "secondsLeft": "integer",
+      "status": "string",
+      "walletBalance": "number"
+    }
+  },
+  "POST api/prepared-prints": {
+    "request": {
+      "fileId!": "guid",
+      "options": {
+        "?": true,
+        "color": "bool?",
+        "copies": "integer?",
+        "duplex": "bool?",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer?",
+        "paper": "string?"
+      }
+    },
+    "response": {
+      "amount": "number?",
+      "collectBy": "datetime?",
+      "createdAt": "datetime",
+      "currency": "string?",
+      "fileId": "guid",
+      "fileName": "string",
+      "id": "guid",
+      "jobCode": "string?",
+      "kind": "string",
+      "kioskCode": "string?",
+      "kioskId": "guid?",
+      "kioskName": "string?",
+      "options": {
+        "?": true,
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "orientation": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "scaling": "enum(Actual|Fit)"
+      },
+      "pages": "integer",
+      "preset": {
+        "?": true,
+        "color": "bool?",
+        "copies": "integer?",
+        "duplex": "bool?",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer?",
+        "paper": "string?"
+      },
+      "state": "string"
+    }
+  },
+  "POST api/prepared-prints/paid": {
+    "request": {
+      "expectedAmount!": "number",
+      "fileId!": "guid",
+      "kiosk": "string?",
+      "options": {
+        "?": true,
+        "color!": "bool",
+        "copies!": "integer",
+        "duplex!": "bool",
+        "orientation!": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet!": "integer",
+        "paper!": "string",
+        "scaling!": "enum(Actual|Fit)"
+      }
+    },
+    "response": {
+      "amount": "number",
+      "currency": "string",
+      "expiresAt": "datetime",
+      "jobCode": "string",
+      "jobId": "guid",
+      "pages": "integer",
+      "paymentId": "guid",
+      "sheets": "integer"
+    }
+  },
+  "POST api/prepared-prints/paid/{}/cancel": {
+    "response": "untyped"
+  },
+  "POST api/pricing/quote": {
+    "request": {
+      "kioskId": "guid?",
+      "options!": {
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "pageCount!": "integer",
+        "pagesPerSheet": "integer",
+        "paper": "string"
+      },
+      "promoCode": "string?",
+      "useBonus!": "bool"
+    },
+    "response": {
+      "amountDue": "number",
+      "price": {
+        "basePrice": "number",
+        "bonusPages": "integer",
+        "campaignDiscount": "number",
+        "campaignName": "string?",
+        "campaignPercent": "number",
+        "color": "bool",
+        "copies": "integer",
+        "currency": "string",
+        "discountPercent": "number",
+        "duplex": "bool",
+        "finalPrice": "number",
+        "minimumApplied": "bool",
+        "pages": "integer",
+        "paper": "string",
+        "paperMultiplier": "number",
+        "pricePerSide": "number",
+        "promoDiscount": "number",
+        "sheets": "integer",
+        "sides": "integer",
+        "volumeDiscount": "number"
+      },
+      "profileId": "guid",
+      "profileName": "string",
+      "promoCode": "string?",
+      "promoDiscount": "number",
+      "promoRefusal": "string?"
+    }
+  },
+  "POST api/print-jobs": {
+    "request": {
+      "dev": "bool",
+      "localFileName": "string?",
+      "options": {
+        "?": true,
+        "color!": "bool",
+        "copies!": "integer",
+        "duplex!": "bool",
+        "orientation!": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet!": "integer",
+        "paper!": "string",
+        "scaling!": "enum(Actual|Fit)"
+      },
+      "pageCount!": "integer",
+      "promoCode": "string?"
+    },
+    "response": {
+      "cancelReason": "string?",
+      "createdAt": "datetime",
+      "errorReason": "string?",
+      "fileName": "string?",
+      "finishedAt": "datetime?",
+      "id": "guid",
+      "jobCode": "string",
+      "kioskId": "guid",
+      "options": {
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "orientation": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "scaling": "enum(Actual|Fit)"
+      },
+      "pageCount": "integer",
+      "paymentSkipped": "bool",
+      "price": {
+        "amountDue": "number",
+        "basePrice": "number",
+        "currency": "string",
+        "discountPercent": "number",
+        "minimumApplied": "bool",
+        "profileId": "guid",
+        "profileName": "string",
+        "promoCode": "string?",
+        "promoDiscount": "number",
+        "sheets": "integer",
+        "sides": "integer",
+        "takenAt": "datetime",
+        "total": "number",
+        "volumeDiscount": "number"
+      },
+      "printedSheets": "integer",
+      "printedSides": "integer",
+      "queuePosition": "integer?",
+      "queuedAt": "datetime?",
+      "requiredSheets": "integer",
+      "selectedPages": "integer",
+      "source": "string",
+      "status": "string"
+    }
+  },
+  "POST api/print-jobs/my/{}/cancel": {
+    "response": "untyped"
+  },
+  "POST api/print-jobs/pending-for-user": {
+    "request": {
+      "code": "string?"
+    },
+    "response": {
+      "expiresAt": "datetime",
+      "grant": "guid",
+      "items": {
+        "list": {
+          "amount": "number?",
+          "createdAt": "datetime",
+          "currency": "string?",
+          "fileName": "string",
+          "here": "bool",
+          "id": "guid",
+          "kind": "string",
+          "kioskCode": "string?",
+          "options": {
+            "?": true,
+            "color": "bool",
+            "copies": "integer",
+            "duplex": "bool",
+            "orientation": "enum(Auto|Landscape|Portrait)",
+            "pageRange": "string?",
+            "pagesPerSheet": "integer",
+            "paper": "string",
+            "scaling": "enum(Actual|Fit)"
+          },
+          "pages": "integer",
+          "preset": {
+            "?": true,
+            "color": "bool?",
+            "copies": "integer?",
+            "duplex": "bool?",
+            "pageRange": "string?",
+            "pagesPerSheet": "integer?",
+            "paper": "string?"
+          },
+          "realSizePaper": "string?"
+        }
+      }
+    }
+  },
+  "POST api/print-jobs/pending-for-user/paid/{}/release": {
+    "response": {
+      "cancelReason": "string?",
+      "createdAt": "datetime",
+      "errorReason": "string?",
+      "fileName": "string?",
+      "finishedAt": "datetime?",
+      "id": "guid",
+      "jobCode": "string",
+      "kioskId": "guid",
+      "options": {
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "orientation": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "scaling": "enum(Actual|Fit)"
+      },
+      "pageCount": "integer",
+      "paymentSkipped": "bool",
+      "price": {
+        "amountDue": "number",
+        "basePrice": "number",
+        "currency": "string",
+        "discountPercent": "number",
+        "minimumApplied": "bool",
+        "profileId": "guid",
+        "profileName": "string",
+        "promoCode": "string?",
+        "promoDiscount": "number",
+        "sheets": "integer",
+        "sides": "integer",
+        "takenAt": "datetime",
+        "total": "number",
+        "volumeDiscount": "number"
+      },
+      "printedSheets": "integer",
+      "printedSides": "integer",
+      "queuePosition": "integer?",
+      "queuedAt": "datetime?",
+      "requiredSheets": "integer",
+      "selectedPages": "integer",
+      "source": "string",
+      "status": "string"
+    }
+  },
+  "POST api/print-jobs/pending-for-user/prepared/{}": {
+    "request": {
+      "options": {
+        "?": true,
+        "color!": "bool",
+        "copies!": "integer",
+        "duplex!": "bool",
+        "orientation!": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet!": "integer",
+        "paper!": "string",
+        "scaling!": "enum(Actual|Fit)"
+      },
+      "promoCode": "string?"
+    },
+    "response": {
+      "cancelReason": "string?",
+      "createdAt": "datetime",
+      "errorReason": "string?",
+      "fileName": "string?",
+      "finishedAt": "datetime?",
+      "id": "guid",
+      "jobCode": "string",
+      "kioskId": "guid",
+      "options": {
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "orientation": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "scaling": "enum(Actual|Fit)"
+      },
+      "pageCount": "integer",
+      "paymentSkipped": "bool",
+      "price": {
+        "amountDue": "number",
+        "basePrice": "number",
+        "currency": "string",
+        "discountPercent": "number",
+        "minimumApplied": "bool",
+        "profileId": "guid",
+        "profileName": "string",
+        "promoCode": "string?",
+        "promoDiscount": "number",
+        "sheets": "integer",
+        "sides": "integer",
+        "takenAt": "datetime",
+        "total": "number",
+        "volumeDiscount": "number"
+      },
+      "printedSheets": "integer",
+      "printedSides": "integer",
+      "queuePosition": "integer?",
+      "queuedAt": "datetime?",
+      "requiredSheets": "integer",
+      "selectedPages": "integer",
+      "source": "string",
+      "status": "string"
+    }
+  },
+  "POST api/print-jobs/{}/cancel": {
+    "response": {
+      "cancelReason": "string?",
+      "createdAt": "datetime",
+      "errorReason": "string?",
+      "fileName": "string?",
+      "finishedAt": "datetime?",
+      "id": "guid",
+      "jobCode": "string",
+      "kioskId": "guid",
+      "options": {
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "orientation": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "scaling": "enum(Actual|Fit)"
+      },
+      "pageCount": "integer",
+      "paymentSkipped": "bool",
+      "price": {
+        "amountDue": "number",
+        "basePrice": "number",
+        "currency": "string",
+        "discountPercent": "number",
+        "minimumApplied": "bool",
+        "profileId": "guid",
+        "profileName": "string",
+        "promoCode": "string?",
+        "promoDiscount": "number",
+        "sheets": "integer",
+        "sides": "integer",
+        "takenAt": "datetime",
+        "total": "number",
+        "volumeDiscount": "number"
+      },
+      "printedSheets": "integer",
+      "printedSides": "integer",
+      "queuePosition": "integer?",
+      "queuedAt": "datetime?",
+      "requiredSheets": "integer",
+      "selectedPages": "integer",
+      "source": "string",
+      "status": "string"
+    }
+  },
+  "POST api/print-jobs/{}/flash-upload": {
+    "response": {
+      "alreadyKept": "bool",
+      "fileId": "guid",
+      "jobId": "guid"
+    }
+  },
+  "POST api/print-jobs/{}/status": {
+    "request": {
+      "attempt": {
+        "?": true,
+        "counterAfter": "integer?",
+        "counterBefore": "integer?",
+        "counterUnit": "string?",
+        "finishedAt": "datetime?",
+        "number!": "integer",
+        "printer": "string?",
+        "recovered!": "bool",
+        "spoolerJobId": "string?",
+        "startedAt": "datetime?"
+      },
+      "errorCode": "string?",
+      "printedSheets!": "integer",
+      "printedSides!": "integer",
+      "status": "string?"
+    },
+    "response": {
+      "cancelReason": "string?",
+      "createdAt": "datetime",
+      "errorReason": "string?",
+      "fileName": "string?",
+      "finishedAt": "datetime?",
+      "id": "guid",
+      "jobCode": "string",
+      "kioskId": "guid",
+      "options": {
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "orientation": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "scaling": "enum(Actual|Fit)"
+      },
+      "pageCount": "integer",
+      "paymentSkipped": "bool",
+      "price": {
+        "amountDue": "number",
+        "basePrice": "number",
+        "currency": "string",
+        "discountPercent": "number",
+        "minimumApplied": "bool",
+        "profileId": "guid",
+        "profileName": "string",
+        "promoCode": "string?",
+        "promoDiscount": "number",
+        "sheets": "integer",
+        "sides": "integer",
+        "takenAt": "datetime",
+        "total": "number",
+        "volumeDiscount": "number"
+      },
+      "printedSheets": "integer",
+      "printedSides": "integer",
+      "queuePosition": "integer?",
+      "queuedAt": "datetime?",
+      "requiredSheets": "integer",
+      "selectedPages": "integer",
+      "source": "string",
+      "status": "string"
+    }
+  },
+  "POST api/promos/validate": {
+    "request": {
+      "amount!": "number",
+      "code": "string?",
+      "kioskId": "guid?"
+    },
+    "response": {
+      "amountDue": "number",
+      "code": "string",
+      "discount": "number",
+      "reason": "string?",
+      "reasonCode": "string?",
+      "valid": "bool"
+    }
+  },
+  "POST api/receipts/{}/email": {
+    "request": {
+      "?": true,
+      "email": "string?"
+    },
+    "response": {
+      "amount": "number",
+      "createdAt": "datetime",
+      "currency": "string",
+      "emailedCount": "integer",
+      "fiscalShown": "bool",
+      "fiscalStatus": "string",
+      "id": "guid",
+      "jobId": "guid?",
+      "kioskId": "guid?",
+      "number": "string",
+      "paymentId": "guid",
+      "purpose": "string"
+    }
+  },
+  "POST api/schedules": {
+    "request": {
+      "expectedAmount!": "number",
+      "fileId!": "guid",
+      "kiosk": "string?",
+      "options": {
+        "?": true,
+        "color!": "bool",
+        "copies!": "integer",
+        "duplex!": "bool",
+        "orientation!": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet!": "integer",
+        "paper!": "string",
+        "scaling!": "enum(Actual|Fit)"
+      },
+      "scheduledAt!": "datetime"
+    },
+    "response": {
+      "amount": "number",
+      "currency": "string",
+      "jobCode": "string",
+      "jobId": "guid",
+      "paymentExpiresAt": "datetime",
+      "paymentId": "guid",
+      "scheduleId": "guid",
+      "scheduledAt": "datetime"
+    }
+  },
+  "POST api/schedules/{}/print-now": {
+    "response": {
+      "amount": "number",
+      "autoCancelAt": "datetime?",
+      "createdAt": "datetime",
+      "currency": "string",
+      "fileId": "guid",
+      "fileName": "string",
+      "id": "guid",
+      "jobCode": "string",
+      "jobId": "guid",
+      "jobStatus": "string",
+      "kioskCode": "string?",
+      "kioskId": "guid",
+      "kioskName": "string?",
+      "options": {
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "orientation": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "scaling": "enum(Actual|Fit)"
+      },
+      "pages": "integer",
+      "paymentId": "guid",
+      "scheduledAt": "datetime",
+      "status": "string"
+    }
+  },
+  "POST api/sessions": {
+    "request": {
+      "kiosk": "string?"
+    },
+    "response": {
+      "expiresAt": "datetime",
+      "id": "guid",
+      "kioskCode": "string",
+      "kioskId": "guid",
+      "kioskName": "string",
+      "ttlMinutes": "integer"
+    }
+  },
+  "POST api/sessions/{}/print-jobs": {
+    "request": {
+      "fileId!": "guid",
+      "options": {
+        "?": true,
+        "color!": "bool",
+        "copies!": "integer",
+        "duplex!": "bool",
+        "orientation!": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet!": "integer",
+        "paper!": "string",
+        "scaling!": "enum(Actual|Fit)"
+      }
+    },
+    "response": {
+      "amount": "number",
+      "currency": "string",
+      "expiresAt": "datetime",
+      "jobCode": "string",
+      "jobId": "guid",
+      "pages": "integer",
+      "paymentId": "guid",
+      "sheets": "integer"
+    }
+  },
+  "POST api/shares": {
+    "request": {
+      "confirmSensitive!": "bool",
+      "fileId!": "guid",
+      "message": "string?",
+      "toPublicId": "string?"
+    },
+    "response": {
+      "availability": "string",
+      "createdAt": "datetime",
+      "fileName": "string",
+      "id": "guid",
+      "isSensitive": "bool",
+      "message": "string?",
+      "otherPublicId": "string",
+      "pageCount": "integer",
+      "savedAt": "datetime?",
+      "savedFileId": "guid?"
+    }
+  },
+  "POST api/shares/recipient-by-qr": {
+    "response": {
+      "publicId": "string"
+    }
+  },
+  "POST api/shares/{}/save": {
+    "response": {
+      "autoDelete": "string",
+      "createdAt": "datetime",
+      "currentExtension": "string?",
+      "documentType": "string?",
+      "editLocked": "bool",
+      "extension": "string",
+      "failureReason": "string?",
+      "fileName": "string",
+      "hasLayout": "bool",
+      "id": "guid",
+      "isSensitive": "bool",
+      "mediaType": "string",
+      "pageCount": "integer",
+      "physicalHeightMm": "number?",
+      "physicalWidthMm": "number?",
+      "realSizePaper": "string?",
+      "sizeBytes": "integer",
+      "source": "string",
+      "status": "string",
+      "versionCount": "integer"
+    }
+  },
+  "POST api/users/me/delete": {
+    "request": {
+      "confirmation": "string?",
+      "password": "string?"
+    },
+    "response": "untyped"
+  },
+  "POST api/users/me/export": {
+    "response": {
+      "downloadUrl": "string?",
+      "expiresAt": "datetime?",
+      "failureReason": "string?",
+      "id": "guid",
+      "includesFiles": "bool",
+      "readyAt": "datetime?",
+      "requestedAt": "datetime",
+      "sizeBytes": "integer",
+      "status": "string"
+    }
+  },
+  "POST api/users/me/fcm-token": {
+    "request": {
+      "language": "string?",
+      "platform": "string?",
+      "token": "string?"
+    },
+    "response": "untyped"
+  },
+  "POST api/wallet/top-up": {
+    "request": {
+      "amount!": "number"
+    },
+    "response": {
+      "paymentId": "guid",
+      "status": "string",
+      "wallet": {
+        "balance": "number",
+        "bonusPages": "integer",
+        "currency": "string"
+      }
+    }
+  },
+  "POST api/wallet/vouchers/redeem": {
+    "request": {
+      "code": "string?"
+    },
+    "response": {
+      "balance": "number",
+      "bonusPages": "integer",
+      "currency": "string"
+    }
+  },
+  "PUT api/devices/me/printers": {
+    "request": {
+      "printers!": {
+        "list": {
+          "a3!": "bool",
+          "color!": "bool",
+          "driverName": "string?",
+          "duplex!": "bool",
+          "isOnline!": "bool",
+          "name!": "string"
+        }
+      }
+    },
+    "response": "untyped"
+  },
+  "PUT api/files/{}/auto-delete": {
+    "request": {
+      "rule": "string?"
+    },
+    "response": {
+      "autoDelete": "string",
+      "createdAt": "datetime",
+      "currentExtension": "string?",
+      "documentType": "string?",
+      "editLocked": "bool",
+      "extension": "string",
+      "failureReason": "string?",
+      "fileName": "string",
+      "hasLayout": "bool",
+      "id": "guid",
+      "isSensitive": "bool",
+      "mediaType": "string",
+      "pageCount": "integer",
+      "physicalHeightMm": "number?",
+      "physicalWidthMm": "number?",
+      "realSizePaper": "string?",
+      "sizeBytes": "integer",
+      "source": "string",
+      "status": "string",
+      "versionCount": "integer"
+    }
+  },
+  "PUT api/files/{}/layout": {
+    "request": {
+      "fileName": "string?",
+      "layout!": "json"
+    },
+    "response": {
+      "autoDelete": "string",
+      "createdAt": "datetime",
+      "currentExtension": "string?",
+      "documentType": "string?",
+      "editLocked": "bool",
+      "extension": "string",
+      "failureReason": "string?",
+      "fileName": "string",
+      "hasLayout": "bool",
+      "id": "guid",
+      "isSensitive": "bool",
+      "mediaType": "string",
+      "pageCount": "integer",
+      "physicalHeightMm": "number?",
+      "physicalWidthMm": "number?",
+      "realSizePaper": "string?",
+      "sizeBytes": "integer",
+      "source": "string",
+      "status": "string",
+      "versionCount": "integer"
+    }
+  },
+  "PUT api/kiosks/me/printers": {
+    "request": {
+      "printers": {
+        "list?": {
+          "a3!": "bool",
+          "color!": "bool",
+          "driverName": "string?",
+          "duplex!": "bool",
+          "isOnline!": "bool",
+          "name!": "string"
+        }
+      }
+    },
+    "response": "untyped"
+  },
+  "PUT api/schedules/{}/time": {
+    "request": {
+      "scheduledAt!": "datetime"
+    },
+    "response": {
+      "amount": "number",
+      "autoCancelAt": "datetime?",
+      "createdAt": "datetime",
+      "currency": "string",
+      "fileId": "guid",
+      "fileName": "string",
+      "id": "guid",
+      "jobCode": "string",
+      "jobId": "guid",
+      "jobStatus": "string",
+      "kioskCode": "string?",
+      "kioskId": "guid",
+      "kioskName": "string?",
+      "options": {
+        "color": "bool",
+        "copies": "integer",
+        "duplex": "bool",
+        "orientation": "enum(Auto|Landscape|Portrait)",
+        "pageRange": "string?",
+        "pagesPerSheet": "integer",
+        "paper": "string",
+        "scaling": "enum(Actual|Fit)"
+      },
+      "pages": "integer",
+      "paymentId": "guid",
+      "scheduledAt": "datetime",
+      "status": "string"
+    }
+  },
+  "PUT api/users/me": {
+    "request": {
+      "language": "string?"
+    },
+    "response": "untyped"
+  },
+  "PUT api/users/me/photo": {
+    "response": {
+      "contentType": "string",
+      "updatedAt": "datetime",
+      "version": "integer"
+    }
+  }
+}
