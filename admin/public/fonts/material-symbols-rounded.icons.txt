@@ -21,6 +21,7 @@ chevron_left
 chevron_right
 close
 cloud
+cloud_download
 cloud_off
 cloud_upload
 confirmation_number
@@ -91,6 +92,7 @@ person_search
 picture_as_pdf
 play_arrow
 play_circle
+policy
 post_add
 print
 print_disabled
@@ -119,6 +121,7 @@ settings_suggest
 shield
 smartphone
 star
+stop
 storage
 storefront
 support_agent
@@ -135,6 +138,9 @@ undo
 upload
 usb
 verified
+video_library
+videocam
+videocam_off
 visibility
 visibility_off
 vpn_key
