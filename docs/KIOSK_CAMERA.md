@@ -168,19 +168,21 @@ Admin → Kiosk → **"Kamera"** tabı (`camera.view` icazəsi). Hər baxış au
 - **Lövhə:** kamera açılan kioskun üstündə "Videomüşahidə aparılır" lövhəsi olmalıdır
   (M3-də quraşdırma sənədinə əlavə olunur).
 
-## 4a. Panel "FFmpeg yoxdur" deyirsə (T-495)
+## 4a. FFmpeg-i Agent özü quraşdırır (T-496)
 
-Kiosk quraşdırılanda asılılıqlar qovluğunda FFmpeg zip-i olmayıb. Kamera yazmır, paneldə Vəziyyət → Kamera: "Yazmır", "Niyə yazmır: FFmpeg yoxdur".
+Windows kiosk FFmpeg zip-i olmadan quraşdırılıbsa, heç kimin kioska getməsi lazım deyil.
 
-- **Windows:** kioskda administrator PowerShell-də:
-
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File toolskiosk-camerainstall-ffmpeg.ps1
-  ```
-
-  Skript BtbN-in LGPL build-ini endirir (~170 MB) və `C:Program FilesNeoPrintfmpeg`-ə açır. İnternetsiz kiosk üçün zip-i fləşkada gətirin: `-Zip D:fmpeg-n8.1-latest-win64-lgpl-8.1.zip`. Sonra kiosk tətbiqi FFmpeg-i 10 dəqiqə ərzində özü tapır; dərhal görmək üçün panel → kiosk → Əmrlər → tətbiqi yenidən başladın.
-- **Linux:** `sudo apt install ffmpeg` (və ya provisioning 0.9.0+ ilə `repair`).
-- Yeni kioskda bu lazım deyil: asılılıqlar qovluğuna `ffmpeg-*-win64-lgpl*.zip` qoyun (§4).
+- **Kiosk tətbiqi:** kamera açıqdır, amma FFmpeg tapılmır. Tətbiq `C:\ProgramData\NeoPrint\camera\ffmpeg.wanted` faylını yazır və FFmpeg-i hər dəqiqə yenidən axtarır. Tətbiqin özünün Program Files-a yazmaq hüququ yoxdur.
+- **Agent** (LocalSystem): faylı görəndə FFmpeg-i endirir. Ünvan, ölçü və SHA-256 imzalı Agent-in içində sabitdir (`FfmpegPin.Windows`).
+  - Hazırkı build: BtbN `autobuild-2026-10-31-12-59`, `ffmpeg-n8.1.3-27-g8dca1586f4-win64-lgpl-8.1.zip`, 167 778 744 bayt, SHA-256 `d4c2a426…6c613d`.
+  - BtbN ayın sonuncu build-ini illərlə saxlayır, gündəlik build-ləri isə bir neçə gün.
+  - Yoxlamadan keçən fayl `C:\Program Files\NeoPrint\ffmpeg\`-ə açılır, `ffmpeg.wanted` silinir.
+  - Ölçüsü və ya hash-i uyğun gəlməyən fayl açılmır. Agent onu 6 saatdan sonra yenidən sınayır; şəbəkə xətasında 15 dəqiqədən sonra.
+- **Nəticə:** endirmə (təxminən 170 MB) bitəndən bir dəqiqə sonra kamera özü yazmağa başlayır. Paneldə "Yazmır — FFmpeg yoxdur" "Yazır"-a dəyişir.
+- **Tərpənməz kadrlar:** Windows-dakı LGPL build-də `mpdecimate` filtri yoxdur (GPL-dir). Kiosk `ffmpeg -filters`-ə baxır: filtr yoxdursa tərpənməz kadrları `select` ilə atır (səhnə dəyişməsi; ən az 5 saniyədə bir kadr). Bu, real LGPL build-də yoxlanıb. Linux-da (GPL build) `mpdecimate` qalır.
+- **Yeni pin:** BtbN-in başqa build-inə keçmək üçün `FfmpegPin.Windows`-də ünvan, ölçü və SHA-256 dəyişdirilir və yeni Agent buraxılır. Hash `gh api repos/BtbN/FFmpeg-Builds/releases`-dəki `digest` ilə və faylı endirib `sha256sum` ilə yoxlanır.
+- **Əl ilə (ehtiyat):** `tools/kiosk-camera/install-ffmpeg.ps1` (T-495) — internetsiz kiosk üçün `-Zip` ilə.
+- **Linux:** provisioning `apt` ilə quraşdırır (`sudo apt install ffmpeg`).
 
 ## 5. Lokal sınaq (kamera olmadan)
 
