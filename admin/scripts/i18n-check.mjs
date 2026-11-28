@@ -185,7 +185,7 @@ const SERVER_VALUES = {
   },
   'supplies.paper': { values: ['A4', 'A3'] },
   'settings.description.': { settings: true },
-  // The settings picked from a list (T-486): SETTING_CHOICES in settings.component.ts.
+  // The settings picked from a list (T-486, T-493): SETTING_CHOICES in shared/setting-choices.ts.
   'settings.choice.': {
     values: [
       'Camera.Mode.Activity',
@@ -196,6 +196,16 @@ const SERVER_VALUES = {
       'Camera.Quality.Low',
       'Camera.Quality.Medium',
       'Camera.Quality.High',
+      'Notification.MinSeverity.Critical',
+      'Notification.MinSeverity.High',
+      'Notification.MinSeverity.Medium',
+      'Privacy.SensitiveAutoDeleteDefault.Never',
+      'Privacy.SensitiveAutoDeleteDefault.AfterPrint',
+      'Privacy.SensitiveAutoDeleteDefault.AfterOneDay',
+      'Privacy.SensitiveAutoDeleteDefault.AfterSevenDays',
+      'Privacy.SensitiveAutoDeleteDefault.AfterThirtyDays',
+      'Fiscal.TopUpReceiptMode.OnTopUp',
+      'Fiscal.TopUpReceiptMode.OnService',
     ],
   },
   'features.flag.': { flags: true, suffixes: ['.name', '.description'] },

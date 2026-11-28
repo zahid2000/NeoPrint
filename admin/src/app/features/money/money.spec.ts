@@ -190,6 +190,43 @@ describe('money pages', () => {
     request.flush({});
   });
 
+  it('the fiscal settings are a switch, a list and a text box - not true / false typed (T-493)', async () => {
+    const http = setUp([Permissions.fiscalView, Permissions.fiscalManage]);
+    TestBed.inject(TranslateService).setTranslation('az', moneyTranslations.az);
+    const fixture = TestBed.createComponent(FiscalComponent);
+    fixture.detectChanges();
+
+    const setting = (key: string, value: string, valueType: string) => ({
+      key,
+      value,
+      defaultValue: value,
+      valueType,
+      description: key,
+      isDefault: true,
+      updatedAt: null,
+      updatedBy: null,
+    });
+    http.expectOne('/api/admin/fiscal/settings').flush([
+      setting('Fiscal.Enabled', 'true', 'Boolean'),
+      setting('Fiscal.TopUpReceiptMode', 'OnTopUp', 'String'),
+      setting('Fiscal.OnlineTerminalId', '', 'String'),
+    ]);
+    http
+      .match((r) => r.url === '/api/admin/fiscal-receipts')
+      .forEach((r) => r.flush({ items: [], total: 0, page: 1, pageSize: 20 }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('mat-slide-toggle[data-setting="Fiscal.Enabled"]')).not.toBeNull();
+    expect(host.querySelector('mat-select[data-setting="Fiscal.TopUpReceiptMode"]')).not.toBeNull();
+    expect(host.querySelector('input[data-setting="Fiscal.OnlineTerminalId"]')).not.toBeNull();
+    expect(host.querySelector('input[data-setting="Fiscal.Enabled"]')).toBeNull();
+
+    fixture.componentInstance.setValue('Fiscal.Enabled', 'false');
+    expect(fixture.componentInstance.dirty()).toBe(true);
+  });
+
   it('the fiscal page puts the open incidents first and retries the receipt they are about (T-129)', async () => {
     const http = setUp([Permissions.fiscalView, Permissions.fiscalManage, Permissions.incidentsView]);
     TestBed.inject(TranslateService).setTranslation('az', moneyTranslations.az);

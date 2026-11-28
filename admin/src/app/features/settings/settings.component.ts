@@ -19,17 +19,9 @@ import { Permissions } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { defaultLanguage, translations } from '../../core/i18n/translations';
 import { describeError } from '../login/login.component';
+import { SETTING_CHOICES } from '../../shared/setting-choices';
 
-/**
- * Settings that take one of a few words (T-486): picked from a list, each
- * word explained in the panel's language, so nothing has to be typed - the
- * backend refuses any other word anyway.
- */
-export const SETTING_CHOICES: Readonly<Record<string, readonly string[]>> = {
-  'Camera.Mode': ['Activity', 'Continuous'],
-  'Camera.Resolution': ['640x480', '1280x720', '1920x1080'],
-  'Camera.Quality': ['Low', 'Medium', 'High'],
-};
+export { SETTING_CHOICES };
 
 /** The setting whose value is a storage provider's id (T-485): picked by the provider's name. */
 export const ARCHIVE_PROVIDER_SETTING = 'Camera.ArchiveProvider';

@@ -231,6 +231,32 @@ describe('SettingsComponent', () => {
     expect(component.isChanged(quality)).toBe(true);
   });
 
+  it('offers every setting the backend takes only certain words for as a list (T-493)', () => {
+    const word = (key: string): PlatformSetting => ({
+      key,
+      value: '',
+      defaultValue: '',
+      valueType: 'String',
+      description: key,
+      isDefault: true,
+      updatedAt: null,
+      updatedBy: null,
+    });
+
+    expect(component.choicesOf(word('Notification.MinSeverity'))).toEqual(['Critical', 'High', 'Medium']);
+    expect(component.choicesOf(word('Privacy.SensitiveAutoDeleteDefault'))).toEqual([
+      'Never',
+      'AfterPrint',
+      'AfterOneDay',
+      'AfterSevenDays',
+      'AfterThirtyDays',
+    ]);
+    expect(component.choicesOf(word('Fiscal.TopUpReceiptMode'))).toEqual(['OnTopUp', 'OnService']);
+    expect(component.choicesOf(word('Camera.Mode'))).toEqual(['Activity', 'Continuous']);
+    expect(component.choicesOf(word('Camera.Resolution'))).toEqual(['640x480', '1280x720', '1920x1080']);
+    expect(component.choicesOf(word('Fiscal.OnlineTerminalId'))).toBeNull();
+  });
+
   it('offers the storage providers as the camera archive, by name (T-485)', () => {
     const archive: PlatformSetting = {
       key: 'Camera.ArchiveProvider',

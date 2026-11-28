@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -25,6 +26,7 @@ import { PageHeaderComponent } from '../../shared/page-header.component';
 import { Problem, toProblem } from '../../shared/problem';
 import { StatusChipComponent } from '../../shared/status-chip.component';
 import { PagerComponent } from './money-shared';
+import { SETTING_CHOICES } from '../../shared/setting-choices';
 import { HubEvents } from '../../core/realtime/hub-events';
 
 const pageSize = 20;
@@ -44,6 +46,7 @@ const pageSize = 20;
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatSlideToggleModule,
     MatTableModule,
     RouterLink,
     TranslatePipe,
@@ -101,15 +104,42 @@ const pageSize = 20;
           <h2 class="money__card-title">{{ 'fiscal.settings' | translate }}</h2>
           <div class="money__form">
             @for (s of settings(); track s.key) {
-              <mat-form-field>
-                <mat-label>{{ 'fiscal.setting.' + s.key | translate }}</mat-label>
-                <input
-                  matInput
-                  [ngModel]="values()[s.key]"
-                  (ngModelChange)="setValue(s.key, $event)"
-                />
-                <mat-hint>{{ s.key }}</mat-hint>
-              </mat-form-field>
+              @if (s.valueType === 'Boolean') {
+                <mat-slide-toggle
+                  [attr.data-setting]="s.key"
+                  [checked]="values()[s.key] === 'true'"
+                  (change)="setValue(s.key, $event.checked ? 'true' : 'false')"
+                >
+                  {{ 'fiscal.setting.' + s.key | translate }}
+                </mat-slide-toggle>
+              } @else if (choicesOf(s.key); as options) {
+                <mat-form-field>
+                  <mat-label>{{ 'fiscal.setting.' + s.key | translate }}</mat-label>
+                  <mat-select
+                    [attr.data-setting]="s.key"
+                    [ngModel]="values()[s.key]"
+                    (ngModelChange)="setValue(s.key, $event)"
+                  >
+                    @for (option of options; track option) {
+                      <mat-option [value]="option">{{
+                        'settings.choice.' + s.key + '.' + option | translate
+                      }}</mat-option>
+                    }
+                  </mat-select>
+                  <mat-hint>{{ s.key }}</mat-hint>
+                </mat-form-field>
+              } @else {
+                <mat-form-field>
+                  <mat-label>{{ 'fiscal.setting.' + s.key | translate }}</mat-label>
+                  <input
+                    matInput
+                    [attr.data-setting]="s.key"
+                    [ngModel]="values()[s.key]"
+                    (ngModelChange)="setValue(s.key, $event)"
+                  />
+                  <mat-hint>{{ s.key }}</mat-hint>
+                </mat-form-field>
+              }
             }
           </div>
           <div class="money__actions">
@@ -346,6 +376,11 @@ export class FiscalComponent implements OnInit {
   go(page: number): void {
     this.page.set(page);
     void this.load();
+  }
+
+  /** The words a fiscal setting may take (T-493), or null when it is typed. */
+  choicesOf(key: string): readonly string[] | null {
+    return SETTING_CHOICES[key] ?? null;
   }
 
   setValue(key: string, value: string): void {
