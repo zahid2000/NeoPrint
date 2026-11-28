@@ -263,6 +263,12 @@ public sealed class KioskHubClient : HubClientBase
     /// <summary>A rollout reaches this kiosk, or a release was withdrawn: ask what to run (T-321).</summary>
     public event Func<Task>? UpdateAvailable;
 
+    /// <summary>The panel asks for recorded camera minutes (T-483): read what it asks.</summary>
+    public event Func<Task>? CameraFootageRequested;
+
+    /// <summary>Somebody watches the camera live (T-483): send frames while they do.</summary>
+    public event Func<Task>? CameraLiveRequested;
+
     protected override void Register(HubConnection connection)
     {
         ArgumentNullException.ThrowIfNull(connection);
@@ -282,6 +288,8 @@ public sealed class KioskHubClient : HubClientBase
         connection.On<KioskMessage>("PrinterConfigChanged", _ => Raise(PrinterConfigChanged));
         connection.On<KioskMessage>("KioskConfigChanged", _ => Raise(KioskConfigChanged));
         connection.On<KioskMessage>("UpdateAvailable", _ => Raise(UpdateAvailable));
+        connection.On<KioskMessage>("CameraFootageRequested", _ => Raise(CameraFootageRequested));
+        connection.On<KioskMessage>("CameraLiveRequested", _ => Raise(CameraLiveRequested));
         connection.On<CommandMessage>("KioskCommand", message => CommandReceived is { } handler
             ? handler(message.CommandId, message.Type)
             : Task.CompletedTask);

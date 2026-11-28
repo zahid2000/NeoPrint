@@ -31,6 +31,9 @@ public interface IRecorderProcess : IDisposable
     /// <summary>The last lines FFmpeg wrote to standard error: why it stopped.</summary>
     string ErrorTail { get; }
 
+    /// <summary>The latest live frame FFmpeg gave (T-483), if any.</summary>
+    CameraFrame? LatestFrame => null;
+
     void Stop();
 }
 
@@ -172,13 +175,41 @@ public sealed class SystemCameraHost : ICameraHost
         private readonly Queue<string> _tail = new();
         private readonly object _gate = new();
 
+        private CameraFrame? _latest;
+
         public RecorderProcess(Process process)
         {
             _process = process;
             _process.ErrorDataReceived += (_, line) => Keep(line.Data);
-            _process.OutputDataReceived += (_, _) => { };
             _process.BeginErrorReadLine();
-            _process.BeginOutputReadLine();
+
+            // Always read, whoever watches: FFmpeg stops recording when its
+            // output is not taken.
+            _ = Task.Run(() => ReadFramesAsync(_process.StandardOutput.BaseStream));
+        }
+
+        public CameraFrame? LatestFrame => Volatile.Read(ref _latest);
+
+        private async Task ReadFramesAsync(Stream output)
+        {
+            var splitter = new JpegFrameSplitter();
+            var buffer = new byte[65536];
+
+            try
+            {
+                int read;
+                while ((read = await output.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+                {
+                    foreach (var jpeg in splitter.Push(buffer.AsSpan(0, read)))
+                    {
+                        Volatile.Write(ref _latest, new CameraFrame(jpeg, DateTime.UtcNow));
+                    }
+                }
+            }
+            catch (Exception exception) when (exception is IOException or ObjectDisposedException or InvalidOperationException)
+            {
+                // FFmpeg stopped; the recorder starts it again.
+            }
         }
 
         public int Id => _process.Id;

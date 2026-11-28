@@ -208,20 +208,25 @@ public static class FfmpegCommand
                 break;
         }
 
-        // No sound: only pictures are kept (docs/KIOSK_CAMERA.md).
-        args.Add("-an");
-
         // A frame that is the same as the one before is dropped (T-487): an
         // empty kiosk is a still picture, and a still picture needs one frame
         // every few seconds, not ten a second - about a fifth of the disk.
         // At least one frame every five seconds is kept, so the time runs on.
+        //
+        // The same picture also goes out small, twice a second, as JPEGs on
+        // standard output (T-483): the panel's live view. The kiosk keeps
+        // only the latest in memory and sends it only while somebody watches.
         args.AddRange([
-            "-vf",
+            "-filter_complex",
             string.Create(
                 CultureInfo.InvariantCulture,
-                $"fps={fps},scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,mpdecimate=max={fps * StillSeconds},format=yuv420p"),
-            "-fps_mode", "vfr",
+                $"[0:v]fps={fps},scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,split=2[full][small];"
+                + $"[full]mpdecimate=max={fps * StillSeconds},format=yuv420p[rec];"
+                + $"[small]fps={LiveFramesPerSecond},scale={LiveWidth}:-2,format=yuvj420p[live]"),
         ]);
+
+        // The recording. No sound: only pictures are kept (docs/KIOSK_CAMERA.md).
+        args.AddRange(["-map", "[rec]", "-an", "-fps_mode", "vfr"]);
 
         args.AddRange(["-c:v", encoder]);
         args.AddRange(encoder switch
@@ -252,8 +257,17 @@ public static class FfmpegCommand
             outputPattern,
         ]);
 
+        // The live frames: one JPEG after another on standard output.
+        args.AddRange(["-map", "[live]", "-an", "-c:v", "mjpeg", "-q:v", "8", "-f", "image2pipe", "pipe:1"]);
+
         return args;
     }
+
+    /// <summary>The live view's frames a second (T-483).</summary>
+    public const int LiveFramesPerSecond = 2;
+
+    /// <summary>The live view's width: enough to see who is at the kiosk, tens of kilobytes a frame.</summary>
+    public const int LiveWidth = 640;
 
     /// <summary>The longest a still picture goes without a frame, in seconds.</summary>
     public const int StillSeconds = 5;

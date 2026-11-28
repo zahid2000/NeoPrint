@@ -99,6 +99,9 @@ public sealed class CameraRecorder
     /// <summary>The camera now: read by telemetry and the screen.</summary>
     public CameraStatus Status => Volatile.Read(ref _status);
 
+    /// <summary>The latest live frame (T-483), while FFmpeg runs.</summary>
+    public CameraFrame? LatestFrame => Volatile.Read(ref _process)?.LatestFrame;
+
     /// <summary>Recording started or stopped: the screen shows its sign while it records.</summary>
     public event Action<bool>? RecordingChanged;
 

@@ -295,6 +295,38 @@ public sealed class KioskSession
                 _logger);
             _ = RunGuardedAsync("camera archive", () => archive.RunAsync(token), token);
 
+            // Watching from the panel (T-483): live frames while somebody
+            // watches, and the recorded minutes the panel asks for.
+            var live = new CameraLiveSender(
+                () => camera.LatestFrame,
+                (jpeg, ct) => api.SendCameraFrameAsync(jpeg, ct),
+                _services.GetRequiredService<IClock>(),
+                _logger);
+            var footage = new CameraFootageSender(
+                new CameraVault(_services.GetRequiredService<IAppPaths>().CameraDirectory, _services.GetRequiredService<IClock>(), _logger),
+                ct => api.CameraRequestsAsync(ct),
+                (requestId, minute, ct) => api.SendRequestedCameraMinuteAsync(requestId, minute, ct),
+                (requestId, minutes, ct) => api.CompleteCameraRequestAsync(requestId, minutes, ct),
+                _logger);
+            Func<Task> liveRequested = () =>
+            {
+                _ = RunGuardedAsync("camera live", () => live.RunAsync(token), token);
+                return Task.CompletedTask;
+            };
+            Func<Task> footageRequested = () =>
+            {
+                _ = RunGuardedAsync("camera footage", () => footage.StepAsync(token), token);
+                return Task.CompletedTask;
+            };
+            hub.CameraLiveRequested += liveRequested;
+            hub.CameraFootageRequested += footageRequested;
+            unsubscribe.Add(() =>
+            {
+                hub.CameraLiveRequested -= liveRequested;
+                hub.CameraFootageRequested -= footageRequested;
+            });
+            _ = RunGuardedAsync("camera footage", () => footage.RunAsync(token), token);
+
             _ = RunGuardedAsync("printer reports", () => ReportPrintersAsync(reporter, token), token);
             _ = RunGuardedAsync("analytics", () => SendAnalyticsAsync(api, token), token);
             _ = RunGuardedAsync("flash uploads", () => SendUploadsAsync(orders, token), token);
