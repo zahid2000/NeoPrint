@@ -233,7 +233,9 @@ public sealed record KioskVersionView(
     string? ProvisioningVersion,
     IReadOnlyList<KioskUpdateStateView> Updates,
     IReadOnlyList<KioskOfferView> Offered,
-    DateTime? LastHeartbeatAt);
+    DateTime? LastHeartbeatAt,
+    bool? Supported = null,
+    string? MinSupportedVersion = null);
 
 public sealed record KioskOfferView(string Component, string Version);
 

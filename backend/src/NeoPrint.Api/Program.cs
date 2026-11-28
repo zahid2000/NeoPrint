@@ -634,6 +634,9 @@ app.UseStatusCodePages();
 // sign-in limit.
 app.UseCors(CorsOrigins.PolicyName);
 
+// An app older than the API supports is told to update (ADR-0009, T-492); after CORS, so the web app reads the answer.
+app.UseMiddleware<MobileVersionGate>();
+
 // A kiosk's own anonymous calls - registering, signing in - are counted per
 // enrollment token and per device, in Redis (T-309; plan section 7.11).
 app.UseMiddleware<DeviceRequestLimits>();

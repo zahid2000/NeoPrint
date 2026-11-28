@@ -210,6 +210,10 @@ public sealed class ReleaseTests : IDisposable
         row.GetProperty("appVersion").GetString().Should().Be("0.8.0");
         row.GetProperty("agentVersion").GetString().Should().Be("0.8.1");
         row.GetProperty("provisioningVersion").GetString().Should().Be("3");
+
+        // Older than the backend supports (ADR-0009): the panel says so; the kiosk is still served.
+        row.GetProperty("supported").GetBoolean().Should().BeFalse();
+        row.GetProperty("minSupportedVersion").GetString().Should().Be(Application.Clients.SupportedClients.Kiosk!.ToString());
         var update = row.GetProperty("updates").EnumerateArray().Single();
         update.GetProperty("status").GetString().Should().Be("Failed");
         update.GetProperty("message").GetString().Should().NotBeNullOrWhiteSpace();

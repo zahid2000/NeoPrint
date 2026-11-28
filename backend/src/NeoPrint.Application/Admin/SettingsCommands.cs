@@ -140,6 +140,12 @@ public sealed class UpdateSettingsCommandValidator : IValidator<UpdateSettingsCo
                 yield return new ValidationError(key, "settings.cameraArchiveProvider");
             }
 
+            // The oldest mobile app the panel lets in (T-492): a release version, or empty.
+            if (key == SettingKeys.MobileMinVersion && value.Length > 0 && !NeoPrint.Crypto.Releases.ReleaseVersion.TryParse(value, out _))
+            {
+                yield return new ValidationError(key, "settings.mobileMinVersion");
+            }
+
             if (key == SettingKeys.CameraQuality && !CameraSettings.Qualities.Contains(value))
             {
                 yield return new ValidationError(key, "settings.cameraQuality");

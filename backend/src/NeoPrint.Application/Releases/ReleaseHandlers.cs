@@ -886,7 +886,10 @@ public sealed class ReleaseHandlers :
             .. kiosk.UpdateStates.OrderBy(state => state.Component).Select(StateView),
         ],
         [.. offers.Select(release => new KioskOfferView(release.Component.ToString(), release.Version))],
-        kiosk.LastHeartbeatAt);
+        kiosk.LastHeartbeatAt,
+        // Older than the backend supports (ADR-0009): the panel says so; the kiosk is never refused.
+        Clients.SupportedClients.IsSupported(kiosk.AppVersion, Clients.SupportedClients.Kiosk),
+        Clients.SupportedClients.Kiosk?.ToString());
 
     private static KioskUpdateStateView StateView(KioskUpdateState state) => new(
         state.Component.ToString(),

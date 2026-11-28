@@ -99,6 +99,8 @@ COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY backend/NeoPrint.sln ./backend/
 COPY backend/src/ ./backend/src/
 COPY backend/shared/ ./backend/shared/
+# The clients' contract: the oldest kiosk and app the API supports (ADR-0009).
+COPY contracts/client-api.json ./contracts/
 # The kiosk release key sets (public keys only), linked into the infrastructure project (T-317).
 COPY desktop/src/NeoPrint.Kiosk.Core/Updates/KeySets/ ./desktop/src/NeoPrint.Kiosk.Core/Updates/KeySets/
 
