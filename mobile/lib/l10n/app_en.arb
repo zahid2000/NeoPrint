@@ -92,6 +92,9 @@
   "commonLoading": "Loading…",
   "commonComingSoon": "This section arrives in a later step.",
 
+  "updateRequiredTitle": "Update the app",
+  "updateRequiredBody": "This version ({version}) no longer works. Update the app from the store to continue.",
+  "updateRequiredRetry": "Check again",
   "splashOfflineTitle": "No internet",
   "splashOfflineBody": "You are still signed in. The app opens by itself once you are back online.",
   "splashServerTitle": "The server is not answering",

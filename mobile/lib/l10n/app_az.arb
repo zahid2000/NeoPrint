@@ -113,6 +113,13 @@
   "commonLoading": "Yüklənir…",
   "commonComingSoon": "Bu bölmə növbəti addımlarda əlavə olunacaq.",
 
+  "updateRequiredTitle": "Tətbiqi yeniləyin",
+  "updateRequiredBody": "Bu versiya ({version}) artıq işləmir. Davam etmək üçün tətbiqi mağazadan yeniləyin.",
+  "@updateRequiredBody": {
+    "description": "The update-the-app screen (T-492); version is this build's.",
+    "placeholders": { "version": { "type": "String" } }
+  },
+  "updateRequiredRetry": "Yenidən yoxla",
   "splashOfflineTitle": "İnternet yoxdur",
   "splashOfflineBody": "Hesabınızdan çıxılmayıb. İnternet qoşulanda tətbiq özü açılacaq.",
   "splashServerTitle": "Server cavab vermir",

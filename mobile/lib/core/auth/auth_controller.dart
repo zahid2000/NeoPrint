@@ -6,6 +6,7 @@ import '../l10n/app_language.dart';
 
 import '../network/api_base_url.dart';
 import '../network/api_client.dart';
+import '../network/update_required.dart';
 import '../storage/secure_storage.dart';
 import 'auth_models.dart';
 import 'auth_repository.dart';
@@ -34,6 +35,10 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   // returns to the sign-in screen rather than looping on 401s.
   client.onSessionExpired = () =>
       ref.read(authControllerProvider.notifier).onSessionExpired();
+
+  // Too old for the server (T-492): every screen gives way to "Update the app".
+  client.onUpdateRequired = () =>
+      ref.read(updateRequiredProvider.notifier).state = true;
 
   return client;
 });

@@ -92,6 +92,9 @@
   "commonLoading": "Загрузка…",
   "commonComingSoon": "Этот раздел появится на следующих шагах.",
 
+  "updateRequiredTitle": "Обновите приложение",
+  "updateRequiredBody": "Эта версия ({version}) больше не работает. Чтобы продолжить, обновите приложение в магазине.",
+  "updateRequiredRetry": "Проверить снова",
   "splashOfflineTitle": "Нет интернета",
   "splashOfflineBody": "Вы не вышли из аккаунта. Приложение откроется само, когда появится интернет.",
   "splashServerTitle": "Сервер не отвечает",

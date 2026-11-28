@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../storage/secure_storage.dart';
 import 'api_base_url.dart';
+import '../app_version.dart';
 import 'correlation_id.dart';
 
 /// Why a request failed, as far as the screen needs to know.
@@ -82,6 +83,11 @@ final class ApiException implements Exception {
   bool get isFeatureOff => code == featureOffCode;
 
   static const featureOffCode = 'features.unavailable';
+
+  /// The backend no longer serves this version of the app (`426`, T-492).
+  bool get isUpdateRequired => code == updateRequiredCode;
+
+  static const updateRequiredCode = 'app.updateRequired';
 
   /// Whether this was a network problem rather than a refusal.
   bool get isNetworkError => kind == ApiErrorKind.unreachable;
@@ -215,6 +221,10 @@ final class ApiClient {
   /// read its flags again and hide the way in.
   void Function()? onFeatureOff;
 
+  /// Called when the server no longer serves this version of the app
+  /// (docs/adr/ADR-0009): the app shows "Update the app".
+  void Function()? onUpdateRequired;
+
   Dio get dio => _dio;
 
   Future<void> _onRequest(
@@ -230,6 +240,9 @@ final class ApiClient {
     // never overwritten: a caller that set one is tying this request to work
     // that started earlier.
     options.headers.putIfAbsent(correlationIdHeader, newCorrelationId);
+
+    // The app's version, so the server can say it is too old (T-492).
+    options.headers.putIfAbsent(appVersionHeader, () => appVersion);
 
     final language = _language?.call();
     if (language != null) {
@@ -326,6 +339,10 @@ final class ApiClient {
 
       if (problem.isFeatureOff) {
         onFeatureOff?.call();
+      }
+
+      if (problem.isUpdateRequired) {
+        onUpdateRequired?.call();
       }
 
       throw problem;

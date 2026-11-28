@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/contact/contact_screen.dart';
+import '../../features/update/update_required_screen.dart';
+import '../network/update_required.dart';
 import '../../features/auth/confirm_email_screen.dart';
 import '../../features/auth/register_screen.dart';
 import '../../features/auth/sign_in_screen.dart';
@@ -62,6 +64,9 @@ import 'app_links.dart';
 /// Route paths, in one place so a rename cannot leave a dangling link.
 abstract final class Routes {
   static const splash = '/';
+
+  /// "Update the app" (T-492): the server no longer serves this version.
+  static const updateRequired = '/update-required';
   static const signIn = '/sign-in';
   static const register = '/register';
   static const confirmEmail = '/confirm-email';
@@ -155,6 +160,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     }
   }, fireImmediately: true);
 
+  ref.listen<bool>(updateRequiredProvider, (previous, next) {
+    if (previous != next) {
+      notifier.value++;
+    }
+  });
+
   ref.onDispose(notifier.dispose);
 
   return GoRouter(
@@ -166,6 +177,16 @@ final routerProvider = Provider<GoRouter>((ref) {
     /// Deep links land here too, so a link into the app cannot skip email
     /// confirmation or an outstanding consent (plan section 8.3).
     redirect: (context, state) {
+      // Too old for the server (T-492): before any link, sign-in or lock.
+      if (ref.read(updateRequiredProvider)) {
+        return state.matchedLocation == Routes.updateRequired
+            ? null
+            : Routes.updateRequired;
+      }
+      if (state.matchedLocation == Routes.updateRequired) {
+        return Routes.splash;
+      }
+
       // A link into the app - the kiosk's "pay with the app" QR read by
       // another scanner, a voucher, a referral, a push opened from the
       // phone's tray - becomes the app's own route, and the gates below
@@ -239,6 +260,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
     routes: [
       GoRoute(path: Routes.splash, builder: (_, __) => const SplashScreen()),
+      GoRoute(
+        path: Routes.updateRequired,
+        builder: (_, __) => const UpdateRequiredScreen(),
+      ),
       GoRoute(path: Routes.signIn, builder: (_, __) => const SignInScreen()),
       GoRoute(
         path: Routes.register,
