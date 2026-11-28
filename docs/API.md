@@ -9,6 +9,10 @@ Development-də Swagger UI: `http://localhost:5080/swagger`.
 
 ## Ümumi qaydalar
 
+### Köhnə klientlərlə uyğunluq (ADR-0009)
+
+Kioskun, provisioning skriptlərinin və mobil tətbiqin işlətdiyi endpoint-lər `contracts/client-api.json`-dadır. Onların yolu, metodu və cavab sahələri silinmir və dəyişdirilmir, yalnız əlavə olunur. CI yoxlayır (`contracts/README.md`).
+
 ### Base URL
 
 | Mühit | URL |

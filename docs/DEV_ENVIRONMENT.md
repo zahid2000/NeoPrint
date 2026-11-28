@@ -1832,6 +1832,19 @@ Sonra paneldə kioskun "Yeniləmə" tabında "İndi yenilə" — və ya növbət
 yeni — o kioska təklif olunmur). Köhnə flaşdan quraşdırılmış kioskda yuxarıdakı üç əmr bir dəfə lazımdır; `provision.sh
 --repair` da (yeni skriptlərlə) bunu özü düzəldir.
 
+## 7z-2. Klient API müqaviləsi (T-491, ADR-0009)
+
+Backend sahədəki köhnə kiosk və tətbiqlərin işlətdiyi API-ni saxlamalıdır. CI bunu `ClientApiContractTests` ilə yoxlayır (`contracts/README.md`).
+
+Klientə yeni çağırış və ya cavaba yeni sahə əlavə edəndə test "yeniləyin" deyir:
+
+```powershell
+$env:NEOPRINT_CONTRACT_UPDATE='1'; dotnet test backend/tests/NeoPrint.Api.IntegrationTests --filter ClientApiContractTests; Remove-Item Env:NEOPRINT_CONTRACT_UPDATE
+git diff contracts/        # nə əlavə olundu - baxın, sonra commit
+```
+
+Sındıran dəyişiklik (sahə silinib, tipi dəyişib, yol yoxdur) bu əmrlə də keçmir. Köhnə yolu silmək qaydası: `contracts/README.md` → "Köhnə yolu silmək".
+
 ## 7y. Addım 7B — real Linux kiosku test serverinə (T-333)
 
 ```bash

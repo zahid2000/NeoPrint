@@ -43,3 +43,4 @@ Ziddiyyət görünürsə: dayan, uyğunsuzluğu göstər, təhlükəsiz variant�
 | `CLAUDE_CODE_EXECUTION_RULES.md` | Task icrası, scope, definition of done |
 | `adr/TEMPLATE.md` | Arxitektura qərar şablonu |
 | `adr/ADR-0009-client-api-compatibility.md` | Müxtəlif versiyalı kiosk və tətbiqlər üçün API uyğunluğu (genişləndir → köçür → daralt, `contracts/client-api.json`) |
+| `../contracts/README.md` | Klient API müqaviləsi: kioskun, provisioning-in və mobilin işlətdiyi endpoint-lər, CI yoxlaması, köhnə yolun silinmə qaydası (T-491) |
