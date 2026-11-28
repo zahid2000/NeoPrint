@@ -23,7 +23,14 @@ export const kioskBrandingTranslations: PageTranslations = {
     'kioskBranding.fullscreen': 'Tam ekran',
     'kioskBranding.exitFullscreen': 'Tam ekrandan çıx',
     'kioskBranding.dragHint':
-      'Kartları, şəkli və aşağıdakı yazıları siçanla sürüşdürüb yerini dəyişin; göz ikonu yazını gizlədir və ya qaytarır. Sonra "Yadda saxla".',
+      'Mətni və ya şəkli dəyişmək üçün üstündəki qələmə basın. Kartları, şəkli və aşağıdakı yazıları siçanla sürüşdürüb yerini dəyişin; göz ikonu yazını gizlədir və ya qaytarır. Sonra "Yadda saxla".',
+    'kioskBranding.editPart': 'Redaktə et: {{part}}',
+    'kioskBranding.part.usb': 'USB kartı',
+    'kioskBranding.part.phone': 'Telefon / QR kartı',
+    'kioskBranding.hotlineEmpty': 'Qaynar xətt yoxdur',
+    'kioskBranding.dialogHint': 'Yazdıqca önizləmə dəyişir. Kiosklara "Yadda saxla" ilə gedir.',
+    'kioskBranding.done': 'Hazır',
+    'kioskBranding.unsaved': 'Saxlanmamış dəyişikliklər var',
     'kioskBranding.hideFeature': 'Kioskda gizlət',
     'kioskBranding.showFeature': 'Kioskda göstər',
     'kioskBranding.previewNote':
@@ -78,7 +85,14 @@ export const kioskBrandingTranslations: PageTranslations = {
     'kioskBranding.fullscreen': 'Full screen',
     'kioskBranding.exitFullscreen': 'Exit full screen',
     'kioskBranding.dragHint':
-      'Drag the cards, the picture and the words along the bottom to move them; the eye hides a feature or brings it back. Then "Save".',
+      'Press the pencil on a text or the picture to change it. Drag the cards, the picture and the footer items to move them; the eye hides or shows an item. Then "Save".',
+    'kioskBranding.editPart': 'Edit: {{part}}',
+    'kioskBranding.part.usb': 'USB card',
+    'kioskBranding.part.phone': 'Phone / QR card',
+    'kioskBranding.hotlineEmpty': 'No help line',
+    'kioskBranding.dialogHint': 'The preview changes as you type. Kiosks get it with "Save".',
+    'kioskBranding.done': 'Done',
+    'kioskBranding.unsaved': 'There are unsaved changes',
     'kioskBranding.hideFeature': 'Hide on the kiosk',
     'kioskBranding.showFeature': 'Show on the kiosk',
     'kioskBranding.previewNote':
@@ -135,7 +149,15 @@ export const kioskBrandingTranslations: PageTranslations = {
     'kioskBranding.fullscreen': 'Во весь экран',
     'kioskBranding.exitFullscreen': 'Выйти из полноэкранного режима',
     'kioskBranding.dragHint':
-      'Перетаскивайте карточки, картинку и надписи внизу, чтобы поменять их местами; «глаз» скрывает надпись или возвращает её. Затем «Сохранить».',
+      'Чтобы изменить текст или картинку, нажмите на карандаш над ним. Карточки, картинку и подписи внизу перетаскивайте мышью; глаз скрывает или возвращает подпись. Затем «Сохранить».',
+    'kioskBranding.editPart': 'Редактировать: {{part}}',
+    'kioskBranding.part.usb': 'Карточка USB',
+    'kioskBranding.part.phone': 'Карточка телефона / QR',
+    'kioskBranding.hotlineEmpty': 'Горячей линии нет',
+    'kioskBranding.dialogHint':
+      'Предпросмотр меняется по мере ввода. На киоски уходит по «Сохранить».',
+    'kioskBranding.done': 'Готово',
+    'kioskBranding.unsaved': 'Есть несохранённые изменения',
     'kioskBranding.hideFeature': 'Скрыть на киоске',
     'kioskBranding.showFeature': 'Показать на киоске',
     'kioskBranding.previewNote':

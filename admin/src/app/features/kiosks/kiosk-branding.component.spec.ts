@@ -22,6 +22,9 @@ function view(partial: Partial<KioskBrandingView> = {}): KioskBrandingView {
   };
 }
 
+/** A dialog closes after its animation. */
+const closed = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 400));
+
 /** The welcome screen's words for every kiosk and for one (T-387). */
 describe('KioskBrandingComponent', () => {
   beforeEach(() => {
@@ -138,5 +141,77 @@ describe('KioskBrandingComponent', () => {
     expect(put.request.body).toEqual({ layout: null });
     put.flush(view({ layout: null, defaultLayout: fallback }));
     await saving;
+  });
+
+  it('edits a part in place: its pencil opens its texts, the preview follows, "Ləğv et" puts them back (T-494)', async () => {
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(KioskBrandingComponent);
+    fixture.componentRef.setInput('canEdit', true);
+    fixture.detectChanges();
+
+    http.expectOne('/api/admin/kiosk-branding').flush(view({ kioskId: null, defaults: null }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    // No text boxes under the preview any more - the pencils on it instead.
+    expect(host.querySelector('input[matInput]')).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+    const pens = host.querySelectorAll<HTMLButtonElement>('[data-pen]');
+    // The big line, the picture, two cards, the help line and four features.
+    expect(pens.length).toBe(9);
+    expect(pens[0].getAttribute('aria-label')).toBe('Redaktə et: Ana ekran');
+
+    const component = fixture.componentInstance;
+    const before = component.texts()['heroTitle']['az'];
+
+    pens[0].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const field = document.querySelector<HTMLInputElement>('[data-field="heroTitle-az"]');
+    expect(field).not.toBeNull();
+    expect(document.querySelector('[data-field="heroSubtitle-ru"]')).not.toBeNull();
+    expect(document.querySelector('[data-field="usbTitle-az"]')).toBeNull();
+
+    field!.value = 'Metroda çap';
+    field!.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(component.texts()['heroTitle']['az']).toBe('Metroda çap');
+    expect(host.querySelector('.hero__title')?.textContent).toContain('Metroda çap');
+    expect(host.querySelector('[data-unsaved]')).not.toBeNull();
+
+    document.querySelector<HTMLButtonElement>('[data-cancel]')!.click();
+    await closed();
+    fixture.detectChanges();
+    expect(component.texts()['heroTitle']['az']).toBe(before);
+    expect(component.dirty()).toBe(false);
+
+    // "Hazır" keeps them, to be saved.
+    component.openTexts({ titleKey: 'kioskBranding.groupHotline', keys: ['hotline'] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const hotline = document.querySelector<HTMLInputElement>('[data-field="hotline-az"]')!;
+    hotline.value = '*1234';
+    hotline.dispatchEvent(new Event('input'));
+    document.querySelector<HTMLButtonElement>('[data-done]')!.click();
+    await closed();
+    fixture.detectChanges();
+    expect(component.texts()['hotline']['az']).toBe('*1234');
+    expect(component.dirty()).toBe(true);
+  });
+
+  it('shows no pencils to an account that may not edit (T-494)', async () => {
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(KioskBrandingComponent);
+    fixture.componentRef.setInput('kioskId', 'k-1');
+    fixture.detectChanges();
+
+    http.expectOne('/api/admin/kiosks/k-1/branding').flush(view());
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-pen]')).toBeNull();
   });
 });

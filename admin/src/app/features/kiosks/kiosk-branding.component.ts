@@ -7,10 +7,12 @@ import {
   inject,
   input,
   signal,
+  TemplateRef,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -31,6 +33,7 @@ import { KIOSK_BUILT_IN_TEXTS } from './kiosk-branding.defaults';
 import { shrinkPhoto } from './kiosk-photo.component';
 import {
   KioskScreenPreviewComponent,
+  PreviewTextPart,
   STANDARD_LAYOUT,
   sameLayout,
 } from './kiosk-screen-preview.component';
@@ -83,6 +86,7 @@ function empty(): Texts {
   imports: [
     FormsModule,
     MatButtonModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -121,117 +125,138 @@ function empty(): Texts {
         [editable]="canEdit() && !busy()"
         [kioskName]="kioskName()"
         (layoutChange)="arrange($event)"
+        (editTexts)="openTexts($event)"
+        (editImage)="openImage()"
       />
 
-      <div class="branding__layout">
-        <div class="branding__form">
-          <div class="branding__image">
-            <div class="branding__frame">
-              @if (imageUrl(); as src) {
-                <img [src]="src" [alt]="'kioskBranding.imageAlt' | translate" />
-              } @else {
-                <mat-icon aria-hidden="true">print</mat-icon>
-              }
-            </div>
-            <div class="branding__image-body">
-              <h3>{{ 'kioskBranding.imageTitle' | translate }}</h3>
-              <p class="neo-caption">{{ imageNote() | translate }}</p>
-              @if (canEdit()) {
-                <div class="branding__actions">
+      @if (canEdit()) {
+        <div class="branding__save">
+          @if (dirty() || layoutDirty()) {
+            <span class="neo-caption branding__unsaved" data-unsaved>
+              <mat-icon aria-hidden="true">edit_note</mat-icon>
+              {{ 'kioskBranding.unsaved' | translate }}
+            </span>
+          }
+          <!-- Back to what the kiosk says by itself (T-422). -->
+          <button
+            mat-button
+            type="button"
+            [disabled]="busy() || (atDefaults() && atDefaultLayout())"
+            (click)="reset()"
+          >
+            <mat-icon>restart_alt</mat-icon>
+            {{ 'kioskBranding.reset' | translate }}
+          </button>
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            [disabled]="busy() || (!dirty() && !layoutDirty())"
+            (click)="save()"
+          >
+            @if (busy()) {
+              <mat-spinner diameter="18" class="neo-button-spinner" />
+            }
+            {{ 'common.save' | translate }}
+          </button>
+        </div>
+      }
+    </section>
+
+    <!-- A part's texts, opened by its pencil on the preview (T-494). -->
+    <ng-template #textsDialog let-part>
+      <h2 mat-dialog-title>{{ part.titleKey | translate }}</h2>
+      <mat-dialog-content class="branding__dialog">
+        <p class="neo-caption">{{ 'kioskBranding.dialogHint' | translate }}</p>
+        @for (key of part.keys; track key) {
+          <div class="branding__row">
+            <span class="branding__label">{{ 'kioskBranding.key.' + key | translate }}</span>
+            <div class="branding__fields">
+              @for (language of languages; track language) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-label>{{ language.toUpperCase() }}</mat-label>
                   <input
-                    #picker
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    hidden
-                    (change)="chosen(picker)"
-                  />
-                  <button
-                    mat-stroked-button
-                    type="button"
+                    matInput
+                    [name]="key + '-' + language"
+                    [attr.data-field]="key + '-' + language"
+                    [maxlength]="maxLength"
                     [disabled]="busy()"
-                    (click)="picker.click()"
+                    [placeholder]="placeholder(key, language) | translate"
+                    [ngModel]="texts()[key][language]"
+                    (ngModelChange)="edit(key, language, $event)"
+                  />
+                  <mat-hint align="end"
+                    >{{ texts()[key][language].length }} / {{ maxLength }}</mat-hint
                   >
-                    <mat-icon>add_photo_alternate</mat-icon>
-                    {{
-                      (view()?.image ? 'kioskBranding.replace' : 'kioskBranding.upload') | translate
-                    }}
-                  </button>
-                  @if (view()?.image) {
-                    <button
-                      mat-button
-                      type="button"
-                      class="branding__remove"
-                      [disabled]="busy()"
-                      (click)="removeImage()"
-                    >
-                      <mat-icon>delete_outline</mat-icon>
-                      {{ 'kioskBranding.remove' | translate }}
-                    </button>
-                  }
-                </div>
+                </mat-form-field>
               }
             </div>
           </div>
+        }
+      </mat-dialog-content>
+      <mat-dialog-actions align="end">
+        <button mat-button type="button" mat-dialog-close data-cancel>
+          {{ 'common.cancel' | translate }}
+        </button>
+        <button mat-flat-button color="primary" type="button" [mat-dialog-close]="true" data-done>
+          {{ 'kioskBranding.done' | translate }}
+        </button>
+      </mat-dialog-actions>
+    </ng-template>
 
-          @for (group of groups; track group.titleKey) {
-            <div class="branding__group">
-              <h3>{{ group.titleKey | translate }}</h3>
-              @for (key of group.keys; track key) {
-                <div class="branding__row">
-                  <span class="branding__label">{{ 'kioskBranding.key.' + key | translate }}</span>
-                  <div class="branding__fields">
-                    @for (language of languages; track language) {
-                      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                        <mat-label>{{ language.toUpperCase() }}</mat-label>
-                        <input
-                          matInput
-                          [name]="key + '-' + language"
-                          [maxlength]="maxLength"
-                          [disabled]="!canEdit() || busy()"
-                          [placeholder]="placeholder(key, language) | translate"
-                          [ngModel]="texts()[key][language]"
-                          (ngModelChange)="edit(key, language, $event)"
-                        />
-                        <mat-hint align="end"
-                          >{{ texts()[key][language].length }} / {{ maxLength }}</mat-hint
-                        >
-                      </mat-form-field>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
+    <!-- The picture beside the big line, opened by its pencil (T-494). -->
+    <ng-template #imageDialog>
+      <h2 mat-dialog-title>{{ 'kioskBranding.imageTitle' | translate }}</h2>
+      <mat-dialog-content class="branding__image">
+        <div class="branding__frame">
+          @if (imageUrl(); as src) {
+            <img [src]="src" [alt]="'kioskBranding.imageAlt' | translate" />
+          } @else {
+            <mat-icon aria-hidden="true">print</mat-icon>
           }
-
-          @if (canEdit()) {
-            <div class="branding__save">
-              <!-- Back to what the kiosk says by itself (T-422). -->
+        </div>
+        <div class="branding__image-body">
+          <p class="neo-caption">{{ imageNote() | translate }}</p>
+          <div class="branding__actions">
+            <input
+              #picker
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              (change)="chosen(picker)"
+            />
+            <button mat-stroked-button type="button" [disabled]="busy()" (click)="picker.click()">
+              <mat-icon>add_photo_alternate</mat-icon>
+              {{ (view()?.image ? 'kioskBranding.replace' : 'kioskBranding.upload') | translate }}
+            </button>
+            @if (view()?.image) {
               <button
                 mat-button
                 type="button"
-                [disabled]="busy() || (atDefaults() && atDefaultLayout())"
-                (click)="reset()"
+                class="branding__remove"
+                [disabled]="busy()"
+                (click)="removeImage()"
               >
-                <mat-icon>restart_alt</mat-icon>
-                {{ 'kioskBranding.reset' | translate }}
+                <mat-icon>delete_outline</mat-icon>
+                {{ 'kioskBranding.remove' | translate }}
               </button>
-              <button
-                mat-flat-button
-                color="primary"
-                type="button"
-                [disabled]="busy() || (!dirty() && !layoutDirty())"
-                (click)="save()"
-              >
-                @if (busy()) {
-                  <mat-spinner diameter="18" class="neo-button-spinner" />
-                }
-                {{ 'common.save' | translate }}
-              </button>
-            </div>
+            }
+          </div>
+          @if (problem(); as current) {
+            <app-error-banner
+              [problem]="current"
+              effect="kioskBranding.failedEffect"
+              [retryable]="false"
+            />
           }
         </div>
-      </div>
-    </section>
+      </mat-dialog-content>
+      <mat-dialog-actions align="end">
+        <button mat-button type="button" mat-dialog-close>
+          {{ 'common.close' | translate }}
+        </button>
+      </mat-dialog-actions>
+    </ng-template>
   `,
   styles: `
     .branding {
@@ -294,16 +319,6 @@ function empty(): Texts {
       color: var(--danger-500);
     }
 
-    .branding__group {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      padding: var(--space-4);
-      border: 1px solid var(--neutral-200);
-      border-radius: var(--radius-md);
-      background: var(--neutral-0);
-    }
-
     // The label above its three fields: beside the preview the row is narrow,
     // and each field keeps room to read what it says (T-422).
     .branding__row {
@@ -325,21 +340,29 @@ function empty(): Texts {
       gap: var(--space-2);
     }
 
-    .branding__layout {
-      display: block;
+    .branding__save {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-items: center;
+      justify-content: flex-end;
     }
 
-    .branding__form {
+    .branding__unsaved {
+      display: inline-flex;
+      gap: var(--space-1);
+      align-items: center;
+      margin-right: auto;
+    }
+
+    .branding__dialog {
       display: flex;
       flex-direction: column;
       gap: var(--space-4);
-      min-width: 0;
     }
 
-    .branding__save {
-      display: flex;
-      gap: var(--space-2);
-      justify-content: flex-end;
+    .branding__dialog p {
+      margin: 0;
     }
 
     @media (max-width: 900px) {
@@ -368,7 +391,6 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
   /** One kiosk's name, for the preview's header. */
   readonly kioskName = input<string | null>(null);
 
-  readonly groups = BRANDING_GROUPS;
   readonly languages = BRANDING_LANGUAGES;
   readonly maxLength = 160;
 
@@ -383,6 +405,9 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
   readonly busy = signal(false);
   readonly problem = signal<Problem | null>(null);
   readonly imageUrl = signal<string | null>(null);
+
+  private readonly textsDialog = viewChild.required<TemplateRef<unknown>>('textsDialog');
+  private readonly imageDialog = viewChild.required<TemplateRef<unknown>>('imageDialog');
 
   readonly imageNote = computed(() => {
     const view = this.view();
@@ -425,6 +450,34 @@ export class KioskBrandingComponent implements OnInit, OnDestroy {
   });
 
   readonly atDefaultLayout = computed(() => sameLayout(this.layout(), this.fallbackLayout()));
+
+  /**
+   * A part's texts in a dialog (T-494): the preview follows every keystroke;
+   * "Ləğv et", Esc or a click outside puts them back as they were.
+   */
+  openTexts(part: PreviewTextPart): void {
+    if (!this.canEdit()) {
+      return;
+    }
+    const before = this.texts();
+    const wasDirty = this.dirty();
+    this.dialog
+      .open(this.textsDialog(), { data: part, width: '760px', maxWidth: '95vw' })
+      .afterClosed()
+      .subscribe((done) => {
+        if (done !== true) {
+          this.texts.set(before);
+          this.dirty.set(wasDirty);
+        }
+      });
+  }
+
+  /** The picture: uploaded, replaced or removed at once, as before (T-494). */
+  openImage(): void {
+    if (this.canEdit()) {
+      this.dialog.open(this.imageDialog(), { width: '640px', maxWidth: '95vw' });
+    }
+  }
 
   arrange(layout: KioskScreenLayout): void {
     this.layout.set(layout);

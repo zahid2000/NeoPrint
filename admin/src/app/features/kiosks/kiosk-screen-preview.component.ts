@@ -21,10 +21,12 @@ import {
   KioskPreviewFooterComponent,
   KioskPreviewHomeComponent,
   KioskPreviewQueueComponent,
+  PreviewTextPart,
   STANDARD_LAYOUT,
 } from './kiosk-screen-preview.parts';
 
 export { STANDARD_LAYOUT, featureOrder, sameLayout } from './kiosk-screen-preview.parts';
+export type { PreviewTextPart } from './kiosk-screen-preview.parts';
 
 /** The kiosk's 1920x1080 design (desktop Tokens.axaml DesignWidth / DesignHeight). */
 const DESIGN_WIDTH = 1920;
@@ -87,7 +89,7 @@ const time = (value: Date): string => `${pad(value.getHours())}:${pad(value.getM
       }
       <div
         class="surface"
-        role="img"
+        [attr.role]="editable() ? 'group' : 'img'"
         [attr.aria-label]="'kioskBranding.preview' | translate"
         [style.transform]="'scale(' + scale() + ')'"
       >
@@ -116,6 +118,8 @@ const time = (value: Date): string => `${pad(value.getHours())}:${pad(value.getM
             [editable]="editable()"
             [scale]="scale()"
             (layoutChange)="layoutChange.emit($event)"
+            (editTexts)="editPart($event)"
+            (editImage)="editPicture()"
           />
           <app-kiosk-preview-queue
             [texts]="texts()"
@@ -132,6 +136,7 @@ const time = (value: Date): string => `${pad(value.getHours())}:${pad(value.getM
           [editable]="editable()"
           [scale]="scale()"
           (layoutChange)="layoutChange.emit($event)"
+          (editTexts)="editPart($event)"
         />
       </div>
     </div>
@@ -313,6 +318,10 @@ export class KioskScreenPreviewComponent {
   readonly kioskName = input<string | null>(null);
 
   readonly layoutChange = output<KioskScreenLayout>();
+  /** A part's pencil was pressed (T-494): its texts are edited in a dialog. */
+  readonly editTexts = output<PreviewTextPart>();
+  /** The picture's pencil was pressed. */
+  readonly editImage = output<void>();
 
   readonly languages = ['az', 'en', 'ru'] as const;
   readonly language = signal<string>('az');
@@ -367,6 +376,25 @@ export class KioskScreenPreviewComponent {
       const ticker = setInterval(() => this.now.set(new Date()), 30_000);
       stops.push(() => clearInterval(ticker));
     });
+  }
+
+  /** A part's pencil (T-494): its texts are edited in a dialog. */
+  async editPart(part: PreviewTextPart): Promise<void> {
+    await this.leaveFullscreen();
+    this.editTexts.emit(part);
+  }
+
+  /** The picture's pencil. */
+  async editPicture(): Promise<void> {
+    await this.leaveFullscreen();
+    this.editImage.emit();
+  }
+
+  /** A dialog cannot show over the full screen: it is left first. */
+  private async leaveFullscreen(): Promise<void> {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
   }
 
   async toggleFullscreen(): Promise<void> {

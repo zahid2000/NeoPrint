@@ -34,6 +34,33 @@ export const featureOrder = (layout: KioskScreenLayout): string[] => [
 
 type Texts = Record<string, Record<string, string>>;
 
+/** A part of the screen edited in place (T-494): its name and the texts it shows. */
+export interface PreviewTextPart {
+  readonly titleKey: string;
+  readonly keys: readonly string[];
+}
+
+/** The ways in and the features, as their pencils name them. */
+export const cardPart = (card: string): PreviewTextPart => ({
+  titleKey: `kioskBranding.part.${card}`,
+  keys: [`${card}Title`, `${card}Hint`],
+});
+
+export const featurePart = (feature: string): PreviewTextPart => ({
+  titleKey: `kioskBranding.key.${feature}`,
+  keys: [feature, `${feature}Hint`],
+});
+
+export const HERO_PART: PreviewTextPart = {
+  titleKey: 'kioskBranding.groupHome',
+  keys: ['heroTitle', 'heroSubtitle'],
+};
+
+export const HOTLINE_PART: PreviewTextPart = {
+  titleKey: 'kioskBranding.groupHotline',
+  keys: ['hotline'],
+};
+
 /** The item being dragged, if any: which group it is in and where it stood. */
 let dragged: { group: string; index: number } | null = null;
 
@@ -140,7 +167,7 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone' };
 @Component({
   selector: 'app-kiosk-preview-home',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, ReorderDirective],
+  imports: [MatIconModule, MatTooltipModule, ReorderDirective, TranslatePipe],
   template: `
     <div class="hero">
       @for (part of heroParts(); track part; let i = $index) {
@@ -154,6 +181,23 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone' };
           >
             <p class="hero__title">{{ text('heroTitle') }}</p>
             <p class="muted">{{ text('heroSubtitle') }}</p>
+            @if (editable()) {
+              <button
+                type="button"
+                class="pen"
+                draggable="false"
+                data-pen
+                [attr.aria-label]="
+                  'kioskBranding.editPart' | translate: { part: (hero.titleKey | translate) }
+                "
+                [matTooltip]="
+                  'kioskBranding.editPart' | translate: { part: (hero.titleKey | translate) }
+                "
+                (click)="editTexts.emit(hero)"
+              >
+                <mat-icon aria-hidden="true">edit</mat-icon>
+              </button>
+            }
           </div>
         } @else {
           <div
@@ -170,6 +214,25 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone' };
               <span class="hero__circle"></span>
               <span class="hero__paper"><mat-icon aria-hidden="true">description</mat-icon></span>
               <mat-icon class="hero__printer" aria-hidden="true">print</mat-icon>
+            }
+            @if (editable()) {
+              <button
+                type="button"
+                class="pen"
+                draggable="false"
+                data-pen
+                [attr.aria-label]="
+                  'kioskBranding.editPart'
+                    | translate: { part: ('kioskBranding.imageTitle' | translate) }
+                "
+                [matTooltip]="
+                  'kioskBranding.editPart'
+                    | translate: { part: ('kioskBranding.imageTitle' | translate) }
+                "
+                (click)="editImage.emit()"
+              >
+                <mat-icon aria-hidden="true">edit</mat-icon>
+              </button>
             }
           </div>
         }
@@ -193,6 +256,25 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone' };
           <span class="muted">{{ text(card + 'Hint') }}</span>
           @if (card !== 'phone') {
             <mat-icon class="card__arrow" aria-hidden="true">arrow_forward</mat-icon>
+          }
+          @if (editable()) {
+            <button
+              type="button"
+              class="pen"
+              draggable="false"
+              data-pen
+              [attr.aria-label]="
+                'kioskBranding.editPart'
+                  | translate: { part: (cardPart(card).titleKey | translate) }
+              "
+              [matTooltip]="
+                'kioskBranding.editPart'
+                  | translate: { part: (cardPart(card).titleKey | translate) }
+              "
+              (click)="editTexts.emit(cardPart(card))"
+            >
+              <mat-icon aria-hidden="true">edit</mat-icon>
+            </button>
           }
         </div>
       }
@@ -232,6 +314,7 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone' };
       }
 
       .hero__text {
+        position: relative;
         display: flex;
         flex: 1;
         flex-direction: column;
@@ -305,6 +388,7 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone' };
       }
 
       .card {
+        position: relative;
         display: flex;
         flex-direction: column;
         gap: var(--space-2);
@@ -365,6 +449,36 @@ const CARD_ICONS: Record<string, string> = { usb: 'usb', phone: 'smartphone' };
         font-size: var(--kiosk-icon-md);
       }
 
+      // A part edited in place (T-494): the pencil in its top right corner.
+      .pen {
+        position: absolute;
+        top: var(--space-2);
+        right: var(--space-2);
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--kiosk-touch-target);
+        height: var(--kiosk-touch-target);
+        padding: 0;
+        border: 1px solid var(--kiosk-neutral-200);
+        border-radius: 50%;
+        background: var(--kiosk-neutral-0);
+        color: var(--kiosk-brand-600);
+        cursor: pointer;
+      }
+
+      .pen mat-icon {
+        width: var(--kiosk-icon-lg);
+        height: var(--kiosk-icon-lg);
+        font-size: var(--kiosk-icon-lg);
+      }
+
+      .pen:hover,
+      .pen:focus-visible {
+        background: var(--kiosk-brand-50);
+      }
+
       [draggable='true'] {
         cursor: grab;
         outline: 3px dashed transparent;
@@ -394,6 +508,13 @@ export class KioskPreviewHomeComponent extends PreviewPart {
   readonly scale = input(1);
 
   readonly layoutChange = output<KioskScreenLayout>();
+  /** A pencil was pressed (T-494): these texts are edited. */
+  readonly editTexts = output<PreviewTextPart>();
+  /** The picture's pencil was pressed. */
+  readonly editImage = output<void>();
+
+  readonly hero = HERO_PART;
+  readonly cardPart = cardPart;
 
   readonly heroParts = computed(() =>
     this.layout().imageLeft ? (['art', 'text'] as const) : (['text', 'art'] as const),
@@ -575,6 +696,28 @@ const FEATURE_ICONS: Record<string, string> = {
       <strong>K-1042</strong>
       @if (text('hotline'); as hotline) {
         <span class="hotline"><mat-icon aria-hidden="true">call</mat-icon>{{ hotline }}</span>
+      } @else if (editable()) {
+        <span class="hotline hotline--empty"
+          ><mat-icon aria-hidden="true">call</mat-icon
+          >{{ 'kioskBranding.hotlineEmpty' | translate }}</span
+        >
+      }
+      @if (editable()) {
+        <button
+          type="button"
+          class="pen pen--inline"
+          draggable="false"
+          data-pen
+          [attr.aria-label]="
+            'kioskBranding.editPart' | translate: { part: (hotlinePart.titleKey | translate) }
+          "
+          [matTooltip]="
+            'kioskBranding.editPart' | translate: { part: (hotlinePart.titleKey | translate) }
+          "
+          (click)="editTexts.emit(hotlinePart)"
+        >
+          <mat-icon aria-hidden="true">edit</mat-icon>
+        </button>
       }
     </span>
     <div class="features">
@@ -594,6 +737,23 @@ const FEATURE_ICONS: Record<string, string> = {
             <span>{{ text(feature + 'Hint') }}</span>
           </span>
           @if (editable()) {
+            <button
+              type="button"
+              class="pen pen--inline"
+              draggable="false"
+              data-pen
+              [attr.aria-label]="
+                'kioskBranding.editPart'
+                  | translate: { part: (featurePart(feature).titleKey | translate) }
+              "
+              [matTooltip]="
+                'kioskBranding.editPart'
+                  | translate: { part: (featurePart(feature).titleKey | translate) }
+              "
+              (click)="editTexts.emit(featurePart(feature))"
+            >
+              <mat-icon aria-hidden="true">edit</mat-icon>
+            </button>
             <button
               type="button"
               class="eye"
@@ -702,6 +862,22 @@ const FEATURE_ICONS: Record<string, string> = {
         color: var(--kiosk-neutral-600);
       }
 
+      // In the footer's row the pencil stands in line, before the eye.
+      .pen.pen--inline {
+        position: static;
+        flex: none;
+      }
+
+      .feature .pen--inline {
+        margin-left: auto;
+      }
+
+      .hotline--empty {
+        color: var(--kiosk-neutral-600);
+        font-weight: var(--font-weight-semibold);
+        opacity: 0.6;
+      }
+
       .feature--hidden {
         opacity: 0.35;
       }
@@ -713,7 +889,6 @@ const FEATURE_ICONS: Record<string, string> = {
         justify-content: center;
         width: var(--kiosk-touch-target);
         height: var(--kiosk-touch-target);
-        margin-left: auto;
         border: 1px solid var(--kiosk-neutral-200);
         border-radius: 50%;
         background: var(--kiosk-neutral-0);
@@ -741,6 +916,36 @@ const FEATURE_ICONS: Record<string, string> = {
 
       .chip mat-icon {
         color: var(--kiosk-success-500);
+      }
+
+      // A part edited in place (T-494): the pencil in its top right corner.
+      .pen {
+        position: absolute;
+        top: var(--space-2);
+        right: var(--space-2);
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--kiosk-touch-target);
+        height: var(--kiosk-touch-target);
+        padding: 0;
+        border: 1px solid var(--kiosk-neutral-200);
+        border-radius: 50%;
+        background: var(--kiosk-neutral-0);
+        color: var(--kiosk-brand-600);
+        cursor: pointer;
+      }
+
+      .pen mat-icon {
+        width: var(--kiosk-icon-lg);
+        height: var(--kiosk-icon-lg);
+        font-size: var(--kiosk-icon-lg);
+      }
+
+      .pen:hover,
+      .pen:focus-visible {
+        background: var(--kiosk-brand-50);
       }
 
       [draggable='true'] {
@@ -771,6 +976,11 @@ export class KioskPreviewFooterComponent extends PreviewPart {
   readonly scale = input(1);
 
   readonly layoutChange = output<KioskScreenLayout>();
+  /** A pencil was pressed (T-494): these texts are edited. */
+  readonly editTexts = output<PreviewTextPart>();
+
+  readonly hotlinePart = HOTLINE_PART;
+  readonly featurePart = featurePart;
 
   /** On the kiosk only the shown ones; while arranging, the hidden ones too, faded. */
   readonly features = computed(() =>
