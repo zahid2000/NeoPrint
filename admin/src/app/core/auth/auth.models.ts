@@ -102,6 +102,8 @@ export const Permissions = {
   kioskCommandsUpdate: 'kiosks.commands.update',
   /** Ask a kiosk for its logs and download them (T-326). */
   kioskLogsDownload: 'kiosks.logs.download',
+  /** The kiosk camera, live and recorded (T-483). */
+  cameraView: 'camera.view',
 
   // Step 4: money and customers (plan section 8A.2).
   reportsView: 'reports.view',

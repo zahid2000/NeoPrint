@@ -38,6 +38,7 @@ import { KioskPrintersComponent } from './kiosk-printers.component';
 import { KioskCommandsComponent } from './kiosk-commands.component';
 import { KioskUpdatesComponent } from './kiosk-updates.component';
 import { KioskIncidentsComponent } from './kiosk-incidents.component';
+import { KioskCameraComponent } from './kiosk-camera.component';
 import { KioskQueueComponent } from './kiosk-queue.component';
 import { KioskPhotoComponent } from './kiosk-photo.component';
 import { KioskBrandingComponent } from './kiosk-branding.component';
@@ -92,6 +93,7 @@ const pinPattern = /^[0-9]{4,12}$/;
     KioskStatusComponent,
     KioskTasksComponent,
     KioskIncidentsComponent,
+    KioskCameraComponent,
     KioskCommandsComponent,
     KioskUpdatesComponent,
     PrintJobsComponent,
@@ -175,6 +177,7 @@ export class KioskEditorComponent implements OnInit {
   readonly canSupplies = computed(() => this.auth.canAny([Permissions.suppliesView]));
   readonly canTasks = computed(() => this.auth.canAny([Permissions.serviceTasksView]));
   readonly canIncidents = computed(() => this.auth.canAny([Permissions.incidentsView]));
+  readonly canCamera = computed(() => this.auth.canAny([Permissions.cameraView]));
   readonly canDelete = computed(
     () =>
       this.auth.canAny([Permissions.kiosksDelete]) &&

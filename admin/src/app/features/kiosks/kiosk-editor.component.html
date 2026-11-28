@@ -489,7 +489,9 @@
               <mat-form-field>
                 <mat-label>{{ 'kiosks.cameraArchive.title' | translate }}</mat-label>
                 <mat-select [ngModel]="cameraArchive()" (ngModelChange)="cameraArchive.set($event)">
-                  <mat-option [value]="null">{{ 'kiosks.cameraArchive.default' | translate }}</mat-option>
+                  <mat-option [value]="null">{{
+                    'kiosks.cameraArchive.default' | translate
+                  }}</mat-option>
                   <mat-option value="off">{{ 'kiosks.cameraArchive.off' | translate }}</mat-option>
                   @for (target of storageTargets(); track target.id) {
                     <mat-option [value]="target.id">{{ target.name }}</mat-option>
@@ -623,6 +625,16 @@
           <ng-template matTabContent>
             <section class="editor__tab">
               <app-kiosk-incidents [kioskId]="current.id" />
+            </section>
+          </ng-template>
+        </mat-tab>
+      }
+
+      @if (canCamera()) {
+        <mat-tab [label]="'kiosks.tabCamera' | translate">
+          <ng-template matTabContent>
+            <section class="editor__tab">
+              <app-kiosk-camera [kioskId]="current.id" [kioskCode]="current.code" />
             </section>
           </ng-template>
         </mat-tab>
