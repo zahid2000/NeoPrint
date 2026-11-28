@@ -115,6 +115,10 @@ export interface KioskVersion {
   readonly updates: readonly KioskUpdateState[];
   readonly offered: readonly { readonly component: ReleaseComponent; readonly version: string }[];
   readonly lastHeartbeatAt: string | null;
+  /** False when the kiosk app is older than the backend supports (ADR-0009, T-492); left out when unknown. */
+  readonly supported?: boolean | null;
+  /** The oldest kiosk app the backend supports. */
+  readonly minSupportedVersion?: string | null;
 }
 
 /**

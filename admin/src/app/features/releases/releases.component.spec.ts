@@ -222,6 +222,28 @@ describe('Buraxılışlar', () => {
     expect(text(fixture, '[data-update="App"]')).toContain('Paket imza yoxlamasından keçmədi.');
   });
 
+  it('warns about kiosks older than the backend supports, on the row and above the table (T-492)', async () => {
+    const fixture = await open(page(), [
+      kiosk({ supported: false, minSupportedVersion: '0.9.0-m20.2' }),
+      kiosk({ kioskId: 'k-2', code: 'KSK-9003', appVersion: '0.9.0-m20.14', supported: true, minSupportedVersion: '0.9.0-m20.2' }),
+      kiosk({ kioskId: 'k-3', code: 'KSK-9004', appVersion: null, supported: null }),
+    ]);
+    await tab(fixture, 2);
+
+    expect(text(fixture, '[data-notice="unsupported"]')).toContain('1 kiosk backend-in artıq dəstəkləmədiyi versiyadadır (ən azı 0.9.0-m20.2 lazımdır)');
+    const notes = fixture.nativeElement.querySelectorAll('[data-note="unsupported"]');
+    expect(notes.length).toBe(1);
+    expect(notes[0].textContent).toContain('Dəstəklənmir — ən azı 0.9.0-m20.2');
+  });
+
+  it('says nothing about support while every kiosk is supported', async () => {
+    const fixture = await open(page(), [kiosk({ appVersion: '0.9.0-m20.14', supported: true, minSupportedVersion: '0.9.0-m20.2' })]);
+    await tab(fixture, 2);
+
+    expect(fixture.nativeElement.querySelector('[data-notice="unsupported"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-note="unsupported"]')).toBeNull();
+  });
+
   it('withdraws a release with the reason given and asks the server again', async () => {
     const fixture = await open(page());
     dialogAnswer = { reason: 'Çap pozulur' };

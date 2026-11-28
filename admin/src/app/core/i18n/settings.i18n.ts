@@ -143,6 +143,7 @@ export const settingsTranslations: PageTranslations = {
     'settings.archive.none': 'Yoxdur — yalnız kioskun diski',
     'settings.description.Camera.ArchiveProvider': 'Kamera görüntüsü kioskun diskindən əlavə bu fayl serverinə də yazılır (Saxlama bölməsindəki provayderlərdən biri). Kiosk şifrəli faylı backend-ə göndərir, backend serverə yazır — kioskda heç bir parol saxlanmır. Kiosk səhifəsində hər kiosk üçün ayrıca seçmək olar.',
     'settings.description.Camera.ArchiveRetentionDays': 'Kamera görüntüsü fayl serverində bu qədər gün saxlanılır, sonra silinir (1–365).',
+    'settings.description.Mobile.MinVersion': 'Mobil tətbiqin işləyə biləcəyi ən köhnə versiya, məs. 1.2.0. Köhnə tətbiq "Tətbiqi yeniləyin" ekranını görür. Boş qalsa, yalnız backend-in özünün tələb etdiyi versiya yoxlanılır; ondan aşağı qoymaq olmur.',
     'settings.description.Update.CheckIntervalMinutes':
       'Kiosk yeni versiyanı bu intervalla yoxlayır.',
     'settings.description.Update.HealthTimeoutMinutes':
@@ -288,6 +289,7 @@ export const settingsTranslations: PageTranslations = {
     'settings.archive.none': 'None - the kiosk disk only',
     'settings.description.Camera.ArchiveProvider': 'Camera footage is also written to this file server besides the kiosk disk (one of the providers on the Storage page). The kiosk sends the encrypted file to the backend and the backend writes it - no password is kept on the kiosk. Each kiosk can have its own on the kiosk page.',
     'settings.description.Camera.ArchiveRetentionDays': 'Camera footage stays on the file server for this many days, then is deleted (1–365).',
+    'settings.description.Mobile.MinVersion': 'The oldest mobile app version that may be used, e.g. 1.2.0. An older app shows the "Update the app" screen. Left empty, only the version the backend itself needs is checked; it cannot be set lower than that.',
     'settings.description.Update.CheckIntervalMinutes':
       'How often the kiosk checks for a new version.',
     'settings.description.Update.HealthTimeoutMinutes':
@@ -437,6 +439,7 @@ export const settingsTranslations: PageTranslations = {
     'settings.archive.none': 'Нет — только диск киоска',
     'settings.description.Camera.ArchiveProvider': 'Видео камеры кроме диска киоска записывается и на этот файловый сервер (один из поставщиков на странице «Хранилище»). Киоск отправляет зашифрованный файл в backend, backend записывает его на сервер — на киоске не хранится никаких паролей. Для каждого киоска можно выбрать свой на странице киоска.',
     'settings.description.Camera.ArchiveRetentionDays': 'Видео хранится на файловом сервере столько дней, затем удаляется (1–365).',
+    'settings.description.Mobile.MinVersion': 'Самая старая версия мобильного приложения, которой можно пользоваться, например 1.2.0. Старое приложение показывает экран «Обновите приложение». Если пусто, проверяется только версия, которую требует сам backend; ниже неё задать нельзя.',
     'settings.description.Update.CheckIntervalMinutes':
       'Как часто киоск проверяет наличие новой версии.',
     'settings.description.Update.HealthTimeoutMinutes':

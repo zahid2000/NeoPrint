@@ -303,6 +303,15 @@ const rolloutActions: Record<Rollout['status'], readonly RolloutAction[]> = {
               @if (kiosks().length === 0) {
                 <app-empty-state icon="devices" [message]="'releases.kiosksEmpty' | translate" [hint]="'releases.kiosksEmptyHint' | translate" />
               } @else {
+                @if (unsupported().length > 0) {
+                  <div class="neo-notice neo-notice--warning" data-notice="unsupported">
+                    <mat-icon>warning</mat-icon>
+                    <span>
+                      {{ 'releases.unsupported.notice' | translate: { count: unsupported().length, min: unsupported()[0].minSupportedVersion } }}
+                      <span class="neo-caption releases__block">{{ 'releases.unsupported.hint' | translate }}</span>
+                    </span>
+                  </div>
+                }
                 <div class="neo-table-wrapper">
                   <table mat-table class="neo-table" [dataSource]="kiosks()" [trackBy]="byKiosk">
                     <ng-container matColumnDef="kiosk">
@@ -341,7 +350,14 @@ const rolloutActions: Record<Rollout['status'], readonly RolloutAction[]> = {
                     </ng-container>
                     <ng-container matColumnDef="app">
                       <th mat-header-cell *matHeaderCellDef>{{ 'releases.col.app' | translate }}</th>
-                      <td mat-cell *matCellDef="let k" class="neo-nowrap">{{ k.appVersion }}</td>
+                      <td mat-cell *matCellDef="let k">
+                        <span class="neo-nowrap">{{ k.appVersion }}</span>
+                        @if (k.supported === false) {
+                          <span class="neo-row-note neo-row-note--warning" data-note="unsupported">
+                            <mat-icon>warning</mat-icon>{{ 'releases.unsupported.row' | translate: { min: k.minSupportedVersion } }}
+                          </span>
+                        }
+                      </td>
                     </ng-container>
                     <ng-container matColumnDef="agent">
                       <th mat-header-cell *matHeaderCellDef>{{ 'releases.col.agent' | translate }}</th>
@@ -427,6 +443,9 @@ export class ReleasesComponent implements OnInit {
   readonly tab = signal(0);
   readonly page = signal<ReleasesPage | null>(null);
   readonly kiosks = signal<KioskVersion[]>([]);
+
+  /** Kiosks older than the backend supports (ADR-0009): still served, but told to update. */
+  readonly unsupported = computed(() => this.kiosks().filter((kiosk) => kiosk.supported === false));
   readonly problem = signal<Problem | null>(null);
 
   readonly canManage = computed(() => this.auth.can(Permissions.releasesManage));
