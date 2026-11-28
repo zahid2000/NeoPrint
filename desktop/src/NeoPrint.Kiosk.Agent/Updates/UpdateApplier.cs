@@ -573,8 +573,10 @@ public sealed partial class UpdateApplier
             }
 
             _logger.LogError("Provisioning {Version} ended with {Code}.", version, code);
+            // The agent checked the signature already; what the root helper
+            // refuses is its own check (T-498), the reason in the agent's log.
             return code == 2
-                ? Answer(request, AgentOutcome.Refused, UpdateComponents.Provisioning, version, from, "updates.signatureRefused")
+                ? Answer(request, AgentOutcome.Refused, UpdateComponents.Provisioning, version, from, "updates.provisioningRefused")
                 : Answer(request, AgentOutcome.Failed, UpdateComponents.Provisioning, version, from, "updates.provisioningFailed");
         }
         finally

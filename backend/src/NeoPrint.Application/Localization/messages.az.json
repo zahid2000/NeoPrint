@@ -904,6 +904,7 @@
   "updates.badArchive": "Paketin arxivi açılmadı və ya icazəsiz yol saxlayır.",
   "updates.notSupportedHere": "Bu yeniləmə bu kioskun platformasında hələ dəstəklənmir.",
   "updates.provisioningFailed": "Quraşdırma skripti xəta ilə bitdi.",
+  "updates.provisioningRefused": "Kioskun sistem köməkçisi quraşdırma skriptlərinin paketini qəbul etmədi və paket quraşdırılmadı. Səbəbi Agent jurnalındadır.",
   "updates.agentStartFailed": "Yeni Agent başlaya bilmədi; əvvəlki Agent bərpa olundu.",
   "updates.alreadyRunning": "Bu versiya artıq quraşdırılıb.",
   "updates.nothingToRollBack": "Kioskda qaytarılacaq əvvəlki versiya yoxdur.",

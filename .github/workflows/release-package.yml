@@ -79,6 +79,12 @@ jobs:
           echo "$min_agent" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
           echo "VERSION=$version" >> "$GITHUB_ENV"
           echo "MIN_AGENT=$min_agent" >> "$GITHUB_ENV"
+          # The provisioning scripts are checked again by the kiosk's root
+          # helper: the agent of its first provisioning, which --repair never
+          # replaces (T-498). Its lowest agent is therefore the first with the
+          # root helper (T-321, after v0.7.2), or no kiosk set up before this
+          # release could ever take new scripts.
+          echo "PROVISIONING_MIN_AGENT=0.7.2" >> "$GITHUB_ENV"
 
       - name: Build the signing tool (manifests only - CI has no key)
         run: dotnet build tools/release-sign --configuration Release
@@ -134,7 +140,7 @@ jobs:
               --component "$component" \
               --platform ${{ matrix.rid }}               --key-set ${{ matrix.key_set }} \
               --version "$VERSION" \
-              --min-agent-version "$MIN_AGENT" \
+              --min-agent-version "$([ "$component" = Provisioning ] && echo "$PROVISIONING_MIN_AGENT" || echo "$MIN_AGENT")" \
               --commit "$GITHUB_SHA" \
               --out "dist/$file.manifest.json"
           done < packages.txt

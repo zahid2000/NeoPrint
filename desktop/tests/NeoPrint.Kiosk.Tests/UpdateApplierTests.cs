@@ -336,6 +336,12 @@ public sealed class UpdateApplierTests : IDisposable
         failed!.Outcome.Should().Be(AgentOutcome.Failed);
         failed.MessageKey.Should().Be("updates.provisioningFailed");
         agent.State.Installed[UpdateComponents.Provisioning].Should().Be("1.0.0");
+
+        // The helper's own refusal is not called a bad signature (T-498): the agent checked that.
+        _provisioning.ExitCode = 2;
+        var refused = await agent.ProcessAsync(Request(Package("1.2.0", component: ReleaseComponent.Provisioning)), CancellationToken.None);
+        refused!.Outcome.Should().Be(AgentOutcome.Refused);
+        refused.MessageKey.Should().Be("updates.provisioningRefused");
         _ui.Calls.Should().BeEmpty("provisioning does not stop the UI");
 
         // Reapplied: the helper runs what is current.
@@ -364,6 +370,32 @@ public sealed class UpdateApplierTests : IDisposable
         (await RootProvisioning.RunAsync(["provisioning", "install", file, manifest, signature, "--dry-run"], _paths, "1.0.0", CancellationToken.None))
             .Should().Be(2);
         Directory.Exists(_paths.Versions(UpdateComponents.Provisioning)).Should().BeFalse("nothing was unpacked");
+    }
+
+    [Fact]
+    public async Task The_root_helper_does_not_hold_its_own_first_agent_version_against_new_scripts()
+    {
+        // KSK-9002 (T-498): the helper is the agent of the first provisioning,
+        // older than the package's lowest agent; the running agent checked that.
+        var package = Package("1.0.0", component: ReleaseComponent.Provisioning, platform: UpdatePaths.Platform);
+        var file = Path.Combine(_paths.Downloads, package.File);
+        var manifest = Path.Combine(_root, "m.json");
+        var signature = Path.Combine(_root, "m.sig");
+        File.WriteAllText(manifest, package.Manifest);
+        File.WriteAllText(signature, package.Signature);
+        var keys = new ReleasePackageCheck(new ReleaseKeySet("staging", [ReleasePublicKey.FromKey(_key)]));
+
+        // The test package holds no provision script: it is unpacked, then the run fails (3) - not refused (2).
+        (await RootProvisioning.InstallAsync(_paths, file, manifest, signature, "0.0.1", "--dry-run", CancellationToken.None, keys))
+            .Should().Be(3);
+        Directory.Exists(Path.Combine(_paths.Versions(UpdateComponents.Provisioning), "1.0.0")).Should().BeTrue("the package was accepted and unpacked");
+
+        // Another key is still refused.
+        var forged = Package("1.1.0", component: ReleaseComponent.Provisioning, signer: _stranger, platform: UpdatePaths.Platform);
+        File.WriteAllText(manifest, forged.Manifest);
+        File.WriteAllText(signature, forged.Signature);
+        (await RootProvisioning.InstallAsync(_paths, Path.Combine(_paths.Downloads, forged.File), manifest, signature, "0.0.1", "--dry-run", CancellationToken.None, keys))
+            .Should().Be(2);
     }
 
     [Fact]
@@ -480,15 +512,16 @@ public sealed class UpdateApplierTests : IDisposable
         ReleaseComponent component = ReleaseComponent.App,
         string keySet = "staging",
         ECDsa? signer = null,
-        (string Name, string Text)[]? files = null)
+        (string Name, string Text)[]? files = null,
+        string platform = "linux-x64")
     {
         var bytes = Archive(files ?? [("NeoPrint.Kiosk", $"new {version}"), ("lib/NeoPrint.Kiosk.dll", version)]);
-        var name = $"neoprint-kiosk-{component.ToString().ToLowerInvariant()}-{version}-linux-x64-{keySet}.tar.gz";
+        var name = $"neoprint-kiosk-{component.ToString().ToLowerInvariant()}-{version}-{platform}-{keySet}.tar.gz";
         Directory.CreateDirectory(_paths.Downloads);
         File.WriteAllBytes(Path.Combine(_paths.Downloads, name), bytes);
 
         var sha = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
-        var manifest = new ReleaseManifest(component, "linux-x64", keySet, ReleaseVersion.Parse(version), ReleaseVersion.Parse("0.1.0"),
+        var manifest = new ReleaseManifest(component, platform, keySet, ReleaseVersion.Parse(version), ReleaseVersion.Parse("0.1.0"),
             name, bytes.Length, sha, "b6d4703", DateTimeOffset.UtcNow).ToBytes();
         var signature = ReleaseSignature.Sign(signer ?? _key, manifest).ToBytes();
         return new TestPackage(name, version, Encoding.UTF8.GetString(manifest), Encoding.UTF8.GetString(signature), sha);

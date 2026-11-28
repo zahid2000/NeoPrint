@@ -904,6 +904,7 @@
   "updates.badArchive": "The package archive could not be opened or holds a path it may not.",
   "updates.notSupportedHere": "This kind of update is not supported on this kiosk's platform yet.",
   "updates.provisioningFailed": "The provisioning script ended with an error.",
+  "updates.provisioningRefused": "The kiosk's root helper refused the provisioning package; it was not installed. The reason is in the agent's log.",
   "updates.agentStartFailed": "The new agent could not start; the previous agent was restored.",
   "updates.alreadyRunning": "This version is installed already.",
   "updates.nothingToRollBack": "The kiosk keeps no earlier version to go back to.",

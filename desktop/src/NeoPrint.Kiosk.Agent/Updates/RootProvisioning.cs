@@ -49,14 +49,29 @@ public static class RootProvisioning
         return 64;
     }
 
+    /// <remarks>
+    /// The package's lowest agent is not asked of this copy (T-498): it is the
+    /// agent of the machine's first provisioning and <c>--repair</c> never
+    /// replaces it, while the agent that runs the kiosk - and asked for this
+    /// package - checked it already. A copy that refused on it kept a kiosk on
+    /// its first scripts for good.
+    /// </remarks>
+    /// <param name="packageCheck">For tests: other keys than the compiled-in ones.</param>
     public static async Task<int> InstallAsync(
-        UpdatePaths paths, string package, string manifestPath, string signaturePath, string agentVersion, string scriptArgs, CancellationToken cancellationToken)
+        UpdatePaths paths,
+        string package,
+        string manifestPath,
+        string signaturePath,
+        string agentVersion,
+        string scriptArgs,
+        CancellationToken cancellationToken,
+        ReleasePackageCheck? packageCheck = null)
     {
         var links = new VersionLinks(paths.Versions(UpdateComponents.Provisioning), paths.Current(UpdateComponents.Provisioning));
         var installed = links.CurrentVersion();
 
         var manifestBytes = await File.ReadAllBytesAsync(manifestPath, cancellationToken).ConfigureAwait(false);
-        var check = await new ReleasePackageCheck().CheckAsync(
+        var check = await (packageCheck ?? new ReleasePackageCheck()).CheckAsync(
                 manifestBytes,
                 await File.ReadAllBytesAsync(signaturePath, cancellationToken).ConfigureAwait(false),
                 package,
@@ -70,13 +85,17 @@ public static class RootProvisioning
                 cancellationToken)
             .ConfigureAwait(false);
 
-        if (!check.Accepted || check.Manifest is not { } manifest)
+        if (check.Rejection == ReleaseRejection.AgentTooOld && check.Manifest is not null)
+        {
+            await Console.Error.WriteLineAsync($"Not asked of the root helper: {check.Detail}").ConfigureAwait(false);
+        }
+        else if (!check.Accepted || check.Manifest is null)
         {
             await Console.Error.WriteLineAsync($"Refused: {check.Rejection} - {check.Detail}").ConfigureAwait(false);
             return 2;
         }
 
-        var version = manifest.Version.ToString();
+        var version = check.Manifest.Version.ToString();
         var target = links.VersionFolder(version);
         var partial = target + ".partial";
         try
