@@ -2541,3 +2541,22 @@ qiymət profilləri və `pricing/quote`) yuxarıdakı bölmələrdədir.
 | `PUT /api/admin/kiosks/{id}/camera-archive` | `storage.manage`. `{ "target": null \| "off" \| "<provayder id>" }` — `null` ümumi ayarı (`Camera.ArchiveProvider`) izləyir, `off` — yalnız kioskun diski. Audit: `kiosks.camera-archive`. Kiosk detalında `cameraArchive` |
 
 Ayarlar: `Camera.ArchiveProvider` (boş və ya provayder id-si), `Camera.ArchiveRetentionDays` (30, 1–365). Vaxtı keçənləri saatlıq Hangfire işi (`camera-archive-purge`) silir. Telemetriyada `camera.unsent`, `camera.lastSentAt`.
+
+## Kiosk kamerası — paneldən baxış (T-483)
+
+Hamısı `camera.view` icazəsi ilə və yalnız hesabın gördüyü kiosk üçün (görmədiyi kiosk — `404 notFound.kiosk`). Kameranı `kiosk_camera` funksiya açarı açır; söndürülübsə canlı baxış və kioskdan istəmək `409 camera.off`. Hər baxış audit-ə yazılır: `camera.live.view`, `camera.footage.request`, `camera.footage.view` (dəqiqənin başlanğıcı ilə).
+
+| Endpoint | Nə edir |
+|---|---|
+| `GET /api/admin/kiosks/{id}/camera/footage?from={UTC}&to={UTC}` | Aralığın (ən çox 1 gün) serverdəki dəqiqələri, köhnədən yeniyə: `{ cameraOn, minutes: [{ id, start, end, bytes, fetched, expiresAt }], request }`. `fetched: true` — kioskdan istənib, 24 saat qalır; `false` — fayl serverindən (T-485). `request` — bu aralığa toxunan ən son sorğu (`{ id, from, to, status: Pending \| Delivered, delivered, createdAt, deliveredAt }`) və ya `null`. `400 camera.footageSpan` |
+| `POST /api/admin/kiosks/{id}/camera/footage/requests` | `{ from, to }` (ən çox 1 saat, son 32 gün). Kioskdan aralığın dəqiqələrini istəyir: `camera_requests`-ə yazılır, hub-la `CameraFootageRequested`. Eyni aralıq üçün açıq sorğu varsa həmin sorğu qaytarılır. → `CameraRequestView` |
+| `GET /api/admin/kiosks/{id}/camera/footage/{minuteId}` | Bir dəqiqə `video/mp4` kimi (Range dəstəklənir). Backend şifrəli faylı açır və müvəqqəti, bağlananda silinən fayla yazır, açıq görüntü saxlanmır. `409 camera.minuteUnreadable`, `404 notFound.cameraMinute` |
+| `POST /api/admin/kiosks/{id}/camera/live` | Canlı baxış başlayır: Redis-də "baxılır" işarəsi (20 san), hub-la `CameraLiveRequested`. → `{ live: true }` |
+| `GET /api/admin/kiosks/{id}/camera/live/frame` | Son kadr (`image/jpeg`, başlıq `X-Frame-At`). Son 10 saniyədə kadr yoxdursa `204`. Hər sorğu "baxılır" işarəsini 20 saniyə uzadır: panel bağlananda kiosk özü dayanır |
+| `DELETE /api/admin/kiosks/{id}/camera/live` | Baxış dayanır, son kadr silinir. `204` |
+| `GET /api/kiosks/me/camera/requests` | Kiosk token-i. Kioskun cavab vermədiyi sorğular (24 saat ərzində): `[{ id, from, to, … }]` |
+| `POST /api/kiosks/me/camera/requests/{requestId}/minutes?start={UTC}&seconds={1–120}` | Sorğulanan aralığın bir dəqiqəsi, şifrələnmiş halda (`segments` ilə eyni yoxlama). Əsas saxlama provayderinə yazılır, `fetched: true`, 24 saat qalır. Aralıqdan kənar və ya vaxtı keçmiş sorğu — `409 camera.segmentInvalid`. Eyni dəqiqə artıq serverdədirsə `alreadyStored: true` |
+| `POST /api/kiosks/me/camera/requests/{requestId}/done` | `{ minutes }` — kiosk aralıqdan nə tapdısa göndərdi. Sorğu `Delivered` olur (təkrar cavab heç nəyi dəyişmir) |
+| `POST /api/kiosks/me/camera/live` | Kiosk token-i. Gövdə — bir JPEG (≤ 1 MB, `FF D8 FF` ilə başlamalıdır, yoxsa `409 camera.frameInvalid`). Kimsə baxırsa Redis-də 10 saniyəlik son kadr olur. → `{ live }`: `false` olanda kiosk göndərməyi dayandırır |
+
+Arxiv də kioskdan gətirilmiş dəqiqəni göndərəndə arxivin nüsxəsi onu əvəz edir (arxivin saxlama müddəti ilə). Vaxtı keçmiş sorğular və gətirilmiş dəqiqələr `camera-archive-purge` işi ilə silinir.

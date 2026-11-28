@@ -1755,6 +1755,7 @@ winget install Gyan.FFmpeg            # və ya FFmpeg-i PATH-a qoyun; Linux: sud
 - Panel → Funksiya açarları → `kiosk_camera` → öz kioskunuz üçün **açıq**; kiosk konfiqurasiyanı dərhal alır.
 - Başlıqda ~20 saniyədən sonra "Videomüşahidə aparılır" nişanı görünür; `C:\ProgramData\NeoPrint\camera\sealed\`
   qovluğuna hər dəqiqə bir `.npcam` faylı düşür (`Activity` rejimində yalnız ekrana toxunanda / çap gedəndə).
+- Paneldən baxış (T-483): Admin → Kiosklar → kiosk → **Kamera** → "Canlı bax" — test şəkli saniyədə iki dəfə yenilənir; "Yazılmış" → "Göstər" → "Kioskdan gətir" — kiosk dəqiqələri göndərir, video paneldə oynayır.
 - Panel → Kiosk → Vəziyyət → "Kamera" qrupu; 10 dəqiqə yazmasa `CameraDown` incident-i.
 - Lokal mühitinizdə etməli olduğunuz: heç nə məcburi deyil (flag söndürülü gəlir). Ətraflı: [`KIOSK_CAMERA.md`](KIOSK_CAMERA.md).
 

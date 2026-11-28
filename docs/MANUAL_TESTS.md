@@ -450,3 +450,20 @@ Test serverində və ya lokal stack-də. Telefonda tətbiq bu buraxılışdan (T
 | 3 | Ayarı boşaldın, bir dəqiqə gözləyin, "Yenidən yoxla" | Tətbiq açılır, harada idisə ora qayıdır | **Real telefon** |
 | 4 | Ayara `abc` yazın | Saxlanmır: "Mobil tətbiqin minimum versiyası 1.2.0 kimi yazılmalıdır" | Panel |
 | 5 | Kiosk minimumdan köhnə olsa da işləyir: köhnə kioskda sifariş verin | Sifariş, ödəniş və çap adi qaydada gedir (kiosk bloklanmır) | **Real cihaz** |
+
+## MT-13. Kameraya paneldən baxış (T-483)
+
+Kamera açıq kiosk (MT-11-in 1–2-ci addımları), kiosk tətbiqi bu buraxılışdan və ya yeni. Panel hesabında `camera.view` (SuperAdmin-də var).
+
+| № | Addım | Gözlənilən | Harada |
+|---|---|---|---|
+| 1 | Admin → Kiosklar → kiosk → **Kamera** → "Canlı bax" | 1–2 saniyədə kadr görünür, saniyədə iki dəfə yenilənir; sol yuxarıda qırmızı nöqtə + "Canlı" + saat | **Real cihaz** + panel |
+| 2 | Kameranın qarşısında əlinizi tərpədin | Hərəkət 1 saniyə gecikmə ilə görünür | **Real cihaz** |
+| 3 | "Dayandır", sonra yenidən "Canlı bax", sonra başqa taba keçin | Dayanır; yenidən başlayır; tabdan çıxanda kiosk 20 saniyə ərzində göndərməyi dayandırır (kioskun loqunda "live" xətaları yoxdur) | Panel |
+| 4 | Kiosku şəbəkədən ayırın, "Canlı bax" | 6 saniyədən sonra sarı "Kioskdan kadr gəlmir…" | **Real cihaz** |
+| 5 | Kamera → Yazılmış: son 15 dəqiqə → "Göstər" (fayl serveri seçilməyib) | "Bu aralığın görüntüsü yalnız kioskun diskindədir" + "Kioskdan gətir" | Panel |
+| 6 | "Kioskdan gətir" | "Kiosk dəqiqələri göndərir…", bir neçə saniyədən sonra dəqiqə düymələri və video; birinci dəqiqə özü oynayır, bitəndə növbəti başlayır | **Real cihaz** + panel |
+| 7 | "Bu dəqiqəni yüklə" | `K-xxxx-YYYYMMDD-HHMM.mp4` endirilir və adi pleyerdə açılır | Panel |
+| 8 | Kiosk oflayn ikən "Kioskdan gətir", 2 dəqiqə gözləyin, sonra kiosku qoşun | Əvvəl "Kiosk hələ cavab vermir…", qoşulandan sonra dəqiqələr gəlir | **Real cihaz** |
+| 9 | Audit jurnalı → kiosk | `camera.live.view`, `camera.footage.request`, `camera.footage.view` sətirləri, hesabınızla | Panel |
+| 10 | `camera.view` olmayan hesabla kiosk detalı | "Kamera" tabı yoxdur | Panel |
