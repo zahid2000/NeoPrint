@@ -96,3 +96,21 @@ olmalıdır.
 -   Package əlavə etməzdən əvvəl mövcud dependency siyahısını yoxla.
 -   Secret və real production credential commit etmə.
 -   Hər dəyişiklikdən sonra build + test + git diff yoxla.
+
+## 8. Klient API uyğunluğu (ADR-0009, T-489)
+
+Sahədə eyni anda bir neçə kiosk, provisioning skripti və mobil tətbiq
+versiyası işləyir; backend isə bir anda yenilənir. Backend **ən köhnə
+dəstəklənən** klientlə işləməlidir.
+
+-   Klientin işlətdiyi endpoint, metod, cavab sahəsi, SignalR hadisəsi və
+    xəta kodu silinmir, adı, tipi və mənası dəyişdirilmir — yenisi əlavə
+    olunur (genişləndir → köçür → daralt).
+-   Sorğudakı yeni sahə könüllüdür; cavaba yeni sahə əlavə etmək olar.
+    Klient naməlum sahəni və enum dəyərini sındırmadan buraxır.
+-   Yeni davranış feature flag ilə, klientlər yeniləndikdən sonra açılır.
+-   Baza ikitərəfli: köhnə backend də yeni yazılanı oxuya bilməlidir.
+-   Köhnə yol yalnız contracts/client-api.json-də minSupported ≥
+    retiredIn olanda silinir; CI bunu yoxlayır.
+-   Kiosku backend heç vaxt bloklamır (yeniləmə də API ilə gəlir); köhnə
+    mobil tətbiq 426 alıb yeniləyin ekranı göstərir.

@@ -42,3 +42,4 @@ Ziddiyyət görünürsə: dayan, uyğunsuzluğu göstər, təhlükəsiz variant�
 | `DECISIONS.md`, `API.md`, `THIRD_PARTY.md`, `DEV_ENVIRONMENT.md` | Qərarlar; API; asılılıqlar və lisenziyalar; lokal mühit və keçid addımları |
 | `CLAUDE_CODE_EXECUTION_RULES.md` | Task icrası, scope, definition of done |
 | `adr/TEMPLATE.md` | Arxitektura qərar şablonu |
+| `adr/ADR-0009-client-api-compatibility.md` | Müxtəlif versiyalı kiosk və tətbiqlər üçün API uyğunluğu (genişləndir → köçür → daralt, `contracts/client-api.json`) |
